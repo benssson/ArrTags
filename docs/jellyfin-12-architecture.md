@@ -208,8 +208,9 @@ This approach:
 - changes the effective primary artwork and therefore does not preserve the
   original without a separate backup/restoration design.
 
-It is not an appropriate per-request overlay contract for a plugin whose
-requirement is to leave Jellyfin artwork untouched.
+It is not a per-request overlay contract. For ArrTags, the selected architecture
+accepts the active-artwork change and preserves the original through a separate
+backup/restoration design.
 
 ## 5. Approach comparison
 

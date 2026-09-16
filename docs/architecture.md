@@ -16,8 +16,9 @@ override the decisions recorded here.
 ## 1. Scope and principles
 
 ArrTags is a Jellyfin 12 plugin that reads Sonarr and Radarr metadata and
-renders badges onto image responses. The plugin is read-only with respect to
-Sonarr, Radarr, and Jellyfin media metadata.
+publishes derived badge artwork through Jellyfin's item-image APIs. The plugin
+is read-only with respect to Sonarr and Radarr; its only Jellyfin artwork
+mutation is the guarded publication of its own derived image.
 
 The architecture follows these principles:
 
