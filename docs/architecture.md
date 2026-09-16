@@ -21,15 +21,18 @@ Sonarr, Radarr, and Jellyfin media metadata.
 
 The architecture follows these principles:
 
-- Preserve the underlying poster and Jellyfin-managed artwork.
+- Preserve the original poster source through plugin-owned provenance and
+  restoration state; a validated derived poster may become Jellyfin's active
+  artwork through the supported image APIs.
 - Deliver badges through Jellyfin's normal image endpoints so all clients can
   receive the same result.
-- Keep external I/O, image processing, and cache maintenance outside library
-  event handlers and request paths where practical.
+- Keep external I/O, image processing, artwork publication, and cache
+  maintenance outside library event handlers and image request paths.
 - Prefer stable provider IDs and documented Jellyfin APIs over names, paths,
   database access, or third-party plugin internals.
 - Treat missing, stale, ambiguous, or unavailable external metadata as a
-  recoverable condition and pass through the original image when necessary.
+  recoverable condition and leave the current usable artwork unchanged when
+  necessary.
 - Make every derived result fingerprinted, bounded, cancellable, and safe to
   regenerate after a restart.
 
@@ -44,7 +47,8 @@ The architecture follows these principles:
   a configured quality profile as the file's quality.
 - Update badges after Jellyfin changes, Arr changes, webhooks, and scheduled
   reconciliation.
-- Preserve Jellyfin image files and avoid a permanent generated-poster copy.
+- Preserve the original source artwork through plugin-owned provenance and
+  restoration state; avoid modifying media files or Jellyfin's image cache.
 - Remain safe alongside Jellyfin Enhanced.
 - Fail without degrading Jellyfin library operations or image serving.
 
@@ -74,38 +78,34 @@ flowchart TD
     MATCH --> API
     MATCH --> STATE
 
-    REQ[Client image request] --> FILTER[MVC image action filter]
-    FILTER --> ELIG[Eligibility and metadata lookup]
-    ELIG --> STATE
-    FILTER --> ORIG[Original Jellyfin image action]
-    ORIG --> RENDER[Decode, draw, encode]
-    ELIG --> RENDER
-    RENDER --> CACHE[Bounded ephemeral rendered-image cache]
-    CACHE --> RESP[Original or badged response]
+    REC --> ART[Derived artwork generation and publication]
+    ART --> STATE
+    ART --> JFIMG[Standard Jellyfin item image APIs]
+    REQ[Client image request] --> JFIMG
+    JFIMG --> RESP[Standard Jellyfin image response]
 ```
 
 The plugin has two related but separate paths:
 
 1. **Reconciliation path:** obtains and fingerprints Arr metadata ahead of image
    requests. It is asynchronous, bounded, and restart-safe.
-2. **Image path:** observes a Jellyfin image action, looks up the current
-   fingerprint, and replaces only the HTTP response when a valid badge can be
-   rendered. It never persists a generated image as Jellyfin artwork.
+2. **Artwork path:** observes validated metadata and source-artwork state,
+   renders derived artwork outside the image request path, and publishes it
+   through Jellyfin's supported item-image APIs. Native clients then receive it
+   through Jellyfin's standard image routes.
 
-The image path is the canonical rendering strategy. An MVC action filter is the
-preferred implementation because it operates on typed controller actions and
-can replace the executed result. A version-pinned spike must confirm every
-required image route variant, including indexed images and size/format query
-parameters. If a `PhysicalFileResult` cannot be reliably replaced for a needed
-route, the implementation may use an ASP.NET Core middleware fallback for that
-route. This does not authorize direct modification of Jellyfin image storage.
+The artwork path is the canonical rendering strategy. ArrTags must retain
+enough plugin-owned source and provenance state to avoid repeatedly overlaying
+its own output and to restore the original source when appropriate. The active
+derived image is delivered by Jellyfin's normal image controller, rather than
+by an ArrTags response interceptor.
 
 ## 4. Plugin components and boundaries
 
 | Component | Responsibility | Boundary |
 | --- | --- | --- |
 | `Plugin` | Identity, configuration, data-folder ownership, uninstall hook | Thin `BasePlugin<PluginConfiguration>` entry point |
-| Service registrator | Register services, hosted services, filters, controllers, and tasks | Parameterless `IPluginServiceRegistrator` |
+| Service registrator | Register services, hosted services, controllers, artwork publication, and tasks | Parameterless `IPluginServiceRegistrator` |
 | Configuration service | Validate and publish immutable configuration snapshots | Uses plugin configuration persistence; never exposes secrets |
 | Sonarr client | Read Sonarr v3 resources and probe connections | `IHttpClientFactory`; no write endpoints |
 | Radarr client | Read Radarr v3 resources and probe connections | `IHttpClientFactory`; no write endpoints |
@@ -113,9 +113,9 @@ route. This does not authorize direct modification of Jellyfin image storage.
 | Metadata cache | Store current Arr snapshot and badge-relevant fingerprint | Versioned plugin-owned state under `DataFolderPath` |
 | Reconciliation coordinator | Fetch, match, fingerprint, and enqueue affected items | Runs outside event handlers and image requests where possible |
 | Work queue | Coalesce item work and bound memory/concurrency | Hosted service with cancellation-aware workers |
-| Image action filter | Decide eligibility and replace image results | Only the image response is mutable |
-| Badge renderer | Draw configured labels onto an already processed image | Bounded input/output and render concurrency |
-| Rendered-image cache | Avoid repeated decode/draw/encode work | Ephemeral, bounded, fingerprint-keyed cache |
+| Artwork publisher | Publish validated derived artwork through Jellyfin's public image APIs | Does not write media files or Jellyfin's image-cache directory directly |
+| Badge renderer | Draw configured labels onto retained source artwork | Bounded input/output and render concurrency |
+| Render work cache | Avoid repeated generation before publication where useful | Optional, bounded, fingerprint-keyed work state; not the client response path |
 | Webhook controller | Accept authenticated low-latency Arr hints | Validates token and payload; never trusts payload as source of truth |
 | Scheduled task | Manual and periodic full reconciliation | Cancellable, progress-reporting, retry-safe |
 
@@ -132,7 +132,7 @@ API is available.
    the service provider.
 3. The registrator registers configuration, API clients, caches, matching and
    rendering services, the hosted worker, scheduled task, webhook controller,
-   and image filter registration.
+   and artwork publication services.
 4. The hosted service subscribes to library events and starts the bounded queue
    consumer after the host is ready.
 5. Startup must not perform unbounded Arr requests or a full-library render
@@ -144,9 +144,9 @@ API is available.
 - Stop accepting new work, cancel queued work, and await workers within host
   shutdown limits.
 - Do not leave unmanaged threads or fire-and-forget tasks running.
-- Plugin-owned cache/state may be removed on uninstall according to the plugin
-  uninstall policy; Jellyfin artwork must not be altered because ArrTags never
-  owns it.
+- Plugin-owned cache/state and source-artwork provenance may be removed on
+  uninstall according to the plugin uninstall policy. Active ArrTags artwork
+  must be restored first when it is still identified as ArrTags-owned.
 
 ## 6. Configuration and persisted state
 
@@ -182,15 +182,19 @@ Each item record may contain:
 - Jellyfin item ID and provider IDs.
 - Arr connection identity and external record IDs.
 - Last successful Arr metadata snapshot or normalized badge input.
+- Original source-artwork provenance and the currently published derived-artwork
+  fingerprint, when ArrTags has published an image.
 - Badge-relevant metadata fingerprint.
-- Jellyfin image tag/date fingerprint used for rendered-image invalidation.
+- Jellyfin image tag/date fingerprint used for published-artwork provenance and
+  invalidation.
 - Renderer/configuration version.
 - Last refresh, error, retry, and reconciliation status.
 
-The metadata record and rendered-image cache have different purposes. A
+The metadata record and artwork publication state have different purposes. A
 metadata snapshot may be retained as last-known-good state during a temporary
-Arr outage. Rendered image bytes are ephemeral and must be evictable; they are
-not a replacement for original artwork.
+Arr outage. A derived image published through Jellyfin is active artwork and is
+not an ephemeral response artifact. The original source and restoration
+provenance remain plugin-owned and must not be confused with the active image.
 
 ## 7. Sonarr and Radarr integration
 
@@ -256,7 +260,10 @@ current configuration before processing. It then:
 3. Fetches or reuses the current Arr record and file metadata.
 4. Produces a normalized badge input and fingerprint.
 5. Atomically publishes the metadata state.
-6. Invalidates only affected rendered-cache entries.
+6. Enqueues artwork generation when the publication fingerprint changes.
+7. Renders from validated original source-artwork state.
+8. Publishes the completed derived image through Jellyfin's supported item-image
+   API and records its provenance.
 
 The worker must re-check the item and relevant metadata before publishing a
 result if the operation was long-running. A changed fingerprint causes stale
@@ -273,67 +280,65 @@ Webhooks are accelerators, not the source of truth. Payloads are validated,
 bounded, and converted into the same deduplicated work as other triggers. A
 periodic reconciliation repairs missed or forged notifications.
 
-## 9. Image response rendering
+## 9. Persisted artwork rendering
 
-### Request flow
+### Publication flow
 
-1. The image action filter identifies supported Jellyfin image actions and typed
-   item/image arguments.
-2. It checks configuration, item type, image type, library scope, and whether
-   a current badge input exists.
-3. It includes all output-affecting values in a render key:
-   item ID, image type/index, request sizing/format parameters, Jellyfin image
-   tag or modification fingerprint, metadata fingerprint, render configuration,
-   and renderer version.
-4. A cache hit returns the cached response with correct content type and cache
-   validation behavior.
-5. On a miss, the original image action runs. The filter reads the resulting
-   image bytes or file, decodes the already resized image, draws badges, and
-   returns the encoded result.
-6. Any unsupported result, size limit, cancellation, decode failure, or render
-   exception falls through to the original response.
+1. The reconciliation worker checks configuration, item type, image type,
+   library scope, current source-artwork provenance, and whether current badge
+   input exists.
+2. It includes all output-affecting values in a publication fingerprint:
+   source-artwork identity, metadata fingerprint, render configuration, and
+   renderer/schema versions.
+3. It renders from retained original source artwork or a newly validated source
+   image, never from an ArrTags-generated image without provenance validation.
+4. After current item/configuration validation, it publishes the completed image
+   through `IProviderManager.SaveImage` and the normal item image update flow.
+5. Jellyfin's standard image routes then provide authorization, image tags,
+   resizing, and response caching to clients.
+6. Any unavailable source, cancellation, decode failure, size violation, or
+   render exception leaves the current usable artwork unchanged.
 
-The output is a response artifact only. ArrTags must never call
-`IProviderManager.SaveImage`, `SetImage`, `UpdateToRepositoryAsync`, or
-`IDynamicImageProvider` for badges. It must not write media-folder artwork or
-Jellyfin's `resized-images` cache.
+ArrTags must not write media-folder artwork or Jellyfin's `resized-images`
+cache directly. It may use the supported item-image APIs to publish a derived
+active image. The original source must remain recoverable through plugin-owned
+provenance state.
 
 ### Rendering constraints
 
-- Preserve the requested dimensions and format policy; do not upscale a small
-  source beyond Jellyfin 12 behavior.
-- Cap input bytes, output bytes, decoded dimensions, and concurrent renders.
-- Use a bounded cache under the plugin data folder or an explicitly bounded
-  memory cache; clean up expired disk entries.
-- Preserve or deliberately replace `ETag`, `Last-Modified`, `Cache-Control`,
-  `Range`, and conditional-request behavior based on the final response. This
-  requires integration tests through the exact supported Jellyfin 12 ABI.
+- Cap source bytes, output bytes, decoded dimensions, and concurrent renders.
+- Publish only completed, validated images through the supported item-image API;
+  do not implement a parallel response validator or image route.
+- Verify that the normal Jellyfin image route supplies the published image with
+  correct authorization, image tags, conditional requests, and cache headers.
 - Do not block library scans or synchronous library event delivery.
 
 ## 10. Jellyfin Enhanced coexistence
 
 ArrTags has no source-level dependency on Jellyfin Enhanced. Enhanced's quality
-tags are client-side Web overlays; ArrTags' badges are server-side image
-responses. Therefore:
+tags are client-side Web overlays; ArrTags' badges are persisted through the
+standard server-side image path. Therefore:
 
 - Native clients receive ArrTags badges without requiring the Web UI.
 - Jellyfin Web may show both systems and duplicate information.
 - ArrTags exposes a policy to disable or limit its server badges where needed.
 - Documentation may recommend disabling overlapping Enhanced quality tags, but
   ArrTags does not alter Enhanced configuration.
-- Spoiler Guard ordering and hidden/blurred image behavior must be tested; an
-  ArrTags badge must not reveal information that a spoiler policy hides.
+- Spoiler Guard and hidden/blurred image behavior must be tested through the
+  normal image route; ArrTags must not depend on Enhanced filter ordering.
 
 ## 11. Failure, consistency, and security policy
 
 Failures are isolated by layer:
 
 - Arr connection failures preserve last-known-good metadata for a bounded
-  period, then pass through the original image when no usable state remains.
+  period, then leave the current usable artwork unchanged when no usable state
+  remains.
 - Authentication, malformed JSON, unsupported fields, and version drift are
   reported as connection/item status, not Jellyfin failures.
 - No match or ambiguous match produces no badge.
-- Renderer failures return the original image and record a rate-limited error.
+- Renderer failures leave the current usable artwork unchanged and record a
+  rate-limited error.
 - Queue overflow coalesces or drops redundant work; it never blocks a library
   event indefinitely.
 - Cancellation prevents publication of partial state or partial image output.
@@ -353,7 +358,7 @@ Implementation must define and test concrete defaults for:
 - Maximum concurrent image renders.
 - HTTP timeout, retry count, and exponential backoff.
 - Maximum input/output image bytes and decoded pixel dimensions.
-- Metadata and rendered-cache size/TTL/eviction.
+- Metadata, provenance, and render-work size/TTL/eviction.
 - Full-reconciliation page/batch size and cancellation behavior.
 - Maximum stale-last-known-good duration.
 
@@ -382,8 +387,8 @@ Jellyfin 12.x ABI and supported Arr versions.
 - Jellyfin item event delivery without blocking the event publisher.
 - All supported image route variants, indexed images, requested sizes/formats,
   conditional requests, ranges, and non-200 pass-through responses.
-- MVC filter replacement of `PhysicalFileResult`; middleware fallback only if
-  the spike proves it is required.
+- Publication through Jellyfin's supported item-image APIs, standard image
+  routes, image tags, authorization, and failure behavior.
 - Arr authentication, URL bases, timeouts, outages, upgrades, missing files,
   and webhook authentication.
 - Jellyfin Enhanced Quality Tags and Spoiler Guard enabled and disabled.
@@ -392,10 +397,14 @@ Jellyfin 12.x ABI and supported Arr versions.
 
 ### Acceptance checks
 
-- Original Jellyfin artwork remains byte-for-byte untouched.
-- Disabling ArrTags immediately restores the unmodified image response.
-- A changed Arr file or badge configuration produces a new render key.
-- Repeated unchanged requests do not repeatedly decode and encode the image.
+- Original source artwork is retained according to the provenance/restoration
+  policy, and media files remain byte-for-byte untouched.
+- Disabling ArrTags restores the original source when the active image is still
+  ArrTags-owned.
+- A changed Arr file or badge configuration produces a new publication
+  fingerprint.
+- Repeated unchanged state does not repeatedly render or publish the image;
+  Jellyfin handles normal response caching afterward.
 - A failed external service or render never produces a broken Jellyfin image.
 - Web, mobile, TV, Kodi, and other image-consuming clients receive the same
   server-rendered result where their image request is supported.
@@ -419,13 +428,13 @@ The following are intentionally not guessed by this architecture:
 8. Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior.
 9. Supported live Sonarr/Radarr release ranges and optional-field compatibility.
 
-These decisions must be recorded in a future architecture revision before they
-become implementation assumptions.
+These decisions must be recorded in `docs/decisions.md` and reflected in a
+future architecture revision before they become implementation assumptions.
 
 ## 15. Supporting research
 
 - [Poster rendering strategies](poster-rendering-strategies.md) documents the
-  inspected plugin approaches and the MVC-filter versus middleware tradeoff.
+  inspected plugin approaches and the persisted-artwork tradeoff.
 - [Media metadata mapping](media-metadata-mapping.md) documents Jellyfin item
   identity, provider IDs, file joins, versions, and matching caveats.
 - [Sonarr API reference](sonarr-api.md) documents the read-only v3 integration,
@@ -434,3 +443,48 @@ become implementation assumptions.
   movie/file endpoints, quality semantics, and webhook considerations.
 - [Project goals](../GOALS.md) defines the product requirements and success
   criteria that this architecture must satisfy.
+- [Architecture decisions](decisions.md) records the selected artwork delivery
+  mechanism and rejected alternatives.
+
+## 1. Architectural Scope
+
+This document describes the V1 architecture of the plugin.
+
+The architecture is designed to support **both Radarr and Sonarr** from the outset. Components, interfaces and data models should be service-agnostic wherever practical so that movies and television share the same processing pipeline.
+
+### V1 Architecture Includes
+
+* Jellyfin 12 compatibility.
+* Radarr integration.
+* Sonarr integration.
+* Metadata retrieval from both Arr applications.
+* A unified metadata model.
+* A unified badge rendering pipeline.
+* Original poster source preservation with guarded derived active publication.
+* Compatibility with Jellyfin Enhanced.
+* Caching and update infrastructure shared by both integrations.
+
+### V1 Architecture Excludes
+
+The following are intentionally outside the initial architecture:
+
+* Bazarr integration.
+* Tdarr integration.
+* Music libraries.
+* User-specific badges.
+* Non-poster artwork (backdrops, banners, thumbnails).
+* Additional media managers beyond Sonarr/Radarr.
+
+## 2. Implementation Phases
+
+The architecture supports both Arr applications from day one, but implementation is intentionally incremental.
+
+| Phase   | Deliverable                                                                 |
+| ------- | --------------------------------------------------------------------------- |
+| Phase 1 | Plugin foundation and configuration infrastructure.                         |
+| Phase 2 | Radarr integration and movie badge rendering.                               |
+| Phase 3 | Sonarr integration and episode badge rendering using the same architecture. |
+| Phase 4 | Shared caching, update coordination and performance improvements.           |
+| Phase 5 | Additional badge types and future enhancements.                             |
+
+Each phase should implement additional functionality without requiring architectural redesign.

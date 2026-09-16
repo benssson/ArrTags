@@ -495,99 +495,75 @@ item image bytes.
 | **MVC action-filter response rewrite** (Enhanced Spoiler Guard) | No | No | Yes | Medium: filter-level cache key incl. size params; per-request eligibility checks | Reads/replaces the controller result; Skia blur; bounded in-memory LRU | Standard MVC filter; proven on Jellyfin 12 by Enhanced |
 | **Image provider replacement** (`IDynamicImageProvider`) | Yes (becomes primary image, persisted) | No | Yes | Low (refresh-driven) but **stored copy** | Generation cost at refresh; no per-request cost | Official provider API; runs only on refresh and only when replacing/adding images |
 | **`IImageProcessor` decoration/replacement** | No | No | Yes | Plugin-owned; no built-in hook | Global per-request processor; extra decode/encode on all images | Public interface but sealed singleton core service; not a plugin contract; high risk |
-| **Scheduled/generated poster replacement** (`SaveImage` + `UpdateToRepositoryAsync(ImageUpdate)`) | Yes (replaces primary image) | No | Yes | Fingerprint/idempotency state required | Batch generation; no per-request cost; needs original backup for reversibility | Official save API, but non-reversible without a retained original; conflicts with "preserve poster" goal |
+| **Scheduled/generated poster replacement** (`SaveImage` + `UpdateToRepositoryAsync(ImageUpdate)`) | Yes (replaces primary image) | No | Yes | Fingerprint/idempotency state required | Batch generation; no per-request cost; needs original backup for reversibility | Official save API; selected V1 tradeoff requires provenance and guarded restoration |
 | **Reverse-proxy overlay** (not found in these plugins) | No | No | Yes | Proxy cache | Proxy CPU; external component | Out of scope for a plugin; operational burden |
 
 ---
 
-## 5. Recommendation for this project
+## 5. Selected architecture
+
+The research alternatives above remain valid, but the project decision is now
+recorded in `docs/decisions.md`: use supported persisted derived artwork rather
+than response interception.
 
 ### 5.1 Direct answers
 
-1. **Can we avoid modifying original poster files?**
-   Yes. Use a server-side **response rewrite** (MVC action filter preferred;
-   middleware alternative) or a **client-side overlay**. Never call
-   `IProviderManager.SaveImage` / `SetImage` / `UpdateToRepositoryAsync` for
-   badges, and never write into Jellyfin's image cache or media folders.
+1. **Can we avoid modifying original media files?**
+   Yes. Generate derived artwork asynchronously and publish it through
+   `IProviderManager.SaveImage` and the normal item-image update flow. Do not
+   write original media files or Jellyfin's image cache directly.
 
-2. **Can we avoid storing a second permanent copy of every poster?**
-   Yes. Do not use `IDynamicImageProvider` or the generated-poster path, both of
-   which persist a stored image. A response-rewrite cache is **ephemeral**: it is
-   keyed, TTL-bound, evictable, and can even be memory-only. This satisfies
-   "preserve the underlying poster" and "avoid unnecessary image processing".
+2. **Can we avoid changing the active Jellyfin artwork?**
+   No, not while retaining a supported normal-image path and native-client
+   coverage. The original source must instead be retained through plugin-owned
+   provenance so it can be restored safely.
 
-3. **Can we render badges dynamically instead?**
-   Yes. Compute badges per request from (a) the Jellyfin `BaseItem` and its
-   image `ImageTag`/`DateModified` and (b) cached Sonarr/Radarr metadata, then
-   composite onto the image Jellyfin already produced. Reuse Jellyfin's resize
-   work; do not re-implement it.
+3. **Can we render badges without slowing image requests?**
+   Yes. Compute badges from cached Sonarr/Radarr metadata, render asynchronously
+   when the publication fingerprint changes, and let Jellyfin serve the
+   completed active image through its normal image path.
 
 4. **Can we reuse/extend Jellyfin Enhanced rather than duplicating
    functionality?**
-   Partially: reuse its **architecture** (server-side image mutation via MVC
-   filter, bounded cache, precompute + incremental reconciliation), not its
-   internals. Enhanced's quality tags are client-side and web-only, so they do
-   not provide the all-client server rendering ArrTags needs, and depending on
-   its DOM/JS/config is explicitly discouraged. Instead, **coexist**: add an
-   ArrTags option to suppress server badges per surface, and document disabling
-   Enhanced's Quality Tags when ArrTags supplies them, to avoid duplicate badges
-   on Web.
+   Do not reuse Enhanced internals. Enhanced's quality tags are client-side and
+   web-only, while ArrTags uses the normal persisted image path. Web may still
+   show both systems, so coexistence remains configuration- and test-driven.
 
 5. **Widest client compatibility while maintainable?**
-   Server-side response rewrite. It gives every client the same bytes with no
-   client configuration. Between the two implementations, the **MVC action
-   filter** is the more maintainable choice: it is scoped to image controller
-   actions (no path regex), has access to typed `ActionArguments` (item id, image
-   type, index), and is the mechanism Enhanced already ships on Jellyfin 12. The
-   middleware is a reasonable fallback if filter-level result replacement proves
-   awkward for streamed `PhysicalFile` results.
+   Supported persisted artwork through Jellyfin's item-image APIs. It gives
+   every client the normal Jellyfin image representation, authorization,
+   image tags, and cache behavior without relying on response interception.
 
-### 5.2 Proposed architecture (research-level, not final implementation)
+### 5.2 Selected publication architecture
 
 ```mermaid
 flowchart TD
-    REQ[Image request] --> FILTER{Image action filter<br/>item + image type + index}
-    FILTER -->|not a badge surface| PASS[pass through unchanged]
-    FILTER --> CFG[read ArrTags config]
+    EVT[Metadata or source change] --> CFG[read ArrTags config]
     CFG --> MATCH[media matching service<br/>Jellyfin item -> Sonarr/Radarr record]
     MATCH --> ARR[(Sonarr/Radarr metadata cache<br/>bounded, refresh on change)]
-    ARR --> LABEL[badge labels + render fingerprint]
-    LABEL --> KEY[cache key:<br/>itemId + imageType/index + Jellyfin image tag<br/>+ metadata fingerprint + renderer version]
-    KEY -->|memory/disk hit| SERVE[replace result with cached bytes]
-    KEY -->|miss| NEXT[run original image action]
-    NEXT --> DECODE[decode output with SkiaSharp]
-    DECODE --> DRAW[draw badges]
-    DRAW --> CACHE[(bounded ephemeral cache)]
-    CACHE --> SERVE
-    MATCH -->|no match / disabled / error| PASS
+    ARR --> LABEL[badge labels + publication fingerprint]
+    LABEL --> SOURCE[validated original source/provenance]
+    SOURCE --> DECODE[decode, draw, encode]
+    DECODE --> PUBLISH[SaveImage + item image update]
+    PUBLISH --> NATIVE[Standard Jellyfin image route]
+    MATCH -->|no match / disabled / error| KEEP[keep current artwork]
 ```
 
 Properties:
 
-- **Non-destructive:** only the HTTP response is changed.
-- **Dynamic:** recomputed when the Jellyfin image tag or the Arr metadata
-  fingerprint changes; otherwise served from a bounded cache.
-- **Independent of Enhanced internals:** ArrTags only observes Jellyfin's own
-  image endpoints. A config toggle prevents duplicate badges on Web.
-- **Failure-safe:** any matching/render error falls through to the original
-  image bytes.
-- **Cache key must include** the item id, image type and index, Jellyfin's image
-  `ImageTag` (or `DateModified`), the Arr metadata fingerprint (e.g. quality +
-  custom formats that affect the label), the renderer version, and the render
-  configuration. Size/format query params must be included if the output depends
-  on requested dimensions.
-- **Concurrency/limits:** bound concurrent decode+encode work, cap input/output
-  bytes (Quality Overlay's 25 MB guard is a good precedent), and never block
-  library events.
-
-### 5.3 If per-request rendering is rejected
-
-The only other all-client, "no second copy" option is generated-poster
-replacement (window/generation strategy). It necessarily replaces the primary
-image and therefore requires ArrTags to retain an original/source copy per item
-and to reconcile manual poster changes — exactly the non-destructive caveat in
-`docs/jellyfin-12-architecture.md`. It is **not recommended** given GOALS.md's
-"preserve the underlying poster artwork" requirement.
+- **Source-preserving:** the original source is retained through plugin-owned
+  provenance and is not overwritten by the renderer or media-file writes.
+- **Asynchronous:** regeneration occurs when source, metadata, configuration, or
+  renderer fingerprints change, not during an image request.
+- **Native delivery:** Jellyfin's normal image routes serve the published image
+  and own authorization, image tags, and response caching.
+- **Failure-safe:** any matching or render error leaves the current usable image
+  unchanged.
+- **Publication identity:** state must include item/surface, source fingerprint,
+  metadata/configuration fingerprints, renderer version, and generated-artwork
+  ownership so restoration cannot overwrite a later manual image.
+- **Concurrency/limits:** bound concurrent decode/encode/publication work, cap
+  source/output bytes, and never block library events.
 
 ---
 
@@ -599,16 +575,12 @@ and to reconcile manual poster changes — exactly the non-destructive caveat in
    closest interfaces are `IImageProcessor` (sealed, singleton, hot path) and
    `IDynamicImageProvider` (refresh-time, persisted). **Unresolved** only in the
    sense of confirming nothing was added in a later 12.x patch.
-2. **Filter vs middleware feasibility.** Determine whether an `IAsyncActionFilter`
-   can reliably replace the `PhysicalFileResult` for every image route variant
-   (indexed, `tag/format/maxWidth/...`, thumbnail/backdrop) and read the source
-   bytes without a second full buffer. Enhanced's Spoiler Guard is the working
-   precedent to study. If not, use `IStartupFilter` middleware.
-3. **Cache semantics and CDNs.** Validate how our rewrite interacts with
-   Jellyfin's `ETag`/`Last-Modified`/`Cache-Control`, conditional requests,
-   `Range`, and any reverse proxy/CDN in front. Quality Overlay's approach
-   (own ETag + `no-cache`) is a reference; decide whether ArrTags advertises its
-   own image cache tag.
+2. **Publication feasibility.** Validate source-artwork capture, supported
+   `IProviderManager.SaveImage` publication, item repository updates, and guarded
+   restoration on the exact selected Jellyfin ABI.
+3. **Publication storage and ownership.** Determine how the selected Jellyfin
+   configuration stores the published image, how plugin provenance identifies an
+   ArrTags-owned image, and how manual image changes are preserved.
 4. **Enhanced coexistence matrix.** Test ArrTags server badges with Enhanced
    Quality Tags enabled and disabled, and with Spoiler Guard blur/hide on, in
    Jellyfin Web plus at least one non-web client. Confirm no duplicate/visual
@@ -620,10 +592,10 @@ and to reconcile manual poster changes — exactly the non-destructive caveat in
    are badged (Primary/Thumb/Backdrop; movie/series/season/episode), and how
    alternate versions/editions map to Arr records (see
    `docs/media-metadata-mapping.md`).
-7. **Jellyfin 12 validation of the reference plugins.** JellyTag (10.10 ABI) and
-   Quality Overlay (10.11 ABI) are not built for 12. Before copying their
-   patterns, spike the middleware approach on the exact 12.x server to confirm
-   the route regexes and `IImageProcessor` output still behave as assumed.
+7. **Jellyfin 12 validation of the publication path.** JellyTag (10.10 ABI) and
+   Quality Overlay (10.11 ABI) are useful response-rewrite references, but are
+   not part of the selected mechanism. Validate the supported item-image
+   publication path on the exact 12.x server instead.
 8. **Renderer/format decisions.** Raster format/quality, output size relative to
    the client-requested size (Jellyfin 12 does not upscale), and legibility rules
    remain product decisions.

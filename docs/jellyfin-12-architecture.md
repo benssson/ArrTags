@@ -57,6 +57,35 @@ Jellyfin's pipeline order, route definitions, action signatures, result types,
 authorization behavior, and response-header behavior. Those details are not
 promised as a stable image-overlay API.
 
+### 2.4 HTTP client factory
+
+Jellyfin 12 registers the standard `System.Net.Http.IHttpClientFactory` through
+dependency injection. This is not a Jellyfin-specific interface in
+`MediaBrowser.Common.Net`; Jellyfin exposes the standard .NET/ASP.NET client
+factory through its plugin service-registration path.
+
+`Jellyfin.Server.Startup` registers Jellyfin's named clients with
+`AddHttpClient`, and `MediaBrowser.Common.Net.NamedClient` exposes the current
+names:
+
+- `NamedClient.Default`;
+- `NamedClient.MusicBrainz`;
+- `NamedClient.Dlna`;
+- `NamedClient.DirectIp`.
+
+`IPluginServiceRegistrator` implementations can resolve
+`IHttpClientFactory`, use an existing Jellyfin named client, or register their
+own named or typed clients with the standard `AddHttpClient` APIs. Dedicated
+clients are appropriate when a plugin needs independent base URLs, headers,
+timeouts, handlers, or certificate policy.
+
+The supported boundary is the factory and DI registration contract. Plugins
+must not depend on the internal handler implementation, default retry behavior,
+Happy Eyeballs configuration, or default headers of a Jellyfin-provided named
+client. Those details can change with the host. A plugin should configure the
+behavior it requires on its own named or typed client and should not create raw
+`HttpClient` instances for individual requests.
+
 ## 3. Jellyfin 12 image request pipeline
 
 ### 3.1 Image controller
@@ -290,6 +319,7 @@ Jellyfin `v12.0` source:
 - [`ApplicationHost`](https://github.com/jellyfin/jellyfin/blob/v12.0/Emby.Server.Implementations/ApplicationHost.cs)
 - [`PluginManager`](https://github.com/jellyfin/jellyfin/blob/v12.0/Emby.Server.Implementations/Plugins/PluginManager.cs)
 - [`Startup`](https://github.com/jellyfin/jellyfin/blob/v12.0/Jellyfin.Server/Startup.cs)
+- [`NamedClient`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Common/Net/NamedClient.cs)
 - [`ApiServiceCollectionExtensions`](https://github.com/jellyfin/jellyfin/blob/v12.0/Jellyfin.Server/Extensions/ApiServiceCollectionExtensions.cs)
 - [`ImageController`](https://github.com/jellyfin/jellyfin/blob/v12.0/Jellyfin.Api/Controllers/ImageController.cs)
 - [`IImageProcessor`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Controller/Drawing/IImageProcessor.cs)

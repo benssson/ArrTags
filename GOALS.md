@@ -26,7 +26,8 @@ The plugin should provide users with a convenient way to surface useful media in
 
 * Render metadata as visually distinct badges on the item's Jellyfin poster.
 * Allow the badge content and presentation to be configurable where appropriate.
-* Preserve the underlying poster artwork.
+* Preserve the original poster source and provide guarded restoration while
+  avoiding modifications to original media files.
 * Avoid repeatedly processing the same poster when no relevant metadata has changed.
 
 ### Jellyfin Enhanced compatibility
