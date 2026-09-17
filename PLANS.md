@@ -75,17 +75,17 @@ project, configuration, dependency-injection, lifecycle, and versioned state
 boundaries required by the remaining milestones.
 
 **Phase 1 concept:** This milestone is executed as the ordered Phase 1 tasks
-below. The four remaining tasks recorded in
-`docs/implementation-readiness.md` ("Phase 1 Implementation Tasks") map to
-tasks 1.1, 1.3, 1.4, and 1.8. Architecture and data-model detail stays
-authoritative in `docs/architecture.md` and `docs/data-model.md` and is
-referenced here rather than duplicated.
+below. The tasks recorded in `docs/implementation-readiness.md` ("Phase 1
+Implementation Tasks") map to tasks 1.1, 1.3, 1.4, 1.5, and 1.8. Architecture and
+data-model detail stays authoritative in `docs/architecture.md` and
+`docs/data-model.md` and is referenced here rather than duplicated.
 
 | Readiness task | Phase 1 task |
 | --- | --- |
 | Remove/demote duplicate architecture section; align planner/research wording | 1.1 |
 | Extend canonical match model for Sonarr series, episode, and episode-file identity | 1.3 |
 | Establish validated operational defaults and limits | 1.4 |
+| Implement the plugin entry point and immutable configuration boundary | 1.5 |
 | Build/load the actual plugin against the pinned Jellyfin 12.0.0 set | 1.8 |
 
 **Phase 1 sequence and dependencies:**

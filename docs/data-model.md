@@ -699,6 +699,19 @@ badge selection, rendering, cache policy, and update behavior.
 | `pathMappings` | Optional connection-scoped mappings | Optional | Configuration | Required before path fallback is eligible. |
 | `secretReferences` | Protected secret references | Optional | Configuration | API keys and webhook secrets are excluded from fingerprints and logs. |
 
+The conceptual `renderingPolicy`, `cachePolicy`, and `updatePolicy` objects above
+are realized incrementally. At the foundation boundary, the persisted
+`PluginConfiguration` holds the independently enabled Sonarr and Radarr
+connections, library and image scope, and webhook secret, while an
+`OperationalLimits` instance carries the queue, concurrency, timeout, retry,
+artifact-size, decode, cache, quota, retention, and stale-window limits accepted
+by ADR-004 and recorded in `docs/architecture.md` section 12.
+`PluginConfigurationSnapshot` is the immutable, secret-free view validated by
+`PluginConfigurationValidator` and supplied to workers; API keys and webhook
+secrets remain only in the persisted configuration and appear in canonical state
+as `secretReferences`, never as values. Badge definitions, rendering style, and
+path mappings remain future configuration work.
+
 ## 4. Provider Mapping
 
 The tables below describe conceptual mapping into canonical fields. They do not

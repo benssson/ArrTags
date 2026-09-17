@@ -171,7 +171,11 @@ Configuration includes:
 - Enabled libraries and eligible image/item types.
 - Badge fields, placement, colors, scale, margins, output limits, and renderer
   version settings.
-- Refresh interval, queue limits, cache limits, concurrency, and retry policy.
+- Operational limits supplied by `OperationalLimits`: queue capacity, provider
+  and render concurrency, request timeout, retry count/backoff, provider
+  response and artifact sizes, decoded image dimensions, reconciliation batch
+  size, cache TTL/quota, provenance retention, and the stale-data window (see
+  section 12 and ADR-004).
 - Webhook token or equivalent secret for inbound Arr notifications.
 - Jellyfin Enhanced coexistence and duplicate-badge policy.
 

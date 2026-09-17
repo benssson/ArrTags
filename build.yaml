@@ -9,7 +9,8 @@ description: >
   ArrTags reads metadata from independently configured Sonarr and Radarr
   instances and publishes configurable badges onto Jellyfin poster artwork
   through Jellyfin's supported item-image APIs. This foundation release
-  registers the plugin and its configuration only.
+  registers the plugin, validates its configuration, and performs no provider or
+  artwork I/O.
 category: "General"
 owner: "arrtags"
 artifacts:

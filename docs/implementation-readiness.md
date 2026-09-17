@@ -114,8 +114,14 @@ blockers are already resolved and remain checked in the Blockers section above.
 - [x] Establish initial validated defaults for queue, concurrency, retry,
   timeout, response-size, provenance-retention, storage, and stale-state limits.
   Values, units, validation ranges, and safe failure behavior are recorded in
-  `docs/architecture.md` section 12 and ADR-004. Runtime enforcement and boundary
-  tests land with tasks 1.5 and 1.7.
+  `docs/architecture.md` section 12 and ADR-004. Configuration-load enforcement
+  and boundary tests are implemented in task 1.5; representative-load validation
+  remains part of task 1.7 and the performance milestone.
+- [x] Implement the plugin entry point and immutable configuration boundary:
+  connection and operational-limit validation, replacement snapshots with
+  last-valid retention, and secret-free diagnostics. See
+  `src/ArrTags/Configuration`. The Jellyfin `BasePlugin<PluginConfiguration>`
+  entry point is unchanged, and dependency-injection wiring remains task 1.6.
 - [ ] Build and load the actual plugin against the pinned compatibility set on
   the intended Jellyfin `12.0.0` host; verify plugin discovery and
   `targetAbi: 12.0.0.0` compatibility.

@@ -1,3 +1,12 @@
+> **Historical snapshot.** This review records the repository state at the time
+> it was written and is not maintained. Several findings below have since been
+> resolved: the two architectural blockers by ADR-002 and ADR-003, Sonarr
+> series/episode/episode-file identity by task 1.3, duplicate architecture
+> sections by task 1.1, operational defaults and limits by ADR-004, and
+> configuration validation by task 1.5. Line references and "missing" or
+> "undefined" statements describe the pre-implementation state and are retained
+> only as evidence of the original assessment.
+
 ## Overall Assessment
 
 The accepted persisted-artwork architecture is coherent at the high level:
