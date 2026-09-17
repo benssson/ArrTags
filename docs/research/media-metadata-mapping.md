@@ -4,20 +4,23 @@
 
 This document records how a Jellyfin media item can be matched to its
 corresponding Sonarr or Radarr record, and how the *actual* file metadata (in
-particular quality) is obtained. It is a design/research reference, not an
-implementation plan, and it deliberately does **not** mandate a matching order:
-it states what the APIs confirm, what follows from source, what is proposed, and
-what remains unresolved.
+particular quality) is obtained. It is **evidence and reference material**, not
+an implementation plan or architecture definition, and it deliberately does
+**not** mandate a matching order: it states what the APIs confirm, what follows
+from source, what is proposed, and what remains unresolved. The accepted matching
+policy is in [`../architecture.md`](../architecture.md) §7; evidence here must
+not override it.
 
 **Direction of interest:** Jellyfin → Sonarr/Radarr only. The reverse direction
 (finding Jellyfin items from an Arr record, e.g. for webhook handling or
-reconciliation) is out of scope here, although some Jellyfin query facilities
-that would support it are noted where they clarify the model.
+reconciliation) remains deferred until webhook scope is decided in
+[`PLANS.md`](../PLANS.md) Decision Gate DG-7; some Jellyfin query facilities that
+would support it are noted where they clarify the model.
 
 **Central premise.** Jellyfin models identity, location and its own stream
 analysis. It has **no concept of Sonarr/Radarr quality, quality profile, release
 group, or custom-format score**. Those values exist only in Sonarr/Radarr and
-must be read from their APIs (see `docs/sonarr-api.md` and `docs/radarr-api.md`).
+must be read from their APIs (see [`sonarr-api.md`](sonarr-api.md) and [`radarr-api.md`](radarr-api.md)).
 Any mapping design therefore has two independent halves:
 
 1. **Identity/location** from Jellyfin, used to find the Arr record;
@@ -48,9 +51,9 @@ Any mapping design therefore has two independent halves:
 - `MediaBrowser.Model/MediaInfo/MediaProtocol.cs`
 - `MediaBrowser.Model/Entities/LocationType.cs`
 
-Cross-references: `docs/jellyfin-12-architecture.md` (plugin/serving/threading
-constraints), `docs/sonarr-api.md` (Sonarr endpoints and quality), and
-`docs/radarr-api.md` (Radarr endpoints and quality).
+Cross-references: [`jellyfin-12-architecture.md`](jellyfin-12-architecture.md) (plugin/serving/threading
+constraints), [`sonarr-api.md`](sonarr-api.md) (Sonarr endpoints and quality), and
+[`radarr-api.md`](radarr-api.md) (Radarr endpoints and quality).
 
 ---
 
@@ -213,7 +216,7 @@ Confirmed members relevant to mapping:
 | `GetLocalAlternateVersionIds(Video)` / `GetLinkedAlternateVersions(Video)` | Version enumeration. |
 | `GetSeasonNumberFromPath(string, Guid?)` | Season-number inference. |
 | `GetCollectionFolders(BaseItem)` | Library scope for an item. |
-| `ItemAdded` / `ItemUpdated` / `ItemRemoved` events | Re-evaluation triggers (see architecture doc §6). |
+| `ItemAdded` / `ItemUpdated` / `ItemRemoved` events | Re-evaluation triggers (see [`../architecture.md`](../architecture.md) §8). |
 
 ### 2.2 `InternalItemsQuery`
 
@@ -232,7 +235,9 @@ Confirmed fields useful for locating candidates:
 | `DtoOptions` | Controls DTO enrichment; can be minimised for background work. |
 
 Note: `HasAnyProviderId` also enables the reverse direction (Arr → Jellyfin
-items). That direction is out of scope here but is the same confirmed facility.
+items). That direction remains deferred until webhook scope is decided (see
+[`../PLANS.md`](../PLANS.md) Decision Gate DG-7) but is the same confirmed
+facility.
 
 ### 2.3 Media sources
 
@@ -247,7 +252,7 @@ items). That direction is out of scope here but is the same confirmed facility.
 
 ## 3. Matching a Jellyfin movie to a Radarr record
 
-Radarr identity and file fields are documented in `docs/radarr-api.md`. Radarr
+Radarr identity and file fields are documented in [`radarr-api.md`](radarr-api.md). Radarr
 `MovieResource` exposes `tmdbId` (int) and `imdbId` (string); lookup/listing
 endpoints include `GET /api/v3/movie?tmdbId=`, `/movie/lookup/tmdb`,
 `/movie/lookup/imdb`, and `/movie/lookup?term=`.
@@ -281,7 +286,7 @@ auto-accepted.
 ## 4. Matching a Jellyfin series/episode to a Sonarr record
 
 Sonarr identity, endpoints and the `episode`/`episodeFile` join are documented in
-`docs/sonarr-api.md`.
+[`sonarr-api.md`](sonarr-api.md).
 
 ### 4.1 Series keys
 
@@ -393,7 +398,7 @@ quality classifications, release groups, or custom-format scores.
 - Radarr: one imported file per movie (`movie.hasFile`, `movie.movieFileId`,
   `movie.movieFile`, or `GET /api/v3/moviefile?movieId=`).
 - Sonarr: per-episode `episodeFileId` and the `episodeFile` join described in
-  `docs/sonarr-api.md`.
+  [`sonarr-api.md`](sonarr-api.md).
 
 ### 6.3 Joining Jellyfin sources to Arr files
 
@@ -417,7 +422,7 @@ This is documented in full in the Arr references; the mapping-relevant summary:
 
 - **Actual file quality** comes only from the Arr file resource:
   Radarr `movieFile.quality` (`QualityModel`) / Sonarr `episodeFile.quality`.
-  Compare with `docs/radarr-api.md` §5–6 and `docs/sonarr-api.md` §"Actual file
+  Compare with [`radarr-api.md`](radarr-api.md) §5–6 and [`sonarr-api.md`](sonarr-api.md) §"Actual file
   quality versus quality profile".
 - **Requested/configured quality** is policy: Radarr
   `movie.qualityProfileId` → `GET /api/v3/qualityprofile/{id}`; Sonarr
@@ -426,7 +431,7 @@ This is documented in full in the Arr references; the mapping-relevant summary:
   (Radarr computed against the movie profile; Sonarr likewise).
 - **Custom formats/score:** `customFormats`/`customFormatScore` on the Arr file
   resource; Radarr only populates these on `GET /api/v3/moviefile?movieId=`, not
-  on the embedded `movieFile` in the movie list (`docs/radarr-api.md` §4.1).
+  on the embedded `movieFile` in the movie list ([`radarr-api.md`](radarr-api.md) §4.1).
 
 **Confirmed separation:** Jellyfin exposes no equivalent of any of these. A badge
 labelled with quality must derive its text from the Arr record, not from
@@ -479,12 +484,13 @@ should include at least: Jellyfin item id, Jellyfin provider id(s), Arr connecti
 identity, Arr record id, Arr file id, Arr `quality`, Arr `customFormatScore`,
 `qualityCutoffNotMet`, languages, selected `MediaInfo` values, and the badge
 renderer version. This mirrors the fingerprint guidance in `sonarr-api.md` and
-the caching guidance in `docs/jellyfin-12-architecture.md` §8.
+the caching guidance in [`jellyfin-12-architecture.md`](jellyfin-12-architecture.md) §8.
 
 ### 8.5 Refresh triggers (Confirmed facilities)
 
 - Jellyfin `ILibraryManager.ItemAdded`/`ItemUpdated`/`ItemRemoved` events.
-- Jellyfin scheduled task / post-scan reconciliation (architecture doc §6–7).
+- Jellyfin scheduled task / post-scan reconciliation
+  ([`../architecture.md`](../architecture.md) §8).
 - Sonarr/Radarr outbound webhooks as low-latency hints (see the Arr docs; webhook
   authentication is not provided by the inspected Arr source and must be handled
   at the Jellyfin boundary).
@@ -493,8 +499,8 @@ the caching guidance in `docs/jellyfin-12-architecture.md` §8.
 
 ## 9. Failure handling
 
-The architecture doc ("Unclear items") and GOALS ("fail gracefully") set the
-expectations; this table maps the matching-specific cases.
+The accepted architecture (section 11, failure policy) and GOALS ("fail
+gracefully") set the expectations; this table maps the matching-specific cases.
 
 | Situation | Confirmed/Inferred behaviour available | Notes |
 | --- | --- | --- |
@@ -560,7 +566,9 @@ expectations; this table maps the matching-specific cases.
 11. How is the Arr outbound webhook endpoint authenticated (the inspected Arr
     source does not sign payloads)?
 12. What exact Jellyfin 12.x patch and package versions will be pinned and used
-    for validation fixtures (see architecture doc, "Unclear items")?
+    for validation fixtures? The compatibility target is pinned in
+    [`../implementation-readiness.md`](../implementation-readiness.md); the
+    fixture set remains an implementation task.
 
 ---
 
@@ -584,7 +592,7 @@ expectations; this table maps the matching-specific cases.
 
 **Project references:**
 
-- `docs/jellyfin-12-architecture.md`
-- `docs/sonarr-api.md`
-- `docs/radarr-api.md`
+- [`jellyfin-12-architecture.md`](jellyfin-12-architecture.md)
+- [`sonarr-api.md`](sonarr-api.md)
+- [`radarr-api.md`](radarr-api.md)
 - `GOALS.md`

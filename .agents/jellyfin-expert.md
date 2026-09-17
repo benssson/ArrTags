@@ -41,9 +41,9 @@ At minimum, consider:
 * `GOALS.md`
 * `docs/architecture.md`
 * `docs/data-model.md`
-* `docs/jellyfin-12-architecture.md`
-* `docs/poster-rendering-strategies.md`
-* `docs/media-metadata-mapping.md`
+* `docs/research/jellyfin-12-architecture.md`
+* `docs/research/poster-rendering-strategies.md`
+* `docs/research/media-metadata-mapping.md`
 * `docs/decisions.md` if present
 
 Do not duplicate information unnecessarily.

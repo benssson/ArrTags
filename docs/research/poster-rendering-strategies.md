@@ -2,8 +2,17 @@
 
 ## Scope and method
 
-This document is **research and architectural analysis only**. It does not
-implement anything. It answers the question posed for ArrTags:
+This document is **evidence and reference material**, not an architecture or
+phase definition. It records what existing Jellyfin plugins do and what the
+Jellyfin `v12.0` source confirms, so that ArrTags does not rediscover it. It
+does not select the ArrTags architecture and it does not implement anything.
+
+The authoritative V1 architecture is [`docs/architecture.md`](../architecture.md);
+accepted decisions and rejected alternatives are recorded in
+[`docs/decisions.md`](../decisions.md). Evidence here must not override those
+documents or define a competing phase sequence.
+
+It answers the question posed for ArrTags:
 
 > How do existing Jellyfin plugins render badges on posters, which approach is
 > best for ArrTags, and can we avoid permanently modifying poster files?
@@ -11,7 +20,8 @@ implement anything. It answers the question posed for ArrTags:
 The analysis is based on direct inspection of the following plugin sources
 (shallow clones at the commits below) plus the Jellyfin `v12.0` source. It is
 scoped to badge/overlay rendering, not to Sonarr/Radarr data retrieval (see
-`docs/media-metadata-mapping.md` and `docs/jellyfin-12-architecture.md`).
+[`media-metadata-mapping.md`](media-metadata-mapping.md) and
+[`jellyfin-12-architecture.md`](jellyfin-12-architecture.md)).
 
 | Plugin | Repository | Inspected commit | Declared host |
 | --- | --- | --- | --- |
@@ -21,7 +31,7 @@ scoped to badge/overlay rendering, not to Sonarr/Radarr data retrieval (see
 
 Jellyfin core references are pinned to tag `v12.0`
 (`6c073e19ddf604b2369c638716164fdab4c952dc`), matching
-`docs/jellyfin-12-architecture.md`.
+[`jellyfin-12-architecture.md`](jellyfin-12-architecture.md).
 
 **Evidence labels** (same convention as the sibling docs):
 
@@ -261,7 +271,7 @@ Per the project's own README and source, tags render only where the
 This **is** Jellyfin Enhanced. For ArrTags the important consequence is that
 Enhanced owns the client-side quality-tag surface. ArrTags must not depend on
 Enhanced's DOM, JS globals, config files, or private endpoints
-(`docs/jellyfin-12-architecture.md` already states this policy). If ArrTags adds
+(`[`jellyfin-12-architecture.md`](jellyfin-12-architecture.md) already states this policy). If ArrTags adds
 server-rendered quality badges, Jellyfin Web will show **both** Enhanced's
 client tags and ArrTags' baked-in badges unless one is disabled.
 
@@ -498,74 +508,30 @@ item image bytes.
 | **Scheduled/generated poster replacement** (`SaveImage` + `UpdateToRepositoryAsync(ImageUpdate)`) | Yes (replaces primary image) | No | Yes | Fingerprint/idempotency state required | Batch generation; no per-request cost; needs original backup for reversibility | Official save API; selected V1 tradeoff requires provenance and guarded restoration |
 | **Reverse-proxy overlay** (not found in these plugins) | No | No | Yes | Proxy cache | Proxy CPU; external component | Out of scope for a plugin; operational burden |
 
+The alternatives above are retained as evidence. They do not select an approach:
+the accepted mechanism and the rationale for rejecting the response-interception
+options are recorded in [`docs/decisions.md`](../decisions.md) ADR-001.
+
 ---
 
-## 5. Selected architecture
+## 5. Decision reference
 
-The research alternatives above remain valid, but the project decision is now
-recorded in `docs/decisions.md`: use supported persisted derived artwork rather
-than response interception.
+This section previously restated the selected architecture. To keep research
+from competing with the authoritative design, the selection is recorded only in
+[`docs/architecture.md`](../architecture.md) (section 9, persisted artwork
+rendering) and [`docs/decisions.md`](../decisions.md):
 
-### 5.1 Direct answers
+- ADR-001 selects supported persisted derived artwork through Jellyfin's
+  item-image APIs and rejects the response-interception alternatives analysed
+  above.
+- ADR-002 defines the guarded source-artwork ownership and restoration contract.
+- ADR-003 defines the crash-recoverable publication and recovery protocol.
 
-1. **Can we avoid modifying original media files?**
-   Yes. Generate derived artwork asynchronously and publish it through
-   `IProviderManager.SaveImage` and the normal item-image update flow. Do not
-   write original media files or Jellyfin's image cache directly.
-
-2. **Can we avoid changing the active Jellyfin artwork?**
-   No, not while retaining a supported normal-image path and native-client
-   coverage. The original source must instead be retained through plugin-owned
-   provenance so it can be restored safely.
-
-3. **Can we render badges without slowing image requests?**
-   Yes. Compute badges from cached Sonarr/Radarr metadata, render asynchronously
-   when the publication fingerprint changes, and let Jellyfin serve the
-   completed active image through its normal image path.
-
-4. **Can we reuse/extend Jellyfin Enhanced rather than duplicating
-   functionality?**
-   Do not reuse Enhanced internals. Enhanced's quality tags are client-side and
-   web-only, while ArrTags uses the normal persisted image path. Web may still
-   show both systems, so coexistence remains configuration- and test-driven.
-
-5. **Widest client compatibility while maintainable?**
-   Supported persisted artwork through Jellyfin's item-image APIs. It gives
-   every client the normal Jellyfin image representation, authorization,
-   image tags, and cache behavior without relying on response interception.
-
-### 5.2 Selected publication architecture
-
-```mermaid
-flowchart TD
-    EVT[Metadata or source change] --> CFG[read ArrTags config]
-    CFG --> MATCH[media matching service<br/>Jellyfin item -> Sonarr/Radarr record]
-    MATCH --> ARR[(Sonarr/Radarr metadata cache<br/>bounded, refresh on change)]
-    ARR --> LABEL[badge labels + publication fingerprint]
-    LABEL --> SOURCE[validated original source/provenance]
-    SOURCE --> DECODE[decode, draw, encode]
-    DECODE --> PUBLISH[SaveImage + item image update]
-    PUBLISH --> NATIVE[Standard Jellyfin image route]
-    MATCH -->|no match / disabled / error| KEEP[keep current artwork]
-```
-
-Properties:
-
-- **Source-preserving:** the original source is retained through plugin-owned
-  provenance and is not overwritten by the renderer or media-file writes.
-- **Asynchronous:** regeneration occurs when source, metadata, configuration, or
-  renderer fingerprints change, not during an image request.
-- **Native delivery:** Jellyfin's normal image routes serve the published image
-  and own authorization, image tags, and response caching.
-- **Failure-safe:** any matching or render error leaves the current usable image
-  unchanged.
-- **Publication identity:** state includes item/surface, an immutable retained
-  source artifact, source and metadata/configuration fingerprints, renderer
-  version, an ArrTags ownership token, a per-publication token, and the expected
-  active-image identity. Restoration is permitted only after a fresh identity
-  match; a mismatch or unverifiable observation blocks mutation.
-- **Concurrency/limits:** bound concurrent decode/encode/publication work, cap
-  source/output bytes, and never block library events.
+In summary, without restating the design: ArrTags publishes derived artwork
+through supported Jellyfin item-image APIs, retains the original source through
+plugin-owned provenance, and never writes original media files or Jellyfin's
+image cache directly. The middleware, MVC action-filter, and `IImageProcessor`
+alternatives analysed above are rejected for V1; see ADR-001.
 
 ---
 
@@ -576,7 +542,9 @@ Properties:
    `IImageProcessor`. **Current finding (confirmed):** none dedicated; the
    closest interfaces are `IImageProcessor` (sealed, singleton, hot path) and
    `IDynamicImageProvider` (refresh-time, persisted). **Unresolved** only in the
-   sense of confirming nothing was added in a later 12.x patch.
+   sense of confirming nothing was added in a later 12.x patch. This does not
+   reopen the V1 delivery decision: ADR-001 rejects response interception in
+   favour of supported persisted artwork.
 2. **Publication feasibility.** Validate source-artwork capture, supported
    `IProviderManager.SaveImage` publication, item repository updates, and the
    ADR-002/ADR-003 ownership and crash-recovery contracts on the exact selected
@@ -596,7 +564,7 @@ Properties:
 6. **Multi-version/editions and scope.** Decide which image types and item types
    are badged (Primary/Thumb/Backdrop; movie/series/season/episode), and how
    alternate versions/editions map to Arr records (see
-   `docs/media-metadata-mapping.md`).
+   [`media-metadata-mapping.md`](media-metadata-mapping.md)).
 7. **Jellyfin 12 validation of the publication path.** JellyTag (10.10 ABI) and
    Quality Overlay (10.11 ABI) are useful response-rewrite references, but are
    not part of the selected mechanism. Validate the supported item-image
@@ -626,8 +594,8 @@ Jellyfin core (`v12.0`, `6c073e19ddf604b2369c638716164fdab4c952dc`):
   consumption via the refresh pipeline.
 - `Emby.Server.Implementations/ApplicationHost.cs` (line 593) —
   `AddSingleton<IImageProcessor, ImageProcessor>()`.
-- `docs/jellyfin-12-architecture.md`, `docs/media-metadata-mapping.md`,
-  `GOALS.md`.
+- [`jellyfin-12-architecture.md`](jellyfin-12-architecture.md),
+  [`media-metadata-mapping.md`](media-metadata-mapping.md), `GOALS.md`.
 
 Plugins:
 

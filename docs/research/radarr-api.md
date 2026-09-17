@@ -3,10 +3,13 @@
 ## Scope, evidence, and terminology
 
 This is persistent technical context for ArrTags' Radarr integration. It is a
-concise API reference for future development sessions, not a tutorial. It covers
-only what ArrTags needs to match a Jellyfin movie to a Radarr movie, read the
-*actual* file quality (not merely the configured quality profile), and keep
-badges current.
+concise API reference for future development sessions, not a tutorial. It is
+evidence and reference material for the accepted architecture in
+[`../architecture.md`](../architecture.md) and
+[`../decisions.md`](../decisions.md); it does not define ArrTags architecture or
+phases. It covers only what ArrTags needs to match a Jellyfin movie to a Radarr
+movie, read the *actual* file quality (not merely the configured quality
+profile), and keep badges current.
 
 **Evidence labels used throughout:**
 
@@ -775,9 +778,10 @@ downloadIgnored`.
   - treat absent fields as null.
 - Keep models scoped to what ArrTags reads (movies, movie files, quality
   profiles, media info, system/health). Do not attempt to model every endpoint.
-- Respect the Jellyfin architecture doc's `IHttpClientFactory` guidance: register
-  a dedicated client for Radarr (distinct base URL, timeout, headers) rather than
-  creating raw `HttpClient` instances per call.
+- Respect the Jellyfin architecture guidance for `IHttpClientFactory`
+  ([`../architecture.md`](../architecture.md) §7): register a dedicated client
+  for Radarr (distinct base URL, timeout, headers) rather than creating raw
+  `HttpClient` instances per call.
 
 ---
 

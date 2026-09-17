@@ -98,9 +98,9 @@ client overlay does not provide native-client parity.
 
 ### References
 
-- `docs/jellyfin-12-architecture.md`
-- `docs/poster-rendering-strategies.md`
-- `docs/architecture.md`
+- [`docs/research/jellyfin-12-architecture.md`](research/jellyfin-12-architecture.md)
+- [`docs/research/poster-rendering-strategies.md`](research/poster-rendering-strategies.md)
+- [`docs/architecture.md`](architecture.md)
 - ADR-002 below
 - Jellyfin `IProviderManager.SaveImage` and `IDynamicImageProvider` APIs
 

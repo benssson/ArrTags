@@ -6,7 +6,10 @@
 
 **Purpose:** Establish which Jellyfin 12 plugin and framework extension points
 can provide, replace, or augment item artwork. This document records source
-findings and does not select the ArrTags architecture.
+findings as **evidence and reference material** and does not select the ArrTags
+architecture or define an implementation phase sequence. The authoritative V1
+architecture is [`../architecture.md`](../architecture.md); accepted and rejected
+choices are recorded in [`../decisions.md`](../decisions.md).
 
 ## 1. Evidence categories
 
@@ -354,4 +357,5 @@ Jellyfin `v12.0` source:
 Project research:
 
 - [`poster-rendering-strategies.md`](poster-rendering-strategies.md)
-- [`architecture.md`](architecture.md)
+- [`architecture.md`](../architecture.md)
+- [`decisions.md`](../decisions.md)

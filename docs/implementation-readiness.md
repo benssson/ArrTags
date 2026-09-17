@@ -106,7 +106,7 @@ blockers are already resolved and remain checked in the Blockers section above.
 
 ## Phase 1 Implementation Tasks
 
-- [ ] Remove or demote the duplicate architecture section in
+- [x] Remove or demote the duplicate architecture section in
   `docs/architecture.md` and align the planner/research phase descriptions.
 - [ ] Extend the canonical match model to represent Sonarr series, episode, and
   episode-file identity explicitly.

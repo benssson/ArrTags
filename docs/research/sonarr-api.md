@@ -2,7 +2,11 @@
 
 Persistent integration reference for ArrTags.  This is deliberately a read-only
 Sonarr integration: identify a Jellyfin TV item, obtain the current Sonarr file
-record, and derive poster-badge state from that record.
+record, and derive poster-badge state from that record. It is evidence and
+reference material for the accepted architecture in
+[`../architecture.md`](../architecture.md) and
+[`../decisions.md`](../decisions.md); it does not define ArrTags architecture or
+phases.
 
 ## Scope, versions, and evidence
 

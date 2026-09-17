@@ -638,63 +638,39 @@ The following are intentionally not guessed by this architecture:
 8. Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior.
 9. Supported live Sonarr/Radarr release ranges and optional-field compatibility.
 
-These decisions must be recorded in `docs/decisions.md` and reflected in a
-future architecture revision before they become implementation assumptions.
+These decisions must be recorded in `docs/decisions.md` or
+`docs/implementation-readiness.md` and reflected in a future architecture
+revision before they become implementation assumptions. Item 1 (the pinned
+Jellyfin `12.0.0` / `net10.0` / `targetAbi: 12.0.0.0` compatibility target) is
+resolved in `docs/implementation-readiness.md`. The remaining items stay open and
+are tracked by the decision gates in `PLANS.md`.
 
 ## 15. Supporting research
 
-- [Poster rendering strategies](poster-rendering-strategies.md) documents the
-  inspected plugin approaches and the persisted-artwork tradeoff.
-- [Media metadata mapping](media-metadata-mapping.md) documents Jellyfin item
-  identity, provider IDs, file joins, versions, and matching caveats.
-- [Sonarr API reference](sonarr-api.md) documents the read-only v3 integration,
-  matching endpoints, episode/file joins, and webhook considerations.
-- [Radarr API reference](radarr-api.md) documents the read-only v3 integration,
-  movie/file endpoints, quality semantics, and webhook considerations.
+- [Poster rendering strategies](research/poster-rendering-strategies.md)
+  documents the inspected plugin approaches and the persisted-artwork tradeoff.
+- [Media metadata mapping](research/media-metadata-mapping.md) documents Jellyfin
+  item identity, provider IDs, file joins, versions, and matching caveats.
+- [Jellyfin 12 extension-point findings](research/jellyfin-12-architecture.md)
+  documents the supported, unstable, internal, and unsupported mechanisms.
+- [Sonarr API reference](research/sonarr-api.md) documents the read-only v3
+  integration, matching endpoints, episode/file joins, and webhook
+  considerations.
+- [Radarr API reference](research/radarr-api.md) documents the read-only v3
+  integration, movie/file endpoints, quality semantics, and webhook
+  considerations.
 - [Project goals](../GOALS.md) defines the product requirements and success
   criteria that this architecture must satisfy.
 - [Architecture decisions](decisions.md) records the selected artwork delivery
   mechanism and rejected alternatives.
 
-## 1. Architectural Scope
+These documents are evidence and reference material. They do not define the
+ArrTags architecture or a competing phase sequence.
 
-This document describes the V1 architecture of the plugin.
+## 16. Implementation sequencing
 
-The architecture is designed to support **both Radarr and Sonarr** from the outset. Components, interfaces and data models should be service-agnostic wherever practical so that movies and television share the same processing pipeline.
-
-### V1 Architecture Includes
-
-* Jellyfin 12 compatibility.
-* Radarr integration.
-* Sonarr integration.
-* Metadata retrieval from both Arr applications.
-* A unified metadata model.
-* A unified badge rendering pipeline.
-* Original poster source preservation with guarded derived active publication.
-* Compatibility with Jellyfin Enhanced.
-* Caching and update infrastructure shared by both integrations.
-
-### V1 Architecture Excludes
-
-The following are intentionally outside the initial architecture:
-
-* Bazarr integration.
-* Tdarr integration.
-* Music libraries.
-* User-specific badges.
-* Non-poster artwork (backdrops, banners, thumbnails).
-* Additional media managers beyond Sonarr/Radarr.
-
-## 2. Implementation Phases
-
-The architecture supports both Arr applications from day one, but implementation is intentionally incremental.
-
-| Phase   | Deliverable                                                                 |
-| ------- | --------------------------------------------------------------------------- |
-| Phase 1 | Plugin foundation and configuration infrastructure.                         |
-| Phase 2 | Radarr integration and movie badge rendering.                               |
-| Phase 3 | Sonarr integration and episode badge rendering using the same architecture. |
-| Phase 4 | Shared caching, update coordination and performance improvements.           |
-| Phase 5 | Additional badge types and future enhancements.                             |
-
-Each phase should implement additional functionality without requiring architectural redesign.
+Implementation phases, milestones, and task ordering are maintained in
+[`PLANS.md`](../PLANS.md). This document records the accepted V1 architecture
+only and does not define a competing phase or milestone sequence. Where a plan
+task needs architectural detail, it references this document (and
+`docs/data-model.md`) rather than restating it.

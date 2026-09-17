@@ -5,12 +5,13 @@
 **Status:** Phase 1 in progress
 
 **Current position:** The goals, V1 architecture, and canonical data model are
-drafted and the architectural blockers are resolved. Task 1.2 (project and test
-scaffold) landed: the plugin builds on `net10.0` against the pinned Jellyfin
-`12.0.0` packages with `targetAbi: 12.0.0.0`, its foundation tests pass without a
-live Arr instance, and discovery/load was validated against a Jellyfin `12.0.0.0`
-host. Task 1.1 (documentation alignment) remains open. Milestone 1 is in
-progress and is the current execution target.
+drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
+alignment) and 1.2 (project and test scaffold) are complete: the architecture is
+the single V1 architecture reference, the research documents are marked as
+evidence, and the plugin builds on `net10.0` against the pinned Jellyfin `12.0.0`
+packages with `targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr
+instance and discovery/load was validated against a Jellyfin `12.0.0.0` host.
+Milestone 1 is in progress and is the current execution target.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -94,6 +95,8 @@ referenced here rather than duplicated.
 | 1.8 | Jellyfin 12 build, discovery, and host validation | 1.2, 1.5, 1.6, 1.7 |
 
 #### 1.1 Documentation alignment
+
+**Status:** Complete.
 
 **Objective:** Remove conflicting planning guidance so the accepted architecture
 is the sole implementation reference.

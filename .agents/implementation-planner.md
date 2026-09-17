@@ -37,11 +37,11 @@ At minimum:
 * `PLANS.md`
 * `docs/architecture.md`
 * `docs/data-model.md`
-* `docs/jellyfin-12-architecture.md`
-* `docs/sonarr-api.md`
-* `docs/radarr-api.md`
-* `docs/media-metadata-mapping.md`
-* `docs/poster-rendering-strategies.md`
+* `docs/research/jellyfin-12-architecture.md`
+* `docs/research/sonarr-api.md`
+* `docs/research/radarr-api.md`
+* `docs/research/media-metadata-mapping.md`
+* `docs/research/poster-rendering-strategies.md`
 * `docs/decisions.md` if present
 
 Treat accepted architecture and decisions as authoritative.
