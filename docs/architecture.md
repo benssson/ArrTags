@@ -554,16 +554,40 @@ perform unbounded work.
 
 ## 12. Performance and operational limits
 
-Implementation must define and test concrete defaults for:
+The decision that accepts these foundation defaults and its rationale are
+recorded in [ADR-004](decisions.md). The accepted values, units, validation
+ranges, and safe failure behavior are listed below. Limits are validated at
+configuration load time; a value outside its documented range, or a non-finite
+value where a finite value is required, rejects the new configuration and
+retains the last valid snapshot rather than partially applying it.
 
-- Maximum queue entries and per-item single-flight work.
-- Maximum concurrent Sonarr/Radarr requests.
-- Maximum concurrent image renders.
-- HTTP timeout, retry count, and exponential backoff.
-- Maximum input/output image bytes and decoded pixel dimensions.
-- Metadata, provenance, and render-work size/TTL/eviction.
-- Full-reconciliation page/batch size and cancellation behavior.
-- Maximum stale-last-known-good duration.
+| Limit | Default | Unit | Validation range | Safe failure behavior |
+| --- | --- | --- | --- | --- |
+| Update queue capacity | 512 | entries | integer `1`–`100000` | Overflow coalesces or drops redundant work; library events never block. |
+| Per-item/surface in-flight work | 1 | operations | integer `1`–`1` | Additional hints coalesce into one pending work item. |
+| Provider concurrency per connection | 4 | requests | integer `1`–`16` | Excess requests wait; no request is dropped silently. |
+| Provider concurrency, all connections | 8 | requests | integer `1`–`32` | Bounds total concurrent Sonarr/Radarr requests. |
+| Render concurrency | 2 | renders | integer `1`–`8` | Excess render work remains queued under the queue cap. |
+| HTTP request timeout | 15 | seconds | `1`–`120` | Request is cancelled and classified as transient. |
+| Transient retries | 2 | attempts | integer `0`–`5` | After exhaustion the connection is unhealthy and bounded last-known-good state applies. |
+| Retry backoff | 1 initial, factor 2, 15 cap | seconds | base `1`–`60`, cap at least base and at most `120` | Retries are bounded; no unbounded retry loop. |
+| Provider JSON response size | 8 | MiB | `64 KiB`–`64 MiB` | Response is rejected, classified invalid, and produces no badge. |
+| Source artifact size | 32 | MiB | `64 KiB`–`128 MiB` | Capture is rejected and the current artwork is preserved. |
+| Derived artifact size | 32 | MiB | `64 KiB`–`128 MiB` | Render output is discarded and the current artwork is preserved. |
+| Decoded image dimensions | 8192 per side | pixels | `512`–`16384` per side | Oversized input is rejected before decode. |
+| Full-reconciliation batch size | 100 | records | integer `1`–`1000` | Cancellation is checked between pages and work yields between batches. |
+| Metadata last-known-good window | 24 | hours | `5 min`–`7 days` | After expiry, stale metadata is not used and the current artwork is left unchanged. |
+| Render work-cache TTL | 24 | hours | `1 min`–`30 days` | Expired entries are evicted. |
+| Render work-cache quota | 1 | GiB | `64 MiB`–`64 GiB` | LRU eviction bounded by the quota; never evicts authoritative state. |
+| Authoritative artifact/provenance storage quota | 4 | GiB | `256 MiB`–`256 GiB` | On exhaustion, reject new derived work and preserve the current artwork. |
+| Terminal provenance retention | 30 | days | `1`–`365 days` | Cleanup only after the operation is terminal and cleanup is proven safe. |
+
+Active provenance and any non-terminal artwork operation are never evicted as
+ordinary cache entries. They remain until the operation is committed, safely
+aborted, or tombstoned, regardless of cache or quota pressure. The render
+work cache is bounded independently from authoritative provenance. When the
+authoritative storage quota is exhausted, ArrTags rejects new derived work and
+preserves the current artwork instead of evicting recovery state.
 
 Metrics or diagnostic status should distinguish queue depth, API health,
 matching failures, cache hits/misses, render failures, and stale metadata
@@ -633,7 +657,8 @@ The following are intentionally not guessed by this architecture:
    validated display-order cases.
 5. Whether configured path mappings are needed and how they are represented.
 6. Default queue, concurrency, image-size, cache, timeout, retry, and stale
-   state limits.
+   state limits. Resolved for the foundation by ADR-004; the accepted values are
+   in section 12.
 7. Webhook endpoint exposure and shared-secret administration flow.
 8. Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior.
 9. Supported live Sonarr/Radarr release ranges and optional-field compatibility.
@@ -642,8 +667,10 @@ These decisions must be recorded in `docs/decisions.md` or
 `docs/implementation-readiness.md` and reflected in a future architecture
 revision before they become implementation assumptions. Item 1 (the pinned
 Jellyfin `12.0.0` / `net10.0` / `targetAbi: 12.0.0.0` compatibility target) is
-resolved in `docs/implementation-readiness.md`. The remaining items stay open and
-are tracked by the decision gates in `PLANS.md`.
+resolved in `docs/implementation-readiness.md`. Item 6 (foundation operational
+limits) is resolved by ADR-004, with the accepted values recorded in section 12.
+The remaining items stay open and are tracked by the decision gates in
+`PLANS.md`.
 
 ## 15. Supporting research
 

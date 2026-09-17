@@ -4,7 +4,7 @@
 
 **Status:** Ready for Phase 1 implementation
 
-**Basis:** ADR-002 and ADR-003; findings in
+**Basis:** ADR-002, ADR-003, and ADR-004; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
 architectural blockers.
 
@@ -93,7 +93,7 @@ implementation and acceptance work.
 | 6 | Define catalogue caching, provider inventory, provider-version support, and cross-provider normalization. | Implementation-time decision | Define during provider integration and cover the result with bounded inventory and contract tests. |
 | 7 | Decide the policy for active derived artwork after metadata becomes stale. | Implementation-time decision | Finalize before stale-state artwork handling and publication invalidation are implemented. |
 | 8 | Define webhook security, bounds, replay handling, and provider-record resolution, or defer webhooks. | Implementation-time decision | Decide before webhook work; deferral remains an available V1 scope decision. |
-| 9 | Record concrete queue, concurrency, retry, timeout, response-size, retention, storage, and stale-state limits. | Should become a Phase 1 implementation task | Establish validated configuration defaults and limits with the foundation; tune them during later performance work. |
+| 9 | Record concrete queue, concurrency, retry, timeout, response-size, retention, storage, and stale-state limits. | Should become a Phase 1 implementation task | Complete for the foundation defaults; recorded in ADR-004 and `docs/architecture.md` section 12, with runtime enforcement and tuning in later milestones. |
 | 10 | Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior. | Implementation-time decision | Finalize and test before the Jellyfin artwork integration milestone. |
 
 ## Already Satisfied
@@ -111,8 +111,11 @@ blockers are already resolved and remain checked in the Blockers section above.
 - [x] Extend the canonical match model to represent Sonarr series, episode, and
   episode-file identity explicitly. See `docs/data-model.md` sections 3.4 and
   3.4.1.
-- [ ] Establish initial validated defaults for queue, concurrency, retry,
+- [x] Establish initial validated defaults for queue, concurrency, retry,
   timeout, response-size, provenance-retention, storage, and stale-state limits.
+  Values, units, validation ranges, and safe failure behavior are recorded in
+  `docs/architecture.md` section 12 and ADR-004. Runtime enforcement and boundary
+  tests land with tasks 1.5 and 1.7.
 - [ ] Build and load the actual plugin against the pinned compatibility set on
   the intended Jellyfin `12.0.0` host; verify plugin discovery and
   `targetAbi: 12.0.0.0` compatibility.

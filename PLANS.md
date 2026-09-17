@@ -6,11 +6,13 @@
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
-alignment), 1.2 (project and test scaffold), and 1.3 (canonical Sonarr identity
-model) are complete: the architecture is the single V1 architecture reference,
-the research documents are marked as evidence, the canonical model represents
-Sonarr series, episode, and current episode-file identity with a typed,
-connection-scoped identity, and the plugin builds on `net10.0` against the
+alignment), 1.2 (project and test scaffold), 1.3 (canonical Sonarr identity
+model), and 1.4 (operational defaults and limits) are complete: the architecture
+is the single V1 architecture reference, the research documents are marked as
+evidence, the canonical model represents Sonarr series, episode, and current
+episode-file identity with a typed, connection-scoped identity, the accepted
+operational defaults and validation rules are recorded in ADR-004 and
+`docs/architecture.md` section 12, and the plugin builds on `net10.0` against the
 pinned Jellyfin `12.0.0` packages with `targetAbi: 12.0.0.0`. Foundation tests
 pass without a live Arr instance and discovery/load was validated against a
 Jellyfin `12.0.0.0` host. Milestone 1 is in progress and is the current execution
@@ -199,6 +201,10 @@ enforce the same identity contract.
 
 #### 1.4 Operational defaults and limits
 
+**Status:** Complete (specification). Runtime enforcement, boundary tests, and
+representative-load validation land with the configuration and state foundation
+tasks (1.5 and 1.7) and the performance milestone.
+
 **Objective:** Establish validated initial bounds for foundation-level work.
 
 **Dependencies:** 1.2; 1.3 for identity and state sizing.
@@ -220,24 +226,24 @@ value object, queue/HTTP/retry/artifact/stale-state policies,
   preserve current artwork.
 - Record the selected values and rationale in the authoritative documentation.
 
-**Candidate baseline for validation (not yet accepted):** queue `512`;
-provider concurrency `4` per connection bounded globally; render concurrency
-`2`; request timeout `15s`; `2` transient retries with bounded exponential
-backoff; JSON response limit `8 MiB`; source/derived artifact limit `32 MiB`
-each; terminal provenance retention `30 days` with active provenance retained
-while owned; stale last-known-good window `24h`; render cache quota bounded
-independently from authoritative provenance.
+**Accepted baseline:** The values, units, validation ranges, and safe failure
+behavior are recorded in `docs/architecture.md` section 12, and the decision and
+rationale are recorded in `docs/decisions.md` ADR-004. Later milestones may tune
+values within the documented ranges without reopening ADR-004.
 
 **Tests:** Boundary/invalid-value validation; retry classification and timeout;
 queue overflow and concurrency; response-size rejection; storage quota and
-non-eviction; stale-window behavior.
+non-eviction; stale-window behavior. Runtime tests land with tasks 1.5 and 1.7
+and the performance milestone.
 
 **Acceptance criteria:** Every required limit has an explicit value, unit,
 validation rule, and safe failure behavior; tests show limits prevent unbounded
 work; authoritative state cannot be evicted as ordinary cache data.
 
-**Definition of done:** Defaults are recorded, tested under representative
-load, and approved for the initial foundation.
+**Definition of done:** Defaults are recorded with explicit validation rules and
+safe failure behavior and approved for the initial foundation; runtime testing
+under representative load is part of tasks 1.5 and 1.7 and the performance
+milestone.
 
 #### 1.5 Plugin entry point and configuration
 
@@ -708,7 +714,7 @@ an implementation assumption.
 | DG-3 | Initial badge fields, templates, placement, contrast, output format, text limits, and request-size policy. | Milestone 4 |
 | DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. | Milestone 3 |
 | DG-5 | Whether path mappings are needed, and their connection-scoped representation. | Milestone 3 |
-| DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. | Milestone 6 |
+| DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. Foundation defaults are resolved by ADR-004; Milestone 6 may tune within the documented validation ranges. | Milestone 6 |
 | DG-7 | Webhook exposure, authentication, payload limits, and secret administration flow. | Milestone 6 |
 | DG-8 | Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior. | Milestone 5 |
 | DG-9 | Supported live Sonarr/Radarr release ranges and optional-field compatibility policy. | Milestones 2 and 7 |
