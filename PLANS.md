@@ -2,11 +2,12 @@
 
 ## Project Status
 
-**Status:** Planning / pre-implementation
+**Status:** Phase 1 planned / pre-implementation
 
 **Current position:** The goals, V1 architecture, and canonical data model are
-drafted. No implementation milestone is complete. Milestone 1 is the next
-execution target.
+drafted and the architectural blockers are resolved. No implementation milestone
+is complete. The Phase 1 plan (tasks 1.1-1.8 under Milestone 1) is defined and
+Milestone 1 is the next execution target.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -58,52 +59,298 @@ without modifying original media files or external services.
 
 ### 1. Plugin foundation
 
-**Objective:** Establish a minimal, loadable Jellyfin 12 plugin and the
-configuration, dependency-injection, lifecycle, and state boundaries required by
-the remaining milestones.
+**Objective:** Establish a minimal, loadable Jellyfin 12 plugin foundation: the
+project, configuration, dependency-injection, lifecycle, and versioned state
+boundaries required by the remaining milestones.
 
-**Deliverables:**
+**Phase 1 concept:** This milestone is executed as the ordered Phase 1 tasks
+below. The four remaining tasks recorded in
+`docs/implementation-readiness.md` ("Phase 1 Implementation Tasks") map to
+tasks 1.1, 1.3, 1.4, and 1.8. Architecture and data-model detail stays
+authoritative in `docs/architecture.md` and `docs/data-model.md` and is
+referenced here rather than duplicated.
 
-- Jellyfin 12-compatible project, package versions, target framework, plugin
-  manifest, and `targetAbi` recorded and reproducible.
-- Thin plugin entry point with plugin identity, configuration ownership, and
-  data-folder ownership.
-- Parameterless service registrator with the initial service boundaries from the
-  architecture.
-- Immutable configuration snapshot and validation path for independently
-  enabled Sonarr and Radarr connections, badge behavior, image eligibility,
-  update policy, and operational limits.
-- Protected handling of API keys and webhook secrets. Secrets are absent from
-  logs, diagnostics, cache keys, fingerprints, and domain snapshots.
-- Startup and shutdown behavior that does not perform an unbounded provider
-  refresh or full-library render synchronously.
-- Versioned plugin state boundary under `DataFolderPath`, including atomic
-  writes and safe handling of corrupt or incompatible state.
+| Readiness task | Phase 1 task |
+| --- | --- |
+| Remove/demote duplicate architecture section; align planner/research wording | 1.1 |
+| Extend canonical match model for Sonarr series, episode, and episode-file identity | 1.3 |
+| Establish validated operational defaults and limits | 1.4 |
+| Build/load the actual plugin against the pinned Jellyfin 12.0.0 set | 1.8 |
 
-**Tasks:**
+**Phase 1 sequence and dependencies:**
 
-- [ ] Build and load the actual plugin against the pinned Jellyfin `12.0.0` /
-  `net10.0` compatibility set on the intended host; verify plugin discovery and
-  manifest `targetAbi: 12.0.0.0` compatibility.
-- [ ] Create the plugin entry point and configuration persistence using Jellyfin
-  plugin conventions.
-- [ ] Register configuration, domain services, hosted work, scheduled work,
-  controllers, and artwork publication services without starting provider work
-  at registration time.
-- [ ] Define configuration validation, replacement snapshots, defaults, and
-  redacted administrative diagnostics.
-- [ ] Define version values for model/cache data, badge schema, renderer, and
-  effective configuration.
-- [ ] Implement atomic plugin-owned state read/write boundaries; quarantine
-  authoritative artwork-operation records and discard only invalid
-  non-authoritative cache entries.
-- [ ] Add lifecycle tests for discovery, DI registration, startup, shutdown,
-  reload, and cancellation.
+| Order | Task | Depends on |
+| --- | --- | --- |
+| 1.1 | Documentation alignment | — |
+| 1.2 | Project and test scaffold | 1.1 |
+| 1.3 | Canonical Sonarr identity model | 1.2 |
+| 1.4 | Operational defaults and limits | 1.2, 1.3 |
+| 1.5 | Plugin entry point and configuration | 1.2, 1.4 |
+| 1.6 | DI registration and lifecycle foundation | 1.5 |
+| 1.7 | Versioned plugin state boundary | 1.2, 1.4, 1.5 |
+| 1.8 | Jellyfin 12 build, discovery, and host validation | 1.2, 1.5, 1.6, 1.7 |
 
-**Acceptance criteria:**
+#### 1.1 Documentation alignment
 
-- [ ] The plugin builds, installs, and loads correctly on Jellyfin `12.0.0` with
-  target framework `net10.0` and manifest `targetAbi: 12.0.0.0`.
+**Objective:** Remove conflicting planning guidance so the accepted architecture
+is the sole implementation reference.
+
+**Dependencies:** None.
+
+**Affected files:** `docs/architecture.md`, `docs/research/jellyfin-12-architecture.md`,
+`docs/research/poster-rendering-strategies.md`, `docs/research/media-metadata-mapping.md`.
+
+**Work:**
+
+- Remove or explicitly demote the duplicate architecture section at the end of
+  `docs/architecture.md`; keep one authoritative phase/milestone sequence.
+- Mark the research documents as evidence and reference material, not competing
+  architecture or phase definitions.
+- Cross-reference ADR-001 wherever research discusses rejected image-delivery
+  alternatives.
+- Clarify that reverse provider-to-Jellyfin resolution remains deferred until
+  webhook scope is decided.
+
+**Tests:** Manual consistency review; search for stale phase names, obsolete
+middleware delivery claims, and contradictory scope statements.
+
+**Acceptance criteria:** One authoritative architecture and milestone sequence
+exists; research does not override accepted decisions; no resolved architectural
+decision is reopened.
+
+**Definition of done:** Documentation diff reviewed and cross-document
+contradictions removed.
+
+#### 1.2 Project and test scaffold
+
+**Objective:** Create the minimum reproducible Jellyfin 12 plugin project needed
+for implementation and validation.
+
+**Dependencies:** 1.1; compatibility pins in `docs/implementation-readiness.md`.
+
+**Affected components:** repository root (`global.json`, solution file), plugin
+project under `src/`, plugin manifest, test project under `tests/`, build and
+package configuration.
+
+**Work:**
+
+- Target `net10.0` with .NET SDK baseline `10.0.0`.
+- Pin every referenced Jellyfin host package to exactly `12.0.0`; forbid a
+  `12.1.x` transitive upgrade.
+- Add the plugin manifest with `targetAbi: 12.0.0.0`.
+- Establish source, test, and package-output boundaries.
+- Add deterministic restore/build/test/package commands.
+
+**Tests:** Restore and compile; dependency-graph check for forbidden Jellyfin
+upgrades; manifest ABI assertion.
+
+**Acceptance criteria:** A clean checkout restores and builds with SDK `10.0.0`;
+the package has the expected plugin identity and ABI; tests run without a live
+Arr instance.
+
+**Definition of done:** A clean checkout produces a buildable plugin artifact.
+
+#### 1.3 Canonical Sonarr identity model
+
+**Objective:** Represent Sonarr series, episode, and current episode-file
+identity explicitly before provider or matching code consumes it.
+
+**Dependencies:** 1.2; `docs/data-model.md`; Sonarr research.
+
+**Affected components:** canonical model, `MediaMatch`, `BadgeMetadata.recordIdentity`,
+match/metadata fingerprint generation, `docs/data-model.md`.
+
+**Work:**
+
+- Add a typed, connection-scoped Sonarr identity containing the Sonarr series
+  ID, Sonarr episode ID, and current episode-file ID.
+- Preserve the existing Radarr movie/file identity shape.
+- Represent shared episode files without implying one file belongs to one
+  episode; make missing file identity explicit rather than zero/empty.
+- Include all identity components in match and metadata fingerprints.
+- Keep provider DTOs outside the canonical model.
+
+**Tests:** Equality and fingerprint tests per component; connection-scoping
+tests; missing-file, mismatched `episodeFileId`, shared-file, and changed-file-ID
+tests; versioned snapshot serialization tests; secret-exclusion tests.
+
+**Acceptance criteria:** A matched Sonarr episode cannot be represented without
+distinguishing series, episode, and current-file identity; a changed
+episode-file ID changes the dependent fingerprint; provider DTOs do not leak
+into the canonical model.
+
+**Definition of done:** `docs/data-model.md`, interfaces, and tests describe and
+enforce the same identity contract.
+
+#### 1.4 Operational defaults and limits
+
+**Objective:** Establish validated initial bounds for foundation-level work.
+
+**Dependencies:** 1.2; 1.3 for identity and state sizing.
+
+**Affected components:** configuration model and validator, operational-limits
+value object, queue/HTTP/retry/artifact/stale-state policies,
+`docs/architecture.md`, `docs/decisions.md`.
+
+**Work:**
+
+- Define explicit limits for queue capacity and per-item single-flight work,
+  provider and render concurrency, HTTP timeout, retry count/backoff, maximum
+  provider response size, source/derived artifact sizes, provenance retention,
+  plugin storage/cache quota, and maximum stale-last-known-good duration.
+- Validate limits at configuration load time.
+- Ensure active provenance and non-terminal artwork operations are never
+  evicted as ordinary cache entries.
+- Define safe behavior on storage-quota exhaustion: reject new derived work and
+  preserve current artwork.
+- Record the selected values and rationale in the authoritative documentation.
+
+**Candidate baseline for validation (not yet accepted):** queue `512`;
+provider concurrency `4` per connection bounded globally; render concurrency
+`2`; request timeout `15s`; `2` transient retries with bounded exponential
+backoff; JSON response limit `8 MiB`; source/derived artifact limit `32 MiB`
+each; terminal provenance retention `30 days` with active provenance retained
+while owned; stale last-known-good window `24h`; render cache quota bounded
+independently from authoritative provenance.
+
+**Tests:** Boundary/invalid-value validation; retry classification and timeout;
+queue overflow and concurrency; response-size rejection; storage quota and
+non-eviction; stale-window behavior.
+
+**Acceptance criteria:** Every required limit has an explicit value, unit,
+validation rule, and safe failure behavior; tests show limits prevent unbounded
+work; authoritative state cannot be evicted as ordinary cache data.
+
+**Definition of done:** Defaults are recorded, tested under representative
+load, and approved for the initial foundation.
+
+#### 1.5 Plugin entry point and configuration
+
+**Objective:** Implement the thin plugin entry point and immutable configuration
+boundary.
+
+**Dependencies:** 1.2, 1.4.
+
+**Affected components:** `Plugin`, `PluginConfiguration`, configuration
+validator/snapshot service, administrative diagnostics.
+
+**Work:**
+
+- Add the parameterless `BasePlugin<PluginConfiguration>` entry point with
+  plugin identity and `DataFolderPath` ownership.
+- Support independently enabled Sonarr and Radarr connections, disabled by
+  default.
+- Use replacement snapshots rather than sharing mutable configuration with
+  workers.
+- Validate URLs, finite timeouts, TLS policy, limits, and library/image scope.
+- Redact API keys and webhook secrets from logs, diagnostics, fingerprints, and
+  canonical snapshots; preserve the last valid snapshot when a replacement is
+  invalid.
+
+**Tests:** Plugin construction/identity; valid and invalid configuration;
+independent provider enablement; snapshot replacement and last-valid-snapshot;
+secret redaction.
+
+**Acceptance criteria:** Both providers can stay disabled without external I/O;
+invalid configuration cannot bring down Jellyfin; secrets are absent from
+diagnostics and domain state.
+
+**Definition of done:** Configuration behavior is deterministic and covered by
+automated tests.
+
+#### 1.6 DI registration and lifecycle foundation
+
+**Objective:** Register foundation services without starting provider or
+rendering work during registration or startup.
+
+**Dependencies:** 1.5.
+
+**Affected components:** `IPluginServiceRegistrator`, hosted worker lifecycle,
+scheduled-task registration, initial controller/service registrations.
+
+**Work:**
+
+- Register configuration, domain services, state services, queue abstractions,
+  hosted work, and future provider boundaries.
+- Keep registration parameterless and compatible with Jellyfin 12 conventions.
+- Start no unbounded refresh or full-library processing synchronously.
+- Subscribe and unsubscribe library events within the hosted-service lifecycle.
+- Ensure cancellation and shutdown await all owned work.
+
+**Tests:** DI resolution; startup and shutdown; reload and cancellation;
+verification that no provider API is called during registration/startup; event
+subscription cleanup.
+
+**Acceptance criteria:** The plugin starts with both providers disabled; no
+unmanaged background work survives shutdown; registration performs no provider,
+rendering, or full-library work.
+
+**Definition of done:** Lifecycle tests pass against the pinned Jellyfin test
+environment or a compatible integration harness.
+
+#### 1.7 Versioned plugin state boundary
+
+**Objective:** Establish safe plugin-owned state storage under Jellyfin's
+`DataFolderPath`.
+
+**Dependencies:** 1.2, 1.4, 1.5.
+
+**Affected components:** state repository, versioned records and manifests,
+atomic file writer, quarantine/recovery handling.
+
+**Work:**
+
+- Define versioned state envelopes and integrity metadata.
+- Write via temporary file, flush, and atomic replacement.
+- Separate ordinary cache state from authoritative artwork-operation state.
+- Rebuild or discard invalid non-authoritative cache entries; quarantine invalid
+  authoritative records instead of treating them as absent.
+- Apply bounded storage and retention policies.
+
+**Tests:** Atomic write/read; corrupt, torn, incompatible, and missing state;
+quarantine; restart recovery; permission and path-traversal.
+
+**Acceptance criteria:** Corrupt cache state does not prevent startup; invalid
+authoritative state never triggers blind replay or cleanup; state contains no
+credentials or unbounded external payloads.
+
+**Definition of done:** State recovery behavior is deterministic and documented.
+
+#### 1.8 Jellyfin 12 build, discovery, and host validation
+
+**Objective:** Prove the actual plugin works against the pinned Jellyfin
+compatibility set.
+
+**Dependencies:** 1.2, 1.5, 1.6, 1.7.
+
+**Affected components:** build/package output, plugin manifest, intended
+Jellyfin `12.0.0` host, validation checklist.
+
+**Required host validation:**
+
+- Build with .NET SDK `10.0.0`.
+- Install the generated package on the intended Jellyfin `12.0.0` host.
+- Verify plugin discovery and load, and `targetAbi: 12.0.0.0`.
+- Start with both providers disabled; verify configuration loading, DI
+  registration, startup, shutdown, and reload.
+- Confirm the installed host runtime patch and OS/runtime packaging.
+- Review logs for load errors, unmanaged background work, or secret leakage.
+
+**Tests:** Clean restore/build/package; plugin discovery smoke test; host
+startup/shutdown smoke test; manifest and ABI verification; runtime
+compatibility against the actual host.
+
+**Acceptance criteria:** The plugin builds, installs, is discovered, and loads
+on Jellyfin `12.0.0`; the host accepts `targetAbi: 12.0.0.0`; both providers
+remain disabled without provider calls; lifecycle and configuration tests pass
+on the intended host.
+
+**Definition of done:** Gate 1 is met and the milestone can be marked complete.
+
+**Phase 1 acceptance criteria:**
+
+- [ ] The plugin builds, installs, and loads correctly on Jellyfin `12.0.0`
+  with target framework `net10.0` and manifest `targetAbi: 12.0.0.0`.
 - [ ] Sonarr and Radarr can be enabled, disabled, and configured independently.
 - [ ] Invalid configuration is rejected or retained as the last valid snapshot
   without taking down Jellyfin.
@@ -113,9 +360,13 @@ the remaining milestones.
 - [ ] A restart with missing, corrupt, or incompatible non-authoritative cache
   state rebuilds it without blocking Jellyfin; invalid artwork-operation state
   is quarantined and preserves the current image without blind replay.
+- [ ] The canonical model represents Sonarr series, episode, and episode-file
+  identity explicitly and excludes provider DTOs.
+- [ ] All operational defaults have explicit values, validation rules, and safe
+  failure behavior.
 
-**Gate 1:** The ABI and configuration/lifecycle tests pass, and the plugin can
-start with both providers disabled.
+**Gate 1:** The ABI and configuration/lifecycle tests pass, the plugin can start
+with both providers disabled, and tasks 1.1-1.8 meet their acceptance criteria.
 
 ### 2. Sonarr & Radarr integration
 
