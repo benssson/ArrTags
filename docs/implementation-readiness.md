@@ -115,13 +115,23 @@ blockers are already resolved and remain checked in the Blockers section above.
   timeout, response-size, provenance-retention, storage, and stale-state limits.
   Values, units, validation ranges, and safe failure behavior are recorded in
   `docs/architecture.md` section 12 and ADR-004. Configuration-load enforcement
-  and boundary tests are implemented in task 1.5; representative-load validation
-  remains part of task 1.7 and the performance milestone.
+  and boundary tests are implemented in task 1.5; state quota and retention
+  enforcement are implemented in task 1.7. Representative-load validation
+  remains the performance milestone.
 - [x] Implement the plugin entry point and immutable configuration boundary:
   connection and operational-limit validation, replacement snapshots with
   last-valid retention, and secret-free diagnostics. See
   `src/ArrTags/Configuration`. The Jellyfin `BasePlugin<PluginConfiguration>`
-  entry point is unchanged, and dependency-injection wiring remains task 1.6.
+  entry point is unchanged.
+- [ ] Implement dependency-injection registration and the hosted service
+  lifecycle without starting provider, rendering, or full-library work during
+  registration or startup, including library-event subscription cleanup and
+  cancellation-aware shutdown.
+- [x] Establish the versioned plugin state boundary under `DataFolderPath`:
+  schema-versioned envelopes with SHA-256 payload integrity, atomic
+  flush-and-rename writes, cache discard versus authoritative quarantine,
+  traversal-safe paths, and bounded cache and terminal-provenance retention. See
+  `src/ArrTags/State`. Dependency-injection wiring remains task 1.6.
 - [ ] Build and load the actual plugin against the pinned compatibility set on
   the intended Jellyfin `12.0.0` host; verify plugin discovery and
   `targetAbi: 12.0.0.0` compatibility.
@@ -132,7 +142,9 @@ the pinned `12.0.0` Jellyfin packages, `build.yaml` declares
 identity, and the pinned dependency graph without a live host. The configuration
 foundation adds connection and operational-limit validation, an immutable
 replacement-snapshot service with last-valid retention, and secret-free
-snapshots, all covered by foundation tests.
+snapshots. The state boundary provides versioned, integrity-tagged records,
+atomic writes, cache discard versus authoritative quarantine, traversal-safe
+paths, and bounded retention. Both are covered by foundation tests.
 
 Plugin discovery and load were validated against a Jellyfin `12.0.0.0` host (the
 portable `v12.0` amd64 build) in the execution environment. The host reported
@@ -141,7 +153,7 @@ portable `v12.0` amd64 build) in the execution environment. The host reported
 plugin cleanly on shutdown.
 
 That host run is environment-dependent evidence, not the intended-host
-acceptance required by the fourth task above. The intended host's installed .NET
+acceptance required by the final task above. The intended host's installed .NET
 runtime patch and OS/runtime packaging remain unknown, and the plugin has no
 dependency-injection registration or hosted lifecycle wiring yet. Configuration
 validation and snapshot replacement are implemented but are not yet connected to

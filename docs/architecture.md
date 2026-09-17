@@ -186,10 +186,16 @@ by default; any exception is explicit and scoped to one connection.
 ### Plugin state
 
 State is stored under `DataFolderPath`, not in Jellyfin's database or image
-cache. The format is versioned and written atomically. Corrupt non-authoritative
-cache state may be ignored or rebuilt; authoritative artwork state and operation
-records are quarantined and retained for recovery rather than treated as
-`NotPublished`.
+cache. Each record is written as a versioned envelope carrying a schema version
+and a SHA-256 integrity hash over its payload. Writes go through a flushed
+temporary file and an atomic replacement in the same directory, and record kinds
+and identifiers are validated as single path segments so state cannot escape its
+root. Corrupt non-authoritative cache state may be ignored or rebuilt;
+authoritative artwork state and operation records are quarantined and retained
+for recovery rather than treated as `NotPublished`. Cache records are bounded by
+age and quota, while authoritative records are never pruned as ordinary cache
+entries; only explicitly terminal provenance records are eligible for retention
+cleanup.
 
 Publication and restoration use a durable write-ahead operation journal under
 the same plugin data boundary. `ArtworkOperation` records, operation manifests,

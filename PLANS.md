@@ -7,16 +7,19 @@
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
 alignment), 1.2 (project and test scaffold), 1.3 (canonical Sonarr identity
-model), 1.4 (operational defaults and limits), and 1.5 (plugin entry point and
-configuration) are complete: the architecture is the single V1 architecture
-reference, the research documents are marked as evidence, the canonical model
-represents Sonarr series, episode, and current episode-file identity with a
-typed, connection-scoped identity, the accepted operational defaults and
-validation rules are recorded in ADR-004 and `docs/architecture.md` section 12,
-the configuration foundation validates connections, limits, and scope and exposes
-an immutable replacement snapshot with last-valid retention and secret redaction,
-and the plugin builds on `net10.0` against the pinned Jellyfin `12.0.0` packages
-with `targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and
+model), 1.4 (operational defaults and limits), 1.5 (plugin entry point and
+configuration), and 1.7 (versioned plugin state boundary) are complete: the
+architecture is the single V1 architecture reference, the research documents are
+marked as evidence, the canonical model represents Sonarr series, episode, and
+current episode-file identity with a typed, connection-scoped identity, the
+accepted operational defaults and validation rules are recorded in ADR-004 and
+`docs/architecture.md` section 12, the configuration foundation validates
+connections, limits, and scope and exposes an immutable replacement snapshot with
+last-valid retention and secret redaction, the state boundary provides versioned
+integrity-tagged records with atomic writes, cache discard versus authoritative
+quarantine, traversal-safe paths, and bounded retention, and the plugin builds on
+`net10.0` against the pinned Jellyfin `12.0.0` packages with
+`targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and
 discovery/load was validated against a Jellyfin `12.0.0.0` host. Milestone 1 is
 in progress and is the current execution target.
 
@@ -76,9 +79,9 @@ boundaries required by the remaining milestones.
 
 **Phase 1 concept:** This milestone is executed as the ordered Phase 1 tasks
 below. The tasks recorded in `docs/implementation-readiness.md` ("Phase 1
-Implementation Tasks") map to tasks 1.1, 1.3, 1.4, 1.5, and 1.8. Architecture and
-data-model detail stays authoritative in `docs/architecture.md` and
-`docs/data-model.md` and is referenced here rather than duplicated.
+Implementation Tasks") map to tasks 1.1, 1.3, 1.4, 1.5, 1.6, 1.7, and 1.8.
+Architecture and data-model detail stays authoritative in `docs/architecture.md`
+and `docs/data-model.md` and is referenced here rather than duplicated.
 
 | Readiness task | Phase 1 task |
 | --- | --- |
@@ -86,6 +89,8 @@ data-model detail stays authoritative in `docs/architecture.md` and
 | Extend canonical match model for Sonarr series, episode, and episode-file identity | 1.3 |
 | Establish validated operational defaults and limits | 1.4 |
 | Implement the plugin entry point and immutable configuration boundary | 1.5 |
+| Implement dependency-injection registration and the hosted service lifecycle | 1.6 |
+| Establish the versioned plugin state boundary | 1.7 |
 | Build/load the actual plugin against the pinned Jellyfin 12.0.0 set | 1.8 |
 
 **Phase 1 sequence and dependencies:**
@@ -203,9 +208,11 @@ enforce the same identity contract.
 
 #### 1.4 Operational defaults and limits
 
-**Status:** Complete (specification). Runtime enforcement, boundary tests, and
-representative-load validation land with the configuration and state foundation
-tasks (1.5 and 1.7) and the performance milestone.
+**Status:** Complete. The accepted values, validation rules, and safe failure
+behavior are recorded in ADR-004 and `docs/architecture.md` section 12.
+Configuration-load enforcement and boundary tests are implemented in task 1.5;
+state quota and retention enforcement are implemented in task 1.7.
+Representative-load validation remains the performance milestone.
 
 **Objective:** Establish validated initial bounds for foundation-level work.
 
@@ -235,17 +242,18 @@ values within the documented ranges without reopening ADR-004.
 
 **Tests:** Boundary/invalid-value validation; retry classification and timeout;
 queue overflow and concurrency; response-size rejection; storage quota and
-non-eviction; stale-window behavior. Runtime tests land with tasks 1.5 and 1.7
-and the performance milestone.
+non-eviction; stale-window behavior. Boundary and storage-quota tests are
+implemented in tasks 1.5 and 1.7; retry, queue, response-size, and stale-window
+behavior tests land with the provider, caching, and performance milestones.
 
 **Acceptance criteria:** Every required limit has an explicit value, unit,
 validation rule, and safe failure behavior; tests show limits prevent unbounded
 work; authoritative state cannot be evicted as ordinary cache data.
 
 **Definition of done:** Defaults are recorded with explicit validation rules and
-safe failure behavior and approved for the initial foundation; runtime testing
-under representative load is part of tasks 1.5 and 1.7 and the performance
-milestone.
+safe failure behavior and approved for the initial foundation; configuration-load
+and state enforcement are implemented in tasks 1.5 and 1.7, and representative-load
+validation remains the performance milestone.
 
 #### 1.5 Plugin entry point and configuration
 
@@ -317,6 +325,13 @@ rendering, or full-library work.
 environment or a compatible integration harness.
 
 #### 1.7 Versioned plugin state boundary
+
+**Status:** Complete. Versioned envelopes with a schema version and SHA-256
+payload integrity, atomic flush-and-rename writes, cache discard versus
+authoritative quarantine, traversal-safe path resolution, and bounded cache and
+terminal-provenance retention are implemented and covered by foundation tests.
+Artifact byte storage and per-surface artwork-operation journaling land with the
+artwork and caching milestones.
 
 **Objective:** Establish safe plugin-owned state storage under Jellyfin's
 `DataFolderPath`.

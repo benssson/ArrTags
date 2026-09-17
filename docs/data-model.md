@@ -1101,6 +1101,14 @@ The version values have different responsibilities:
 | `rendererVersion` | Layout, drawing, encoding, and output behavior | Included in render keys; changing it invalidates artwork entries but need not refetch metadata. |
 | `configurationVersion` | Effective administrative configuration snapshot | Included in configuration fingerprints when output-affecting. |
 
+Persisted plugin state is additionally wrapped in a storage envelope that carries
+its own envelope schema version and a SHA-256 hash over the payload, separate
+from the payload's `modelVersion`/`cacheVersion`. The envelope versions the
+storage format while the versions above version the record meaning. An envelope
+with an incompatible schema version or failed integrity is discarded for cache
+state and quarantined for authoritative state, so it can never be read as valid
+current state.
+
 ### Compatibility rules
 
 - Additive optional metadata fields should be readable by older versions as
