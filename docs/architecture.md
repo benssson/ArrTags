@@ -195,7 +195,7 @@ closed rather than replaying an unknown mutation.
 Each item record may contain:
 
 - Jellyfin item ID and provider IDs.
-- Arr connection identity and external record IDs.
+- Arr connection identity and the typed Arr record/file identity.
 - Last successful Arr metadata snapshot or normalized badge input.
 - `PublishedArtworkState`, including the retained source artifact, expected
   active-image identity, ownership/publication tokens, and restoration state,

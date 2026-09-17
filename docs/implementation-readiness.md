@@ -108,8 +108,9 @@ blockers are already resolved and remain checked in the Blockers section above.
 
 - [x] Remove or demote the duplicate architecture section in
   `docs/architecture.md` and align the planner/research phase descriptions.
-- [ ] Extend the canonical match model to represent Sonarr series, episode, and
-  episode-file identity explicitly.
+- [x] Extend the canonical match model to represent Sonarr series, episode, and
+  episode-file identity explicitly. See `docs/data-model.md` sections 3.4 and
+  3.4.1.
 - [ ] Establish initial validated defaults for queue, concurrency, retry,
   timeout, response-size, provenance-retention, storage, and stale-state limits.
 - [ ] Build and load the actual plugin against the pinned compatibility set on

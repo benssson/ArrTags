@@ -90,8 +90,24 @@ classDiagram
     class MediaMatch {
         +Status
         +Method
-        +ExternalRecordId
-        +ExternalFileIds
+        +RecordIdentity
+    }
+    class ArrRecordIdentity {
+        +ConnectionId
+        +ProviderKind
+    }
+    class SonarrIdentity {
+        +SeriesId
+        +EpisodeId
+        +EpisodeFileIdentity
+    }
+    class RadarrIdentity {
+        +MovieId
+        +MovieFileIdentity
+    }
+    class ArrFileIdentity {
+        +Presence
+        +FileId
     }
     class BadgeMetadata {
         +BadgeSchemaVersion
@@ -168,6 +184,12 @@ classDiagram
     MediaIdentity --> MediaMatch : matched item
     ArrConnection --> ArrProvider : uses
     ArrConnection --> MediaMatch : scoped match
+    ArrConnection --> ArrRecordIdentity : scopes
+    MediaMatch --> ArrRecordIdentity : record identity
+    SonarrIdentity --> ArrRecordIdentity : is a
+    RadarrIdentity --> ArrRecordIdentity : is a
+    SonarrIdentity --> ArrFileIdentity : current episode file
+    RadarrIdentity --> ArrFileIdentity : current movie file
     MediaMatch --> BadgeMetadata : supplies
     Configuration --> ArrConnection : configures
     Configuration --> BadgeDefinition : configures
@@ -189,7 +211,9 @@ classDiagram
 ```
 
 `MediaIdentity` is the Jellyfin-side subject. `MediaMatch` connects it to one
-scoped Arr record. `MetadataCacheEntry` retains the provider-derived snapshot;
+scoped Arr record through a typed `ArrRecordIdentity` that distinguishes Sonarr
+series/episode/file identity from Radarr movie/file identity.
+`MetadataCacheEntry` retains the provider-derived snapshot;
 `ArtworkCacheEntry` retains only bounded render work state. `PublishedArtworkState`
 tracks the active derived image and the plugin-owned source-artwork provenance.
 Jellyfin does not provide an artwork-owner field, so ownership is proven by the
@@ -265,13 +289,78 @@ invalid rather than silently guessed.
 | `connectionId` | Opaque connection identifier | Yes | Plugin/configuration | Prevents cross-instance local-ID collisions. |
 | `status` | `Matched`, `NotFound`, `Ambiguous`, `Unsupported`, or `Stale` | Yes | Generated | Only `Matched` permits provider metadata to be used for a badge. |
 | `matchMethod` | Provider ID, number, configured path, manual, or none | Yes | Generated | Records how the result was established. |
-| `externalRecordId` | Arr local record identifier | Optional | Sonarr/Radarr, cached | Sonarr series/movie/episode ID as appropriate; scoped to the connection. |
-| `externalFileIds` | Set of Arr file identifiers | Optional | Sonarr/Radarr, cached | One Radarr movie file or one/more Sonarr episode files for a matched item. |
+| `recordIdentity` | Typed, connection-scoped Arr record/file identity | Required when `Matched` | Sonarr/Radarr, cached | Provider-neutral envelope holding one concrete `SonarrIdentity` or `RadarrIdentity`; see section 3.4.1. |
 | `matchedProviderIds` | Map of IDs used for validation | Optional | Jellyfin + provider | Records the stable IDs that agreed; useful for diagnostics and invalidation. |
 | `pathValidation` | Path comparison result | Optional | Generated | Only meaningful when an explicit path mapping is configured. |
 | `matchedAt` | Timestamp | Optional | Generated | Last successful validation time. |
-| `matchFingerprint` | Opaque fingerprint | Yes | Generated | Changes when the association or scoped provider identity changes. |
+| `matchFingerprint` | Opaque fingerprint | Yes | Generated | Changes when the association or any scoped identity component (record ID, episode ID, or file identity presence/value) changes. |
 | `ambiguityReason` | String/code | Optional | Generated | Safe explanation for skipped matches; never contains credentials. |
+
+#### 3.4.1 Arr record and file identity
+
+**Purpose:** A typed, connection-scoped representation of the Arr record and
+current file a match resolves to. It replaces the former singular opaque record
+identifier so a Sonarr episode carries its series, episode, and current-file
+identity without ambiguity. These are canonical model types, never provider
+DTOs.
+
+Every `ArrRecordIdentity` is scoped to exactly one `ArrConnection`
+(`connectionId`) and one provider kind. The same local record/file ID value on
+two connections is never the same identity.
+
+| Field | Type | Required | Field Ownership | Notes |
+| --- | --- | --- | --- | --- |
+| `connectionId` | Opaque connection identifier | Yes | Plugin/configuration | Scope for every contained local ID. |
+| `providerKind` | `Sonarr` or `Radarr` | Yes | Plugin | Selects exactly one concrete identity shape. |
+
+Concrete identity shapes are never mixed or substituted across providers.
+
+**SonarrIdentity**
+
+| Field | Type | Required | Field Ownership | Notes |
+| --- | --- | --- | --- | --- |
+| `seriesId` | Sonarr series local ID | Yes for a matched series or episode | Sonarr, cached | The series record the episode belongs to; distinct from an episode TVDB ID. |
+| `episodeId` | Sonarr episode local ID | Yes for a matched episode | Sonarr, cached | The matched episode; distinct from the series ID and from the episode TVDB ID. |
+| `episodeFileIdentity` | `ArrFileIdentity` | Yes for a matched episode | Sonarr, cached | Current file from the `episode.episodeFileId == episodeFile.id` join; explicit `Absent` when the episode has no current file. |
+
+A series match carries `seriesId` only. An episode match always distinguishes
+the series from the episode and from the current file; an episode cannot be
+represented with only a series ID or only a file ID.
+
+**RadarrIdentity**
+
+| Field | Type | Required | Field Ownership | Notes |
+| --- | --- | --- | --- | --- |
+| `movieId` | Radarr movie local ID | Yes | Radarr, cached | The matched movie record. |
+| `movieFileIdentity` | `ArrFileIdentity` | Yes | Radarr, cached | Current `movieFileId`; explicit `Absent` when the movie has no imported file. |
+
+This preserves the existing Radarr movie/file identity shape: at most one
+current file per movie.
+
+**ArrFileIdentity**
+
+| Field | Type | Required | Field Ownership | Notes |
+| --- | --- | --- | --- | --- |
+| `presence` | `Present` or `Absent` | Yes | Sonarr/Radarr, cached | Missing file identity is explicit; never encoded as `0`, `-1`, `null`, or an empty string. |
+| `fileId` | Arr file local ID | Required when `presence` is `Present` | Sonarr/Radarr, cached | Sonarr `episodeFile.id` or Radarr `movieFile.id`; absent (never zero) when `presence` is `Absent`. |
+
+**Shared Sonarr episode files.** A Sonarr episode-file identity is not owned by
+one episode. Multiple episode identities may reference the same `fileId`, and a
+`SonarrIdentity` must not imply a one-to-one episode-to-file relationship. Code
+that reads `episodeFileIdentity` resolves the file by ID and must not assume the
+file belongs exclusively to the matched episode.
+
+**Fingerprints.** `matchFingerprint` and `metadataFingerprint` include the
+connection ID, provider kind, every present identity component (`seriesId`,
+`episodeId`, `RadarrIdentity.movieId`, and each `ArrFileIdentity.fileId`), and
+each explicit `presence` value. A changed file ID, an `Absent`-to-`Present`
+transition, or a matching change on another connection changes the dependent
+fingerprint; no identity component is omitted.
+
+**DTO boundary.** These are canonical identity values. Sonarr `SeriesResource`,
+`EpisodeResource`, and `EpisodeFileResource` and Radarr `MovieResource` and
+`MovieFileResource` remain integration-boundary DTOs and never appear in, or
+replace, these types.
 
 ### 3.5 BadgeMetadata
 
@@ -283,7 +372,7 @@ value supports an explicit unknown state.
 | --- | --- | --- | --- | --- |
 | `badgeSchemaVersion` | Version identifier | Yes | Plugin | Version of the normalized metadata shape. |
 | `provider` | ArrProvider reference | Yes | Plugin/provider | Identifies the source without exposing its DTO. |
-| `recordIdentity` | Match/file identity reference | Yes | Sonarr/Radarr + generated | Includes the scoped record and current file IDs. |
+| `recordIdentity` | Typed Arr record/file identity reference | Yes | Sonarr/Radarr + generated | Carries the connection-scoped `SonarrIdentity` or `RadarrIdentity`, including explicit file-identity presence; see section 3.4.1. |
 | `observedAt` | Timestamp | Yes | Provider/generated | When the source observation was obtained. |
 | `quality` | Quality descriptor | Optional | Sonarr/Radarr | Actual file quality label and structured source/resolution/modifier; never the quality profile target. |
 | `resolution` | Resolution descriptor | Optional | Sonarr/Radarr or Derived | Prefer inspected media dimensions; retain whether the value is reported or derived. |
@@ -297,7 +386,7 @@ value supports an explicit unknown state.
 | `upgradePending` | Tri-state flag | Optional | Sonarr/Radarr | Maps to `qualityCutoffNotMet`; it describes policy state, not observed quality. |
 | `customBadges` | Ordered set of custom metadata values | Optional | Provider/configuration | Custom-format names or configured provider values, bounded and sanitized. |
 | `extensions` | Namespaced extension map | Optional | Additional providers/generated | Future metadata that an older renderer may ignore. |
-| `metadataFingerprint` | Opaque fingerprint | Yes | Generated | Includes only badge-affecting values and their schema version. |
+| `metadataFingerprint` | Opaque fingerprint | Yes | Generated | Includes every record/file identity component, badge-affecting values, and their schema version. |
 
 #### Value conventions
 
@@ -382,9 +471,9 @@ last-known-good provider metadata. It is not a storage schema.
 | Field | Type | Required | Field Ownership | Notes |
 | --- | --- | --- | --- | --- |
 | `cacheVersion` | Version identifier | Yes | Plugin | Incompatible entries can be rebuilt. |
-| `cacheKey` | Opaque key | Yes | Generated | Includes Jellyfin item, connection, provider, and relevant record scope; excludes secrets. |
+| `cacheKey` | Opaque key | Yes | Generated | Includes Jellyfin item, connection, provider, and every typed record/file identity component; excludes secrets. |
 | `mediaIdentity` | MediaIdentity reference | Yes | Cached from Jellyfin | The local subject. |
-| `match` | MediaMatch | Yes | Cached/generated | Includes the scoped Arr record/file IDs. |
+| `match` | MediaMatch | Yes | Cached/generated | Includes the scoped typed Arr record/file identity from section 3.4.1. |
 | `metadata` | BadgeMetadata | Optional | Cached from Sonarr/Radarr | Last successful normalized snapshot. |
 | `metadataFingerprint` | Opaque fingerprint | Optional | Generated | Determines whether artwork invalidation is required. |
 | `providerVersion` | Version string | Optional | Cached from provider | Helps diagnose version drift and optional field availability. |
@@ -675,12 +764,11 @@ Mapping labels:
 | `provider` / `connectionId` | Applicable library configuration | Configured Sonarr instance | Configured Radarr instance | Generated/configuration scope. |
 | `status` | Item eligibility/location | Zero, one, or multiple candidate records | Zero, one, or multiple candidate records | Derived; ambiguity and no match are valid results. |
 | `matchMethod` | Provider IDs, numbers, path candidate | TVDB, other IDs, season/episode, mapped path | TMDb, IMDb, mapped path | Derived from the accepted matching strategy. |
-| `externalRecordId` | Not applicable | Series/episode local ID | Movie local ID | Direct provider local ID after validation; always connection-scoped. |
-| `externalFileIds` | Media source context only | `episodeFileId` joined to `episodeFile.id` | `movieFileId`/movie file ID | Direct after current-file join. |
+| `recordIdentity` | Media source context only | `SonarrIdentity`: `series.id`, `episode.id`, and `episode.episodeFileId` | `RadarrIdentity`: `movie.id` and `movie.movieFileId` | Direct after validation and the current-file join; always connection-scoped; file identity records explicit present/absent. |
 | `matchedProviderIds` | Provider IDs used | `tvdbId`/other matching IDs | `tmdbId`/`imdbId` | Direct evidence retained for diagnostics. |
 | `pathValidation` | Item/media source path | Series/episode file path | Movie/movie file path | Derived only when configured path mapping permits comparison. |
 | `matchedAt` | Not applicable | Not applicable | Not applicable | Generated/cached. |
-| `matchFingerprint` | Item identity inputs | Record/file identity inputs | Record/file identity inputs | Generated from all match-affecting values. |
+| `matchFingerprint` | Item identity inputs | Series/episode/file identity inputs | Movie/file identity inputs | Generated from the Jellyfin subject and every scoped identity component. |
 | `ambiguityReason` | Missing or conflicting identity | Candidate/mapping conflict | Candidate/mapping conflict | Generated safe reason. |
 
 ### 4.5 BadgeMetadata
@@ -688,7 +776,7 @@ Mapping labels:
 | Canonical field | Jellyfin | Sonarr | Radarr | Mapping |
 | --- | --- | --- | --- | --- |
 | `badgeSchemaVersion` | Not applicable | Not applicable | Not applicable | Generated from plugin schema. |
-| `provider` / `recordIdentity` | Matched Jellyfin subject | Matched series/episode/file IDs | Matched movie/file IDs | Generated from validated match and provider records. |
+| `provider` / `recordIdentity` | Matched Jellyfin subject | Typed `SonarrIdentity`: series, episode, and file identity | Typed `RadarrIdentity`: movie and file identity | Generated from the validated match and provider records; never a provider DTO. |
 | `observedAt` | Not applicable | Response receipt/source observation time | Response receipt/source observation time | Generated, with provider time only when meaningful. |
 | `quality` | No Arr quality concept | Current `episodeFile.quality` | Current `movieFile.quality` | Direct normalized actual file quality, not profile name. |
 | `resolution` | Stream dimensions can be corroborating data | Quality resolution/media info | Quality resolution/media info | Derived normalized value with origin retained. |
@@ -868,8 +956,8 @@ an ArrTags publication and whether guarded restoration is possible.
 
 | Cache/object | Key or fingerprint inputs |
 | --- | --- |
-| Metadata entry | Jellyfin item ID, connection ID, provider kind, matched record/file IDs, and metadata cache version. |
-| Metadata fingerprint | Badge-affecting normalized metadata, current record/file IDs, match identity, and badge schema version. |
+| Metadata entry | Jellyfin item ID, connection ID, provider kind, every typed record/file identity component, and metadata cache version. |
+| Metadata fingerprint | Every typed record/file identity component (including explicit file-identity presence), badge-affecting normalized metadata, the match identity, and badge schema version. |
 | Artwork entry | Jellyfin item/image surface/index, source image fingerprint, metadata fingerprint, configuration fingerprint, and renderer version. |
 | Configuration fingerprint | Output-affecting badge definitions/rendering/coexistence settings; never API keys or webhook secrets. |
 

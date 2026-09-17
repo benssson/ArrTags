@@ -6,12 +6,15 @@
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
-alignment) and 1.2 (project and test scaffold) are complete: the architecture is
-the single V1 architecture reference, the research documents are marked as
-evidence, and the plugin builds on `net10.0` against the pinned Jellyfin `12.0.0`
-packages with `targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr
-instance and discovery/load was validated against a Jellyfin `12.0.0.0` host.
-Milestone 1 is in progress and is the current execution target.
+alignment), 1.2 (project and test scaffold), and 1.3 (canonical Sonarr identity
+model) are complete: the architecture is the single V1 architecture reference,
+the research documents are marked as evidence, the canonical model represents
+Sonarr series, episode, and current episode-file identity with a typed,
+connection-scoped identity, and the plugin builds on `net10.0` against the
+pinned Jellyfin `12.0.0` packages with `targetAbi: 12.0.0.0`. Foundation tests
+pass without a live Arr instance and discovery/load was validated against a
+Jellyfin `12.0.0.0` host. Milestone 1 is in progress and is the current execution
+target.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -160,6 +163,9 @@ Arr instance.
 **Definition of done:** A clean checkout produces a buildable plugin artifact.
 
 #### 1.3 Canonical Sonarr identity model
+
+**Status:** Complete (model specification). Implementation and tests land with
+the provider, matching, and fingerprint work in later milestones.
 
 **Objective:** Represent Sonarr series, episode, and current episode-file
 identity explicitly before provider or matching code consumes it.
