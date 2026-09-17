@@ -208,6 +208,15 @@ This approach:
 - changes the effective primary artwork and therefore does not preserve the
   original without a separate backup/restoration design.
 
+Jellyfin does not add plugin ownership metadata to this persisted image. The
+`ImageInfo.ImageTag` exposed by the item-image information endpoint is a
+Jellyfin representation/cache validator; in the v12 implementation it is based
+on item path and image modification time, not on the actor or a content hash.
+ArrTags must therefore retain its own source artifact and active content
+identity. The selected ownership and restoration contract is recorded in
+`docs/decisions.md` ADR-002; equality of the Jellyfin image tag alone is not a
+safe restoration condition.
+
 It is not a per-request overlay contract. For ArrTags, the selected architecture
 accepts the active-artwork change and preserves the original through a separate
 backup/restoration design.
@@ -310,7 +319,10 @@ The technically viable choices are:
    clients must be taught to request it; it does not transparently augment
    Jellyfin's native image URLs.
 
-The source evidence does not justify selecting one of these choices here.
+ADR-001 selects supported persisted artwork for ArrTags. ADR-002 supplies the
+separate source-artifact, active-identity, and guarded-restoration contract
+required by that choice; this research section does not grant Jellyfin any
+additional ownership guarantee.
 
 ## 8. Source references
 
@@ -327,6 +339,9 @@ Jellyfin `v12.0` source:
 - [`ImageProcessingOptions`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Controller/Drawing/ImageProcessingOptions.cs)
 - [`ImageProcessor`](https://github.com/jellyfin/jellyfin/blob/v12.0/src/Jellyfin.Drawing/ImageProcessor.cs)
 - [`IImageEncoder`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Controller/Drawing/IImageEncoder.cs)
+- [`ImageInfo`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Model/Dto/ImageInfo.cs)
+- [`ItemImageInfo`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Controller/Entities/ItemImageInfo.cs)
+- [`ImageSaver`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Providers/Manager/ImageSaver.cs)
 - [`CoreAppHost`](https://github.com/jellyfin/jellyfin/blob/v12.0/Jellyfin.Server/CoreAppHost.cs)
 - [`IImageProvider`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Controller/Providers/IImageProvider.cs)
 - [`IRemoteImageProvider`](https://github.com/jellyfin/jellyfin/blob/v12.0/MediaBrowser.Controller/Providers/IRemoteImageProvider.cs)

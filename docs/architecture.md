@@ -183,11 +183,12 @@ Each item record may contain:
 - Jellyfin item ID and provider IDs.
 - Arr connection identity and external record IDs.
 - Last successful Arr metadata snapshot or normalized badge input.
-- Original source-artwork provenance and the currently published derived-artwork
-  fingerprint, when ArrTags has published an image.
+- `PublishedArtworkState`, including the retained source artifact, expected
+  active-image identity, ownership/publication tokens, and restoration state,
+  when ArrTags has published an image.
 - Badge-relevant metadata fingerprint.
-- Jellyfin image tag/date fingerprint used for published-artwork provenance and
-  invalidation.
+- Jellyfin image tag/date observations used as supporting published-artwork
+  evidence and invalidation; these are not ownership proof by themselves.
 - Renderer/configuration version.
 - Last refresh, error, retry, and reconciliation status.
 
@@ -261,10 +262,15 @@ current configuration before processing. It then:
 3. Fetches or reuses the current Arr record and file metadata.
 4. Produces a normalized badge input and fingerprint.
 5. Atomically publishes the metadata state.
-6. Enqueues artwork generation when the publication fingerprint changes.
-7. Renders from validated original source-artwork state.
-8. Publishes the completed derived image through Jellyfin's supported item-image
-   API and records its provenance.
+6. Re-observes the configured image surface and evaluates the persisted
+   `PublishedArtworkState` ownership contract.
+7. Enqueues artwork generation when the publication fingerprint changes or when
+   a new recoverable source baseline is required.
+8. Renders from the retained original source artifact, never from an ArrTags
+   image while ownership is unverified.
+9. Revalidates the active-image identity before publishing, publishes the
+   completed derived image through Jellyfin's supported item-image API, and
+   records the new publication identity.
 
 The worker must re-check the item and relevant metadata before publishing a
 result if the operation was long-running. A changed fingerprint causes stale
@@ -286,24 +292,85 @@ periodic reconciliation repairs missed or forged notifications.
 ### Publication flow
 
 1. The reconciliation worker checks configuration, item type, image type,
-   library scope, current source-artwork provenance, and whether current badge
+   library scope, current `PublishedArtworkState`, and whether current badge
    input exists.
-2. It includes all output-affecting values in a publication fingerprint:
+2. It observes the current Jellyfin image surface. If no ArrTags ownership
+   session exists, it captures the exact current image bytes into an immutable
+   plugin-owned source artifact, or records that the surface was absent. If the
+   persisted session is still owned, it reuses that artifact instead.
+3. It includes all output-affecting values in a publication fingerprint:
    source-artwork identity, metadata fingerprint, render configuration, and
    renderer/schema versions.
-3. It renders from retained original source artwork or a newly validated source
-   image, never from an ArrTags-generated image without provenance validation.
-4. After current item/configuration validation, it publishes the completed image
+4. It renders from the retained original source artifact, never from an
+   ArrTags-generated image without a successful ownership comparison.
+5. Immediately before publication, it re-observes the active image. A changed
+   or unverifiable identity cancels the publication and leaves the active image
+   unchanged.
+6. After current item/configuration validation, it publishes the completed image
    through `IProviderManager.SaveImage` and the normal item image update flow.
-5. Jellyfin's standard image routes then provide authorization, image tags,
+7. It records a new publication token, expected active-image identity, and
+   publication fingerprint while retaining the original source artifact and
+   ownership token across repeated ArrTags publications.
+8. Jellyfin's standard image routes then provide authorization, image tags,
    resizing, and response caching to clients.
-6. Any unavailable source, cancellation, decode failure, size violation, or
+9. Any unavailable source, cancellation, decode failure, size violation, or
    render exception leaves the current usable artwork unchanged.
 
 ArrTags must not write media-folder artwork or Jellyfin's `resized-images`
 cache directly. It may use the supported item-image APIs to publish a derived
 active image. The original source must remain recoverable through plugin-owned
 provenance state.
+
+### Provenance and ownership contract
+
+Jellyfin 12's supported persisted-image surface does not include an artwork
+owner, plugin token, or restoration pointer. `IProviderManager.SaveImage` accepts
+image bytes and a type/index, and the normal item-image update flow persists the
+result. Jellyfin's `ImageInfo` can expose an image tag, path, dimensions, and
+size, but the image tag is a Jellyfin representation/cache validator, not an
+actor identity or content digest. ArrTags therefore owns the following evidence
+in `PublishedArtworkState`:
+
+- An immutable retained source artifact containing the exact original bytes and
+  integrity hash, or an explicit record that no source image existed.
+- A source-capture identity for the image surface before the first publication.
+- A stable random ownership token for one original-to-derived session.
+- A new random publication token for each derived publication in that session.
+- The expected active-image identity, including the image surface, content hash,
+  and available Jellyfin image metadata.
+
+The ownership token is a plugin correlation value, not something Jellyfin reads
+or returns. Ownership is proven only when a fresh active-image observation
+matches the persisted expected identity. The content hash is required; a path,
+date, size, or Jellyfin image tag alone is insufficient. When a required
+observation is unavailable, ownership is unknown and ArrTags must not mutate the
+active image.
+
+When ArrTags publishes v2 after v1, it must first prove that v1 is still active,
+then render v2 from the retained original artifact. It updates the publication
+token and expected active identity but keeps the original source artifact and
+ownership token. An ArrTags output is never eligible to become a new original.
+
+Any active-image mismatch is recorded as `OwnershipLost` without attempting to
+identify the actor. A mismatch may be caused by a user, Jellyfin, a provider, or
+another plugin; all are external for restoration purposes. `OwnershipLost` and
+`OwnershipUnknown` both block automatic publication, restoration, and removal.
+
+On disable or uninstall, ArrTags enters `RestorePending` and revalidates the
+expected active identity immediately before mutation. If it still matches and
+the source artifact passes integrity validation, ArrTags restores the retained
+source through the supported item-image API. If the baseline was absent, it
+removes the ArrTags image through the supported item-image API instead. It marks
+the state `Restored` only after the resulting surface is verified. A changed,
+unverifiable, missing, or corrupt baseline leaves the active image untouched and
+results in `OwnershipLost`, `OwnershipUnknown`, or `RestoreBlocked`. If an
+attempted restoration has an uncertain result, ArrTags does not perform another
+automatic mutation; Blocker 2 defines recovery for that case.
+
+The persisted artifact, expected identity, and tokens are sufficient to
+re-evaluate ownership after a normal Jellyfin or plugin restart. This section
+does not define the crash-consistent ordering, journal, or restart reconciliation
+protocol for the operations themselves; those remain Blocker 2.
 
 ### Rendering constraints
 
@@ -340,10 +407,17 @@ Failures are isolated by layer:
 - No match or ambiguous match produces no badge.
 - Renderer failures leave the current usable artwork unchanged and record a
   rate-limited error.
+- A provenance mismatch or unverifiable active-image identity leaves the current
+  artwork unchanged and disables automatic publication/restoration for that
+  item.
+- A missing or corrupt retained source artifact blocks restoration rather than
+  permitting a guessed source or an unsafe replacement.
 - Queue overflow coalesces or drops redundant work; it never blocks a library
   event indefinitely.
 - Cancellation prevents publication of partial state or partial image output.
-- State writes are atomic and recoverable after crashes.
+- Non-publication state is versioned and persisted for normal restart
+  re-evaluation; crash-consistent publication and provenance recovery remains
+  deferred to Blocker 2.
 
 Inbound webhook endpoints require a configured shared secret or equivalent
 boundary authentication, validate content size and payload shape, and rate-limit
@@ -400,8 +474,12 @@ Jellyfin 12.x ABI and supported Arr versions.
 
 - Original source artwork is retained according to the provenance/restoration
   policy, and media files remain byte-for-byte untouched.
-- Disabling ArrTags restores the original source when the active image is still
-  ArrTags-owned.
+- Disabling ArrTags restores the original source only when the persisted active
+  identity still matches; it never overwrites an externally changed image.
+- Repeated ArrTags publications preserve the first retained source and do not
+  treat an earlier ArrTags image as a new original.
+- A clean restart can reload the ownership state and make the same guarded
+  decision without relying on Jellyfin ownership metadata.
 - A changed Arr file or badge configuration produces a new publication
   fingerprint.
 - Repeated unchanged state does not repeatedly render or publish the image;

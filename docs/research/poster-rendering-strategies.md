@@ -559,9 +559,11 @@ Properties:
   and own authorization, image tags, and response caching.
 - **Failure-safe:** any matching or render error leaves the current usable image
   unchanged.
-- **Publication identity:** state must include item/surface, source fingerprint,
-  metadata/configuration fingerprints, renderer version, and generated-artwork
-  ownership so restoration cannot overwrite a later manual image.
+- **Publication identity:** state includes item/surface, an immutable retained
+  source artifact, source and metadata/configuration fingerprints, renderer
+  version, an ArrTags ownership token, a per-publication token, and the expected
+  active-image identity. Restoration is permitted only after a fresh identity
+  match; a mismatch or unverifiable observation blocks mutation.
 - **Concurrency/limits:** bound concurrent decode/encode/publication work, cap
   source/output bytes, and never block library events.
 
@@ -576,11 +578,12 @@ Properties:
    `IDynamicImageProvider` (refresh-time, persisted). **Unresolved** only in the
    sense of confirming nothing was added in a later 12.x patch.
 2. **Publication feasibility.** Validate source-artwork capture, supported
-   `IProviderManager.SaveImage` publication, item repository updates, and guarded
-   restoration on the exact selected Jellyfin ABI.
-3. **Publication storage and ownership.** Determine how the selected Jellyfin
-   configuration stores the published image, how plugin provenance identifies an
-   ArrTags-owned image, and how manual image changes are preserved.
+   `IProviderManager.SaveImage` publication, item repository updates, and the
+   ADR-002 guarded restoration contract on the exact selected Jellyfin ABI.
+3. **Publication storage and ownership.** Resolved by ADR-002 at the design
+   level: ArrTags stores its own source artifact and compares active content
+   identity plus available Jellyfin image observations. Exact host storage,
+   readback, permissions, and bounded cleanup remain implementation validation.
 4. **Enhanced coexistence matrix.** Test ArrTags server badges with Enhanced
    Quality Tags enabled and disabled, and with Spoiler Guard blur/hide on, in
    Jellyfin Web plus at least one non-web client. Confirm no duplicate/visual

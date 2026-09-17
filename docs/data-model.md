@@ -133,9 +133,15 @@ classDiagram
     }
     class PublishedArtworkState {
         +ItemId
+        +ImageSurface
+        +State
+        +SourcePresence
+        +SourceArtifactId
         +SourceFingerprint
+        +OwnershipToken
+        +PublicationToken
+        +ActiveImageIdentity
         +PublishedFingerprint
-        +RestorationState
     }
     class UpdateEvent {
         +EventType
@@ -174,8 +180,10 @@ classDiagram
 scoped Arr record. `MetadataCacheEntry` retains the provider-derived snapshot;
 `ArtworkCacheEntry` retains only bounded render work state. `PublishedArtworkState`
 tracks the active derived image and the plugin-owned source-artwork provenance.
-A cache hit must never be treated as a new source of truth when it is expired or
-incompatible.
+Jellyfin does not provide an artwork-owner field, so ownership is proven by the
+combination of retained source bytes, a persisted expected active-image identity,
+and ArrTags-generated publication/session tokens. A cache hit must never be
+treated as a new source of truth when it is expired or incompatible.
 
 ## 3. Canonical Domain Models
 
@@ -399,18 +407,76 @@ around publication. It has no authority over metadata or publication state.
 **Purpose:** The conceptual state connecting plugin-owned source-artwork
 provenance to a derived image currently published as Jellyfin item artwork. It
 is not a Jellyfin storage schema and does not require the original source to be
-held in the canonical metadata snapshot.
+held in the canonical metadata snapshot. It is the authority for publication
+ownership and guarded restoration; Jellyfin image metadata alone is not enough.
 
 | Field | Type | Required | Field Ownership | Notes |
 | --- | --- | --- | --- | --- |
+| `modelVersion` | Version identifier | Yes | Plugin | Changes to ownership semantics invalidate or migrate the record. |
 | `jellyfinItemId` | Jellyfin item identifier | Yes | Jellyfin/plugin | Local subject whose active image may be derived. |
 | `imageSurface` | Image type and optional index | Yes | Jellyfin/configuration | V1 surface selected by the image policy. |
-| `sourceFingerprint` | Opaque source identity | Yes when published | Generated | Identifies the original source used for the derived image. |
-| `sourceReference` | Opaque plugin-owned reference | Optional | Generated | References retained source/provenance state without prescribing storage. |
-| `publishedFingerprint` | Opaque derived-artwork identity | Yes when published | Generated | Includes source, metadata, configuration, and renderer inputs. |
-| `restorationState` | NotPublished, Published, or RestorePending | Yes | Generated | Prevents restoring over a later manual image. |
+| `state` | `NotPublished`, `Published`, `OwnershipLost`, `OwnershipUnknown`, `RestorePending`, `Restored`, `RestoreBlocked`, or `Removed` | Yes | Generated | Controls whether ArrTags may publish, restore, or remove the active image. |
+| `sourcePresence` | `Present` or `Absent` | Yes when a publication session exists | Generated | `Absent` means the surface had no image before the session. |
+| `sourceArtifactId` | Opaque retained-artifact identifier | Required when source is present | Generated | Content-addressed plugin-owned artifact; never a Jellyfin cache path or media path. |
+| `sourceFingerprint` | SHA-256 of retained source bytes | Required when source is present | Generated | Hashes the exact bounded bytes used for rendering and restoration. |
+| `sourceCaptureIdentity` | ActiveImageIdentity | Required for a publication session | Generated | Identity observed immediately before the first ArrTags publication, including an explicit absent baseline. |
+| `ownershipToken` | Opaque random token | Required for an active session | Generated | Stable for one original-to-derived session; not a Jellyfin token. |
+| `publicationToken` | Opaque random token | Required when published | Generated | New for each successful ArrTags-derived publication. |
+| `activeImageIdentity` | ActiveImageIdentity | Required when published | Jellyfin/plugin | Expected identity of the currently active ArrTags image; re-observe before mutation. |
+| `publishedFingerprint` | Opaque logical publication fingerprint | Required when published | Generated | Includes source, metadata, configuration, renderer, and schema inputs; not ownership proof alone. |
 | `rendererVersion` | Version identifier | Yes when published | Plugin | Changes require regeneration. |
+| `lastOwnershipObservation` | ActiveImageIdentity plus result | Yes | Generated | Latest `Owned`, `Changed`, or `Unknown` comparison for diagnostics and restart revalidation. |
 | `updatedAt` | Timestamp | Yes | Generated | Last publication or restoration-state change. |
+
+`sourceArtifactId` identifies an immutable artifact stored under the ArrTags data
+folder. The artifact contains the exact source bytes, MIME type, byte length, and
+integrity metadata. Its path is an implementation detail and is not an ownership
+signal. The artifact remains retained while the session is `Published` or
+`RestorePending`; after `OwnershipLost`, it may only be removed by bounded
+retention cleanup and must never be used for automatic restoration.
+
+`ActiveImageIdentity` is the observable identity of one Jellyfin image surface:
+
+| Field | Type | Semantics |
+| --- | --- | --- |
+| `imageSurface` | Image type and index | Prevents an image on another surface or index from satisfying the comparison. |
+| `presence` | `Present` or `Absent` | Absence is an identity value, not an error. |
+| `contentSha256` | SHA-256 | Required for a `Present` ownership proof; hashes the bounded active representation used for comparison. |
+| `byteLength` | Integer | Supporting evidence and integrity check for the content hash. |
+| `width` / `height` | Integer | Supporting Jellyfin image metadata. |
+| `dateModifiedUtc` | Timestamp | Supporting Jellyfin image metadata; not sufficient by itself. |
+| `jellyfinImageTag` | Opaque string | Supporting Jellyfin cache/representation validator when available; not an ArrTags ownership token. |
+
+The comparison is fail-closed. The surface and presence must match, the active
+content hash must match, and every Jellyfin identity value recorded at
+publication must still match when observable. A missing required hash or an
+otherwise unavailable observation produces `OwnershipUnknown`, not ownership. A
+path is never sufficient evidence because Jellyfin may reuse a path for a
+different image. The Jellyfin image tag is useful for detecting replacement but
+is not content- or actor-specific and cannot prove ownership on its own.
+
+### 3.10.2 PublishedArtworkState transitions
+
+These are ownership transitions only. They do not define crash-consistent
+ordering or restart reconciliation for publication; that remains Blocker 2.
+
+| Current state | Condition | Next state | Required behavior |
+| --- | --- | --- | --- |
+| `NotPublished` or `Restored` | A new publication is eligible | `Published` | Observe the surface, retain its exact source or record `Absent`, create a new ownership token, and publish only if the baseline is recoverable. |
+| `Published` | Current identity exactly matches `activeImageIdentity` | `Published` | Reuse the original source artifact; do not capture the ArrTags image as a new source. A changed publication gets a new publication token and active identity while retaining the same ownership token and source artifact. |
+| `Published` | Current identity differs from the expected identity | `OwnershipLost` | Treat the change as external, regardless of whether it was a user, Jellyfin, provider, or another plugin. Do not publish, restore, or remove automatically. |
+| `Published` | Current identity cannot be completely observed or compared | `OwnershipUnknown` | Leave the active image unchanged and perform no guarded mutation. |
+| `Published` | Disable or uninstall requests restoration | `RestorePending` | Re-observe the active image immediately before any restoration mutation. |
+| `RestorePending` | Expected identity matches and source artifact passes integrity validation | `Restored` | Restore the retained source, or remove the ArrTags image when `sourcePresence` is `Absent`, then verify the resulting surface. |
+| `RestorePending` | Identity differs or cannot be proven | `OwnershipLost` or `OwnershipUnknown` | Do not mutate the active image. Retain the diagnostic state and artifact subject to bounded cleanup. |
+| `RestorePending` | Source artifact is missing or corrupt | `RestoreBlocked` | Leave the active image unchanged and do not claim restoration completed. |
+| `RestorePending` | The restoration result cannot be verified | `RestoreBlocked` | Do not claim completion or perform another automatic mutation; Blocker 2 defines recovery for an uncertain operation result. |
+| Any state | Jellyfin item is removed | `Removed` | Perform no image operation against the missing item; clean plugin-owned records/artifacts only under the retention policy. |
+
+An `OwnershipLost`, `OwnershipUnknown`, or `RestoreBlocked` record is never
+automatically re-baselined. A future explicit administrative re-baseline, if
+supported, starts a new ownership session and captures the then-current image;
+it does not silently reclaim a later image.
 
 ### 3.11 UpdateEvent
 
@@ -738,7 +804,7 @@ aware, and safe to replay. Provider webhooks never directly publish metadata.
 | --- | --- | --- |
 | Metadata changed | Subject, provider/connection, record/file hint, reason | Re-match or re-read current provider state, then replace the metadata snapshot if its fingerprint changed. |
 | Artwork publication requested | Jellyfin item, image surface/index, source fingerprint, reason | Look up current metadata and construct bounded publication work. |
-| Artwork published | Item, source fingerprint, published fingerprint, status, correlation ID | Record publication state through the supported item-image flow; never write the image cache directly. |
+| Artwork published | Item, image surface, source fingerprint, published fingerprint, publication token, active-image identity, status, correlation ID | Record publication state through the supported item-image flow; never write the image cache directly. |
 | Item removed | Jellyfin item ID and optional provider scope | Invalidate metadata and artwork entries for the item; do not call provider write APIs. |
 | Configuration changed | New configuration version and affected scopes | Replace the configuration snapshot and invalidate affected metadata/artwork state. |
 | Cache invalidated | Scope, key/fingerprint, reason | Remove or mark stale only the affected cache entries. |
@@ -796,6 +862,9 @@ serving operations.
 | `ProviderIncompatible` | Unexpected version, contract, or required field shape | Mark capability/connection state and degrade without affecting Jellyfin. |
 | `MetadataUnavailable` | Current metadata cannot be obtained or is invalid | Use valid bounded stale state or leave current artwork unchanged. |
 | `ArtworkUnavailable` | Jellyfin source image is missing or unsupported | Keep the current usable artwork and do not publish a replacement. |
+| `ArtworkOwnershipChanged` | The active image no longer matches the persisted ArrTags identity | Enter `OwnershipLost`; leave the active image unchanged and block automatic publication/restoration. |
+| `ArtworkOwnershipUnknown` | The active image or required identity evidence cannot be observed or compared | Enter `OwnershipUnknown`; leave the active image unchanged and block automatic mutation. |
+| `SourceArtifactInvalid` | The retained source artifact is missing or fails integrity validation | Block publication or enter `RestoreBlocked`; do not guess a source or overwrite the active image. |
 | `RenderingFailed` | Decode, layout, encode, size, or cancellation failure | Leave current artwork unchanged and record a bounded diagnostic. |
 | `ConfigurationInvalid` | Configuration cannot produce a valid snapshot | Keep the last valid snapshot where supported; do not start affected work. |
 | `CacheCorrupt` | Cache entry cannot be read or fails version/integrity checks | Discard/quarantine and rebuild; never block Jellyfin. |
