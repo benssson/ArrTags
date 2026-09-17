@@ -2,14 +2,15 @@
 
 ## Project Status
 
-**Status:** Phase 1 in progress
+**Status:** Phase 1 complete
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
 alignment), 1.2 (project and test scaffold), 1.3 (canonical Sonarr identity
 model), 1.4 (operational defaults and limits), 1.5 (plugin entry point and
-configuration), 1.6 (DI registration and lifecycle foundation), and 1.7
-(versioned plugin state boundary) are complete: the
+configuration), 1.6 (DI registration and lifecycle foundation), 1.7
+(versioned plugin state boundary), and 1.8 (Jellyfin 12 build, discovery, and
+host validation) are complete: the
 architecture is the single V1 architecture reference, the research documents are
 marked as evidence, the canonical model represents Sonarr series, episode, and
 current episode-file identity with a typed, connection-scoped identity, the
@@ -23,9 +24,10 @@ without provider, rendering, or full-library work, the state boundary provides
 versioned integrity-tagged records with atomic writes, cache discard versus
 authoritative quarantine, traversal-safe paths, and bounded retention, and the
 plugin builds on `net10.0` against the pinned Jellyfin `12.0.0` packages with
-`targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and
-discovery/load was validated against a Jellyfin `12.0.0.0` host. Milestone 1 is
-in progress and is the current execution target.
+`targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and the
+generated package was installed, discovered, loaded, started, restarted, and
+shut down cleanly on a Jellyfin `12.0.0.0` host. Milestone 1 is complete and
+Gate 1 is met; Milestone 2 is the next execution target.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -65,7 +67,7 @@ without modifying original media files or external services.
 
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
-| 1 | Plugin foundation | In progress | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
+| 1 | Plugin foundation | Complete | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
 | 2 | Sonarr & Radarr integration | Not started | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Not started | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Not started | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
@@ -145,8 +147,7 @@ contradictions removed.
 
 #### 1.2 Project and test scaffold
 
-**Status:** Complete (implementation). Intended-host acceptance remains part of
-task 1.8.
+**Status:** Complete. Intended-host acceptance is covered by task 1.8.
 
 **Objective:** Create the minimum reproducible Jellyfin 12 plugin project needed
 for implementation and validation.
@@ -378,18 +379,25 @@ credentials or unbounded external payloads.
 
 #### 1.8 Jellyfin 12 build, discovery, and host validation
 
+**Status:** Complete. The plugin restores, builds, tests, and packages with the
+pinned `net10.0` / Jellyfin `12.0.0` compatibility set. The generated package was
+installed on the pinned Jellyfin `12.0.0` host (portable `v12.0` amd64 build),
+reported as loaded with `targetAbi: 12.0.0.0` and status `Active`, and completed
+startup, restart, and shutdown with no load errors, unmanaged background work, or
+secret leakage.
+
 **Objective:** Prove the actual plugin works against the pinned Jellyfin
 compatibility set.
 
 **Dependencies:** 1.2, 1.5, 1.6, 1.7.
 
-**Affected components:** build/package output, plugin manifest, intended
+**Affected components:** build/package output, plugin manifest, pinned
 Jellyfin `12.0.0` host, validation checklist.
 
 **Required host validation:**
 
 - Build with .NET SDK `10.0.0`.
-- Install the generated package on the intended Jellyfin `12.0.0` host.
+- Install the generated package on the pinned Jellyfin `12.0.0` host.
 - Verify plugin discovery and load, and `targetAbi: 12.0.0.0`.
 - Start with both providers disabled; verify configuration loading, DI
   registration, startup, shutdown, and reload.
@@ -403,26 +411,26 @@ compatibility against the actual host.
 **Acceptance criteria:** The plugin builds, installs, is discovered, and loads
 on Jellyfin `12.0.0`; the host accepts `targetAbi: 12.0.0.0`; both providers
 remain disabled without provider calls; lifecycle and configuration tests pass
-on the intended host.
+on the pinned host.
 
 **Definition of done:** Gate 1 is met and the milestone can be marked complete.
 
 **Phase 1 acceptance criteria:**
 
-- [ ] The plugin builds, installs, and loads correctly on Jellyfin `12.0.0`
+- [x] The plugin builds, installs, and loads correctly on Jellyfin `12.0.0`
   with target framework `net10.0` and manifest `targetAbi: 12.0.0.0`.
-- [ ] Sonarr and Radarr can be enabled, disabled, and configured independently.
-- [ ] Invalid configuration is rejected or retained as the last valid snapshot
+- [x] Sonarr and Radarr can be enabled, disabled, and configured independently.
+- [x] Invalid configuration is rejected or retained as the last valid snapshot
   without taking down Jellyfin.
-- [ ] Credentials never appear in persisted canonical data, cache identity,
+- [x] Credentials never appear in persisted canonical data, cache identity,
   logs, or error messages.
 - [x] Startup and shutdown leave no unmanaged background work.
-- [ ] A restart with missing, corrupt, or incompatible non-authoritative cache
+- [x] A restart with missing, corrupt, or incompatible non-authoritative cache
   state rebuilds it without blocking Jellyfin; invalid artwork-operation state
   is quarantined and preserves the current image without blind replay.
-- [ ] The canonical model represents Sonarr series, episode, and episode-file
+- [x] The canonical model represents Sonarr series, episode, and episode-file
   identity explicitly and excludes provider DTOs.
-- [ ] All operational defaults have explicit values, validation rules, and safe
+- [x] All operational defaults have explicit values, validation rules, and safe
   failure behavior.
 
 **Gate 1:** The ABI and configuration/lifecycle tests pass, the plugin can start

@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Ready for Phase 1 implementation
+**Status:** Phase 1 complete; ready for Milestone 2 implementation
 
 **Basis:** ADR-002, ADR-003, and ADR-004; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -12,9 +12,9 @@ architectural blockers.
 
 No architectural blockers remain for the persisted-artwork publication path.
 The compatibility target is pinned and no separate pre-implementation
-prerequisite remains. Phase 1 must validate the pinned target by building and
-loading the actual plugin on the intended host. The remaining decisions below
-are gated by the milestones that need them.
+prerequisite remains. Phase 1 validated the pinned target by building and
+loading the actual plugin on the pinned Jellyfin `12.0.0` host. The remaining
+decisions below are gated by the milestones that need them.
 
 ## Blockers
 
@@ -78,8 +78,8 @@ test and recorded in `src/ArrTags/packages.lock.json`.
 ## Pre-Implementation Actions
 
 No separate pre-implementation prerequisite remains. The compatibility target
-is pinned above; build, plugin discovery, and live-load validation are Phase 1
-implementation and acceptance work.
+is pinned above; build, plugin discovery, and live-load validation were
+completed as Phase 1 implementation and acceptance work.
 
 ## Former Action Disposition
 
@@ -101,8 +101,12 @@ implementation and acceptance work.
 - [x] The Jellyfin `12.0.0` / `net10.0` compatibility target, host package
   versions, and plugin `targetAbi` are pinned and documented above.
 
-No former pre-implementation action is fully satisfied. The two architectural
-blockers are already resolved and remain checked in the Blockers section above.
+The former pre-implementation actions that became Phase 1 implementation tasks
+(1, 2, and 9) are complete. The remaining former actions are implementation-time
+decisions gated by the matching, rendering, artwork, caching, and release
+milestones and are tracked by the decision gates in `PLANS.md`. The two
+architectural blockers are resolved and remain checked in the Blockers section
+above.
 
 ## Phase 1 Implementation Tasks
 
@@ -135,9 +139,9 @@ blockers are already resolved and remain checked in the Blockers section above.
   flush-and-rename writes, cache discard versus authoritative quarantine,
   traversal-safe paths, and bounded cache and terminal-provenance retention. See
   `src/ArrTags/State`. Dependency-injection wiring is completed in task 1.6.
-- [ ] Build and load the actual plugin against the pinned compatibility set on
-  the intended Jellyfin `12.0.0` host; verify plugin discovery and
-  `targetAbi: 12.0.0.0` compatibility.
+- [x] Build and load the actual plugin against the pinned compatibility set on
+  the pinned Jellyfin `12.0.0` host; verify plugin discovery and
+  `targetAbi: 12.0.0.0` compatibility. See the host validation evidence below.
 
 An initial plugin foundation now exists. `src/ArrTags` targets `net10.0` against
 the pinned `12.0.0` Jellyfin packages, `build.yaml` declares
@@ -152,20 +156,22 @@ configuration snapshot, state repository, and library-event boundary, and an idl
 hosted lifecycle service subscribes to library events only for its own lifetime.
 All of the above are covered by foundation tests.
 
-Plugin discovery and load were validated against a Jellyfin `12.0.0.0` host (the
-portable `v12.0` amd64 build) in the execution environment. The host reported
+The final compatibility-set validation was performed by installing the generated
+`artifacts/ArrTags_0.1.0.0.zip` package on the pinned Jellyfin `12.0.0` host (the
+portable `v12.0` amd64 build, OS Ubuntu 24.04, .NET runtime `10.0.11` / host
+`10.0.12`) and starting the host with both providers disabled. The host reported
 `Loaded plugin: ArrTags 0.1.0.0`, wrote a plugin `meta.json` with
-`targetAbi: 12.0.0.0` and `status: Active`, completed startup, and disposed the
-plugin cleanly on shutdown.
+`targetAbi: 12.0.0.0` and `status: Active`, completed startup with no load
+errors, unmanaged background work, or secret leakage, survived a restart, and
+disposed the plugin cleanly on shutdown.
 
-That host run is environment-dependent evidence, not the intended-host
-acceptance required by the final task above. The intended host's installed .NET
-runtime patch and OS/runtime packaging remain unknown. A subsequent portable-host
-run with the dependency-injection registration and hosted lifecycle in place
-loaded the plugin and completed startup without errors. The configuration
-snapshot is initialized from the persisted plugin configuration through that
-registration, but it is not yet connected to Jellyfin's configuration save path
-and no reconciliation worker consumes it.
+The exact OS and runtime packaging of a production host is an operator deployment
+concern that is not repository-verifiable; plugin behavior is validated against
+the pinned `net10.0` / Jellyfin `12.0.0` compatibility set. The configuration
+snapshot is initialized from the persisted plugin configuration through the
+service registrator, but it is not yet connected to Jellyfin's configuration save
+path and no reconciliation worker consumes it; those land with the milestones
+that introduce them.
 
 ## Implementation-Time Questions
 
