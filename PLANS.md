@@ -7,16 +7,18 @@
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
 alignment), 1.2 (project and test scaffold), 1.3 (canonical Sonarr identity
-model), and 1.4 (operational defaults and limits) are complete: the architecture
-is the single V1 architecture reference, the research documents are marked as
-evidence, the canonical model represents Sonarr series, episode, and current
-episode-file identity with a typed, connection-scoped identity, the accepted
-operational defaults and validation rules are recorded in ADR-004 and
-`docs/architecture.md` section 12, and the plugin builds on `net10.0` against the
-pinned Jellyfin `12.0.0` packages with `targetAbi: 12.0.0.0`. Foundation tests
-pass without a live Arr instance and discovery/load was validated against a
-Jellyfin `12.0.0.0` host. Milestone 1 is in progress and is the current execution
-target.
+model), 1.4 (operational defaults and limits), and 1.5 (plugin entry point and
+configuration) are complete: the architecture is the single V1 architecture
+reference, the research documents are marked as evidence, the canonical model
+represents Sonarr series, episode, and current episode-file identity with a
+typed, connection-scoped identity, the accepted operational defaults and
+validation rules are recorded in ADR-004 and `docs/architecture.md` section 12,
+the configuration foundation validates connections, limits, and scope and exposes
+an immutable replacement snapshot with last-valid retention and secret redaction,
+and the plugin builds on `net10.0` against the pinned Jellyfin `12.0.0` packages
+with `targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and
+discovery/load was validated against a Jellyfin `12.0.0.0` host. Milestone 1 is
+in progress and is the current execution target.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -246,6 +248,11 @@ under representative load is part of tasks 1.5 and 1.7 and the performance
 milestone.
 
 #### 1.5 Plugin entry point and configuration
+
+**Status:** Complete. The parameterless `BasePlugin<PluginConfiguration>` entry
+point remains Jellyfin-owned and unchanged; the configuration model, validator,
+and immutable replacement-snapshot service are implemented and covered by
+foundation tests. Dependency-injection wiring remains task 1.6.
 
 **Objective:** Implement the thin plugin entry point and immutable configuration
 boundary.

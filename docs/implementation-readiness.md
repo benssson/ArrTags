@@ -123,7 +123,10 @@ blockers are already resolved and remain checked in the Blockers section above.
 An initial plugin foundation now exists. `src/ArrTags` targets `net10.0` against
 the pinned `12.0.0` Jellyfin packages, `build.yaml` declares
 `targetAbi: 12.0.0.0`, and `tests/ArrTags.Tests` checks the manifest ABI, plugin
-identity, and the pinned dependency graph without a live host.
+identity, and the pinned dependency graph without a live host. The configuration
+foundation adds connection and operational-limit validation, an immutable
+replacement-snapshot service with last-valid retention, and secret-free
+snapshots, all covered by foundation tests.
 
 Plugin discovery and load were validated against a Jellyfin `12.0.0.0` host (the
 portable `v12.0` amd64 build) in the execution environment. The host reported
@@ -133,9 +136,10 @@ plugin cleanly on shutdown.
 
 That host run is environment-dependent evidence, not the intended-host
 acceptance required by the fourth task above. The intended host's installed .NET
-runtime patch and OS/runtime packaging remain unknown, and the plugin entry
-point has no configuration validation, dependency-injection registration, or
-hosted lifecycle yet.
+runtime patch and OS/runtime packaging remain unknown, and the plugin has no
+dependency-injection registration or hosted lifecycle wiring yet. Configuration
+validation and snapshot replacement are implemented but are not yet connected to
+Jellyfin's configuration save path or to any background worker.
 
 ## Implementation-Time Questions
 

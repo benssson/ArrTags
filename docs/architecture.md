@@ -160,7 +160,9 @@ API is available.
 
 `PluginConfiguration` is persisted through Jellyfin's plugin configuration
 mechanism. Updates are treated as replacement snapshots, not as mutable objects
-shared with background workers.
+shared with background workers. A candidate configuration is validated before it
+becomes active; an invalid replacement is rejected and the last valid snapshot
+stays active so invalid configuration cannot bring down Jellyfin.
 
 Configuration includes:
 
