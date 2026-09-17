@@ -8,17 +8,21 @@
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
 alignment), 1.2 (project and test scaffold), 1.3 (canonical Sonarr identity
 model), 1.4 (operational defaults and limits), 1.5 (plugin entry point and
-configuration), and 1.7 (versioned plugin state boundary) are complete: the
+configuration), 1.6 (DI registration and lifecycle foundation), and 1.7
+(versioned plugin state boundary) are complete: the
 architecture is the single V1 architecture reference, the research documents are
 marked as evidence, the canonical model represents Sonarr series, episode, and
 current episode-file identity with a typed, connection-scoped identity, the
 accepted operational defaults and validation rules are recorded in ADR-004 and
 `docs/architecture.md` section 12, the configuration foundation validates
 connections, limits, and scope and exposes an immutable replacement snapshot with
-last-valid retention and secret redaction, the state boundary provides versioned
-integrity-tagged records with atomic writes, cache discard versus authoritative
-quarantine, traversal-safe paths, and bounded retention, and the plugin builds on
-`net10.0` against the pinned Jellyfin `12.0.0` packages with
+last-valid retention and secret redaction, the parameterless service registrator
+wires the configuration snapshot, state repository, library-event boundary, and
+an idle hosted lifecycle that subscribes and unsubscribes deterministically
+without provider, rendering, or full-library work, the state boundary provides
+versioned integrity-tagged records with atomic writes, cache discard versus
+authoritative quarantine, traversal-safe paths, and bounded retention, and the
+plugin builds on `net10.0` against the pinned Jellyfin `12.0.0` packages with
 `targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and
 discovery/load was validated against a Jellyfin `12.0.0.0` host. Milestone 1 is
 in progress and is the current execution target.
@@ -260,7 +264,7 @@ validation remains the performance milestone.
 **Status:** Complete. The parameterless `BasePlugin<PluginConfiguration>` entry
 point remains Jellyfin-owned and unchanged; the configuration model, validator,
 and immutable replacement-snapshot service are implemented and covered by
-foundation tests. Dependency-injection wiring remains task 1.6.
+foundation tests. Dependency-injection registration is completed in task 1.6.
 
 **Objective:** Implement the thin plugin entry point and immutable configuration
 boundary.
@@ -296,18 +300,31 @@ automated tests.
 
 #### 1.6 DI registration and lifecycle foundation
 
+**Status:** Complete (foundation). The parameterless `IPluginServiceRegistrator`
+registers the configuration snapshot service, the versioned state repository, the
+library-event boundary, and an idle hosted lifecycle service. The hosted service
+subscribes to library events only for its own lifetime and unsubscribes
+deterministically on shutdown, restart, cancellation, and disposal, with no
+provider, rendering, or full-library work during registration or startup. Domain,
+provider, queue, and scheduled-task registrations land with the milestones that
+introduce those components. Host validation of the wired lifecycle is part of
+task 1.8.
+
 **Objective:** Register foundation services without starting provider or
 rendering work during registration or startup.
 
 **Dependencies:** 1.5.
 
-**Affected components:** `IPluginServiceRegistrator`, hosted worker lifecycle,
-scheduled-task registration, initial controller/service registrations.
+**Affected components:** `IPluginServiceRegistrator`, hosted lifecycle, library
+event boundary, configuration and state service registration. Scheduled-task,
+controller, provider, and queue registrations are added with the milestones that
+introduce those components.
 
 **Work:**
 
-- Register configuration, domain services, state services, queue abstractions,
-  hosted work, and future provider boundaries.
+- Register configuration, state services, the library-event boundary, and hosted
+  work. Domain, provider, queue, and scheduled-task registrations are added with
+  the milestones that introduce them.
 - Keep registration parameterless and compatible with Jellyfin 12 conventions.
 - Start no unbounded refresh or full-library processing synchronously.
 - Subscribe and unsubscribe library events within the hosted-service lifecycle.
@@ -399,7 +416,7 @@ on the intended host.
   without taking down Jellyfin.
 - [ ] Credentials never appear in persisted canonical data, cache identity,
   logs, or error messages.
-- [ ] Startup and shutdown leave no unmanaged background work.
+- [x] Startup and shutdown leave no unmanaged background work.
 - [ ] A restart with missing, corrupt, or incompatible non-authoritative cache
   state rebuilds it without blocking Jellyfin; invalid artwork-operation state
   is quarantined and preserves the current image without blind replay.

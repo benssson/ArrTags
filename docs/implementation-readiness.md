@@ -123,15 +123,18 @@ blockers are already resolved and remain checked in the Blockers section above.
   last-valid retention, and secret-free diagnostics. See
   `src/ArrTags/Configuration`. The Jellyfin `BasePlugin<PluginConfiguration>`
   entry point is unchanged.
-- [ ] Implement dependency-injection registration and the hosted service
+- [x] Implement dependency-injection registration and the hosted service
   lifecycle without starting provider, rendering, or full-library work during
   registration or startup, including library-event subscription cleanup and
-  cancellation-aware shutdown.
+  cancellation-aware shutdown. See `src/ArrTags/PluginLifecycle`. The parameterless
+  `IPluginServiceRegistrator` registers the configuration snapshot, state
+  repository, library-event boundary, and an idle hosted lifecycle service that
+  unsubscribes deterministically on shutdown, restart, cancellation, and disposal.
 - [x] Establish the versioned plugin state boundary under `DataFolderPath`:
   schema-versioned envelopes with SHA-256 payload integrity, atomic
   flush-and-rename writes, cache discard versus authoritative quarantine,
   traversal-safe paths, and bounded cache and terminal-provenance retention. See
-  `src/ArrTags/State`. Dependency-injection wiring remains task 1.6.
+  `src/ArrTags/State`. Dependency-injection wiring is completed in task 1.6.
 - [ ] Build and load the actual plugin against the pinned compatibility set on
   the intended Jellyfin `12.0.0` host; verify plugin discovery and
   `targetAbi: 12.0.0.0` compatibility.
@@ -144,7 +147,10 @@ foundation adds connection and operational-limit validation, an immutable
 replacement-snapshot service with last-valid retention, and secret-free
 snapshots. The state boundary provides versioned, integrity-tagged records,
 atomic writes, cache discard versus authoritative quarantine, traversal-safe
-paths, and bounded retention. Both are covered by foundation tests.
+paths, and bounded retention. The dependency-injection foundation registers the
+configuration snapshot, state repository, and library-event boundary, and an idle
+hosted lifecycle service subscribes to library events only for its own lifetime.
+All of the above are covered by foundation tests.
 
 Plugin discovery and load were validated against a Jellyfin `12.0.0.0` host (the
 portable `v12.0` amd64 build) in the execution environment. The host reported
@@ -154,10 +160,12 @@ plugin cleanly on shutdown.
 
 That host run is environment-dependent evidence, not the intended-host
 acceptance required by the final task above. The intended host's installed .NET
-runtime patch and OS/runtime packaging remain unknown, and the plugin has no
-dependency-injection registration or hosted lifecycle wiring yet. Configuration
-validation and snapshot replacement are implemented but are not yet connected to
-Jellyfin's configuration save path or to any background worker.
+runtime patch and OS/runtime packaging remain unknown. A subsequent portable-host
+run with the dependency-injection registration and hosted lifecycle in place
+loaded the plugin and completed startup without errors. The configuration
+snapshot is initialized from the persisted plugin configuration through that
+registration, but it is not yet connected to Jellyfin's configuration save path
+and no reconciliation worker consumes it.
 
 ## Implementation-Time Questions
 
