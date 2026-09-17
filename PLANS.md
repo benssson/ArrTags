@@ -82,8 +82,9 @@ the remaining milestones.
 
 **Tasks:**
 
-- [ ] Confirm the exact Jellyfin 12 patch, .NET target, package versions, and
-  plugin manifest ABI against the intended host.
+- [ ] Build and load the actual plugin against the pinned Jellyfin `12.0.0` /
+  `net10.0` compatibility set on the intended host; verify plugin discovery and
+  manifest `targetAbi: 12.0.0.0` compatibility.
 - [ ] Create the plugin entry point and configuration persistence using Jellyfin
   plugin conventions.
 - [ ] Register configuration, domain services, hosted work, scheduled work,
@@ -101,7 +102,8 @@ the remaining milestones.
 
 **Acceptance criteria:**
 
-- [ ] The plugin installs and loads correctly on the selected Jellyfin 12 ABI.
+- [ ] The plugin builds, installs, and loads correctly on Jellyfin `12.0.0` with
+  target framework `net10.0` and manifest `targetAbi: 12.0.0.0`.
 - [ ] Sonarr and Radarr can be enabled, disabled, and configured independently.
 - [ ] Invalid configuration is rejected or retained as the last valid snapshot
   without taking down Jellyfin.

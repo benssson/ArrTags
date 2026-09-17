@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Ready for implementation
+**Status:** Ready for Phase 1 implementation
 
 **Basis:** ADR-002 and ADR-003; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -11,8 +11,10 @@ architectural blockers.
 ## Implementation Gate
 
 No architectural blockers remain for the persisted-artwork publication path.
-V1 implementation may begin after the listed pre-implementation actions and
-exact Jellyfin ABI validation are completed.
+The compatibility target is pinned and no separate pre-implementation
+prerequisite remains. Phase 1 must validate the pinned target by building and
+loading the actual plugin on the intended host. The remaining decisions below
+are gated by the milestones that need them.
 
 ## Blockers
 
@@ -49,35 +51,85 @@ The protocol does not claim a distributed transaction with Jellyfin. It makes
 uncertain operations recoverable or explicitly `RecoveryBlocked`, and retains
 provenance and artifacts until cleanup is proven safe.
 
+## Compatibility Target
+
+| Value | Pin | Evidence |
+| --- | --- | --- |
+| Jellyfin server | `12.0.0` | The repository's `v12.0` source tag is commit `6c073e19ddf604b2369c638716164fdab4c952dc`; its `SharedVersion.cs` reports assembly and file version `12.0.0`. |
+| Target framework | `net10.0` | Jellyfin 12 server and published host API packages target `net10.0`. |
+| .NET SDK baseline | `10.0.0` | The Jellyfin `v12.0` `global.json` pins SDK `10.0.0` and permits latest-minor roll-forward. |
+| Jellyfin host packages | `12.0.0` for `Jellyfin.Controller`, `Jellyfin.Model`, `Jellyfin.Common`, `Jellyfin.Data`, `Jellyfin.Extensions`, `Jellyfin.Naming`, and `Jellyfin.MediaEncoding.Keyframes` | Stable `12.0.0` packages are published and the `Jellyfin.Controller` dependency closure is on the same 12.0.0 line. Pin any referenced package in this set exactly; do not allow a 12.1.x transitive upgrade. |
+| Plugin manifest `targetAbi` | `12.0.0.0` | Confirmed by the [official Jellyfin unstable plugin manifest](https://repo.jellyfin.org/files/plugin-unstable/manifest.json) entries for Jellyfin 12 plugins. |
+
+`12.0.0` is selected because the repository architecture and research are
+pinned to Jellyfin's `v12.0` source line. Jellyfin `12.1.0` is a separate source
+and package line and is not silently adopted by this compatibility gate.
+
 ## Pre-Implementation Actions
+
+No separate pre-implementation prerequisite remains. The compatibility target
+is pinned above; build, plugin discovery, and live-load validation are Phase 1
+implementation and acceptance work.
+
+## Former Action Disposition
+
+| # | Former action | Classification | Disposition |
+| --- | --- | --- | --- |
+| 1 | Remove or demote the duplicate architecture section and align phase descriptions. | Should become a Phase 1 implementation task | Complete the documentation cleanup with the foundation work; it is not a runtime-safety gate. |
+| 2 | Extend the canonical match model for Sonarr series, episode, and episode-file identity. | Should become a Phase 1 implementation task | Establish the explicit model and interfaces before provider and matching code consumes them. |
+| 3 | Decide V1 item/image scope and aggregate quality behavior. | Implementation-time decision | Decide before the matching, rendering, and artwork milestones. Series/season aggregate quality remains in the Post-V1 backlog unless an explicit V1 policy is adopted. |
+| 4 | Decide episode policies for specials, anime/absolute numbering, double episodes, multi-episode files, remote items, and path fallback. | Implementation-time decision | Decide and test before enabling the corresponding matching paths. |
+| 5 | Define connection-to-library routing and ambiguity behavior for multiple Arr instances. | Implementation-time decision | Finalize before multi-connection matching and reconciliation work. |
+| 6 | Define catalogue caching, provider inventory, provider-version support, and cross-provider normalization. | Implementation-time decision | Define during provider integration and cover the result with bounded inventory and contract tests. |
+| 7 | Decide the policy for active derived artwork after metadata becomes stale. | Implementation-time decision | Finalize before stale-state artwork handling and publication invalidation are implemented. |
+| 8 | Define webhook security, bounds, replay handling, and provider-record resolution, or defer webhooks. | Implementation-time decision | Decide before webhook work; deferral remains an available V1 scope decision. |
+| 9 | Record concrete queue, concurrency, retry, timeout, response-size, retention, storage, and stale-state limits. | Should become a Phase 1 implementation task | Establish validated configuration defaults and limits with the foundation; tune them during later performance work. |
+| 10 | Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior. | Implementation-time decision | Finalize and test before the Jellyfin artwork integration milestone. |
+
+## Already Satisfied
+
+- [x] The Jellyfin `12.0.0` / `net10.0` compatibility target, host package
+  versions, and plugin `targetAbi` are pinned and documented above.
+
+No former pre-implementation action is fully satisfied. The two architectural
+blockers are already resolved and remain checked in the Blockers section above.
+
+## Phase 1 Implementation Tasks
 
 - [ ] Remove or demote the duplicate architecture section in
   `docs/architecture.md` and align the planner/research phase descriptions.
 - [ ] Extend the canonical match model to represent Sonarr series, episode, and
   episode-file identity explicitly.
-- [ ] Decide V1 item/image scope, including series/season posters, indexed
-  images, alternate versions, stacked parts, and aggregate quality behavior.
-- [ ] Decide episode policies for specials, anime/absolute numbering,
-  double-episodes, multi-episode files, remote items, and path fallback.
-- [ ] Define connection-to-library routing and ambiguity behavior for multiple
-  Sonarr/Radarr instances.
-- [ ] Define the Sonarr catalogue cache, provider inventory strategy, supported
-  provider-version matrix, and cross-provider normalization rules.
-- [ ] Decide what happens to active derived artwork after metadata becomes stale:
-  retain, restore, or publish an unbadged source image.
-- [ ] Define webhook authentication, replay protection, rate limits, payload
-  bounds, and provider-record-to-Jellyfin resolution, or defer webhooks.
-- [ ] Record concrete queue, concurrency, retry, timeout, response-size,
-  provenance-retention, storage, and stale-state limits.
-- [ ] Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior.
+- [ ] Establish initial validated defaults for queue, concurrency, retry,
+  timeout, response-size, provenance-retention, storage, and stale-state limits.
+- [ ] Build and load the actual plugin against the pinned compatibility set on
+  the intended Jellyfin `12.0.0` host; verify plugin discovery and
+  `targetAbi: 12.0.0.0` compatibility.
+
+This validation has not run yet. The repository currently contains no `.csproj`,
+plugin manifest, or source project, and the available execution environment has
+neither the `dotnet` CLI nor a Jellyfin server/runtime. The intended host's
+installed .NET runtime patch and OS/runtime packaging also remain unknown.
 
 ## Implementation-Time Questions
 
-- Pin the exact Jellyfin 12 patch, target framework, packages, and `targetAbi`
-  through the existing foundation gate.
 - Validate `SaveImage` storage behavior and the selected source-artwork capture
   and restoration implementation on the target host configuration.
 - Choose the renderer library, image format, fonts, and bounded artifact storage.
+- Decide V1 item/image scope, including eligible poster surfaces, indexed images,
+  alternate versions, stacked parts, and any series/season policy.
+- Decide episode policies for specials, anime/absolute numbering, double
+  episodes, multi-episode files, remote items, and path fallback.
+- Define connection-to-library routing and ambiguity behavior for multiple
+  Sonarr/Radarr instances.
+- Define the Sonarr catalogue cache, provider inventory strategy, initial
+  supported provider-version matrix, and cross-provider normalization rules.
+- Decide whether stale metadata retains the active derived artwork, restores the
+  source, or publishes an unbadged source image.
+- Define webhook authentication, replay protection, rate limits, payload bounds,
+  and provider-record-to-Jellyfin resolution, or explicitly defer webhooks.
+- Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior and test
+  the selected policy through the standard image path.
 - Implement per-item generation tokens, publication serialization, and
   ArrTags-generated event-loop suppression.
 - Finalize DTO nullability, optional-field compatibility, provider fixtures, and
