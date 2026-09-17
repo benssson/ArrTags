@@ -2,15 +2,17 @@
 
 ## Status
 
-**Status:** Blocked by Blocker 2
+**Status:** Ready for implementation
 
-**Basis:** Latest review: `docs/reviews/pre-implementation-review-02.md`
+**Basis:** ADR-002 and ADR-003; findings in
+`docs/reviews/pre-implementation-review-02.md` are resolved for the two
+architectural blockers.
 
 ## Implementation Gate
 
-Foundation-only validation may begin. The provenance ownership blocker is
-resolved by ADR-002, but V1 provider, matching, and artwork implementation must
-still wait until publication recovery is defined.
+No architectural blockers remain for the persisted-artwork publication path.
+V1 implementation may begin after the listed pre-implementation actions and
+exact Jellyfin ABI validation are completed.
 
 ## Blockers
 
@@ -18,11 +20,12 @@ still wait until publication recovery is defined.
   artifacts, active-image identity, manual-change detection, and guarded
   restoration behavior. See `docs/decisions.md` ADR-002 and
   `docs/data-model.md` sections 3.10.1-3.10.2.
-- [ ] Define crash-consistent publication recovery across source capture,
+- [x] Define crash-consistent publication recovery across source capture,
   rendering, `SaveImage`, Jellyfin item update, provenance persistence, restart,
-  disable, uninstall, and item removal.
+  disable, uninstall, and item removal. See `docs/decisions.md` ADR-003 and
+  `docs/data-model.md` sections 3.10.3-3.10.4.
 
-## Resolved Blocker
+## Resolved Blocker 1
 
 ArrTags now retains an immutable source artifact or an explicit absent baseline,
 persists the expected active-image identity and plugin ownership/publication
@@ -33,6 +36,18 @@ artifact instead of treating an earlier derived image as a new original.
 The exact source capture/readback mechanism and host-specific `SaveImage` storage
 behavior remain implementation-time validation. They are not ownership
 semantics and must not be used to reopen this resolved design blocker.
+
+## Resolved Blocker 2
+
+Publication and restoration now use a durable `ArtworkOperation` write-ahead
+record with immutable staged artifacts, explicit before/after identities,
+generation fencing, postcondition-based restart reconciliation, and
+fail-closed recovery. Lifecycle fences drain disable/uninstall work, while
+confirmed item removal creates a tombstone without issuing image mutations.
+
+The protocol does not claim a distributed transaction with Jellyfin. It makes
+uncertain operations recoverable or explicitly `RecoveryBlocked`, and retains
+provenance and artifacts until cleanup is proven safe.
 
 ## Pre-Implementation Actions
 
@@ -83,6 +98,8 @@ semantics and must not be used to reopen this resolved design blocker.
 - [x] Actual file quality is separated from quality-profile policy.
 - [x] Provider outages, unmatched items, render failures, and cancellation must
   leave current usable artwork unchanged.
+- [x] Publication and restoration use durable operation intent, staged artifacts,
+  postcondition recovery, lifecycle fences, and fail-closed ambiguity handling.
 - [x] Jellyfin Enhanced internals are not a dependency.
 
 ## Post-V1 Backlog

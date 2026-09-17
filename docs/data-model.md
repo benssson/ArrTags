@@ -143,6 +143,15 @@ classDiagram
         +ActiveImageIdentity
         +PublishedFingerprint
     }
+    class ArtworkOperation {
+        +OperationId
+        +Kind
+        +ImageSurface
+        +Generation
+        +ExpectedBeforeIdentity
+        +Phase
+        +LifecycleFence
+    }
     class UpdateEvent {
         +EventType
         +Subject
@@ -170,10 +179,13 @@ classDiagram
     BadgeMetadata --> MetadataCacheEntry : cached snapshot
     RenderRequest --> ArtworkCacheEntry : cache key
     RenderResult --> PublishedArtworkState : may publish
+    RenderResult --> ArtworkOperation : stages
+    ArtworkOperation --> PublishedArtworkState : commits
     UpdateEvent --> MediaMatch : invalidates
     UpdateEvent --> MetadataCacheEntry : invalidates
     UpdateEvent --> ArtworkCacheEntry : invalidates
     UpdateEvent --> PublishedArtworkState : restores or republishes
+    UpdateEvent --> ArtworkOperation : recovers or cancels
 ```
 
 `MediaIdentity` is the Jellyfin-side subject. `MediaMatch` connects it to one
@@ -426,6 +438,8 @@ ownership and guarded restoration; Jellyfin image metadata alone is not enough.
 | `publishedFingerprint` | Opaque logical publication fingerprint | Required when published | Generated | Includes source, metadata, configuration, renderer, and schema inputs; not ownership proof alone. |
 | `rendererVersion` | Version identifier | Yes when published | Plugin | Changes require regeneration. |
 | `lastOwnershipObservation` | ActiveImageIdentity plus result | Yes | Generated | Latest `Owned`, `Changed`, or `Unknown` comparison for diagnostics and restart revalidation. |
+| `stateRevision` | Monotonic integer | Yes | Generated | Increments for each committed state transition on the item/surface. |
+| `lastOperationId` | Opaque operation identifier | Optional | Generated | Links the committed state to the durable artwork operation that produced it. |
 | `updatedAt` | Timestamp | Yes | Generated | Last publication or restoration-state change. |
 
 `sourceArtifactId` identifies an immutable artifact stored under the ArrTags data
@@ -457,8 +471,8 @@ is not content- or actor-specific and cannot prove ownership on its own.
 
 ### 3.10.2 PublishedArtworkState transitions
 
-These are ownership transitions only. They do not define crash-consistent
-ordering or restart reconciliation for publication; that remains Blocker 2.
+These are ownership transitions. Crash-consistent ordering and restart
+reconciliation are defined separately by `ArtworkOperation` in section 3.10.3.
 
 | Current state | Condition | Next state | Required behavior |
 | --- | --- | --- | --- |
@@ -470,13 +484,92 @@ ordering or restart reconciliation for publication; that remains Blocker 2.
 | `RestorePending` | Expected identity matches and source artifact passes integrity validation | `Restored` | Restore the retained source, or remove the ArrTags image when `sourcePresence` is `Absent`, then verify the resulting surface. |
 | `RestorePending` | Identity differs or cannot be proven | `OwnershipLost` or `OwnershipUnknown` | Do not mutate the active image. Retain the diagnostic state and artifact subject to bounded cleanup. |
 | `RestorePending` | Source artifact is missing or corrupt | `RestoreBlocked` | Leave the active image unchanged and do not claim restoration completed. |
-| `RestorePending` | The restoration result cannot be verified | `RestoreBlocked` | Do not claim completion or perform another automatic mutation; Blocker 2 defines recovery for an uncertain operation result. |
+| `RestorePending` | The restoration result cannot be verified | `RestoreBlocked` | Do not claim completion or perform another automatic mutation; the associated operation enters `RecoveryBlocked` until reconciled. |
 | Any state | Jellyfin item is removed | `Removed` | Perform no image operation against the missing item; clean plugin-owned records/artifacts only under the retention policy. |
 
 An `OwnershipLost`, `OwnershipUnknown`, or `RestoreBlocked` record is never
 automatically re-baselined. A future explicit administrative re-baseline, if
 supported, starts a new ownership session and captures the then-current image;
 it does not silently reclaim a later image.
+
+### 3.10.3 ArtworkOperation
+
+**Purpose:** A durable write-ahead operation record for one publication or
+restoration attempt. It bridges the non-transactional Jellyfin image APIs and
+the plugin-owned `PublishedArtworkState`. It is not an evictable render-cache
+entry and must remain available until the operation reaches a terminal state and
+its artifacts are safe to clean up.
+
+Only one non-terminal operation may exist for an item/image surface at a time.
+The operation generation fences stale queued work from publishing or finalizing
+after a newer operation or lifecycle fence has been accepted.
+
+| Field | Type | Required | Field Ownership | Notes |
+| --- | --- | --- | --- | --- |
+| `modelVersion` | Version identifier | Yes | Plugin | Invalid operation records are quarantined and never replayed blindly. |
+| `operationId` | Opaque random identifier | Yes | Generated | Correlates the journal, staged artifacts, diagnostics, and final state. |
+| `kind` | `Publication` or `Restoration` | Yes | Generated | Selects the target state and artifact use. |
+| `jellyfinItemId` | Jellyfin item identifier | Yes | Jellyfin/plugin | Operation subject. |
+| `imageSurface` | Image type and optional index | Yes | Jellyfin/configuration | Operation scope; must match both image identities. |
+| `generation` | Monotonic per-item/surface value | Yes | Generated | Prevents stale work from becoming authoritative. |
+| `ownershipToken` | Opaque token | Yes for an owned session | Generated | Carries the Blocker 1 ownership session through recovery. |
+| `priorPublicationToken` | Opaque token | Optional | Generated | Expected prior ArrTags publication when replacing an owned image. |
+| `publicationToken` | Opaque token | Required for publication | Generated | Candidate publication identity to commit if the postcondition matches. |
+| `expectedBeforeIdentity` | ActiveImageIdentity | Yes | Generated/Jellyfin observation | Exact precondition observed before the external image mutation. |
+| `candidateAfterContentSha256` | SHA-256 | Required when the after target is present | Generated | Hash of the durable artifact intended to become active; an absent after target records `presence = Absent`; the complete after identity is learned by readback. |
+| `observedAfterIdentity` | ActiveImageIdentity | Optional | Jellyfin observation | Recorded only after the effective active image is re-observed. |
+| `sourceArtifactId` | Opaque artifact identifier | Required when source is present | Generated | Retained original used by publication or restoration. |
+| `derivedArtifactId` | Opaque artifact identifier | Required for publication | Generated | Durable, validated render output; never only an evictable cache entry. |
+| `phase` | ArtworkOperationPhase | Yes | Generated | Durable lower-bound marker for external side effects. |
+| `lifecycleFence` | Normal, Disable, Uninstall, or ItemRemoved | Yes | Generated | Prevents new publication work during lifecycle transitions. |
+| `attempt` | Non-negative integer | Yes | Generated | Bounded recovery/retry accounting. |
+| `lastError` | Redacted error summary | Optional | Generated | Diagnostics only; never a provider secret or raw payload. |
+| `createdAt` / `updatedAt` | Timestamp | Yes | Generated | Journal lifecycle timestamps. |
+
+`ArtworkOperationPhase` has these values:
+
+| Phase | Meaning |
+| --- | --- |
+| `Prepared` | Source/derived artifacts and the complete operation intent are durable; no external image mutation has been started by this operation. |
+| `MutationStarted` | The operation has durably recorded that `SaveImage` or the supported image-removal operation may have started. A crash before or during the call is treated as uncertain. |
+| `RepositoryUpdateStarted` | The image mutation may have completed and the durable item update may have started. Both effects are re-observed during recovery. |
+| `VerificationPending` | The supported item-image state and effective image representation must be read again before finalization. |
+| `FinalizationPending` | The intended postcondition was observed; the final `PublishedArtworkState` or `Restored` state must be durably committed. |
+| `Committed` | Final plugin state is durable and references the operation; cleanup may proceed under the artifact rules. |
+| `Aborted` | The operation was safely stopped without adopting its candidate result, usually because the before identity no longer matched or the item was removed. |
+| `RecoveryBlocked` | The operation or required observation is corrupt, unavailable, or ambiguous; no further automatic image mutation is permitted. |
+
+The phase is deliberately a lower-bound marker. Recovery must assume that an
+external call may have happened whenever the phase is `MutationStarted` or
+later, even if the corresponding acknowledgment was not persisted. A durable
+operation record is written before the first external image mutation. Operation
+records, state records, and artifact manifests use versioned integrity metadata,
+stable-storage flushing, and atomic replacement; a torn or invalid record is
+quarantined rather than guessed.
+
+Staged artifacts are promoted from temporary files only after bounded size,
+format, and hash validation. They are retained until the operation is committed,
+aborted, or tombstoned as removed, and cleanup must first prove that the
+artifact is not the current active image. If that proof is unavailable, the
+artifact is retained or quarantined.
+
+### 3.10.4 ArtworkOperation transitions and recovery
+
+| Phase or observation | Recovery action |
+| --- | --- |
+| `Prepared` and current identity equals `expectedBeforeIdentity` | Revalidate the generation and lifecycle fence, then resume the deterministic operation. |
+| Any mutation-started phase and current identity equals `expectedBeforeIdentity` | The mutation did not become observable or the image was restored to the exact expected identity. Revalidate immediately and retry the same operation only under the current generation; never recapture a new source. |
+| Any phase and current identity matches `observedAfterIdentity` or a validated candidate after identity | Ensure the normal Jellyfin item update is persisted, commit the target plugin state, then mark the operation `Committed`. |
+| Any phase and current identity differs from both before and after identities | Mark the ownership state `OwnershipLost` when the image is observable, abort the operation, and never restore or remove the external image. |
+| Any phase and the current identity cannot be observed or compared | Mark `OwnershipUnknown` or `RecoveryBlocked`, leave the image untouched, and require later reconciliation or explicit administration. |
+| Any phase and the Jellyfin item is absent | Write an `ItemRemoved` tombstone, perform no image mutation, and retain cleanup records until the removal decision is durable. |
+| Final state is durable but journal is non-terminal | Treat the final state and verified active identity as authoritative, mark the operation `Committed`, and perform only safe cleanup. |
+
+Recovery runs under the same per-item/image-surface serialization as normal
+publication and completes before new work for that subject is accepted. It is
+postcondition-based rather than a distributed transaction: Jellyfin and the
+plugin cannot be committed atomically, so uncertainty always resolves toward
+preserving the currently observable artwork.
 
 ### 3.11 UpdateEvent
 
@@ -804,7 +897,7 @@ aware, and safe to replay. Provider webhooks never directly publish metadata.
 | --- | --- | --- |
 | Metadata changed | Subject, provider/connection, record/file hint, reason | Re-match or re-read current provider state, then replace the metadata snapshot if its fingerprint changed. |
 | Artwork publication requested | Jellyfin item, image surface/index, source fingerprint, reason | Look up current metadata and construct bounded publication work. |
-| Artwork published | Item, image surface, source fingerprint, published fingerprint, publication token, active-image identity, status, correlation ID | Record publication state through the supported item-image flow; never write the image cache directly. |
+| Artwork published | Item, image surface, source fingerprint, published fingerprint, publication token, active-image identity, operation ID, state revision, status, correlation ID | Record publication state through the supported item-image flow; never write the image cache directly. |
 | Item removed | Jellyfin item ID and optional provider scope | Invalidate metadata and artwork entries for the item; do not call provider write APIs. |
 | Configuration changed | New configuration version and affected scopes | Replace the configuration snapshot and invalidate affected metadata/artwork state. |
 | Cache invalidated | Scope, key/fingerprint, reason | Remove or mark stale only the affected cache entries. |
@@ -865,6 +958,7 @@ serving operations.
 | `ArtworkOwnershipChanged` | The active image no longer matches the persisted ArrTags identity | Enter `OwnershipLost`; leave the active image unchanged and block automatic publication/restoration. |
 | `ArtworkOwnershipUnknown` | The active image or required identity evidence cannot be observed or compared | Enter `OwnershipUnknown`; leave the active image unchanged and block automatic mutation. |
 | `SourceArtifactInvalid` | The retained source artifact is missing or fails integrity validation | Block publication or enter `RestoreBlocked`; do not guess a source or overwrite the active image. |
+| `ArtworkRecoveryBlocked` | A non-terminal artwork operation, artifact, or postcondition is corrupt, unavailable, or ambiguous | Quarantine the operation, preserve the current artwork, and require later reconciliation or explicit administration; never blind-replay or clean up. |
 | `RenderingFailed` | Decode, layout, encode, size, or cancellation failure | Leave current artwork unchanged and record a bounded diagnostic. |
 | `ConfigurationInvalid` | Configuration cannot produce a valid snapshot | Keep the last valid snapshot where supported; do not start affected work. |
 | `CacheCorrupt` | Cache entry cannot be read or fails version/integrity checks | Discard/quarantine and rebuild; never block Jellyfin. |

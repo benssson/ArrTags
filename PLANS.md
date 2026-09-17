@@ -93,8 +93,9 @@ the remaining milestones.
   redacted administrative diagnostics.
 - [ ] Define version values for model/cache data, badge schema, renderer, and
   effective configuration.
-- [ ] Implement atomic plugin-owned state read/write boundaries and quarantine
-  or discard invalid records.
+- [ ] Implement atomic plugin-owned state read/write boundaries; quarantine
+  authoritative artwork-operation records and discard only invalid
+  non-authoritative cache entries.
 - [ ] Add lifecycle tests for discovery, DI registration, startup, shutdown,
   reload, and cancellation.
 
@@ -107,8 +108,9 @@ the remaining milestones.
 - [ ] Credentials never appear in persisted canonical data, cache identity,
   logs, or error messages.
 - [ ] Startup and shutdown leave no unmanaged background work.
-- [ ] A restart with missing, corrupt, or incompatible plugin state recovers by
-  rebuilding state rather than blocking Jellyfin.
+- [ ] A restart with missing, corrupt, or incompatible non-authoritative cache
+  state rebuilds it without blocking Jellyfin; invalid artwork-operation state
+  is quarantined and preserves the current image without blind replay.
 
 **Gate 1:** The ABI and configuration/lifecycle tests pass, and the plugin can
 start with both providers disabled.
@@ -271,6 +273,9 @@ provenance and coexisting with Jellyfin Enhanced.
 - Correct publication and restoration behavior, with standard Jellyfin image
   tags, authorization, cache headers, conditional requests, and client delivery
   verified after publication.
+- Crash-recoverable artwork operations with durable staged artifacts, write-ahead
+  publication intent, postcondition reconciliation, and guarded lifecycle
+  handling for disable, uninstall, and item removal.
 - Jellyfin Enhanced coexistence policy and tests, including spoiler/hidden image
   behavior.
 
@@ -282,8 +287,15 @@ provenance and coexisting with Jellyfin Enhanced.
   publishing derived artwork.
 - [ ] Publish completed artwork through Jellyfin's supported item-image APIs;
   do not write media-folder posters or Jellyfin's image cache directly.
+- [ ] Persist a durable `ArtworkOperation` before `SaveImage`, including before
+  and candidate-after identities, artifact references, generation, and
+  ownership/publication tokens.
+- [ ] Reconcile uncertain `SaveImage`, item update, and provenance persistence
+  outcomes by postcondition; never blindly replay or delete an active artifact.
 - [ ] Preserve the current usable artwork when source capture or rendering
   cannot safely complete.
+- [ ] Fence and drain publication operations during disable/uninstall, and
+  tombstone confirmed item removal without issuing image mutations.
 - [ ] Add the configured disable/limit policy for duplicate or overlapping
   badges; do not depend on Jellyfin Enhanced internals.
 - [ ] Test Web and image-consuming clients through the supported server image
@@ -298,6 +310,13 @@ provenance and coexisting with Jellyfin Enhanced.
 - [ ] Original media files remain byte-for-byte untouched.
 - [ ] Failed publication, missing metadata, and failed rendering preserve the
   current usable artwork.
+- [ ] Crashes before, during, and after `SaveImage` and item persistence recover
+  to a committed publication, a safe abort, or an explicit recovery-blocked
+  state without losing source provenance.
+- [ ] Restart reconciliation never overwrites an externally changed image and
+  never treats an uncertain operation as proof of ownership.
+- [ ] Disable, uninstall, and confirmed item removal leave no untracked
+  non-terminal operation or unsafe cleanup obligation.
 - [ ] ArrTags does not interfere with Jellyfin Enhanced, including configured
   duplicate handling and Spoiler Guard expectations.
 
@@ -314,6 +333,8 @@ authoritative.
 
 - Versioned metadata cache for last-known-good canonical snapshots and bounded
   artwork publication/provenance state, with optional bounded render work cache.
+- Durable per-item/image-surface artwork-operation journal and staged-artifact
+  manifests for publication and restoration recovery.
 - Bounded, deduplicating, cancellation-aware work queue and hosted workers.
 - Reconciliation from Jellyfin item events, post-scan work, scheduled/manual
   work, and authenticated Arr webhook hints.
@@ -332,6 +353,9 @@ authoritative.
   cancellation, retry classification, and queue overflow behavior.
 - [ ] Publish metadata state atomically only after current item/configuration
   validation; discard stale long-running work.
+- [ ] Recover non-terminal artwork operations before accepting new work for the
+  same item/image surface, using before/after identity postconditions and
+  generation fences.
 - [ ] Separate metadata freshness and bounded stale-last-known-good behavior from
   artwork retention and eviction.
 - [ ] Regenerate and republish only affected artwork when a metadata fingerprint

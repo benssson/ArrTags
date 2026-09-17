@@ -579,11 +579,13 @@ Properties:
    sense of confirming nothing was added in a later 12.x patch.
 2. **Publication feasibility.** Validate source-artwork capture, supported
    `IProviderManager.SaveImage` publication, item repository updates, and the
-   ADR-002 guarded restoration contract on the exact selected Jellyfin ABI.
-3. **Publication storage and ownership.** Resolved by ADR-002 at the design
-   level: ArrTags stores its own source artifact and compares active content
-   identity plus available Jellyfin image observations. Exact host storage,
-   readback, permissions, and bounded cleanup remain implementation validation.
+   ADR-002/ADR-003 ownership and crash-recovery contracts on the exact selected
+   Jellyfin ABI.
+3. **Publication storage and ownership.** Resolved by ADR-002 and ADR-003 at
+   the design level: ArrTags stores its own source/operation artifacts, compares
+   active content identity, and reconciles uncertain calls by postcondition.
+   Exact host storage, readback, permissions, and bounded cleanup remain
+   implementation validation.
 4. **Enhanced coexistence matrix.** Test ArrTags server badges with Enhanced
    Quality Tags enabled and disabled, and with Spoiler Guard blur/hide on, in
    Jellyfin Web plus at least one non-web client. Confirm no duplicate/visual

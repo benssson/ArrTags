@@ -189,10 +189,11 @@ captured as a new original.
 
 ### Deferred from this ADR
 
-This ADR defines ownership evidence and guarded logical transitions only. It does
-not define crash-consistent ordering between source capture, rendering,
-`SaveImage`, item persistence, provenance persistence, restart reconciliation,
-disable, uninstall, or item removal. Those remain Blocker 2.
+This ADR defines ownership evidence and guarded logical transitions. Crash-
+consistent ordering between source capture, rendering, `SaveImage`, item
+persistence, provenance persistence, restart reconciliation, disable, uninstall,
+and item removal is defined by ADR-003. Exact ABI and host-storage validation
+remains an implementation-time requirement.
 
 ### References
 
@@ -201,3 +202,100 @@ disable, uninstall, or item removal. Those remain Blocker 2.
 - `docs/research/jellyfin-12-architecture.md`, sections 4.3 and 7
 - Jellyfin 12 `IProviderManager.SaveImage`, `ImageInfo`, `ItemImageInfo`, and
   standard item-image APIs
+
+## ADR-003: Crash-Recoverable Artwork Publication
+
+**Status:** Accepted
+
+**Date:** 2026-09-17
+
+### Context
+
+Jellyfin's supported `SaveImage` API, normal item repository update, and
+ArrTags' plugin-state persistence do not participate in one transaction. A
+failure between them can leave an image mutation without provenance, provenance
+for an image that was not published, or staged artifacts that are unsafe to
+delete. Disable, uninstall, and item removal add lifecycle races to the same
+problem.
+
+ADR-002 already defines the source artifact, active-image identity, ownership
+token, publication token, and fail-closed ownership states. Blocker 2 requires a
+durable protocol that preserves those semantics across interruption and restart.
+
+### Decision
+
+ArrTags will use one durable `ArtworkOperation` write-ahead record per item and
+image surface. It will use immutable, integrity-checked staged artifacts and
+postcondition reconciliation instead of claiming a distributed transaction with
+Jellyfin.
+
+The operation protocol is:
+
+1. Capture the original source artifact or explicit absent baseline and promote
+   it to durable storage before any image mutation.
+2. Render the derived artifact, validate its bounded output and hash, and
+   promote it to durable storage. Evictable render-cache entries are never the
+   only recovery copy.
+3. Persist a `Prepared` operation containing the exact before identity,
+   candidate after content hash, source/derived artifact references, generation,
+   ownership token, publication token, and target final state.
+4. Revalidate the before identity, persist `MutationStarted`, then call
+   `SaveImage` or the supported image-removal operation.
+5. Persist the repository-update phase, call the normal Jellyfin item update,
+   and persist `VerificationPending` before reading back the effective image
+   identity.
+6. If the after identity is verified, persist the final `PublishedArtworkState`
+   or restoration state with the operation ID and new state revision, then mark
+   the operation `Committed`.
+7. Cleanup is separate from commit and may only remove artifacts proven not to
+   be the active image.
+
+Operation phases are lower-bound markers. If interruption occurs after
+`MutationStarted`, recovery assumes the external call may have happened even if
+its acknowledgment was not persisted. Recovery compares the current identity to
+the durable before and after identities:
+
+- Before match: revalidate the generation and lifecycle fence, then retry the
+  same deterministic operation without recapturing a source.
+- After match: ensure the normal item update is persisted, commit the intended
+  final plugin state, and mark the operation committed.
+- Neither match: record `OwnershipLost` when observable or `OwnershipUnknown`
+  when not observable; never restore, remove, or overwrite the current image.
+- Invalid operation, state, or artifact: quarantine it and enter
+  `RecoveryBlocked`; never blindly replay or clean up.
+
+Recovery runs before new work for the item/surface is accepted. A lifecycle
+fence prevents new publication during disable or uninstall. Existing operations
+are resolved first, then a still-owned publication creates a separate guarded
+restoration operation. An unresolved restoration keeps its journal and source
+artifact. Confirmed item removal creates a tombstone and performs no image
+mutation against the missing item.
+
+Durable records use versioned integrity metadata, stable-storage flushing, and
+atomic replacement. A torn record is quarantined. The final plugin state is
+durable before the journal is marked `Committed`; if a crash occurs between
+those writes, a verified final state allows startup to complete the journal.
+
+### Consequences
+
+- A crash before image mutation leaves no published artwork and only staged
+  artifacts to clean up.
+- A crash during or after `SaveImage` is resolved by observing the effective
+  before/after image, not by assuming the API call succeeded or failed.
+- Source provenance remains retained until the final state is committed and
+  cleanup is proven safe.
+- Replays are bounded, serialized, deterministic, and generation-fenced; they
+  do not recapture an ArrTags image as a new original.
+- External changes and incomplete observations fail closed, preserving the
+  currently observable artwork rather than attempting rollback.
+- Disable and uninstall cannot claim complete cleanup while unresolved journal
+  records or restoration obligations remain.
+- Exact `SaveImage` representation, readback, stable-storage, and host-specific
+  behavior still require implementation-time validation and integration tests.
+
+### References
+
+- `docs/data-model.md`, sections 3.10.3 and 3.10.4
+- `docs/architecture.md`, sections 5, 6, 8, 9, and 11
+- `PLANS.md`, sections 5 and 6
+- ADR-002: Guarded Artwork Ownership and Restoration

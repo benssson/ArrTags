@@ -142,12 +142,17 @@ API is available.
 ### Shutdown and uninstall
 
 - Unsubscribe library events during hosted-service shutdown.
-- Stop accepting new work, cancel queued work, and await workers within host
-  shutdown limits.
+- Establish a durable disable/uninstall fence, stop accepting new publication
+  work, and recover or terminally classify in-flight artwork operations before
+  artifact cleanup.
+- Cancel queued work and await workers within host shutdown limits, but never
+  discard a non-terminal artwork operation or its source/derived artifacts.
 - Do not leave unmanaged threads or fire-and-forget tasks running.
 - Plugin-owned cache/state and source-artwork provenance may be removed on
-  uninstall according to the plugin uninstall policy. Active ArrTags artwork
-  must be restored first when it is still identified as ArrTags-owned.
+  uninstall only after the lifecycle fence and all artwork operations are
+  terminal. Active ArrTags artwork must be restored first when it is still
+  identified as ArrTags-owned; unresolved or externally changed artwork keeps
+  the recovery records and artifacts for later reconciliation.
 
 ## 6. Configuration and persisted state
 
@@ -175,8 +180,17 @@ by default; any exception is explicit and scoped to one connection.
 ### Plugin state
 
 State is stored under `DataFolderPath`, not in Jellyfin's database or image
-cache. The format is versioned and written atomically. Corrupt state is ignored
-or quarantined so the plugin can rebuild it.
+cache. The format is versioned and written atomically. Corrupt non-authoritative
+cache state may be ignored or rebuilt; authoritative artwork state and operation
+records are quarantined and retained for recovery rather than treated as
+`NotPublished`.
+
+Publication and restoration use a durable write-ahead operation journal under
+the same plugin data boundary. `ArtworkOperation` records, operation manifests,
+and staged artifacts are not evictable render-cache entries. They remain until
+the operation is committed, safely aborted, or durably tombstoned as removed.
+An invalid or torn operation record is quarantined and causes recovery to fail
+closed rather than replaying an unknown mutation.
 
 Each item record may contain:
 
@@ -191,12 +205,16 @@ Each item record may contain:
   evidence and invalidation; these are not ownership proof by themselves.
 - Renderer/configuration version.
 - Last refresh, error, retry, and reconciliation status.
+- Non-terminal artwork operations and lifecycle fences, when publication,
+  restoration, disable, uninstall, or removal is in progress.
 
 The metadata record and artwork publication state have different purposes. A
 metadata snapshot may be retained as last-known-good state during a temporary
 Arr outage. A derived image published through Jellyfin is active artwork and is
 not an ephemeral response artifact. The original source and restoration
 provenance remain plugin-owned and must not be confused with the active image.
+The operation journal is the recovery authority until a final artwork state is
+durably committed; cache entries never serve that role.
 
 ## 7. Sonarr and Radarr integration
 
@@ -266,15 +284,18 @@ current configuration before processing. It then:
    `PublishedArtworkState` ownership contract.
 7. Enqueues artwork generation when the publication fingerprint changes or when
    a new recoverable source baseline is required.
-8. Renders from the retained original source artifact, never from an ArrTags
-   image while ownership is unverified.
-9. Revalidates the active-image identity before publishing, publishes the
-   completed derived image through Jellyfin's supported item-image API, and
-   records the new publication identity.
+8. Creates or resumes the durable `ArtworkOperation`; source capture and
+   rendering produce durable staged artifacts before any Jellyfin image API is
+   called.
+9. Delegates publication, item persistence, postcondition verification, and
+   final `PublishedArtworkState` commit to the crash-recoverable operation
+   protocol in section 9.
 
 The worker must re-check the item and relevant metadata before publishing a
 result if the operation was long-running. A changed fingerprint causes stale
-work to be discarded rather than published.
+work to be discarded rather than published. A non-terminal artwork operation
+also fences new work for its item/image surface until recovery reaches a
+terminal outcome.
 
 Refresh triggers are:
 
@@ -303,17 +324,23 @@ periodic reconciliation repairs missed or forged notifications.
    renderer/schema versions.
 4. It renders from the retained original source artifact, never from an
    ArrTags-generated image without a successful ownership comparison.
-5. Immediately before publication, it re-observes the active image. A changed
-   or unverifiable identity cancels the publication and leaves the active image
+5. It promotes the validated render output to a durable operation artifact. An
+   evictable `ArtworkCacheEntry` is never the only copy needed for recovery.
+6. It creates a durable `Prepared` operation containing the before identity,
+   candidate after content identity, artifact references, generation, and
+   ownership/publication tokens.
+7. It re-observes the before identity immediately before mutation. A changed or
+   unverifiable identity aborts the operation and leaves the active image
    unchanged.
-6. After current item/configuration validation, it publishes the completed image
-   through `IProviderManager.SaveImage` and the normal item image update flow.
-7. It records a new publication token, expected active-image identity, and
-   publication fingerprint while retaining the original source artifact and
-   ownership token across repeated ArrTags publications.
-8. Jellyfin's standard image routes then provide authorization, image tags,
+8. It durably records `MutationStarted`, calls `SaveImage`, durably records the
+   repository-update phase, calls the normal item update flow, and then reads
+   back the effective image identity.
+9. Only a verified after identity permits the durable `PublishedArtworkState`
+   commit. The operation is marked `Committed` only after that final state is
+   durable; source and derived artifacts remain until then.
+10. Jellyfin's standard image routes then provide authorization, image tags,
    resizing, and response caching to clients.
-9. Any unavailable source, cancellation, decode failure, size violation, or
+11. Any unavailable source, cancellation, decode failure, size violation, or
    render exception leaves the current usable artwork unchanged.
 
 ArrTags must not write media-folder artwork or Jellyfin's `resized-images`
@@ -365,12 +392,111 @@ the state `Restored` only after the resulting surface is verified. A changed,
 unverifiable, missing, or corrupt baseline leaves the active image untouched and
 results in `OwnershipLost`, `OwnershipUnknown`, or `RestoreBlocked`. If an
 attempted restoration has an uncertain result, ArrTags does not perform another
-automatic mutation; Blocker 2 defines recovery for that case.
+automatic mutation; the associated operation enters `RecoveryBlocked` until the
+postcondition can be reconciled.
 
 The persisted artifact, expected identity, and tokens are sufficient to
 re-evaluate ownership after a normal Jellyfin or plugin restart. This section
-does not define the crash-consistent ordering, journal, or restart reconciliation
-protocol for the operations themselves; those remain Blocker 2.
+does not define a distributed transaction with Jellyfin; the operation protocol
+below provides durable intent, postcondition reconciliation, and fail-closed
+recovery instead.
+
+### Crash-consistent publication and recovery
+
+Jellyfin's `SaveImage`, item repository update, and ArrTags state persistence do
+not share a transaction. ArrTags therefore uses a write-ahead operation protocol
+rather than claiming atomicity it cannot obtain.
+
+#### Durable publication protocol
+
+1. Serialize work by Jellyfin item and image surface and assign a monotonically
+   increasing generation. A stale generation cannot publish or finalize.
+2. Capture the Blocker 1 source artifact, if needed, into a bounded temporary
+   artifact. Validate its format, size, and hash, flush it to stable storage,
+   and promote it to its immutable artifact ID before publication work proceeds.
+   An absent baseline is recorded explicitly.
+3. Render the derived image into a temporary artifact. Validate and hash it,
+   flush it to stable storage, and promote it to the operation's durable
+   `derivedArtifactId`. A crash before this promotion has no Jellyfin side
+   effect and only requires temporary-artifact cleanup.
+4. Write and durably replace an `ArtworkOperation` in `Prepared` phase. The
+   record includes the exact `expectedBeforeIdentity`, candidate after content
+   hash, source/derived artifact IDs, ownership token, publication token,
+   generation, and target final state. This intent is the write-ahead record for
+   all later external mutations.
+5. Re-read the item and active image. If the before identity no longer matches,
+   commit `OwnershipLost` or `OwnershipUnknown` and abort without calling a
+   Jellyfin image mutation API.
+6. Durably advance the operation to `MutationStarted`, then call the supported
+   `SaveImage` API with the durable derived artifact. The phase is written before
+   the call because a crash can occur before the call, during it, or after it.
+7. Durably advance to `RepositoryUpdateStarted`, then call the normal Jellyfin
+   item update flow. This call is replayable for the same item state, but its
+   completion is considered uncertain until readback.
+8. Durably advance to `VerificationPending` and re-read the item image through
+   the supported item-image information and image representation paths. Record
+   the observed after identity only after the effective active image is known.
+9. If the after identity matches the durable candidate and image surface, write
+   the final `PublishedArtworkState` with its new state revision and operation
+   ID. Flush that state before marking the operation `Committed`.
+10. Cleanup is a separate, replayable step after commit. It may remove only
+    temporary or staged artifacts proven not to be the active image. Source
+    artifacts referenced by the committed ownership state remain retained.
+
+The candidate content hash is not treated as proof that Jellyfin stored the
+same representation. The selected Jellyfin ABI and host configuration must be
+validated so the active representation can be read back and compared. If it
+cannot, the operation enters `RecoveryBlocked` rather than guessing.
+
+#### Restart reconciliation
+
+At startup, before new artwork work is accepted for an item/surface, ArrTags
+loads its valid final state and any non-terminal operation record, validates
+artifact integrity, and obtains the current item and active-image identity.
+
+- If the item is absent, ArrTags writes an `ItemRemoved` tombstone and performs
+  no image mutation. It does not replay an old operation if the item later
+  reappears; that item requires a new baseline and operation.
+- If the current identity matches the recorded after identity, or matches the
+  validated candidate after representation, ArrTags ensures the normal item
+  update is persisted, commits the intended final plugin state, and marks the
+  operation `Committed`.
+- If the current identity matches the expected before identity, ArrTags
+  revalidates the generation and lifecycle fence and may retry the same
+  deterministic operation only when that fence permits it. A disable or
+  uninstall fence aborts a prepared publication; a mutation already in flight
+  is reconciled before the guarded restoration operation is created. ArrTags
+  never captures the current image as a new source.
+- If the current identity matches neither before nor after, ArrTags records
+  `OwnershipLost` when the image is observable or `OwnershipUnknown` when it is
+  not. It aborts the operation and never restores, removes, or overwrites that
+  image automatically.
+- If state, the operation record, or an artifact cannot pass integrity checks,
+  ArrTags quarantines the invalid record, enters `RecoveryBlocked`, and performs
+  no automatic image mutation.
+
+If the final state was durably written but the journal was not marked committed,
+the final state and verified active identity take precedence; startup completes
+the journal and performs safe cleanup. If the journal was durably committed but
+the final state is absent or invalid, ArrTags reconstructs it only from the
+operation's verified postcondition and artifacts; otherwise it remains blocked.
+
+#### Disable, uninstall, and item removal
+
+- Disable and uninstall first write a durable lifecycle fence that prevents new
+  publication operations. Existing operations are reconciled to a terminal
+  result before restoration or cleanup begins.
+- A still-owned `Published` state then creates a separate `Restoration`
+  operation with the derived image as its before identity and the retained
+  source or explicit absence as its after target. It uses the same durable
+  phases, readback, and postcondition commit rules.
+- If restoration is blocked, externally changed, or uncertain, ArrTags leaves
+  the active image and recovery records in place. Uninstall must not delete the
+  source artifact or journal needed to recover that state; cleanup is deferred
+  and the incomplete lifecycle result is reported.
+- An `ItemRemoved` event is a hint until the item is re-read. Once absence is
+  confirmed, ArrTags tombstones in-flight operations, performs no Jellyfin image
+  calls, and cleans only plugin-owned artifacts under the retention policy.
 
 ### Rendering constraints
 
@@ -416,8 +542,10 @@ Failures are isolated by layer:
   event indefinitely.
 - Cancellation prevents publication of partial state or partial image output.
 - Non-publication state is versioned and persisted for normal restart
-  re-evaluation; crash-consistent publication and provenance recovery remains
-  deferred to Blocker 2.
+  re-evaluation; non-terminal artwork operations are recovered before new work
+  is accepted.
+- Corrupt, torn, or ambiguous operation records fail closed and never trigger a
+  blind image replay or cleanup.
 
 Inbound webhook endpoints require a configured shared secret or equivalent
 boundary authentication, validate content size and payload shape, and rate-limit
@@ -464,6 +592,9 @@ Jellyfin 12.x ABI and supported Arr versions.
   conditional requests, ranges, and non-200 pass-through responses.
 - Publication through Jellyfin's supported item-image APIs, standard image
   routes, image tags, authorization, and failure behavior.
+- Crash interruption before, during, and after source capture, rendering,
+  `SaveImage`, item persistence, final state persistence, and cleanup; journal
+  corruption; restart reconciliation; lifecycle fences; and item tombstones.
 - Arr authentication, URL bases, timeouts, outages, upgrades, missing files,
   and webhook authentication.
 - Jellyfin Enhanced Quality Tags and Spoiler Guard enabled and disabled.
