@@ -1,0 +1,18 @@
+---
+name: "ArrTags"
+guid: "40322d52-5680-449f-b33e-e01836ee2f46"
+version: "0.1.0.0"
+targetAbi: "12.0.0.0"
+framework: "net10.0"
+overview: "Adds Sonarr and Radarr metadata badges to Jellyfin posters."
+description: >
+  ArrTags reads metadata from independently configured Sonarr and Radarr
+  instances and publishes configurable badges onto Jellyfin poster artwork
+  through Jellyfin's supported item-image APIs. This foundation release
+  registers the plugin and its configuration only.
+category: "General"
+owner: "arrtags"
+artifacts:
+  - "ArrTags.dll"
+changelog: >
+  Initial plugin foundation.

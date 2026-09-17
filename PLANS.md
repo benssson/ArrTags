@@ -2,12 +2,15 @@
 
 ## Project Status
 
-**Status:** Phase 1 planned / pre-implementation
+**Status:** Phase 1 in progress
 
 **Current position:** The goals, V1 architecture, and canonical data model are
-drafted and the architectural blockers are resolved. No implementation milestone
-is complete. The Phase 1 plan (tasks 1.1-1.8 under Milestone 1) is defined and
-Milestone 1 is the next execution target.
+drafted and the architectural blockers are resolved. Task 1.2 (project and test
+scaffold) landed: the plugin builds on `net10.0` against the pinned Jellyfin
+`12.0.0` packages with `targetAbi: 12.0.0.0`, its foundation tests pass without a
+live Arr instance, and discovery/load was validated against a Jellyfin `12.0.0.0`
+host. Task 1.1 (documentation alignment) remains open. Milestone 1 is in
+progress and is the current execution target.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -47,7 +50,7 @@ without modifying original media files or external services.
 
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
-| 1 | Plugin foundation | Not started | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
+| 1 | Plugin foundation | In progress | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
 | 2 | Sonarr & Radarr integration | Not started | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Not started | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Not started | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
@@ -122,6 +125,9 @@ decision is reopened.
 contradictions removed.
 
 #### 1.2 Project and test scaffold
+
+**Status:** Complete (implementation). Intended-host acceptance remains part of
+task 1.8.
 
 **Objective:** Create the minimum reproducible Jellyfin 12 plugin project needed
 for implementation and validation.

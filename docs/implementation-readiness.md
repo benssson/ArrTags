@@ -65,6 +65,16 @@ provenance and artifacts until cleanup is proven safe.
 pinned to Jellyfin's `v12.0` source line. Jellyfin `12.1.0` is a separate source
 and package line and is not silently adopted by this compatibility gate.
 
+The repository `global.json` mirrors the Jellyfin `v12.0` SDK pin. With
+`latestMinor` roll-forward the effective SDK is the latest installed `10.0.x`;
+the foundation build was validated with SDK `10.0.401`. The plugin project pins
+`Jellyfin.Controller` and `Jellyfin.Model` to `12.0.0` with
+`ExcludeAssets="runtime"`; the resolved dependency closure (including
+`Jellyfin.Common`, `Jellyfin.Data`, `Jellyfin.Database.Implementations`,
+`Jellyfin.Extensions`, `Jellyfin.Naming`, and
+`Jellyfin.MediaEncoding.Keyframes`) is asserted against `12.0.0` by a foundation
+test and recorded in `src/ArrTags/packages.lock.json`.
+
 ## Pre-Implementation Actions
 
 No separate pre-implementation prerequisite remains. The compatibility target
@@ -106,10 +116,22 @@ blockers are already resolved and remain checked in the Blockers section above.
   the intended Jellyfin `12.0.0` host; verify plugin discovery and
   `targetAbi: 12.0.0.0` compatibility.
 
-This validation has not run yet. The repository currently contains no `.csproj`,
-plugin manifest, or source project, and the available execution environment has
-neither the `dotnet` CLI nor a Jellyfin server/runtime. The intended host's
-installed .NET runtime patch and OS/runtime packaging also remain unknown.
+An initial plugin foundation now exists. `src/ArrTags` targets `net10.0` against
+the pinned `12.0.0` Jellyfin packages, `build.yaml` declares
+`targetAbi: 12.0.0.0`, and `tests/ArrTags.Tests` checks the manifest ABI, plugin
+identity, and the pinned dependency graph without a live host.
+
+Plugin discovery and load were validated against a Jellyfin `12.0.0.0` host (the
+portable `v12.0` amd64 build) in the execution environment. The host reported
+`Loaded plugin: ArrTags 0.1.0.0`, wrote a plugin `meta.json` with
+`targetAbi: 12.0.0.0` and `status: Active`, completed startup, and disposed the
+plugin cleanly on shutdown.
+
+That host run is environment-dependent evidence, not the intended-host
+acceptance required by the fourth task above. The intended host's installed .NET
+runtime patch and OS/runtime packaging remain unknown, and the plugin entry
+point has no configuration validation, dependency-injection registration, or
+hosted lifecycle yet.
 
 ## Implementation-Time Questions
 

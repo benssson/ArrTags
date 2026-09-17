@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/ArrTags/ArrTags.csproj" />
+  <Project Path="tests/ArrTags.Tests/ArrTags.Tests.csproj" />
+</Solution>
