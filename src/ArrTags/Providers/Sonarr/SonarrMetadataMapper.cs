@@ -244,12 +244,12 @@ public static class SonarrMetadataMapper
             : null;
     }
 
-    private static IReadOnlyList<ArrAudioFeature> MapAudioFeatures(string? audioCodec)
+    private static IReadOnlyList<ArrAudioFeature>? MapAudioFeatures(string? audioCodec)
     {
         var codec = Clean(audioCodec)?.ToUpperInvariant();
         if (codec is null)
         {
-            return Array.Empty<ArrAudioFeature>();
+            return null;
         }
 
         var features = new List<ArrAudioFeature>();

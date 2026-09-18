@@ -109,7 +109,7 @@ leakage.
 
 ### Phase 2 (Sonarr & Radarr integration) - in progress
 
-Tasks 2.1-2.5 are complete. The shared provider-client boundary and connection
+Tasks 2.1-2.6 are complete. The shared provider-client boundary and connection
 identity (task 2.1), dedicated `IHttpClientFactory` client registration
 (task 2.2), and the versioned credential boundary (ADR-005, task 2.3) are
 implemented. The read-only Radarr v3 client probes
@@ -153,9 +153,23 @@ Task 2.5 adds the canonical identity and metadata mapping boundary:
 Radarr's `RadarrMediaInfoResource` DTO now includes the confirmed `width` and
 `height` media-info fields used for inspected resolution mapping.
 
+Task 2.6 hardens canonical unknown-value and custom-value semantics:
+
+- `src/ArrTags/Metadata/BadgeMetadata.cs` - `AudioFeatures` is nullable so an
+  absent feature set is unknown and an empty set is a reported codec with no
+  known feature; the fingerprint distinguishes the two states and the badge
+  schema version is now `2`. Custom badge values are bounded at construction:
+  blank values dropped, control characters removed, at most
+  `MaxCustomBadgeCount` (32) values kept in provider order, and each value
+  truncated to `MaxCustomBadgeLength` (128) characters.
+- `src/ArrTags/Providers/Radarr/RadarrMetadataMapper.cs` and
+  `src/ArrTags/Providers/Sonarr/SonarrMetadataMapper.cs` - return no audio
+  feature set when the audio codec is not reported.
+- `tests/ArrTags.Tests/MetadataMappingTests.cs` - unknown-versus-empty audio
+  features, fingerprint distinction, and custom-value count, order, length, and
+  control-character behavior (7 new tests).
+
 Remaining Phase 2 work:
 
-1. Task 2.6: preserve unknown technical values as unknown rather than false or
-   empty claims, and bound custom values before they can reach a badge.
-2. Task 2.7: provider authentication-failure, unavailability, malformed,
+1. Task 2.7: provider authentication-failure, unavailability, malformed,
    optional-field, version-drift, cancellation, and retry tests.

@@ -405,10 +405,10 @@ value supports an explicit unknown state.
 | `videoCodec` | String | Optional | Sonarr/Radarr | Normalized codec where the provider reports it. |
 | `audioCodec` | String | Optional | Sonarr/Radarr | Normalized codec, such as TrueHD, DTS-HD MA, EAC3, AAC, or unknown. |
 | `audioChannels` | Decimal number | Optional | Sonarr/Radarr | Channel count; do not infer Atmos solely from channel count. |
-| `audioFeatures` | Set of `Atmos`, `DTS`, `DTS-HD`, `DTS-X`, or future feature names | Optional | Sonarr/Radarr or Derived | Feature detection must retain unknown when source data is incomplete. |
+| `audioFeatures` | Set of `Atmos`, `DTS`, `DTS-HD`, `DTS-X`, or future feature names | Optional | Sonarr/Radarr or Derived | Feature detection must retain unknown when source data is incomplete; an absent set is unknown and an empty set is a reported codec with no known feature. |
 | `source` | Source descriptor | Optional | Sonarr/Radarr | Release source such as web, WEB-DL, WEBRip, HDTV, Blu-ray, or remux. |
 | `upgradePending` | Tri-state flag | Optional | Sonarr/Radarr | Maps to `qualityCutoffNotMet`; it describes policy state, not observed quality. |
-| `customBadges` | Ordered set of custom metadata values | Optional | Provider/configuration | Custom-format names or configured provider values, bounded and sanitized. |
+| `customBadges` | Ordered set of custom metadata values | Optional | Provider/configuration | Custom-format names or configured provider values. Bounded to 32 values of at most 128 characters; blank values and control characters are removed. |
 | `extensions` | Namespaced extension map | Optional | Additional providers/generated | Future metadata that an older renderer may ignore. |
 | `metadataFingerprint` | Opaque fingerprint | Yes | Generated | Includes every record/file identity component, badge-affecting values, and their schema version. |
 
@@ -992,9 +992,11 @@ making existing fields provider-specific.
 
 Technical flags use `true`, `false`, or `unknown` where source absence is
 meaningful. A provider may explicitly report that a feature is absent, but a
-missing `mediaInfo` object must result in `unknown`. A renderer may hide unknown
-badges, use a configured placeholder, or select a fallback definition; it must
-not display a negative assertion based only on missing data.
+missing `mediaInfo` object must result in `unknown`. The optional audio feature
+set follows the same rule: an absent (`null`) set is unknown, while an empty set
+means the provider reported a codec with no known feature. A renderer may hide
+unknown badges, use a configured placeholder, or select a fallback definition;
+it must not display a negative assertion based only on missing data.
 
 ### Quality profile separation
 

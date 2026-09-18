@@ -12,15 +12,18 @@ Completed in Phase 2 so far:
 - 2.5 Canonical `ArrProvider`/`ArrConnection`/`BadgeMetadata` mapping with
   connection-scoped Sonarr and Radarr record/file identity, actual-file quality
   semantics, and no provider DTO leakage.
+- 2.6 Explicit unknown audio-feature state and bounded, sanitized custom badge
+  values at the canonical metadata boundary.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 135 automated tests.
+- Passes 142 automated tests.
 
 Next task:
 
-- 2.6 — Preserve unknown technical values as unknown rather than false or empty
-  claims, and bound custom values before they can reach a badge.
+- 2.7 — Provider failure-matrix tests for authentication failures, unavailable
+  services, malformed responses, optional fields, version drift, cancellation,
+  and retries.

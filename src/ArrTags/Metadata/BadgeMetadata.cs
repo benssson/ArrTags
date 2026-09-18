@@ -19,12 +19,25 @@ namespace ArrTags.Metadata;
 public sealed class BadgeMetadata
 {
     /// <summary>
-    /// The current normalized metadata shape version.
+    /// The current normalized metadata shape version. Version 2 made the audio
+    /// feature set nullable so an unreported set is unknown rather than an empty
+    /// confirmed value.
     /// </summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
-    private static readonly IReadOnlySet<ArrAudioFeature> NoAudioFeatures =
-        Array.Empty<ArrAudioFeature>().ToFrozenSet();
+    /// <summary>
+    /// The maximum number of provider custom badge values retained in canonical
+    /// metadata. Excess values are dropped in provider order so an unbounded
+    /// provider response cannot flow into a badge or its fingerprint.
+    /// </summary>
+    public const int MaxCustomBadgeCount = 32;
+
+    /// <summary>
+    /// The maximum length of a single provider custom badge value. Longer
+    /// values are truncated so one value cannot dominate a badge. This is a
+    /// defensive metadata bound, not the renderer's display or truncation policy.
+    /// </summary>
+    public const int MaxCustomBadgeLength = 128;
 
     private static readonly IReadOnlyList<string> NoCustomBadges =
         Array.Empty<string>();
@@ -92,14 +105,10 @@ public sealed class BadgeMetadata
         AudioChannels = audioChannels;
         Source = source;
         UpgradePending = upgradePending;
-        AudioFeatures = audioFeatures is null ? NoAudioFeatures : audioFeatures.ToFrozenSet();
+        AudioFeatures = audioFeatures?.ToFrozenSet();
         CustomBadges = customBadges is null
             ? NoCustomBadges
-            : customBadges
-                .Where(badge => !string.IsNullOrWhiteSpace(badge))
-                .Select(badge => badge.Trim())
-                .ToList()
-                .AsReadOnly();
+            : BoundCustomBadges(customBadges);
         Extensions = extensions is null
             ? NoExtensions
             : extensions.ToFrozenDictionary(StringComparer.Ordinal);
@@ -164,9 +173,12 @@ public sealed class BadgeMetadata
     public double? AudioChannels { get; }
 
     /// <summary>
-    /// Gets the derived audio feature set.
+    /// Gets the derived audio feature set. <see langword="null"/> means the
+    /// source did not report usable audio codec data and the feature state is
+    /// unknown; an empty set means the source reported a codec for which no
+    /// known feature was detected.
     /// </summary>
-    public IReadOnlySet<ArrAudioFeature> AudioFeatures { get; }
+    public IReadOnlySet<ArrAudioFeature>? AudioFeatures { get; }
 
     /// <summary>
     /// Gets the normalized release source.
@@ -180,7 +192,10 @@ public sealed class BadgeMetadata
     public bool? UpgradePending { get; }
 
     /// <summary>
-    /// Gets the ordered custom metadata values.
+    /// Gets the ordered, bounded custom metadata values. Blank values and
+    /// control characters are removed; at most
+    /// <see cref="MaxCustomBadgeCount"/> values of at most
+    /// <see cref="MaxCustomBadgeLength"/> characters are retained.
     /// </summary>
     public IReadOnlyList<string> CustomBadges { get; }
 
@@ -210,7 +225,7 @@ public sealed class BadgeMetadata
         Append(builder, "videoCodec", VideoCodec);
         Append(builder, "audioCodec", AudioCodec);
         Append(builder, "audioChannels", AudioChannels?.ToString(CultureInfo.InvariantCulture));
-        Append(builder, "audioFeatures", string.Join(",", AudioFeatures.OrderBy(feature => feature)));
+        Append(builder, "audioFeatures", DescribeAudioFeatures(AudioFeatures));
         Append(builder, "source", Source);
         Append(builder, "upgradePending", DescribeTriState(UpgradePending));
         Append(builder, "customBadges", string.Join(",", CustomBadges));
@@ -267,5 +282,69 @@ public sealed class BadgeMetadata
     private static string DescribeTriState(bool? value)
     {
         return value is null ? "unknown" : value.Value ? "true" : "false";
+    }
+
+    private static string DescribeAudioFeatures(IReadOnlySet<ArrAudioFeature>? audioFeatures)
+    {
+        return audioFeatures is null
+            ? "unknown"
+            : string.Join(",", audioFeatures.OrderBy(feature => feature));
+    }
+
+    private static IReadOnlyList<string> BoundCustomBadges(IEnumerable<string> customBadges)
+    {
+        var bounded = new List<string>();
+        foreach (var badge in customBadges)
+        {
+            if (bounded.Count >= MaxCustomBadgeCount)
+            {
+                break;
+            }
+
+            var value = SanitizeBadge(badge);
+            if (value is null)
+            {
+                continue;
+            }
+
+            bounded.Add(value.Length <= MaxCustomBadgeLength
+                ? value
+                : Truncate(value, MaxCustomBadgeLength));
+        }
+
+        return bounded.AsReadOnly();
+    }
+
+    private static string? SanitizeBadge(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var builder = new StringBuilder(value.Length);
+        foreach (var character in value)
+        {
+            if (!char.IsControl(character))
+            {
+                builder.Append(character);
+            }
+        }
+
+        var sanitized = builder.ToString().Trim();
+        return sanitized.Length == 0 ? null : sanitized;
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        var length = maxLength;
+        if (length < value.Length
+            && char.IsHighSurrogate(value[length - 1])
+            && char.IsLowSurrogate(value[length]))
+        {
+            length--;
+        }
+
+        return value[..length];
     }
 }

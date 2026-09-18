@@ -31,10 +31,10 @@ Gate 1 is met. Milestone 2 is in progress: tasks 2.1 (shared provider-client
 boundary and connection identity), 2.2 (dedicated `IHttpClientFactory` client
 registration), 2.3 (versioned credential boundary and read-only Radarr v3
 reads), 2.4 (read-only Sonarr v3 series, episode, and episode-file reads
-with the validated episode-file join), and 2.5 (canonical
+with the validated episode-file join), 2.5 (canonical
 `ArrProvider`/`ArrConnection`/`BadgeMetadata` mapping with connection-scoped
-record/file identity) are complete, with unknown-value and custom-value
-semantics (2.6) and provider failure tests (2.7) remaining.
+record/file identity), and 2.6 (explicit unknown technical values and bounded
+custom values) are complete, with provider failure tests (2.7) remaining.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -472,7 +472,7 @@ models.
   joining files by the validated episode file identifier.
 - [x] 2.5 Map provider data into `ArrProvider`, `ArrConnection`, and
   `BadgeMetadata` without leaking provider DTOs past the boundary.
-- [ ] 2.6 Preserve unknown technical values as unknown rather than false or empty
+- [x] 2.6 Preserve unknown technical values as unknown rather than false or empty
   claims, and bound custom values before they can reach a badge.
 - [ ] 2.7 Add tests for authentication failures, unavailable services, malformed
   responses, optional fields, version drift, cancellation, and retries.
@@ -553,8 +553,8 @@ than an unrelated file) when the episode has no current file or the referenced
 identifier is missing. Provider DTOs stay in `ArrTags.Providers.Sonarr` and do
 not enter canonical state. Tests cover the reads, the join, and bounded
 failures without a live Arr instance. Canonical `BadgeMetadata` mapping was
-completed in task 2.5; unknown-value and custom-value semantics remain task 2.6,
-and provider failure-matrix tests remain task 2.7.
+completed in task 2.5; unknown-value and custom-value semantics were completed
+in task 2.6, and provider failure-matrix tests remain task 2.7.
 
 **Task 2.5 status:** Complete. The canonical identity and metadata models are
 implemented in `src/ArrTags/Providers` and `src/ArrTags/Metadata`. Connection
@@ -576,7 +576,24 @@ schema version, the provider and connection-scoped identity, and all
 badge-affecting values, excluding the observation timestamp and any credential.
 Provider DTOs remain in `ArrTags.Providers.Radarr` and `ArrTags.Providers.Sonarr`
 and do not appear in any canonical type. Custom-value bounding and three-state
-unknown hardening remain task 2.6; provider failure-matrix tests remain task 2.7.
+unknown hardening were completed in task 2.6; provider failure-matrix tests
+remain task 2.7.
+
+**Task 2.6 status:** Complete. Canonical `BadgeMetadata` now preserves unknown
+technical values explicitly. `AudioFeatures` is nullable: `null` means the
+provider did not report usable audio codec data, while an empty set means a
+reported codec yielded no known feature. The metadata fingerprint distinguishes
+those two states, and the badge schema version was incremented to 2 to mark the
+meaning change. `RadarrMetadataMapper` and `SonarrMetadataMapper` return no
+feature set when the audio codec is absent. Custom badge values are bounded at
+the canonical boundary before they can reach a badge: blank values are dropped,
+control characters are removed, at most `MaxCustomBadgeCount` (32) values are
+kept in provider order, and each value is truncated to `MaxCustomBadgeLength`
+(128) characters. That is a defensive metadata bound, not the renderer's
+display/truncation policy, which remains decision gate DG-3.
+`MetadataMappingTests` covers unknown-versus-empty audio features, the
+fingerprint distinction, and custom-value count, order, length, and
+control-character behavior. Provider failure-matrix tests remain task 2.7.
 
 **Acceptance criteria:**
 

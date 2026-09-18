@@ -54,6 +54,7 @@ public class MetadataMappingTests
         Assert.Equal("x265", metadata.VideoCodec);
         Assert.Equal("TrueHD Atmos", metadata.AudioCodec);
         Assert.Equal(8, metadata.AudioChannels);
+        Assert.NotNull(metadata.AudioFeatures);
         Assert.Contains(ArrAudioFeature.Atmos, metadata.AudioFeatures);
 
         Assert.Equal("bluray", metadata.Source);
@@ -81,6 +82,7 @@ public class MetadataMappingTests
         Assert.Null(metadata.VideoCodec);
         Assert.Null(metadata.AudioCodec);
         Assert.Null(metadata.AudioChannels);
+        Assert.Null(metadata.AudioFeatures);
         Assert.Null(metadata.UpgradePending);
         Assert.Empty(metadata.CustomBadges);
     }
@@ -223,6 +225,131 @@ public class MetadataMappingTests
         var metadata = RadarrMetadataMapper.Map(connection, BuildMovie(fileId: 42), file, ObservedAt);
 
         Assert.Equal(new[] { "Second", "First" }, metadata.CustomBadges);
+    }
+
+    [Fact]
+    public void RadarrAudioFeaturesAreUnknownWhenNoCodecIsReported()
+    {
+        var connection = BuildConnection(ArrProviderKind.Radarr);
+        var file = new RadarrMovieFileResource
+        {
+            Id = 42,
+            MediaInfo = new RadarrMediaInfoResource { VideoCodec = "x265" },
+        };
+
+        var metadata = RadarrMetadataMapper.Map(connection, BuildMovie(fileId: 42), file, ObservedAt);
+
+        Assert.Null(metadata.AudioFeatures);
+    }
+
+    [Fact]
+    public void RadarrEmptyAudioFeaturesMeansReportedWithoutKnownFeature()
+    {
+        var connection = BuildConnection(ArrProviderKind.Radarr);
+        var file = new RadarrMovieFileResource
+        {
+            Id = 42,
+            MediaInfo = new RadarrMediaInfoResource { AudioCodec = "aac" },
+        };
+
+        var metadata = RadarrMetadataMapper.Map(connection, BuildMovie(fileId: 42), file, ObservedAt);
+
+        Assert.NotNull(metadata.AudioFeatures);
+        Assert.Empty(metadata.AudioFeatures);
+    }
+
+    [Fact]
+    public void SonarrAudioFeaturesAreUnknownWhenNoCodecIsReported()
+    {
+        var connection = BuildConnection(ArrProviderKind.Sonarr);
+        var file = new SonarrEpisodeFileResource
+        {
+            Id = 418,
+            SeriesId = 12,
+            MediaInfo = new SonarrMediaInfoResource { VideoCodec = "h264" },
+        };
+
+        var metadata = SonarrMetadataMapper.Map(
+            connection, BuildSeries(), BuildEpisode(fileId: 418), file, ObservedAt);
+
+        Assert.Null(metadata.AudioFeatures);
+    }
+
+    [Fact]
+    public void FingerprintDistinguishesUnknownFromEmptyAudioFeatures()
+    {
+        var connection = BuildConnection(ArrProviderKind.Radarr);
+        var identity = RadarrMetadataMapper.MapIdentity(connection, BuildMovie(fileId: 42));
+
+        var unknown = new BadgeMetadata(connection.Provider, identity, ObservedAt);
+        var none = new BadgeMetadata(
+            connection.Provider,
+            identity,
+            ObservedAt,
+            audioFeatures: Array.Empty<ArrAudioFeature>());
+
+        Assert.Null(unknown.AudioFeatures);
+        Assert.NotNull(none.AudioFeatures);
+        Assert.Empty(none.AudioFeatures);
+        Assert.NotEqual(unknown.MetadataFingerprint, none.MetadataFingerprint);
+    }
+
+    [Fact]
+    public void CustomBadgesAreBoundedByCountInProviderOrder()
+    {
+        var connection = BuildConnection(ArrProviderKind.Radarr);
+        var formats = Enumerable.Range(0, BadgeMetadata.MaxCustomBadgeCount + 5)
+            .Select(index => new RadarrCustomFormatResource { Name = "Format " + index })
+            .ToArray();
+
+        var metadata = RadarrMetadataMapper.Map(
+            connection,
+            BuildMovie(fileId: 42),
+            BuildMovieFile(id: 42, customFormats: formats),
+            ObservedAt);
+
+        Assert.Equal(BadgeMetadata.MaxCustomBadgeCount, metadata.CustomBadges.Count);
+        Assert.Equal("Format 0", metadata.CustomBadges[0]);
+        Assert.Equal(
+            "Format " + (BadgeMetadata.MaxCustomBadgeCount - 1),
+            metadata.CustomBadges[^1]);
+    }
+
+    [Fact]
+    public void CustomBadgesAreBoundedByLength()
+    {
+        var connection = BuildConnection(ArrProviderKind.Radarr);
+        var formats = new[]
+        {
+            new RadarrCustomFormatResource
+            {
+                Name = new string('x', BadgeMetadata.MaxCustomBadgeLength + 10),
+            },
+        };
+
+        var metadata = RadarrMetadataMapper.Map(
+            connection,
+            BuildMovie(fileId: 42),
+            BuildMovieFile(id: 42, customFormats: formats),
+            ObservedAt);
+
+        var badge = Assert.Single(metadata.CustomBadges);
+        Assert.Equal(BadgeMetadata.MaxCustomBadgeLength, badge.Length);
+    }
+
+    [Fact]
+    public void CustomBadgesDropControlCharacters()
+    {
+        var connection = BuildConnection(ArrProviderKind.Radarr);
+        var formats = new[] { new RadarrCustomFormatResource { Name = "Bad\n\tName" } };
+
+        var metadata = RadarrMetadataMapper.Map(
+            connection,
+            BuildMovie(fileId: 42),
+            BuildMovieFile(id: 42, customFormats: formats),
+            ObservedAt);
+
+        Assert.Equal(new[] { "BadName" }, metadata.CustomBadges);
     }
 
     [Fact]

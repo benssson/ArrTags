@@ -318,6 +318,9 @@ Badge inputs come from the current Arr file resource:
 - Actual quality comes from the file's quality model.
 - Technical values such as codec, dynamic range, audio, language, release
   group, and custom-format score come from the file resource where available.
+- Unreported technical values remain explicitly unknown rather than being
+  presented as `false` or as an empty confirmed value; provider custom values
+  are bounded before they enter canonical metadata.
 - `qualityCutoffNotMet` is the authoritative upgrade-pending signal.
 - Quality profiles describe requested policy and must not be presented as actual
   file quality.
