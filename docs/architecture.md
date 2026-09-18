@@ -169,7 +169,10 @@ The persisted configuration includes:
 
 - Independently enabled Sonarr and Radarr connections.
 - Base URL, API key, timeout, and explicit TLS exception policy per connection.
-- Enabled libraries and eligible image/item types.
+- Enabled libraries (collection-folder/library identifiers, not display names),
+  eligible image/item types, and V1 badge surfaces. V1 badge-bearing item types
+  are Movie and Episode posters; Series and Season are structural only and
+  aggregation remains post-V1 (ADR-006).
 - Badge fields, placement, colors, scale, margins, output limits, and renderer
   version settings.
 - Operational limits supplied by `OperationalLimits`: queue capacity, provider
@@ -731,7 +734,9 @@ The following are intentionally not guessed by this architecture:
 1. Exact Jellyfin 12 patch, package versions, target framework, and plugin
    manifest `targetAbi`.
 2. Initial supported item/image types and whether series/season posters use an
-   explicit aggregate policy or remain disabled.
+   explicit aggregate policy or remain disabled. Resolved by ADR-006: V1 badge
+   surfaces are Movie and Episode posters; Series/Season are structural only and
+   aggregation remains post-V1.
 3. Exact badge fields, text truncation, placement, color/contrast rules, output
    format, and requested-size policy.
 4. Whether episode matching permits number fallback for all libraries or only
@@ -750,11 +755,12 @@ These decisions must be recorded in `docs/decisions.md` or
 `docs/implementation-readiness.md` and reflected in a future architecture
 revision before they become implementation assumptions. Item 1 (the pinned
 Jellyfin `12.0.0` / `net10.0` / `targetAbi: 12.0.0.0` compatibility target) is
-resolved in `docs/implementation-readiness.md`. Item 6 (foundation operational
-limits) is resolved by ADR-004, with the accepted values recorded in section 12.
-The credential persistence and access boundary is resolved by ADR-005. The
-remaining webhook decision is route exposure and request policy, not secret
-storage.
+resolved in `docs/implementation-readiness.md`. Item 2 (V1 badge surfaces and
+the library scope identifier) is resolved by ADR-006. Item 6 (foundation
+operational limits) is resolved by ADR-004, with the accepted values recorded
+in section 12. The credential persistence and access boundary is resolved by
+ADR-005. The remaining webhook decision is route exposure and request policy,
+not secret storage.
 The remaining items stay open and are tracked by the decision gates in
 `PLANS.md`.
 

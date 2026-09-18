@@ -650,8 +650,10 @@ Radarr record using stable provider identity first and explicit fallback rules.
 
 **Tasks:**
 
-- [ ] Build Jellyfin `MediaIdentity` snapshots from supported item types and
-  library scope.
+- [ ] Build Jellyfin `MediaIdentity` snapshots from the supported canonical item
+  types (`Movie`, `Series`, `Season`, `Episode`) and library scope. Library
+  scope entries are collection-folder/library identifiers, and V1 badge surfaces
+  are Movie and Episode posters; Series/Season are structural only (ADR-006).
 - [ ] Implement candidate selection, evidence recording, and deterministic
   `MediaMatch` fingerprints.
 - [ ] Reject zero-candidate and multiple-candidate matches rather than guessing
@@ -902,7 +904,7 @@ an implementation assumption.
 | Gate | Decision | Required before |
 | --- | --- | --- |
 | DG-1 | Exact Jellyfin 12 patch, package versions, target framework, and manifest ABI. | Milestone 1 implementation |
-| DG-2 | Initial supported item and image types, including whether series/season posters are disabled or use an explicit aggregate policy. | Milestones 3-5 |
+| DG-2 | Initial supported item and image types, including whether series/season posters are disabled or use an explicit aggregate policy. Resolved by ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are structural and aggregation remains post-V1. | Milestones 3-5 |
 | DG-3 | Initial badge fields, templates, placement, contrast, output format, text limits, and request-size policy. | Milestone 4 |
 | DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. | Milestone 3 |
 | DG-5 | Whether path mappings are needed, and their connection-scoped representation. | Milestone 3 |

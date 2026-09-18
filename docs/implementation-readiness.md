@@ -113,7 +113,7 @@ completed as Phase 1 implementation and acceptance work.
 | --- | --- | --- | --- |
 | 1 | Remove or demote the duplicate architecture section and align phase descriptions. | Should become a Phase 1 implementation task | Complete the documentation cleanup with the foundation work; it is not a runtime-safety gate. |
 | 2 | Extend the canonical match model for Sonarr series, episode, and episode-file identity. | Should become a Phase 1 implementation task | Establish the explicit model and interfaces before provider and matching code consumes them. |
-| 3 | Decide V1 item/image scope and aggregate quality behavior. | Implementation-time decision | Decide before the matching, rendering, and artwork milestones. Series/season aggregate quality remains in the Post-V1 backlog unless an explicit V1 policy is adopted. |
+| 3 | Decide V1 item/image scope and aggregate quality behavior. | Resolved for V1 | Resolved by ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are structural only and aggregate quality remains in the Post-V1 backlog. Remaining image-surface details (indexed images, alternate versions, stacked parts) stay implementation-time questions. |
 | 4 | Decide episode policies for specials, anime/absolute numbering, double episodes, multi-episode files, remote items, and path fallback. | Implementation-time decision | Decide and test before enabling the corresponding matching paths. |
 | 5 | Define connection-to-library routing and ambiguity behavior for multiple Arr instances. | Implementation-time decision | Finalize before multi-connection matching and reconciliation work. |
 | 6 | Define catalogue caching, provider inventory, provider-version support, and cross-provider normalization. | Implementation-time decision | Define during provider integration and cover the result with bounded inventory and contract tests. |
@@ -129,6 +129,8 @@ completed as Phase 1 implementation and acceptance work.
   versions, and plugin `targetAbi` are pinned and documented above.
 - [x] API-key and webhook-secret persistence and versioned access are defined
   without exposing values to canonical state or workers' mutable configuration.
+- [x] V1 badge surfaces are Movie and Episode posters, and library scope uses
+  Jellyfin collection-folder/library identifiers (ADR-006).
 
 The former pre-implementation actions that became Phase 1 implementation tasks
 (1, 2, and 9) are complete. The remaining former actions are implementation-time
@@ -207,8 +209,10 @@ that introduce them.
 - Validate `SaveImage` storage behavior and the selected source-artwork capture
   and restoration implementation on the target host configuration.
 - Choose the renderer library, image format, fonts, and bounded artifact storage.
-- Decide V1 item/image scope, including eligible poster surfaces, indexed images,
-  alternate versions, stacked parts, and any series/season policy.
+- Decide the remaining V1 image-surface details (indexed images, alternate
+  versions, stacked parts). Item types and badge surfaces are resolved by
+  ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are
+  structural only.
 - Decide episode policies for specials, anime/absolute numbering, double
   episodes, multi-episode files, remote items, and path fallback.
 - Define connection-to-library routing and ambiguity behavior for multiple

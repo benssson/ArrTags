@@ -238,7 +238,7 @@ Jellyfin entity.
 | --- | --- | --- | --- | --- |
 | `jellyfinItemId` | Jellyfin item identifier | Yes | Jellyfin | Stable only within the Jellyfin server; use as the local subject key. |
 | `itemType` | `Movie`, `Series`, `Season`, `Episode`, or supported video type | Yes | Jellyfin | Determines which provider and matching policy applies. |
-| `libraryId` | Jellyfin library identifier | Optional | Jellyfin | Used for library eligibility and configuration scope. |
+| `libraryId` | Jellyfin collection-folder/library identifier | Optional | Jellyfin | The owning collection-folder (library) identifier, not its display name; used for library eligibility and configuration scope (ADR-006). |
 | `providerIds` | Map of provider name to external identifier | Optional | Jellyfin | Prefer normalized TMDb, IMDb, and TVDB IDs; absence is valid. |
 | `title` | Display title | Optional | Jellyfin | Candidate or diagnostic data only; not sufficient identity. |
 | `productionYear` | Integer year | Optional | Jellyfin | Tie-breaker or diagnostics; never sole proof of a match. |
@@ -714,7 +714,7 @@ badge selection, rendering, cache policy, and update behavior.
 | --- | --- | --- | --- | --- |
 | `configurationVersion` | Version identifier | Yes | Configuration/plugin | Increments when the effective configuration changes. |
 | `connections` | ArrConnection set | Yes | Configuration | Sonarr and Radarr can be independently enabled. |
-| `libraryScope` | Set of Jellyfin libraries/item types | Yes | Configuration | Limits matching and rendering eligibility. |
+| `libraryScope` | Set of Jellyfin collection-folder/library identifiers and eligible item types | Yes | Configuration | Entries are collection-folder/library identifiers, not display names; limits matching and rendering eligibility. V1 badge surfaces are Movie and Episode posters; Series/Season are structural only (ADR-006). An empty set means no library restriction. |
 | `badgeDefinitions` | Ordered BadgeDefinition set | Yes | Configuration | Defines what metadata is displayed and how. |
 | `renderingPolicy` | Render size, format, placement, and limits | Yes | Configuration | Output-affecting values belong in the configuration fingerprint. |
 | `cachePolicy` | TTL, stale window, size, and eviction limits | Yes | Configuration | Separate metadata freshness from artwork retention. |
