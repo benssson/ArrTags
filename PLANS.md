@@ -49,8 +49,9 @@ verified.
 
 Decision Gate DG-3 is now resolved by ADR-009. The V1 badge fields, priority,
 poster layout, typography, contrast, text bounds, PNG output, scaling, and
-pass-through behavior are fixed for implementation. Phase 4 may begin; its
-renderer implementation and tests remain incomplete.
+pass-through behavior are fixed for implementation. Phase 4 has begun: task 4.1
+implements the provider-neutral metadata selectors against `BadgeMetadata`; the
+remaining renderer implementation and tests remain incomplete.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -93,7 +94,7 @@ without modifying original media files or external services.
 | 1 | Plugin foundation | Complete | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
-| 4 | Badge rendering | Not started | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
+| 4 | Badge rendering | In progress | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Not started | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
@@ -885,7 +886,7 @@ Radarr, or Jellyfin artwork storage.
 
 **Tasks:**
 
-- [ ] Implement metadata selectors against `BadgeMetadata`, not provider DTO
+- [x] Implement metadata selectors against `BadgeMetadata`, not provider DTO
   paths.
 - [x] Define the initial badge field set, text rules, contrast behavior,
   placement, scale, margins, and output format policy.
@@ -915,6 +916,18 @@ Radarr, or Jellyfin artwork storage.
 - [ ] Add golden-image, byte-determinism, PNG-contract, and cross-runtime
   tolerance tests with synthetic fixtures and no auto-approval of changed
   goldens (ADR-010).
+
+**Task 4.1 status:** Complete. The provider-neutral `BadgeSelector` vocabulary
+(Quality, Resolution, DynamicRange, Source, VideoCodec, Audio, CustomBadge, and
+UpgradePending) is resolved against canonical `BadgeMetadata` by
+`BadgeSelectorResolver`. Resolution reads only the canonical model, emits
+technical values in the ADR-009 priority order, builds the composite audio value
+from confirmed features then codec then channel count, replaces the generic
+dynamic-range label with `DV` only when Dolby Vision is confirmed, produces one
+candidate per retained custom value, and treats `UpgradePending` as a separate
+`UPGRADE` status only when explicitly true. Unknown and absent values are
+omitted rather than rendered as placeholders or inferred negatives. Build and
+test pass with 0 warnings and 355 passing tests (15 new selector tests).
 
 **Task 4.2 status:** Complete as the DG-3 documentation decision. ADR-009 fixes
 the V1 selector vocabulary, field priority, Movie/Episode Primary-poster
