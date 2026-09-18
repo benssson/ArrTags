@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 next
+**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (task 3.1 complete)
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -77,7 +77,7 @@ without modifying original media files or external services.
 | --- | --- | --- | --- |
 | 1 | Plugin foundation | Complete | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
-| 3 | Media matching | Not started | Eligible movies, series, and episodes match only with validated identity evidence. |
+| 3 | Media matching | In progress | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Not started | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Not started | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
@@ -650,20 +650,38 @@ Radarr record using stable provider identity first and explicit fallback rules.
 
 **Tasks:**
 
-- [ ] Build Jellyfin `MediaIdentity` snapshots from the supported canonical item
-  types (`Movie`, `Series`, `Season`, `Episode`) and library scope. Library
+- [x] 3.1 Build Jellyfin `MediaIdentity` snapshots from the supported canonical
+  item types (`Movie`, `Series`, `Season`, `Episode`) and library scope. Library
   scope entries are collection-folder/library identifiers, and V1 badge surfaces
   are Movie and Episode posters; Series/Season are structural only (ADR-006).
-- [ ] Implement candidate selection, evidence recording, and deterministic
+- [ ] 3.2 Implement candidate selection, evidence recording, and deterministic
   `MediaMatch` fingerprints.
-- [ ] Reject zero-candidate and multiple-candidate matches rather than guessing
-  from title or year.
-- [ ] Implement the documented movie, series, and episode matching order.
-- [ ] Define and test the numbering policy for specials, anime, and multi-episode
-  records before enabling number fallback.
-- [ ] Add configured path normalization only if the configuration decision gate
-  approves it; never assume host and container paths are equivalent.
-- [ ] Verify that local Arr record and file IDs are always scoped by connection.
+- [ ] 3.3 Reject zero-candidate and multiple-candidate matches rather than
+  guessing from title or year.
+- [ ] 3.4 Implement the documented movie, series, and episode matching order.
+- [ ] 3.5 Define and test the numbering policy for specials, anime, and
+  multi-episode records before enabling number fallback.
+- [ ] 3.6 Add configured path normalization only if the configuration decision
+  gate approves it; never assume host and container paths are equivalent.
+- [ ] 3.7 Verify that local Arr record and file IDs are always scoped by
+  connection.
+
+**Task 3.1 status:** Complete. Canonical `MediaIdentity` snapshots (item type,
+Jellyfin item id, collection-folder/library id, normalized provider ids, title,
+production year, parent-series context, raw season/episode/end numbers, raw
+location and media-source summary, and a Jellyfin source fingerprint) are built
+for Movie, Series, Season, and Episode in `src/ArrTags/Media`. Library scope is
+applied deterministically against collection-folder/library identifiers: an
+empty scope means no restriction, and a non-empty scope with an unresolvable
+library fails closed. V1 badge-surface eligibility remains limited to Movie and
+Episode posters and honours the configured poster flags; Series and Season stay
+structural and produce no badge. Provider DTOs and provider-specific concepts
+are excluded, and the builder captures raw Jellyfin facts only, leaving DG-4
+episode-numbering policy and DG-5 path mapping to later tasks. Jellyfin library
+lookups are isolated behind the `IMediaLibraryResolver` boundary so the snapshot
+logic is covered without a live host. Remaining Milestone 3 tasks (candidate
+selection, evidence, deterministic `MediaMatch` fingerprints, and the matching
+order) are not started.
 
 **Acceptance criteria:**
 

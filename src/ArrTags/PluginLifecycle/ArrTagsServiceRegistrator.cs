@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using ArrTags.Configuration;
+using ArrTags.Media;
 using ArrTags.Providers;
 using ArrTags.Secrets;
 using ArrTags.State;
@@ -30,6 +31,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             static serviceProvider => serviceProvider.GetRequiredService<ConfigurationSnapshotService>());
         serviceCollection.AddSingleton(CreateStateRepository);
         serviceCollection.TryAddSingleton<ILibraryEventSource, JellyfinLibraryEventSource>();
+        serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
     }
