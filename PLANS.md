@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1, 3.2, and 3.3 complete)
+**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1, 3.2, 3.3, and 3.4 complete)
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -38,8 +38,10 @@ custom values), and provider failure-matrix tests (2.7) are complete. All Phase 
 tasks meet their acceptance criteria and Gate 2 is met. Phase 3 media matching is
 in progress: tasks 3.1 (canonical `MediaIdentity` snapshots), 3.2
 (provider-neutral candidate selection, evidence recording, and deterministic
-`MediaMatch` fingerprints), and 3.3 (zero- and multiple-candidate rejection with
-the match status policy) are complete, and the Milestone 3 gate is not yet met.
+`MediaMatch` fingerprints), 3.3 (zero- and multiple-candidate rejection with
+the match status policy), and 3.4 (the documented movie, series, and episode
+matching order with provider-specific candidate assembly) are complete, and the
+Milestone 3 gate is not yet met.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -662,7 +664,7 @@ Radarr record using stable provider identity first and explicit fallback rules.
   `MediaMatch` fingerprints.
 - [x] 3.3 Reject zero-candidate and multiple-candidate matches rather than
   guessing from title or year.
-- [ ] 3.4 Implement the documented movie, series, and episode matching order.
+- [x] 3.4 Implement the documented movie, series, and episode matching order.
 - [ ] 3.5 Define and test the numbering policy for specials, anime, and
   multi-episode records before enabling number fallback.
 - [ ] 3.6 Add configured path normalization only if the configuration decision
@@ -722,9 +724,39 @@ are never resolved by falling back to candidate title or production year. A
 candidate's connection-scoped `ArrRecordIdentity`, and records the agreeing
 provider identifier only for a `ProviderId` decision, so `Number` or
 `ConfiguredPath` decisions add no provider identifiers. Provider-specific
-candidate assembly and the documented movie/series/episode rule order (task 3.4),
-the episode numbering policy (task 3.5), configured path mapping (task 3.6), and
-the connection-scope verification task (3.7) remain to be implemented.
+candidate assembly and the documented movie/series/episode rule order were
+completed in task 3.4; the episode numbering policy (task 3.5), configured path
+mapping (task 3.6), and the connection-scope verification task (3.7) remain to
+be implemented.
+
+**Task 3.4 status:** Complete. The documented matching order is implemented in
+`src/ArrTags/Matching/MatchRuleOrder.cs`, `MediaMatcher.cs`, and
+`MatchProviderIdKeys.cs`, with provider-specific candidate assembly in
+`src/ArrTags/Providers/Radarr/RadarrMatchCandidateFactory.cs` and
+`src/ArrTags/Providers/Sonarr/SonarrMatchCandidateFactory.cs`. `MatchRuleOrder`
+returns the ordered identity rules per item type and provider kind: Movie to
+Radarr uses TMDb then IMDb; Series to Sonarr uses TVDB then the other stable
+provider ids Sonarr reports locally (TMDb, then IMDb); Episode to Sonarr uses
+the episode TVDB id. `MediaMatcher.Match` applies that order and resolves the
+outcome through the task 3.3 status policy, and `MediaMatcher.MatchEpisode`
+enforces the documented "after the series match" ordering: it matches the parent
+series first, then evaluates only episode candidates whose connection-scoped
+`SonarrIdentity.seriesId` equals the matched series, so an episode is never
+matched against another series' records. Unsupported item/provider pairs
+(Movie/Sonarr, Series/Radarr, Season either provider, Episode/Radarr) and
+episodes without parent series context produce `Unsupported` with a safe,
+provider-neutral reason instead of a guessed match. The Radarr and Sonarr
+candidate factories translate validated provider DTOs into canonical
+connection-scoped `MatchCandidate` values, mapping the documented provider ids
+and descriptive context and keeping provider resources at the integration
+boundary; an episode candidate is always anchored to its series identity. Exact
+season/episode number fallback is deliberately not enabled: decision gate DG-4 is
+resolved by task 3.5, and the rule order test asserts no `Number` or
+`ConfiguredPath` rule is present. Tests in `MatchRuleOrderTests`,
+`MediaMatcherTests`, and `MatchCandidateFactoryTests` cover the rule order,
+cross-provider and structural rejection, TMDb-before-IMDb ordering, IMDb
+fallback, connection-scoped results, series-then-episode scoping, bounded
+failures, and DTO-to-candidate mapping without a live Arr instance.
 
 **Acceptance criteria:**
 

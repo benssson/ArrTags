@@ -1,6 +1,6 @@
 ## Project Status
 
-**Current milestone:** Phase 3 — Media matching (in progress; tasks 3.1, 3.2, and 3.3 complete)
+**Current milestone:** Phase 3 — Media matching (in progress; tasks 3.1, 3.2, 3.3, and 3.4 complete)
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -27,16 +27,18 @@ Completed in Phase 3 so far:
 - 3.3 Match status policy: zero candidates resolve to `NotFound`, multiple
   candidates resolve to `Ambiguous`, and only a single candidate is accepted,
   with no title/year guessing.
+- 3.4 Documented movie, series, and episode matching order, with provider-neutral
+  orchestration, the series-before-episode rule, bounded unsupported outcomes,
+  and provider-specific candidate assembly.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 259 automated tests.
+- Passes 294 automated tests.
 
 Next tasks:
 
-- Remaining Phase 3 tasks: documented movie/series/episode matching order (3.4),
-  episode numbering policy (3.5), configured path mapping (3.6), and
-  connection-scope verification (3.7).
+- Remaining Phase 3 tasks: episode numbering policy (3.5), configured path
+  mapping (3.6), and connection-scope verification (3.7).
