@@ -1,6 +1,8 @@
 ## Project Status
 
-**Current milestone:** Phase 3 — Media matching (tasks 3.1 through 3.7 complete; Milestone 3 acceptance and Gate 3 verification remain)
+**Current milestone:** Phase 3 — Media matching is complete (tasks 3.1 through
+3.8 complete; Milestone 3 acceptance criteria satisfied and Gate 3 met). Phase 4
+— Badge rendering is next.
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -18,7 +20,7 @@ Completed in Phase 2 (Sonarr & Radarr integration):
   services, malformed responses, optional fields, version drift, cancellation,
   and retries.
 
-Completed in Phase 3 so far:
+Completed in Phase 3:
 
 - 3.1 Canonical `MediaIdentity` snapshots for Movie, Series, Season, and Episode
   with deterministic library scope and V1 badge-surface eligibility.
@@ -39,15 +41,20 @@ Completed in Phase 3 so far:
 - 3.7 Connection-scoped identity verification: Arr-local record and file IDs are
   always bounded by their originating `ArrConnection`, so identical numeric IDs
   on different Sonarr/Radarr connections never collide.
+- 3.8 Fail-closed location eligibility: remote, virtual, offline, `.strm`, and
+  other non-local/fileless items are rejected with a safe no-badge status before
+  provider matching, while eligible local Movie and Episode files match
+  unchanged. Paths remain non-identity context only under ADR-008.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 327 automated tests.
+- Passes 340 automated tests.
 
 Next tasks:
 
-- All Phase 3 tasks are complete. Milestone 3 acceptance criteria and Gate 3
-  verification remain before Milestone 4 (badge rendering).
+- Phase 4 — Badge rendering. Milestone 3 acceptance criteria and Gate 3 are met;
+  DG-3 (badge fields, templates, placement, contrast, output format, and text
+  limits) must be resolved before Milestone 4 implementation.

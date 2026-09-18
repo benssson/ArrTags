@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching tasks 3.1 through 3.7 complete, with Milestone 3 acceptance and Gate 3 verification still outstanding
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met)
 
 **Basis:** ADR-002, ADR-003, ADR-004, ADR-005, and ADR-008; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -114,7 +114,7 @@ completed as Phase 1 implementation and acceptance work.
 | 1 | Remove or demote the duplicate architecture section and align phase descriptions. | Should become a Phase 1 implementation task | Complete the documentation cleanup with the foundation work; it is not a runtime-safety gate. |
 | 2 | Extend the canonical match model for Sonarr series, episode, and episode-file identity. | Should become a Phase 1 implementation task | Establish the explicit model and interfaces before provider and matching code consumes them. |
 | 3 | Decide V1 item/image scope and aggregate quality behavior. | Resolved for V1 | Resolved by ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are structural only and aggregate quality remains in the Post-V1 backlog. Remaining image-surface details (indexed images, alternate versions, stacked parts) stay implementation-time questions. |
-| 4 | Decide episode policies for specials, anime/absolute numbering, double episodes, multi-episode files, remote items, and path fallback. | Resolved for V1 | ADR-007 defines numbering and ADR-008 defers path fallback out of V1. Virtual, missing, remote, offline, and `.strm` items do not gain a path-based badge match. |
+| 4 | Decide episode policies for specials, anime/absolute numbering, double episodes, multi-episode files, remote items, and path fallback. | Resolved for V1 | ADR-007 defines numbering and ADR-008 defers path fallback out of V1. Virtual, missing, remote, offline, and `.strm` items do not gain a path-based badge match; task 3.8 enforces the no-badge outcome fail-closed in the matching pipeline. |
 | 5 | Define connection-to-library routing and ambiguity behavior for multiple Arr instances. | Implementation-time decision | Finalize before multi-connection matching and reconciliation work. |
 | 6 | Define catalogue caching, provider inventory, provider-version support, and cross-provider normalization. | Implementation-time decision | Define during provider integration and cover the result with bounded inventory and contract tests. |
 | 7 | Decide the policy for active derived artwork after metadata becomes stale. | Implementation-time decision | Finalize before stale-state artwork handling and publication invalidation are implemented. |
@@ -133,6 +133,10 @@ completed as Phase 1 implementation and acceptance work.
   Jellyfin collection-folder/library identifiers (ADR-006).
 - [x] Episode numbering for specials, anime/absolute numbering, double episodes,
   and multi-episode files is defined and tested (ADR-007, task 3.5).
+- [x] Ineligible item locations (remote, virtual, offline, `.strm`, fileless,
+  and otherwise non-local) fail closed with a safe no-badge status before
+  provider matching, while eligible local files match unchanged (ADR-008, task
+  3.8). Paths remain non-identity context only.
 
 The former pre-implementation actions that became Phase 1 implementation tasks
 (1, 2, and 9) are complete. The remaining former actions are implementation-time

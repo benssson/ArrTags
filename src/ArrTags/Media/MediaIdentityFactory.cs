@@ -136,6 +136,8 @@ public static class MediaIdentityFactory
     private static MediaLocationSummary CreateLocation(BaseItem item, IReadOnlyList<MediaSourceInfo> mediaSources)
     {
         var isFileProtocol = false;
+        var isRemote = item.LocationType == LocationType.Remote;
+        var isStrm = IsStrmPath(item.Path);
         string? primaryPath = null;
 
         foreach (var source in mediaSources)
@@ -145,6 +147,9 @@ public static class MediaIdentityFactory
             {
                 isFileProtocol = true;
             }
+
+            isRemote |= source.IsRemote;
+            isStrm |= IsStrmPath(source.Path);
         }
 
         primaryPath ??= string.IsNullOrEmpty(item.Path) ? null : item.Path;
@@ -153,7 +158,15 @@ public static class MediaIdentityFactory
             ToLocationKind(item.LocationType),
             isFileProtocol,
             mediaSources.Count,
-            primaryPath);
+            primaryPath,
+            isRemote,
+            isStrm);
+    }
+
+    private static bool IsStrmPath(string? path)
+    {
+        return !string.IsNullOrEmpty(path)
+            && path.EndsWith(".strm", StringComparison.OrdinalIgnoreCase);
     }
 
     private static MediaLocationKind ToLocationKind(LocationType locationType)

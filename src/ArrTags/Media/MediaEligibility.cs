@@ -72,8 +72,8 @@ public static class MediaEligibility
     }
 
     /// <summary>
-    /// Determines whether an item is both within the configured library scope and
-    /// a badge-bearing surface.
+    /// Determines whether an item is both within the configured library scope, a
+    /// badge-bearing surface, and backed by an eligible local file location.
     /// </summary>
     /// <param name="identity">The item identity.</param>
     /// <param name="configuration">The validated configuration snapshot.</param>
@@ -81,6 +81,8 @@ public static class MediaEligibility
     /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
     public static bool IsEligible(MediaIdentity identity, PluginConfigurationSnapshot configuration)
     {
-        return IsInLibraryScope(identity, configuration) && IsBadgeSurface(identity, configuration);
+        return IsInLibraryScope(identity, configuration)
+            && IsBadgeSurface(identity, configuration)
+            && MediaLocationEligibility.IsEligible(identity);
     }
 }

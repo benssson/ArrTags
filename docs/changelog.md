@@ -184,11 +184,11 @@ Task 2.7 adds the provider failure matrix:
 
 Milestone 2 is complete: both integrations are read-only, probe and query
 independently, map to canonical observations, and pass the contract and failure
-tests. Media matching (Phase 3) is now in progress.
+tests. Media matching (Phase 3) followed and is complete.
 
-### Phase 3 (Media matching) - in progress
+### Phase 3 (Media matching) - complete
 
-Tasks 3.1 through 3.7 are complete; the Milestone 3 gate is not yet met.
+Tasks 3.1 through 3.8 are complete and the Milestone 3 gate is met.
 
 - Task 3.1 (`src/ArrTags/Media/`): canonical `MediaIdentity` snapshots for
   Movie, Series, Season, and Episode, deterministic collection-folder/library
@@ -257,9 +257,29 @@ Tasks 3.1 through 3.7 are complete; the Milestone 3 gate is not yet met.
   local IDs to the requested connection for both providers. No production code
   changed: the canonical model already enforces the scoping contract (14 new
   tests).
+- Task 3.8 (`src/ArrTags/Media/MediaLocationEligibility.cs`,
+  `src/ArrTags/Matching/MediaMatcher.cs`, `src/ArrTags/Media/MediaLocationSummary.cs`,
+  `src/ArrTags/Media/MediaIdentityFactory.cs`, `src/ArrTags/Media/MediaEligibility.cs`):
+  fail-closed ineligible-location rejection, completing acceptance criterion 3.
+  `MediaLocationSummary` now records remote and `.strm` facts in addition to the
+  location kind, file protocol, source count, and primary path.
+  `MediaLocationEligibility` rejects remote, virtual, offline, unknown, `.strm`,
+  and non-local/fileless locations with a bounded, path-free reason, and treats a
+  missing location summary as not evaluated so only positively ineligible
+  locations are rejected. `MediaMatcher.Match` gates the Movie and Episode badge
+  surfaces after the item/provider rule check, and `MediaMatcher.MatchEpisode`
+  gates the episode before the parent-series match so ineligible episodes never
+  proceed. `MediaEligibility.IsEligible` now also requires an eligible local file
+  location. Series and Season remain structural and are not location-gated. No
+  path is compared or used as identity (ADR-008), and eligible local-file
+  matching is unchanged. `tests/ArrTags.Tests/LocationEligibilityTests.cs`
+  covers eligible local Movie/Episode matching, remote/virtual/offline/`.strm`/
+  fileless no-badge outcomes, the episode does-not-proceed case, Jellyfin
+  location capture, and the combined eligibility gate (13 new tests).
 
-Build and test: 0 warnings, 0 errors; 327 tests pass. DG-5 is resolved by
+Build and test: 0 warnings, 0 errors; 340 tests pass. DG-5 is resolved by
 ADR-008: configured path mapping and normalization are deferred out of V1, so
-task 3.6 adds no runtime implementation. Task 3.7 verifies connection scoping
-with focused tests. The Phase 3 task list is complete; Milestone 3 acceptance
-and Gate 3 verification remain.
+task 3.6 adds no runtime implementation. Task 3.7 verifies connection scoping,
+and task 3.8 verifies fail-closed ineligible-location rejection. The Phase 3 task
+list is complete, all Milestone 3 acceptance criteria are satisfied, and Gate 3
+is met. Milestone 4 (badge rendering) is next, gated by DG-3.

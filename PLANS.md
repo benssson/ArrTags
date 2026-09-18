@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching tasks 3.1 through 3.7 complete; Milestone 3 acceptance and Gate 3 verification remain
+**Status:** Phases 1-3 complete. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), and Milestone 3 (media matching, tasks 3.1 through 3.8) are complete; Gates 1, 2, and 3 are met.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -27,23 +27,25 @@ plugin builds on `net10.0` against the pinned Jellyfin `12.0.0` packages with
 `targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and the
 generated package was installed, discovered, loaded, started, restarted, and
 shut down cleanly on a Jellyfin `12.0.0.0` host. Milestone 1 is complete and
-Gate 1 is met. Milestone 2 is in progress: tasks 2.1 (shared provider-client
-boundary and connection identity), 2.2 (dedicated `IHttpClientFactory` client
-registration), 2.3 (versioned credential boundary and read-only Radarr v3
-reads), 2.4 (read-only Sonarr v3 series, episode, and episode-file reads
-with the validated episode-file join), 2.5 (canonical
+Gate 1 is met. Milestone 2 is complete and Gate 2 is met: tasks 2.1 (shared
+provider-client boundary and connection identity), 2.2 (dedicated
+`IHttpClientFactory` client registration), 2.3 (versioned credential boundary
+and read-only Radarr v3 reads), 2.4 (read-only Sonarr v3 series, episode, and
+episode-file reads with the validated episode-file join), 2.5 (canonical
 `ArrProvider`/`ArrConnection`/`BadgeMetadata` mapping with connection-scoped
 record/file identity), and 2.6 (explicit unknown technical values and bounded
 custom values), and provider failure-matrix tests (2.7) are complete. All Phase 2
-tasks meet their acceptance criteria and Gate 2 is met. Phase 3 media matching
+tasks meet their acceptance criteria. Phase 3 media matching
 tasks 3.1 (canonical `MediaIdentity` snapshots), 3.2 (provider-neutral candidate
 selection, evidence recording, and deterministic `MediaMatch` fingerprints), 3.3
 (zero- and multiple-candidate rejection with the match status policy), 3.4 (the
 documented movie, series, and episode matching order with provider-specific
 candidate assembly), 3.5 (the explicit episode-numbering policy in ADR-007), 3.6
-(DG-5 resolved by ADR-008 with path fallback deferred out of V1), and 3.7
-(connection-scoped Arr record and file identity verification) are complete; the
-Milestone 3 acceptance criteria and Gate 3 are not yet verified.
+(DG-5 resolved by ADR-008 with path fallback deferred out of V1), 3.7
+(connection-scoped Arr record and file identity verification), and 3.8
+(fail-closed ineligible-location rejection) are complete. All Phase 3 tasks meet
+their acceptance criteria; the Milestone 3 acceptance criteria and Gate 3 are
+verified.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -85,7 +87,7 @@ without modifying original media files or external services.
 | --- | --- | --- | --- |
 | 1 | Plugin foundation | Complete | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
-| 3 | Media matching | In progress | Eligible movies, series, and episodes match only with validated identity evidence. |
+| 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Not started | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Not started | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
@@ -675,6 +677,10 @@ Radarr record using stable provider identity first and explicit fallback rules.
   no configuration or runtime matching rule.
 - [x] 3.7 Verify that local Arr record and file IDs are always scoped by
   connection.
+- [x] 3.8 Reject ineligible item locations (remote, virtual, offline, `.strm`,
+  fileless, and otherwise non-local) with a fail-closed no-badge outcome before
+  provider matching, completing acceptance criterion 3. Paths remain
+  non-identity context only under ADR-008.
 
 **Task 3.1 status:** Complete. Canonical `MediaIdentity` snapshots (item type,
 Jellyfin item id, collection-folder/library id, normalized provider ids, title,
@@ -811,23 +817,47 @@ identical local IDs across provider kinds are distinct; that connection scopes
 are derived distinctly from different base URLs and are used as the provider
 instance identity; and that the matcher resolves identical local IDs to the
 requested connection for both providers. Build and test pass with 0 warnings and
-327 passing tests. Milestone 3 acceptance criteria and Gate 3 remain to be
-verified.
+327 passing tests at the time of task 3.7.
+
+**Task 3.8 status:** Complete. The fail-closed V1 location policy is implemented
+in `src/ArrTags/Media/MediaLocationEligibility.cs` and applied by
+`src/ArrTags/Matching/MediaMatcher.cs`, completing acceptance criterion 3.
+`MediaLocationSummary` now captures whether the item or any media source is
+remote and whether any path is a `.strm` reference, in addition to the existing
+location kind, file-protocol, source-count, and primary-path facts.
+`MediaLocationEligibility` rejects remote, `MediaSourceInfo.IsRemote`, virtual,
+offline, unknown, `.strm`, and non-local/fileless locations with a bounded,
+path-free reason, and treats a missing location summary as not evaluated so only
+positively ineligible locations are rejected. `MediaMatcher.Match` applies the
+gate to the V1 badge surfaces (Movie and Episode) after the item/provider rule
+check, and `MediaMatcher.MatchEpisode` applies it to the episode before any
+series match, so an ineligible episode never proceeds into provider matching.
+Series and Season remain structural and are intentionally not location-gated.
+`MediaEligibility.IsEligible` now also requires an eligible local file location.
+No path is compared or used as identity (ADR-008), and eligible local-file
+matching behavior is unchanged. Tests in
+`tests/ArrTags.Tests/LocationEligibilityTests.cs` (10 facts plus a 3-case theory,
+13 test cases) cover eligible local Movie and Episode matching, remote, virtual,
+offline, `.strm`, and fileless no-badge outcomes, the episode does-not-proceed
+case, the Jellyfin location capture, and the combined eligibility gate. Build and
+test pass with 0 warnings and 340 passing tests. All Milestone 3 acceptance
+criteria and Gate 3 are now satisfied.
 
 **Acceptance criteria:**
 
-- [ ] A supported Jellyfin movie can match its Radarr movie with validated
+- [x] A supported Jellyfin movie can match its Radarr movie with validated
   provider identity.
-- [ ] A supported series and episode can match their Sonarr records using the
+- [x] A supported series and episode can match their Sonarr records using the
   approved identity and numbering policy.
-- [ ] Ambiguous, missing, virtual, remote, and unsupported cases produce no new
+- [x] Ambiguous, missing, virtual, remote, and unsupported cases produce no new
   badge and a safe diagnostic status.
-- [ ] Titles and years are never sole proof of an automatic match.
-- [ ] Changing match evidence changes the match fingerprint and invalidates the
+- [x] Titles and years are never sole proof of an automatic match.
+- [x] Changing match evidence changes the match fingerprint and invalidates the
   dependent metadata state.
 
-**Gate 3:** Representative movie, series, episode, mismatch, ambiguity, and
-numbering cases pass without guessed matches.
+**Gate 3:** Met. Representative movie, series, episode, mismatch, ambiguity,
+numbering, and ineligible-location cases pass without guessed matches; build and
+test pass with 0 warnings and 340 passing tests.
 
 ### 4. Badge rendering
 

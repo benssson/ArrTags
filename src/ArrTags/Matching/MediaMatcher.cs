@@ -59,6 +59,19 @@ public static class MediaMatcher
                 matchedAt: matchedAt);
         }
 
+        if (IsBadgeSurface(identity.ItemType)
+            && MediaLocationEligibility.TryGetIneligibleReason(identity, out var locationReason))
+        {
+            return new MediaMatch(
+                identity,
+                provider,
+                connectionId,
+                MediaMatchStatus.Unsupported,
+                MediaMatchMethod.None,
+                ambiguityReason: locationReason,
+                matchedAt: matchedAt);
+        }
+
         var selection = CandidateSelector.Select(identity, candidates, rules);
         return MediaMatchPolicy.Resolve(identity, provider, connectionId, selection, matchedAt);
     }
@@ -109,6 +122,18 @@ public static class MediaMatcher
                 matchedAt: matchedAt);
         }
 
+        if (MediaLocationEligibility.TryGetIneligibleReason(episodeIdentity, out var locationReason))
+        {
+            return new MediaMatch(
+                episodeIdentity,
+                provider,
+                connectionId,
+                MediaMatchStatus.Unsupported,
+                MediaMatchMethod.None,
+                ambiguityReason: locationReason,
+                matchedAt: matchedAt);
+        }
+
         if (episodeIdentity.SeriesIdentity is not MediaIdentity seriesIdentity)
         {
             return new MediaMatch(
@@ -148,6 +173,11 @@ public static class MediaMatcher
 
         var scopedCandidates = FilterToSeries(episodeCandidates, seriesRecord.SeriesId);
         return Match(episodeIdentity, provider, connectionId, scopedCandidates, matchedAt);
+    }
+
+    private static bool IsBadgeSurface(MediaItemType itemType)
+    {
+        return itemType is MediaItemType.Movie or MediaItemType.Episode;
     }
 
     private static IReadOnlyList<MatchCandidate> FilterToSeries(

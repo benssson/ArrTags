@@ -16,12 +16,16 @@ public sealed class MediaLocationSummary
     /// <param name="isFileProtocol">Whether any reported media source uses the local file protocol.</param>
     /// <param name="mediaSourceCount">The number of media sources reported for the item.</param>
     /// <param name="primaryPath">The raw, unmapped path of the primary media source when known.</param>
+    /// <param name="isRemote">Whether the item or any reported media source is remote.</param>
+    /// <param name="isStrm">Whether the item or any reported media source is a <c>.strm</c> reference.</param>
     /// <exception cref="ArgumentOutOfRangeException">The kind is undefined or the source count is negative.</exception>
     public MediaLocationSummary(
         MediaLocationKind kind,
         bool isFileProtocol,
         int mediaSourceCount,
-        string? primaryPath = null)
+        string? primaryPath = null,
+        bool isRemote = false,
+        bool isStrm = false)
     {
         if (!Enum.IsDefined(kind))
         {
@@ -40,6 +44,8 @@ public sealed class MediaLocationSummary
         IsFileProtocol = isFileProtocol;
         MediaSourceCount = mediaSourceCount;
         PrimaryPath = primaryPath;
+        IsRemote = isRemote;
+        IsStrm = isStrm;
     }
 
     /// <summary>
@@ -62,4 +68,17 @@ public sealed class MediaLocationSummary
     /// Gets the raw, unmapped path of the primary media source when known.
     /// </summary>
     public string? PrimaryPath { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the item or any reported media source is
+    /// remote. A remote source is never treated as a local badge file for V1.
+    /// </summary>
+    public bool IsRemote { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the item or any reported media source is a
+    /// <c>.strm</c> reference. A <c>.strm</c> item is never treated as a local
+    /// badge file for V1.
+    /// </summary>
+    public bool IsStrm { get; }
 }
