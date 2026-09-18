@@ -764,3 +764,252 @@ already required for ambiguous, missing, virtual, remote, and unsupported cases.
 - `docs/research/media-metadata-mapping.md`, sections 3-5 and 8-11
 - `docs/research/sonarr-api.md`, "Matching Jellyfin items to Sonarr"
 - `docs/research/radarr-api.md`, "Identifying a Radarr movie from a Jellyfin item"
+
+## ADR-009: V1 Badge Rendering Specification
+
+**Status:** Accepted
+
+**Date:** 2026-09-18
+
+### Context
+
+ADR-006 limits V1 badge artwork to Movie and Episode posters. ADR-001 through
+ADR-003 select persisted derived artwork, guarded source ownership, and
+crash-recoverable publication, but do not define the visual contract for the
+derived image. `BadgeMetadata` now contains provider-neutral observations with
+explicit unknown states, while the renderer still needs a bounded and
+deterministic field, layout, color, text, image, and failure policy.
+
+The renderer must be useful on posters of different sizes, must not turn
+missing provider data into a claim, and must not contain Sonarr- or Radarr-
+specific branches. It must also produce one stable artwork representation for
+the persisted-artwork path rather than a separate response-time variant for
+each client request.
+
+### Decision
+
+ArrTags accepts the following complete V1 rendering specification.
+
+#### Surface and source
+
+- V1 rendering applies only to the `Primary` poster surface of eligible Movie
+  and Episode items, with no image index. Series and Season are not rendered.
+- The renderer uses the retained original source artifact selected by the
+  publication pipeline. It never reads an Arr response, Jellyfin provider DTO,
+  or an earlier ArrTags-derived image as its source.
+- The output preserves the source pixel dimensions and aspect ratio. It never
+  upscales a source image and ignores client-requested image sizes; Jellyfin's
+  normal image pipeline may resize the persisted result after publication.
+- A source that cannot be decoded, exceeds the accepted byte or decoded-
+  dimension limits, or has unsupported image semantics produces `PassThrough`.
+
+#### V1 fields and templates
+
+The default field order is the priority order when space is limited:
+
+1. Actual quality: the observed file quality label from `BadgeMetadata.quality`.
+   A quality profile, cutoff target, or requested quality is never substituted.
+2. Resolution: the normalized `BadgeMetadata.resolution.displayLabel`.
+3. Dynamic range: Dolby Vision is displayed as `DV` when confirmed and replaces
+   the generic dynamic-range value; otherwise the confirmed dynamic-range
+   label is used. Unknown range is omitted.
+4. Source: the normalized source label such as `WEB-DL`, `Blu-ray`, or
+   `Remux`.
+5. Video codec: the normalized `BadgeMetadata.videoCodec` value.
+6. Audio: one composite badge built from confirmed audio feature names, then
+   audio codec, then channel count. Features use the fixed order `Atmos`,
+   `DTS-X`, `DTS-HD`, `DTS`; unknown audio features are omitted rather than
+   inferred from codec or channel count.
+7. Custom values: each retained `BadgeMetadata.customBadges` value is a
+   separate candidate, in its canonical provider order.
+
+`upgradePending` is a separate status badge, shown only when it is explicitly
+`true`. It is pinned to the upper-right corner and does not displace the
+technical badge rail. The status text is `UPGRADE`. A false or unknown value
+produces no status badge.
+
+The default templates display the normalized value without a field-name prefix;
+the fixed status template is `UPGRADE`. A V1 `BadgeDefinition` may disable a
+field or provide a bounded provider-neutral value template containing one
+`{value}` placeholder. It may not reference provider DTO paths, record IDs,
+quality profiles, credentials, or extension data. Template output is still
+subject to the same text and layout limits. Extensions are ignored in V1.
+
+Within the audio badge, known feature tokens take precedence over codec, and
+codec takes precedence over channels. Multiple confirmed feature tokens are
+ordered as above. Tokens are included as whole tokens, separated by `/`, until
+the display budget is reached; a token that cannot fit is omitted. If no
+feature, codec, or channel value is known, the audio badge is omitted.
+
+The same fields, templates, and order apply to Movies and Episodes. V1 does
+not add title, season, episode number, language, release group, custom-format
+score, provider name, Arr IDs, or a Series/Season aggregate badge.
+
+#### Layout and placement
+
+- Technical badges form a bottom-left rail inside the poster safe area. They
+  are single-line rounded pills, packed left-to-right in the priority order
+  above.
+- The rail has at most two rows and at most three pills per row. A pill that
+  does not fit the remaining row is moved to the next row. Once both rows are
+  full, lower-priority candidates are omitted. No pill is split across rows.
+- The `UPGRADE` status pill is a single-line top-right pill in the same safe
+  area. It is rendered independently of the rail and is never duplicated in
+  the technical order.
+- The default reference geometry is defined at a 1000 pixel poster width:
+  24 pixel outer inset, 8 pixel pill gap, 8 pixel row gap, 48 pixel pill
+  height, 8 pixel corner radius, 12 pixel horizontal padding, and 7 pixel
+  vertical padding. Geometry scales uniformly with output width using
+  `scale = clamp(width / 1000, 0.5, 4.0)`.
+- The font is a bold or semibold sans-serif, single line, with no italics. The
+  reference font size is 28 pixels and the status text is uppercase. The
+  implementation must use one deterministic bundled font asset or an
+  equivalently pinned host font; its identity is an output-affecting input.
+- Badge geometry is measured after text normalization. If a candidate is too
+  wide for the available rail, its text is shortened before the candidate is
+  omitted. The renderer may reduce geometry only through the defined scale;
+  it must not overlap, crop, or paint outside the safe area.
+
+#### Colors and accessibility
+
+The default palette is intentionally small and does not encode provider kind:
+
+| Use | Background | Text |
+| --- | --- | --- |
+| Technical badge | `#111827` | `#FFFFFF` |
+| Upgrade status | `#B45309` | `#FFFFFF` |
+
+Badge backgrounds are fully opaque, so contrast does not depend on the poster
+behind the pill. The text/background contrast must be at least 4.5:1 for every
+configured style. Configurable colors are accepted only after this validation;
+color alone must not communicate upgrade state because the status also says
+`UPGRADE`. A 1 pixel solid border or shadow may be used only if it is included
+in the renderer version and fingerprint; it is not required for contrast.
+
+#### Text limits and truncation
+
+- The final visible text of every pill, including template literals and the
+  three characters in `...`, is at most 24 Unicode scalar values.
+- Control characters are removed and runs of whitespace are collapsed to one
+  space. Markup, line breaks, and provider-specific formatting are not
+  accepted.
+- Text longer than the limit is truncated at the end and receives `...`; the
+  first 21 scalar values are retained. Truncation happens before width fitting.
+- If the bounded text still cannot fit its pill at the scaled geometry, it is
+  shortened further using the same end-truncation rule. A value that cannot
+  produce a visible label is omitted. Lower-priority fields are never expanded
+  to recover omitted text.
+- The canonical custom-value limits remain 32 values and 128 characters per
+  value. The renderer applies the stricter 24-scalar display limit and never
+  displays more custom values than fit in the two-row rail.
+
+#### Image format, transparency, and scaling
+
+- V1 output is an 8-bit lossless PNG. An opaque source is emitted as RGB; a
+  source with meaningful alpha is emitted as RGBA and its alpha is preserved.
+- The badge pill backgrounds and text are opaque. Existing source
+  transparency may remain transparent; the renderer does not add a transparent
+  canvas or use semi-transparent badge backing for readability.
+- Source metadata such as EXIF, embedded thumbnails, and nondeterministic
+  timestamps is not copied to the output. Orientation is applied to pixels
+  before layout. Encoder settings are fixed by the renderer version.
+- All geometry is calculated in output pixels. There is no device-pixel-ratio,
+  `@2x`, or DPI-metadata branch. A higher-resolution source receives the same
+  layout scaled by its pixel width, and Jellyfin performs any later client-size
+  resizing through its standard image path.
+- The existing source, decoded-dimension, and derived-artifact operational
+  limits apply. A render that would exceed the derived-artifact limit is
+  rejected before publication.
+
+#### Incomplete metadata and failure behavior
+
+- A field is rendered only from a confirmed value in `BadgeMetadata`.
+  `null`, unknown, absent, or unreported values are omitted. The renderer does
+  not display `Unknown`, `N/A`, `False`, or an inferred negative.
+- If `BadgeMetadata` is absent, the match is not eligible, no field is
+  displayable, or the source is unavailable, the result is `PassThrough` and
+  the current usable artwork is unchanged.
+- If an allowed last-known-good metadata snapshot is supplied by the
+  reconciliation pipeline, it is rendered as supplied; freshness and stale
+  retention are not decided by the renderer. After that snapshot is no longer
+  allowed, no replacement is rendered or published by this contract.
+- Decode, layout, font, cancellation, resource-limit, and encode failures
+  produce a bounded non-secret failure result and leave current artwork
+  unchanged. Partial output is never published.
+
+#### Provider-neutral consumption and determinism
+
+The renderer accepts `RenderRequest` containing `MediaIdentity`, `MediaMatch`,
+`BadgeMetadata`, an ordered `BadgeDefinition` snapshot, the retained source,
+and the output policy. Field selection is through the provider-neutral selector
+vocabulary in `BadgeDefinition`; provider kind is not a rendering branch.
+
+The render/output fingerprint includes the source fingerprint, metadata
+fingerprint, selected definition versions and values, palette, templates,
+font asset identity, output format, source dimensions, scale policy, text
+limits, renderer version, and badge schema version. Request correlation IDs,
+timestamps, and diagnostics are excluded. Equal inputs produce the same
+logical output; any output-affecting change requires a new fingerprint.
+
+### Consequences
+
+- V1 has a small, readable, provider-neutral badge vocabulary that emphasizes
+  actual file observations and safely omits incomplete data.
+- The two-row rail and fixed text bounds prevent a long custom value or a large
+  technical label from covering the poster.
+- PNG preserves source quality and optional alpha but can be larger than JPEG;
+  the existing artifact limit and pass-through behavior bound that cost.
+- Rendering is independent of client request size, device pixel ratio, and
+  Jellyfin Web or Enhanced internals. The resulting persisted image can be
+  consumed by all normal Jellyfin image clients.
+- This ADR defines rendering only. Publication, caching, source capture,
+  restoration, stale-artwork lifecycle, and Enhanced coexistence remain governed
+  by ADR-001 through ADR-003 and their later gates.
+
+### Rejected alternatives
+
+#### JPEG as the V1 output
+
+Rejected as the default because it is lossy, cannot preserve source alpha, and
+adds quality-dependent encoder behavior to a persisted derived artifact.
+
+#### WebP, SVG, or client-selected output formats
+
+Rejected for V1. They would expand client and Jellyfin ABI validation and would
+make one persisted representation depend on the requesting client. A later
+format decision requires a new ADR.
+
+#### Rendering `Unknown`, `N/A`, or inferred negatives
+
+Rejected because missing provider data is explicitly distinct from a confirmed
+negative in the canonical model.
+
+#### Quality profile, custom-format score, or provider-specific labels as the
+quality badge
+
+Rejected because they describe requested policy or provider implementation
+details rather than the actual observed file quality, and would violate the
+provider-neutral renderer boundary.
+
+#### Unlimited badges, unconstrained templates, or a single dense text block
+
+Rejected because they reduce poster legibility, allow provider values to dominate
+the image, and make bounded rendering and accessibility unreliable.
+
+#### Request-time or device-pixel-ratio-specific rendering
+
+Rejected because V1 publishes one persisted image through Jellyfin's supported
+image APIs. Client-size variants belong to Jellyfin's normal image processing,
+not to ArrTags rendering identity.
+
+### References
+
+- `PLANS.md`, DG-3 and Milestone 4
+- `docs/architecture.md`, sections 4, 6, 9, 11, and 12
+- `docs/data-model.md`, sections 3.5 through 3.8
+- ADR-001: Persisted Derived Poster Artwork
+- ADR-002: Guarded Artwork Ownership and Restoration
+- ADR-003: Crash-Recoverable Artwork Publication
+- ADR-006: V1 Badge Surfaces and Library Scope Identifier
+- `docs/research/poster-rendering-strategies.md`, sections 4 and 6
+- `docs/research/media-metadata-mapping.md`, sections 7 and 9

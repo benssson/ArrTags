@@ -430,6 +430,27 @@ and a confidence/origin state. Missing media information is `Unknown`.
 `Custom badges` are data values, not arbitrary executable markup. The renderer
 decides whether a configured value is displayable.
 
+#### V1 renderable selector vocabulary
+
+ADR-009 defines the V1 selector vocabulary consumed by the renderer. Selectors
+are canonical field selectors, never provider DTO paths:
+
+| Selector | Value rule | V1 display behavior |
+| --- | --- | --- |
+| `Quality` | Confirmed actual quality display label | First technical pill; quality profile is never eligible. |
+| `Resolution` | Confirmed normalized resolution display label | Second technical pill. |
+| `DynamicRange` | Confirmed dynamic range or Dolby Vision state | Dolby Vision replaces the generic range label. |
+| `Source` | Confirmed source display label | Technical pill after range. |
+| `VideoCodec` | Confirmed normalized video codec | Technical pill after source. |
+| `Audio` | Confirmed feature, codec, and channel values | One composite pill with feature before codec before channels. |
+| `CustomBadge` | One bounded `customBadges` value | One candidate per value, in canonical order, after standard fields. |
+| `UpgradePending` | Explicitly true tri-state value | Separate `UPGRADE` status pill; false and unknown are omitted. |
+
+`Extensions`, provider identity, Arr record/file IDs, quality profiles, custom-
+format scores, titles, and episode numbering are not V1 selectors. An older
+renderer may ignore future selectors without treating them as unknown negative
+claims.
+
 ### 3.6 BadgeDefinition
 
 **Purpose:** Visual and selection rules for one badge, independent of the
@@ -441,13 +462,36 @@ the current item's metadata.
 | `definitionId` | Opaque identifier | Yes | Configuration | Stable identity within configuration. |
 | `definitionVersion` | Version identifier | Yes | Configuration | Changes when selection or visual behavior changes. |
 | `enabled` | Boolean | Yes | Configuration | Disabled definitions produce no badge. |
-| `metadataSelector` | Provider-neutral selector | Yes | Configuration | Selects quality, resolution, HDR, audio, source, custom value, or a future extension. |
-| `fallbackPolicy` | Hide, placeholder, or alternate selector | Yes | Configuration | Must not turn unknown metadata into a false claim. |
+| `metadataSelector` | Provider-neutral selector | Yes | Configuration | Selects one ADR-009 V1 field: quality, resolution, dynamic range, audio, source, video codec, custom value, or upgrade-pending. |
+| `fallbackPolicy` | Hide in V1 | Yes | Configuration | Unknown and unavailable values are omitted; no placeholder or alternate selector is used in V1. |
 | `textTemplate` | Bounded display template | Optional | Configuration | Formatting rule after values are normalized; no provider DTO paths. |
-| `style` | Badge style value | Yes | Configuration | Color, opacity, border, text, font, and contrast policy. |
-| `placement` | Placement value | Yes | Configuration | Anchor, order, margins, and scale. |
+| `style` | Badge style value | Yes | Configuration | Opaque palette, text, font, and contrast policy; V1 geometry is defined by ADR-009. |
+| `placement` | Placement value | Yes | Configuration | V1 poster anchor, bounded rail packing, margins, and scale. |
 | `visibilityPolicy` | Image/item/client surface policy | Yes | Configuration | V1 is poster-oriented and not user-specific. |
 | `customValueRules` | Optional bounded rules | Optional | Configuration | Maps approved custom metadata to a visual value. |
+
+For V1, `metadataSelector` uses the selector vocabulary in section 3.5. A
+definition may disable a selector or provide one bounded provider-neutral
+`{value}` template. Definition order cannot override the ADR-009 priority;
+configuration controls visibility and bounded presentation, not semantic
+precedence. V1 definitions target the unindexed `Primary` poster surface of
+Movie and Episode items only.
+
+The V1 style and placement values are bounded domain values rather than
+arbitrary markup:
+
+- Technical pills use `#111827` with `#FFFFFF` text; the upgrade status pill
+  uses `#B45309` with `#FFFFFF` text.
+- Text is a single bold or semibold sans-serif line at a 28 pixel reference
+  size. Geometry uses the 1000 pixel reference values and
+  `clamp(width / 1000, 0.5, 4.0)` scale in ADR-009.
+- Technical pills use a bottom-left rail with at most two rows and three pills
+  per row. Upgrade status is an independent top-right pill.
+- The final label is limited to 24 Unicode scalar values after whitespace and
+  control-character normalization; end truncation uses `...`.
+- A configured color must pass the 4.5:1 text/background contrast check. Badge
+  backing is opaque, and source alpha is preserved only in the output image
+  outside the badge pixels.
 
 ### 3.7 RenderRequest
 
@@ -459,16 +503,16 @@ source artwork plus all output-affecting metadata and configuration.
 | --- | --- | --- | --- | --- |
 | `requestId` | Opaque correlation identifier | Yes | Generated | Diagnostic only; not part of the output identity. |
 | `mediaIdentity` | MediaIdentity reference | Yes | Jellyfin/plugin | Target item. |
-| `imageSurface` | Image type and optional index | Yes | Jellyfin/request | V1 normally supports poster/primary surfaces; other surfaces require explicit policy. |
+| `imageSurface` | Image type and optional index | Yes | Jellyfin/request | V1 supports only the unindexed `Primary` poster surface for Movie and Episode items. |
 | `sourceImage` | Original source image handle/bytes | Yes at render time | Jellyfin/plugin | Source used to create derived artwork; the source is not overwritten by the renderer. |
 | `sourceImageFingerprint` | Source image identity fingerprint | Yes | Jellyfin/generated | Changes when the retained or newly validated source artwork changes. |
-| `renderParameters` | Format, quality, dimensions, and relevant output values | Yes | Configuration/generated | Included when they affect the persisted derived image. |
+| `renderParameters` | Format, quality, dimensions, and relevant output values | Yes | Configuration/generated | V1 is lossless 8-bit PNG at source dimensions; client-requested size and device pixel ratio are not render inputs. |
 | `match` | MediaMatch | Yes | Generated/cache | Only a valid matched state supplies metadata. |
 | `metadata` | BadgeMetadata | Optional | Sonarr/Radarr/cache | Absent metadata means no new publication or configured no-badge behavior. |
 | `badgeDefinitions` | Ordered definitions | Yes | Configuration | Snapshot used for this render. |
 | `configurationFingerprint` | Opaque fingerprint | Yes | Generated from configuration | Includes output-affecting settings, not secrets. |
 | `rendererVersion` | Version identifier | Yes | Plugin | Changes when rendering behavior changes. |
-| `outputPolicy` | Format, size, and limit policy | Yes | Configuration/generated | Includes bounded input/output and cancellation constraints. |
+| `outputPolicy` | Format, size, and limit policy | Yes | Configuration/generated | Includes PNG/RGB-or-RGBA output, source-dimension preservation, 24-scalar text, two-row/three-pill layout, operational bounds, and cancellation constraints. |
 
 ### 3.8 RenderResult
 
@@ -738,9 +782,10 @@ that public snapshot together with a private, version-matched in-memory secret
 snapshot. The private snapshot is not a canonical model, cache record, state
 envelope, or serialization format. Workers acquire a short-lived secret lease
 by reference and configuration version immediately before external
-authentication. Badge definitions and rendering style remain future configuration
-work. Path mappings are explicitly post-V1 under ADR-008 and are not part of the
-V1 snapshot.
+authentication. Badge definition persistence and rendering-style configuration
+remain implementation work, but their V1 selector, layout, output, and failure
+semantics are fixed by ADR-009. Path mappings are explicitly post-V1 under
+ADR-008 and are not part of the V1 snapshot.
 
 #### 3.12.1 Secret resolution semantics
 
@@ -867,7 +912,7 @@ Mapping labels:
 | `definitionVersion` | Not applicable | Not applicable | Not applicable | Configuration versioning. |
 | `enabled` | Image/item scope may constrain it | Not applicable | Not applicable | Configuration with Jellyfin eligibility applied later. |
 | `metadataSelector` | Not applicable | Provides candidate fields | Provides candidate fields | Provider-neutral selector resolves against BadgeMetadata. |
-| `fallbackPolicy` | Not applicable | Missing fields remain unknown | Missing fields remain unknown | Configuration controls hide/alternate behavior. |
+| `fallbackPolicy` | Not applicable | Missing fields remain unknown | Missing fields remain unknown | V1 hides unknown and unavailable values; no placeholder or alternate selector is used. |
 | `textTemplate` | Not applicable | Not applicable | Not applicable | Plugin configuration. |
 | `style` | Image dimensions can constrain layout | Not applicable | Not applicable | Plugin configuration, evaluated against the request. |
 | `placement` | Image surface and dimensions | Not applicable | Not applicable | Configuration plus Jellyfin request context. |
@@ -888,7 +933,7 @@ Mapping labels:
 | `badgeDefinitions` | Surface eligibility | Not applicable | Not applicable | Configuration snapshot selected for the request. |
 | `configurationFingerprint` | Not applicable | Not applicable | Not applicable | Generated from output-affecting configuration. |
 | `rendererVersion` | Not applicable | Not applicable | Not applicable | Plugin-generated version. |
-| `outputPolicy` | Request and image limits | Not applicable | Not applicable | Configuration plus Jellyfin request constraints. |
+| `outputPolicy` | Request and image limits | Not applicable | Not applicable | Configuration and operational limits; client-requested size and device pixel ratio are not V1 render inputs. |
 
 ### 4.8 RenderResult
 
@@ -896,8 +941,8 @@ Mapping labels:
 | --- | --- | --- | --- | --- |
 | `status` | Publication eligibility/result | Not applicable | Not applicable | Generated from render/publication outcome. |
 | `outputArtifact` | Source/derived image bytes or representation | Not applicable | Not applicable | Generated render work that may be published through Jellyfin's item-image API. |
-| `contentType` | Original/requested image content type | Not applicable | Not applicable | Preserved or deliberately selected by renderer policy. |
-| `width` / `height` | Requested/source dimensions | Not applicable | Not applicable | Direct/derived from image representation. |
+| `contentType` | Published PNG image content type | Not applicable | Not applicable | V1 is lossless `image/png`, with RGB or RGBA channels according to source alpha. |
+| `width` / `height` | Source dimensions | Not applicable | Not applicable | V1 preserves source dimensions and does not upscale. |
 | `outputFingerprint` | Source image fingerprint | Metadata fingerprint input | Metadata fingerprint input | Generated composite fingerprint. |
 | `etag` | Not applicable to native delivery | Not applicable | Not applicable | Native Jellyfin image validators are generated after publication. |
 | `createdAt` | Not applicable | Not applicable | Not applicable | Generated. |
@@ -963,23 +1008,20 @@ Mapping labels:
 
 ## 5. Badge Metadata Specification
 
-### V1 planned fields
+### V1 fields
 
-V1 should support the following fields when the selected provider supplies them:
+V1 includes the following fields when the canonical metadata confirms them:
 
 | Field | V1 behavior | Semantics |
 | --- | --- | --- |
-| Quality | Planned | Actual Arr file quality label and structured descriptor. Never use the configured profile as actual quality. |
-| Resolution | Planned | Normalized resolution from quality/media info, with origin retained. |
-| HDR | Planned | Generic HDR/dynamic-range indication with unknown state. |
-| Dolby Vision | Planned when reliably reported | Separate DV indication; DV may coexist with HDR10 or another base layer. |
-| Video codec | Planned | Normalized codec value. |
-| Audio codec | Planned | Normalized codec value. |
-| Audio channels | Planned | Numeric channel count when known. |
-| Atmos/DTS | Planned where derivable | Audio feature set, not a replacement for the base audio codec. |
-| Source | Planned | Provider quality source such as web, WEB-DL, Blu-ray, or remux. |
-| Upgrade pending | Optional V1 | `qualityCutoffNotMet`, clearly labelled as policy state. |
-| Custom badges | Limited V1 | Configured, bounded custom-format or extension values. |
+| Quality | Included | Actual Arr file quality label and structured descriptor. Never use the configured profile as actual quality. |
+| Resolution | Included | Normalized resolution from quality/media info, with origin retained. |
+| Dynamic range and Dolby Vision | Included when confirmed | Dolby Vision is one prioritized range label; unknown range is omitted. |
+| Video codec | Included when confirmed | Normalized codec value. |
+| Audio | Included when any component is confirmed | One composite value ordered as audio feature, codec, then channel count. Unknown features are not inferred. |
+| Source | Included when confirmed | Provider quality source such as web, WEB-DL, Blu-ray, or remux. |
+| Upgrade pending | Included only when explicitly true | `qualityCutoffNotMet`, rendered as the separate `UPGRADE` status state. |
+| Custom badges | Limited V1 | Bounded custom values, in canonical order, subject to the 24-scalar display limit and available rail space. |
 
 ### Future fields
 
@@ -995,9 +1037,10 @@ Technical flags use `true`, `false`, or `unknown` where source absence is
 meaningful. A provider may explicitly report that a feature is absent, but a
 missing `mediaInfo` object must result in `unknown`. The optional audio feature
 set follows the same rule: an absent (`null`) set is unknown, while an empty set
-means the provider reported a codec with no known feature. A renderer may hide
-unknown badges, use a configured placeholder, or select a fallback definition;
-it must not display a negative assertion based only on missing data.
+means the provider reported a codec with no known feature. Under ADR-009, the
+renderer hides unknown, absent, and unreported values; it does not use a
+placeholder or select a fallback value and must not display a negative
+assertion based only on missing data.
 
 ### Quality profile separation
 

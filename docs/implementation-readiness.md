@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met)
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009
 
-**Basis:** ADR-002, ADR-003, ADR-004, ADR-005, and ADR-008; findings in
+**Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, and ADR-009; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
 artwork blockers, and the provider credential-access question is resolved for
 Milestone 2 implementation.
@@ -77,6 +77,27 @@ to finish bounded in-flight requests. Restart rebuilds the private snapshot
 from Jellyfin's persisted configuration. The same private boundary can support
 the webhook secret without deciding webhook route exposure or replay policy.
 
+## Resolved DG-3
+
+ADR-009 defines the complete V1 badge rendering contract. The renderer targets
+only unindexed Movie and Episode `Primary` posters and consumes provider-neutral
+`BadgeMetadata` selectors. It displays actual quality, resolution, confirmed
+dynamic range, source, video codec, one composite audio value, bounded custom
+values, and an explicitly true upgrade-pending status, in the fixed priority and
+layout defined by the ADR.
+
+The contract fixes the two-row bottom-left technical rail, top-right `UPGRADE`
+status pill, reference geometry and scale, bold/semibold single-line
+typography, 24-scalar end truncation, contrast-validated opaque colors, lossless
+8-bit PNG output at source dimensions, alpha preservation, no client-size or
+device-pixel-ratio variants, and pass-through on unknown, unavailable,
+unsupported, cancelled, malformed, or failed input. The renderer never reads
+provider DTOs or turns missing values into claims.
+
+DG-3 is a documentation gate, not a rendering implementation gate. Phase 4 can
+begin immediately; its code, tests, font asset, and renderer-library choice are
+still outstanding.
+
 ## Compatibility Target
 
 | Value | Pin | Evidence |
@@ -113,7 +134,7 @@ completed as Phase 1 implementation and acceptance work.
 | --- | --- | --- | --- |
 | 1 | Remove or demote the duplicate architecture section and align phase descriptions. | Should become a Phase 1 implementation task | Complete the documentation cleanup with the foundation work; it is not a runtime-safety gate. |
 | 2 | Extend the canonical match model for Sonarr series, episode, and episode-file identity. | Should become a Phase 1 implementation task | Establish the explicit model and interfaces before provider and matching code consumes them. |
-| 3 | Decide V1 item/image scope and aggregate quality behavior. | Resolved for V1 | Resolved by ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are structural only and aggregate quality remains in the Post-V1 backlog. Remaining image-surface details (indexed images, alternate versions, stacked parts) stay implementation-time questions. |
+| 3 | Decide V1 item/image scope and aggregate quality behavior. | Resolved for V1 | Resolved by ADR-006 and ADR-009: V1 badge surfaces are unindexed Movie and Episode `Primary` posters; Series/Season are structural only, aggregate quality remains post-V1, and indexed or alternate poster surfaces are not render targets. |
 | 4 | Decide episode policies for specials, anime/absolute numbering, double episodes, multi-episode files, remote items, and path fallback. | Resolved for V1 | ADR-007 defines numbering and ADR-008 defers path fallback out of V1. Virtual, missing, remote, offline, and `.strm` items do not gain a path-based badge match; task 3.8 enforces the no-badge outcome fail-closed in the matching pipeline. |
 | 5 | Define connection-to-library routing and ambiguity behavior for multiple Arr instances. | Implementation-time decision | Finalize before multi-connection matching and reconciliation work. |
 | 6 | Define catalogue caching, provider inventory, provider-version support, and cross-provider normalization. | Implementation-time decision | Define during provider integration and cover the result with bounded inventory and contract tests. |
@@ -122,6 +143,7 @@ completed as Phase 1 implementation and acceptance work.
 | 9 | Record concrete queue, concurrency, retry, timeout, response-size, retention, storage, and stale-state limits. | Should become a Phase 1 implementation task | Complete for the foundation defaults; recorded in ADR-004 and `docs/architecture.md` section 12, with runtime enforcement and tuning in later milestones. |
 | 10 | Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior. | Implementation-time decision | Finalize and test before the Jellyfin artwork integration milestone. |
 | 11 | Define secret persistence, safe references, credential access, rotation, and webhook-secret reuse. | Should become a Milestone 2 implementation task | Resolved by ADR-005 and implemented in task 2.3; the credential-boundary tests pass before authenticated provider reads. |
+| 12 | Define the V1 badge rendering contract. | Resolved for V1 | Resolved by ADR-009; implementation must use its provider-neutral fields, layout, bounds, output, scaling, contrast, and pass-through rules. |
 
 ## Already Satisfied
 
@@ -214,11 +236,13 @@ that introduce them.
 
 - Validate `SaveImage` storage behavior and the selected source-artwork capture
   and restoration implementation on the target host configuration.
-- Choose the renderer library, image format, fonts, and bounded artifact storage.
-- Decide the remaining V1 image-surface details (indexed images, alternate
-  versions, stacked parts). Item types and badge surfaces are resolved by
-  ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are
-  structural only.
+- Choose the renderer library and validate a deterministic bundled font asset
+  against ADR-009's typography metrics; the output format, geometry, palette,
+  text bounds, and scaling policy are resolved.
+- Validate how the publication pipeline supplies the unindexed `Primary` source
+  image for Movie and Episode items. Item types and badge surfaces are resolved
+  by ADR-006 and ADR-009; indexed or alternate poster surfaces are not V1
+  render targets.
 - Episode policies for specials, anime/absolute numbering, double episodes, and
   multi-episode files are resolved by ADR-007 and task 3.5. ADR-008 resolves
   DG-5 by deferring path fallback out of V1; virtual, missing, remote, offline,
@@ -259,6 +283,9 @@ that introduce them.
 - [x] Jellyfin Enhanced internals are not a dependency.
 - [x] Provider credentials remain in persisted plugin configuration and are
   obtained through the versioned, short-lived secret boundary in ADR-005.
+- [x] DG-3 badge fields, provider-neutral selectors, layout, typography,
+  contrast, text bounds, PNG output, scaling, and pass-through behavior are
+  defined by ADR-009.
 
 ## Post-V1 Backlog
 

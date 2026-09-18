@@ -47,6 +47,11 @@ candidate assembly), 3.5 (the explicit episode-numbering policy in ADR-007), 3.6
 their acceptance criteria; the Milestone 3 acceptance criteria and Gate 3 are
 verified.
 
+Decision Gate DG-3 is now resolved by ADR-009. The V1 badge fields, priority,
+poster layout, typography, contrast, text bounds, PNG output, scaling, and
+pass-through behavior are fixed for implementation. Phase 4 may begin; its
+renderer implementation and tests remain incomplete.
+
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
 configurable derived poster artwork through Jellyfin's supported image APIs
@@ -600,8 +605,8 @@ feature set when the audio codec is absent. Custom badge values are bounded at
 the canonical boundary before they can reach a badge: blank values are dropped,
 control characters are removed, at most `MaxCustomBadgeCount` (32) values are
 kept in provider order, and each value is truncated to `MaxCustomBadgeLength`
-(128) characters. That is a defensive metadata bound, not the renderer's
-display/truncation policy, which remains decision gate DG-3.
+(128) characters. That is a defensive metadata bound; the renderer's separate
+display/truncation policy is now defined by ADR-009.
 `MetadataMappingTests` covers unknown-versus-empty audio features, the
 fingerprint distinction, and custom-value count, order, length, and
 control-character behavior. Provider failure-matrix tests are implemented in
@@ -880,7 +885,7 @@ Radarr, or Jellyfin artwork storage.
 
 - [ ] Implement metadata selectors against `BadgeMetadata`, not provider DTO
   paths.
-- [ ] Define the initial badge field set, text rules, contrast behavior,
+- [x] Define the initial badge field set, text rules, contrast behavior,
   placement, scale, margins, and output format policy.
 - [ ] Keep unknown technical values distinct from confirmed negative values.
 - [ ] Implement render request and result fingerprints containing every
@@ -888,6 +893,13 @@ Radarr, or Jellyfin artwork storage.
 - [ ] Enforce image and text limits before decode, draw, and encode work.
 - [ ] Test dimensions, format behavior, truncation, layout, cancellation, and
   renderer failure pass-through.
+
+**Task 4.2 status:** Complete as the DG-3 documentation decision. ADR-009 fixes
+the V1 selector vocabulary, field priority, Movie/Episode Primary-poster
+layout, typography and geometry, contrast-validated palette, 24-scalar display
+limit, PNG/RGB-or-RGBA output, source-dimension scaling, high-DPI behavior, and
+pass-through behavior for unknown, incomplete, cancelled, malformed, or failed
+renders. No rendering code is included in this decision closure.
 
 **Acceptance criteria:**
 
@@ -1084,7 +1096,7 @@ an implementation assumption.
 | --- | --- | --- |
 | DG-1 | Exact Jellyfin 12 patch, package versions, target framework, and manifest ABI. | Milestone 1 implementation |
 | DG-2 | Initial supported item and image types, including whether series/season posters are disabled or use an explicit aggregate policy. Resolved by ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are structural and aggregation remains post-V1. | Milestones 3-5 |
-| DG-3 | Initial badge fields, templates, placement, contrast, output format, text limits, and request-size policy. | Milestone 4 |
+| DG-3 | Initial badge fields, templates, placement, contrast, output format, text limits, and request-size policy. Resolved by ADR-009: V1 uses provider-neutral bounded badges on unindexed Movie and Episode Primary posters, lossless PNG at source dimensions, and fail-closed pass-through for unknown or failed input. | Milestone 4 |
 | DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. Resolved by ADR-007: number fallback is limited to regular single episodes; season zero specials, multi-episode spans, and absolute/scene numbering are excluded. | Milestone 3 |
 | DG-5 | Whether path mappings are needed, and their connection-scoped representation. Resolved by ADR-008: configured path fallback is deferred out of V1, so V1 has no path mapping schema, normalization, or `ConfiguredPath` rule. | Milestone 3 |
 | DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. Foundation defaults are resolved by ADR-004; Milestone 6 may tune within the documented validation ranges. | Milestone 6 |

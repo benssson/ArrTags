@@ -174,7 +174,8 @@ The persisted configuration includes:
   are Movie and Episode posters; Series and Season are structural only and
   aggregation remains post-V1 (ADR-006).
 - Badge fields, placement, colors, scale, margins, output limits, and renderer
-  version settings.
+  version settings. DG-3 is resolved by ADR-009: V1 uses the bounded,
+  provider-neutral Movie/Episode Primary-poster specification in that ADR.
 - Operational limits supplied by `OperationalLimits`: queue capacity, provider
   and render concurrency, request timeout, retry count/backoff, provider
   response and artifact sizes, decoded image dimensions, reconciliation batch
@@ -589,6 +590,38 @@ operation's verified postcondition and artifacts; otherwise it remains blocked.
   correct authorization, image tags, conditional requests, and cache headers.
 - Do not block library scans or synchronous library event delivery.
 
+### V1 rendering contract
+
+ADR-009 is authoritative for the complete V1 visual contract. The architectural
+boundary is summarized here so implementation does not infer a second policy:
+
+- Only the `Primary` poster surface without an image index is rendered, and only
+  for Movie and Episode items. Series and Season remain structural entities.
+- The renderer consumes `RenderRequest`, `BadgeMetadata`, and ordered
+  provider-neutral `BadgeDefinition` values. It never branches on Sonarr,
+  Radarr, provider DTOs, provider record IDs, or quality profiles.
+- The default priority is actual quality, resolution, dynamic range/Dolby
+  Vision, source, video codec, one composite audio value, then custom values.
+  An explicitly true upgrade-pending value is a separate `UPGRADE` status pill.
+- Technical pills use a bottom-left, two-row rail; the status pill is top-right.
+  The rail has no more than three pills per row. Reference geometry is based on
+  a 1000 pixel width and scales by `clamp(width / 1000, 0.5, 4.0)`.
+- Labels are single-line, bounded to 24 Unicode scalar values after
+  normalization, and end-truncated with `...`. Unknown values are omitted, not
+  rendered as claims or placeholders.
+- Output is an 8-bit lossless PNG at the source dimensions. Opaque inputs remain
+  RGB; meaningful source alpha is preserved as RGBA. Badge backing and text are
+  opaque and use the ADR-009 contrast-validated palette.
+- The renderer ignores client size and device pixel ratio. Decode, output,
+  cancellation, and artifact limits use the accepted operational bounds. Any
+  failure returns pass-through and leaves current artwork unchanged.
+
+All output-affecting source, metadata, definition, style, font, geometry,
+format, limit, schema, and renderer values belong in the render/publication
+fingerprint. Timestamps and request correlation IDs do not. Publication,
+provenance, caching, stale-artwork lifecycle, and Enhanced coexistence remain
+separate concerns and are not redefined by this rendering contract.
+
 ## 10. Jellyfin Enhanced coexistence
 
 ArrTags has no source-level dependency on Jellyfin Enhanced. Enhanced's quality
@@ -746,7 +779,9 @@ The following are intentionally not guessed by this architecture:
    surfaces are Movie and Episode posters; Series/Season are structural only and
    aggregation remains post-V1.
 3. Exact badge fields, text truncation, placement, color/contrast rules, output
-   format, and requested-size policy.
+   format, and requested-size policy. Resolved by ADR-009: V1 renders bounded
+   provider-neutral badges on Movie and Episode Primary posters, emits PNG at
+   source dimensions, and passes through on unknown or failed input.
 4. Whether episode matching permits number fallback for all libraries or only
    validated display-order cases. Resolved by ADR-007: number fallback is limited
    to regular single episodes after the series match; season zero specials,
@@ -794,7 +829,7 @@ The remaining items stay open and are tracked by the decision gates in
 - [Project goals](../GOALS.md) defines the product requirements and success
   criteria that this architecture must satisfy.
 - [Architecture decisions](decisions.md) records the selected artwork delivery
-  mechanism and rejected alternatives.
+  mechanism, rendering specification, and rejected alternatives.
 
 These documents are evidence and reference material. They do not define the
 ArrTags architecture or a competing phase sequence.
