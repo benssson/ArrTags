@@ -184,4 +184,23 @@ Task 2.7 adds the provider failure matrix:
 
 Milestone 2 is complete: both integrations are read-only, probe and query
 independently, map to canonical observations, and pass the contract and failure
-tests. The next milestone is media matching (Phase 3).
+tests. Media matching (Phase 3) is now in progress.
+
+### Phase 3 (Media matching) - in progress
+
+Tasks 3.1 and 3.2 are complete; the Milestone 3 gate is not yet met.
+
+- Task 3.1 (`src/ArrTags/Media/`): canonical `MediaIdentity` snapshots for
+  Movie, Series, Season, and Episode, deterministic collection-folder/library
+  scope, and V1 badge-surface eligibility limited to Movie and Episode posters
+  (ADR-006).
+- Task 3.2 (`src/ArrTags/Matching/`): provider-neutral candidate selection
+  (`MatchCandidate`, `CandidateMatchRule`, `ProviderIdMatchRule`,
+  `CandidateSelector`), recorded per-rule `MatchEvidence`, and the canonical
+  `MediaMatch` result with a deterministic `MatchFingerprint` over the record
+  identity and matching evidence.
+
+Build and test: 0 warnings, 0 errors; 251 tests pass. Remaining Phase 3 tasks:
+match status policy (3.3), documented movie/series/episode matching order (3.4),
+episode numbering policy (3.5), configured path mapping (3.6), and
+connection-scope verification (3.7).

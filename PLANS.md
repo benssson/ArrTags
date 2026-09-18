@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (task 3.1 complete)
+**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1 and 3.2 complete)
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -35,7 +35,10 @@ with the validated episode-file join), 2.5 (canonical
 `ArrProvider`/`ArrConnection`/`BadgeMetadata` mapping with connection-scoped
 record/file identity), and 2.6 (explicit unknown technical values and bounded
 custom values), and provider failure-matrix tests (2.7) are complete. All Phase 2
-tasks meet their acceptance criteria and Gate 2 is met.
+tasks meet their acceptance criteria and Gate 2 is met. Phase 3 media matching is
+in progress: tasks 3.1 (canonical `MediaIdentity` snapshots) and 3.2
+(provider-neutral candidate selection, evidence recording, and deterministic
+`MediaMatch` fingerprints) are complete, and the Milestone 3 gate is not yet met.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -654,7 +657,7 @@ Radarr record using stable provider identity first and explicit fallback rules.
   item types (`Movie`, `Series`, `Season`, `Episode`) and library scope. Library
   scope entries are collection-folder/library identifiers, and V1 badge surfaces
   are Movie and Episode posters; Series/Season are structural only (ADR-006).
-- [ ] 3.2 Implement candidate selection, evidence recording, and deterministic
+- [x] 3.2 Implement candidate selection, evidence recording, and deterministic
   `MediaMatch` fingerprints.
 - [ ] 3.3 Reject zero-candidate and multiple-candidate matches rather than
   guessing from title or year.
@@ -679,9 +682,33 @@ structural and produce no badge. Provider DTOs and provider-specific concepts
 are excluded, and the builder captures raw Jellyfin facts only, leaving DG-4
 episode-numbering policy and DG-5 path mapping to later tasks. Jellyfin library
 lookups are isolated behind the `IMediaLibraryResolver` boundary so the snapshot
-logic is covered without a live host. Remaining Milestone 3 tasks (candidate
-selection, evidence, deterministic `MediaMatch` fingerprints, and the matching
-order) are not started.
+logic is covered without a live host. Remaining Milestone 3 tasks were not started at
+the time of task 3.1; task 3.2 is recorded below.
+
+**Task 3.2 status:** Complete. The provider-neutral matching foundation lives in
+`src/ArrTags/Matching`. `MatchCandidate` is the canonical, connection-scoped
+description of one Arr record that could match (concrete `ArrRecordIdentity`,
+normalized external provider identifiers, optional title/year/numbering/path
+context) and it refuses a record identity that is not scoped to its own
+connection and provider kind. `CandidateMatchRule` and `ProviderIdMatchRule`
+define one ordered, evidence-keyed identity comparison, and `CandidateSelector`
+applies the ordered rules as identity fallbacks, recording a `MatchEvidence` step
+per rule (method, key, matched value, candidate and match counts) and returning a
+`CandidateSelection` of survivors. The first rule with a match decides the
+selection, so later rules are fallbacks and never widen the search; title and
+year are never used as identity. `MediaMatch` is the canonical result
+(`status`, `method`, typed `recordIdentity`, normalized `matchedProviderIds`,
+safe `ambiguityReason`, and `matchedAt`) with input validation that a
+`Matched` status requires a concrete method and a connection/provider-scoped
+record identity and that a non-matched status cannot carry one. `MediaMatch`
+computes a deterministic `MatchFingerprint` over the match schema version, the
+Jellyfin subject, the connection and provider scope, the status and method, the
+full record identity including explicit file presence, and the matching provider
+identifiers; the fingerprint is independent of observation timestamps and never
+contains a credential. Mapping the survivor count to a `Matched`/`NotFound`/
+`Ambiguous` status (task 3.3), the provider-specific candidate assembly and
+documented rule order (task 3.4), the numbering policy (3.5), and configured path
+mapping (3.6) are deliberately not implemented here.
 
 **Acceptance criteria:**
 

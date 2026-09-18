@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 next
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching in progress (tasks 3.1 and 3.2 complete)
 
 **Basis:** ADR-002, ADR-003, ADR-004, and ADR-005; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
