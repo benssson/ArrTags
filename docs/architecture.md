@@ -116,7 +116,7 @@ by an ArrTags response interceptor.
 | Reconciliation coordinator | Fetch, match, fingerprint, and enqueue affected items | Runs outside event handlers and image requests where possible |
 | Work queue | Coalesce item work and bound memory/concurrency | Hosted service with cancellation-aware workers |
 | Artwork publisher | Publish validated derived artwork through Jellyfin's public image APIs | Does not write media files or Jellyfin's image-cache directory directly |
-| Badge renderer | Draw configured labels onto retained source artwork | Bounded input/output and render concurrency |
+| Badge renderer | Draw configured labels onto retained source artwork | Plugin-owned, provider-neutral SkiaSharp service with bundled DejaVu Sans Bold 2.37; bounded input/output and render concurrency |
 | Render work cache | Avoid repeated generation before publication where useful | Optional, bounded, fingerprint-keyed work state; not the client response path |
 | Webhook controller | Accept authenticated low-latency Arr hints | Validates token and payload; never trusts payload as source of truth |
 | Scheduled task | Manual and periodic full reconciliation | Cancellable, progress-reporting, retry-safe |
@@ -621,6 +621,38 @@ format, limit, schema, and renderer values belong in the render/publication
 fingerprint. Timestamps and request correlation IDs do not. Publication,
 provenance, caching, stale-artwork lifecycle, and Enhanced coexistence remain
 separate concerns and are not redefined by this rendering contract.
+
+### Renderer implementation contract
+
+ADR-010 is authoritative for the V1 renderer implementation. The renderer is a
+plugin-owned direct SkiaSharp service with exact managed/native package pins and
+no use of Jellyfin's global image services. It loads the bundled DejaVu Sans
+Bold 2.37 font by resource bytes and has no host-font fallback.
+
+The host boundary supplies a bounded, read-only `SourceImageInput` containing
+the exact source bytes or artifact handle, content type, dimensions, and source
+hash. It does not pass paths, Jellyfin entities, provider DTOs, credentials, or
+mutable image objects into the renderer. The conceptual service contract is:
+
+```text
+RenderAsync(RenderRequest request, CancellationToken cancellationToken)
+    -> RenderResult
+```
+
+The renderer has no external side effects. Successful output is bounded,
+non-interlaced 8-bit sRGB PNG with RGB or RGBA channels, fixed encoder settings,
+stripped nondeterministic metadata, and canonical transparent-pixel values.
+Invalid input, missing runtime/font assets, cancellation, decode/layout/encode
+errors, and resource-limit violations return a safe bounded result without
+mutating source bytes.
+
+Renderer configuration is part of the immutable versioned plugin configuration
+snapshot and contains only enabled V1 selectors, bounded templates, and
+contrast-validated style overrides. Format, alpha/color policy, geometry/text
+limits, font identity, and renderer version remain code-owned and fingerprinted
+inputs. Renderer validation uses synthetic fixtures, decoded-pixel goldens,
+same-runtime byte determinism, and explicit cross-runtime anti-aliasing
+tolerances as defined by ADR-010.
 
 ## 10. Jellyfin Enhanced coexistence
 
