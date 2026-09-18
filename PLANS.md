@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1 and 3.2 complete)
+**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1, 3.2, and 3.3 complete)
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -36,9 +36,10 @@ with the validated episode-file join), 2.5 (canonical
 record/file identity), and 2.6 (explicit unknown technical values and bounded
 custom values), and provider failure-matrix tests (2.7) are complete. All Phase 2
 tasks meet their acceptance criteria and Gate 2 is met. Phase 3 media matching is
-in progress: tasks 3.1 (canonical `MediaIdentity` snapshots) and 3.2
+in progress: tasks 3.1 (canonical `MediaIdentity` snapshots), 3.2
 (provider-neutral candidate selection, evidence recording, and deterministic
-`MediaMatch` fingerprints) are complete, and the Milestone 3 gate is not yet met.
+`MediaMatch` fingerprints), and 3.3 (zero- and multiple-candidate rejection with
+the match status policy) are complete, and the Milestone 3 gate is not yet met.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -659,7 +660,7 @@ Radarr record using stable provider identity first and explicit fallback rules.
   are Movie and Episode posters; Series/Season are structural only (ADR-006).
 - [x] 3.2 Implement candidate selection, evidence recording, and deterministic
   `MediaMatch` fingerprints.
-- [ ] 3.3 Reject zero-candidate and multiple-candidate matches rather than
+- [x] 3.3 Reject zero-candidate and multiple-candidate matches rather than
   guessing from title or year.
 - [ ] 3.4 Implement the documented movie, series, and episode matching order.
 - [ ] 3.5 Define and test the numbering policy for specials, anime, and
@@ -709,6 +710,21 @@ contains a credential. Mapping the survivor count to a `Matched`/`NotFound`/
 `Ambiguous` status (task 3.3), the provider-specific candidate assembly and
 documented rule order (task 3.4), the numbering policy (3.5), and configured path
 mapping (3.6) are deliberately not implemented here.
+
+**Task 3.3 status:** Complete. The match status policy lives in
+`src/ArrTags/Matching/MediaMatchPolicy.cs`. `MediaMatchPolicy.Resolve` maps a
+provider-neutral `CandidateSelection` into the canonical `MediaMatch`: zero
+survivors produce `NotFound`, more than one survivor produces `Ambiguous`, and
+exactly one survivor produces `Matched`. The zero- and multiple-candidate
+outcomes carry no record identity and a safe, provider-neutral reason, and they
+are never resolved by falling back to candidate title or production year. A
+`Matched` result uses the deciding rule's `MediaMatchMethod`, the surviving
+candidate's connection-scoped `ArrRecordIdentity`, and records the agreeing
+provider identifier only for a `ProviderId` decision, so `Number` or
+`ConfiguredPath` decisions add no provider identifiers. Provider-specific
+candidate assembly and the documented movie/series/episode rule order (task 3.4),
+the episode numbering policy (task 3.5), configured path mapping (task 3.6), and
+the connection-scope verification task (3.7) remain to be implemented.
 
 **Acceptance criteria:**
 

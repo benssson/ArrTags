@@ -188,7 +188,7 @@ tests. Media matching (Phase 3) is now in progress.
 
 ### Phase 3 (Media matching) - in progress
 
-Tasks 3.1 and 3.2 are complete; the Milestone 3 gate is not yet met.
+Tasks 3.1, 3.2, and 3.3 are complete; the Milestone 3 gate is not yet met.
 
 - Task 3.1 (`src/ArrTags/Media/`): canonical `MediaIdentity` snapshots for
   Movie, Series, Season, and Episode, deterministic collection-folder/library
@@ -199,8 +199,17 @@ Tasks 3.1 and 3.2 are complete; the Milestone 3 gate is not yet met.
   `CandidateSelector`), recorded per-rule `MatchEvidence`, and the canonical
   `MediaMatch` result with a deterministic `MatchFingerprint` over the record
   identity and matching evidence.
+- Task 3.3 (`src/ArrTags/Matching/MediaMatchPolicy.cs`): the match status policy
+  maps a `CandidateSelection` to the canonical `MediaMatch`. Zero survivors
+  become `NotFound`, multiple survivors become `Ambiguous`, and exactly one
+  survivor becomes `Matched`. Rejected outcomes carry no record identity and a
+  safe, provider-neutral reason and never fall back to title or year; a matched
+  outcome records the deciding method, the connection-scoped record identity,
+  and the agreeing provider identifier only for a `ProviderId` decision.
+- `tests/ArrTags.Tests/MediaMatchPolicyTests.cs` - zero/multiple rejection,
+  unique acceptance and evidence, title/year immunity, and `Number` decisions
+  without provider identifiers (8 new tests).
 
-Build and test: 0 warnings, 0 errors; 251 tests pass. Remaining Phase 3 tasks:
-match status policy (3.3), documented movie/series/episode matching order (3.4),
-episode numbering policy (3.5), configured path mapping (3.6), and
-connection-scope verification (3.7).
+Build and test: 0 warnings, 0 errors; 259 tests pass. Remaining Phase 3 tasks:
+documented movie/series/episode matching order (3.4), episode numbering policy
+(3.5), configured path mapping (3.6), and connection-scope verification (3.7).
