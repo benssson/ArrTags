@@ -890,7 +890,7 @@ Radarr, or Jellyfin artwork storage.
   paths.
 - [x] 4.2 Define the initial badge field set, text rules, contrast behavior,
   placement, scale, margins, and output format policy.
-- [ ] 4.3 Keep unknown technical values distinct from confirmed negative values.
+- [x] 4.3 Keep unknown technical values distinct from confirmed negative values.
 - [ ] 4.4 Implement render request and result fingerprints containing every
   output-affecting value, including renderer and badge schema versions.
 - [ ] 4.5 Enforce image and text limits before decode, draw, and encode work.
@@ -935,6 +935,19 @@ layout, typography and geometry, contrast-validated palette, 24-scalar display
 limit, PNG/RGB-or-RGBA output, source-dimension scaling, high-DPI behavior, and
 pass-through behavior for unknown, incomplete, cancelled, malformed, or failed
 renders. No rendering code is included in this decision closure.
+
+**Task 4.3 status:** Complete. The selector resolver keeps the canonical
+unknown-versus-confirmed-negative distinction intact. Tri-state technical flags
+(Dolby Vision and upgrade-pending) are resolved through one explicit
+`ResolveConfirmedTrue` rule: only a confirmed `true` yields a display value, so a
+confirmed negative and an unknown value are both omitted but never inferred from
+one another. A confirmed generic dynamic range (for example `SDR`) is still
+displayed, while an unknown range is omitted; unknown audio features do not
+suppress a confirmed codec, and a confirmed empty feature set never infers a
+feature. No canonical value is mutated: the metadata fingerprint continues to
+distinguish unknown from confirmed-negative and unknown from confirmed-empty, and
+`tests/ArrTags.Tests/BadgeUnknownValueTests.cs` proves the behavior with 11 new
+tests. Build and test pass with 0 warnings and 366 passing tests.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

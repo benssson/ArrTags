@@ -1,8 +1,10 @@
 ## Project Status
 
-**Current milestone:** Phase 3 — Media matching is complete (tasks 3.1 through
-3.8 complete; Milestone 3 acceptance criteria satisfied and Gate 3 met). Phase 4
-— Badge rendering is next.
+**Current milestone:** Phase 4 — Badge rendering is in progress. Tasks 4.1
+(provider-neutral metadata selectors), 4.2 (V1 rendering specification, ADR-009),
+and 4.3 (unknown-versus-confirmed-negative semantics) are complete. Milestone 3
+is complete (tasks 3.1 through 3.8; acceptance criteria satisfied and Gate 3
+met).
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -46,15 +48,27 @@ Completed in Phase 3:
   provider matching, while eligible local Movie and Episode files match
   unchanged. Paths remain non-identity context only under ADR-008.
 
+Completed in Phase 4 (Badge rendering):
+
+- 4.1 Provider-neutral `BadgeSelector` vocabulary and `BadgeSelectorResolver`
+  reading only canonical `BadgeMetadata`, in ADR-009 priority order.
+- 4.2 V1 rendering specification (ADR-009): fields, templates, layout, geometry,
+  contrast, text limits, PNG output, scaling, and pass-through policy. No
+  rendering code is included in this documentation closure.
+- 4.3 Unknown-versus-confirmed-negative semantics: tri-state flags resolve only
+  on a confirmed `true`, confirmed generic dynamic range is displayed while an
+  unknown range is omitted, and the canonical fingerprint retains the
+  distinction.
+
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 340 automated tests.
+- Passes 366 automated tests.
 
 Next tasks:
 
-- Phase 4 — Badge rendering. Milestone 3 acceptance criteria and Gate 3 are met;
-  DG-3 (badge fields, templates, placement, contrast, output format, and text
-  limits) must be resolved before Milestone 4 implementation.
+- Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
+  tasks (4.4 through 4.11), beginning with task 4.4 render request and result
+  fingerprints.

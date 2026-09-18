@@ -283,3 +283,38 @@ task 3.6 adds no runtime implementation. Task 3.7 verifies connection scoping,
 and task 3.8 verifies fail-closed ineligible-location rejection. The Phase 3 task
 list is complete, all Milestone 3 acceptance criteria are satisfied, and Gate 3
 is met. Milestone 4 (badge rendering) is next, gated by DG-3.
+
+### Phase 4 (Badge rendering) - in progress
+
+Tasks 4.1 through 4.3 are complete. DG-3 and ADR-010 are resolved; the remaining
+renderer implementation tasks (4.4 through 4.11) follow.
+
+- Task 4.1 (`src/ArrTags/Rendering/`): the provider-neutral `BadgeSelector`
+  vocabulary (Quality, Resolution, DynamicRange, Source, VideoCodec, Audio,
+  CustomBadge, and UpgradePending) with `BadgeSelectorResolver`, `BadgeSelection`,
+  and `BadgeValue`. Resolution reads only canonical `BadgeMetadata`, emits
+  technical values in the ADR-009 priority order, builds the composite audio value
+  from confirmed features then codec then channel count, replaces the generic
+  dynamic-range label with `DV` only when Dolby Vision is confirmed, produces one
+  candidate per retained custom value, and treats `UpgradePending` as a separate
+  `UPGRADE` status only when explicitly true. Unknown and absent values are
+  omitted rather than rendered as placeholders or inferred negatives.
+  `tests/ArrTags.Tests/BadgeSelectorTests.cs` adds 15 selector tests.
+- Task 4.2 (documentation-only): ADR-009 fixes the V1 selector vocabulary, field
+  priority, Movie/Episode Primary-poster layout, typography and geometry,
+  contrast-validated palette, 24-scalar display limit, PNG/RGB-or-RGBA output,
+  source-dimension scaling, high-DPI behavior, and pass-through behavior for
+  unknown, incomplete, cancelled, malformed, or failed renders. No rendering code
+  is included in this decision closure.
+- Task 4.3 (`src/ArrTags/Rendering/BadgeSelectorResolver.cs`,
+  `tests/ArrTags.Tests/BadgeUnknownValueTests.cs`): the resolver keeps canonical
+  unknown values distinct from confirmed negative values. Tri-state flags
+  (Dolby Vision and upgrade-pending) resolve through one explicit
+  `ResolveConfirmedTrue` rule so only a confirmed `true` yields a display value
+  and neither a confirmed negative nor an unknown value is inferred from the
+  other. A confirmed generic dynamic range (for example `SDR`) is displayed while
+  an unknown range is omitted; unknown audio features do not suppress a confirmed
+  codec and a confirmed empty feature set never infers a feature. The canonical
+  fingerprint continues to distinguish unknown from confirmed-negative and
+  unknown from confirmed-empty. The new suite adds 11 tests; build and test pass
+  with 0 warnings and 366 passing tests.

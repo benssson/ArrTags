@@ -12,7 +12,9 @@ namespace ArrTags.Rendering;
 /// <see cref="BadgeMetadata"/>. The resolver reads only the canonical model: it
 /// never consults a provider DTO, record identifier, credential, or extension
 /// value, and it never turns an unknown or absent field into a claim. A field is
-/// emitted only from a confirmed value.
+/// emitted only from a confirmed value; a confirmed negative value is distinct
+/// from an unknown value, but neither is displayable and neither may be inferred
+/// from the other.
 /// </summary>
 public static class BadgeSelectorResolver
 {
@@ -83,9 +85,9 @@ public static class BadgeSelectorResolver
             AddSelector(metadata, selector, technicalValues);
         }
 
-        var status = enabled.Contains(BadgeSelector.UpgradePending)
-            && metadata.UpgradePending == true
-            ? new BadgeValue(BadgeSelector.UpgradePending, UpgradeStatusText)
+        var statusText = ResolveConfirmedTrue(metadata.UpgradePending, UpgradeStatusText);
+        var status = enabled.Contains(BadgeSelector.UpgradePending) && statusText is not null
+            ? new BadgeValue(BadgeSelector.UpgradePending, statusText)
             : null;
 
         return technicalValues.Count == 0 && status is null
@@ -137,9 +139,10 @@ public static class BadgeSelectorResolver
 
     private static string? ResolveDynamicRange(BadgeMetadata metadata)
     {
-        if (metadata.DolbyVision == true)
+        var dolbyVision = ResolveConfirmedTrue(metadata.DolbyVision, DolbyVisionLabel);
+        if (dolbyVision is not null)
         {
-            return DolbyVisionLabel;
+            return dolbyVision;
         }
 
         return metadata.DynamicRange?.Kind switch
@@ -197,6 +200,21 @@ public static class BadgeSelectorResolver
             ArrAudioFeature.Dts => "DTS",
             _ => throw new ArgumentOutOfRangeException(nameof(feature), feature, "Unknown audio feature."),
         };
+    }
+
+    /// <summary>
+    /// Resolves a tri-state canonical technical flag to its display text. Only a
+    /// confirmed <see langword="true"/> produces a value. A confirmed negative
+    /// (<see langword="false"/>) and an unknown value (<see langword="null"/>) are
+    /// distinct canonical states; neither is displayable, and the resolver must
+    /// never infer one from the other or render either as a claim.
+    /// </summary>
+    /// <param name="value">The tri-state canonical flag.</param>
+    /// <param name="displayText">The display text for a confirmed positive value.</param>
+    /// <returns>The display text for a confirmed positive value; otherwise <see langword="null"/>.</returns>
+    private static string? ResolveConfirmedTrue(bool? value, string displayText)
+    {
+        return value == true ? displayText : null;
     }
 
     private static string? Normalize(string? value)
