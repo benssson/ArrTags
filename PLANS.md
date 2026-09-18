@@ -891,7 +891,7 @@ Radarr, or Jellyfin artwork storage.
 - [x] 4.2 Define the initial badge field set, text rules, contrast behavior,
   placement, scale, margins, and output format policy.
 - [x] 4.3 Keep unknown technical values distinct from confirmed negative values.
-- [ ] 4.4 Implement render request and result fingerprints containing every
+- [x] 4.4 Implement render request and result fingerprints containing every
   output-affecting value, including renderer and badge schema versions.
 - [ ] 4.5 Enforce image and text limits before decode, draw, and encode work.
 - [ ] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
@@ -948,6 +948,22 @@ feature. No canonical value is mutated: the metadata fingerprint continues to
 distinguish unknown from confirmed-negative and unknown from confirmed-empty, and
 `tests/ArrTags.Tests/BadgeUnknownValueTests.cs` proves the behavior with 11 new
 tests. Build and test pass with 0 warnings and 366 passing tests.
+
+**Task 4.4 status:** Complete. The renderer now has a provider-neutral,
+output-affecting fingerprint boundary. `RenderVersion` owns the code-owned
+renderer and badge schema versions. `RenderOutputPolicy` holds the ADR-009/010
+output-affecting policy (format, color space, alpha policy, font identity,
+palette, scale policy, and text limits). `RenderFingerprintInput` is a validated,
+immutable snapshot of every output-affecting value, and `RenderFingerprint`
+computes two deterministic SHA-256 fingerprints: the result/output fingerprint
+(source, dimensions, metadata, configuration, resolved badge values, output
+policy, and both versions; independent of item identity) and the request
+fingerprint (render key) that scopes it to the Jellyfin item and poster surface.
+Correlation identifiers and timestamps are absent by construction. The new
+`RenderFingerprintTests` suite adds 20 tests proving determinism, item
+independence of the output identity, sensitivity to every output-affecting
+value and version, timestamp exclusion, and input validation. Build and test
+pass with 0 warnings and 386 passing tests.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

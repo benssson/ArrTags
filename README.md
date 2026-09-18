@@ -2,9 +2,9 @@
 
 **Current milestone:** Phase 4 — Badge rendering is in progress. Tasks 4.1
 (provider-neutral metadata selectors), 4.2 (V1 rendering specification, ADR-009),
-and 4.3 (unknown-versus-confirmed-negative semantics) are complete. Milestone 3
-is complete (tasks 3.1 through 3.8; acceptance criteria satisfied and Gate 3
-met).
+4.3 (unknown-versus-confirmed-negative semantics), and 4.4 (render request and
+result fingerprints) are complete. Milestone 3 is complete (tasks 3.1 through
+3.8; acceptance criteria satisfied and Gate 3 met).
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -59,16 +59,21 @@ Completed in Phase 4 (Badge rendering):
   on a confirmed `true`, confirmed generic dynamic range is displayed while an
   unknown range is omitted, and the canonical fingerprint retains the
   distinction.
+- 4.4 Render request and result fingerprints: `RenderVersion`,
+  `RenderOutputPolicy`, and the validated `RenderFingerprintInput` snapshot feed
+  deterministic SHA-256 result/output and request (render key) fingerprints over
+  every output-affecting value, including the renderer and badge schema versions,
+  excluding correlation identifiers and timestamps.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 366 automated tests.
+- Passes 386 automated tests.
 
 Next tasks:
 
 - Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks (4.4 through 4.11), beginning with task 4.4 render request and result
-  fingerprints.
+  tasks (4.5 through 4.11), beginning with task 4.5 image and text limit
+  enforcement.

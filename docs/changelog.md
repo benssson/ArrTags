@@ -286,8 +286,8 @@ is met. Milestone 4 (badge rendering) is next, gated by DG-3.
 
 ### Phase 4 (Badge rendering) - in progress
 
-Tasks 4.1 through 4.3 are complete. DG-3 and ADR-010 are resolved; the remaining
-renderer implementation tasks (4.4 through 4.11) follow.
+Tasks 4.1 through 4.4 are complete. DG-3 and ADR-010 are resolved; the remaining
+renderer implementation tasks (4.5 through 4.11) follow.
 
 - Task 4.1 (`src/ArrTags/Rendering/`): the provider-neutral `BadgeSelector`
   vocabulary (Quality, Resolution, DynamicRange, Source, VideoCodec, Audio,
@@ -318,3 +318,21 @@ renderer implementation tasks (4.4 through 4.11) follow.
   fingerprint continues to distinguish unknown from confirmed-negative and
   unknown from confirmed-empty. The new suite adds 11 tests; build and test pass
   with 0 warnings and 366 passing tests.
+- Task 4.4 (`src/ArrTags/Rendering/`): the render request and result fingerprints.
+  `RenderVersion` owns the code-owned renderer version and the badge schema
+  version reference. `RenderOutputPolicy` is the ADR-009/010 output-affecting
+  policy (output format, color space, alpha policy, font identity, palette,
+  scale policy, and text limits). `RenderFingerprintInput` is a validated,
+  immutable snapshot of every output-affecting value: Jellyfin item identity,
+  oriented source fingerprint and dimensions, optional metadata fingerprint,
+  secret-free configuration fingerprint, ordered resolved `BadgeSelection`,
+  output policy, and both versions. `RenderFingerprint` computes the
+  result/output fingerprint over the visual inputs and versions (independent of
+  item identity) and the request fingerprint (render key) that scopes it to the
+  item and poster surface. Every output-affecting value changes the appropriate
+  fingerprint; correlation identifiers and timestamps are absent by
+  construction. `tests/ArrTags.Tests/RenderFingerprintTests.cs` adds 20 tests.
+
+Build and test: Task 4.4 adds the fingerprint boundary with 20 new tests; build
+and test pass with 0 warnings and 386 passing tests. Tasks 4.5 through 4.11
+remain. Gate 4 is not yet met.
