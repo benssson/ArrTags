@@ -223,7 +223,7 @@ met.
   context. The provider factories translate validated Radarr/Sonarr DTOs into
   canonical connection-scoped `MatchCandidate` values. Exact episode-number
   fallback was disabled at the time of task 3.4 and was enabled by task 3.5
-  (ADR-007); configured path fallback remains pending task 3.6 (DG-5).
+  (ADR-007); configured path fallback is deferred out of V1 by ADR-008 (DG-5).
 - `tests/ArrTags.Tests/MatchRuleOrderTests.cs`,
   `tests/ArrTags.Tests/MediaMatcherTests.cs`,
   `tests/ArrTags.Tests/MatchCandidateFactoryTests.cs` - rule order, cross-provider
@@ -248,5 +248,7 @@ met.
   fallback after the series match, series-scoped number fallback, special and
   span exclusion, absolute-number mismatch, and number ambiguity (6 new tests).
 
-Build and test: 0 warnings, 0 errors; 313 tests pass. Remaining Phase 3 tasks:
-configured path mapping (3.6) and connection-scope verification (3.7).
+Build and test: 0 warnings, 0 errors; 313 tests pass. DG-5 is resolved by
+ADR-008: configured path mapping and normalization are deferred out of V1, so
+task 3.6 adds no runtime implementation. The remaining Phase 3 task is
+connection-scope verification (3.7).

@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1, 3.2, 3.3, and 3.4 complete)
+**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1 through 3.6 complete; task 3.6 is the ADR-008 documentation-only DG-5 closure)
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -39,9 +39,11 @@ tasks meet their acceptance criteria and Gate 2 is met. Phase 3 media matching i
 in progress: tasks 3.1 (canonical `MediaIdentity` snapshots), 3.2
 (provider-neutral candidate selection, evidence recording, and deterministic
 `MediaMatch` fingerprints), 3.3 (zero- and multiple-candidate rejection with
-the match status policy), and 3.4 (the documented movie, series, and episode
-matching order with provider-specific candidate assembly) are complete, and the
-Milestone 3 gate is not yet met.
+the match status policy), 3.4 (the documented movie, series, and episode
+matching order with provider-specific candidate assembly), 3.5 (the explicit
+episode-numbering policy in ADR-007), and 3.6 (DG-5 resolved by ADR-008 with
+path fallback deferred out of V1) are complete, and the Milestone 3 gate is not
+yet met.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -652,7 +654,8 @@ Radarr record using stable provider identity first and explicit fallback rules.
 - Explicit handling for no match, ambiguity, unsupported item, missing file,
   virtual item, remote item, specials, anime numbering, double episodes, and
   multi-episode files.
-- Optional path fallback only through configured, normalized path mappings.
+- V1 path fallback is deferred out of scope by ADR-008; no host/container path
+  equivalence is assumed and no path-only match is accepted.
 
 **Tasks:**
 
@@ -667,8 +670,9 @@ Radarr record using stable provider identity first and explicit fallback rules.
 - [x] 3.4 Implement the documented movie, series, and episode matching order.
 - [x] 3.5 Define and test the numbering policy for specials, anime, and
   multi-episode records before enabling number fallback.
-- [ ] 3.6 Add configured path normalization only if the configuration decision
-  gate approves it; never assume host and container paths are equivalent.
+- [x] 3.6 Resolve DG-5. Configured path normalization and path fallback are
+  deferred out of V1 by ADR-008; this is a documentation-only closure and adds
+  no configuration or runtime matching rule.
 - [ ] 3.7 Verify that local Arr record and file IDs are always scoped by
   connection.
 
@@ -682,8 +686,9 @@ empty scope means no restriction, and a non-empty scope with an unresolvable
 library fails closed. V1 badge-surface eligibility remains limited to Movie and
 Episode posters and honours the configured poster flags; Series and Season stay
 structural and produce no badge. Provider DTOs and provider-specific concepts
-are excluded, and the builder captures raw Jellyfin facts only, leaving DG-4
-episode-numbering policy and DG-5 path mapping to later tasks. Jellyfin library
+are excluded, and the builder captures raw Jellyfin facts only, leaving the DG-4
+episode-numbering policy to the matching task. DG-5 is now resolved by ADR-008;
+path mapping is out of V1. Jellyfin library
 lookups are isolated behind the `IMediaLibraryResolver` boundary so the snapshot
 logic is covered without a live host. Remaining Milestone 3 tasks were not started at
 the time of task 3.1; task 3.2 is recorded below.
@@ -711,7 +716,8 @@ identifiers; the fingerprint is independent of observation timestamps and never
 contains a credential. Mapping the survivor count to a `Matched`/`NotFound`/
 `Ambiguous` status (task 3.3), the provider-specific candidate assembly and
 documented rule order (task 3.4), the numbering policy (3.5), and configured path
-mapping (3.6) are deliberately not implemented here.
+mapping (3.6) are deliberately not implemented here; ADR-008 defers path mapping
+out of V1.
 
 **Task 3.3 status:** Complete. The match status policy lives in
 `src/ArrTags/Matching/MediaMatchPolicy.cs`. `MediaMatchPolicy.Resolve` maps a
@@ -725,9 +731,9 @@ candidate's connection-scoped `ArrRecordIdentity`, and records the agreeing
 provider identifier only for a `ProviderId` decision, so `Number` or
 `ConfiguredPath` decisions add no provider identifiers. Provider-specific
 candidate assembly and the documented movie/series/episode rule order were
-completed in task 3.4; the episode numbering policy (task 3.5), configured path
-mapping (task 3.6), and the connection-scope verification task (3.7) remain to
-be implemented.
+completed in task 3.4; the episode numbering policy (task 3.5) is complete,
+configured path mapping is deferred out of V1 by ADR-008, and the connection-
+scope verification task (3.7) remains to be implemented.
 
 **Task 3.4 status:** Complete. The documented matching order is implemented in
 `src/ArrTags/Matching/MatchRuleOrder.cs`, `MediaMatcher.cs`, and
@@ -750,9 +756,9 @@ candidate factories translate validated provider DTOs into canonical
 connection-scoped `MatchCandidate` values, mapping the documented provider ids
 and descriptive context and keeping provider resources at the integration
 boundary; an episode candidate is always anchored to its series identity. Exact
-season/episode number fallback is deliberately not enabled: decision gate DG-4 is
-resolved by task 3.5, and the rule order test asserts no `Number` or
-`ConfiguredPath` rule is present. Tests in `MatchRuleOrderTests`,
+season/episode number fallback is enabled by task 3.5 after the episode TVDB
+rule; configured path fallback remains disabled by ADR-008, and the rule order
+test asserts no `ConfiguredPath` rule is present. Tests in `MatchRuleOrderTests`,
 `MediaMatcherTests`, and `MatchCandidateFactoryTests` cover the rule order,
 cross-provider and structural rejection, TMDb-before-IMDb ordering, IMDb
 fallback, connection-scoped results, series-then-episode scoping, bounded
@@ -769,8 +775,9 @@ multi-episode span (`EpisodeNumberEnd > EpisodeNumber`) is excluded because one
 Jellyfin item can map to multiple Sonarr episode records. An end number equal to
 the start is treated as a single episode. Absolute, scene, and other alternate
 numbering is never an identity key, so absolute-number agreement alone never
-matches; anime and other series still require the episode TVDB id or, if DG-5
-approves it, a configured path. The comparison is exact `(seasonNumber,
+matches; anime and other series still require the episode TVDB id when normal
+number fallback is ineligible. Configured path fallback is deferred out of V1 by
+ADR-008. The comparison is exact `(seasonNumber,
 episodeNumber)` equality with no tolerance and never uses title, year, path, or
 air date. Ineligible or non-equivalent candidates do not satisfy the rule, so
 the existing status policy yields `NotFound`/`Ambiguous` and no badge. Tests in
@@ -779,6 +786,14 @@ numbers, item/provider mismatch, exact matching, and bounded rejection; new
 `MediaMatcherTests` cases cover number fallback after the series match,
 series-scoped number fallback, special and span exclusion, absolute-number
 mismatch, and number ambiguity.
+
+**Task 3.6 status:** Complete as an architecture/documentation decision only.
+ADR-008 resolves DG-5 by deferring configured, connection-scoped path mappings
+and path normalization out of V1. V1 never compares Jellyfin and Arr paths,
+never assumes host/container equivalence, and never emits a `ConfiguredPath`
+match. Items that lack the approved provider-ID or regular-number evidence remain
+unmatched with no new badge. No source or test implementation was added for this
+task; task 3.7 remains the next implementation task.
 
 **Acceptance criteria:**
 
@@ -1022,7 +1037,7 @@ an implementation assumption.
 | DG-2 | Initial supported item and image types, including whether series/season posters are disabled or use an explicit aggregate policy. Resolved by ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are structural and aggregation remains post-V1. | Milestones 3-5 |
 | DG-3 | Initial badge fields, templates, placement, contrast, output format, text limits, and request-size policy. | Milestone 4 |
 | DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. Resolved by ADR-007: number fallback is limited to regular single episodes; season zero specials, multi-episode spans, and absolute/scene numbering are excluded. | Milestone 3 |
-| DG-5 | Whether path mappings are needed, and their connection-scoped representation. | Milestone 3 |
+| DG-5 | Whether path mappings are needed, and their connection-scoped representation. Resolved by ADR-008: configured path fallback is deferred out of V1, so V1 has no path mapping schema, normalization, or `ConfiguredPath` rule. | Milestone 3 |
 | DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. Foundation defaults are resolved by ADR-004; Milestone 6 may tune within the documented validation ranges. | Milestone 6 |
 | DG-7 | Webhook exposure, authentication, payload limits, replay handling, and route administration flow. Secret persistence and versioned access are resolved by ADR-005. | Milestone 6 |
 | DG-8 | Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior. | Milestone 5 |
@@ -1034,7 +1049,7 @@ an implementation assumption.
 | --- | --- | --- |
 | Jellyfin 12 artwork ABI differs from assumptions. | Publication or restoration fails, or standard image delivery is disrupted. | Complete the supported item-image publication spike early and pin the ABI; leave current artwork unchanged on failure. |
 | Provider responses vary by version or omit technical fields. | Incorrect or unstable badges. | Defensive mapping, explicit unknown states, capability tracking, and contract tests across declared versions. |
-| Jellyfin and Arr identities cannot be proven equivalent. | Badges appear on the wrong item. | Provider IDs first, scoped IDs, explicit path mappings only, and no automatic badge for ambiguity. |
+| Jellyfin and Arr identities cannot be proven equivalent. | Badges appear on the wrong item. | Provider IDs first, scoped IDs, no V1 path fallback, and no automatic badge for ambiguity. |
 | Provider outages or slow requests affect Jellyfin. | Library scans or image requests degrade. | Asynchronous bounded work, finite timeouts, cancellation, stale policy, and current-artwork preservation. |
 | Rendered output becomes stale after metadata or artwork changes. | Users see outdated badges. | Include all output-affecting inputs in fingerprints and invalidate only after atomic state publication. |
 | Generated artwork is published incorrectly. | Original artwork is lost or Enhanced behavior is disrupted. | Require source provenance, guarded restoration, supported item-image APIs, and tests for manual image changes. |
@@ -1061,6 +1076,9 @@ expand V1 scope by themselves.
   capability rules are available.
 - Consider support for another metadata service only if a later scope decision
   requires it and the provider-neutral integration boundary remains valid.
+- Reconsider configured, connection-scoped Jellyfin-to-Arr path fallback only
+  through a new architecture decision defining its namespaces, normalization,
+  ambiguity, and location-safety contract.
 
 The following remain excluded from this plan unless `GOALS.md` is deliberately
 changed: Jellyfin versions before 12, modifying original media files, writing or

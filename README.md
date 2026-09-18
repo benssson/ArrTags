@@ -1,6 +1,6 @@
 ## Project Status
 
-**Current milestone:** Phase 3 — Media matching (in progress; tasks 3.1, 3.2, 3.3, 3.4, and 3.5 complete)
+**Current milestone:** Phase 3 — Media matching (in progress; tasks 3.1 through 3.6 complete, with 3.6 resolved as the ADR-008 documentation-only path decision)
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -33,6 +33,9 @@ Completed in Phase 3 so far:
 - 3.5 Explicit V1 episode-numbering policy (ADR-007): number fallback is enabled
   only for regular single episodes after the series match, excluding season zero
   specials, multi-episode spans, and absolute/scene numbering.
+- 3.6 DG-5 path decision (ADR-008): configured path mappings and path fallback
+  are deferred out of V1; V1 never assumes Jellyfin and Arr path namespaces are
+  equivalent.
 
 The plugin:
 
@@ -43,5 +46,4 @@ The plugin:
 
 Next tasks:
 
-- Remaining Phase 3 tasks: configured path mapping (3.6) and connection-scope
-  verification (3.7).
+- Remaining Phase 3 task: connection-scope verification (3.7).

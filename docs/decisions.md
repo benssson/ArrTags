@@ -629,7 +629,7 @@ episode TVDB rule.
 - The Sonarr candidate must be an episode with a positive season number and a
   positive episode number, and no multi-episode span.
 - Season zero represents specials and is excluded from number fallback. Specials
-  require the episode TVDB identifier or a configured path.
+  require the episode TVDB identifier in V1.
 - A Jellyfin multi-episode span (`EpisodeNumberEnd > EpisodeNumber`) is excluded
   from number fallback because one Jellyfin item can map to multiple Sonarr
   episode records. An end number equal to the start is treated as a single
@@ -649,12 +649,12 @@ episode TVDB rule.
 - Regular episodes with an agreeing season and episode number can match without
   an episode-level TVDB identifier, which is commonly absent.
 - Specials, multi-episode spans, and absolute-numbered anime keep the
-  conservative no-badge behavior unless a TVDB identifier or, if DG-5 approves
-  it, a configured path mapping resolves them.
+  conservative no-badge behavior unless an episode TVDB identifier resolves
+  them. Configured path fallback is deferred out of V1 by ADR-008.
 - Number matches record `MediaMatchMethod.Number` and carry no matched provider
   identifiers in the match fingerprint, so a change between an identifier match
   and a number match invalidates dependent state.
-- This ADR resolves DG-4. It does not decide configured path mappings (DG-5) and
+- This ADR resolves DG-4. DG-5 is resolved separately by ADR-008, and this ADR
   does not reopen ADR-001 through ADR-006.
 
 ### References
@@ -665,3 +665,102 @@ episode TVDB rule.
   numbering fields
 - `docs/research/sonarr-api.md`, "Episode identity"
 - `docs/research/media-metadata-mapping.md`, section 4.2
+
+## ADR-008: V1 Path Fallback Deferred
+
+**Status:** Accepted
+
+**Date:** 2026-09-18
+
+### Context
+
+Decision gate DG-5 asks whether ArrTags needs configured, connection-scoped
+Jellyfin-to-Sonarr/Radarr path mappings. The original architecture reserved a
+path fallback, but no V1 configuration schema, normalization contract, or
+matching rule was approved.
+
+The implemented V1 matching boundary already has the following identity paths:
+
+- Radarr movies use Jellyfin TMDb, then IMDb, identifiers.
+- Sonarr series use TVDB, then the other stable provider identifiers available
+  in the local Sonarr catalogue.
+- Sonarr episodes are scoped to the matched series and use the episode TVDB
+  identifier, then the exact regular single-episode season and episode numbers
+  approved by ADR-007.
+
+After a record is matched, the Arr-local record and file identifiers retrieve
+the current metadata. Sonarr's `episodeFileId == episodeFile.id` join and
+Radarr's movie/file relationship are sufficient for that metadata lookup; a
+Jellyfin path is not needed to select the current Arr file.
+
+The remaining cases where a path could add coverage are items with missing
+provider identifiers, specials without an episode TVDB identifier, and
+absolute-numbered or otherwise incompatible episode numbering. Those are
+already defined V1 no-badge outcomes when identity evidence is insufficient.
+
+### Decision
+
+Configured, connection-scoped path mappings and path normalization are deferred
+out of V1. DG-5 is resolved negatively for the current V1 scope.
+
+V1 therefore has this explicit contract:
+
+- No `pathMappings` field is persisted or published in the V1 configuration
+  snapshot.
+- No Jellyfin path is compared with a Sonarr or Radarr path for identity.
+- No V1 matching rule or `MatchEvidence` may use `ConfiguredPath`.
+- `MediaIdentity` location data and `MatchCandidate.PrimaryPath` remain raw
+  descriptive context only. They are not normalized identity keys.
+- Provider-ID and approved episode-number rules remain the only automatic V1
+  identity fallbacks. Title, year, local Arr IDs, and paths are not substitutes
+  for cross-system identity.
+- Missing, virtual, remote, offline, `.strm`, fileless, ambiguous, or otherwise
+  unsupported items continue to produce no new badge when the approved identity
+  rules cannot establish exactly one match.
+- Existing conceptual `ConfiguredPath` and `pathValidation` model values are
+  reserved for a future post-V1 decision. V1 must not emit a matched result
+  using them.
+
+### Evaluation
+
+| V1 case | Finding | V1 result |
+| --- | --- | --- |
+| Normal movies | Radarr exposes TMDb and IMDb identifiers that correspond to the Jellyfin provider IDs. | Match by TMDb, then IMDb. |
+| Normal episodes | Sonarr exposes episode TVDB IDs and exact season/episode fields; the parent series is matched first. | Match by episode TVDB, then ADR-007 number fallback. |
+| Specials | Season zero is intentionally excluded from number fallback. | Match only by episode TVDB; otherwise no badge. |
+| Absolute-numbered/anime episodes | Absolute and scene numbers are not a stable V1 identity key. | Match by episode TVDB or approved regular numbering only; otherwise no badge. |
+| Missing or incomplete provider IDs | IDs may be absent when Jellyfin metadata providers have not populated them. | Use the remaining approved identity rules; otherwise `NotFound` or `Ambiguous`, with no badge. |
+| Container/host path differences | Jellyfin and Arr commonly expose different namespaces; literal equality can be false or unsafe. | Never assume equivalence and never use paths in V1 matching. |
+| Remote, virtual, missing, and `.strm` items | They do not provide a comparable local media file and cannot safely receive file-derived metadata through path matching. | No new badge when the item is not an eligible local file. |
+| Multiple sources or versions | A path could select one source without an approved aggregate or representative-source policy. | Do not add path-based disambiguation; preserve the existing fail-closed behavior. |
+| Arr record/file IDs | They are connection-scoped local identities and validated file joins after a record match, not Jellyfin-to-Arr identity keys. | Use them for current metadata and invalidation, not as a path-fallback replacement. |
+| Operational risk | Normalization would need namespace mapping, boundary-safe comparison, case/separator policy, symlink behavior, and ambiguity handling. | Avoid this V1 false-match and attack surface. |
+
+Deferring path fallback does not materially break the stated V1 goals. V1
+requires validated matches and safe degradation, not a match for every item with
+missing or conflicting identity data. The conservative no-badge behavior is
+already required for ambiguous, missing, virtual, remote, and unsupported cases.
+
+### Consequences
+
+- Task 3.6 is a documentation-only decision closure. It adds no configuration,
+  normalization code, matching rule, or runtime behavior.
+- The existing absence of a `ConfiguredPath` rule is the correct V1 behavior;
+  tests should continue to assert that it is absent.
+- V1 does not expose path namespaces, host topology, or path-derived diagnostics
+  through configuration or match state. No secret-boundary change is required.
+- Items that could only be resolved by a path fallback remain unmatched in V1,
+  which is safer than accepting a namespace-dependent or ambiguous match.
+- A future path decision must be a new ADR. It must define the connection-scoped
+  schema, both path namespaces, normalization and boundary rules, location
+  eligibility, multi-source behavior, rule precedence, configuration snapshot
+  replacement, and deterministic tests before any path identity is enabled.
+
+### References
+
+- `PLANS.md`, decision gate DG-5 and Milestone 3 task 3.6
+- `docs/architecture.md`, sections 6, 7, 11, and 14
+- `docs/data-model.md`, sections 3.1, 3.4, and 3.12
+- `docs/research/media-metadata-mapping.md`, sections 3-5 and 8-11
+- `docs/research/sonarr-api.md`, "Matching Jellyfin items to Sonarr"
+- `docs/research/radarr-api.md`, "Identifying a Radarr movie from a Jellyfin item"

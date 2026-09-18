@@ -312,10 +312,10 @@ invalid rather than silently guessed.
 | `provider` | ArrProvider reference | Yes | Plugin | Provider family and instance scope. |
 | `connectionId` | Opaque connection identifier | Yes | Plugin/configuration | Prevents cross-instance local-ID collisions. |
 | `status` | `Matched`, `NotFound`, `Ambiguous`, `Unsupported`, or `Stale` | Yes | Generated | Only `Matched` permits provider metadata to be used for a badge. |
-| `matchMethod` | Provider ID, number, configured path, manual, or none | Yes | Generated | Records how the result was established. |
+| `matchMethod` | Provider ID, number, configured path (post-V1), manual, or none | Yes | Generated | Records how the result was established; V1 never emits `ConfiguredPath` (ADR-008). |
 | `recordIdentity` | Typed, connection-scoped Arr record/file identity | Required when `Matched` | Sonarr/Radarr, cached | Provider-neutral envelope holding one concrete `SonarrIdentity` or `RadarrIdentity`; see section 3.4.1. |
 | `matchedProviderIds` | Map of IDs used for validation | Optional | Jellyfin + provider | Records the stable IDs that agreed; useful for diagnostics and invalidation. |
-| `pathValidation` | Path comparison result | Optional | Generated | Only meaningful when an explicit path mapping is configured. |
+| `pathValidation` | Path comparison result | Optional | Generated | Reserved for a future path-mapping decision; V1 never produces a path match or path validation result. |
 | `matchedAt` | Timestamp | Optional | Generated | Last successful validation time. |
 | `matchFingerprint` | Opaque fingerprint | Yes | Generated | Changes when the association or any scoped identity component (record ID, episode ID, or file identity presence/value) changes. |
 | `ambiguityReason` | String/code | Optional | Generated | Safe explanation for skipped matches; never contains credentials. |
@@ -720,7 +720,7 @@ badge selection, rendering, cache policy, and update behavior.
 | `cachePolicy` | TTL, stale window, size, and eviction limits | Yes | Configuration | Separate metadata freshness from artwork retention. |
 | `updatePolicy` | Schedule, webhook, retry, and queue policy | Yes | Configuration | Webhooks accelerate reconciliation; they do not replace it. |
 | `enhancedCoexistencePolicy` | Duplicate/spoiler surface policy | Yes | Configuration | No dependency on Jellyfin Enhanced internals. |
-| `pathMappings` | Optional connection-scoped mappings | Optional | Configuration | Required before path fallback is eligible. |
+| `pathMappings` | Optional connection-scoped mappings | Optional | Configuration | Reserved post-V1; ADR-008 defers path fallback and V1 snapshots do not carry this field. |
 | `secretReferences` | Protected, typed secret-slot references | Optional | Configuration | API keys and webhook secrets are represented only by safe references; values are excluded from fingerprints, logs, canonical snapshots, and state. |
 
 The conceptual `renderingPolicy`, `cachePolicy`, and `updatePolicy` objects above
@@ -738,8 +738,9 @@ that public snapshot together with a private, version-matched in-memory secret
 snapshot. The private snapshot is not a canonical model, cache record, state
 envelope, or serialization format. Workers acquire a short-lived secret lease
 by reference and configuration version immediately before external
-authentication. Badge definitions, rendering style, and path mappings remain
-future configuration work.
+authentication. Badge definitions and rendering style remain future configuration
+work. Path mappings are explicitly post-V1 under ADR-008 and are not part of the
+V1 snapshot.
 
 #### 3.12.1 Secret resolution semantics
 
@@ -829,13 +830,13 @@ Mapping labels:
 | `mediaIdentity` | Current item identity | Candidate series/episode identity | Candidate movie identity | Direct Jellyfin subject plus provider comparison. |
 | `provider` / `connectionId` | Applicable library configuration | Configured Sonarr instance | Configured Radarr instance | Generated/configuration scope. |
 | `status` | Item eligibility/location | Zero, one, or multiple candidate records | Zero, one, or multiple candidate records | Derived; ambiguity and no match are valid results. |
-| `matchMethod` | Provider IDs, numbers, path candidate | TVDB, other IDs, season/episode, mapped path | TMDb, IMDb, mapped path | Derived from the accepted matching strategy. |
+| `matchMethod` | Provider IDs, numbers, post-V1 path candidate | TVDB, other IDs, season/episode, post-V1 mapped path | TMDb, IMDb, post-V1 mapped path | Derived from the accepted matching strategy; V1 does not use path matching (ADR-008). |
 | `recordIdentity` | Media source context only | `SonarrIdentity`: `series.id`, `episode.id`, and `episode.episodeFileId` | `RadarrIdentity`: `movie.id` and `movie.movieFileId` | Direct after validation and the current-file join; always connection-scoped; file identity records explicit present/absent. |
 | `matchedProviderIds` | Provider IDs used | `tvdbId`/other matching IDs | `tmdbId`/`imdbId` | Direct evidence retained for diagnostics. |
-| `pathValidation` | Item/media source path | Series/episode file path | Movie/movie file path | Derived only when configured path mapping permits comparison. |
+| `pathValidation` | Item/media source path | Series/episode file path | Movie/movie file path | Reserved post-V1; V1 never compares these paths or produces path validation. |
 | `matchedAt` | Not applicable | Not applicable | Not applicable | Generated/cached. |
 | `matchFingerprint` | Item identity inputs | Series/episode/file identity inputs | Movie/file identity inputs | Generated from the Jellyfin subject and every scoped identity component. |
-| `ambiguityReason` | Missing or conflicting identity | Candidate/mapping conflict | Candidate/mapping conflict | Generated safe reason. |
+| `ambiguityReason` | Missing or conflicting identity | Candidate conflict | Candidate conflict | Generated safe reason. |
 
 ### 4.5 BadgeMetadata
 
@@ -957,7 +958,7 @@ Mapping labels:
 | `cachePolicy` | Not applicable | Provider freshness/capability inputs | Provider freshness/capability inputs | Configuration controls retention; provider does not define plugin TTL. |
 | `updatePolicy` | Library events/schedules | Webhook connection hints | Webhook connection hints | Common reconciliation policy. |
 | `enhancedCoexistencePolicy` | Jellyfin Enhanced surface behavior | Not applicable | Not applicable | Configuration only; no Enhanced model is imported. |
-| `pathMappings` | Jellyfin path namespace | Sonarr path namespace | Radarr path namespace | Explicit configuration required before path fallback. |
+| `pathMappings` | Jellyfin path namespace | Sonarr path namespace | Radarr path namespace | Reserved post-V1; V1 does not persist mappings or perform path fallback (ADR-008). |
 | `secretReferences` | Protected plugin settings | API key/webhook secret | API key/webhook secret | References only; values are not domain data. |
 
 ## 5. Badge Metadata Specification

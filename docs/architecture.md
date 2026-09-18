@@ -180,6 +180,8 @@ The persisted configuration includes:
   response and artifact sizes, decoded image dimensions, reconciliation batch
   size, cache TTL/quota, provenance retention, and the stale-data window (see
   section 12 and ADR-004).
+- V1 does not persist or publish path mappings. Configured path fallback is
+  deferred out of V1 by ADR-008.
 - Webhook token or equivalent secret for inbound Arr notifications.
 - Jellyfin Enhanced coexistence and duplicate-badge policy.
 
@@ -308,9 +310,11 @@ The initial matching order is:
   Number fallback applies only to regular, single episodes: season zero
   specials and multi-episode spans are excluded, and absolute/scene numbering is
   never an identity key. Specials, spans, and absolute-numbered anime match by
-  the episode TVDB id or, when DG-5 approves it, a configured path.
-- **Path:** only a configured, normalized path mapping may use paths as a
-  fallback. Container or host paths must never be assumed equivalent.
+  the episode TVDB id only when number fallback is ineligible.
+- **Path:** path matching is not an automatic V1 rule. Raw Jellyfin and Arr
+  paths are location context only; V1 never normalizes or compares them and must
+  not assume container and host paths are equivalent. Configured path fallback
+  is deferred out of V1 by ADR-008.
 - **Title and year:** candidate or manual-disambiguation data only; never an
   automatic badge match when zero or multiple candidates remain.
 
@@ -689,7 +693,8 @@ Jellyfin 12.x ABI and supported Arr versions.
   mismatch, disablement, restart hydration, lease disposal, and secret
   exclusion from diagnostics and serialization.
 - Tolerant Sonarr/Radarr DTO deserialization.
-- Provider-ID matching, ambiguity, missing-file, and path-mapping behavior.
+- Provider-ID matching, ambiguity, missing-file, and rejection of path-only
+  matches.
 - Actual-versus-requested quality semantics.
 - Fingerprint stability and invalidation.
 - Queue coalescing, cancellation, retry, and state recovery.
@@ -747,6 +752,8 @@ The following are intentionally not guessed by this architecture:
    to regular single episodes after the series match; season zero specials,
    multi-episode spans, and absolute/scene numbering are excluded.
 5. Whether configured path mappings are needed and how they are represented.
+   Resolved by ADR-008: path fallback is deferred out of V1, so V1 has no path
+   mapping configuration or path matching rule.
 6. Default queue, concurrency, image-size, cache, timeout, retry, and stale
    state limits. Resolved for the foundation by ADR-004; the accepted values are
    in section 12.
@@ -762,11 +769,11 @@ revision before they become implementation assumptions. Item 1 (the pinned
 Jellyfin `12.0.0` / `net10.0` / `targetAbi: 12.0.0.0` compatibility target) is
 resolved in `docs/implementation-readiness.md`. Item 2 (V1 badge surfaces and
 the library scope identifier) is resolved by ADR-006. Item 4 (episode numbering)
-is resolved by ADR-007. Item 6 (foundation
-operational limits) is resolved by ADR-004, with the accepted values recorded
-in section 12. The credential persistence and access boundary is resolved by
-ADR-005. The remaining webhook decision is route exposure and request policy,
-not secret storage.
+is resolved by ADR-007. Item 5 (path fallback) is resolved by ADR-008. Item 6
+(foundation operational limits) is resolved by ADR-004, with the accepted values
+recorded in section 12. The credential persistence and access boundary is
+resolved by ADR-005. The remaining webhook decision is route exposure and request
+policy, not secret storage.
 The remaining items stay open and are tracked by the decision gates in
 `PLANS.md`.
 
