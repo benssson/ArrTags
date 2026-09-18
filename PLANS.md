@@ -886,34 +886,34 @@ Radarr, or Jellyfin artwork storage.
 
 **Tasks:**
 
-- [x] Implement metadata selectors against `BadgeMetadata`, not provider DTO
+- [x] 4.1 Implement metadata selectors against `BadgeMetadata`, not provider DTO
   paths.
-- [x] Define the initial badge field set, text rules, contrast behavior,
+- [x] 4.2 Define the initial badge field set, text rules, contrast behavior,
   placement, scale, margins, and output format policy.
-- [ ] Keep unknown technical values distinct from confirmed negative values.
-- [ ] Implement render request and result fingerprints containing every
+- [ ] 4.3 Keep unknown technical values distinct from confirmed negative values.
+- [ ] 4.4 Implement render request and result fingerprints containing every
   output-affecting value, including renderer and badge schema versions.
-- [ ] Enforce image and text limits before decode, draw, and encode work.
-- [ ] Test dimensions, format behavior, truncation, layout, cancellation, and
+- [ ] 4.5 Enforce image and text limits before decode, draw, and encode work.
+- [ ] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
   renderer failure pass-through.
-- [ ] Pin the SkiaSharp managed and Linux native asset packages to exact
+- [ ] 4.7 Pin the SkiaSharp managed and Linux native asset packages to exact
   versions, embed the DejaVu Sans Bold 2.37 font as a plugin resource, and ship
   the font and Skia license notices (ADR-010).
-- [ ] Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the
+- [ ] 4.8 Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the
   host's pinned SkiaSharp/HarfBuzzSharp version and native library name, verify
   whether the plugin resolves that shared version or needs its own isolated
   copy, and prove one decode/draw/encode round trip on the pinned Linux runtime
   before building the drawing engine (ADR-010).
-- [ ] Implement the provider-neutral renderer service and drawing engine: the
+- [ ] 4.9 Implement the provider-neutral renderer service and drawing engine: the
   `RenderAsync`/`RenderRequest`/`SourceImageInput`/`RenderResult` contract,
   ADR-009 selectors, priority, rail layout, typography, truncation, and
   contrast, and the ADR-010 sRGB PNG encode, alpha, and metadata policy
   (ADR-010).
-- [ ] Extend the immutable configuration model, snapshot, and validator with
+- [ ] 4.10 Extend the immutable configuration model, snapshot, and validator with
   enabled V1 selectors, bounded templates, and contrast-validated palette/style
   overrides, including the secret-free renderer configuration fingerprint
   (ADR-010).
-- [ ] Add golden-image, byte-determinism, PNG-contract, and cross-runtime
+- [ ] 4.11 Add golden-image, byte-determinism, PNG-contract, and cross-runtime
   tolerance tests with synthetic fixtures and no auto-approval of changed
   goldens (ADR-010).
 
