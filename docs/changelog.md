@@ -286,8 +286,8 @@ is met. Milestone 4 (badge rendering) is next, gated by DG-3.
 
 ### Phase 4 (Badge rendering) - in progress
 
-Tasks 4.1 through 4.4 are complete. DG-3 and ADR-010 are resolved; the remaining
-renderer implementation tasks (4.5 through 4.11) follow.
+Tasks 4.1 through 4.5 are complete. DG-3 and ADR-010 are resolved; the remaining
+renderer implementation tasks (4.6 through 4.11) follow.
 
 - Task 4.1 (`src/ArrTags/Rendering/`): the provider-neutral `BadgeSelector`
   vocabulary (Quality, Resolution, DynamicRange, Source, VideoCodec, Audio,
@@ -332,7 +332,24 @@ renderer implementation tasks (4.5 through 4.11) follow.
   item and poster surface. Every output-affecting value changes the appropriate
   fingerprint; correlation identifiers and timestamps are absent by
   construction. `tests/ArrTags.Tests/RenderFingerprintTests.cs` adds 20 tests.
+- Task 4.5 (`src/ArrTags/Rendering/`): the pre-decode/pre-draw/pre-encode limit
+  boundary. `RenderLimitGuard` rejects a structurally unusable source descriptor
+  and enforces the accepted operational limits before any decode or allocation:
+  the exact source byte length against `SourceArtifactLimitBytes` and each
+  oriented source side against `MaxImageDimensionPixels`, plus the planned
+  derived output surface (per-side dimension bound and the uncompressed RGBA
+  surface against `DerivedArtifactLimitBytes`). `BadgeTextNormalizer` enforces
+  the ADR-009 text limits from the `RenderOutputPolicy`: non-whitespace control
+  scalars are removed, whitespace runs collapse to one space, and labels are
+  bounded to 24 Unicode scalar values with end truncation to the first 21
+  scalars plus the policy ellipsis. Counting is by Unicode scalar value, not
+  UTF-16 character, so supplementary and combining scalars are handled correctly
+  and a surrogate pair is never split. `RenderLimitResult` and
+  `RenderLimitReason` provide the bounded, non-secret failure/pass-through shape:
+  a rejected result carries one safe reason code, never a partial artifact, and
+  source bytes are never mutated. `tests/ArrTags.Tests/RenderLimitTests.cs` adds
+  39 tests.
 
-Build and test: Task 4.4 adds the fingerprint boundary with 20 new tests; build
-and test pass with 0 warnings and 386 passing tests. Tasks 4.5 through 4.11
-remain. Gate 4 is not yet met.
+Build and test: Task 4.5 adds the limit-enforcement boundary with 39 new tests;
+build and test pass with 0 warnings and 425 passing tests. Tasks 4.6 through
+4.11 remain. Gate 4 is not yet met.

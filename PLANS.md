@@ -893,7 +893,7 @@ Radarr, or Jellyfin artwork storage.
 - [x] 4.3 Keep unknown technical values distinct from confirmed negative values.
 - [x] 4.4 Implement render request and result fingerprints containing every
   output-affecting value, including renderer and badge schema versions.
-- [ ] 4.5 Enforce image and text limits before decode, draw, and encode work.
+- [x] 4.5 Enforce image and text limits before decode, draw, and encode work.
 - [ ] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
   renderer failure pass-through.
 - [ ] 4.7 Pin the SkiaSharp managed and Linux native asset packages to exact
@@ -964,6 +964,26 @@ Correlation identifiers and timestamps are absent by construction. The new
 independence of the output identity, sensitivity to every output-affecting
 value and version, timestamp exclusion, and input validation. Build and test
 pass with 0 warnings and 386 passing tests.
+
+**Task 4.5 status:** Complete. The renderer now has a provider-neutral
+pre-decode/pre-draw/pre-encode limit boundary. `RenderLimitGuard` validates a
+bounded source descriptor (exact byte length and oriented dimensions) against
+the accepted `OperationalLimits`: non-positive descriptors are rejected as
+malformed, byte length is compared with `SourceArtifactLimitBytes`, and each
+oriented side is compared with `MaxImageDimensionPixels` before any decode or
+allocation. The planned derived output surface is validated with the same
+per-side bound plus a conservative pre-encode comparison of the uncompressed
+RGBA surface against `DerivedArtifactLimitBytes`. `BadgeTextNormalizer` removes
+non-whitespace control scalars, collapses whitespace runs to one space, trims
+the ends, and enforces the ADR-009 text limit using the `RenderOutputPolicy`
+values: at most 24 Unicode scalar values, with end truncation to the first 21
+scalars plus `...`. It counts scalar values rather than UTF-16 characters,
+handles supplementary and combining scalars, and never splits a surrogate pair.
+`RenderLimitReason` and `RenderLimitResult` provide the bounded non-secret
+failure/pass-through shape: a rejected result carries exactly one safe reason
+code and never a partial artifact, and source bytes are never mutated. The new
+`RenderLimitTests` suite adds 39 tests. Build and test pass with 0 warnings and
+425 passing tests.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

@@ -2,8 +2,9 @@
 
 **Current milestone:** Phase 4 — Badge rendering is in progress. Tasks 4.1
 (provider-neutral metadata selectors), 4.2 (V1 rendering specification, ADR-009),
-4.3 (unknown-versus-confirmed-negative semantics), and 4.4 (render request and
-result fingerprints) are complete. Milestone 3 is complete (tasks 3.1 through
+4.3 (unknown-versus-confirmed-negative semantics), 4.4 (render request and
+result fingerprints), and 4.5 (image and text limit enforcement) are complete.
+Milestone 3 is complete (tasks 3.1 through
 3.8; acceptance criteria satisfied and Gate 3 met).
 
 Completed in Phase 2 (Sonarr & Radarr integration):
@@ -64,16 +65,21 @@ Completed in Phase 4 (Badge rendering):
   deterministic SHA-256 result/output and request (render key) fingerprints over
   every output-affecting value, including the renderer and badge schema versions,
   excluding correlation identifiers and timestamps.
+- 4.5 Image and text limit enforcement: `RenderLimitGuard` validates the bounded
+  source descriptor and planned derived output surface against the accepted
+  operational limits before decode/draw/encode work, and `BadgeTextNormalizer`
+  applies the ADR-009 control/whitespace normalization and 24-scalar end
+  truncation from `RenderOutputPolicy` without splitting a surrogate pair.
+  `RenderLimitResult` carries only a bounded, non-secret reason code.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 386 automated tests.
+- Passes 425 automated tests.
 
 Next tasks:
 
 - Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks (4.5 through 4.11), beginning with task 4.5 image and text limit
-  enforcement.
+  tasks (4.6 through 4.11), beginning with task 4.6 renderer behavior tests.
