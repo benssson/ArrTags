@@ -30,9 +30,11 @@ shut down cleanly on a Jellyfin `12.0.0.0` host. Milestone 1 is complete and
 Gate 1 is met. Milestone 2 is in progress: tasks 2.1 (shared provider-client
 boundary and connection identity), 2.2 (dedicated `IHttpClientFactory` client
 registration), 2.3 (versioned credential boundary and read-only Radarr v3
-reads), and 2.4 (read-only Sonarr v3 series, episode, and episode-file reads
-with the validated episode-file join) are complete, with canonical mapping
-(2.5-2.6) and provider failure tests (2.7) remaining.
+reads), 2.4 (read-only Sonarr v3 series, episode, and episode-file reads
+with the validated episode-file join), and 2.5 (canonical
+`ArrProvider`/`ArrConnection`/`BadgeMetadata` mapping with connection-scoped
+record/file identity) are complete, with unknown-value and custom-value
+semantics (2.6) and provider failure tests (2.7) remaining.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -468,7 +470,7 @@ models.
   including the dedicated file request when enabled fields are not embedded.
 - [x] 2.4 Implement Sonarr v3 reads for series, episodes, and episode files,
   joining files by the validated episode file identifier.
-- [ ] 2.5 Map provider data into `ArrProvider`, `ArrConnection`, and
+- [x] 2.5 Map provider data into `ArrProvider`, `ArrConnection`, and
   `BadgeMetadata` without leaking provider DTOs past the boundary.
 - [ ] 2.6 Preserve unknown technical values as unknown rather than false or empty
   claims, and bound custom values before they can reach a badge.
@@ -550,9 +552,31 @@ back to the series inventory otherwise, and returns no file identity (rather
 than an unrelated file) when the episode has no current file or the referenced
 identifier is missing. Provider DTOs stay in `ArrTags.Providers.Sonarr` and do
 not enter canonical state. Tests cover the reads, the join, and bounded
-failures without a live Arr instance. Canonical `BadgeMetadata` mapping and the
-actual-versus-profile quality semantics remain tasks 2.5 and 2.6; provider
-failure-matrix tests remain task 2.7.
+failures without a live Arr instance. Canonical `BadgeMetadata` mapping was
+completed in task 2.5; unknown-value and custom-value semantics remain task 2.6,
+and provider failure-matrix tests remain task 2.7.
+
+**Task 2.5 status:** Complete. The canonical identity and metadata models are
+implemented in `src/ArrTags/Providers` and `src/ArrTags/Metadata`. Connection
+scoped `ArrFileIdentity` (explicit `Present`/`Absent`, never zero), the typed
+`ArrRecordIdentity` base with `SonarrIdentity` (series, episode, and current
+file) and `RadarrIdentity` (movie and current file), and the provider-neutral
+`BadgeMetadata` with quality, resolution, dynamic-range, codec, channel, audio
+feature, source, upgrade-pending, custom-badge, and extension fields are covered
+by `CanonicalIdentityTests` and `MetadataMappingTests`.
+
+`RadarrMetadataMapper` and `SonarrMetadataMapper` translate validated provider
+DTOs into the canonical shapes. The mappers read actual file quality only from
+the current file resource (never the movie or series quality profile), validate
+that a supplied file matches the authoritative record file association
+(`movieFileId` and `episodeFileId`), keep absent file identity explicit, and
+preserve unreported technical values as unknown rather than false. Every
+`BadgeMetadata` carries a deterministic metadata fingerprint over the badge
+schema version, the provider and connection-scoped identity, and all
+badge-affecting values, excluding the observation timestamp and any credential.
+Provider DTOs remain in `ArrTags.Providers.Radarr` and `ArrTags.Providers.Sonarr`
+and do not appear in any canonical type. Custom-value bounding and three-state
+unknown hardening remain task 2.6; provider failure-matrix tests remain task 2.7.
 
 **Acceptance criteria:**
 

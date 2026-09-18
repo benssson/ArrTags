@@ -93,7 +93,10 @@ leakage.
 
 - Implement the canonical identity types (`SonarrIdentity`, `RadarrIdentity`,
   `ArrFileIdentity`) as code with the fingerprint and serialization tests
-  specified in `docs/data-model.md` section 3.4.1.
+  specified in `docs/data-model.md` section 3.4.1. The types, equality,
+  connection scoping, and the metadata fingerprint are implemented and tested
+  in task 2.5; persisted cache/state serialization tests land with the cache
+  milestone.
 - Connect `ConfigurationSnapshotService` to Jellyfin's configuration save path;
   no core worker consumes the snapshot yet.
 - Add artifact byte storage and per-surface `ArtworkOperation` journaling to the
@@ -106,7 +109,7 @@ leakage.
 
 ### Phase 2 (Sonarr & Radarr integration) - in progress
 
-Tasks 2.1-2.4 are complete. The shared provider-client boundary and connection
+Tasks 2.1-2.5 are complete. The shared provider-client boundary and connection
 identity (task 2.1), dedicated `IHttpClientFactory` client registration
 (task 2.2), and the versioned credential boundary (ADR-005, task 2.3) are
 implemented. The read-only Radarr v3 client probes
@@ -124,10 +127,35 @@ validated `episodeFileId == episodeFile.id` rule: the embedded file is trusted
 only when its identifier matches, the series inventory is the fallback, and a
 missing association resolves to no file identity rather than an unrelated file.
 
+Task 2.5 adds the canonical identity and metadata mapping boundary:
+
+- `src/ArrTags/Providers/ArrFilePresence.cs`, `ArrFileIdentity.cs`,
+  `ArrRecordIdentity.cs`, `SonarrIdentity.cs`, and `RadarrIdentity.cs` -
+  connection-scoped, typed record and file identity with explicit
+  `Present`/`Absent` file presence that is never encoded as zero or empty.
+- `src/ArrTags/Metadata/` - `BadgeMetadata` with quality, resolution,
+  dynamic-range, Dolby Vision, codec, channel, audio-feature, source,
+  upgrade-pending, custom-badge, and extension fields, plus the value
+  descriptors and origin/dynamic-range/audio-feature enums, and a deterministic
+  metadata fingerprint over the schema version, identity, and all
+  badge-affecting values.
+- `src/ArrTags/Providers/Radarr/RadarrMetadataMapper.cs` and
+  `src/ArrTags/Providers/Sonarr/SonarrMetadataMapper.cs` - map validated
+  provider DTOs into canonical `BadgeMetadata`, read actual file quality only
+  from the current file resource (never a quality profile), validate the
+  supplied file against the authoritative `movieFileId`/`episodeFileId`
+  association, and keep provider DTOs out of canonical types.
+- `tests/ArrTags.Tests/CanonicalIdentityTests.cs` and
+  `tests/ArrTags.Tests/MetadataMappingTests.cs` - identity scoping, explicit
+  file presence, actual-quality mapping, unknown-value propagation, fingerprint
+  stability, and DTO/profile non-leakage (22 new tests).
+
+Radarr's `RadarrMediaInfoResource` DTO now includes the confirmed `width` and
+`height` media-info fields used for inspected resolution mapping.
+
 Remaining Phase 2 work:
 
-1. Tasks 2.5-2.6: map provider data into canonical `ArrProvider`,
-   `ArrConnection`, and `BadgeMetadata`, keeping actual file quality separate
-   from quality-profile policy and unknown values unknown.
+1. Task 2.6: preserve unknown technical values as unknown rather than false or
+   empty claims, and bound custom values before they can reach a badge.
 2. Task 2.7: provider authentication-failure, unavailability, malformed,
    optional-field, version-drift, cancellation, and retry tests.

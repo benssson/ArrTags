@@ -52,6 +52,16 @@ public sealed class RadarrMediaInfoResource
     public string? Resolution { get; init; }
 
     /// <summary>
+    /// Gets the inspected video width in pixels.
+    /// </summary>
+    public int? Width { get; init; }
+
+    /// <summary>
+    /// Gets the inspected video height in pixels.
+    /// </summary>
+    public int? Height { get; init; }
+
+    /// <summary>
     /// Gets the scan type.
     /// </summary>
     public string? ScanType { get; init; }
