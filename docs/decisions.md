@@ -363,3 +363,180 @@ artwork, or webhook questions that remain gated by later milestones.
 - `docs/architecture.md`, sections 6, 9, 11, and 12
 - `docs/data-model.md`, sections 3.9, 3.10, and 3.12
 - `PLANS.md`, tasks 1.4, 1.5, and 1.7, and decision gate DG-6
+
+## ADR-005: Versioned Secret Access Boundary
+
+**Status:** Accepted
+
+**Date:** 2026-09-18
+
+### Context
+
+ArrTags must send Sonarr and Radarr API keys in authenticated requests, but the
+canonical configuration snapshot is intentionally secret-free. The persisted
+`PluginConfiguration` currently contains the API-key fields because Jellyfin's
+plugin configuration mechanism is the existing configuration owner. The current
+provider connection model exposes only `HasApiKey`; it must not make workers read
+the mutable plugin configuration directly.
+
+The same boundary will eventually be needed for the inbound webhook secret, but
+webhook exposure, authorization, replay handling, and payload policy remain
+separate implementation decisions.
+
+### Decision
+
+Jellyfin's persisted plugin configuration remains the only V1 source of truth
+for API keys and the webhook shared secret. ArrTags will not add a second secret
+file, cache record, database table, environment-variable convention, or external
+secret-management dependency.
+
+The configuration boundary will create one immutable, private in-memory secret
+snapshot at the same time as each public `PluginConfigurationSnapshot`. The
+active state is one atomically replaced pair:
+
+- the public, secret-free configuration snapshot and its monotonic
+  `configurationVersion`; and
+- a private map from typed `SecretReference` values to secret material.
+
+The public snapshot may carry the safe reference, but never the referenced
+value. A secret reference is an ArrTags-generated opaque slot identifier, not a
+user-provided vault path and not a hash of the secret. V1 uses separate slots for
+the Sonarr API key, Radarr API key, and webhook shared secret. The current V1
+one-connection-per-provider constraint makes these slots unambiguous; any future
+multiple-connection support must define additional connection-scoped slots first.
+
+The DI boundary is a singleton `IPluginSecretResolver` with the following
+semantic contract:
+
+```text
+TryAcquire(reference, expectedConfigurationVersion) -> SecretLease or no result
+```
+
+`SecretLease` is short-lived, disposable, and non-serializable. It has no public
+diagnostic/string representation. The provider transport boundary may use an
+API-key lease to add `X-Api-Key` to the current request only. A webhook boundary
+may use a webhook lease for constant-time candidate comparison. A lease is never
+placed in a queue item, canonical object, cache entry, exception, log, or
+persisted record.
+
+Provider workers obtain the public snapshot first, resolve the connection and
+its safe reference, then acquire a lease for that snapshot's configuration
+version. A version mismatch returns no lease and causes the worker to discard or
+restart the bounded operation using the current snapshot. The HTTP client
+factory remains secret-free; concrete provider clients apply the lease to the
+request header and never put the key in a URL or query string.
+
+The resolver publishes immutable maps and permits concurrent read-only lease
+acquisition. Each worker receives an independent lease; no lock is held across
+external I/O, and no provider client stores a lease beyond the bounded request
+or authentication comparison that acquired it. Cancellation, timeout, shutdown,
+or request completion releases the lease reference. The resolver does not
+create unbounded copies proportional to queue size.
+
+### Activation and replacement
+
+1. Jellyfin loads the persisted `PluginConfiguration` at startup. ArrTags
+   validates it without including secret values in errors.
+2. For a valid candidate, the configuration boundary copies the API keys and
+   webhook secret into the private secret snapshot, creates the secret-free
+   public snapshot and safe references, increments the configuration version,
+   and atomically publishes the pair.
+3. An invalid candidate publishes neither component. The previous public
+   snapshot and private secret snapshot remain active.
+4. Configuration activation must use the same replacement path for startup and
+   later saves. Workers never retain or read the mutable `PluginConfiguration`
+   object.
+
+Secret rotation keeps the same safe reference and connection identity when the
+provider kind and base URL are unchanged. It increments the configuration
+version but does not put the new or old key into a configuration fingerprint or
+cache key. New operations acquire only the new lease. An already acquired lease
+may complete its bounded, cancellable request with the old value; after that
+lease is released, the old value is no longer retained by the active resolver.
+Retries must reacquire against the current configuration version and must not
+blindly repeat an authentication failure with an old lease.
+
+Disabling a provider publishes a new version that refuses new lease acquisition
+for that connection. Lifecycle cancellation fences new work and drains or
+cancels existing requests within the configured host shutdown limits. A plugin
+restart reconstructs the private snapshot from the persisted plugin
+configuration; no secret is recovered from plugin state, metadata cache, or
+artwork state.
+
+### Security requirements
+
+- API keys and the webhook secret may exist only in Jellyfin's persisted plugin
+  configuration, the private in-memory snapshot, a short-lived lease, and the
+  outbound authenticated request while it is being sent.
+- Safe references, provider kind, connection ID, and configuration version may
+  appear in diagnostics. Secret values may not appear in logs, exception
+  messages, status responses, telemetry, fingerprints, URLs, headers recorded
+  by diagnostics, cache/state records, or serialized snapshots.
+- Provider errors expose only bounded safe codes and messages. Authentication
+  failures do not include request objects, response bodies, or header values.
+- The API key is sent only as `X-Api-Key`; query-string authentication is not
+  permitted because URLs are more likely to be persisted or logged.
+- The resolver does not promise memory zeroization for managed strings. Its
+  protection boundary is short lifetime, no duplication into domain/state
+  objects, atomic replacement, and controlled use by the transport/auth
+  boundary. Host filesystem permissions remain responsible for protecting
+  Jellyfin's persisted plugin configuration at rest.
+- The webhook shared secret uses a distinct typed reference and purpose. This
+  ADR provides its storage/access foundation but does not authorize exposing a
+  webhook route or define webhook replay/rate/payload policy.
+
+### Rejected alternatives
+
+#### Read `Plugin.Configuration` from each provider client
+
+Rejected. It shares mutable host-owned configuration with workers, can combine
+an old public snapshot with a new secret, makes rotation races implicit, and
+violates the existing immutable-snapshot boundary.
+
+#### Put API keys in `PluginConfigurationSnapshot`, `ArrConnection`, or state
+
+Rejected. Those values are used in canonical data, cache identity, diagnostics,
+and persistence boundaries. Adding the actual secret would violate the explicit
+secret-free model and expand the credential exposure surface.
+
+#### Persist a separate ArrTags secret file or state record
+
+Rejected. It duplicates Jellyfin's supported plugin configuration persistence,
+creates recovery and rotation ordering problems, and would put credentials near
+state that is deliberately designed for cache/artwork recovery rather than
+secret storage.
+
+#### Use an environment variable, OS vault, or general-purpose secret manager
+
+Rejected for V1. No such host-independent Jellyfin plugin contract is currently
+required, and adding one would make configuration administration and restart
+behavior deployment-specific. It can be reconsidered only if Jellyfin provides
+an approved secret facility or the product scope changes.
+
+#### Put the key in a URL, query parameter, connection ID, or fingerprint
+
+Rejected. These values are routinely logged, cached, compared, and persisted;
+the Sonarr and Radarr research explicitly recommends the `X-Api-Key` header.
+
+### Consequences
+
+- Task 2.3 and task 2.4 have one provider-neutral credential contract for both
+  providers and a defined path for the future webhook controller.
+- The current secret-free configuration snapshot remains safe for queues,
+  canonical state, cache keys, and diagnostics.
+- Configuration replacement and key rotation are generation-fenced and do not
+  invalidate provider identity merely because a key changed.
+- The provider implementation must add the safe reference/version plumbing and
+  resolver registration before making authenticated requests, but it does not
+  need another architectural decision for credential access.
+- Credential boundary tests must cover startup hydration, invalid replacement,
+  secret rotation, version mismatch, disabled connections, restart hydration,
+  lease disposal, and secret exclusion from diagnostics and serialization.
+
+### References
+
+- `docs/architecture.md`, sections 4, 6, 7, 8, and 11
+- `docs/data-model.md`, sections 3.3 and 3.12
+- `docs/reviews/pre-implementation-review-01.md`, section C
+- `docs/research/sonarr-api.md`, "Connection and authentication" and "Errors, resilience, and request discipline"
+- `docs/research/radarr-api.md`, "Authentication and API key handling"

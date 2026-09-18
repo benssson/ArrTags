@@ -1,9 +1,9 @@
 # Changelog
 
-This changelog records completed milestones and their verification evidence.
-Architecture and accepted limits live in `docs/architecture.md`,
-`docs/data-model.md`, and `docs/decisions.md`; they are referenced here, not
-duplicated.
+This changelog records completed milestones, their verification evidence, and
+current integration progress. Architecture and accepted limits live in
+`docs/architecture.md`, `docs/data-model.md`, and `docs/decisions.md`; they are
+referenced here, not duplicated.
 
 ## Phase 1 - Plugin foundation (Milestone 1)
 
@@ -98,28 +98,29 @@ leakage.
   no core worker consumes the snapshot yet.
 - Add artifact byte storage and per-surface `ArtworkOperation` journaling to the
   state boundary; only bounded metadata/envelope state exists today.
-- Register provider, queue, renderer, and scheduled-task services as those
-  components are introduced (`ArrTagsServiceRegistrator` is foundation-only).
+- Register queue, renderer, and scheduled-task services as those components are
+  introduced; the provider HTTP clients and the versioned credential resolver
+  are registered in tasks 2.2 and 2.3.
 - Resolve `SaveImage` storage/readback and source-capture behavior on the target
   host configuration.
 
-### Recommended Phase 2A starting point (Radarr)
+### Phase 2 (Sonarr & Radarr integration) - in progress
 
-Begin Milestone 2 by defining the shared provider-client boundary: connection
-identity, read-only `IHttpClientFactory`-based client registration, connection
-probing, bounded timeout/cancellation/retry, and redacted errors (PLANS.md
-tasks 2.1-2.2). Then implement the Radarr v3 read client and mapping next:
+Tasks 2.1-2.3 are complete. The shared provider-client boundary and connection
+identity (task 2.1), dedicated `IHttpClientFactory` client registration
+(task 2.2), and the versioned credential boundary (ADR-005, task 2.3) are
+implemented. The read-only Radarr v3 client probes
+`GET /api/v3/system/status`, reads the local library through `GET /api/v3/movie`,
+and reads the fully populated current file through the dedicated
+`GET /api/v3/moviefile?movieId=` endpoint with bounded timeout, cancellation,
+retry/backoff, response-size limits, and redacted errors.
 
-1. Probe `GET /api/v3/system/status` (or equivalent) with auth/URL-base/capability
-   results that never expose credentials.
-2. Read local `GET /api/v3/movie` and the current movie file, using the dedicated
-   movie-file request when enabled custom-format fields are not embedded.
-3. Map responses into canonical `ArrProvider`, `ArrConnection`, and
-   `BadgeMetadata`, preserving actual file quality separately from quality-profile
-   policy and keeping unknown values unknown.
-4. Cover authentication failure, unavailability, malformed/optional-field,
-   version-drift, cancellation, and retry cases without a live instance.
+Remaining Phase 2 work:
 
-This front-loads the shared boundary and the simpler single-file provider before
-the Sonarr series/episode/file join, so the canonical shape is proven on Radarr
-before the higher-cardinality provider (Radarr -> Sonarr order per PLANS.md).
+1. Task 2.4: Sonarr v3 reads for series, episodes, and episode files, joining
+   files by the validated episode-file identifier.
+2. Tasks 2.5-2.6: map provider data into canonical `ArrProvider`,
+   `ArrConnection`, and `BadgeMetadata`, keeping actual file quality separate
+   from quality-profile policy and unknown values unknown.
+3. Task 2.7: provider authentication-failure, unavailability, malformed,
+   optional-field, version-drift, cancellation, and retry tests.

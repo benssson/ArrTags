@@ -1,14 +1,20 @@
 ## Project Status
 
-**Current milestone:** ✅ Phase 1 — Plugin Foundation Complete
+**Current milestone:** 🚧 Phase 2 — Sonarr & Radarr Integration (in progress)
+
+Completed in Phase 2 so far:
+
+- 2.1 Shared provider-client boundary and connection identity.
+- 2.2 Dedicated `IHttpClientFactory` client registration.
+- 2.3 Versioned credential boundary and Radarr v3 reads.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
-- Builds successfully.
+- Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 43 automated tests.
+- Passes 93 automated tests.
 
-Next milestone:
+Next task:
 
-- Phase 2A — Radarr provider integration.
+- 2.4 — Sonarr v3 reads (series, episodes, and episode files).

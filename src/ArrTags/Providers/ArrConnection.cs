@@ -1,4 +1,5 @@
 using System;
+using ArrTags.Secrets;
 
 namespace ArrTags.Providers;
 
@@ -18,6 +19,8 @@ public sealed class ArrConnection
     /// <param name="enabled">Whether the connection may be queried.</param>
     /// <param name="requestTimeoutSeconds">The finite request timeout in seconds.</param>
     /// <param name="tlsPolicy">The certificate validation policy.</param>
+    /// <param name="apiKeyReference">The safe slot that resolves this connection's API key.</param>
+    /// <param name="configurationVersion">The configuration generation this connection was derived from.</param>
     /// <param name="hasApiKey">Whether an API key is configured, never its value.</param>
     /// <param name="health">The cached connection health.</param>
     /// <param name="lastProbedAt">The last probe time when known.</param>
@@ -29,6 +32,8 @@ public sealed class ArrConnection
         bool enabled,
         int requestTimeoutSeconds,
         ArrTlsPolicy tlsPolicy,
+        SecretReference apiKeyReference,
+        long configurationVersion,
         bool hasApiKey,
         ArrConnectionHealth health,
         DateTimeOffset? lastProbedAt)
@@ -36,6 +41,7 @@ public sealed class ArrConnection
         ArgumentNullException.ThrowIfNull(connectionId);
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(baseUrl);
+        ArgumentNullException.ThrowIfNull(apiKeyReference);
 
         ConnectionId = connectionId;
         Provider = provider;
@@ -43,6 +49,8 @@ public sealed class ArrConnection
         Enabled = enabled;
         RequestTimeoutSeconds = requestTimeoutSeconds;
         TlsPolicy = tlsPolicy;
+        ApiKeyReference = apiKeyReference;
+        ConfigurationVersion = configurationVersion;
         HasApiKey = hasApiKey;
         Health = health;
         LastProbedAt = lastProbedAt;
@@ -78,6 +86,18 @@ public sealed class ArrConnection
     /// Gets the certificate validation policy.
     /// </summary>
     public ArrTlsPolicy TlsPolicy { get; }
+
+    /// <summary>
+    /// Gets the safe slot reference used to acquire this connection's API key.
+    /// It never contains the secret value.
+    /// </summary>
+    public SecretReference ApiKeyReference { get; }
+
+    /// <summary>
+    /// Gets the configuration generation this connection was derived from. A
+    /// credential lease is valid only while this generation is current.
+    /// </summary>
+    public long ConfigurationVersion { get; }
 
     /// <summary>
     /// Gets a value indicating whether an API key is configured. The key value is

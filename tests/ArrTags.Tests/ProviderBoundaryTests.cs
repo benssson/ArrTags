@@ -1,9 +1,12 @@
 using System;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
+using ArrTags.PluginLifecycle;
 using ArrTags.Providers;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace ArrTags.Tests;
@@ -216,6 +219,126 @@ public class ProviderBoundaryTests
         Assert.Same(connection, client.Connection);
         Assert.True(result.IsHealthy);
         Assert.Same(connection.Provider, result.Provider);
+    }
+
+    [Fact]
+    public void HttpClientNamesSeparateProviderAndTlsPolicy()
+    {
+        Assert.Equal("ArrTags.Sonarr", ArrHttpClientNames.For(ArrProviderKind.Sonarr, ArrTlsPolicy.Strict));
+        Assert.Equal("ArrTags.Radarr", ArrHttpClientNames.For(ArrProviderKind.Radarr, ArrTlsPolicy.Strict));
+        Assert.Equal("ArrTags.Sonarr.Insecure", ArrHttpClientNames.For(ArrProviderKind.Sonarr, ArrTlsPolicy.AllowInsecure));
+        Assert.Equal("ArrTags.Radarr.Insecure", ArrHttpClientNames.For(ArrProviderKind.Radarr, ArrTlsPolicy.AllowInsecure));
+    }
+
+    [Fact]
+    public void HttpClientNamesRejectUnknownValues()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => ArrHttpClientNames.For((ArrProviderKind)99, ArrTlsPolicy.Strict));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => ArrHttpClientNames.For(ArrProviderKind.Sonarr, (ArrTlsPolicy)99));
+    }
+
+    [Fact]
+    public void ArrClientsAreRegisteredWithTheHttpClientFactory()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        new ArrTagsServiceRegistrator().RegisterServices(services, null!);
+
+        using var provider = services.BuildServiceProvider();
+        var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+
+        Assert.IsType<ArrHttpClientFactory>(provider.GetRequiredService<IArrHttpClientFactory>());
+
+        foreach (var kind in new[] { ArrProviderKind.Sonarr, ArrProviderKind.Radarr })
+        {
+            foreach (var policy in new[] { ArrTlsPolicy.Strict, ArrTlsPolicy.AllowInsecure })
+            {
+                using var client = httpClientFactory.CreateClient(ArrHttpClientNames.For(kind, policy));
+                Assert.NotNull(client);
+            }
+        }
+    }
+
+    [Fact]
+    public void ArrHttpClientFactoryConfiguresClientFromConnection()
+    {
+        var capturing = new CapturingHttpClientFactory();
+        var factory = new ArrHttpClientFactory(capturing);
+        var connection = BuildConnection(
+            ArrProviderKind.Radarr,
+            baseUrl: "https://radarr.local:7878/radarr",
+            timeoutSeconds: 45,
+            allowInsecureTls: true);
+
+        using var client = factory.CreateClient(connection);
+
+        Assert.Equal("ArrTags.Radarr.Insecure", capturing.RequestedName);
+        Assert.Equal(new Uri("https://radarr.local:7878/radarr"), client.BaseAddress);
+        Assert.Equal(TimeSpan.FromSeconds(45), client.Timeout);
+        Assert.Contains(client.DefaultRequestHeaders.Accept, header => header.MediaType == "application/json");
+    }
+
+    [Fact]
+    public void ArrHttpClientFactorySelectsStrictClientByDefault()
+    {
+        var capturing = new CapturingHttpClientFactory();
+        var factory = new ArrHttpClientFactory(capturing);
+        var connection = BuildConnection(ArrProviderKind.Sonarr, baseUrl: "http://sonarr.local:8989");
+
+        using var client = factory.CreateClient(connection);
+
+        Assert.Equal("ArrTags.Sonarr", capturing.RequestedName);
+        Assert.Equal(TimeSpan.FromSeconds(OperationalLimits.DefaultRequestTimeoutSeconds), client.Timeout);
+    }
+
+    [Fact]
+    public void ArrHttpClientFactoryRejectsDisabledConnection()
+    {
+        var factory = new ArrHttpClientFactory(new CapturingHttpClientFactory());
+        var connection = BuildConnection(ArrProviderKind.Radarr, enabled: false);
+
+        Assert.Throws<InvalidOperationException>(() => factory.CreateClient(connection));
+    }
+
+    [Fact]
+    public void ArrHttpClientFactoryRejectsNonAbsoluteBaseUrl()
+    {
+        var factory = new ArrHttpClientFactory(new CapturingHttpClientFactory());
+        var connection = BuildConnection(ArrProviderKind.Radarr, baseUrl: "not-a-url");
+
+        Assert.Throws<InvalidOperationException>(() => factory.CreateClient(connection));
+    }
+
+    private static ArrConnection BuildConnection(
+        ArrProviderKind kind,
+        bool enabled = true,
+        string baseUrl = "https://radarr.local:7878/radarr",
+        int timeoutSeconds = OperationalLimits.DefaultRequestTimeoutSeconds,
+        bool allowInsecureTls = false)
+    {
+        var configuration = new PluginConfiguration();
+        var connectionConfiguration = kind == ArrProviderKind.Sonarr ? configuration.Sonarr : configuration.Radarr;
+        connectionConfiguration.Enabled = enabled;
+        connectionConfiguration.BaseUrl = baseUrl;
+        connectionConfiguration.ApiKey = "test-key";
+        connectionConfiguration.RequestTimeoutSeconds = timeoutSeconds;
+        connectionConfiguration.AllowInsecureTls = allowInsecureTls;
+
+        return ArrConnectionCatalog.FromSnapshot(PluginConfigurationSnapshot.From(configuration))
+            .Single(connection => connection.Provider.Kind == kind);
+    }
+
+    private sealed class CapturingHttpClientFactory : IHttpClientFactory
+    {
+        public string? RequestedName { get; private set; }
+
+        public HttpClient CreateClient(string name)
+        {
+            RequestedName = name;
+            return new HttpClient();
+        }
     }
 
     private sealed class FakeRadarrClient : IArrProviderClient

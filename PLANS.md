@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 in progress (Radarr)
+**Status:** Phase 2 in progress (Radarr reads complete; Sonarr next)
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -27,7 +27,11 @@ plugin builds on `net10.0` against the pinned Jellyfin `12.0.0` packages with
 `targetAbi: 12.0.0.0`. Foundation tests pass without a live Arr instance and the
 generated package was installed, discovered, loaded, started, restarted, and
 shut down cleanly on a Jellyfin `12.0.0.0` host. Milestone 1 is complete and
-Gate 1 is met; Milestone 2 is the next execution target.
+Gate 1 is met. Milestone 2 is in progress: tasks 2.1 (shared provider-client
+boundary and connection identity), 2.2 (dedicated `IHttpClientFactory` client
+registration), and 2.3 (versioned credential boundary and read-only Radarr v3
+reads) are complete, with Sonarr v3 reads (2.4), canonical mapping (2.5-2.6),
+and provider failure tests (2.7) remaining.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -457,9 +461,9 @@ models.
 **Tasks:**
 
 - [x] 2.1 Define the shared provider-client boundary and connection identity rules.
-- [ ] 2.2 Register dedicated named or typed clients through Jellyfin's standard
+- [x] 2.2 Register dedicated named or typed clients through Jellyfin's standard
   HTTP client factory; do not create raw clients per request.
-- [ ] 2.3 Implement Radarr v3 reads for local movies and current movie-file data,
+- [x] 2.3 Implement Radarr v3 reads for local movies and current movie-file data,
   including the dedicated file request when enabled fields are not embedded.
 - [ ] 2.4 Implement Sonarr v3 reads for series, episodes, and episode files,
   joining files by the validated episode file identifier.
@@ -481,6 +485,52 @@ capabilities, bounded redacted `ArrProviderError` outcomes, the
 `ProviderBoundaryTests`. Dedicated `IHttpClientFactory` client registration,
 concrete Radarr/Sonarr reads, and canonical metadata mapping remain the
 following tasks.
+
+**Task 2.2 status:** Complete. Jellyfin's standard `IHttpClientFactory` is used
+rather than raw `HttpClient` instances. `ArrTagsServiceRegistrator` registers a
+named client per provider kind and TLS policy (`ArrHttpClientNames`) so the
+pooled message handler matches the connection's certificate policy; the relaxed
+handler is only installed for the explicit `AllowInsecure` connection policy.
+`IArrHttpClientFactory`/`ArrHttpClientFactory` build a connection-scoped client
+with the configured base URL, finite timeout, and `Accept: application/json`
+without ever reading an API key. Credential persistence and access are now
+defined by ADR-005: the configuration boundary owns a private versioned secret
+snapshot and issues short-lived leases without exposing values to workers'
+mutable configuration or canonical state. The concrete Radarr client implements
+that boundary (task 2.3); the Sonarr client follows in task 2.4. Registration
+adds no startup work and both providers remain disabled by default.
+
+**Phase 2 credential boundary status:** Resolved by `docs/decisions.md` ADR-005,
+with the contract reflected in `docs/architecture.md`, `docs/data-model.md`, and
+`docs/implementation-readiness.md`. The resolver boundary was implemented and
+tested in task 2.3; no additional architecture decision is required for API-key
+access. Webhook route exposure, replay handling, and payload policy remain
+separate later decisions.
+
+**Task 2.3 status:** Complete. The ADR-005 credential boundary is implemented in
+`src/ArrTags/Secrets`: typed `SecretReference` slots, a non-serializable
+`SecretLease`, and the singleton `IPluginSecretResolver` owned by
+`ConfigurationSnapshotService`. The configuration boundary now publishes an
+atomic public-snapshot/private-secret generation with a monotonic
+`configurationVersion`; `ArrConnection` carries the safe API-key reference and
+the configuration version so a lease is valid only for the generation it came
+from, and invalid replacements and rotations leave the active secret unchanged
+until the new generation is durable.
+
+The read-only Radarr v3 client is implemented in
+`src/ArrTags/Providers/Radarr`. `RadarrClient` probes `GET /api/v3/system/status`,
+reads the local library through `GET /api/v3/movie`, and reads the fully
+populated current file through the dedicated `GET /api/v3/moviefile?movieId=`
+endpoint that includes custom-format and media-info fields. Every read acquires
+a version-matched API-key lease, applies it only as `X-Api-Key`,
+applies the bounded timeout, cancellation, retry/backoff, response-size, and
+redacted error policy, and returns an `ArrProviderReadResult<T>` instead of
+throwing. Provider DTOs stay in `ArrTags.Providers.Radarr` and do not enter
+canonical state. Malformed, oversized, unauthorized, unavailable, and
+incompatible responses map to bounded `ArrProviderError` outcomes. Tests cover
+the credential boundary and the Radarr reads without a live Arr instance.
+`BadgeMetadata` mapping and the actual-versus-profile quality semantics remain
+tasks 2.5 and 2.6; Sonarr reads remain task 2.4.
 
 **Acceptance criteria:**
 
@@ -774,7 +824,7 @@ an implementation assumption.
 | DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. | Milestone 3 |
 | DG-5 | Whether path mappings are needed, and their connection-scoped representation. | Milestone 3 |
 | DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. Foundation defaults are resolved by ADR-004; Milestone 6 may tune within the documented validation ranges. | Milestone 6 |
-| DG-7 | Webhook exposure, authentication, payload limits, and secret administration flow. | Milestone 6 |
+| DG-7 | Webhook exposure, authentication, payload limits, replay handling, and route administration flow. Secret persistence and versioned access are resolved by ADR-005. | Milestone 6 |
 | DG-8 | Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior. | Milestone 5 |
 | DG-9 | Supported live Sonarr/Radarr release ranges and optional-field compatibility policy. | Milestones 2 and 7 |
 

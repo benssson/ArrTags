@@ -2,18 +2,22 @@
 
 ## Status
 
-**Status:** Phase 1 complete; ready for Milestone 2 implementation
+**Status:** Phase 1 complete; Milestone 2 in progress; credential boundary resolved and Radarr v3 reads implemented
 
-**Basis:** ADR-002, ADR-003, and ADR-004; findings in
+**Basis:** ADR-002, ADR-003, ADR-004, and ADR-005; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
-architectural blockers.
+artwork blockers, and the provider credential-access question is resolved for
+Milestone 2 implementation.
 
 ## Implementation Gate
 
-No architectural blockers remain for the persisted-artwork publication path.
-The compatibility target is pinned and no separate pre-implementation
-prerequisite remains. Phase 1 validated the pinned target by building and
-loading the actual plugin on the pinned Jellyfin `12.0.0` host. The remaining
+No architectural blockers remain for the persisted-artwork publication path or
+for provider credential access. The compatibility target is pinned and no
+separate pre-implementation prerequisite remains. Phase 1 validated the pinned
+target by building and loading the actual plugin on the pinned Jellyfin
+`12.0.0` host. ADR-005 resolves the secret persistence and access contract;
+implementing that boundary is a prerequisite to authenticated provider reads,
+but task 2.3 does not need another architecture decision. The remaining
 decisions below are gated by the milestones that need them.
 
 ## Blockers
@@ -26,6 +30,10 @@ decisions below are gated by the milestones that need them.
   rendering, `SaveImage`, Jellyfin item update, provenance persistence, restart,
   disable, uninstall, and item removal. See `docs/decisions.md` ADR-003 and
   `docs/data-model.md` sections 3.10.3-3.10.4.
+- [x] Define where API keys and the webhook shared secret are persisted, how
+  safe secret references resolve to short-lived credentials, and how immutable
+  configuration replacement and rotation fence workers. See
+  `docs/decisions.md` ADR-005 and `docs/data-model.md` sections 3.3 and 3.12.
 
 ## Resolved Blocker 1
 
@@ -50,6 +58,24 @@ confirmed item removal creates a tombstone without issuing image mutations.
 The protocol does not claim a distributed transaction with Jellyfin. It makes
 uncertain operations recoverable or explicitly `RecoveryBlocked`, and retains
 provenance and artifacts until cleanup is proven safe.
+
+## Resolved Credential Boundary
+
+API keys and the webhook shared secret remain persisted in Jellyfin's
+`PluginConfiguration`; ArrTags does not introduce a second secret store. A
+configuration-owned singleton publishes a private immutable secret snapshot
+atomically with the public secret-free snapshot and exposes only a typed,
+version-matched `SecretLease` through `IPluginSecretResolver`. Provider clients
+use an API-key lease only for the `X-Api-Key` request header. Queue items,
+canonical models, cache/state records, diagnostics, and fingerprints contain
+only safe references and configuration versions.
+
+Invalid configuration leaves both active snapshots unchanged. Rotation keeps
+the safe reference and connection identity stable, increments the configuration
+version, gives new work the new lease, and allows only already-acquired leases
+to finish bounded in-flight requests. Restart rebuilds the private snapshot
+from Jellyfin's persisted configuration. The same private boundary can support
+the webhook secret without deciding webhook route exposure or replay policy.
 
 ## Compatibility Target
 
@@ -95,16 +121,19 @@ completed as Phase 1 implementation and acceptance work.
 | 8 | Define webhook security, bounds, replay handling, and provider-record resolution, or defer webhooks. | Implementation-time decision | Decide before webhook work; deferral remains an available V1 scope decision. |
 | 9 | Record concrete queue, concurrency, retry, timeout, response-size, retention, storage, and stale-state limits. | Should become a Phase 1 implementation task | Complete for the foundation defaults; recorded in ADR-004 and `docs/architecture.md` section 12, with runtime enforcement and tuning in later milestones. |
 | 10 | Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior. | Implementation-time decision | Finalize and test before the Jellyfin artwork integration milestone. |
+| 11 | Define secret persistence, safe references, credential access, rotation, and webhook-secret reuse. | Should become a Milestone 2 implementation task | Resolved by ADR-005 and implemented in task 2.3; the credential-boundary tests pass before authenticated provider reads. |
 
 ## Already Satisfied
 
 - [x] The Jellyfin `12.0.0` / `net10.0` compatibility target, host package
   versions, and plugin `targetAbi` are pinned and documented above.
+- [x] API-key and webhook-secret persistence and versioned access are defined
+  without exposing values to canonical state or workers' mutable configuration.
 
 The former pre-implementation actions that became Phase 1 implementation tasks
 (1, 2, and 9) are complete. The remaining former actions are implementation-time
 decisions gated by the matching, rendering, artwork, caching, and release
-milestones and are tracked by the decision gates in `PLANS.md`. The two
+milestones and are tracked by the decision gates in `PLANS.md`. The
 architectural blockers are resolved and remain checked in the Blockers section
 above.
 
@@ -189,7 +218,8 @@ that introduce them.
 - Decide whether stale metadata retains the active derived artwork, restores the
   source, or publishes an unbadged source image.
 - Define webhook authentication, replay protection, rate limits, payload bounds,
-  and provider-record-to-Jellyfin resolution, or explicitly defer webhooks.
+  route exposure, and provider-record-to-Jellyfin resolution, or explicitly
+  defer webhooks. Secret persistence/access is resolved by ADR-005.
 - Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior and test
   the selected policy through the standard image path.
 - Implement per-item generation tokens, publication serialization, and
@@ -215,6 +245,8 @@ that introduce them.
 - [x] Publication and restoration use durable operation intent, staged artifacts,
   postcondition recovery, lifecycle fences, and fail-closed ambiguity handling.
 - [x] Jellyfin Enhanced internals are not a dependency.
+- [x] Provider credentials remain in persisted plugin configuration and are
+  obtained through the versioned, short-lived secret boundary in ADR-005.
 
 ## Post-V1 Backlog
 

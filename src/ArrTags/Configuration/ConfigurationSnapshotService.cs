@@ -1,16 +1,25 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using ArrTags.Secrets;
 
 namespace ArrTags.Configuration;
 
 /// <summary>
-/// Owns the active configuration snapshot and replaces it only when a candidate
-/// configuration validates. An invalid replacement leaves the previous snapshot
-/// active.
+/// Owns the active configuration snapshot and its private, version-matched
+/// secret map. A replacement is activated only when the candidate validates;
+/// an invalid replacement leaves both the public snapshot and the private
+/// secrets unchanged. The service is also the credential boundary: it issues
+/// short-lived leases and never exposes secret values to canonical state.
 /// </summary>
-public sealed class ConfigurationSnapshotService
+public sealed class ConfigurationSnapshotService : IPluginSecretResolver
 {
+    private const long InitialConfigurationVersion = 1;
+
     private readonly object _gate = new object();
     private PluginConfigurationSnapshot _current;
+    private IReadOnlyDictionary<SecretReference, string> _secrets;
+    private long _configurationVersion;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConfigurationSnapshotService"/> class
@@ -32,9 +41,11 @@ public sealed class ConfigurationSnapshotService
         ArgumentNullException.ThrowIfNull(configuration);
 
         var result = PluginConfigurationValidator.Validate(configuration);
-        _current = result.IsValid
-            ? PluginConfigurationSnapshot.From(configuration)
-            : PluginConfigurationSnapshot.From(new PluginConfiguration());
+        var effective = result.IsValid ? configuration : new PluginConfiguration();
+
+        _configurationVersion = InitialConfigurationVersion;
+        _current = PluginConfigurationSnapshot.From(effective, _configurationVersion);
+        _secrets = BuildSecrets(effective);
     }
 
     /// <summary>
@@ -53,7 +64,7 @@ public sealed class ConfigurationSnapshotService
 
     /// <summary>
     /// Attempts to validate and activate a replacement configuration snapshot.
-    /// The previous snapshot remains active when validation fails.
+    /// The previous snapshot and secrets remain active when validation fails.
     /// </summary>
     /// <param name="configuration">The candidate configuration.</param>
     /// <param name="result">The safe validation result.</param>
@@ -68,12 +79,50 @@ public sealed class ConfigurationSnapshotService
             return false;
         }
 
-        var snapshot = PluginConfigurationSnapshot.From(configuration);
         lock (_gate)
         {
-            _current = snapshot;
+            var version = _configurationVersion + 1;
+            _configurationVersion = version;
+            _current = PluginConfigurationSnapshot.From(configuration, version);
+            _secrets = BuildSecrets(configuration);
         }
 
         return true;
+    }
+
+    /// <inheritdoc />
+    public bool TryAcquire(SecretReference reference, long configurationVersion, [NotNullWhen(true)] out SecretLease? lease)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+
+        lock (_gate)
+        {
+            if (configurationVersion != _configurationVersion
+                || !_secrets.TryGetValue(reference, out var value))
+            {
+                lease = null;
+                return false;
+            }
+
+            lease = new SecretLease(reference, value);
+            return true;
+        }
+    }
+
+    private static IReadOnlyDictionary<SecretReference, string> BuildSecrets(PluginConfiguration configuration)
+    {
+        var secrets = new Dictionary<SecretReference, string>(3);
+        AddSecret(secrets, SecretReference.SonarrApiKey, configuration.Sonarr?.ApiKey);
+        AddSecret(secrets, SecretReference.RadarrApiKey, configuration.Radarr?.ApiKey);
+        AddSecret(secrets, SecretReference.WebhookAuthentication, configuration.WebhookSecret);
+        return secrets;
+    }
+
+    private static void AddSecret(Dictionary<SecretReference, string> secrets, SecretReference reference, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            secrets[reference] = value;
+        }
     }
 }

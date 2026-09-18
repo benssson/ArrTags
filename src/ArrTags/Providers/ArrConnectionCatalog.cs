@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ArrTags.Configuration;
+using ArrTags.Secrets;
 
 namespace ArrTags.Providers;
 
@@ -24,6 +25,7 @@ public static class ArrConnectionCatalog
         return new[]
         {
             Create(
+                snapshot.ConfigurationVersion,
                 ArrProviderKind.Sonarr,
                 snapshot.SonarrEnabled,
                 snapshot.SonarrBaseUrl,
@@ -31,6 +33,7 @@ public static class ArrConnectionCatalog
                 snapshot.SonarrAllowInsecureTls,
                 snapshot.SonarrHasApiKey),
             Create(
+                snapshot.ConfigurationVersion,
                 ArrProviderKind.Radarr,
                 snapshot.RadarrEnabled,
                 snapshot.RadarrBaseUrl,
@@ -41,6 +44,7 @@ public static class ArrConnectionCatalog
     }
 
     private static ArrConnection Create(
+        long configurationVersion,
         ArrProviderKind kind,
         bool enabled,
         string baseUrl,
@@ -59,6 +63,8 @@ public static class ArrConnectionCatalog
             enabled,
             requestTimeoutSeconds,
             allowInsecureTls ? ArrTlsPolicy.AllowInsecure : ArrTlsPolicy.Strict,
+            kind == ArrProviderKind.Sonarr ? SecretReference.SonarrApiKey : SecretReference.RadarrApiKey,
+            configurationVersion,
             hasApiKey,
             ArrConnectionHealth.Unknown,
             null);

@@ -11,6 +11,7 @@ namespace ArrTags.Configuration;
 public sealed class PluginConfigurationSnapshot
 {
     private PluginConfigurationSnapshot(
+        long configurationVersion,
         bool sonarrEnabled,
         string sonarrBaseUrl,
         int sonarrRequestTimeoutSeconds,
@@ -27,6 +28,7 @@ public sealed class PluginConfigurationSnapshot
         bool badgeEpisodePosters,
         OperationalLimits limits)
     {
+        ConfigurationVersion = configurationVersion;
         SonarrEnabled = sonarrEnabled;
         SonarrBaseUrl = sonarrBaseUrl;
         SonarrRequestTimeoutSeconds = sonarrRequestTimeoutSeconds;
@@ -43,6 +45,12 @@ public sealed class PluginConfigurationSnapshot
         BadgeEpisodePosters = badgeEpisodePosters;
         Limits = limits;
     }
+
+    /// <summary>
+    /// Gets the monotonic configuration generation. It increments when a valid
+    /// replacement is activated and fences credential leases to one generation.
+    /// </summary>
+    public long ConfigurationVersion { get; }
 
     /// <summary>
     /// Gets a value indicating whether the Sonarr connection is enabled.
@@ -123,8 +131,9 @@ public sealed class PluginConfigurationSnapshot
     /// Creates a secret-free snapshot from a validated configuration.
     /// </summary>
     /// <param name="configuration">The validated configuration.</param>
+    /// <param name="configurationVersion">The configuration generation to stamp.</param>
     /// <returns>An immutable snapshot.</returns>
-    public static PluginConfigurationSnapshot From(PluginConfiguration configuration)
+    public static PluginConfigurationSnapshot From(PluginConfiguration configuration, long configurationVersion = 1)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
@@ -138,6 +147,7 @@ public sealed class PluginConfigurationSnapshot
         }
 
         return new PluginConfigurationSnapshot(
+            configurationVersion,
             sonarr.Enabled,
             sonarr.BaseUrl ?? string.Empty,
             sonarr.RequestTimeoutSeconds,

@@ -1,6 +1,9 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using ArrTags.Configuration;
+using ArrTags.Providers;
+using ArrTags.Secrets;
 using ArrTags.State;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller;
@@ -23,9 +26,35 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         ArgumentNullException.ThrowIfNull(serviceCollection);
 
         serviceCollection.AddSingleton(CreateConfigurationSnapshotService);
+        serviceCollection.AddSingleton<IPluginSecretResolver>(
+            static serviceProvider => serviceProvider.GetRequiredService<ConfigurationSnapshotService>());
         serviceCollection.AddSingleton(CreateStateRepository);
         serviceCollection.TryAddSingleton<ILibraryEventSource, JellyfinLibraryEventSource>();
+        RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
+    }
+
+    private static void RegisterProviderHttpClients(IServiceCollection serviceCollection)
+    {
+        serviceCollection.AddHttpClient(ArrHttpClientNames.Sonarr);
+        serviceCollection.AddHttpClient(ArrHttpClientNames.Radarr);
+        serviceCollection
+            .AddHttpClient(ArrHttpClientNames.For(ArrProviderKind.Sonarr, ArrTlsPolicy.AllowInsecure))
+            .ConfigurePrimaryHttpMessageHandler(CreateInsecureHandler);
+        serviceCollection
+            .AddHttpClient(ArrHttpClientNames.For(ArrProviderKind.Radarr, ArrTlsPolicy.AllowInsecure))
+            .ConfigurePrimaryHttpMessageHandler(CreateInsecureHandler);
+        serviceCollection.TryAddSingleton<IArrHttpClientFactory, ArrHttpClientFactory>();
+    }
+
+    private static HttpClientHandler CreateInsecureHandler()
+    {
+#pragma warning disable CA5359 // Relaxed validation is an explicit, validated, connection-scoped opt-in.
+        return new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+        };
+#pragma warning restore CA5359
     }
 
     private static ConfigurationSnapshotService CreateConfigurationSnapshotService(IServiceProvider serviceProvider)

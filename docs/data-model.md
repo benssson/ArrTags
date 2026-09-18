@@ -87,6 +87,10 @@ classDiagram
         +BaseUrl
         +Enabled
     }
+    class SecretReference {
+        +Purpose
+        +SlotId
+    }
     class MediaMatch {
         +Status
         +Method
@@ -183,6 +187,7 @@ classDiagram
 
     MediaIdentity --> MediaMatch : matched item
     ArrConnection --> ArrProvider : uses
+    ArrConnection --> SecretReference : references
     ArrConnection --> MediaMatch : scoped match
     ArrConnection --> ArrRecordIdentity : scopes
     MediaMatch --> ArrRecordIdentity : record identity
@@ -272,9 +277,28 @@ metadata, event, or cache identity values.
 | `enabled` | Boolean | Yes | Configuration | Disabled connections are not queried. |
 | `requestTimeout` | Duration | Yes | Configuration | Finite request limit. |
 | `tlsPolicy` | TLS validation policy | Yes | Configuration | Strict by default; exceptions are explicit and connection-scoped. |
-| `secretReference` | Opaque secret reference | Optional | Configuration | References the protected API key; the secret value is never part of this domain snapshot. |
+| `secretReference` | Opaque, typed secret-slot reference | Yes | Configuration | References the protected API-key slot; it is safe metadata, remains stable during key rotation, and never contains the secret value. The value may be absent while the reference still exists. |
+| `configurationVersion` | Monotonic integer | Yes | Configuration | The configuration generation this connection was derived from; scopes credential leases to the generation that produced the connection. |
 | `health` | Connection health state | Optional | Generated/cached | `Healthy`, `Unavailable`, `AuthenticationFailed`, `Incompatible`, or `Unknown`. |
 | `lastProbedAt` | Timestamp | Optional | Generated/cached | Time of the latest connection/version probe. |
+
+`SecretReference` is generated at the configuration boundary, not entered as a
+provider URL or looked up in a general-purpose vault. V1 has one slot for the
+Sonarr API key and one for the Radarr API key because V1 has at most one
+connection of each provider kind. The webhook shared secret has a separate
+typed slot and must never be interchangeable with an Arr API-key reference.
+Future multi-connection support must add connection-scoped slots before it is
+enabled.
+
+The actual secret remains in Jellyfin's persisted `PluginConfiguration` and in
+the private in-memory secret snapshot owned by the configuration boundary. It
+is not a canonical domain value. `ArrConnection` and its containing snapshots
+may carry the safe reference and a `hasApiKey` diagnostic flag, but never the
+referenced string.
+
+Conceptually, a `SecretReference` contains only a purpose (`ArrApiKey` or
+`WebhookAuthentication`) and a stable opaque slot identifier. It contains no
+provider URL, API key, webhook value, or external vault address.
 
 ### 3.4 MediaMatch
 
@@ -697,7 +721,7 @@ badge selection, rendering, cache policy, and update behavior.
 | `updatePolicy` | Schedule, webhook, retry, and queue policy | Yes | Configuration | Webhooks accelerate reconciliation; they do not replace it. |
 | `enhancedCoexistencePolicy` | Duplicate/spoiler surface policy | Yes | Configuration | No dependency on Jellyfin Enhanced internals. |
 | `pathMappings` | Optional connection-scoped mappings | Optional | Configuration | Required before path fallback is eligible. |
-| `secretReferences` | Protected secret references | Optional | Configuration | API keys and webhook secrets are excluded from fingerprints and logs. |
+| `secretReferences` | Protected, typed secret-slot references | Optional | Configuration | API keys and webhook secrets are represented only by safe references; values are excluded from fingerprints, logs, canonical snapshots, and state. |
 
 The conceptual `renderingPolicy`, `cachePolicy`, and `updatePolicy` objects above
 are realized incrementally. At the foundation boundary, the persisted
@@ -709,8 +733,37 @@ by ADR-004 and recorded in `docs/architecture.md` section 12.
 `PluginConfigurationSnapshot` is the immutable, secret-free view validated by
 `PluginConfigurationValidator` and supplied to workers; API keys and webhook
 secrets remain only in the persisted configuration and appear in canonical state
-as `secretReferences`, never as values. Badge definitions, rendering style, and
-path mappings remain future configuration work.
+as `secretReferences`, never as values. The configuration boundary publishes
+that public snapshot together with a private, version-matched in-memory secret
+snapshot. The private snapshot is not a canonical model, cache record, state
+envelope, or serialization format. Workers acquire a short-lived secret lease
+by reference and configuration version immediately before external
+authentication. Badge definitions, rendering style, and path mappings remain
+future configuration work.
+
+#### 3.12.1 Secret resolution semantics
+
+The provider-neutral credential contract is a versioned resolver equivalent to:
+
+```text
+TryAcquire(secretReference, expectedConfigurationVersion) -> SecretLease or no result
+```
+
+`SecretLease` is short-lived, disposable, and non-serializable. It has no public
+diagnostic/string representation. The provider transport boundary uses it only
+to apply `X-Api-Key` to an authenticated request; a future webhook boundary uses
+the distinct webhook lease for constant-time candidate comparison. A queue item
+may carry a safe reference and configuration version, but never a lease or
+secret.
+
+The public snapshot and private secret snapshot are replaced as one active
+configuration generation. Invalid replacement input changes neither. A rotated
+key keeps its safe reference and connection identity when the provider and base
+URL are unchanged, while new work receives a new configuration version and new
+lease. An already acquired lease may finish its bounded request; retries must
+acquire against the current version. On restart, the private snapshot is
+reconstructed from persisted plugin configuration and no secret is recovered
+from canonical state or cache.
 
 ## 4. Provider Mapping
 
