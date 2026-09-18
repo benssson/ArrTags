@@ -210,6 +210,129 @@ public class MediaMatcherTests
     }
 
     [Fact]
+    public void EpisodeNumberFallbackMatchesAfterTheSeriesMatch()
+    {
+        var identity = EpisodeIdentityWithNumbers(series: SeriesIdentity(("Tvdb", "12345")), season: 2, episode: 4);
+        var seriesCandidates = new[] { SonarrSeriesCandidate(10, ("Tvdb", "12345")) };
+        var episodeCandidates = new[] { SonarrEpisodeCandidateWithNumber(10, 73, 2, 4) };
+
+        var match = MediaMatcher.MatchEpisode(
+            identity,
+            SonarrConnection.Provider,
+            SonarrConnection.ConnectionId,
+            seriesCandidates,
+            episodeCandidates);
+
+        Assert.Equal(MediaMatchStatus.Matched, match.Status);
+        Assert.Equal(MediaMatchMethod.Number, match.MatchMethod);
+        Assert.Empty(match.MatchedProviderIds);
+        Assert.Equal(73, Assert.IsType<SonarrIdentity>(match.RecordIdentity).EpisodeId);
+    }
+
+    [Fact]
+    public void EpisodeNumberFallbackDoesNotResolveAnAmbiguity()
+    {
+        var identity = EpisodeIdentityWithNumbers(series: SeriesIdentity(("Tvdb", "12345")), season: 2, episode: 4);
+        var seriesCandidates = new[] { SonarrSeriesCandidate(10, ("Tvdb", "12345")) };
+        var episodeCandidates = new[]
+        {
+            SonarrEpisodeCandidateWithNumber(10, 73, 2, 4),
+            SonarrEpisodeCandidateWithNumber(10, 74, 2, 4),
+        };
+
+        var match = MediaMatcher.MatchEpisode(
+            identity,
+            SonarrConnection.Provider,
+            SonarrConnection.ConnectionId,
+            seriesCandidates,
+            episodeCandidates);
+
+        Assert.Equal(MediaMatchStatus.Ambiguous, match.Status);
+        Assert.Null(match.RecordIdentity);
+    }
+
+    [Fact]
+    public void EpisodeNumberFallbackIsScopedToTheMatchedSeries()
+    {
+        var identity = EpisodeIdentityWithNumbers(series: SeriesIdentity(("Tvdb", "12345")), season: 2, episode: 4);
+        var seriesCandidates = new[] { SonarrSeriesCandidate(10, ("Tvdb", "12345")) };
+        var episodeCandidates = new[]
+        {
+            SonarrEpisodeCandidateWithNumber(10, 73, 2, 4),
+            SonarrEpisodeCandidateWithNumber(20, 88, 2, 4),
+        };
+
+        var match = MediaMatcher.MatchEpisode(
+            identity,
+            SonarrConnection.Provider,
+            SonarrConnection.ConnectionId,
+            seriesCandidates,
+            episodeCandidates);
+
+        Assert.Equal(MediaMatchStatus.Matched, match.Status);
+        Assert.Equal(10, Assert.IsType<SonarrIdentity>(match.RecordIdentity).SeriesId);
+        Assert.Equal(73, Assert.IsType<SonarrIdentity>(match.RecordIdentity).EpisodeId);
+    }
+
+    [Fact]
+    public void SpecialsAreNotMatchedByNumber()
+    {
+        var identity = EpisodeIdentityWithNumbers(series: SeriesIdentity(("Tvdb", "12345")), season: 0, episode: 4);
+        var seriesCandidates = new[] { SonarrSeriesCandidate(10, ("Tvdb", "12345")) };
+        var episodeCandidates = new[] { SonarrEpisodeCandidateWithNumber(10, 73, 0, 4) };
+
+        var match = MediaMatcher.MatchEpisode(
+            identity,
+            SonarrConnection.Provider,
+            SonarrConnection.ConnectionId,
+            seriesCandidates,
+            episodeCandidates);
+
+        Assert.Equal(MediaMatchStatus.NotFound, match.Status);
+        Assert.Null(match.RecordIdentity);
+    }
+
+    [Fact]
+    public void MultiEpisodeSpansAreNotMatchedByNumber()
+    {
+        var identity = EpisodeIdentityWithNumbers(
+            series: SeriesIdentity(("Tvdb", "12345")),
+            season: 2,
+            episode: 4,
+            episodeNumberEnd: 5);
+        var seriesCandidates = new[] { SonarrSeriesCandidate(10, ("Tvdb", "12345")) };
+        var episodeCandidates = new[] { SonarrEpisodeCandidateWithNumber(10, 73, 2, 4) };
+
+        var match = MediaMatcher.MatchEpisode(
+            identity,
+            SonarrConnection.Provider,
+            SonarrConnection.ConnectionId,
+            seriesCandidates,
+            episodeCandidates);
+
+        Assert.Equal(MediaMatchStatus.NotFound, match.Status);
+        Assert.Null(match.RecordIdentity);
+    }
+
+    [Fact]
+    public void AnimeAbsoluteNumberingIsNotUsedAsIdentity()
+    {
+        var identity = EpisodeIdentityWithNumbers(series: SeriesIdentity(("Tvdb", "12345")), season: 5, episode: 3);
+        var seriesCandidates = new[] { SonarrSeriesCandidate(10, ("Tvdb", "12345")) };
+        var episodeCandidates = new[] { SonarrEpisodeCandidateWithNumber(10, 40, 1, 40) };
+
+        var match = MediaMatcher.MatchEpisode(
+            identity,
+            SonarrConnection.Provider,
+            SonarrConnection.ConnectionId,
+            seriesCandidates,
+            episodeCandidates);
+
+        Assert.Equal(MediaMatchStatus.NotFound, match.Status);
+        Assert.Null(match.RecordIdentity);
+    }
+
+    [Fact]
     public void EpisodeWithoutSeriesMatchReturnsTheSeriesFailure()
     {
         var identity = EpisodeIdentity(series: SeriesIdentity(("Tvdb", "12345")), ("Tvdb", "9001"));
@@ -297,6 +420,21 @@ public class MediaMatcherTests
             episodeNumber: 4);
     }
 
+    private static MediaIdentity EpisodeIdentityWithNumbers(
+        MediaIdentity? series,
+        int? season,
+        int? episode,
+        int? episodeNumberEnd = null)
+    {
+        return new MediaIdentity(
+            EpisodeItemId,
+            MediaItemType.Episode,
+            seriesIdentity: series,
+            seasonNumber: season,
+            episodeNumber: episode,
+            episodeNumberEnd: episodeNumberEnd);
+    }
+
     private static MatchCandidate RadarrCandidate(int movieId, int fileId, params (string Key, string Value)[] providerIds)
     {
         return new MatchCandidate(
@@ -322,6 +460,16 @@ public class MediaMatcherTests
             ArrProviderKind.Sonarr,
             new SonarrIdentity(SonarrConnection.ConnectionId, seriesId, episodeId, ArrFileIdentity.Absent),
             ToDictionary(providerIds));
+    }
+
+    private static MatchCandidate SonarrEpisodeCandidateWithNumber(int seriesId, int episodeId, int season, int episode)
+    {
+        return new MatchCandidate(
+            SonarrConnection.ConnectionId,
+            ArrProviderKind.Sonarr,
+            new SonarrIdentity(SonarrConnection.ConnectionId, seriesId, episodeId, ArrFileIdentity.Absent),
+            seasonNumber: season,
+            episodeNumber: episode);
     }
 
     private static Dictionary<string, string> ToDictionary((string Key, string Value)[] providerIds)

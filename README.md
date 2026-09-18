@@ -1,6 +1,6 @@
 ## Project Status
 
-**Current milestone:** Phase 3 — Media matching (in progress; tasks 3.1, 3.2, 3.3, and 3.4 complete)
+**Current milestone:** Phase 3 — Media matching (in progress; tasks 3.1, 3.2, 3.3, 3.4, and 3.5 complete)
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -30,15 +30,18 @@ Completed in Phase 3 so far:
 - 3.4 Documented movie, series, and episode matching order, with provider-neutral
   orchestration, the series-before-episode rule, bounded unsupported outcomes,
   and provider-specific candidate assembly.
+- 3.5 Explicit V1 episode-numbering policy (ADR-007): number fallback is enabled
+  only for regular single episodes after the series match, excluding season zero
+  specials, multi-episode spans, and absolute/scene numbering.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 294 automated tests.
+- Passes 313 automated tests.
 
 Next tasks:
 
-- Remaining Phase 3 tasks: episode numbering policy (3.5), configured path
-  mapping (3.6), and connection-scope verification (3.7).
+- Remaining Phase 3 tasks: configured path mapping (3.6) and connection-scope
+  verification (3.7).

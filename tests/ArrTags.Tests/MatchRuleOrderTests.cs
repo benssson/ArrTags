@@ -9,9 +9,10 @@ namespace ArrTags.Tests;
 
 /// <summary>
 /// Task 3.4 checks for the documented movie, series, and episode matching order.
-/// The order is provider-neutral identity rules only; exact episode-number and
-/// configured-path fallbacks remain disabled pending tasks 3.5 and 3.6. These
-/// tests require no live Jellyfin or Arr instance.
+/// The order is provider-neutral identity rules, with the V1 episode number
+/// policy (task 3.5) applied after the episode TVDB id; the configured-path
+/// fallback remains disabled pending task 3.6. These tests require no live
+/// Jellyfin or Arr instance.
 /// </summary>
 public class MatchRuleOrderTests
 {
@@ -38,14 +39,16 @@ public class MatchRuleOrderTests
     }
 
     [Fact]
-    public void EpisodeToSonarrUsesEpisodeTvdbOnlyUntilNumberingPolicyIsApproved()
+    public void EpisodeToSonarrUsesEpisodeTvdbThenApprovedNumberingPolicy()
     {
         Assert.True(MatchRuleOrder.TryGetRules(MediaItemType.Episode, ArrProviderKind.Sonarr, out var rules));
 
-        var rule = Assert.Single(rules);
-        Assert.Equal(MatchProviderIdKeys.Tvdb, rule.EvidenceKey);
-        Assert.Equal(MediaMatchMethod.ProviderId, rule.Method);
-        Assert.DoesNotContain(rules, candidate => candidate.Method == MediaMatchMethod.Number);
+        Assert.Equal(2, rules.Count);
+        Assert.Equal(MatchProviderIdKeys.Tvdb, rules[0].EvidenceKey);
+        Assert.Equal(MediaMatchMethod.ProviderId, rules[0].Method);
+        Assert.IsType<SeasonEpisodeMatchRule>(rules[1]);
+        Assert.Equal(EpisodeNumberingPolicy.NumberEvidenceKey, rules[1].EvidenceKey);
+        Assert.Equal(MediaMatchMethod.Number, rules[1].Method);
         Assert.DoesNotContain(rules, candidate => candidate.Method == MediaMatchMethod.ConfiguredPath);
     }
 

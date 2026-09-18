@@ -791,9 +791,9 @@ Mapping labels:
 | `title` | `Name`/`OriginalTitle` | `series.title`/movie title or episode context | `movie.title`/`originalTitle` | Direct display/candidate data; never sole identity. |
 | `productionYear` | `ProductionYear` | `series.year` | `movie.year` | Direct candidate/tie-breaker data. |
 | `seriesIdentity` | Episode/season parent series | `series.id` | Not applicable | Derived after Sonarr series match. |
-| `seasonNumber` | `ParentIndexNumber`/season `IndexNumber` | `episode.seasonNumber` | Not applicable | Direct values compared under an explicit numbering policy. |
+| `seasonNumber` | `ParentIndexNumber`/season `IndexNumber` | `episode.seasonNumber` | Not applicable | Direct values compared under the V1 numbering policy; season zero specials are excluded from number fallback (ADR-007). |
 | `episodeNumber` | `IndexNumber` | `episode.episodeNumber` | Not applicable | Direct values compared after series match. |
-| `episodeNumberEnd` | `IndexNumberEnd` | Multiple episode records may share one file | Not applicable | Derived multi-episode span; requires explicit policy. |
+| `episodeNumberEnd` | `IndexNumberEnd` | Multiple episode records may share one file | Not applicable | Derived multi-episode span; a span greater than the start is excluded from number fallback (ADR-007). |
 | `mediaLocation` | `LocationType`, protocol, media source | `episodeFile.path`/`series.path` | `movieFile.path`/`movie.path` | Direct source facts; paths are only fallback/validation with configured mapping. |
 | `sourceFingerprint` | Image/media source tag, date, or source facts | Not applicable | Not applicable | Generated from Jellyfin source state. |
 

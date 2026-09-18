@@ -665,7 +665,7 @@ Radarr record using stable provider identity first and explicit fallback rules.
 - [x] 3.3 Reject zero-candidate and multiple-candidate matches rather than
   guessing from title or year.
 - [x] 3.4 Implement the documented movie, series, and episode matching order.
-- [ ] 3.5 Define and test the numbering policy for specials, anime, and
+- [x] 3.5 Define and test the numbering policy for specials, anime, and
   multi-episode records before enabling number fallback.
 - [ ] 3.6 Add configured path normalization only if the configuration decision
   gate approves it; never assume host and container paths are equivalent.
@@ -757,6 +757,28 @@ resolved by task 3.5, and the rule order test asserts no `Number` or
 cross-provider and structural rejection, TMDb-before-IMDb ordering, IMDb
 fallback, connection-scoped results, series-then-episode scoping, bounded
 failures, and DTO-to-candidate mapping without a live Arr instance.
+
+**Task 3.5 status:** Complete. The explicit V1 episode-numbering policy
+(decision gate DG-4, recorded in ADR-007) lives in
+`src/ArrTags/Matching/EpisodeNumberingPolicy.cs` and is applied by
+`src/ArrTags/Matching/SeasonEpisodeMatchRule.cs`. Number fallback is enabled in
+`MatchRuleOrder` after the episode TVDB id and applies only to regular, single
+episodes: the Jellyfin identity and the Sonarr candidate must each have a
+positive season and episode number, season zero specials are excluded, and a
+multi-episode span (`EpisodeNumberEnd > EpisodeNumber`) is excluded because one
+Jellyfin item can map to multiple Sonarr episode records. An end number equal to
+the start is treated as a single episode. Absolute, scene, and other alternate
+numbering is never an identity key, so absolute-number agreement alone never
+matches; anime and other series still require the episode TVDB id or, if DG-5
+approves it, a configured path. The comparison is exact `(seasonNumber,
+episodeNumber)` equality with no tolerance and never uses title, year, path, or
+air date. Ineligible or non-equivalent candidates do not satisfy the rule, so
+the existing status policy yields `NotFound`/`Ambiguous` and no badge. Tests in
+`EpisodeNumberingPolicyTests` cover eligibility, specials, spans, missing
+numbers, item/provider mismatch, exact matching, and bounded rejection; new
+`MediaMatcherTests` cases cover number fallback after the series match,
+series-scoped number fallback, special and span exclusion, absolute-number
+mismatch, and number ambiguity.
 
 **Acceptance criteria:**
 
@@ -999,7 +1021,7 @@ an implementation assumption.
 | DG-1 | Exact Jellyfin 12 patch, package versions, target framework, and manifest ABI. | Milestone 1 implementation |
 | DG-2 | Initial supported item and image types, including whether series/season posters are disabled or use an explicit aggregate policy. Resolved by ADR-006: V1 badge surfaces are Movie and Episode posters; Series/Season are structural and aggregation remains post-V1. | Milestones 3-5 |
 | DG-3 | Initial badge fields, templates, placement, contrast, output format, text limits, and request-size policy. | Milestone 4 |
-| DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. | Milestone 3 |
+| DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. Resolved by ADR-007: number fallback is limited to regular single episodes; season zero specials, multi-episode spans, and absolute/scene numbering are excluded. | Milestone 3 |
 | DG-5 | Whether path mappings are needed, and their connection-scoped representation. | Milestone 3 |
 | DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. Foundation defaults are resolved by ADR-004; Milestone 6 may tune within the documented validation ranges. | Milestone 6 |
 | DG-7 | Webhook exposure, authentication, payload limits, replay handling, and route administration flow. Secret persistence and versioned access are resolved by ADR-005. | Milestone 6 |

@@ -304,8 +304,11 @@ The initial matching order is:
 - **Series to Sonarr:** Jellyfin TVDB ID, then a cached catalogue comparison of
   other stable provider IDs when available.
 - **Episode to Sonarr:** episode TVDB ID, then exact season and episode numbers
-  after the series match. Anime, specials, absolute numbering, double episodes,
-  and multi-episode files require explicit policy and validation.
+  after the series match, under the explicit V1 numbering policy (ADR-007).
+  Number fallback applies only to regular, single episodes: season zero
+  specials and multi-episode spans are excluded, and absolute/scene numbering is
+  never an identity key. Specials, spans, and absolute-numbered anime match by
+  the episode TVDB id or, when DG-5 approves it, a configured path.
 - **Path:** only a configured, normalized path mapping may use paths as a
   fallback. Container or host paths must never be assumed equivalent.
 - **Title and year:** candidate or manual-disambiguation data only; never an
@@ -740,7 +743,9 @@ The following are intentionally not guessed by this architecture:
 3. Exact badge fields, text truncation, placement, color/contrast rules, output
    format, and requested-size policy.
 4. Whether episode matching permits number fallback for all libraries or only
-   validated display-order cases.
+   validated display-order cases. Resolved by ADR-007: number fallback is limited
+   to regular single episodes after the series match; season zero specials,
+   multi-episode spans, and absolute/scene numbering are excluded.
 5. Whether configured path mappings are needed and how they are represented.
 6. Default queue, concurrency, image-size, cache, timeout, retry, and stale
    state limits. Resolved for the foundation by ADR-004; the accepted values are
@@ -756,7 +761,8 @@ These decisions must be recorded in `docs/decisions.md` or
 revision before they become implementation assumptions. Item 1 (the pinned
 Jellyfin `12.0.0` / `net10.0` / `targetAbi: 12.0.0.0` compatibility target) is
 resolved in `docs/implementation-readiness.md`. Item 2 (V1 badge surfaces and
-the library scope identifier) is resolved by ADR-006. Item 6 (foundation
+the library scope identifier) is resolved by ADR-006. Item 4 (episode numbering)
+is resolved by ADR-007. Item 6 (foundation
 operational limits) is resolved by ADR-004, with the accepted values recorded
 in section 12. The credential persistence and access boundary is resolved by
 ADR-005. The remaining webhook decision is route exposure and request policy,

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using ArrTags.Media;
 using ArrTags.Matching;
 using ArrTags.Providers;
@@ -214,30 +213,5 @@ public class MediaMatchPolicyTests
         }
 
         return dictionary;
-    }
-
-    private sealed class SeasonEpisodeMatchRule : CandidateMatchRule
-    {
-        public SeasonEpisodeMatchRule()
-            : base(MediaMatchMethod.Number, "SeasonEpisode")
-        {
-        }
-
-        public override bool IsSatisfiedBy(MediaIdentity identity, MatchCandidate candidate, out string? matchedValue)
-        {
-            matchedValue = null;
-            if (identity.SeasonNumber is not int season
-                || identity.EpisodeNumber is not int episode
-                || candidate.SeasonNumber != season
-                || candidate.EpisodeNumber != episode)
-            {
-                return false;
-            }
-
-            matchedValue = season.ToString(CultureInfo.InvariantCulture)
-                + "x"
-                + episode.ToString(CultureInfo.InvariantCulture);
-            return true;
-        }
     }
 }

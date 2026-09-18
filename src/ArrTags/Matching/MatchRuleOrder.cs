@@ -19,10 +19,9 @@ namespace ArrTags.Matching;
 /// <item>Movie to Radarr: TMDb id, then IMDb id.</item>
 /// <item>Series to Sonarr: TVDB id, then the other stable provider ids Sonarr
 /// exposes locally (TMDb, then IMDb).</item>
-/// <item>Episode to Sonarr: episode TVDB id. Exact season/episode number
-/// fallback is deliberately not enabled here because the numbering policy is
-/// decision gate DG-4 and is implemented by task 3.5; configured path fallback
-/// is task 3.6.</item>
+/// <item>Episode to Sonarr: episode TVDB id, then exact season/episode numbers
+/// under the explicit V1 numbering policy (<see cref="EpisodeNumberingPolicy"/>,
+/// ADR-007). Configured path fallback is task 3.6.</item>
 /// </list>
 /// Title and production year are never rules. Season and cross-provider
 /// combinations are unsupported for automatic matching.
@@ -48,6 +47,7 @@ public static class MatchRuleOrder
         Array.AsReadOnly<CandidateMatchRule>(new CandidateMatchRule[]
         {
             new ProviderIdMatchRule(MatchProviderIdKeys.Tvdb),
+            new SeasonEpisodeMatchRule(),
         });
 
     /// <summary>

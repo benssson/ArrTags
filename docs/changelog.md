@@ -188,7 +188,8 @@ tests. Media matching (Phase 3) is now in progress.
 
 ### Phase 3 (Media matching) - in progress
 
-Tasks 3.1, 3.2, 3.3, and 3.4 are complete; the Milestone 3 gate is not yet met.
+Tasks 3.1, 3.2, 3.3, 3.4, and 3.5 are complete; the Milestone 3 gate is not yet
+met.
 
 - Task 3.1 (`src/ArrTags/Media/`): canonical `MediaIdentity` snapshots for
   Movie, Series, Season, and Episode, deterministic collection-folder/library
@@ -221,15 +222,31 @@ Tasks 3.1, 3.2, 3.3, and 3.4 are complete; the Milestone 3 gate is not yet met.
   `Unsupported` for cross-provider/structural pairs or episodes without series
   context. The provider factories translate validated Radarr/Sonarr DTOs into
   canonical connection-scoped `MatchCandidate` values. Exact episode-number
-  fallback stays disabled pending task 3.5 (DG-4), and configured path fallback
-  pending task 3.6 (DG-5).
+  fallback was disabled at the time of task 3.4 and was enabled by task 3.5
+  (ADR-007); configured path fallback remains pending task 3.6 (DG-5).
 - `tests/ArrTags.Tests/MatchRuleOrderTests.cs`,
   `tests/ArrTags.Tests/MediaMatcherTests.cs`,
   `tests/ArrTags.Tests/MatchCandidateFactoryTests.cs` - rule order, cross-provider
   and structural rejection, TMDb-before-IMDb ordering, IMDb fallback,
   connection-scoped results, series-then-episode scoping, bounded failures, and
   DTO-to-candidate mapping (35 new tests).
+- Task 3.5 (`src/ArrTags/Matching/EpisodeNumberingPolicy.cs`,
+  `src/ArrTags/Matching/SeasonEpisodeMatchRule.cs`,
+  `src/ArrTags/Matching/MatchRuleOrder.cs`): the explicit V1 episode-numbering
+  policy resolving DG-4 (ADR-007). Number fallback is enabled after the episode
+  TVDB rule and applies only to regular, single episodes: a positive season and
+  episode number are required on both sides, season zero specials are excluded,
+  and a multi-episode span (`EpisodeNumberEnd > EpisodeNumber`) is excluded.
+  Absolute/scene numbering is never an identity key, so absolute-number agreement
+  alone never matches. The comparison is exact `(seasonNumber, episodeNumber)`
+  equality with no tolerance and never uses title, year, path, or air date;
+  ineligible or non-equivalent candidates yield `NotFound`/`Ambiguous` and no
+  badge.
+- `tests/ArrTags.Tests/EpisodeNumberingPolicyTests.cs` - eligibility, specials,
+  spans, missing numbers, item/provider mismatch, exact matching, and bounded
+  rejection (13 new tests). `tests/ArrTags.Tests/MediaMatcherTests.cs` - number
+  fallback after the series match, series-scoped number fallback, special and
+  span exclusion, absolute-number mismatch, and number ambiguity (6 new tests).
 
-Build and test: 0 warnings, 0 errors; 294 tests pass. Remaining Phase 3 tasks:
-episode numbering policy (3.5), configured path mapping (3.6), and
-connection-scope verification (3.7).
+Build and test: 0 warnings, 0 errors; 313 tests pass. Remaining Phase 3 tasks:
+configured path mapping (3.6) and connection-scope verification (3.7).
