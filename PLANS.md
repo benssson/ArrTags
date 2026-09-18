@@ -898,6 +898,11 @@ Radarr, or Jellyfin artwork storage.
 - [ ] Pin the SkiaSharp managed and Linux native asset packages to exact
   versions, embed the DejaVu Sans Bold 2.37 font as a plugin resource, and ship
   the font and Skia license notices (ADR-010).
+- [ ] Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the
+  host's pinned SkiaSharp/HarfBuzzSharp version and native library name, verify
+  whether the plugin resolves that shared version or needs its own isolated
+  copy, and prove one decode/draw/encode round trip on the pinned Linux runtime
+  before building the drawing engine (ADR-010).
 - [ ] Implement the provider-neutral renderer service and drawing engine: the
   `RenderAsync`/`RenderRequest`/`SourceImageInput`/`RenderResult` contract,
   ADR-009 selectors, priority, rail layout, typography, truncation, and
@@ -974,6 +979,10 @@ provenance and coexisting with Jellyfin Enhanced.
   `Primary` source image and supplies the Phase 4 renderer's `SourceImageInput`
   bytes, content type, dimensions, and hash; keep Jellyfin access out of the
   renderer (ADR-010).
+- [ ] Extend plugin packaging so the renderer's managed dependencies, Linux
+  native assets, dependency manifest, and Skia/font license notices are included
+  in the plugin zip and resolve under the host's plugin load context; the
+  current `PackagePlugin` target copies only the main assembly (ADR-010).
 - [ ] Publish completed artwork through Jellyfin's supported item-image APIs;
   do not write media-folder posters or Jellyfin's image cache directly.
 - [ ] Persist a durable `ArtworkOperation` before `SaveImage`, including before
