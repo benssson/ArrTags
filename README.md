@@ -82,4 +82,7 @@ The plugin:
 Next tasks:
 
 - Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks (4.6 through 4.11), beginning with task 4.6 renderer behavior tests.
+  tasks in the authoritative execution order 4.7, 4.8, 4.9, 4.6, 4.10, 4.11,
+  beginning with task 4.7 (pin SkiaSharp and embed the DejaVu font). Task 4.6
+  (renderer behavior tests) follows the renderer implementation and assets it
+  exercises; it was reordered after task 4.9.

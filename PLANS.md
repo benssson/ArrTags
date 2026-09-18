@@ -894,8 +894,6 @@ Radarr, or Jellyfin artwork storage.
 - [x] 4.4 Implement render request and result fingerprints containing every
   output-affecting value, including renderer and badge schema versions.
 - [x] 4.5 Enforce image and text limits before decode, draw, and encode work.
-- [ ] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
-  renderer failure pass-through.
 - [ ] 4.7 Pin the SkiaSharp managed and Linux native asset packages to exact
   versions, embed the DejaVu Sans Bold 2.37 font as a plugin resource, and ship
   the font and Skia license notices (ADR-010).
@@ -909,6 +907,8 @@ Radarr, or Jellyfin artwork storage.
   ADR-009 selectors, priority, rail layout, typography, truncation, and
   contrast, and the ADR-010 sRGB PNG encode, alpha, and metadata policy
   (ADR-010).
+- [ ] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
+  renderer failure pass-through.
 - [ ] 4.10 Extend the immutable configuration model, snapshot, and validator with
   enabled V1 selectors, bounded templates, and contrast-validated palette/style
   overrides, including the secret-free renderer configuration fingerprint
@@ -916,6 +916,15 @@ Radarr, or Jellyfin artwork storage.
 - [ ] 4.11 Add golden-image, byte-determinism, PNG-contract, and cross-runtime
   tolerance tests with synthetic fixtures and no auto-approval of changed
   goldens (ADR-010).
+
+**Authoritative Phase 4 execution order:** 4.1, 4.2, 4.3, 4.4, 4.5, 4.7, 4.8,
+4.9, 4.6, 4.10, 4.11. The task list above is listed in this execution order and
+must be walked in it. Task 4.6 was reordered after task 4.9 because its stated
+behavior tests (format behavior, layout, cancellation, and renderer failure
+pass-through) cannot compile or execute before the renderer service contract,
+drawing engine, and pinned renderer assets exist; it was reported blocked in
+`docs/implementation/4.6/worker-report.json` and must not be attempted before
+tasks 4.7 through 4.9.
 
 **Task 4.1 status:** Complete. The provider-neutral `BadgeSelector` vocabulary
 (Quality, Resolution, DynamicRange, Source, VideoCodec, Audio, CustomBadge, and

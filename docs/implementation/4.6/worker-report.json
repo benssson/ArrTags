@@ -1,0 +1,31 @@
+{
+  "task": "4.6",
+  "status": "BLOCKED",
+  "implementation_complete": false,
+  "tests_complete": false,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Task 4.6 ('Test dimensions, format behavior, truncation, layout, cancellation, and renderer failure pass-through') is blocked by missing dependencies and was not implemented. Four of the six named behavior areas cannot compile or execute against the code that exists today: (1) format behavior requires the PNG/RGB/RGBA/sRGB encoder and 4.7 renderer assets; (2) layout requires the ADR-009 rail/pill geometry and scale engine; (3) cancellation requires the RenderAsync(RenderRequest, CancellationToken) service checkpoints; (4) renderer failure pass-through requires the RenderResult PassThrough/Failed contract. None of RenderRequest, RenderResult, SourceImageInput, RenderAsync, IRenderer, BadgeDefinition, a render status enum, or any drawing/encoder implementation exists in src or tests, and no font or Skia asset is present. Writing tests for those behaviors would require inventing the contract types assigned to task 4.9 and consuming assets assigned to task 4.7, which is explicitly out of scope for 4.6. The only two areas testable with existing code are 'truncation' (BadgeTextNormalizer) and 'dimensions' as pre-render limit enforcement (RenderLimitGuard); both are already directly covered by the task 4.5 RenderLimitTests suite (39 tests), so re-testing them would add no task value and would not satisfy the task's stated behavior set or Gate 4. Per the scope constraint, the dependency is reported as BLOCKED with ready_for_next_task false rather than implementing later tasks.",
+  "validation": [
+    "git status: clean working tree before changes; inspected git log (HEAD 5ecf35d).",
+    "Read authoritative context: AGENTS.md, GOALS.md, README.md, PLANS.md Phase 4 (lines 868-1009), docs/decisions.md ADR-009 and ADR-010, docs/architecture.md V1 rendering/renderer contract (sections 9), docs/data-model.md sections 3.5-3.8 and 4.6-4.8, docs/changelog.md Phase 4.",
+    "Inspected all existing src/ArrTags/Rendering files: BadgeSelector, BadgeSelectorResolver, BadgeSelection, BadgeValue, BadgeValueKind, BadgeTextNormalizer, NormalizedBadgeText, RenderFingerprint, RenderFingerprintInput, RenderLimitGuard, RenderLimitReason, RenderLimitResult, RenderOutputPolicy, RenderVersion.",
+    "Inspected existing tests RenderLimitTests and the test project layout.",
+    "Searched src and tests for RenderRequest, RenderResult, SourceImageInput, RenderAsync, IRenderer, BadgeDefinition, render status/PassThrough: NONE FOUND.",
+    "Searched src for Skia/PNG/font assets (.ttf): NONE FOUND.",
+    "Ran baseline build: export PATH=\"$HOME/.dotnet:$PATH\" && export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Ran baseline tests: export PATH=\"$HOME/.dotnet:$PATH\" && export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 && ./build.sh test -> Passed! Failed: 0, Passed: 425, Skipped: 0, Total: 425.",
+    "Confirmed no source or test files were modified for this task; only this required report file was created."
+  ],
+  "changed_files": [
+    "docs/implementation/4.6/worker-report.json"
+  ],
+  "known_limitations": [
+    "Task 4.6 behavior tests for format behavior, layout, cancellation, and renderer failure pass-through cannot be authored until the task 4.9 renderer service contract (RenderAsync/RenderRequest/SourceImageInput/RenderResult) and drawing engine exist.",
+    "PNG format/alpha/color tests additionally require the task 4.7 pinned SkiaSharp packages and bundled DejaVu font.",
+    "The truncation and pre-render dimension/limit behaviors are already implemented and tested by task 4.5 (RenderLimitTests, 39 tests); no additional independent behavior was available for task 4.6 to test without the renderer.",
+    "Gate 4 ('Renderer unit tests pass for normal, unknown, oversized, malformed, cancelled, and failed inputs') remains unmet; normal, cancelled, and failed renderer cases require task 4.9."
+  ],
+  "ready_for_next_task": false
+}
