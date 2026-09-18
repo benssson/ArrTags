@@ -29,9 +29,10 @@ generated package was installed, discovered, loaded, started, restarted, and
 shut down cleanly on a Jellyfin `12.0.0.0` host. Milestone 1 is complete and
 Gate 1 is met. Milestone 2 is in progress: tasks 2.1 (shared provider-client
 boundary and connection identity), 2.2 (dedicated `IHttpClientFactory` client
-registration), and 2.3 (versioned credential boundary and read-only Radarr v3
-reads) are complete, with Sonarr v3 reads (2.4), canonical mapping (2.5-2.6),
-and provider failure tests (2.7) remaining.
+registration), 2.3 (versioned credential boundary and read-only Radarr v3
+reads), and 2.4 (read-only Sonarr v3 series, episode, and episode-file reads
+with the validated episode-file join) are complete, with canonical mapping
+(2.5-2.6) and provider failure tests (2.7) remaining.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -465,7 +466,7 @@ models.
   HTTP client factory; do not create raw clients per request.
 - [x] 2.3 Implement Radarr v3 reads for local movies and current movie-file data,
   including the dedicated file request when enabled fields are not embedded.
-- [ ] 2.4 Implement Sonarr v3 reads for series, episodes, and episode files,
+- [x] 2.4 Implement Sonarr v3 reads for series, episodes, and episode files,
   joining files by the validated episode file identifier.
 - [ ] 2.5 Map provider data into `ArrProvider`, `ArrConnection`, and
   `BadgeMetadata` without leaking provider DTOs past the boundary.
@@ -530,7 +531,28 @@ canonical state. Malformed, oversized, unauthorized, unavailable, and
 incompatible responses map to bounded `ArrProviderError` outcomes. Tests cover
 the credential boundary and the Radarr reads without a live Arr instance.
 `BadgeMetadata` mapping and the actual-versus-profile quality semantics remain
-tasks 2.5 and 2.6; Sonarr reads remain task 2.4.
+tasks 2.5 and 2.6.
+
+**Task 2.4 status:** Complete. The read-only Sonarr v3 client is implemented in
+`src/ArrTags/Providers/Sonarr`. `SonarrClient` probes
+`GET /api/v3/system/status`, reads the local library through `GET /api/v3/series`,
+reads episodes through
+`GET /api/v3/episode?seriesId=&includeEpisodeFile=true`, and reads the series
+file inventory through `GET /api/v3/episodeFile?seriesId=`. It reuses the same
+ADR-005 version-matched API-key lease, bounded timeout, cancellation,
+retry/backoff, response-size, and redacted-error policy as the Radarr client,
+and returns `ArrProviderReadResult<T>` outcomes instead of throwing.
+
+The validated current-file join is implemented by
+`SonarrEpisodeFileResolver.Resolve`: it trusts the embedded `episodeFile` only
+when its identifier equals the episode's authoritative `episodeFileId`, falls
+back to the series inventory otherwise, and returns no file identity (rather
+than an unrelated file) when the episode has no current file or the referenced
+identifier is missing. Provider DTOs stay in `ArrTags.Providers.Sonarr` and do
+not enter canonical state. Tests cover the reads, the join, and bounded
+failures without a live Arr instance. Canonical `BadgeMetadata` mapping and the
+actual-versus-profile quality semantics remain tasks 2.5 and 2.6; provider
+failure-matrix tests remain task 2.7.
 
 **Acceptance criteria:**
 

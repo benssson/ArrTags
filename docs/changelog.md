@@ -106,7 +106,7 @@ leakage.
 
 ### Phase 2 (Sonarr & Radarr integration) - in progress
 
-Tasks 2.1-2.3 are complete. The shared provider-client boundary and connection
+Tasks 2.1-2.4 are complete. The shared provider-client boundary and connection
 identity (task 2.1), dedicated `IHttpClientFactory` client registration
 (task 2.2), and the versioned credential boundary (ADR-005, task 2.3) are
 implemented. The read-only Radarr v3 client probes
@@ -115,12 +115,19 @@ and reads the fully populated current file through the dedicated
 `GET /api/v3/moviefile?movieId=` endpoint with bounded timeout, cancellation,
 retry/backoff, response-size limits, and redacted errors.
 
+The read-only Sonarr v3 client (task 2.4) probes `GET /api/v3/system/status`,
+reads the local library through `GET /api/v3/series`, reads episodes through
+`GET /api/v3/episode?seriesId=&includeEpisodeFile=true`, and reads the series
+file inventory through `GET /api/v3/episodeFile?seriesId=` under the same
+bounded and redacted policy. The current episode file is joined by the
+validated `episodeFileId == episodeFile.id` rule: the embedded file is trusted
+only when its identifier matches, the series inventory is the fallback, and a
+missing association resolves to no file identity rather than an unrelated file.
+
 Remaining Phase 2 work:
 
-1. Task 2.4: Sonarr v3 reads for series, episodes, and episode files, joining
-   files by the validated episode-file identifier.
-2. Tasks 2.5-2.6: map provider data into canonical `ArrProvider`,
+1. Tasks 2.5-2.6: map provider data into canonical `ArrProvider`,
    `ArrConnection`, and `BadgeMetadata`, keeping actual file quality separate
    from quality-profile policy and unknown values unknown.
-3. Task 2.7: provider authentication-failure, unavailability, malformed,
+2. Task 2.7: provider authentication-failure, unavailability, malformed,
    optional-field, version-drift, cancellation, and retry tests.
