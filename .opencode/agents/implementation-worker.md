@@ -144,3 +144,23 @@ Do not create git commits.
 Leave the implementation and its validation results in the working tree for the orchestrator and reviewer to inspect.
 
 The orchestrator is responsible for creating the commit only after the task has independently passed review.
+
+## Persist the Completion Report
+
+After completing the assigned task, save the complete structured completion report to the project's established implementation-state location.
+
+If the project already has a documented location or mechanism for task reports, use it.
+
+Otherwise, use:
+
+```text
+docs/implementation/<task-id>/worker-report.json
+```
+
+The saved report must contain the same information returned to the orchestrator.
+
+The report must be written before returning the final result to the orchestrator.
+
+The report must accurately reflect the actual implementation, validation, research, questions, blockers, and remaining limitations.
+
+Do not alter the report to make the task appear complete.

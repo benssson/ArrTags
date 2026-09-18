@@ -133,6 +133,47 @@ If the reviewer identifies a user decision, unresolved architectural ambiguity, 
 
 Never mark a task complete merely because the worker says it is complete.
 
+## Report and Commit Gate
+
+A task is not eligible for commitment until the worker and reviewer reports have been persisted successfully.
+
+Before committing, verify:
+
+1. The worker completion report exists.
+2. The reviewer report exists.
+3. The persisted reports are internally consistent with the actual repository state.
+4. The worker report indicates `COMPLETE`.
+5. The reviewer report indicates `APPROVED`.
+6. The reviewer report contains no blockers or required changes.
+7. Required tests and validation have actually passed.
+8. The final git diff contains only changes belonging to the task.
+
+The reviewer report is the authoritative record of independent review. Do not commit based solely on the reviewer's conversational response if the required report was not successfully persisted.
+
+After the commit succeeds, record the commit hash in the task's implementation state.
+
+The resulting task record should therefore establish:
+
+```text
+Task
+  ↓
+Implementation
+  ↓
+Worker report
+  ↓
+Independent review
+  ↓
+Reviewer report
+  ↓
+Final diff verification
+  ↓
+Git commit
+  ↓
+Commit hash recorded
+```
+
+If either report cannot be persisted, stop and do not commit or advance to the next task.
+
 ## Commit Gate
 
 After a task passes both the worker and independent reviewer completion gates, create a git commit for the completed task.

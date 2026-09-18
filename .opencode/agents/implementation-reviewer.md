@@ -126,6 +126,35 @@ Use:
 
 Do not approve work merely to keep the workflow moving.
 
+## Persist the Review Report
+
+After completing the review, save the complete structured review report to the project's established implementation-state location.
+
+If the project already has a documented location or mechanism for task reports, use it.
+
+Otherwise, use:
+
+```text
+docs/implementation/<task-id>/reviewer-report.json
+```
+
+The saved report must contain the same information returned to the orchestrator, including:
+
+* Task ID.
+* Review status.
+* Blockers.
+* Findings.
+* Required changes.
+* Tests checked.
+* Research checked.
+* Whether the task is ready for the next task.
+
+The report must be written before returning the final review result to the orchestrator.
+
+Do not modify the implementation merely to make the review pass.
+
+The persisted report is part of the project's audit trail and must accurately reflect the review that was actually performed.
+
 ## Independence
 
 Do not assume the worker's conclusions are correct.
