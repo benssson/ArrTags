@@ -880,6 +880,8 @@ Radarr, or Jellyfin artwork storage.
 - Bounded image input/output, dimensions, text, concurrency, and cancellation.
 - Pass-through behavior for unknown metadata, unsupported input, decode/encode
   failure, cancellation, and resource-limit violations.
+- Pinned, plugin-owned renderer stack (SkiaSharp managed/native packages and the
+  bundled DejaVu Sans Bold 2.37 font) with shipped license notices (ADR-010).
 
 **Tasks:**
 
@@ -893,6 +895,21 @@ Radarr, or Jellyfin artwork storage.
 - [ ] Enforce image and text limits before decode, draw, and encode work.
 - [ ] Test dimensions, format behavior, truncation, layout, cancellation, and
   renderer failure pass-through.
+- [ ] Pin the SkiaSharp managed and Linux native asset packages to exact
+  versions, embed the DejaVu Sans Bold 2.37 font as a plugin resource, and ship
+  the font and Skia license notices (ADR-010).
+- [ ] Implement the provider-neutral renderer service and drawing engine: the
+  `RenderAsync`/`RenderRequest`/`SourceImageInput`/`RenderResult` contract,
+  ADR-009 selectors, priority, rail layout, typography, truncation, and
+  contrast, and the ADR-010 sRGB PNG encode, alpha, and metadata policy
+  (ADR-010).
+- [ ] Extend the immutable configuration model, snapshot, and validator with
+  enabled V1 selectors, bounded templates, and contrast-validated palette/style
+  overrides, including the secret-free renderer configuration fingerprint
+  (ADR-010).
+- [ ] Add golden-image, byte-determinism, PNG-contract, and cross-runtime
+  tolerance tests with synthetic fixtures and no auto-approval of changed
+  goldens (ADR-010).
 
 **Task 4.2 status:** Complete as the DG-3 documentation decision. ADR-009 fixes
 the V1 selector vocabulary, field priority, Movie/Episode Primary-poster
@@ -900,6 +917,15 @@ layout, typography and geometry, contrast-validated palette, 24-scalar display
 limit, PNG/RGB-or-RGBA output, source-dimension scaling, high-DPI behavior, and
 pass-through behavior for unknown, incomplete, cancelled, malformed, or failed
 renders. No rendering code is included in this decision closure.
+
+**ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
+font, PNG/alpha/color, service-contract, configuration, and test-oracle work
+listed above. These are Phase 4 implementation tasks because they are entirely
+renderer-local and testable without Jellyfin artwork publication. The
+renderer-side `SourceImageInput` contract is Phase 4; the Jellyfin host adapter
+that reads the unindexed `Primary` source image and supplies its bytes remains
+Phase 5 source-capture work. Publication, provenance, restoration, caching,
+stale-artwork lifecycle, and Enhanced coexistence are not pulled into Phase 4.
 
 **Acceptance criteria:**
 
@@ -944,6 +970,10 @@ provenance and coexisting with Jellyfin Enhanced.
   variants.
 - [ ] Implement source-artwork provenance and guarded restoration state before
   publishing derived artwork.
+- [ ] Implement the Jellyfin host source adapter that reads the unindexed
+  `Primary` source image and supplies the Phase 4 renderer's `SourceImageInput`
+  bytes, content type, dimensions, and hash; keep Jellyfin access out of the
+  renderer (ADR-010).
 - [ ] Publish completed artwork through Jellyfin's supported item-image APIs;
   do not write media-folder posters or Jellyfin's image cache directly.
 - [ ] Persist a durable `ArtworkOperation` before `SaveImage`, including before

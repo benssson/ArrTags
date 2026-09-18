@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010
 
-**Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, and ADR-009; findings in
+**Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, and ADR-010; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
 artwork blockers, and the provider credential-access question is resolved for
 Milestone 2 implementation.
@@ -95,8 +95,41 @@ unsupported, cancelled, malformed, or failed input. The renderer never reads
 provider DTOs or turns missing values into claims.
 
 DG-3 is a documentation gate, not a rendering implementation gate. Phase 4 can
-begin immediately; its code, tests, font asset, and renderer-library choice are
-still outstanding.
+begin immediately. The renderer library and bundled font are now resolved by
+ADR-010; the implementation code, pinned package/font versions, and tests remain
+outstanding.
+
+## Resolved ADR-010
+
+ADR-010 defines the V1 renderer implementation contract without changing the
+ADR-009 visual specification. V1 uses a plugin-owned, provider-neutral
+SkiaSharp renderer with exact managed and Linux native asset pins, and it does
+not use Jellyfin's global image services. Text uses the bundled DejaVu Sans Bold
+2.37 font loaded by resource bytes, with no host-font fallback, and its hash and
+license notice are part of the renderer identity.
+
+The host boundary supplies a bounded, read-only `SourceImageInput` containing
+the exact source bytes or artifact handle, content type, oriented dimensions,
+and source hash. The conceptual service contract is
+`RenderAsync(RenderRequest, CancellationToken) -> RenderResult`; the renderer
+has no Jellyfin, provider, or filesystem side effects and never mutates the
+source bytes. Successful output is bounded, non-interlaced 8-bit sRGB PNG with
+RGB or RGBA channels depending on source alpha, fixed encoder settings, stripped
+nondeterministic metadata, and canonical transparent-pixel values. Invalid
+input, missing runtime/font assets, cancellation, decode/layout/encode errors,
+and resource-limit violations return a safe bounded result.
+
+Renderer configuration persists only enabled V1 selectors, bounded templates,
+and contrast-validated style overrides inside the immutable versioned
+configuration snapshot. Format, color-space, alpha, font, geometry/text limits,
+and renderer version stay code-owned and fingerprinted. Validation uses
+synthetic fixtures, decoded-pixel goldens, same-runtime byte determinism, and
+explicit cross-runtime anti-aliasing tolerances.
+
+The renderer-side `SourceImageInput` and `RenderAsync` contract is Phase 4. The
+Jellyfin host source adapter that reads the unindexed `Primary` image and
+supplies those bytes, plus publication, provenance, restoration, caching,
+stale-artwork lifecycle, and Enhanced coexistence, stays in Phase 5 and later.
 
 ## Compatibility Target
 
@@ -144,6 +177,7 @@ completed as Phase 1 implementation and acceptance work.
 | 10 | Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior. | Implementation-time decision | Finalize and test before the Jellyfin artwork integration milestone. |
 | 11 | Define secret persistence, safe references, credential access, rotation, and webhook-secret reuse. | Should become a Milestone 2 implementation task | Resolved by ADR-005 and implemented in task 2.3; the credential-boundary tests pass before authenticated provider reads. |
 | 12 | Define the V1 badge rendering contract. | Resolved for V1 | Resolved by ADR-009; implementation must use its provider-neutral fields, layout, bounds, output, scaling, contrast, and pass-through rules. |
+| 13 | Define the V1 renderer implementation contract. | Resolved for V1 | Resolved by ADR-010; implementation must use the pinned SkiaSharp stack, bundled DejaVu Sans Bold 2.37 font, bounded source/result contract, sRGB PNG policy, immutable renderer configuration, and golden/determinism tests. See the Phase 4 tasks in `PLANS.md`. |
 
 ## Already Satisfied
 
@@ -236,13 +270,27 @@ that introduce them.
 
 - Validate `SaveImage` storage behavior and the selected source-artwork capture
   and restoration implementation on the target host configuration.
-- Choose the renderer library and validate a deterministic bundled font asset
-  against ADR-009's typography metrics; the output format, geometry, palette,
-  text bounds, and scaling policy are resolved.
+- Pin and validate the exact SkiaSharp managed package, Linux native asset
+  package, and supported Linux RIDs against the declared Jellyfin 12 /
+  `net10.0` target. The renderer library (SkiaSharp) is resolved by ADR-010.
+- Validate that the bundled DejaVu Sans Bold 2.37 font renders ADR-009's
+  typography metrics, record its SHA-256, and confirm where the font and Skia
+  license notices are packaged. The font choice is resolved by ADR-010.
+- Decide whether V1 exposes contrast-validated palette overrides or keeps the
+  fixed ADR-009 palette; ADR-010 permits overrides only as a bounded
+  configuration value.
+- Define which embedded ICC profiles the renderer treats as supported and the
+  exact pass-through/failure mapping for unsupported or invalid profiles.
+- Fix the canonical RGB value used for fully transparent output pixels and the
+  accepted non-canonical Linux runtime used for cross-runtime tolerance tests.
+- Wire renderer configuration to the administrative save/config surface;
+  Gate 4 tests can construct configuration snapshots directly, so this is not a
+  Phase 4 prerequisite.
 - Validate how the publication pipeline supplies the unindexed `Primary` source
   image for Movie and Episode items. Item types and badge surfaces are resolved
   by ADR-006 and ADR-009; indexed or alternate poster surfaces are not V1
-  render targets.
+  render targets. The host source adapter is Phase 5; the renderer-side
+  `SourceImageInput` contract is resolved by ADR-010.
 - Episode policies for specials, anime/absolute numbering, double episodes, and
   multi-episode files are resolved by ADR-007 and task 3.5. ADR-008 resolves
   DG-5 by deferring path fallback out of V1; virtual, missing, remote, offline,
@@ -286,6 +334,11 @@ that introduce them.
 - [x] DG-3 badge fields, provider-neutral selectors, layout, typography,
   contrast, text bounds, PNG output, scaling, and pass-through behavior are
   defined by ADR-009.
+- [x] The V1 renderer implementation contract is defined by ADR-010: SkiaSharp
+  with pinned native assets, the bundled DejaVu Sans Bold 2.37 font, the
+  bounded `SourceImageInput`/`RenderAsync`/`RenderResult` boundary, sRGB PNG and
+  alpha/metadata policy, renderer configuration persistence, and the
+  golden/determinism test strategy.
 
 ## Post-V1 Backlog
 
