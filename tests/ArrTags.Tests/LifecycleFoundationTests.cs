@@ -213,10 +213,5 @@ public class LifecycleFoundationTests
                 _removed -= value;
             }
         }
-
-        public void RaiseItemAdded(Guid itemId)
-        {
-            _added?.Invoke(this, new LibraryItemChangedEventArgs(itemId));
-        }
     }
 }

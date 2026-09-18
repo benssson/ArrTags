@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Draft v1 (pre-implementation)
+**Status:** Accepted v1 (frozen for V1; Phase 1 complete)
 
 **Last reviewed against:**
 - Jellyfin 12.x
