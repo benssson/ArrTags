@@ -10,8 +10,9 @@ namespace ArrTags.Rendering;
 public sealed class RenderOutputPolicy
 {
     /// <summary>
-    /// Gets the default ADR-009 output policy. The font identity carries the
-    /// pinned DejaVu Sans Bold 2.37 asset name; task 4.7 adds its SHA-256.
+    /// Gets the default ADR-009 output policy. The font identity is the pinned
+    /// bundled DejaVu Sans Bold 2.37 asset, including its exact byte length and
+    /// SHA-256.
     /// </summary>
     public static RenderOutputPolicy Default { get; } = new RenderOutputPolicy();
 
@@ -35,7 +36,7 @@ public sealed class RenderOutputPolicy
     /// <summary>
     /// Gets the deterministic font asset identity. There is no font fallback.
     /// </summary>
-    public string FontIdentity { get; init; } = "DejaVu Sans Bold 2.37";
+    public RenderFontIdentity FontIdentity { get; init; } = RenderFontIdentity.BundledDejaVuSansBold;
 
     /// <summary>
     /// Gets the technical-badge background color.

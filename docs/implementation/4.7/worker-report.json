@@ -1,0 +1,51 @@
+{
+  "task": "4.7",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Pinned the SkiaSharp renderer stack, embedded the bundled font, wired the font identity into the render fingerprint, and shipped the license notices. src/ArrTags/ArrTags.csproj now references SkiaSharp 3.119.4 and SkiaSharp.NativeAssets.Linux 3.119.4 (the Jellyfin 12.0.0 host version, no HarfBuzzSharp before the task 4.8 spike), and both packages.lock.json files were regenerated so locked-mode restore stays valid. DejaVuSans-Bold.ttf (708,920 bytes, SHA-256 5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895, name-table version 2.37) was copied into the repository and embedded as the stable logical resource ArrTags.Resources.DejaVuSans-Bold.ttf. The new RenderFontIdentity type records family/style/version/exact byte length/SHA-256/resource logical name, exposes a read-only stream over the exact embedded bytes, and RenderOutputPolicy.Default.FontIdentity is that identity; RenderFingerprint records the full identity descriptor so any changed font field changes the output fingerprint. licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt, and THIRD-PARTY-NOTICES.md were added, and the PackagePlugin target copies the notices and license files into the plugin package. BundledFontTests adds 12 cases proving the resource name, readability, non-empty exact length, and SHA-256, and that the default output policy consumes the identity; RenderFingerprintTests gains a font-SHA-256 sensitivity case (13 new tests total). Build and test pass with 0 warnings and 438 passing tests.",
+  "validation": [
+    "Inspected git state: HEAD 2b8b7be, clean working tree before changes.",
+    "Read authoritative context: AGENTS.md, GOALS.md, README.md, PLANS.md Phase 4 (including the authoritative execution-order note), docs/decisions.md ADR-009 and ADR-010, docs/architecture.md V1 rendering/renderer contract (section 9), docs/changelog.md, docs/implementation-readiness.md, and the existing Rendering fingerprint/policy types and RenderFingerprintTests.",
+    "Confirmed the SkiaSharp 3.119.4 managed, SkiaSharp.NativeAssets.Linux 3.119.4, SkiaSharp.NativeAssets.Win32 3.119.4, and SkiaSharp.NativeAssets.macOS 3.119.4 packages are present in the local NuGet cache (the exact version pinned by the Jellyfin 12.0.0 host).",
+    "Verified the provided font source: sha256sum = 5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895, stat size = 708920, and the TTF name table reports 'Version 2.37' (grep -aP on the UTF-16BE name string).",
+    "Copied the font to src/ArrTags/Resources/DejaVuSans-Bold.ttf and re-verified size 708920 and SHA-256 5c1247ac...252ce895 in the repository.",
+    "Obtained the DejaVu Fonts license text from the upstream repository (dejavu-fonts version_2_37 LICENSE) and the SkiaSharp MIT license and SkiaSharp native third-party notices from the pinned NuGet packages; added them under licenses/ and a concise THIRD-PARTY-NOTICES.md.",
+    "Regenerated both packages.lock.json files: dotnet restore ArrTags.slnx --force-evaluate -p:RestoreEnablePackagePruning=false. The pruning-disabled restore reproduces the repository's existing lock-file convention and keeps the diff to the SkiaSharp additions (plus the test project's project-reference dependency list); the SDK 10.0.401 default pruning would otherwise have dropped unrelated framework-provided transitive entries.",
+    "./build.sh restore (locked mode) -> succeeded; both projects restored.",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test -> Passed! - Failed: 0, Passed: 438, Skipped: 0, Total: 438 (13 new tests: 12 in BundledFontTests, 1 new font-asset fingerprint sensitivity case in RenderFingerprintTests).",
+    "./build.sh package -> produced artifacts/ArrTags_0.1.0.0.zip with 0 warnings and 0 errors.",
+    "Inspected the package with a throwaway System.IO.Compression reader because unzip/bsdtar/jar are not installed in this environment. The zip contains exactly: ArrTags.dll (864768 bytes), THIRD-PARTY-NOTICES.md (1368 bytes), build.yaml (671 bytes), licenses/DejaVu-Fonts-License.txt (8816 bytes), licenses/SkiaSharp-LICENSE.txt (1129 bytes), and licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt (139775 bytes).",
+    "Reviewed git diff: only the intended task-4.7 files changed; no unrelated production code was modified."
+  ],
+  "changed_files": [
+    "src/ArrTags/ArrTags.csproj",
+    "src/ArrTags/packages.lock.json",
+    "tests/ArrTags.Tests/packages.lock.json",
+    "src/ArrTags/Rendering/RenderFontIdentity.cs",
+    "src/ArrTags/Rendering/RenderOutputPolicy.cs",
+    "src/ArrTags/Rendering/RenderFingerprint.cs",
+    "src/ArrTags/Resources/DejaVuSans-Bold.ttf",
+    "licenses/DejaVu-Fonts-License.txt",
+    "licenses/SkiaSharp-LICENSE.txt",
+    "licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt",
+    "THIRD-PARTY-NOTICES.md",
+    "tests/ArrTags.Tests/BundledFontTests.cs",
+    "tests/ArrTags.Tests/RenderFingerprintTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/changelog.md",
+    "docs/implementation/4.7/worker-report.json"
+  ],
+  "known_limitations": [
+    "HarfBuzzSharp is intentionally not referenced; the task 4.8 spike decides whether it is needed (ADR-010).",
+    "Full native-asset and managed-dependency plugin-load-context packaging (copying SkiaSharp.dll, the Linux native asset, and a dependency manifest into the plugin zip so they resolve under the host's plugin load context) remains the Phase 5 packaging task; 4.7 only pins the packages and ships the notices, matching the scoped task text.",
+    "The PackagePlugin target copies the main assembly plus the notices/licenses; the SkiaSharp managed and native assets are not yet packaged, so the plugin cannot yet execute SkiaSharp at runtime. No renderer code consumes SkiaSharp in 4.7.",
+    "The lock files were regenerated with RestoreEnablePackagePruning disabled to match the repository's existing lock-file convention; the required ./build.sh restore (locked mode) passes with the committed lock files."
+  ],
+  "ready_for_next_task": true
+}

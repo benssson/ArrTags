@@ -1,0 +1,76 @@
+{
+  "task": "4.7",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "severity": "verification",
+      "area": "scope",
+      "detail": "Baseline HEAD is 2b8b7be with all 4.7 work uncommitted. git status and the full diff show only task-4.7 files: PLANS.md, README.md, docs/changelog.md, src/ArrTags/ArrTags.csproj, both packages.lock.json files, RenderFingerprint.cs, RenderOutputPolicy.cs, RenderFingerprintTests.cs, plus new RenderFontIdentity.cs, Resources/DejaVuSans-Bold.ttf, tests/BundledFontTests.cs, licenses/, THIRD-PARTY-NOTICES.md, and the worker report. No renderer service/drawing engine, no RenderRequest/RenderResult/SourceImageInput/RenderAsync, no task 4.8 spike artifacts, and no image fixtures/goldens exist (verified by grep and filesystem search)."
+    },
+    {
+      "severity": "verification",
+      "area": "package pinning",
+      "detail": "SkiaSharp 3.119.4 and SkiaSharp.NativeAssets.Linux 3.119.4 are the only added direct references; HarfBuzzSharp is absent (only a comment mentions it). Both packages.lock.json files add the SkiaSharp managed/native entries transitively (SkiaSharp.NativeAssets.Win32/macOS) and the test lock updates the plugin project dependency list. The diff contains only additions except one expected trailing-comma rewrite, so no unrelated transitive entries were dropped. A clean locked-mode restore (obj removed, ./build.sh restore --locked-mode) restored both projects, proving lock/project consistency."
+    },
+    {
+      "severity": "verification",
+      "area": "host version evidence",
+      "detail": "The pinned 3.119.4 matches the actual Jellyfin 12.0.0 host: /tmp/opencode/jf/jellyfin/jellyfin.deps.json records SkiaSharp/3.119.4, SkiaSharp.NativeAssets.Linux/3.119.4, and SkiaSharp.HarfBuzz/3.119.4 (HarfBuzzSharp/8.3.1.5). The local NuGet cache also contains exactly the 3.119.4 packages. This substantiates the 'exact Jellyfin 12.0.0 host version' claim; it also confirms the deferred HarfBuzzSharp/HarfBuzz version relevant to task 4.8."
+    },
+    {
+      "severity": "verification",
+      "area": "font embedding",
+      "detail": "Independently recomputed: src/ArrTags/Resources/DejaVuSans-Bold.ttf is 708920 bytes with SHA-256 5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895. The TTF name table reports family 'DejaVu Sans', subfamily 'Bold', version string 'Version 2.37'. A reflection reader over the built (and separately over the packaged) ArrTags.dll found exactly one manifest resource, ArrTags.Resources.DejaVuSans-Bold.ttf, 708920 bytes, same SHA-256. The packaged ArrTags.dll is byte-identical to the build output that carries the resource."
+    },
+    {
+      "severity": "verification",
+      "area": "font identity and fingerprint",
+      "detail": "RenderFontIdentity is a code-owned immutable type with XML docs; OpenResourceStream returns the read-only manifest stream (tests assert CanWrite false and independent streams). RenderOutputPolicy.Default.FontIdentity is RenderFontIdentity.BundledDejaVuSansBold. The fingerprint sensitivity is real in the code path: RenderFingerprint.cs appends policy.FontIdentity.Descriptor, and Descriptor concatenates Family|Style|Version|ByteLength|Sha256|ResourceLogicalName, so changing any field (including the SHA-256) changes the fingerprint. Both the new RenderFingerprintTests case and the BundledFontTests theory exercise this."
+    },
+    {
+      "severity": "verification",
+      "area": "notices and packaging",
+      "detail": "licenses/DejaVu-Fonts-License.txt is byte-identical to the upstream DejaVu 2.37 license; licenses/SkiaSharp-LICENSE.txt and licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt are byte-identical to the pinned skiasharp/3.119.4 and skiasharp.nativeassets.linux/3.119.4 package files. The PackagePlugin target copies THIRD-PARTY-NOTICES.md and licenses/* into the zip. Independent zip reading shows exactly: ArrTags.dll (864768), THIRD-PARTY-NOTICES.md (1368), build.yaml (671), licenses/DejaVu-Fonts-License.txt (8816), licenses/SkiaSharp-LICENSE.txt (1129), licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt (139775); all four notice/license entries match the repository files byte-for-byte by SHA-256."
+    },
+    {
+      "severity": "verification",
+      "area": "validation",
+      "detail": "Ran the required commands from /config/workspace/ArrTags with PATH and DOTNET_SYSTEM_GLOBALIZATION_INVARIANT set: restore, build (0 warnings, 0 errors), test (438 passed, 0 failed, 0 skipped), package. Filtered runs confirmed BundledFontTests = 12 and RenderFingerprintTests = 21 (was 20, +1). Test arithmetic is consistent (425 previous + 13 new = 438). Re-running restore/build did not rewrite either lock file."
+    },
+    {
+      "severity": "verification",
+      "area": "documentation and state",
+      "detail": "PLANS.md 4.7 checkbox is checked and a 4.7 status paragraph was added; the authoritative Phase 4 execution-order note (4.1...4.11) is unaltered. README and docs/changelog.md reflect the pinned packages, embedded font, fingerprint wiring, notices, 438 tests, and the next task as 4.8. The recorded known limitations (no HarfBuzzSharp yet, native-asset plugin-load-context packaging deferred to Phase 5, no renderer consumes SkiaSharp yet) accurately match ADR-010 and PLANS.md Phase 5."
+    },
+    {
+      "severity": "informational",
+      "area": "versioning",
+      "detail": "RenderVersion.CurrentRendererVersion remains 1 even though the FontIdentity representation changed. This is not a defect for 4.7: no drawing engine, persisted output, or golden baselines exist yet (tasks 4.9/4.11), and the fingerprint already changes via the descriptor. ADR-010's version-bump/golden-regeneration rule should be applied when the renderer lands."
+    },
+    {
+      "severity": "informational",
+      "area": "packaging hygiene",
+      "detail": "licenses/SkiaSharp-LICENSE.txt and licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt carry executable permission bits (rwxr--r--); harmless for a zip payload but unusual to commit as 100755. The changelog phrase 'only notices for components 4.7 actually bundles are included' is slightly imprecise because the bundled SkiaSharp.NativeAssets.Linux notices file is the upstream file that also names HarfBuzzSharp; over-inclusion is license-safe. Neither item is a required change."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore (locked mode) after deleting src/ArrTags/obj and tests/ArrTags.Tests/obj -> both projects restored; lock files unchanged",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "./build.sh test -> Passed! Failed: 0, Passed: 438, Skipped: 0, Total: 438",
+    "dotnet test --filter FullyQualifiedName~BundledFontTests -> 12 passed",
+    "dotnet test --filter FullyQualifiedName~RenderFingerprintTests -> 21 passed (20 before, +1 BundledFontSha256ChangesTheOutputFingerprint)",
+    "./build.sh package -> artifacts/ArrTags_0.1.0.0.zip created with 0 warnings/0 errors",
+    "Independent System.IO.Compression reader: 6 entries with byte lengths and SHA-256",
+    "Independent reflection extraction of ArrTags.Resources.DejaVuSans-Bold.ttf from built ArrTags.dll -> 708920 bytes, SHA-256 5C1247AC...252CE895",
+    "sha256sum of repository font file, license files, and THIRD-PARTY-NOTICES.md compared byte-for-byte against zip entries"
+  ],
+  "research_checked": [
+    "Jellyfin 12.0.0 host manifest /tmp/opencode/jf/jellyfin/jellyfin.deps.json: SkiaSharp/3.119.4, SkiaSharp.NativeAssets.Linux/3.119.4, SkiaSharp.HarfBuzz/3.119.4, HarfBuzzSharp/8.3.1.5",
+    "Local NuGet cache /config/.nuget/packages/skiasharp/3.119.4/LICENSE.txt and /config/.nuget/packages/skiasharp.nativeassets.linux/3.119.4/{LICENSE.txt,THIRD-PARTY-NOTICES.txt} compared to shipped licenses (identical)",
+    "DejaVu Sans Bold 2.37 TTF name table (family/subfamily/version) and the upstream DejaVu 2.37 license file compared to the bundled text (identical)",
+    "ADR-009 and ADR-010 requirements for pinned SkiaSharp packages, bundled font identity/hash, notices, and fingerprint participation, cross-checked against PLANS.md Phase 4 and Phase 5"
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

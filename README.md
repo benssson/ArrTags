@@ -3,7 +3,9 @@
 **Current milestone:** Phase 4 — Badge rendering is in progress. Tasks 4.1
 (provider-neutral metadata selectors), 4.2 (V1 rendering specification, ADR-009),
 4.3 (unknown-versus-confirmed-negative semantics), 4.4 (render request and
-result fingerprints), and 4.5 (image and text limit enforcement) are complete.
+result fingerprints), 4.5 (image and text limit enforcement), and 4.7 (pinned
+SkiaSharp stack, embedded DejaVu Sans Bold 2.37 font, and shipped license
+notices) are complete.
 Milestone 3 is complete (tasks 3.1 through
 3.8; acceptance criteria satisfied and Gate 3 met).
 
@@ -71,18 +73,30 @@ Completed in Phase 4 (Badge rendering):
   applies the ADR-009 control/whitespace normalization and 24-scalar end
   truncation from `RenderOutputPolicy` without splitting a surrogate pair.
   `RenderLimitResult` carries only a bounded, non-secret reason code.
+- 4.7 Pinned renderer assets and shipped notices (ADR-010): `SkiaSharp` and
+  `SkiaSharp.NativeAssets.Linux` are pinned to the exact Jellyfin 12.0.0 host
+  version `3.119.4` (no `HarfBuzzSharp` until task 4.8 decides), and both
+  `packages.lock.json` files are regenerated. The DejaVu Sans Bold 2.37 font
+  (708,920 bytes, SHA-256 `5c1247ac...252ce895`) is embedded as the stable
+  resource `ArrTags.Resources.DejaVuSans-Bold.ttf`. `RenderFontIdentity` records
+  family, style, version, byte length, SHA-256, and the resource logical name and
+  opens a read-only stream over the exact bytes; `RenderOutputPolicy.Default` uses
+  that identity and the render fingerprint records its descriptor, so a changed
+  font asset changes the fingerprint. `THIRD-PARTY-NOTICES.md` and the
+  `licenses/` files (`DejaVu-Fonts-License.txt`, `SkiaSharp-LICENSE.txt`, and
+  `SkiaSharp-THIRD-PARTY-NOTICES.txt`) are copied into the plugin package.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 425 automated tests.
+- Passes 438 automated tests.
 
 Next tasks:
 
 - Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks in the authoritative execution order 4.7, 4.8, 4.9, 4.6, 4.10, 4.11,
-  beginning with task 4.7 (pin SkiaSharp and embed the DejaVu font). Task 4.6
+  tasks in the authoritative execution order 4.8, 4.9, 4.6, 4.10, 4.11,
+  beginning with task 4.8 (the SkiaSharp host-compatibility spike). Task 4.6
   (renderer behavior tests) follows the renderer implementation and assets it
   exercises; it was reordered after task 4.9.

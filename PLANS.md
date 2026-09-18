@@ -894,7 +894,7 @@ Radarr, or Jellyfin artwork storage.
 - [x] 4.4 Implement render request and result fingerprints containing every
   output-affecting value, including renderer and badge schema versions.
 - [x] 4.5 Enforce image and text limits before decode, draw, and encode work.
-- [ ] 4.7 Pin the SkiaSharp managed and Linux native asset packages to exact
+- [x] 4.7 Pin the SkiaSharp managed and Linux native asset packages to exact
   versions, embed the DejaVu Sans Bold 2.37 font as a plugin resource, and ship
   the font and Skia license notices (ADR-010).
 - [ ] 4.8 Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the
@@ -993,6 +993,28 @@ failure/pass-through shape: a rejected result carries exactly one safe reason
 code and never a partial artifact, and source bytes are never mutated. The new
 `RenderLimitTests` suite adds 39 tests. Build and test pass with 0 warnings and
 425 passing tests.
+
+**Task 4.7 status:** Complete. The renderer stack is now pinned and the bundled
+font is plugin-owned. `src/ArrTags/ArrTags.csproj` references `SkiaSharp` and
+`SkiaSharp.NativeAssets.Linux` at the exact Jellyfin 12.0.0 host version
+`3.119.4` (no `HarfBuzzSharp`; that decision remains task 4.8), and both
+`packages.lock.json` files were regenerated so locked-mode restore stays valid.
+`DejaVuSans-Bold.ttf` (708,920 bytes, SHA-256
+`5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895`, version
+2.37) is embedded as the stable logical resource
+`ArrTags.Resources.DejaVuSans-Bold.ttf`. The new `RenderFontIdentity` type records
+the family, style, version, exact byte length, SHA-256, and resource logical
+name, opens a read-only stream over the exact embedded bytes, and
+`RenderOutputPolicy.Default.FontIdentity` is that identity; `RenderFingerprint`
+records its full descriptor, so any changed font field changes the output
+fingerprint. `licenses/DejaVu-Fonts-License.txt`,
+`licenses/SkiaSharp-LICENSE.txt`, and
+`licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt`, plus `THIRD-PARTY-NOTICES.md`,
+ship with the plugin and the `PackagePlugin` target copies them into the plugin
+zip. `tests/ArrTags.Tests/BundledFontTests.cs` adds 12 cases and
+`RenderFingerprintTests` gains a font-asset-sensitivity case. Build and test pass
+with 0 warnings and 438 passing tests (13 new). Full native-asset
+plugin-load-context packaging remains the Phase 5 packaging task per ADR-010.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

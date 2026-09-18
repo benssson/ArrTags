@@ -43,7 +43,7 @@ public static class RenderFingerprint
         Append(builder, "outputFormat", policy.OutputFormat);
         Append(builder, "colorSpace", policy.ColorSpace);
         Append(builder, "alphaPolicy", policy.AlphaPolicy);
-        Append(builder, "fontIdentity", policy.FontIdentity);
+        Append(builder, "fontIdentity", policy.FontIdentity.Descriptor);
         Append(builder, "paletteTechnicalBackground", policy.TechnicalBackground);
         Append(builder, "paletteTechnicalText", policy.TechnicalText);
         Append(builder, "paletteStatusBackground", policy.StatusBackground);

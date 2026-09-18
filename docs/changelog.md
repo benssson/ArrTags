@@ -350,6 +350,33 @@ renderer implementation tasks (4.6 through 4.11) follow.
   source bytes are never mutated. `tests/ArrTags.Tests/RenderLimitTests.cs` adds
   39 tests.
 
-Build and test: Task 4.5 adds the limit-enforcement boundary with 39 new tests;
-build and test pass with 0 warnings and 425 passing tests. Tasks 4.6 through
-4.11 remain. Gate 4 is not yet met.
+- Task 4.7 (`src/ArrTags/ArrTags.csproj`, `src/ArrTags/Rendering/`,
+  `src/ArrTags/Resources/`, `licenses/`, `THIRD-PARTY-NOTICES.md`): the pinned
+  renderer assets and shipped notices (ADR-010). `SkiaSharp` and
+  `SkiaSharp.NativeAssets.Linux` are referenced at the exact Jellyfin 12.0.0 host
+  version `3.119.4`; `HarfBuzzSharp` is deliberately not referenced because the
+  task 4.8 spike decides whether it is needed. Both `packages.lock.json` files
+  were regenerated so locked-mode restore stays valid. The DejaVu Sans Bold 2.37
+  font (708,920 bytes, SHA-256
+  `5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895`) is copied
+  into the repository and embedded as the stable logical resource
+  `ArrTags.Resources.DejaVuSans-Bold.ttf`. `RenderFontIdentity` records the font
+  family, style, version, exact byte length, SHA-256, and resource logical name,
+  opens a read-only stream over the exact embedded bytes, and
+  `RenderOutputPolicy.Default.FontIdentity` uses the bundled identity;
+  `RenderFingerprint` records the identity descriptor, so any changed font field
+  changes the output fingerprint. `licenses/DejaVu-Fonts-License.txt`,
+  `licenses/SkiaSharp-LICENSE.txt`,
+  `licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt`, and `THIRD-PARTY-NOTICES.md` are
+  shipped, and the `PackagePlugin` target copies the notices and license files
+  into the plugin package. `tests/ArrTags.Tests/BundledFontTests.cs` adds 12
+  cases; `RenderFingerprintTests` adds the font-asset-sensitivity case. Only
+  notices for components 4.7 actually bundles are included; full native-asset
+  plugin-load-context packaging remains the Phase 5 packaging task.
+
+Build and test: Task 4.7 pins the renderer stack, embeds the font, and ships the
+notices with 13 new tests; build and test pass with 0 warnings and 438 passing
+tests. `./build.sh package` produced `artifacts/ArrTags_0.1.0.0.zip` containing
+`ArrTags.dll`, `build.yaml`, `THIRD-PARTY-NOTICES.md`, and the three
+`licenses/` files. Tasks 4.8, 4.9, 4.6, 4.10, and 4.11 remain. Gate 4 is not yet
+met.

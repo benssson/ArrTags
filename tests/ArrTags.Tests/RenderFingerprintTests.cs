@@ -122,7 +122,24 @@ public class RenderFingerprintTests
     [Fact]
     public void FontIdentityChangesTheOutputFingerprint()
     {
-        AssertOutputDiffers(BuildInput(policy: new RenderOutputPolicy { FontIdentity = "Other Font 1.0" }));
+        AssertOutputDiffers(BuildInput(policy: new RenderOutputPolicy
+        {
+            FontIdentity = new RenderFontIdentity("Other Font", "Bold", "1.0", 1024, new string('A', 64), "Other.Font.ttf"),
+        }));
+    }
+
+    [Fact]
+    public void BundledFontSha256ChangesTheOutputFingerprint()
+    {
+        var changed = new RenderFontIdentity(
+            "DejaVu Sans",
+            "Bold",
+            "2.37",
+            RenderFontIdentity.DejaVuSansBoldByteLength,
+            new string('A', 64),
+            RenderFontIdentity.DejaVuSansBoldLogicalName);
+
+        AssertOutputDiffers(BuildInput(policy: new RenderOutputPolicy { FontIdentity = changed }));
     }
 
     [Fact]
