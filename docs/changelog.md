@@ -188,8 +188,7 @@ tests. Media matching (Phase 3) is now in progress.
 
 ### Phase 3 (Media matching) - in progress
 
-Tasks 3.1, 3.2, 3.3, 3.4, and 3.5 are complete; the Milestone 3 gate is not yet
-met.
+Tasks 3.1 through 3.7 are complete; the Milestone 3 gate is not yet met.
 
 - Task 3.1 (`src/ArrTags/Media/`): canonical `MediaIdentity` snapshots for
   Movie, Series, Season, and Episode, deterministic collection-folder/library
@@ -247,8 +246,20 @@ met.
   rejection (13 new tests). `tests/ArrTags.Tests/MediaMatcherTests.cs` - number
   fallback after the series match, series-scoped number fallback, special and
   span exclusion, absolute-number mismatch, and number ambiguity (6 new tests).
+- Task 3.7 (`tests/ArrTags.Tests/ConnectionScopingTests.cs`): verification that
+  every Arr-local record and file identifier is scoped by its originating
+  `ArrConnection`. The suite proves that identical numeric IDs on different
+  Radarr connections and on different Sonarr connections produce distinct
+  identities, candidates, matches, and fingerprints; that the file identity is
+  bounded by its scoped record identity; that `MatchCandidate` and `MediaMatch`
+  reject an identity from another connection; that connection scopes are derived
+  distinctly from different base URLs; and that the matcher resolves identical
+  local IDs to the requested connection for both providers. No production code
+  changed: the canonical model already enforces the scoping contract (14 new
+  tests).
 
-Build and test: 0 warnings, 0 errors; 313 tests pass. DG-5 is resolved by
+Build and test: 0 warnings, 0 errors; 327 tests pass. DG-5 is resolved by
 ADR-008: configured path mapping and normalization are deferred out of V1, so
-task 3.6 adds no runtime implementation. The remaining Phase 3 task is
-connection-scope verification (3.7).
+task 3.6 adds no runtime implementation. Task 3.7 verifies connection scoping
+with focused tests. The Phase 3 task list is complete; Milestone 3 acceptance
+and Gate 3 verification remain.

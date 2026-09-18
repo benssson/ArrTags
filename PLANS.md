@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching in progress (tasks 3.1 through 3.6 complete; task 3.6 is the ADR-008 documentation-only DG-5 closure)
+**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 media matching tasks 3.1 through 3.7 complete; Milestone 3 acceptance and Gate 3 verification remain
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -35,15 +35,15 @@ with the validated episode-file join), 2.5 (canonical
 `ArrProvider`/`ArrConnection`/`BadgeMetadata` mapping with connection-scoped
 record/file identity), and 2.6 (explicit unknown technical values and bounded
 custom values), and provider failure-matrix tests (2.7) are complete. All Phase 2
-tasks meet their acceptance criteria and Gate 2 is met. Phase 3 media matching is
-in progress: tasks 3.1 (canonical `MediaIdentity` snapshots), 3.2
-(provider-neutral candidate selection, evidence recording, and deterministic
-`MediaMatch` fingerprints), 3.3 (zero- and multiple-candidate rejection with
-the match status policy), 3.4 (the documented movie, series, and episode
-matching order with provider-specific candidate assembly), 3.5 (the explicit
-episode-numbering policy in ADR-007), and 3.6 (DG-5 resolved by ADR-008 with
-path fallback deferred out of V1) are complete, and the Milestone 3 gate is not
-yet met.
+tasks meet their acceptance criteria and Gate 2 is met. Phase 3 media matching
+tasks 3.1 (canonical `MediaIdentity` snapshots), 3.2 (provider-neutral candidate
+selection, evidence recording, and deterministic `MediaMatch` fingerprints), 3.3
+(zero- and multiple-candidate rejection with the match status policy), 3.4 (the
+documented movie, series, and episode matching order with provider-specific
+candidate assembly), 3.5 (the explicit episode-numbering policy in ADR-007), 3.6
+(DG-5 resolved by ADR-008 with path fallback deferred out of V1), and 3.7
+(connection-scoped Arr record and file identity verification) are complete; the
+Milestone 3 acceptance criteria and Gate 3 are not yet verified.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -673,7 +673,7 @@ Radarr record using stable provider identity first and explicit fallback rules.
 - [x] 3.6 Resolve DG-5. Configured path normalization and path fallback are
   deferred out of V1 by ADR-008; this is a documentation-only closure and adds
   no configuration or runtime matching rule.
-- [ ] 3.7 Verify that local Arr record and file IDs are always scoped by
+- [x] 3.7 Verify that local Arr record and file IDs are always scoped by
   connection.
 
 **Task 3.1 status:** Complete. Canonical `MediaIdentity` snapshots (item type,
@@ -793,7 +793,26 @@ and path normalization out of V1. V1 never compares Jellyfin and Arr paths,
 never assumes host/container equivalence, and never emits a `ConfiguredPath`
 match. Items that lack the approved provider-ID or regular-number evidence remain
 unmatched with no new badge. No source or test implementation was added for this
-task; task 3.7 remains the next implementation task.
+task; task 3.7 completed the connection-scoping verification recorded below.
+
+**Task 3.7 status:** Complete. Verification confirmed that every Arr-local record
+and file identifier is scoped by its originating `ArrConnection`; no production
+change was needed because the canonical model already enforces the contract.
+`ArrRecordIdentity` and its `SonarrIdentity`/`RadarrIdentity` shapes always carry
+the connection and include it in equality, hashing, and `ToString`, and
+`MatchCandidate` and `MediaMatch` both reject a record identity whose connection
+does not match the match scope. `ArrFileIdentity` has no connection of its own and
+is scoped only through its enclosing record identity, so consumers must resolve
+files through the scoped identity. New tests in
+`tests/ArrTags.Tests/ConnectionScopingTests.cs` (14 tests) prove that identical
+numeric IDs on two Radarr connections and on two Sonarr connections produce
+distinct identities, candidates, matches, and metadata fingerprints; that
+identical local IDs across provider kinds are distinct; that connection scopes
+are derived distinctly from different base URLs and are used as the provider
+instance identity; and that the matcher resolves identical local IDs to the
+requested connection for both providers. Build and test pass with 0 warnings and
+327 passing tests. Milestone 3 acceptance criteria and Gate 3 remain to be
+verified.
 
 **Acceptance criteria:**
 

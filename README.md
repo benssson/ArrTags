@@ -1,6 +1,6 @@
 ## Project Status
 
-**Current milestone:** Phase 3 — Media matching (in progress; tasks 3.1 through 3.6 complete, with 3.6 resolved as the ADR-008 documentation-only path decision)
+**Current milestone:** Phase 3 — Media matching (tasks 3.1 through 3.7 complete; Milestone 3 acceptance and Gate 3 verification remain)
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -36,14 +36,18 @@ Completed in Phase 3 so far:
 - 3.6 DG-5 path decision (ADR-008): configured path mappings and path fallback
   are deferred out of V1; V1 never assumes Jellyfin and Arr path namespaces are
   equivalent.
+- 3.7 Connection-scoped identity verification: Arr-local record and file IDs are
+  always bounded by their originating `ArrConnection`, so identical numeric IDs
+  on different Sonarr/Radarr connections never collide.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 313 automated tests.
+- Passes 327 automated tests.
 
 Next tasks:
 
-- Remaining Phase 3 task: connection-scope verification (3.7).
+- All Phase 3 tasks are complete. Milestone 3 acceptance criteria and Gate 3
+  verification remain before Milestone 4 (badge rendering).
