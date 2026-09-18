@@ -108,7 +108,7 @@ leakage.
 Begin Milestone 2 by defining the shared provider-client boundary: connection
 identity, read-only `IHttpClientFactory`-based client registration, connection
 probing, bounded timeout/cancellation/retry, and redacted errors (PLANS.md
-task 1-2). Then implement the Radarr v3 read client and mapping next:
+tasks 2.1-2.2). Then implement the Radarr v3 read client and mapping next:
 
 1. Probe `GET /api/v3/system/status` (or equivalent) with auth/URL-base/capability
    results that never expose credentials.

@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 1 complete
+**Status:** Phase 2 in progress (Radarr)
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -68,7 +68,7 @@ without modifying original media files or external services.
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
 | 1 | Plugin foundation | Complete | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
-| 2 | Sonarr & Radarr integration | Not started | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
+| 2 | Sonarr & Radarr integration | In progress | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Not started | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Not started | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Not started | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
@@ -456,19 +456,31 @@ models.
 
 **Tasks:**
 
-- [ ] Define the shared provider-client boundary and connection identity rules.
-- [ ] Register dedicated named or typed clients through Jellyfin's standard
+- [x] 2.1 Define the shared provider-client boundary and connection identity rules.
+- [ ] 2.2 Register dedicated named or typed clients through Jellyfin's standard
   HTTP client factory; do not create raw clients per request.
-- [ ] Implement Radarr v3 reads for local movies and current movie-file data,
+- [ ] 2.3 Implement Radarr v3 reads for local movies and current movie-file data,
   including the dedicated file request when enabled fields are not embedded.
-- [ ] Implement Sonarr v3 reads for series, episodes, and episode files,
+- [ ] 2.4 Implement Sonarr v3 reads for series, episodes, and episode files,
   joining files by the validated episode file identifier.
-- [ ] Map provider data into `ArrProvider`, `ArrConnection`, and
+- [ ] 2.5 Map provider data into `ArrProvider`, `ArrConnection`, and
   `BadgeMetadata` without leaking provider DTOs past the boundary.
-- [ ] Preserve unknown technical values as unknown rather than false or empty
+- [ ] 2.6 Preserve unknown technical values as unknown rather than false or empty
   claims, and bound custom values before they can reach a badge.
-- [ ] Add tests for authentication failures, unavailable services, malformed
+- [ ] 2.7 Add tests for authentication failures, unavailable services, malformed
   responses, optional fields, version drift, cancellation, and retries.
+
+**Task 2.1 status:** Complete. The shared provider-client boundary and connection
+identity rules are implemented in `src/ArrTags/Providers`. The canonical
+`ArrProvider` and `ArrConnection` identities, the connection-scoped
+`ArrConnectionId` (derived from provider kind and normalized base URL, excluding
+the API key and user information), connection health and TLS policy, derived
+capabilities, bounded redacted `ArrProviderError` outcomes, the
+`IArrProviderClient` probe boundary, and the secret-free
+`ArrConnectionCatalog` mapping from `PluginConfigurationSnapshot` are covered by
+`ProviderBoundaryTests`. Dedicated `IHttpClientFactory` client registration,
+concrete Radarr/Sonarr reads, and canonical metadata mapping remain the
+following tasks.
 
 **Acceptance criteria:**
 
