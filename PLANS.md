@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phase 2 in progress (Radarr reads complete; Sonarr next)
+**Status:** Phase 2 complete (Sonarr and Radarr integration done); Phase 3 next
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -34,7 +34,8 @@ reads), 2.4 (read-only Sonarr v3 series, episode, and episode-file reads
 with the validated episode-file join), 2.5 (canonical
 `ArrProvider`/`ArrConnection`/`BadgeMetadata` mapping with connection-scoped
 record/file identity), and 2.6 (explicit unknown technical values and bounded
-custom values) are complete, with provider failure tests (2.7) remaining.
+custom values), and provider failure-matrix tests (2.7) are complete. All Phase 2
+tasks meet their acceptance criteria and Gate 2 is met.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -75,7 +76,7 @@ without modifying original media files or external services.
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
 | 1 | Plugin foundation | Complete | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
-| 2 | Sonarr & Radarr integration | In progress | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
+| 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Not started | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Not started | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Not started | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
@@ -474,7 +475,7 @@ models.
   `BadgeMetadata` without leaking provider DTOs past the boundary.
 - [x] 2.6 Preserve unknown technical values as unknown rather than false or empty
   claims, and bound custom values before they can reach a badge.
-- [ ] 2.7 Add tests for authentication failures, unavailable services, malformed
+- [x] 2.7 Add tests for authentication failures, unavailable services, malformed
   responses, optional fields, version drift, cancellation, and retries.
 
 **Task 2.1 status:** Complete. The shared provider-client boundary and connection
@@ -593,18 +594,37 @@ kept in provider order, and each value is truncated to `MaxCustomBadgeLength`
 display/truncation policy, which remains decision gate DG-3.
 `MetadataMappingTests` covers unknown-versus-empty audio features, the
 fingerprint distinction, and custom-value count, order, length, and
-control-character behavior. Provider failure-matrix tests remain task 2.7.
+control-character behavior. Provider failure-matrix tests are implemented in
+task 2.7.
+
+**Task 2.7 status:** Complete. `ProviderFailureMatrixTests` exercises the shared
+read boundary for both providers across the documented failure classes without a
+live Arr instance. Authentication checks cover `401`/`403` on reads and probes,
+a missing credential lease failing closed with no HTTP call, and redacted
+messages. Unavailable-service checks cover `409`, `429`, `5xx`, unreachable
+connections, and request timeouts mapping to `ProviderUnavailable` after the
+bounded retry count. Malformed checks cover non-JSON, empty, `null`,
+wrong-shaped, truncated, and oversized responses (both with and without a
+`Content-Length`), which map to `InvalidResponse` and are never retried.
+Optional-field checks confirm omitted movie, series, episode, and file fields
+deserialize tolerantly and remain unknown rather than false. Version-drift
+checks confirm a future version, changed casing, unknown extra fields, and a
+missing version probe successfully as informational, while a missing or
+non-matching provider identity still reports `Incompatible`. Cancellation during
+retry backoff stops further attempts, retries are bounded, non-transient
+statuses (`400`/`422`, `404`, `401`/`403`) are not retried, and every retry
+reapplies the API key as a header without placing it in the URL.
 
 **Acceptance criteria:**
 
-- [ ] Each provider can be probed and queried independently.
-- [ ] No integration path calls an Arr write endpoint, database, or lookup
+- [x] Each provider can be probed and queried independently.
+- [x] No integration path calls an Arr write endpoint, database, or lookup
   endpoint for routine refreshes.
-- [ ] Actual file quality is available where the provider reports it; a quality
+- [x] Actual file quality is available where the provider reports it; a quality
   profile is never presented as actual file quality.
-- [ ] Missing, incomplete, invalid, and unsupported provider data produces a
+- [x] Missing, incomplete, invalid, and unsupported provider data produces a
   bounded domain outcome and does not fail a Jellyfin request.
-- [ ] API keys, webhook secrets, and sensitive request details are redacted from
+- [x] API keys, webhook secrets, and sensitive request details are redacted from
   diagnostics.
 
 **Gate 2:** Both integrations pass contract and failure tests and produce the

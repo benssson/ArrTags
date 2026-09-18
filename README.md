@@ -1,8 +1,8 @@
 ## Project Status
 
-**Current milestone:** 🚧 Phase 2 — Sonarr & Radarr Integration (in progress)
+**Current milestone:** ✅ Phase 2 — Sonarr & Radarr Integration (complete)
 
-Completed in Phase 2 so far:
+Completed in Phase 2:
 
 - 2.1 Shared provider-client boundary and connection identity.
 - 2.2 Dedicated `IHttpClientFactory` client registration.
@@ -14,16 +14,17 @@ Completed in Phase 2 so far:
   semantics, and no provider DTO leakage.
 - 2.6 Explicit unknown audio-feature state and bounded, sanitized custom badge
   values at the canonical metadata boundary.
+- 2.7 Provider failure-matrix tests for authentication failures, unavailable
+  services, malformed responses, optional fields, version drift, cancellation,
+  and retries.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 142 automated tests.
+- Passes 206 automated tests.
 
-Next task:
+Next milestone:
 
-- 2.7 — Provider failure-matrix tests for authentication failures, unavailable
-  services, malformed responses, optional fields, version drift, cancellation,
-  and retries.
+- Phase 3 — Media matching (not started).

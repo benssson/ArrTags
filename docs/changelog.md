@@ -107,9 +107,10 @@ leakage.
 - Resolve `SaveImage` storage/readback and source-capture behavior on the target
   host configuration.
 
-### Phase 2 (Sonarr & Radarr integration) - in progress
+### Phase 2 (Sonarr & Radarr integration) - complete
 
-Tasks 2.1-2.6 are complete. The shared provider-client boundary and connection
+Tasks 2.1-2.7 are complete and Milestone 2 is complete with Gate 2 met. The
+shared provider-client boundary and connection
 identity (task 2.1), dedicated `IHttpClientFactory` client registration
 (task 2.2), and the versioned credential boundary (ADR-005, task 2.3) are
 implemented. The read-only Radarr v3 client probes
@@ -169,7 +170,18 @@ Task 2.6 hardens canonical unknown-value and custom-value semantics:
   features, fingerprint distinction, and custom-value count, order, length, and
   control-character behavior (7 new tests).
 
-Remaining Phase 2 work:
+Task 2.7 adds the provider failure matrix:
 
-1. Task 2.7: provider authentication-failure, unavailability, malformed,
-   optional-field, version-drift, cancellation, and retry tests.
+- `tests/ArrTags.Tests/ProviderFailureMatrixTests.cs` - 64 cases covering both
+  providers for authentication failures (`401`/`403`, missing credential lease
+  with no HTTP call, redacted messages), unavailable services (`409`, `429`,
+  `5xx`, unreachable connection, timeout), malformed and oversized responses
+  (including a chunked response without `Content-Length`), tolerant
+  optional-field deserialization and unknown-value mapping, version drift
+  (future version, casing, extra fields, missing version) versus a missing
+  provider identity, cancellation during retry backoff, bounded retries,
+  non-retried permanent failures, and API-key header reapplication on retries.
+
+Milestone 2 is complete: both integrations are read-only, probe and query
+independently, map to canonical observations, and pass the contract and failure
+tests. The next milestone is media matching (Phase 3).
