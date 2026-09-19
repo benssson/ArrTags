@@ -628,7 +628,7 @@ that point and required explicit user approval to begin.
 
 ## Phase 5 - Jellyfin artwork integration (Milestone 5)
 
-**Status:** In progress. Task 5.1 complete; tasks 5.2 through 5.11 not started.
+**Status:** In progress. Tasks 5.1 and 5.2 complete; tasks 5.3 through 5.11 not started.
 
 ### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
 
@@ -704,3 +704,70 @@ total: the five task 5.1 route cases and the non-canonical golden placeholder);
 adding `ARRTAGS_JELLYFIN_HOST_DIR` passes 671 with only the non-canonical golden
 skip. The guarded task 5.1 route cases pass 5/5 when
 `ARRTAGS_JELLYFIN_HOST_DIR` points at the pinned host.
+
+### Task 5.2 - Source-artwork provenance and guarded restoration state
+
+Task 5.2 implements the provider-neutral, plugin-owned source-artwork provenance
+and guarded restoration state required before any derived artwork is published.
+It follows `docs/data-model.md` sections 3.10.1 and 3.10.2 and ADR-002. It does
+not implement the `ArtworkOperation` write-ahead journal (5.6), the Jellyfin host
+source adapter (5.3), publication (5.5), reconciliation (5.7), or lifecycle
+fencing (5.9), and it performs no Jellyfin image mutation.
+
+- `src/ArrTags/Artwork/ArtworkImageSurface` is the canonical image-surface
+  identity. The V1 surface is the unindexed `Primary` poster; the optional index
+  is retained for the data model, and the state invariant rejects an indexed
+  surface as out of V1 scope. No path is ever part of an identity.
+- `ActiveImageIdentity` is the observable identity: surface, explicit
+  `Present`/`Absent` presence, content SHA-256, byte length, width/height,
+  modification time, and the Jellyfin image tag. A present identity may lack a
+  hash (an incomplete observation), but it can never prove ownership.
+- `ArtworkOwnershipComparer` applies the fail-closed rule. Surface and presence
+  must match; a present comparison requires matching content hashes; every
+  recorded Jellyfin value must still match when observable. A missing hash, a
+  missing observation, or a mismatched surface is `Unknown`; a content, presence,
+  or supporting-value difference is `Changed`; only a full match is `Owned`.
+- `PublishedArtworkState` carries the `modelVersion`, `jellyfinItemId`,
+  `imageSurface`, `state`, `sourcePresence`, `sourceArtifactId`,
+  `sourceFingerprint`, `sourceCaptureIdentity`, `ownershipToken`,
+  `publicationToken`, `activeImageIdentity`, `publishedFingerprint`,
+  `rendererVersion`, `lastOwnershipObservation`, `stateRevision`,
+  `lastOperationId`, and `updatedAt` fields. `Validate` enforces a complete
+  publication set for `Published`/`RestorePending`, a present active identity
+  with a content hash, a retained source artifact plus fingerprint for a present
+  baseline (and forbids one for an absent baseline), well-formed bounded opaque
+  tokens, a non-indexed surface, and model-version compatibility.
+- `PublishedArtworkStateTransitions` is the pure, testable state machine for
+  every section 3.10.2 transition: new-session capture, repeated publication that
+  reuses the source artifact and ownership token while issuing a new publication
+  token and active identity, `OwnershipLost` on mismatch, `OwnershipUnknown` on
+  an unobservable identity, `RestorePending` on disable/uninstall,
+  `RestoreSource`/`RemoveActiveImage` only after a fresh match and source
+  integrity check, `Restored` only after a verified restoration,
+  `RestoreBlocked` on a missing/corrupt source or unverifiable result, and
+  `Removed` on item removal with no image mutation. A blocked record
+  (`OwnershipLost`, `OwnershipUnknown`, `RestoreBlocked`) is never automatically
+  re-baselined.
+- `SourceArtifactStore` is the authoritative content-addressed immutable store.
+  It retains the exact source bytes with MIME type, byte length, and SHA-256
+  metadata; validates bounded size, MIME/magic-byte format, and hash; promotes
+  atomically from a flushed temporary file; verifies integrity on read; is
+  traversal-safe; rejects new work when the authoritative storage quota would be
+  exceeded; and persists its manifest through the authoritative state boundary so
+  provenance is never evicted as ordinary cache. An absent baseline is an
+  explicit state and creates no artifact.
+- `PublishedArtworkStateStore` persists the state through the existing versioned,
+  integrity-tagged, atomically-written boundary. It enforces the invariants on
+  write and quarantines a valid-envelope-but-invalid record rather than returning
+  or replaying it. `StateRepository` gained a read-only `Limits` accessor.
+- Tests: `tests/ArrTags.Tests/ArtworkProvenanceTests.cs`,
+  `SourceArtifactStoreTests.cs`, and `PublishedArtworkStateStoreTests.cs`
+  (75 cases) cover the comparison match/mismatch/unknown, surface/presence, and
+  missing-hash rules; the state invariants; every documented transition; artifact
+  round-trip/integrity/traversal/atomic-promotion/quota/no-cache-eviction
+  behavior; and authoritative persistence and quarantine.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 679 tests with 45
+environment-guarded skips (724 total). No ADR, `RenderVersion`, renderer
+behavior, or existing passing behavior was changed.

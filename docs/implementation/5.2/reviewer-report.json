@@ -1,0 +1,68 @@
+{
+  "task": "5.2",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "info",
+      "area": "ownership comparison",
+      "summary": "ArtworkOwnershipComparer classes a surface mismatch as Unknown, not Changed.",
+      "assessment": "The data-model 3.10.2 table distinguishes 'differs' (OwnershipLost) from 'cannot be completely observed or compared' (OwnershipUnknown); a different surface is arguably a difference. Both mappings are fail-closed and prohibit automatic publication/restoration/removal, so there is no safety impact. The choice is deliberate and documented in the comparer and worker report. No change required."
+    },
+    {
+      "id": "F2",
+      "severity": "info",
+      "area": "state invariants",
+      "summary": "lastOwnershipObservation is enforced for Published/RestorePending but not for a freshly captured NotPublished session.",
+      "assessment": "Data-model 3.10.1 marks the field required, but a session captured before any publication has no comparison to record. Requiring one would force a fabricated observation. The field is present on the model and populated on every comparison; the narrower requirement is the safer reading and is disclosed in the worker report. No change required."
+    },
+    {
+      "id": "F3",
+      "severity": "info",
+      "area": "source artifact store",
+      "summary": "Unreferenced source-artifact bytes and their authoritative manifests are not garbage-collected; the store rejects new promotions once ArtifactStorageQuotaBytes would be exceeded.",
+      "assessment": "This matches ADR-004 (reject new derived work and preserve provenance rather than evict recovery state), and the manifest is intentionally never cache-evicted. Reference-proven cleanup belongs to the deferred reconciliation/retention task 5.7 and is honestly recorded as a known limitation. No change required for 5.2."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "area": "state boundary",
+      "summary": "StateRepository.Limits exposes the shared, mutable OperationalLimits instance through a read-only property.",
+      "assessment": "The accessor is the only production change outside the new Artwork folder and is minimal. SourceArtifactStore copies the scalar limit values in its constructor and no consumer mutates the limits, so behavior is safe today. The exposed instance is mutable, which is a minor encapsulation smell but not a defect. No change required."
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "area": "state invariants",
+      "summary": "PublishedFingerprint and ActiveImageIdentity.ContentSha256 are validated as 64-character SHA-256 hex values even though the fingerprint is described as opaque.",
+      "assessment": "Consistent with the codebase's existing SHA-256 fingerprint style and with 'contentSha256'. If a later task defines a non-SHA fingerprint encoding this would need relaxing, but nothing in the current requirements requires an alternative encoding. No change required."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "area": "testing",
+      "summary": "The new tests genuinely exercise the changed behavior rather than asserting tautologies.",
+      "assessment": "The 75 focused cases drive real comparer outcomes, real transition sequences, real on-disk artifact round-trip/integrity/traversal/quota behavior, and real authoritative persistence/quarantine through the existing envelope boundary. An independent throwaway harness (run outside the repo) additionally confirmed full JSON round-trip of byte length and modification time, no path leakage, recapture-from-Removed validity, absent-baseline restore/removal, source/artifact mismatch rejection, surface-mismatch classification, quota rejection, and traversal rejection. No change required."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore -> all projects up-to-date (locked mode); no packages.lock.json change.",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test -> Passed: 679, Failed: 0, Skipped: 45, Total: 724 (independently reproduced; matches the worker claim and the +75 delta over the 604-passing task 5.1 baseline).",
+    "Focused run of ArtworkProvenanceTests|SourceArtifactStoreTests|PublishedArtworkStateStoreTests -> Passed: 75, Failed: 0, Skipped: 0.",
+    "Independent /tmp harness: PublishedArtworkState JSON round-trip (ByteLength, DateModifiedUtc, JellyfinImageTag, stateRevision preserved), captured state JSON contains no path, CaptureSession from Removed accepted, absent-baseline AuthorizeRestoration -> RemoveActiveImage and CommitRestoration -> Restored, mismatched source-capture artifact rejected, surface mismatch -> Unknown, storage quota -> StorageQuotaExceeded, traversal identifier -> Invalid."
+  ],
+  "research_checked": [
+    "AGENTS.md (project rules, Jellyfin 12, no unrelated changes, build/test before claiming success).",
+    "GOALS.md (guarded restoration, preserving original poster source, fail-gracefully).",
+    "PLANS.md Milestone 5, task 5.2 acceptance and the authoritative Phase 5 execution order (5.1, 5.2, 5.3, ...).",
+    "docs/decisions.md ADR-002 (full ownership evidence, fail-closed comparison, state transitions, no re-baselining), ADR-003 (context: crash-recoverable publication deferred to 5.6), and ADR-004 (authoritative storage quota / reject-new-work behavior).",
+    "docs/data-model.md sections 3.10.1, 3.10.2, 3.10.3, 3.10.4 (and 3.12 OperationalLimits realization).",
+    "docs/architecture.md section 9 (publication flow, provenance/ownership contract, crash-consistent recovery) and the plugin-state section; verified the added artifact-store paragraph is accurate.",
+    "docs/implementation-readiness.md (Resolved Blocker 1 and 2, implementation-time questions).",
+    "Existing src/ArrTags/State boundary (StateRepository, PluginStatePaths, StateEnvelopeCodec, AtomicFileWriter, StateQuarantine, StateRetention, StateResults) and src/ArrTags/Configuration/OperationalLimits.cs."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

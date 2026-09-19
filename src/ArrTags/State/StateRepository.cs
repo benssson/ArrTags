@@ -37,6 +37,11 @@ public sealed class StateRepository
     public PluginStatePaths Paths => _paths;
 
     /// <summary>
+    /// Gets the operational limits governing retention and authoritative artifact storage.
+    /// </summary>
+    public OperationalLimits Limits => _limits;
+
+    /// <summary>
     /// Reads a state record.
     /// </summary>
     /// <typeparam name="T">The record payload type.</typeparam>

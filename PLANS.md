@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 task 5.1 (confirm the item-image publication ABI and route variants) is complete; the remaining Phase 5 tasks are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants) and 5.2 (source-artwork provenance and guarded restoration state) are complete; the remaining Phase 5 tasks are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -71,8 +71,12 @@ Phase 5 (Jellyfin artwork integration) has begun. Task 5.1 is complete: the
 supported Jellyfin 12.0.0 item-image publication/read ABI and the standard
 `ImageController` route variants are pinned with evidence in
 `docs/research/jellyfin-12-architecture.md` section 4.4, with a new unguarded ABI
-test and a host-guarded route/authorization test. The remaining Phase 5 tasks
-(5.2 through 5.11 in the authoritative order) are not started.
+test and a host-guarded route/authorization test. Task 5.2 is complete: the
+provider-neutral source-artwork provenance and guarded restoration state model,
+its pure logical transitions, the content-addressed authoritative source-artifact
+store, and the authoritative `PublishedArtworkState` persistence are implemented
+and covered by focused tests. The remaining Phase 5 tasks (5.3 through 5.11 in
+the authoritative order) are not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -121,7 +125,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1331,7 +1335,7 @@ provenance and coexisting with Jellyfin Enhanced.
 
 - [x] 5.1 Confirm the exact supported Jellyfin item-image publication ABI and
   route variants.
-- [ ] 5.2 Implement source-artwork provenance and guarded restoration state
+- [x] 5.2 Implement source-artwork provenance and guarded restoration state
   before publishing derived artwork.
 - [ ] 5.3 Implement the Jellyfin host source adapter that reads the unindexed
   `Primary` source image and supplies the Phase 4 renderer's `SourceImageInput`
@@ -1415,6 +1419,48 @@ indexed/alternate poster surfaces are out of V1. The ABI is confirmed; the exact
 on-disk representation, post-publication read-back, multi-RID packaging, and
 end-to-end standard-route delivery remain later Phase 5 validation, not ABI
 uncertainty.
+
+**Task 5.2 status:** Complete. The provider-neutral, plugin-owned source-artwork
+provenance and guarded restoration state model is implemented in
+`src/ArrTags/Artwork`. `ArtworkImageSurface` is the canonical image-surface
+identity (V1 unindexed `Primary`; the optional index is retained for the data
+model and the state invariant rejects an indexed surface as out of V1 scope).
+`ActiveImageIdentity` records the observable surface/presence, content SHA-256,
+byte length, dimensions, modification time, and Jellyfin image tag, with an
+explicit absent baseline and no path. `ArtworkOwnershipComparer` implements the
+fail-closed ADR-002 rule: surface and presence must match, a present identity
+requires a matching content hash, and every recorded Jellyfin value must still
+match when observable; a missing hash or unavailable observation yields
+`Unknown`, never ownership. `PublishedArtworkState` carries every data-model
+3.10.1 field and state, and `Validate` enforces the documented invariants (a
+complete publication set, a present active identity with a hash, a retained
+source artifact plus fingerprint for a present baseline, opaque bounded tokens,
+and model-version compatibility). `PublishedArtworkStateTransitions` implements
+every section 3.10.2 guarded logical transition as pure decisions and commits
+(new session capture, repeated publication that reuses the source artifact and
+ownership token while issuing a new publication token and active identity,
+`OwnershipLost`/`OwnershipUnknown`, `RestorePending`, `Restored`,
+`RestoreBlocked`, `Removed`, and an observation refresh); it performs no image
+mutation and refuses to re-baseline a blocked record. `SourceArtifactStore`
+provides a content-addressed immutable store under the plugin data folder that
+records the exact bytes plus MIME type, length, and SHA-256, atomically promotes
+after bounded size/MIME/magic-byte/hash validation, validates integrity on read,
+is traversal-safe, rejects new work when the authoritative storage quota would be
+exceeded, and persists its manifest through the authoritative state boundary so
+provenance is never evicted as ordinary cache. `PublishedArtworkStateStore`
+persists the state through the existing versioned, integrity-tagged,
+atomically-written boundary, enforcing the invariants on write and quarantining a
+valid-envelope-but-invalid record rather than replaying it. `StateRepository`
+gained a read-only `Limits` accessor so the store shares the configured bounds.
+The durable `ArtworkOperation` journal (5.6), the Jellyfin host source adapter
+(5.3), publication (5.5), reconciliation (5.7), and lifecycle fencing (5.9)
+remain later tasks. New tests (`ArtworkProvenanceTests`,
+`SourceArtifactStoreTests`, `PublishedArtworkStateStoreTests`, 75 cases) cover
+the comparison match/mismatch/unknown/surface/presence/missing-hash rules, the
+state invariants, every transition, artifact round-trip/integrity/traversal/
+atomic-promotion/no-cache-eviction behavior, and authoritative persistence and
+quarantine. No ADR, `RenderVersion`, renderer behavior, or existing passing
+behavior was changed.
 
 **Acceptance criteria:**
 

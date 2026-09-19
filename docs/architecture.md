@@ -258,6 +258,19 @@ the operation is committed, safely aborted, or durably tombstoned as removed.
 An invalid or torn operation record is quarantined and causes recovery to fail
 closed rather than replaying an unknown mutation.
 
+The retained source artwork is stored as a content-addressed, immutable artifact
+under the plugin data folder (the `artifacts/source` area, sharded by hash). The
+exact source bytes are accompanied by an authoritative manifest containing the
+MIME type, byte length, and SHA-256, persisted through the versioned state
+boundary so it is never treated as ordinary cache and a corrupt manifest is
+quarantined. Promotion is atomic and bounded: the bytes pass size, MIME/magic
+byte, and hash validation before an identical artifact is reused (content
+addressing makes promotion idempotent). When the authoritative artifact storage
+quota would be exceeded, new derived work is rejected and the current artwork is
+preserved rather than evicting provenance. `PublishedArtworkState` is persisted
+as authoritative state under the same boundary; a valid envelope whose payload
+violates the documented ownership invariants is quarantined and never replayed.
+
 Each item record may contain:
 
 - Jellyfin item ID and provider IDs.

@@ -1,8 +1,9 @@
 ## Project Status
 
 **Current milestone:** Phase 5 — Jellyfin artwork integration is in progress.
-Task 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
-and route variants) is complete; the remaining Phase 5 tasks are not started.
+Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
+and route variants) and 5.2 (source-artwork provenance and guarded restoration
+state) are complete; the remaining Phase 5 tasks are not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -191,13 +192,33 @@ Completed in Phase 5 (Jellyfin artwork integration):
   `JellyfinImageRouteTests` (5 host-guarded cases). V1 remains the unindexed
   `Primary` poster for Movie and Episode only (ADR-006/ADR-009); indexed or
   alternate poster surfaces are out of V1.
+- 5.2 Implemented the provider-neutral source-artwork provenance and guarded
+  restoration state in `src/ArrTags/Artwork`. `ActiveImageIdentity` is the
+  observable surface/presence/content-hash identity and `ArtworkOwnershipComparer`
+  applies the fail-closed ADR-002 ownership rule (surface and presence must
+  match, a present identity needs a matching content hash, recorded Jellyfin
+  values must still match when observable, and a missing hash or unavailable
+  observation is `Unknown`). `PublishedArtworkState` carries the data-model
+  3.10.1 fields and states with validated invariants, and
+  `PublishedArtworkStateTransitions` implements every 3.10.2 guarded transition
+  as pure decisions and commits without performing any image mutation.
+  `SourceArtifactStore` is the content-addressed, immutable, traversal-safe
+  authoritative source-artifact store with bounded size/format/hash validation,
+  atomic promotion, read-time integrity validation, and quota-safe rejection of
+  new work. `PublishedArtworkStateStore` persists the state through the versioned
+  authoritative boundary and quarantines invalid records rather than replaying
+  them. The durable `ArtworkOperation` journal and publication remain later
+  tasks. New tests (`ArtworkProvenanceTests`, `SourceArtifactStoreTests`,
+  `PublishedArtworkStateStoreTests`, 75 cases) cover the comparison rules, state
+  invariants, every transition, artifact round-trip/integrity/traversal/atomic
+  promotion/quota behavior, and authoritative persistence and quarantine.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 604 automated tests; 45 additional environment-guarded tests (the task
+- Passes 679 automated tests; 45 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, and the task 5.1 host route
@@ -209,9 +230,10 @@ The plugin:
 
 Next tasks:
 
-- Phase 5 — Jellyfin artwork integration (Milestone 5). Task 5.1 is complete;
-  the next task in the authoritative Phase 5 execution order is 5.2
-  (source-artwork provenance and guarded restoration state).
+- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1 and 5.2 are
+  complete; the next task in the authoritative Phase 5 execution order is 5.3
+  (the Jellyfin host source adapter that reads the unindexed `Primary` source
+  image and supplies the renderer's `SourceImageInput`).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant
