@@ -1,0 +1,176 @@
+{
+  "phase": "4",
+  "reviewer_status": "APPROVED",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "area": "Cross-runtime validation (ADR-010)",
+      "description": "Task 4.11's ADR-010 cross-runtime half is implemented but not executed. Only the pinned canonical runtime and the byte-identical Jellyfin host runtime exist in this environment, so the tolerant 1-step / 0.1-percent comparison runs only against the optional Goldens/non-canonical set, which is absent and honestly skipped by NonCanonicalRuntimeFactAttribute. The comparator is boundary-tested unguarded and the exact canonical half runs against every golden, but no second runtime has been selected or produced a golden set.",
+      "evidence": [
+        "tests/ArrTags.Tests/RendererCrossRuntimeTests.cs",
+        "tests/ArrTags.Tests/NonCanonicalRuntimeFactAttribute.cs",
+        "tests/ArrTags.Tests/CrossRuntimePixelComparator.cs",
+        "docs/implementation-readiness.md:338-347",
+        "README.md:188-191"
+      ],
+      "recommended_action": "In the testing/release milestone select and record the second explicitly supported non-canonical Linux runtime, produce its Goldens/non-canonical set with the same manifest shape, and run the tolerant comparison before V1 release."
+    },
+    {
+      "severity": "MEDIUM",
+      "area": "Color-profile fail-closed boundary (ADR-010)",
+      "description": "SourceColorProfile inspects only PNG iCCP and JPEG APP2 profiles. For any other container (for example WebP/AVIF) with an embedded profile it returns None and the render proceeds with an sRGB decode destination, so a malformed or unsupported profile there can be silently treated as sRGB rather than failing closed as ADR-010 requires. The boundary is documented in SourceColorProfile and in the 4.11 report, but it is a production behavior gap in the renderer's own contract.",
+      "evidence": [
+        "src/ArrTags/Rendering/SourceColorProfile.cs:43-56",
+        "docs/decisions.md ADR-010 'PNG, alpha, and color handling'",
+        "docs/implementation/4.11/reviewer-report.json F11"
+      ],
+      "recommended_action": "Before Phase 5 wires the host source adapter, either restrict accepted source content types to inspected containers or extend fail-closed profile inspection to every accepted container; track as a V1 compatibility item."
+    },
+    {
+      "severity": "MEDIUM",
+      "area": "Integration test coverage (4.9 <-> 4.10 boundary)",
+      "description": "No test exercises the configuration-to-render boundary end to end. RendererConfigurationTests validates the resolved definitions, effective policy, and fingerprint at the snapshot level, while the render tests use BadgeDefinition.V1Default and RenderOutputPolicy.Default. A configured palette override or a disabled selector is therefore never proven to change a rendered image, even though Phase 5 will pass snapshot-derived definitions and policy into RenderRequest.",
+      "evidence": [
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs",
+        "tests/ArrTags.Tests/RenderTestFixtures.cs:83-102",
+        "tests/ArrTags.Tests/SkiaBadgeRendererRenderTests.cs",
+        "src/ArrTags/Configuration/RendererConfigurationResolver.cs"
+      ],
+      "recommended_action": "Add an integration test that builds a PluginConfiguration with an overridden palette and a disabled selector, resolves it through PluginConfigurationSnapshot, and renders with the resolved definitions/policy (Phase 5 wiring validation)."
+    },
+    {
+      "severity": "LOW",
+      "area": "Task evidence (4.1-4.5)",
+      "description": "Tasks 4.1 through 4.5 predate the report-persistence workflow and have no docs/implementation/<task>/ worker-report.json or reviewer-report.json. Their evidence is limited to the PLANS.md status paragraphs and the corresponding commits. The code, tests, and commits exist and pass, so this is a traceability/process gap rather than a correctness or completeness gap, but each of those tasks lacks the per-task reviewer evidence the later workflow requires.",
+      "evidence": [
+        "PLANS.md:943-1009",
+        "git commits a43305d, 51b0d9c, a72a10f, 1f019a9",
+        "docs/implementation/ contains only 4.6 through 4.11"
+      ],
+      "recommended_action": "Record the mid-phase workflow change in the phase record. If the process requires per-task evidence for all tasks, backfill minimal 4.1-4.5 reports from PLANS.md and the commits; this does not block Phase 5."
+    },
+    {
+      "severity": "LOW",
+      "area": "SourceColorProfile robustness and coverage",
+      "description": "In SourceColorProfile.InspectPng the guard offset + 12 + chunkLength > bytes.Length can integer-overflow once offset is non-zero, so an intentionally absurd declared chunk length makes the subsequent bytes.Slice throw and the renderer report RenderError instead of UnsupportedColorProfile (still a bounded failure with no artifact, never a fail-open). Separately, the JPEG APP2 supported and malformed branches have no committed automated test; they were verified only by an out-of-tree reflection probe.",
+      "evidence": [
+        "src/ArrTags/Rendering/SourceColorProfile.cs:63-99",
+        "tests/ArrTags.Tests/RenderPngContractTests.cs",
+        "docs/implementation/4.11/reviewer-report.json F8/F9"
+      ],
+      "recommended_action": "Perform the chunk bound in long arithmetic and add committed JPEG iCCP contract cases for the supported and malformed branches."
+    },
+    {
+      "severity": "LOW",
+      "area": "Documentation consistency",
+      "description": "Several documents are imprecise or stale. implementation-readiness.md and docs/changelog.md say the EXIF dimension-swapping defect affected orientations 5-8, but orientation 5 had no translation and was already correct (only 6, 7, and 8 were changed). docs/architecture.md section 9 says 'Any failure returns pass-through' while the renderer returns a bounded Failed for decode/limit/contrast/encode (ADR-010 explicitly permits failure or pass-through), and its status line still reads 'Accepted v1 (frozen for V1; Phase 1 complete)'. docs/data-model.md's Phase 4 note uses lowercase 'configurationFingerprint' and the conceptual RenderRequest fields requestId and imageSurface are not noted as absent from the implemented contract (which carries neither).",
+      "evidence": [
+        "docs/implementation-readiness.md:38-51",
+        "docs/changelog.md:583-590",
+        "docs/architecture.md:3,617",
+        "docs/data-model.md:534-554",
+        "docs/implementation/4.11/reviewer-report.json F10",
+        "docs/implementation/4.10/reviewer-report.json F11"
+      ],
+      "recommended_action": "Correct the orientation wording to orientations 6-8, reconcile the architecture failure/status wording, and align the data-model Phase 4 note with the implemented RenderRequest fields."
+    },
+    {
+      "severity": "LOW",
+      "area": "Operational limit semantics",
+      "description": "ValidateDerivedOutput rejects a planned output when width*height exceeds DerivedArtifactLimitBytes/4 (an uncompressed RGBA bound of about 8.39 million pixels at the 32 MiB default), while MaxImageDimensionPixels is 8192. Large but valid posters (roughly above 2896x2896) therefore fail closed and receive no badge even though the encoded PNG would likely be under the byte limit. The behavior is conservative and documented, and it fails safe, but it is a functional limitation that will surface once Phase 5 feeds real posters.",
+      "evidence": [
+        "src/ArrTags/Rendering/RenderLimitGuard.cs:66-90",
+        "src/ArrTags/Configuration/OperationalLimits.cs:82-92",
+        "PLANS.md task 4.5 status"
+      ],
+      "recommended_action": "Track for Phase 6 limits tuning: consider bounding the encoded estimate instead of the full uncompressed surface, or increasing the default derived limit, and add tests for representative large poster dimensions."
+    },
+    {
+      "severity": "LOW",
+      "area": "Host compatibility validation",
+      "description": "ArrTags.dll now references SkiaSharp and embeds the bundled font, but the plugin has not been re-validated to load on the pinned Jellyfin 12 host since Phase 1, which predates the SkiaSharp reference. The task 4.8 spike supports the no-bundled-SkiaSharp (host shared assembly) resolution scenario, and packaged-asset behavior is explicitly deferred to Phase 5, so this is a tracked validation gap rather than a demonstrated defect.",
+      "evidence": [
+        "src/ArrTags/ArrTags.csproj:36-47",
+        "docs/research/skia-host-compatibility.md",
+        "docs/implementation-readiness.md:300-304",
+        "PLANS.md Phase 5 packaging task"
+      ],
+      "recommended_action": "Validate the actual plugin package (ArrTags.dll plus the resolved host SkiaSharp) loads and runs on the pinned host during Phase 5 packaging, as already planned."
+    },
+    {
+      "severity": "LOW",
+      "area": "Phase-end working tree state",
+      "description": "The final working tree is not clean: .opencode/agents/implementation-reviewer.md, implementation-worker.md, and orchestrator.md are modified and .opencode/agents/phase-reviewer.md is untracked. These are agent-orchestration files outside the product and are unrelated to any Phase 4 task, but they mean the tree does not exactly match the committed phase state.",
+      "evidence": [
+        "git status --porcelain",
+        "git diff --stat"
+      ],
+      "recommended_action": "Commit or discard the orchestration-file changes separately so the phase-end tree is clean; no product action required."
+    }
+  ],
+  "tasks_checked": [
+    "4.1 complete - BadgeSelector vocabulary and BadgeSelectorResolver over canonical BadgeMetadata; commit a43305d; no per-task JSON report (workflow predates persistence).",
+    "4.2 complete - ADR-009 documentation closure fixing V1 fields, layout, geometry, contrast, text limits, and output policy; no rendering code; commits 791f44d/5708ecf (pre-numbering) and a43305d status; no per-task JSON report.",
+    "4.3 complete - unknown-versus-confirmed-negative tri-state semantics in BadgeSelectorResolver; BadgeUnknownValueTests; commit 51b0d9c; no per-task JSON report.",
+    "4.4 complete - RenderVersion, RenderOutputPolicy, RenderFingerprintInput, RenderFingerprint (output + request fingerprints); RenderFingerprintTests; commit a72a10f; no per-task JSON report.",
+    "4.5 complete - RenderLimitGuard and BadgeTextNormalizer pre-decode limits and 24-scalar truncation; RenderLimitTests; commit 1f019a9; no per-task JSON report.",
+    "4.7 complete - SkiaSharp and SkiaSharp.NativeAssets.Linux pinned 3.119.4, DejaVu Sans Bold 2.37 embedded with verified hash, license notices shipped; commit 2450b75; worker/reviewer reports present.",
+    "4.8 complete - Jellyfin 12 host stack confirmed (SkiaSharp/HarfBuzzSharp 3.119.4/8.3.1.5), plugin load-context resolution measured, guarded decode/draw/encode round trip; research doc added; commit 5a0e2ac; worker/reviewer reports present.",
+    "4.9 complete - SourceImageInput, BadgeDefinition, RenderRequest, RenderResult, IRenderer, SkiaBadgeRenderer, layout/contrast/geometry/orientation, sRGB PNG encode; commit 928d10e; F1/F4 fixes present; worker/reviewer reports present.",
+    "4.6 complete - seven test-only behavior-matrix files (51 cases) after 4.9 as reordered; commit fca389e; reorder justified by the BLOCKED 4.6 report in commit 2b8b7be; worker/reviewer reports present.",
+    "4.10 complete - BadgeSelectorConfiguration, RendererConfiguration, validator, resolver, palette, secret-free fingerprint, snapshot mapping; commit 9fb3993; worker/reviewer reports present.",
+    "4.11 complete - golden oracle (nine committed goldens plus manifest), byte determinism, PNG contract, cross-runtime comparator, F2 color-profile fail-closed, EXIF orientation fix with RenderVersion 1->2 and regenerated manifest; commit e5cbf71; worker/reviewer reports present."
+  ],
+  "commits_checked": [
+    "a43305d execute tasks 4.1 and 4.2",
+    "07e0592 number phase 4 tasks",
+    "51b0d9c execute task 4.3",
+    "a72a10f execute task 4.4",
+    "1f019a9 execute task 4.5",
+    "2b8b7be reorder phase 4 renderer tasks",
+    "2450b75 execute task 4.7",
+    "5a0e2ac execute task 4.8",
+    "928d10e execute task 4.9",
+    "fca389e execute task 4.6",
+    "9fb3993 execute task 4.10",
+    "e5cbf71 execute task 4.11",
+    "1b36e18 complete phase 4"
+  ],
+  "requirements_checked": [
+    "Phase 4 execution order 4.1, 4.2, 4.3, 4.4, 4.5, 4.7, 4.8, 4.9, 4.6, 4.10, 4.11 - satisfied; commit order matches exactly and the 4.6-after-4.9 reorder is justified by the persisted BLOCKED report.",
+    "Acceptance: same source/metadata/configuration/request/renderer version produce the same logical output - satisfied by RenderFingerprintTests, RenderDeterminismTests, and the golden tests.",
+    "Acceptance: renderer never claims a value based only on missing provider data - satisfied by BadgeUnknownValueTests, BadgeSelectorResolver confirmed-true rule, and pass-through reasons.",
+    "Acceptance: quality badges show actual observed quality, not requested policy - satisfied; BadgeSelectorResolver reads BadgeMetadata.Quality.Label and never a quality profile.",
+    "Acceptance: original source bytes are not modified - satisfied; SourceImageInput copies bytes and render/contract tests assert byte equality before/after.",
+    "Acceptance: every rendering failure leaves current usable artwork unchanged and records a bounded non-secret diagnostic - satisfied at the renderer boundary (no partial artifact, exactly one safe reason); publication-time preservation is Phase 5.",
+    "Gate 4: renderer unit tests pass for normal, unknown, oversized, malformed, cancelled, and failed inputs - met; forced native run observed 655 passed / 1 skipped / 656 total.",
+    "Deferred ADR-010 non-canonical cross-runtime comparison - not executed (no second runtime); comparator and canonical half delivered and honestly guarded; tracked MEDIUM finding 1."
+  ],
+  "architecture_checked": [
+    "GOALS.md - provider-neutral badges, configurable presentation, source preservation, no repeated processing, graceful failure.",
+    "PLANS.md Milestone 4 objective, deliverables, task list, authoritative execution order, acceptance criteria, and Gate 4.",
+    "docs/architecture.md section 9 (V1 rendering contract and renderer implementation contract), sections 6, 11, 12.",
+    "docs/decisions.md ADR-006 (Movie/Episode surfaces), ADR-008 (no path fallback), ADR-009 (visual specification), ADR-010 (renderer implementation contract, host boundary, config persistence, test strategy).",
+    "docs/data-model.md sections 3.5-3.8 and the Phase 4 implementation note.",
+    "src/ArrTags/Rendering - provider-neutral namespace with no MediaBrowser/Jellyfin/Providers type dependencies; RenderVersion 2; source/output limits and contrast enforced pre-decode; deterministic sRGB PNG encode.",
+    "src/ArrTags/Configuration - immutable replacement, secret-free snapshot, renderer configuration fingerprint, last-valid retention."
+  ],
+  "research_checked": [
+    "docs/research/skia-host-compatibility.md - pinned 3.119.4/8.3.1.5 host stack, ELF64 x86-64 native assets, plugin load-context measurements, Phase 5 packaging constraint.",
+    "docs/research/poster-rendering-strategies.md - evidence only; confirms SkiaSharp alignment and does not override ADR-009/ADR-010.",
+    "Pinned host jellyfin.deps.json and local NuGet 3.119.4 assets referenced by the 4.7/4.8 evidence.",
+    "Jellyfin 12 net10.0 compatibility: csproj targets net10.0 with Jellyfin.Controller/Model 12.0.0 and exact SkiaSharp pins; build succeeds under the pinned SDK."
+  ],
+  "documentation_checked": [
+    "README.md - Phase 4 completion, counts, and next-phase statement consistent with observed results except the deferred cross-runtime note.",
+    "PLANS.md - all 11 Phase 4 task checkboxes and the five acceptance criteria checked; Gate 4 marked met; execution order documented.",
+    "docs/changelog.md - Phase 4 marked complete with per-task entries and the observed counts.",
+    "docs/implementation-readiness.md - orientation/profile resolutions and the unselected non-canonical runtime.",
+    "docs/architecture.md - renderer contract updated for the color-profile behavior.",
+    "docs/implementation/4.6, 4.7, 4.8, 4.9, 4.10, 4.11 worker-report.json and reviewer-report.json - present, consistent with the implementation and independently reproduced counts.",
+    "No per-task reports exist for 4.1-4.5 (documented as a LOW finding)."
+  ],
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 4 (Badge rendering) is complete and independently verified. All eleven tasks in the authoritative execution order (4.1, 4.2, 4.3, 4.4, 4.5, 4.7, 4.8, 4.9, 4.6, 4.10, 4.11) are committed in that order, the task checkboxes and the five Milestone 4 acceptance criteria are satisfied, and Gate 4 is met. The renderer is provider-neutral with no Jellyfin/Provider type coupling, enforces source/output limits and contrast before decode, applies EXIF orientation before layout, packs the ADR-009 rail, and encodes deterministic non-interlaced 8-bit sRGB PNG (RGB opaque, straight-alpha RGBA otherwise). The task 4.11 EXIF orientation defect was genuinely fixed (orientations 6-8 now translate about the source dimensions) and RenderVersion is 2 in code, so all output fingerprints and the regenerated golden manifest are consistent; the badge schema version is unchanged. Independent build/test results match the claims exactly: ./build.sh restore and build succeeded with 0 warnings/0 errors; default ./build.sh test passed 593 with 40 environment-guarded skips (633 total); the forced pinned-native run (ARRTAGS_SKIA_COMPAT=1 with the pinned sysroot) passed 655 with one honest non-canonical-golden skip (656 total). No BLOCKER or HIGH finding was identified. The residual items are tracked MEDIUMs (unexecuted ADR-010 non-canonical cross-runtime half, color-profile fail-closed limited to PNG/JPEG containers, and no end-to-end configuration-to-render integration test) plus LOW documentation, robustness, limit-semantics, host-validation, and process-evidence notes; none block Phase 5. Phase 4 is approved and Phase 5 requires explicit user approval to begin."
+}
