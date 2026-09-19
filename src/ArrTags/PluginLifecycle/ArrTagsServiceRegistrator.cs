@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using ArrTags.Artwork;
 using ArrTags.Configuration;
 using ArrTags.Media;
 using ArrTags.Providers;
@@ -8,6 +9,8 @@ using ArrTags.Secrets;
 using ArrTags.State;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller;
+using MediaBrowser.Controller.Drawing;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -32,6 +35,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton(CreateStateRepository);
         serviceCollection.TryAddSingleton<ILibraryEventSource, JellyfinLibraryEventSource>();
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
+        serviceCollection.TryAddSingleton<IArtworkImageAccess>(CreateArtworkImageAccess);
+        serviceCollection.TryAddSingleton<IArtworkSourceReader>(CreateArtworkSourceReader);
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
     }
@@ -74,6 +79,22 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             : plugin!.DataFolderPath;
 
         return new StateRepository(root, limits);
+    }
+
+    private static JellyfinArtworkImageAccess CreateArtworkImageAccess(IServiceProvider serviceProvider)
+    {
+        var limits = serviceProvider.GetRequiredService<ConfigurationSnapshotService>().Current.Limits;
+        return new JellyfinArtworkImageAccess(
+            serviceProvider.GetRequiredService<ILibraryManager>(),
+            serviceProvider.GetRequiredService<IImageProcessor>(),
+            limits);
+    }
+
+    private static ArtworkSourceReader CreateArtworkSourceReader(IServiceProvider serviceProvider)
+    {
+        var limits = serviceProvider.GetRequiredService<ConfigurationSnapshotService>().Current.Limits;
+        var access = serviceProvider.GetRequiredService<IArtworkImageAccess>();
+        return new ArtworkSourceReader(access, limits);
     }
 
     private static Plugin? FindPlugin(IServiceProvider serviceProvider)

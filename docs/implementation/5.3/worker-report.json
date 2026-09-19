@@ -1,0 +1,53 @@
+{
+  "task": "5.3",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the plugin-owned Jellyfin host source adapter in src/ArrTags/Artwork and kept all Jellyfin access out of src/ArrTags/Rendering (ADR-010). IArtworkSourceReader/ArtworkSourceReader is the host-neutral boundary and core: it enforces the V1 unindexed Primary surface, the OperationalLimits source byte (SourceArtifactLimitBytes) and decoded dimension (MaxImageDimensionPixels) bounds, and the V1 container confinement, maps every failure to a bounded ArtworkSourceReadResult without throwing, and never loads unbounded data. ArtworkSourceReadResult carries presence (Present/Absent/Failed), the exact bounded source bytes, the confined content type, byte length, content SHA-256, the post-orientation display width/height, and the Jellyfin identity fields (dimensions, DateModifiedUtc, JellyfinImageTag); TryCreateSourceImageInput builds the Phase 4 SourceImageInput and TryCreateActiveImageIdentity builds the task 5.2 ActiveImageIdentity from one read, and the result exposes no path, Jellyfin entity, provider DTO, credential, or mutable image object. IArtworkImageAccess is the injectable host seam; JellyfinArtworkImageAccess is the only MediaBrowser.* file and uses the pinned 12.0.0 APIs to resolve the item via ILibraryManager, read BaseItem.GetImageInfo(ImageType.Primary, 0), convert a non-local image with ILibraryManager.ConvertImageToLocal (removeOnFailure: false), read a bounded byte copy, and observe the image tag and modification time. Oriented dimensions: research of the pinned source shows IImageProcessor.GetImageDimensions and SkiaEncoder.GetImageSize return SKCodec.Info, which is the pre-EXIF encoded size, while EncodedOrigin is separate; SourceImageDescriptor therefore reads SKCodec.Info and SKCodec.EncodedOrigin with the pinned SkiaSharp 3.119.4 stack and SourceOrientationExtensions computes the display dimensions, guaranteeing parity with the renderer's own EncodedOrigin validation, and undecodable headers fail closed instead of supplying a wrong dimension. Content-type confinement closes the carried-forward Phase 4 MEDIUM finding: because the renderer's SourceColorProfile.Inspect understands only PNG iCCP and JPEG APP2 profiles, ArtworkSourceContentType accepts only the image/png and image/jpeg signatures and GIF, WebP, BMP, AVIF, and unrecognized bytes fail closed, so a malformed profile in an uninspected container can never be silently treated as sRGB; the renderer's SourceColorProfile was not modified. Both services are registered as singleton factories in ArrTagsServiceRegistrator. New tests in ArtworkSourceReaderTests, ArtworkSourceContentTypeTests, JellyfinArtworkImageAccessTests, and SourceImageDescriptorTests (65 cases, four native-guarded) cover Present/Absent/Failed, unsupported surface, unsupported container, oversized byte, oversized dimension, unreadable, content-type confinement, oriented dimensions, hash/length/surface correctness, supported non-local conversion, boundary neutrality, and DI registration.",
+  "validation": [
+    "Read the authoritative context before changing anything: AGENTS.md, PLANS.md (Milestone 5 and the authoritative Phase 5 execution order), docs/decisions.md ADR-002/ADR-003/ADR-009/ADR-010, docs/implementation-readiness.md (Resolved ADR-010), docs/data-model.md section 3.10.1, docs/architecture.md section 9, docs/research/jellyfin-12-architecture.md section 4.4, src/ArrTags/Rendering/SourceImageInput.cs and SkiaBadgeRenderer.cs, the task 5.2 src/ArrTags/Artwork provenance model, src/ArrTags/Media/IMediaLibraryResolver.cs + JellyfinMediaLibraryResolver.cs, and the pinned Jellyfin v12 source at /tmp/opencode/jfsrc (ImageController.GetImageInternal, LibraryManager.ConvertImageToLocal, IImageProcessor, SkiaEncoder.GetImageSize).",
+    "Inspected the repository and git state before changing anything; the working tree was clean at commit a0d56f0 (task 5.2).",
+    "./build.sh restore -> All projects are up-to-date for restore (locked mode); no package lock change.",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test (default) -> Passed: 740, Failed: 0, Skipped: 49, Total: 789. Baseline was 679/45/724, so this is +61 passed and +4 guarded skips with no regressions.",
+    "Focused new-test run (ArtworkSourceReaderTests|ArtworkSourceContentTypeTests|JellyfinArtworkImageAccessTests|SourceImageDescriptorTests, default guards) -> Passed: 61, Skipped: 4, Total: 65.",
+    "ARRTAGS_SKIA_COMPAT=1 ./build.sh test (forced native, pinned sysroot) -> Passed: 813, Failed: 0, Skipped: 6, Total: 819; the six skips are the five task 5.1 host route cases and the non-canonical golden placeholder.",
+    "ARRTAGS_SKIA_COMPAT=1 focused run of JellyfinArtworkImageAccessTests|SourceImageDescriptorTests -> Passed: 25, Failed: 0, Skipped: 0; the guarded positive decode and all eight EXIF orientations pass with the pinned native runtime.",
+    "ARRTAGS_SKIA_COMPAT=1 focused run of all four new test classes -> Passed: 72, Failed: 0, Skipped: 0 (the four guarded results expand to eleven cases under the forced-native guard).",
+    "Inspected git status and git diff: src/ArrTags/Rendering is unchanged and remains free of MediaBrowser.* references (only comments and the JellyfinItemId property name); the only production MediaBrowser.* references added are in src/ArrTags/Artwork/JellyfinArtworkImageAccess.cs; the only modified existing production file is src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (two TryAddSingleton registrations plus two factories).",
+    "Confirmed no ADR, RenderVersion, renderer behavior, existing test assertion, or lock file was changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Artwork/ArtworkSourceContentType.cs",
+    "src/ArrTags/Artwork/SourceImageDescriptor.cs",
+    "src/ArrTags/Artwork/ArtworkImageAccessResult.cs",
+    "src/ArrTags/Artwork/IArtworkImageAccess.cs",
+    "src/ArrTags/Artwork/ArtworkSourceReadResult.cs",
+    "src/ArrTags/Artwork/IArtworkSourceReader.cs",
+    "src/ArrTags/Artwork/ArtworkSourceReader.cs",
+    "src/ArrTags/Artwork/JellyfinArtworkImageAccess.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/ArtworkSourceReaderTests.cs",
+    "tests/ArrTags.Tests/ArtworkSourceContentTypeTests.cs",
+    "tests/ArrTags.Tests/JellyfinArtworkImageAccessTests.cs",
+    "tests/ArrTags.Tests/SourceImageDescriptorTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/implementation-readiness.md",
+    "docs/research/jellyfin-12-architecture.md",
+    "docs/changelog.md",
+    "docs/implementation/5.3/worker-report.json"
+  ],
+  "known_limitations": [
+    "Item-type eligibility is not enforced by this adapter: it enforces the unindexed Primary surface but reads whatever item id the caller supplies. Movie/Episode eligibility is already resolved by ADR-006/ADR-009 and is applied by the caller/publisher (tasks 5.5+). This is documented in docs/architecture.md section 9 and docs/research/jellyfin-12-architecture.md section 4.4.",
+    "ActiveImageIdentity records the post-orientation display dimensions rather than Jellyfin's raw pre-orientation encoded dimensions. Every observation used for ownership comparison goes through this adapter, so the recorded expected identity and a fresh observation are always computed the same way; for a PNG-derived active image (no EXIF) the two are identical. This choice is documented in the new SourceImageDescriptor and reader members.",
+    "No live-host test was performed for this task. The Jellyfin access is exercised with DispatchProxy doubles for ILibraryManager/IImageProcessor plus real temporary files, and the positive decode/orientation cases run under the ARRTAGS_SKIA_COMPAT=1 pinned native runtime; a guarded live-host test was not required by the task.",
+    "For a non-local (remote URL) image, JellyfinArtworkImageAccess calls the supported ILibraryManager.ConvertImageToLocal, which downloads and persists the image locally and updates the item; this is the same supported read/conversion path the item-image controller uses and is explicitly permitted by the task, but it is a host-side side effect of a source read.",
+    "The exact on-disk representation and post-publication read-back remain later Phase 5 host validation (tasks 5.5/5.7/5.11), not part of this adapter."
+  ],
+  "ready_for_next_task": true
+}

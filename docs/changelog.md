@@ -628,7 +628,7 @@ that point and required explicit user approval to begin.
 
 ## Phase 5 - Jellyfin artwork integration (Milestone 5)
 
-**Status:** In progress. Tasks 5.1 and 5.2 complete; tasks 5.3 through 5.11 not started.
+**Status:** In progress. Tasks 5.1, 5.2, and 5.3 complete; tasks 5.4 through 5.11 not started.
 
 ### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
 
@@ -771,3 +771,57 @@ Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
 and `./build.sh test` pass. The default suite passes 679 tests with 45
 environment-guarded skips (724 total). No ADR, `RenderVersion`, renderer
 behavior, or existing passing behavior was changed.
+
+### Task 5.3 - Jellyfin host source adapter
+
+Task 5.3 implements the plugin-owned Jellyfin host source adapter that reads the
+unindexed `Primary` source image and supplies the Phase 4 renderer's
+`SourceImageInput`, keeping Jellyfin access out of the renderer per ADR-010. It
+does not implement packaging (5.4), publication (5.5), the `ArtworkOperation`
+journal (5.6), reconciliation (5.7), or lifecycle fencing (5.9).
+
+- `src/ArrTags/Artwork/IArtworkSourceReader`/`ArtworkSourceReader` is the
+  host-neutral boundary and core. It enforces the V1 unindexed `Primary` surface,
+  the `OperationalLimits` source byte and decoded dimension bounds, and the
+  container confinement, and maps every failure to a bounded
+  `ArtworkSourceReadResult` without throwing.
+- `ArtworkSourceReadResult` carries presence, the exact bounded source bytes, the
+  confined content type, byte length, content SHA-256, the post-orientation
+  display dimensions, and the Jellyfin identity fields, and constructs a valid
+  `SourceImageInput` and the task 5.2 `ActiveImageIdentity` from one read. It
+  contains no path, Jellyfin entity, provider DTO, credential, or mutable image
+  object.
+- `IArtworkImageAccess` is the injectable host seam (bounded bytes plus the
+  Jellyfin observation fields). `JellyfinArtworkImageAccess` is the only
+  `MediaBrowser.*` file: it resolves the item through `ILibraryManager`, reads
+  `BaseItem.GetImageInfo(ImageType.Primary, 0)`, converts a non-local image with
+  `ILibraryManager.ConvertImageToLocal` (`removeOnFailure: false`) when
+  `IsLocalFile` is false, reads a bounded byte copy, and observes the image tag
+  and modification time.
+- Oriented dimensions: Jellyfin's `IImageProcessor.GetImageDimensions` and the
+  pinned `SkiaEncoder.GetImageSize` return `SKCodec.Info`, the pre-EXIF
+  encoded dimensions. `SourceImageDescriptor` reads `SKCodec.Info` and
+  `SKCodec.EncodedOrigin` with the pinned SkiaSharp 3.119.4 stack and
+  `SourceOrientationExtensions` computes the display dimensions, matching the
+  renderer's own `EncodedOrigin` validation. Undecodable headers fail closed.
+- Container confinement closes the carried-forward Phase 4 MEDIUM finding: the
+  renderer's `SourceColorProfile.Inspect` understands only PNG `iCCP` and JPEG
+  `APP2` profiles, so `ArtworkSourceContentType` accepts only PNG and JPEG
+  signatures and GIF, WebP, BMP, AVIF, and unrecognized bytes fail closed. The
+  renderer's `SourceColorProfile` is unchanged.
+- Both the source reader and the Jellyfin access are registered as singleton
+  factories in `ArrTagsServiceRegistrator`.
+- Tests: `tests/ArrTags.Tests/ArtworkSourceReaderTests.cs`,
+  `ArtworkSourceContentTypeTests.cs`, `JellyfinArtworkImageAccessTests.cs`, and
+  `SourceImageDescriptorTests.cs` (65 cases, four native-guarded) cover present,
+  absent, unsupported-surface, unsupported-container, oversized-byte,
+  oversized-dimension, unreadable, hash/length/surface correctness, oriented
+  dimensions, supported non-local conversion, boundary neutrality, and DI
+  registration.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 740 tests with 49
+environment-guarded skips (789 total). The forced native run with
+`ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot passes 813 with 6 skips (819
+total). No ADR, `RenderVersion`, renderer behavior, or existing passing behavior
+was changed.

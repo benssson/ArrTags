@@ -364,8 +364,9 @@ that introduce them.
   `SourceImageInput` contract is resolved by ADR-010. Task 5.1 pinned the read
   surface it will use (`BaseItem.GetImageInfo`, `ItemImageInfo`, `ImageInfo`,
   `IImageProcessor.GetImageCacheTag`/`GetImageDimensions`, and the standard
-  item-image route); the exact source-byte read-back and the publication
-  read-back remain host validation.
+  item-image route); task 5.3 implemented the adapter over that read surface with
+  an explicit PNG/JPEG container confinement and byte/dimension bounds, and the
+  exact publication read-back remains host validation.
 - Episode policies for specials, anime/absolute numbering, double episodes, and
   multi-episode files are resolved by ADR-007 and task 3.5. ADR-008 resolves
   DG-5 by deferring path fallback out of V1; virtual, missing, remote, offline,

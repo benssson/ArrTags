@@ -612,6 +612,14 @@ operation's verified postcondition and artifacts; otherwise it remains blocked.
   correct authorization, image tags, conditional requests, and cache headers.
 - Do not block library scans or synchronous library event delivery.
 
+V1 source capture reads only the unindexed `Primary` surface and accepts only
+PNG and JPEG source containers, failing closed for every other container so a
+malformed color profile in an uninspected container can never be treated as
+sRGB. Jellyfin reports the pre-orientation encoded dimensions, so the host source
+adapter derives the post-orientation display dimensions from the exact bytes with
+the pinned raster stack before building the `SourceImageInput` and the
+`ActiveImageIdentity`; item-type eligibility remains a caller concern.
+
 ### V1 rendering contract
 
 ADR-009 is authoritative for the complete V1 visual contract. The architectural

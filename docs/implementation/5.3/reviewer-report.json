@@ -1,0 +1,101 @@
+{
+  "task": "5.3",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "info",
+      "area": "DI lifetime vs runtime configuration replacement",
+      "description": "IArtworkImageAccess and IArtworkSourceReader are registered with TryAddSingleton and their factories capture ConfigurationSnapshotService.Current.Limits once at first resolution. A runtime TryReplace of the configuration would leave both services enforcing stale byte/dimension limits. The outcome stays safe either way (a stale larger limit is still re-checked by the renderer against the current RenderRequest limits, and a stale smaller limit fails conservatively), and the same pattern already exists for StateRepository from task 5.2, so this is not blocking.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:38-39,84-98",
+        "src/ArrTags/Configuration/ConfigurationSnapshotService.cs:54-88",
+        "src/ArrTags/State/StateRepository.cs (existing captured-limits pattern)"
+      ],
+      "recommended_action": "If runtime configuration replacement is enabled before publication (5.5), either re-read Current.Limits per read or document that limits changes require a plugin reload."
+    },
+    {
+      "id": "F2",
+      "severity": "info",
+      "area": "ActiveImageIdentity dimension semantics vs data model",
+      "description": "The adapter records post-orientation display dimensions in ActiveImageIdentity.Width/Height, while docs/data-model.md 3.10.1 describes width/height as 'Supporting Jellyfin image metadata'. This is self-consistent because every recorded and fresh observation is produced by the same adapter, and PNG-derived active images have no orientation offset, so no ownership false-positive/negative results. The worker disclosed this. The data-model wording could be reconciled later.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkSourceReader.cs:139-141,292-306",
+        "src/ArrTags/Artwork/ActiveImageIdentity.cs:126-134",
+        "docs/data-model.md section 3.10.1",
+        "docs/implementation/5.3/worker-report.json known_limitations[1]"
+      ],
+      "recommended_action": "In a later documentation pass, state that the adapter records oriented display dimensions as the supporting width/height identity values."
+    },
+    {
+      "id": "F3",
+      "severity": "info",
+      "area": "Worker summary precision",
+      "description": "The worker summary states the only added production MediaBrowser.* references are in JellyfinArtworkImageAccess.cs. The composition root ArrTagsServiceRegistrator also adds using MediaBrowser.Controller.Drawing and MediaBrowser.Controller.Library so it can resolve ILibraryManager and IImageProcessor for the factory. This is normal DI wiring, not entity/access leakage, and the renderer and the adapter result remain Jellyfin-free.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:12-13,84-91",
+        "docs/implementation/5.3/worker-report.json validation[11]"
+      ],
+      "recommended_action": "None required; the composition-root references are necessary and do not violate the boundary."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "area": "Confinement enforcement location",
+      "description": "The PNG/JPEG confinement is enforced in the host adapter (and re-checked in the reader), not inside the renderer. SourceImageInput still accepts any content type beginning with 'image/', so a future caller that bypasses IArtworkSourceReader could re-introduce the Phase 4 gap. This matches the finding's recommended action (which explicitly targets the host source adapter) and the task instruction not to modify the renderer, so the assigned finding is genuinely closed for the supported path.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkSourceReader.cs:118-127",
+        "src/ArrTags/Artwork/JellyfinArtworkImageAccess.cs:139-146",
+        "src/ArrTags/Rendering/SourceImageInput.cs:41-45",
+        "docs/implementation/phase-4/phase-review.json finding 2"
+      ],
+      "recommended_action": "Keep all production source capture on IArtworkSourceReader; do not add other SourceImageInput producers."
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "area": "Non-local image conversion side effect",
+      "description": "For an item whose active image is not local, JellyfinArtworkImageAccess calls ILibraryManager.ConvertImageToLocal, which downloads the image, persists it through ProviderManager.SaveImage, and updates the item repository during a source read. This mirrors the pinned ImageController.GetImageInternal read path and uses removeOnFailure:false, and the worker disclosed it, but it is a host-side mutation performed before publication (5.5) exists.",
+      "evidence": [
+        "src/ArrTags/Artwork/JellyfinArtworkImageAccess.cs:111-126",
+        "/tmp/opencode/jfsrc/Jellyfin.Api/Controllers/ImageController.cs:1894-1897",
+        "/tmp/opencode/jfsrc/Emby.Server.Implementations/Library/LibraryManager.cs:3682-3707",
+        "docs/implementation/5.3/worker-report.json known_limitations[3]"
+      ],
+      "recommended_action": "Later publication/lifecycle tasks (5.5/5.8/5.9) should account for the fact that capturing a remote source materializes it locally and updates the item."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "area": "Signature-detection duplication",
+      "description": "ArtworkSourceContentType.TryDetect duplicates the PNG/JPEG magic-byte logic already present in SourceArtifactFormat.DetectContentType. The duplication is intentional: the artifact store accepts a wider container set for storage while the source adapter must confine to the two renderer-inspected containers. No correctness issue.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkSourceContentType.cs:35-51",
+        "src/ArrTags/Artwork/SourceArtifactFormat.cs:56-86"
+      ],
+      "recommended_action": "Optional future refactor to share the primitive signature check while keeping ArtworkSourceContentType.IsConfined as the gate."
+    }
+  ],
+  "tests_checked": [
+    "Reproduced ./build.sh restore and ./build.sh build with the pinned sysroot: Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Reproduced ./build.sh test (default guards): Passed 740, Failed 0, Skipped 49, Total 789 - matches the worker claim (baseline 679/45/724, delta +61 passed / +4 skipped).",
+    "Reproduced ARRTAGS_SKIA_COMPAT=1 ./build.sh test with pinned sysroot: Passed 813, Failed 0, Skipped 6, Total 819 - matches the worker claim; the six skips are the five JellyfinImageRouteTests host cases and the non-canonical golden placeholder.",
+    "Reproduced focused default run of ArtworkSourceReaderTests|ArtworkSourceContentTypeTests|JellyfinArtworkImageAccessTests|SourceImageDescriptorTests: Passed 61, Skipped 4, Total 65.",
+    "Reproduced focused ARRTAGS_SKIA_COMPAT=1 run of the same four classes: Passed 72, Skipped 0, Total 72 (the four guarded methods expand to 11 cases).",
+    "Guard honesty verified independently: with ARRTAGS_SKIA_COMPAT=1 and the pinned sysroot's libfontconfig made unreachable, SourceImageDescriptorTests failed 9 of 14 (DllNotFoundException for libSkiaSharp/libfontconfig) rather than silently passing; with the guard unset the same cases are skipped.",
+    "Inspected ArtworkSourceReaderTests.cs, ArtworkSourceContentTypeTests.cs, JellyfinArtworkImageAccessTests.cs, SourceImageDescriptorTests.cs: the reader tests exercise Present/Absent/Failed, failure mapping, indexed/empty rejection, container confinement, byte/dimension limits (including the swapped-axis case), oriented dimensions, hash/length/surface correctness, both TryCreate* builders, and a no-path/no-MediaBrowser reflection boundary check; the host tests exercise item lookup, absence, unsupported/indexed surfaces, over-limit/missing files, non-local conversion via the supported API, and native PNG/JPEG decode.",
+    "Confirmed no existing test assertion was modified (git diff over tests/ shows only new untracked files)."
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-002 (guarded ownership), ADR-006 (Movie/Episode surfaces), ADR-009 (visual contract), ADR-010 (renderer implementation contract and host/source boundary): the adapter supplies an immutable SourceImageInput with bytes, content type, oriented dimensions, hash and no path/entity/DTO/credential; Jellyfin access stays out of the renderer.",
+    "docs/data-model.md 3.10.1 ActiveImageIdentity: the adapter's field set matches the model (surface, presence, contentSha256, byteLength, width/height, dateModifiedUtc, jellyfinImageTag); F2 notes the oriented-vs-raw dimension wording.",
+    "docs/architecture.md section 9 additions and docs/research/jellyfin-12-architecture.md section 4.4 additions: accurate against the implementation and the pinned source.",
+    "Pinned Jellyfin v12 source /tmp/opencode/jfsrc: BaseItem.GetImageInfo(ImageType, int) is ElementAtOrDefault(index); LibraryManager.ConvertImageToLocal(item, image, imageIndex, removeOnFailure) matches the ImageController.GetImageInternal read path; ItemImageInfo.IsLocalFile is !Path.StartsWith(\"http\"); ImageProcessor.GetImageDimensions returns cached info dims or IImageEncoder.GetImageSize; SkiaEncoder.GetImageSize returns SKCodec.Info (pre-EXIF) while EncodedOrigin is separate. This confirms the adapter's oriented-dimension approach and the pre-orientation claim.",
+    "Pinned renderer source src/ArrTags/Rendering: SourceColorProfile.Inspect understands only PNG iCCP and JPEG APP2 and returns None for other containers (the Phase 4 MEDIUM gap); SourceImageInput stores a byte copy and re-verifies SHA-256; SkiaBadgeRenderer computes orientation via SkiaOrientation.FromEncodedOrigin(codec.EncodedOrigin) and SourceOrientationExtensions.OrientedDimensions, then fails MalformedSource on a mismatch - the adapter uses the identical mapping and extensions, guaranteeing parity.",
+    "docs/implementation/phase-4/phase-review.json finding 2 (Color-profile fail-closed boundary): its recommended action targets the host source adapter and offers 'restrict accepted source content types to inspected containers'; the adapter implements exactly that with PNG/JPEG signature detection and no renderer change."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true,
+  "summary": "Task 5.3 is independently APPROVED. The adapter is well-scoped and correctly separates the Jellyfin-free host-neutral core (IArtworkSourceReader/ArtworkSourceReader, SourceImageDescriptor) from the single MediaBrowser.* implementation (JellyfinArtworkImageAccess), with the injectable IArtworkImageAccess seam. It reads the unindexed Primary (index 0) surface, maps Present/Absent/Failed to a bounded result, enforces the OperationalLimits source byte and decoded-dimension bounds, detects the container from magic bytes (not extension), computes SHA-256/byte length, derives post-orientation display dimensions with the exact renderer mapping, and can build both a valid SourceImageInput and the task 5.2 ActiveImageIdentity from one bounded read with no path/entity/DTO/credential leakage. Content-type confinement to PNG/JPEG signatures genuinely closes the carried-forward Phase 4 MEDIUM finding for the supported source path without touching the renderer. DI registration is lazy (no startup work) and the lifetime is singleton; the only caveat is captured limits that would go stale on a runtime configuration replacement (safe and consistent with the existing StateRepository pattern). Build is clean (0 warnings/0 errors) and all counts were reproduced: default 740/49/789, forced-native 813/6/819, focused 61/4/65 default and 72/0/72 forced. Guard honesty was independently confirmed: the native-guarded cases fail (not silently pass) when ARRTAGS_SKIA_COMPAT=1 is set without the pinned native runtime. Scope is correct: no packaging (5.4), publication/SaveImage (5.5), ArtworkOperation journal (5.6), reconciliation (5.7), pipeline preservation (5.8), lifecycle fencing (5.9), Enhanced coexistence (5.10), route/client tests (5.11), RenderVersion change, ADR change, or lock-file change is present. Docs (PLANS, README, architecture, changelog, readiness, research) are accurate. No blockers or required changes."
+}

@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants) and 5.2 (source-artwork provenance and guarded restoration state) are complete; the remaining Phase 5 tasks are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), and 5.3 (the Jellyfin host source adapter) are complete; the remaining Phase 5 tasks are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -75,8 +75,13 @@ test and a host-guarded route/authorization test. Task 5.2 is complete: the
 provider-neutral source-artwork provenance and guarded restoration state model,
 its pure logical transitions, the content-addressed authoritative source-artifact
 store, and the authoritative `PublishedArtworkState` persistence are implemented
-and covered by focused tests. The remaining Phase 5 tasks (5.3 through 5.11 in
-the authoritative order) are not started.
+and covered by focused tests. Task 5.3 is complete: the plugin-owned Jellyfin host
+source adapter reads the unindexed `Primary` image through the pinned 12.0.0 read
+surface, confines accepted source containers to the PNG/JPEG profiles the renderer
+inspects, derives the post-orientation display dimensions from the exact bytes,
+and supplies the renderer's `SourceImageInput` plus the task 5.2
+`ActiveImageIdentity` from one bounded read. The remaining Phase 5 tasks (5.4
+through 5.11 in the authoritative order) are not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -125,7 +130,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1337,7 +1342,7 @@ provenance and coexisting with Jellyfin Enhanced.
   route variants.
 - [x] 5.2 Implement source-artwork provenance and guarded restoration state
   before publishing derived artwork.
-- [ ] 5.3 Implement the Jellyfin host source adapter that reads the unindexed
+- [x] 5.3 Implement the Jellyfin host source adapter that reads the unindexed
   `Primary` source image and supplies the Phase 4 renderer's `SourceImageInput`
   bytes, content type, dimensions, and hash; keep Jellyfin access out of the
   renderer (ADR-010).
@@ -1461,6 +1466,42 @@ state invariants, every transition, artifact round-trip/integrity/traversal/
 atomic-promotion/no-cache-eviction behavior, and authoritative persistence and
 quarantine. No ADR, `RenderVersion`, renderer behavior, or existing passing
 behavior was changed.
+
+**Task 5.3 status:** Complete. The plugin-owned, host-neutral Jellyfin host
+source adapter is implemented in `src/ArrTags/Artwork`. `IArtworkSourceReader`
+returns an `ArtworkSourceReadResult` that carries presence, the exact bounded
+source bytes, the confined content type, byte length, content SHA-256, the
+post-orientation display dimensions, and the Jellyfin identity fields, and it
+can construct both a valid `SourceImageInput` and the task 5.2
+`ActiveImageIdentity` from one read. `ArtworkSourceReader` is the host-neutral
+core: it enforces the V1 unindexed `Primary` surface, the `OperationalLimits`
+source byte and decoded dimension bounds, and the container confinement, and it
+maps every failure to a bounded reason without throwing. `JellyfinArtworkImageAccess`
+is the Jellyfin 12.0.0 implementation: it resolves the item through
+`ILibraryManager`, reads `BaseItem.GetImageInfo(ImageType.Primary, 0)`, converts a
+non-local image to a local file through the supported `ConvertImageToLocal`
+API when required, reads a bounded byte copy, and observes the image tag and
+modification time; all `MediaBrowser.*` references are confined to that file and
+`src/ArrTags/Rendering` remains Jellyfin-free. Oriented dimension handling is
+pinned: Jellyfin reports the pre-EXIF-orientation encoded dimensions
+(`SkiaEncoder.GetImageSize` returns `SKCodec.Info`), so `SourceImageDescriptor`
+derives the true display dimensions from the exact bytes with the pinned
+SkiaSharp 3.119.4 codec and `SourceOrientationExtensions`, guaranteeing parity
+with the renderer's own `EncodedOrigin` validation. Content-type confinement
+closes the carried-forward Phase 4 MEDIUM finding: only `image/png` and
+`image/jpeg` signatures are accepted and GIF, WebP, BMP, AVIF, and unrecognized
+bytes fail closed, so a malformed profile in an uninspected container can never
+be treated as sRGB; the renderer's `SourceColorProfile` was not modified.
+`IArtworkImageAccess` is the injectable host seam that makes the adapter testable
+without a live host. New tests (`ArtworkSourceReaderTests`,
+`ArtworkSourceContentTypeTests`, `JellyfinArtworkImageAccessTests`,
+`SourceImageDescriptorTests`, 65 cases with four native-guarded) cover present,
+absent, unsupported-surface, unsupported-container, oversized-byte,
+oversized-dimension, unreadable, hash/length/surface correctness, oriented
+dimensions, supported non-local conversion, and boundary-neutrality checks. The
+default suite passes 740 with 49 guarded skips (789 total) and the forced native
+suite passes 813 with 6 skips (819 total), with 0 warnings and no regressions. No
+ADR, `RenderVersion`, renderer behavior, or existing passing behavior was changed.
 
 **Acceptance criteria:**
 

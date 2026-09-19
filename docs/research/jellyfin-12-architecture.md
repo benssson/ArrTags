@@ -438,6 +438,49 @@ poster surfaces (`Primary` with a non-zero index, `Thumb`, `Backdrop`, `Logo`,
 source-capture targets. `Series` and `Season` remain structural and are not
 badge surfaces.
 
+#### Source capture: container confinement and oriented dimensions (task 5.3)
+
+The host source adapter added by task 5.3 reads the selected surface with the
+confirmed read surface above: `BaseItem.GetImageInfo(ImageType.Primary, 0)`,
+`ILibraryManager.ConvertImageToLocal(item, info, 0, removeOnFailure: false)` when
+`ItemImageInfo.IsLocalFile` is false, and a bounded read of the resolved local
+path. The evidence sources are the pinned 12.0.0 assemblies and the pinned
+`Jellyfin.Api/Controllers/ImageController.cs` `GetImageInternal` read path, which
+uses the same `ConvertImageToLocal` call.
+
+Two host behaviors that the adapter must handle are pinned from the pinned
+source:
+
+- **Dimensions are pre-orientation.** `IImageProcessor.GetImageDimensions(item,
+  info)` falls back to the file path and returns `IImageEncoder.GetImageSize`;
+  the pinned `src/Jellyfin.Drawing.Skia/SkiaEncoder.cs` `GetImageSize`
+  implementation returns `SKCodec.Info.Width`/`Height`, which are the encoded
+  dimensions before EXIF orientation, while `SKCodec.EncodedOrigin` is reported
+  separately. The renderer resolves orientation before layout and validates the
+  supplied `SourceImageInput.OrientedWidth`/`OrientedHeight` against
+  `SKCodec.EncodedOrigin` (`src/ArrTags/Rendering/SkiaBadgeRenderer.cs`). The
+  adapter therefore derives the post-orientation display dimensions from the exact
+  bytes with `SourceImageDescriptor` (the pinned `SkiaSharp 3.119.4` codec) and
+  `SourceOrientationExtensions.OrientedDimensions`, rather than trusting a raw or
+  cached Jellyfin dimension. This is fail-closed: bytes whose header cannot be
+  understood are not handed to the renderer, so a wrong oriented dimension is
+  never supplied. Item-type eligibility remains the caller's concern; this
+  adapter enforces only the unindexed `Primary` surface.
+- **Only PNG and JPEG containers are inspected for color profiles.** The
+  renderer's `SourceColorProfile.Inspect` recognizes PNG `iCCP` and JPEG `APP2`
+  profiles and returns `None` (treated as sRGB) for any other container. V1
+  source capture therefore accepts only the `image/png` and `image/jpeg`
+  signatures and fails closed for GIF, WebP, BMP, AVIF, and unrecognized bytes.
+  This closes the carried-forward Phase 4 MEDIUM finding so a malformed profile
+  in an uninspected container can never be silently treated as sRGB. The
+  renderer's `SourceColorProfile` is unchanged.
+
+The automated confirmation is `tests/ArrTags.Tests/ArtworkSourceReaderTests.cs`,
+`tests/ArrTags.Tests/ArtworkSourceContentTypeTests.cs`,
+`tests/ArrTags.Tests/JellyfinArtworkImageAccessTests.cs`, and
+`tests/ArrTags.Tests/SourceImageDescriptorTests.cs`. The valid decode cases need
+the pinned native runtime and are guarded like the other Skia tests.
+
 #### Still needing live-host validation
 
 The ABI names/signatures and route templates are confirmed from the pinned

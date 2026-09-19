@@ -2,8 +2,9 @@
 
 **Current milestone:** Phase 5 — Jellyfin artwork integration is in progress.
 Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
-and route variants) and 5.2 (source-artwork provenance and guarded restoration
-state) are complete; the remaining Phase 5 tasks are not started.
+and route variants), 5.2 (source-artwork provenance and guarded restoration
+state), and 5.3 (the Jellyfin host source adapter) are complete; the remaining
+Phase 5 tasks are not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -212,28 +213,55 @@ Completed in Phase 5 (Jellyfin artwork integration):
   `PublishedArtworkStateStoreTests`, 75 cases) cover the comparison rules, state
   invariants, every transition, artifact round-trip/integrity/traversal/atomic
   promotion/quota behavior, and authoritative persistence and quarantine.
+- 5.3 Implemented the plugin-owned Jellyfin host source adapter in
+  `src/ArrTags/Artwork`. `IArtworkSourceReader`/`ArtworkSourceReader` is the
+  host-neutral core that reads the current active representation through the
+  injectable `IArtworkImageAccess` seam, enforces the V1 unindexed `Primary`
+  surface and the `OperationalLimits` source byte and decoded dimension bounds,
+  confines accepted containers to PNG and JPEG so uninspected containers fail
+  closed, and returns an `ArtworkSourceReadResult` that builds both the
+  renderer's `SourceImageInput` and the task 5.2 `ActiveImageIdentity` from one
+  bounded read. `JellyfinArtworkImageAccess` resolves the item through
+  `ILibraryManager`, reads `BaseItem.GetImageInfo(ImageType.Primary, 0)`,
+  converts a non-local image to a local file through
+  `ILibraryManager.ConvertImageToLocal` when required, reads a bounded byte copy,
+  and observes the image tag and modification time; all `MediaBrowser.*`
+  references are confined to that implementation and `src/ArrTags/Rendering`
+  stays Jellyfin-free. Jellyfin reports the pre-EXIF-orientation encoded
+  dimensions, so `SourceImageDescriptor` derives the true display dimensions from
+  the exact bytes with the pinned SkiaSharp codec, matching the renderer's
+  `EncodedOrigin` validation. The V1 container confinement closes the
+  carried-forward Phase 4 MEDIUM finding without changing the renderer's
+  `SourceColorProfile`. New tests (`ArtworkSourceReaderTests`,
+  `ArtworkSourceContentTypeTests`, `JellyfinArtworkImageAccessTests`,
+  `SourceImageDescriptorTests`, 65 cases with four native-guarded) cover present,
+  absent, unsupported-surface, unsupported-container, oversized-byte,
+  oversized-dimension, unreadable, hash/length/surface correctness, oriented
+  dimensions, supported non-local conversion, and boundary-neutrality checks.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 679 automated tests; 45 additional environment-guarded tests (the task
+- Passes 740 automated tests; 49 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
-  including the non-canonical-golden placeholder, and the task 5.1 host route
-  cases) are skipped unless their environment guard is provided. With
-  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full 672-test suite
-  passes 666 with 6 skips (the five task 5.1 route cases and the non-canonical
-  golden placeholder); adding `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned
-  host passes 671 with only the non-canonical golden skip.
+  including the non-canonical-golden placeholder, the task 5.1 host route cases,
+  and the task 5.3 native source-decode cases) are skipped unless their
+  environment guard is provided. With `ARRTAGS_SKIA_COMPAT=1` and the pinned
+  native runtime the full 819-test suite passes 813 with 6 skips (the five task
+  5.1 route cases and the non-canonical golden placeholder); adding
+  `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host unskips the five route
+  cases and leaves only the non-canonical golden skip.
 
 Next tasks:
 
-- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1 and 5.2 are
-  complete; the next task in the authoritative Phase 5 execution order is 5.3
-  (the Jellyfin host source adapter that reads the unindexed `Primary` source
-  image and supplies the renderer's `SourceImageInput`).
+- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, and 5.3
+  are complete; the next task in the authoritative Phase 5 execution order is 5.4
+  (extend plugin packaging so the renderer's managed dependencies, Linux native
+  assets, dependency manifest, and Skia/font license notices are included in the
+  plugin zip and resolve under the host's plugin load context).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant
