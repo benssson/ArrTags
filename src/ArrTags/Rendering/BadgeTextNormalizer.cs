@@ -44,6 +44,40 @@ public static class BadgeTextNormalizer
         return NormalizedBadgeText.FromNormalized(truncated, true);
     }
 
+    /// <summary>
+    /// Shortens already-normalized text to a bounded number of leading Unicode
+    /// scalar values plus the truncation marker, using the same end-truncation
+    /// rule as <see cref="Normalize"/>. It is used for the layout-stage width
+    /// fit after the 24-scalar limit has already been applied. The marker is not
+    /// appended when the text already fits within the requested scalar count, and
+    /// a surrogate pair is never split.
+    /// </summary>
+    /// <param name="text">The already-normalized text. It is never mutated.</param>
+    /// <param name="retainedScalarValues">The number of leading scalar values to retain, at least one.</param>
+    /// <param name="ellipsis">The truncation marker, which must not be empty.</param>
+    /// <returns>The shortened text, or the original text when it already fits.</returns>
+    /// <exception cref="ArgumentNullException">The text or marker is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The retained scalar count is not positive.</exception>
+    /// <exception cref="ArgumentException">The marker is empty.</exception>
+    public static string Shorten(string text, int retainedScalarValues, string ellipsis)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(ellipsis);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(retainedScalarValues);
+
+        if (ellipsis.Length == 0)
+        {
+            throw new ArgumentException("The truncation marker must not be empty.", nameof(ellipsis));
+        }
+
+        if (CountScalarValues(text) <= retainedScalarValues)
+        {
+            return text;
+        }
+
+        return TruncateToScalarValues(text, retainedScalarValues, ellipsis);
+    }
+
     private static void ValidatePolicy(RenderOutputPolicy policy)
     {
         if (policy.MaximumScalarValues <= 0)

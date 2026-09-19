@@ -5,7 +5,8 @@
 4.3 (unknown-versus-confirmed-negative semantics), 4.4 (render request and
 result fingerprints), 4.5 (image and text limit enforcement), 4.7 (pinned
 SkiaSharp stack, embedded DejaVu Sans Bold 2.37 font, and shipped license
-notices), and 4.8 (SkiaSharp host-compatibility spike) are complete.
+notices), 4.8 (SkiaSharp host-compatibility spike), and 4.9 (provider-neutral
+renderer service and drawing engine) are complete.
 Milestone 3 is complete (tasks 3.1 through
 3.8; acceptance criteria satisfied and Gate 3 met).
 
@@ -95,20 +96,35 @@ Completed in Phase 4 (Badge rendering):
   place the managed and root-level native SkiaSharp assets in the plugin folder.
   `HarfBuzzSharp` is confirmed unnecessary for ADR-009's labels. Evidence is in
   `docs/research/skia-host-compatibility.md`.
+- 4.9 Provider-neutral renderer service and drawing engine (ADR-009/ADR-010):
+  `SourceImageInput`, the minimal `BadgeDefinition` snapshot with its code-owned
+  V1 default, `RenderRequest`, the bounded three-variant `RenderResult`,
+  `IRenderer`/`SkiaBadgeRenderer`, the pure `BadgeLayoutEngine`/`BadgeGeometry`/
+  `BadgeContrast` helpers, and `BadgeTextNormalizer.Shorten`. The renderer
+  resolves the ordered `BadgeSelection` through the existing selector resolver,
+  enforces the source/output limits and contrast before decode, applies EXIF
+  orientation, packs the two-row/three-pill bottom-left rail and the top-right
+  `UPGRADE` status pill, and encodes a deterministic fixed-settings
+  non-interlaced 8-bit sRGB PNG (RGB for opaque output, straight-alpha RGBA
+  otherwise with canonical transparent-pixel RGB). Cancellation is checked at
+  each documented checkpoint and never yields a partial artifact or mutates the
+  source. The renderer is a pure library and is not yet wired to plugin
+  configuration, DI, providers, or Jellyfin (tasks 4.6, 4.10, and 4.11 remain).
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 439 automated tests; one additional environment-guarded SkiaSharp
-  native compatibility test is skipped unless `ARRTAGS_SKIA_COMPAT=1` and the
-  pinned native runtime are provided.
+- Passes 514 automated tests; ten additional environment-guarded SkiaSharp
+  tests (the task 4.8 round trip and the nine task 4.9 render cases) are skipped
+  unless `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime are provided. With
+  that environment the full 524-test suite passes.
 
 Next tasks:
 
 - Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks in the authoritative execution order 4.9, 4.6, 4.10, 4.11, beginning
-  with task 4.9 (the provider-neutral renderer service and drawing engine). Task
-  4.6 (renderer behavior tests) follows the renderer implementation and assets
-  it exercises; it was reordered after task 4.9.
+  tasks in the authoritative execution order 4.6, 4.10, 4.11. Task 4.6 (renderer
+  behavior tests) exercises the now-implemented contract and assets; task 4.10
+  adds the immutable renderer configuration model and fingerprint; task 4.11 adds
+  golden-image and cross-runtime determinism tests.

@@ -52,9 +52,10 @@ poster layout, typography, contrast, text bounds, PNG output, scaling, and
 pass-through behavior are fixed for implementation. Phase 4 is in progress:
 tasks 4.1 (metadata selectors), 4.2 (rendering specification), 4.3
 (unknown-value semantics), 4.4 (fingerprints), 4.5 (limit enforcement), 4.7
-(pinned assets and font), and 4.8 (SkiaSharp host-compatibility spike) are
-complete. The renderer service and drawing engine (4.9), behavior tests (4.6),
-configuration (4.10), and golden/determinism tests (4.11) remain incomplete.
+(pinned assets and font), 4.8 (SkiaSharp host-compatibility spike), and 4.9
+(provider-neutral renderer service and drawing engine) are complete. Behavior
+tests (4.6), configuration (4.10), and golden/determinism tests (4.11) remain
+incomplete.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -905,7 +906,7 @@ Radarr, or Jellyfin artwork storage.
   whether the plugin resolves that shared version or needs its own isolated
   copy, and prove one decode/draw/encode round trip on the pinned Linux runtime
   before building the drawing engine (ADR-010).
-- [ ] 4.9 Implement the provider-neutral renderer service and drawing engine: the
+- [x] 4.9 Implement the provider-neutral renderer service and drawing engine: the
   `RenderAsync`/`RenderRequest`/`SourceImageInput`/`RenderResult` contract,
   ADR-009 selectors, priority, rail layout, typography, truncation, and
   contrast, and the ADR-010 sRGB PNG encode, alpha, and metadata policy
@@ -1043,6 +1044,50 @@ so the 4.7 omission stands. Findings, evidence, and exact commands are recorded
 in `docs/research/skia-host-compatibility.md`. Default `./build.sh test` passes
 with 0 warnings and 439 passing tests plus 1 environment-guarded skip; the forced
 native run passes both compatibility cases.
+
+**Task 4.9 status:** Complete. The provider-neutral renderer service and the
+SkiaSharp drawing engine are implemented in `src/ArrTags/Rendering` under
+ADR-009 and ADR-010. `SourceImageInput` is an immutable, bounded descriptor
+carrying the exact source bytes (copied), content type, oriented dimensions, and
+a verified non-empty SHA-256 identity, with no path, Jellyfin entity, provider
+DTO, credential, or mutable image object. `BadgeDefinition` is the minimal
+provider-neutral snapshot (selector, enabled flag, one bounded template) with a
+code-owned V1 default that enables every selector, uses `{value}` for technical
+templates, and uses the fixed `UPGRADE` status text; it is not yet persisted into
+plugin configuration (task 4.10). `RenderRequest` carries the source, canonical
+`MediaIdentity`/`MediaMatch`, optional `BadgeMetadata`, the ordered definition
+snapshot, the output policy, the accepted operational limits (cloned), the
+secret-free configuration fingerprint, and both versions. `RenderResult` is one
+of three bounded variants: rendered (complete PNG artifact, `image/png`, oriented
+dimensions, output hash, deterministic output fingerprint), pass-through, or
+failed with exactly one safe reason code and never a partial artifact.
+
+`IRenderer.RenderAsync` is served by `SkiaBadgeRenderer`. It resolves the ordered
+`BadgeSelection` through `BadgeSelectorResolver` (never branching on provider
+kind), enforces the source byte/dimension and derived-output limits before
+decode, validates the palette contrast, decodes with SkiaSharp, applies EXIF
+orientation to pixels before layout, detects meaningful alpha, packs the
+bottom-left two-row/three-pill rail and the independent top-right status pill
+using `BadgeLayoutEngine`, and encodes a fixed-settings non-interlaced 8-bit
+sRGB PNG with RGB for opaque output and RGBA (straight alpha, canonical
+transparent-pixel RGB) otherwise. `BadgeGeometry` holds the ADR-009 reference
+geometry (24 px inset, 8 px pill/row gaps, 48 px pill height, 8 px radius, 12/7
+px padding, 28 px font) and the `clamp(width / 1000, 0.5, 4.0)` scale;
+`BadgeTextNormalizer.Shorten` supplies the layout-stage end-truncation rule; and
+the status/technical rail never paint outside the safe area on a short poster.
+Cancellation is checked before decode, after decode, between layout and drawing,
+and before finalization; a cancellation or exception discards all partial output
+and never mutates the source bytes. The renderer output is deterministic: the
+same request produces identical bytes, output hash, and output fingerprint.
+
+Default `./build.sh test` passes with 0 warnings and 514 passing tests plus 10
+environment-guarded Skia skips; with `ARRTAGS_SKIA_COMPAT=1` and the pinned
+sysroot on the loader path the full suite passes all 524 tests, including the
+nine real decode/draw/encode render cases (RGB/RGBA dimensions and channels,
+source-alpha preservation, palette placement, sRGB/metadata chunks, EXIF
+orientation, unsupported-input failure, source immutability, and byte
+determinism). The dedicated behavior matrix (4.6), the renderer configuration
+model (4.10), and golden/cross-runtime determinism tests (4.11) remain.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

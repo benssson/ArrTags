@@ -1,0 +1,80 @@
+{
+  "task": "4.9",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "resolved",
+      "title": "Width-fitting truncation exceeded the ADR-009 24-scalar hard limit (fixed and verified)",
+      "acceptance_criterion": "2 (drawing engine / typography / truncation) and ADR-009 'Text limits and truncation'",
+      "original_defect": "BadgeLayoutEngine.FitToWidth tried retained prefixes up to scalarCount-1 without capping against the policy scalar limit, so a 24-scalar over-wide label could be emitted as 25 or 26 scalars (including '...').",
+      "fix_verified": "FitToWidth (src/ArrTags/Rendering/BadgeLayoutEngine.cs:238-274) now computes maximumRetained = policy.MaximumScalarValues - CountScalarValues(policy.Ellipsis), returns null (omission) when maximumRetained < 1, and bounds the loop to Math.Min(scalarCount - 1, maximumRetained). Every candidate is therefore retained + ellipsisScalarCount <= MaximumScalarValues, and the early-return path returns already-normalized text that is <= the limit. The same bounded FitToWidth is used by both the technical rail and the status pill.",
+      "independent_reproduction": [
+        "Real bundled DejaVu Sans Bold 2.37, reviewer's original 16xU+0057 + 8xU+1671 (U+1671 = 56px at 28px, full label 944px > maxTextWidth 928, width 1000): final pill text is now scalarCount=24 ('16 W + 5 U+1671 + ...'), width 809 <= 928. Before the fix this same case produced 26 scalars.",
+        "Pure synthetic over-wide case ('a'*22 + 'WW', W=100/other=41/'.'=2, width 1000): final text is now 24 scalars, not the previous 25.",
+        "Status-pill path with the same over-wide label is also bounded to 24 scalars.",
+        "Within-limit label '1080p' is returned unchanged (no ellipsis, no regression).",
+        "Under heavy width pressure the label shortens further (11 scalars in the probe; the regression test asserts < 24).",
+        "A label that cannot produce a visible label at all is omitted (empty layout).",
+        "New regression tests WidthFittingKeepsFinalTextWithinTheAdr009ScalarLimit and WidthFittingStillShortensFurtherUnderMoreWidthPressure cover the 24-scalar bound and further shortening and would have failed against the pre-fix loop."
+      ],
+      "owned_by_task_4_9": true,
+      "resolved": true
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "title": "Present-but-unparseable ICC profile is not rejected fail-closed (deferred to 4.11, unchanged)",
+      "acceptance_criterion": "4 (ADR-010 sRGB / color handling)",
+      "description": "ADR-010 requires an invalid or unsupported embedded profile to fail closed. SkiaBadgeRenderer relies on Skia's decode into an sRGB destination; an independent probe with a correctly-CRC'd but garbage iCCP chunk still decoded successfully as sRGB rather than failing.",
+      "assessment": "Confirmed real divergence, but the malformed/unsupported-profile rejection assertions are explicitly scoped to the ADR-010 PNG-contract tests (task 4.11), so it is acceptable to defer for 4.9 as directed. The orchestrator must ensure 4.11 (or a follow-up implementation task) actually delivers fail-closed profile rejection, because 4.11 is described as a test task. Not a 4.9 blocker.",
+      "owned_by_task_4_9": false,
+      "deferred_to": "4.11"
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "title": "RenderAsync throws ArgumentNullException for a null request (left unchanged, as directed)",
+      "acceptance_criterion": "1 ('IRenderer.RenderAsync ... no throw for invalid input')",
+      "description": "The null-request guard is conventional, documented in IRenderer, and covered by SkiaBadgeRendererDecisionTests.NullRequestIsRejected. Content-level invalid input is correctly returned as a bounded Failed/PassThrough result. Not a blocker.",
+      "owned_by_task_4_9": false
+    },
+    {
+      "id": "F4",
+      "severity": "resolved",
+      "title": "RenderRequest did not snapshot the BadgeDefinition list (fixed and verified behavior-preserving)",
+      "acceptance_criterion": "1 (ordered BadgeDefinition/policy snapshot)",
+      "fix_verified": "RenderRequest now copies the supplied definitions into a new List<BadgeDefinition> and exposes a ReadOnlyCollection (definitions.AsReadOnly()). The observable read behavior, ordering, count validation, and null-entry behavior are unchanged; no test compares BadgeDefinitions by reference, and the full suite passes. This closes the minor mutability gap noted in the first review.",
+      "owned_by_task_4_9": true,
+      "resolved": true
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "title": "Verified positives (unchanged)",
+      "description": "RGB (color type 2) for opaque output and RGBA (color type 6) for meaningful-alpha output; straight/unpremultiplied alpha (independently probed); canonical transparent RGB; sRGB declaration with no tIME/tEXt/zTXt/iTXt/eXIf chunks; orientation applied before layout with descriptor mismatch rejected as MalformedSource; source bytes not mutated; byte/hash/fingerprint determinism; source/output limits and contrast enforced before decode; bounded Failed for unsupported/corrupt input and cancellation; pass-through decisions; no provider-kind branch and no Jellyfin/DI/configuration/publication wiring."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore -> up-to-date, no lock-file changes.",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test -> Passed 514, Skipped 10, Total 524 (independently reproduced; the two new layout regressions account for 524 vs the prior 522).",
+    "./build.sh package -> Build succeeded, 0 warnings / 0 errors; artifacts/ArrTags_0.1.0.0.zip = 473,759 bytes.",
+    "Forced native render filter (pinned sysroot + ARRTAGS_SKIA_COMPAT=1): SkiaBadgeRendererRenderTests -> Passed 9, Failed 0, Skipped 0.",
+    "Forced native full suite with the pinned environment -> Passed 524, Failed 0, Skipped 0.",
+    "Guard honesty (re-confirmed structure): SkiaNativeFactAttribute skips only when ARRTAGS_SKIA_COMPAT != 1; when forced without the pinned native runtime the same tests fail 9/9 (DllNotFoundException on libfontconfig.so.1) rather than silently passing.",
+    "Independent real-font probe of corrected BadgeLayoutEngine.FitToWidth: 24-scalar over-wide label -> 24 scalars; within-limit label unchanged; heavy pressure shortens further; unfittable value omitted; status-pill path bounded to 24.",
+    "Static inspection of the corrected BadgeLayoutEngine.FitToWidth and RenderRequest constructor, and of the two new BadgeLayoutTests regressions.",
+    "Build artifacts confirmed newer than the corrected sources (ArrTags.dll rebuilt after the 01:56 edits)."
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-009 (text limits, truncation, final visible text <= 24 Unicode scalar values; two-row/three-pill rail; status pill; contrast) and ADR-010 (sRGB/profile policy, host/renderer contract, cancellation, testing strategy).",
+    "PLANS.md authoritative Phase 4 order and updated task 4.9 status/counts; README.md and docs/changelog.md updated counts (514 + 10 = 524; 524 forced).",
+    "docs/research/skia-host-compatibility.md pinned runtime command and SkiaNativeFactAttribute guard.",
+    "DejaVu Sans Bold 2.37 metrics (MaxCharacterWidth 2.0em; U+1671 = 56px at 28px) establishing the over-wide reproduction.",
+    "git status/history scope: only intended task-4.9 files plus the pre-existing unstaged .opencode/agents/*.md edits; no staged changes; no changes to docs/decisions.md, RenderVersion, csproj, packages.lock.json, build.yaml, Directory.Build.props, or global.json; no 4.6/4.10/4.11/Phase-5 code or wiring."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

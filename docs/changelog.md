@@ -402,10 +402,43 @@ renderer implementation tasks (4.6 through 4.11) follow.
   commands, and the Phase 5 validation list are in
   `docs/research/skia-host-compatibility.md`.
 
-Build and test: Task 4.8 adds the two compatibility tests and the evidence doc.
-Build and test pass with 0 warnings and 439 passing tests plus 1
-environment-guarded skip (440 total); the forced native run with
-`ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot on the loader path passes both
-compatibility cases. `./build.sh package` produced
-`artifacts/ArrTags_0.1.0.0.zip` with the same contents as 4.7. Tasks 4.9, 4.6,
-4.10, and 4.11 remain. Gate 4 is not yet met.
+- Task 4.9 (`src/ArrTags/Rendering/`, `tests/ArrTags.Tests/`): the
+  provider-neutral renderer service and drawing engine (ADR-009 and ADR-010).
+  The contract adds `SourceImageInput` (immutable, verified-SHA-256 source
+  descriptor with content type and oriented dimensions), the minimal
+  `BadgeDefinition` snapshot with a code-owned V1 default (all selectors enabled,
+  `{value}` technical templates, fixed `UPGRADE` status text),
+  `BadgeDefinitionResolver` (wraps `BadgeSelectorResolver` and applies the
+  bounded templates), `RenderRequest`, the three-variant `RenderResult`
+  (rendered/pass-through/failed) with `RenderStatus`, `RenderPassThroughReason`,
+  and `RenderFailureReason`, and the `IRenderer` boundary. `SkiaBadgeRenderer`
+  implements the real SkiaSharp decode/draw/encode path: it revalidates the
+  bounded request, enforces the source/output limits and the 4.5:1 contrast
+  policy before decode, loads the embedded DejaVu Sans Bold bytes with no host
+  font fallback, applies EXIF orientation to pixels before layout, packs the
+  bottom-left two-row/three-pill rail and the independent top-right status pill
+  via the pure `BadgeLayoutEngine`, and encodes a fixed-settings non-interlaced
+  8-bit sRGB PNG with RGB for opaque output and straight-alpha RGBA otherwise
+  (canonical transparent-pixel RGB). `BadgeGeometry` owns the ADR-009 reference
+  geometry and scale, `BadgeContrast`/`RgbColor` own the WCAG validation,
+  `SourceOrientation`/`SourceOrientationExtensions` own the pure orientation
+  dimensions, `SkiaOrientation` owns the internal pixel transform, and
+  `BadgeTextNormalizer.Shorten` adds the layout-stage end-truncation rule. The
+  renderer never branches on provider kind, never paints outside the safe area
+  (including short posters), checks cancellation at each documented checkpoint,
+  never returns a partial artifact, and never mutates the source bytes. New
+  tests: `BadgeLayoutTests`, `BadgeContrastTests`, `BadgeDefinitionTests`,
+  `RenderResultTests`, `RenderRequestTests`, `SourceOrientationTests`,
+  `SkiaBadgeRendererDecisionTests` (unguarded decisions), and the
+  environment-guarded `SkiaBadgeRendererRenderTests` (nine real render cases,
+  including RGB/RGBA format, source-alpha preservation, palette placement,
+  sRGB/metadata chunks, EXIF orientation, unsupported input, source
+  immutability, and byte determinism).
+
+Build and test: Task 4.9 adds the renderer service, drawing engine, and tests.
+Build and test pass with 0 warnings and 514 passing tests plus 10
+environment-guarded Skia skips (524 total); the forced native run with
+`ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot on the loader path passes all 524
+tests, including the nine task 4.9 render cases and the task 4.8 round trip.
+`./build.sh package` produced `artifacts/ArrTags_0.1.0.0.zip` with the same
+contents as 4.7. Tasks 4.6, 4.10, and 4.11 remain. Gate 4 is not yet met.

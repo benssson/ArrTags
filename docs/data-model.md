@@ -531,6 +531,20 @@ active artwork unchanged.
 | `passThroughReason` | Safe reason code | Optional | Generated | Used for diagnostics and metrics without exposing provider secrets. |
 | `expiresAt` | Timestamp | Optional | Cache policy/generated | Applies when the result is cacheable. |
 
+**Phase 4 implementation note:** The provider-neutral renderer service (task
+4.9, ADR-010) implements the 3.6-3.8 contract in `src/ArrTags/Rendering`. The V1
+`BadgeDefinition` snapshot is deliberately minimal for this phase (selector,
+enabled flag, and one bounded `{value}` template); the remaining definition,
+style, placement, and visibility fields are configuration-surfaced in task 4.10.
+`BadgeDefinitionResolver` applies the bounded templates on top of the existing
+`BadgeSelectorResolver`, so semantic priority remains code-owned. `RenderResult`
+has three bounded variants: `Rendered` (complete PNG artifact plus content type,
+oriented dimensions, output hash, and output fingerprint), `PassThrough`, and
+`Failed` with exactly one safe reason code; `NotEligible` and `CacheHit` remain
+conceptual policy states handled outside the renderer. `SourceImageInput` is
+the bounded, read-only bytes descriptor defined by ADR-010; the Jellyfin host
+adapter that supplies it remains Phase 5 work.
+
 ### 3.9 MetadataCacheEntry
 
 **Purpose:** A versioned, restart-safe logical cache record for a match and its
