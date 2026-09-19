@@ -76,6 +76,19 @@ If the authoritative execution order conflicts with task numbering, the executio
 
 If no authoritative execution order exists, fall back to the ordered task list defined in `PLANS.md`.
 
+### Authoritative Execution Order Invariant
+
+For every implementation phase, the orchestrator must use the phase's **Authoritative Execution Order** as the canonical scheduler.
+
+Task identifiers are stable references only.
+
+Before selecting work, verify that:
+
+* every task in the phase appears exactly once in the execution order,
+* every execution-order entry refers to a valid task,
+* dependency references are internally consistent.
+
+If the execution order is missing or inconsistent, stop and report a planning error rather than selecting a task.
 
 ## Worker Delegation
 
