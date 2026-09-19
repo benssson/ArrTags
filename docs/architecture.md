@@ -444,6 +444,18 @@ cache directly. It may use the supported item-image APIs to publish a derived
 active image. The original source must remain recoverable through plugin-owned
 provenance state.
 
+Task 5.5 implements this flow as a provider-neutral `ArtworkPublisher` driving a
+host-neutral `IArtworkImageWriter` whose single Jellyfin implementation uses the
+supported stream `SaveImage` overload with the durable derived bytes and then
+`UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, ...)`. ArrTags selects the
+overload and supplies plugin-owned bytes; it does not choose or write the
+destination path itself. Jellyfin's own `ImageSaver` decides where the bytes are
+stored (its internal metadata path, or the media folder when the library's
+`SaveLocalMetadata` option is enabled), which is Jellyfin's supported API
+behavior rather than a direct ArrTags write. The filesystem-path overload is
+never used because it deletes its source file, and URL overloads are never used
+for derived bytes.
+
 The exact Jellyfin `12.0.0` publication/read ABI, the standard item-image route
 variants, the read/write authorization split, and the confirmed cache/resize
 ownership are pinned in

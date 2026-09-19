@@ -278,13 +278,53 @@ Completed in Phase 5 (Jellyfin artwork integration):
   redaction, every legal/illegal phase transition, the fence decisions,
   restart durability, generation fencing, one-non-terminal-per-subject,
   quarantine, and retention.
+- 5.5 Implemented the single-subject durable publication orchestration in
+  `src/ArrTags/Artwork` (ADR-002/ADR-003; `docs/architecture.md` section 9 steps
+  4-10). `IArtworkImageWriter` is the host-neutral mutation boundary and
+  `JellyfinArtworkImageWriter` is its only implementation: it resolves the item
+  through `ILibraryManager`, uses the supported `IProviderManager.SaveImage`
+  stream overload with the durable derived bytes and `image/png`, and then calls
+  `BaseItem.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, ...)` exactly like
+  the standard item-image controller. It never writes a media-folder poster,
+  Jellyfin's image cache, or an item-image path directly, never uses the
+  filesystem-path overload that deletes its source, and never uses a URL
+  overload; all `MediaBrowser.*` references for publication stay in that one file
+  and `src/ArrTags/Rendering` remains Jellyfin-free. `ArtworkPublisher` reads the
+  authoritative `PublishedArtworkState`, captures and retains the exact source
+  baseline (or an explicit absent baseline) through `IArtworkSourceReader` and
+  `SourceArtifactStore`, promotes the validated render output to a durable derived
+  artifact, persists a `Prepared` `ArtworkOperation` before any mutation,
+  revalidates the before identity immediately before mutation (a mismatch or
+  unobservable identity never calls `SaveImage` and marks the operation `Aborted`;
+  a previously published session also persists the ownership outcome
+  `OwnershipLost`/`OwnershipUnknown`, while an initial capture persists no
+  `PublishedArtworkState`), advances durably through `MutationStarted`,
+  `RepositoryUpdateStarted`, `VerificationPending`, and `FinalizationPending`,
+  and commits the final `PublishedArtworkState` with a new publication token,
+  active identity, state revision, and operation id (retaining the source artifact
+  and ownership token) before marking the operation `Committed`. Failures and
+  uncertainties leave the current artwork unchanged, record a bounded
+  non-secret diagnostic, and never mark the operation committed; a pre-existing
+  non-terminal or recovery-blocked operation blocks new work. Repeat publication
+  verifies the prior publication is still active, reuses the first source artifact
+  and ownership token, and issues a new publication token, so an ArrTags output
+  is never captured as a new source. The publisher is registered with the existing
+  lazy DI pattern and adds no event, queue, or library-scan wiring (Phase 6 drives
+  it).
+  New tests (`ArtworkPublisherTests`, `JellyfinArtworkImageWriterTests`, 23 cases)
+  cover the happy path and durable phase ordering, absent baseline, mismatch and
+  unobservable aborts, readback mismatch and update failure, repeat publication,
+  ownership-lost and non-terminal blocking, bounded cancellation,
+  derived-artifact rejection, state hygiene, the stream overload (not the
+  deleting path or URL overload), the normal image update flow, and
+  boundary-neutrality.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 849 automated tests; 49 additional environment-guarded tests (the task
+- Passes 872 automated tests; 49 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, the task 5.1 host route cases,
@@ -299,9 +339,9 @@ The plugin:
 Next tasks:
 
 - Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3,
-  5.4, and 5.6 are complete; the next task in the authoritative Phase 5
-  execution order is 5.5 (publish completed artwork through Jellyfin's supported
-  item-image APIs).
+  5.4, 5.6, and 5.5 are complete; the next task in the authoritative Phase 5
+  execution order is 5.7 (reconcile uncertain `SaveImage`, item update, and
+  provenance persistence outcomes by postcondition).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

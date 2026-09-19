@@ -958,3 +958,76 @@ and `./build.sh test` pass. The default suite passes 849 with 49
 environment-guarded skips (898 total), exactly +101 over the task 5.4 baseline
 (748/49/797 with the package present), with no regressions. No ADR,
 `RenderVersion`, renderer behavior, or existing passing behavior was changed.
+
+### Task 5.5 - Publish completed artwork through the supported item-image APIs
+
+Task 5.5 implements the provider-neutral single-subject publication
+orchestration and the single Jellyfin image-mutation implementation in
+`src/ArrTags/Artwork` (ADR-002/ADR-003; `docs/architecture.md` section 9 steps
+4-10). It consumes the task 5.2 provenance state and source-artifact store, the
+task 5.3 host source adapter, and the task 5.6 durable `ArtworkOperation`
+journal. It does not implement the task 5.7 recovery decision table or the task
+5.9 lifecycle fencing.
+
+- `src/ArrTags/Artwork/ArtworkImageMutationResult.cs`: the bounded outcome of one
+  supported image-save or item-update call (`Succeeded`, `ItemNotFound`,
+  `UnsupportedSurface`, `InvalidContent`, `Failed`), with a redacted/bounded
+  reason and no path or entity.
+- `src/ArrTags/Artwork/IArtworkImageWriter.cs`: the injectable host-neutral
+  mutation boundary, mirroring `IArtworkImageAccess`. It exposes the image save
+  and the normal item update as separate calls so the caller can persist the
+  intervening durable phases.
+- `src/ArrTags/Artwork/JellyfinArtworkImageWriter.cs`: the single Jellyfin
+  12.0.0 implementation. It uses the supported
+  `IProviderManager.SaveImage(BaseItem, Stream, string, ImageType, int?,
+  CancellationToken)` stream overload with the durable derived bytes and
+  `image/png`, then `BaseItem.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate,
+  ...)`, matching the standard item-image controller. It never writes a
+  media-folder poster, Jellyfin's image cache, or an item-image path directly and
+  never uses the filesystem-path overload (which deletes its source) or a URL
+  overload. All `MediaBrowser.*` references for publication are confined here.
+- `src/ArrTags/Artwork/ArtworkPublicationRequest.cs`,
+  `ArtworkPublicationOutcome.cs`, and `ArtworkPublicationResult.cs`: the bounded
+  single-subject request and result. The request carries only the item, surface,
+  and completed render result, so a caller cannot inject a derived image as a new
+  source.
+- `src/ArrTags/Artwork/ArtworkPublisher.cs`: the host-neutral orchestration. It
+  serializes per item/surface, reads the authoritative `PublishedArtworkState`,
+  observes and retains the exact source baseline (or an explicit absent baseline)
+  through `IArtworkSourceReader` and `SourceArtifactStore`, promotes the
+  validated render output to a durable derived artifact, and writes a `Prepared`
+  `ArtworkOperation` before any image mutation. It revalidates the before identity
+  immediately before mutation and aborts without `SaveImage` on a mismatch or an
+  unobservable identity, marking the operation `Aborted`; a previously published
+  session also persists the ownership outcome (`OwnershipLost`/`OwnershipUnknown`),
+  while an initial capture persists no `PublishedArtworkState`. It durably
+  advances through `MutationStarted`, `RepositoryUpdateStarted`,
+  `VerificationPending`, and `FinalizationPending`, commits the final
+  `PublishedArtworkState` (new publication token, active identity, state revision,
+  operation id; retained source artifact and ownership token), and only then
+  marks the operation `Committed`. Failures and uncertainties leave the current
+  artwork unchanged, record a bounded non-secret diagnostic, and never commit;
+  a pre-existing non-terminal or recovery-blocked operation blocks new work. Repeat publication
+  verifies the prior publication is still active, reuses the first source
+  artifact and ownership token, issues a new publication token, and never captures
+  an ArrTags output as a source. No event, queue, or library-scan wiring is added.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers
+  `IArtworkImageWriter`, `SourceArtifactStore`, `PublishedArtworkStateStore`,
+  `ArtworkOperationStore`, and `ArtworkPublisher` with the existing lazy factory
+  pattern and no startup work.
+- Tests: `tests/ArrTags.Tests/ArtworkPublisherTests.cs` and
+  `tests/ArrTags.Tests/JellyfinArtworkImageWriterTests.cs` (23 cases) cover the
+  happy path with the durable phase ordering observed at the external calls,
+  absent baseline, before-identity mismatch and unobservable-before aborts with
+  no `SaveImage` call, readback mismatch and item-update failure not committing,
+  repeat-publication source/ownership-token reuse with a new publication token,
+  ownership-lost, stale-baseline, and non-terminal-operation blocking, bounded
+  cancellation, derived-artifact size and hash rejection, state path/secret
+  hygiene, the stream overload being used instead of the deleting path or URL
+  overload, the normal image update flow, and boundary-neutrality.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 872 with 49
+environment-guarded skips (921 total), exactly +23 over the task 5.6 baseline
+(849/49/898 with the package present), with no regressions. No ADR,
+`RenderVersion`, renderer behavior, or existing passing behavior was changed.

@@ -371,6 +371,13 @@ NuGet assemblies) and `tests/ArrTags.Tests/JellyfinImageRouteTests.cs`
   temporary file. Later Phase 5 tasks must choose the overload and the
   `saveLocallyWithMedia` value that keeps V1 from writing media-folder artwork;
   the exact host representation and read-back remain implementation validation.
+  **V1 choice (task 5.5):** ArrTags uses the stream overload with the durable
+  derived PNG bytes and never the filesystem-path overload, because the path
+  overload deletes its plugin-owned source file. ArrTags therefore does not
+  select or write the destination path; Jellyfin's `ImageSaver` owns it, and on a
+  library with `SaveLocalMetadata` enabled Jellyfin itself stores the published
+  bytes in the media folder through its supported API. This is Jellyfin's
+  supported behavior, not a direct ArrTags media-folder or cache write.
 - `ProviderManager.SaveImage(...)` is registered as the singleton
   `IProviderManager` in `ApplicationHost` (`AddSingleton<IProviderManager,
   ProviderManager>()`), so the interface is a confirmed supported plugin
@@ -489,10 +496,13 @@ not ABI uncertainty:
 
 - The exact on-disk representation `SaveImage` produces for the selected host
   configuration (local-metadata vs internal-metadata path) and the read-back
-  content hash equality after publication (ADR-002/ADR-003). `ImageSaver` may
-  save locally (`SaveLocalMetadata` library option) or under the item's internal
-  metadata path; V1 does not write media-folder artwork directly, so the
-  `saveLocallyWithMedia: false` overload semantics must be validated.
+  content hash equality after publication (ADR-002/ADR-003). V1 uses the stream
+  overload, which has no `saveLocallyWithMedia` parameter: Jellyfin's `ImageSaver`
+  itself chooses the destination from the library's `SaveLocalMetadata` option
+  (the media folder when enabled, otherwise the item's internal metadata path).
+  ArrTags neither selects nor writes that path and does not use the
+  filesystem-path overload, so the stream-overload storage representation and the
+  post-publication read-back equality remain host behavior to validate.
 - Multi-RID packaging and packaged-asset resolution (task 5.4).
 - End-to-end standard-route delivery of a published derived image (task 5.11).
 

@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), and 5.6 (the durable `ArtworkOperation` write-ahead record and store) are complete; the remaining Phase 5 tasks are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), and 5.5 (publish completed artwork through Jellyfin's supported item-image APIs) are complete; the remaining Phase 5 tasks (5.7 through 5.11) are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -89,8 +89,12 @@ under the plugin load context. Task 5.6 is complete: the durable provider-neutra
 `ArtworkOperation` write-ahead model, its phase and lifecycle-fence rules, and
 its generation-fenced authoritative store are implemented and covered by focused
 tests, so a complete publication/restoration intent can be persisted before any
-Jellyfin image mutation. The remaining Phase 5 tasks (5.5 and 5.7 through 5.11 in
-the authoritative order) are not started.
+Jellyfin image mutation. Task 5.5 is complete: the single-subject durable
+publication orchestration and the single Jellyfin image-mutation implementation
+are implemented in `src/ArrTags/Artwork`, driving the write-ahead ordering
+through the supported stream `SaveImage` and `UpdateToRepositoryAsync(ImageUpdate)`
+flow with a fail-closed revalidation and readback. The remaining Phase 5 tasks
+(5.7 through 5.11 in the authoritative order) are not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -139,7 +143,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1359,7 +1363,7 @@ provenance and coexisting with Jellyfin Enhanced.
   native assets, dependency manifest, and Skia/font license notices are included
   in the plugin zip and resolve under the host's plugin load context; the
   current `PackagePlugin` target copies only the main assembly (ADR-010).
-- [ ] 5.5 Publish completed artwork through Jellyfin's supported item-image APIs;
+- [x] 5.5 Publish completed artwork through Jellyfin's supported item-image APIs;
   do not write media-folder posters or Jellyfin's image cache directly.
 - [x] 5.6 Persist a durable `ArtworkOperation` before `SaveImage`, including
   before and candidate-after identities, artifact references, generation, and
@@ -1595,6 +1599,60 @@ semantically invalid record, and terminal-versus-non-terminal retention. Default
 `./build.sh test` passes 849 with 49 guarded skips (898 total) and 0 warnings; no
 ADR, `RenderVersion`, renderer behavior, or existing passing behavior was
 changed.
+
+**Task 5.5 status:** Complete. The provider-neutral single-subject publication
+orchestration and the single Jellyfin image-mutation implementation are
+implemented in `src/ArrTags/Artwork`, driving the authoritative durable
+publication protocol (`docs/architecture.md` section 9 steps 4-10; ADR-002,
+ADR-003) through the confirmed Jellyfin 12.0.0 ABI. `IArtworkImageWriter` is the
+host-neutral mutation boundary and `JellyfinArtworkImageWriter` is its only
+implementation: it resolves the item through `ILibraryManager`, calls the
+supported `IProviderManager.SaveImage(BaseItem, Stream, string, ImageType, int?,
+CancellationToken)` stream overload with the durable derived bytes and
+`image/png`, and then calls `BaseItem.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate,
+...)`, which is the same supported flow the standard item-image controller uses.
+It never writes a media-folder poster, Jellyfin's image cache, or an item-image
+path directly, never uses the filesystem-path overload that deletes its source,
+and never publishes derived bytes through a URL overload; all `MediaBrowser.*`
+references for publication are confined to that one file and
+`src/ArrTags/Rendering` stays Jellyfin-free. `ArtworkPublisher` is the
+host-neutral orchestration: it reads the authoritative `PublishedArtworkState`,
+observes and confines the current source through `IArtworkSourceReader`, retains
+a present baseline (or records an explicit absent baseline) in the task 5.2
+`SourceArtifactStore`, promotes the validated render output to a durable derived
+artifact, builds the exact `expectedBeforeIdentity` from a fresh source read and
+the `candidateAfterContentSha256` from the derived artifact, and writes a
+`Prepared` `ArtworkOperation` before any external image mutation. It re-reads and
+revalidates the before identity immediately before mutation; a mismatch or an
+unobservable identity never calls `SaveImage`, and the operation is marked
+`Aborted`. When a previously published session exists, the failed check also
+persists the ownership outcome (`OwnershipLost`/`OwnershipUnknown`); when no prior
+publication session exists (an initial capture), it persists no
+`PublishedArtworkState`. It durably advances through
+`MutationStarted`, `RepositoryUpdateStarted`, `VerificationPending`, and
+`FinalizationPending` before each external step; and it commits the final
+`PublishedArtworkState` (new publication token, active identity, state revision,
+and operation id while retaining the source artifact and ownership token) before
+marking the operation `Committed`. Any failure or uncertainty leaves the current
+artwork unchanged, records a bounded non-secret diagnostic, and never marks the
+operation committed; the recovery decision table itself remains task 5.7, and a
+pre-existing non-terminal or recovery-blocked operation blocks new work. Repeat publication verifies
+the prior publication is still active, reuses the first source artifact and
+ownership token, and issues a new publication token, so an ArrTags output is
+never captured as a new source. The publisher is registered with the existing
+lazy DI pattern (no startup work) as a single entry point Phase 6 can drive; no
+event, queue, or library-scan wiring is added. New tests
+(`ArtworkPublisherTests`, `JellyfinArtworkImageWriterTests`, 23 cases) cover the
+happy path with durable phase ordering, absent baseline, before-identity mismatch
+and unobservable-before aborts with no `SaveImage` call, readback mismatch and
+item-update failure not committing, repeat publication source/ownership-token
+reuse with a new publication token, ownership-lost and stale-baseline blocking,
+non-terminal-operation blocking, bounded cancellation, derived-artifact and
+derived-hash rejection, state path/secret hygiene, the stream overload being used
+instead of the deleting path or URL overload, the normal image update flow, and
+boundary-neutrality. Default `./build.sh test` passes 872 with 49 guarded skips
+(921 total) and 0 warnings, exactly +23 over the task 5.6 baseline; no ADR,
+`RenderVersion`, renderer behavior, or existing passing behavior was changed.
 
 **Acceptance criteria:**
 

@@ -1,0 +1,77 @@
+{
+  "task": "5.5",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "Task 5.5 status text overstates when OwnershipLost/OwnershipUnknown are recorded",
+      "detail": "Verified corrected. PLANS.md task 5.5 status now says a mismatch/unobservable identity 'never calls SaveImage, and the operation is marked Aborted. When a previously published session exists, the failed check also persists the ownership outcome (OwnershipLost/OwnershipUnknown); when no prior publication session exists (an initial capture), it persists no PublishedArtworkState.' README.md, docs/changelog.md, and the worker report now carry the same qualification. This matches ArtworkPublisher.PublishCoreAsync (only session.State == Published persists the ownership outcome at lines 255-259) and the test BeforeIdentityMismatchAbortsWithoutAnyImageMutation (StateReadStatus.Missing), and remains consistent with docs/data-model.md 3.10.2.",
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "status": "resolved",
+      "title": "Research doc retained a stale, contradictory statement about saveLocallyWithMedia",
+      "detail": "Verified corrected. The 'Still needing live-host validation' bullet in docs/research/jellyfin-12-architecture.md section 4.4 now states V1 uses the stream overload, which has no saveLocallyWithMedia parameter, that Jellyfin's ImageSaver chooses the destination from the library's SaveLocalMetadata option, and that ArrTags neither selects nor writes that path and does not use the filesystem-path overload. The remaining saveLocallyWithMedia mentions in the section are accurate ABI description followed by the V1 choice note; no contradiction remains.",
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "resolved",
+      "title": "Worker limitation (d) mis-described the derived/source limit interaction",
+      "detail": "Verified corrected. The worker report known limitation now states SourceArtifactStore.Promote additionally enforces SourceArtifactLimitBytes, an over-limit derived image is rejected before any mutation (DerivedArtifactRejected, no durable operation and no Jellyfin call), and the effective bound is the smaller of DerivedArtifactLimitBytes and SourceArtifactLimitBytes. This matches the implementation exactly (ArtworkPublisher.PromoteDerived checks the derived limit, then SourceArtifactStore.Promote enforces the source limit).",
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "status": "accepted",
+      "title": "Media-folder storage via Jellyfin SaveLocalMetadata is indirect and disclosed",
+      "detail": "With a library whose SaveLocalMetadata is enabled, Jellyfin's own ImageSaver writes the published PNG into the media folder. ArrTags only supplies bytes through the mandated supported stream overload and never selects or writes a path, and the docs (architecture section 9 and research section 4.4) record this. Consistent with the literal requirement and the task's mandated stream-overload approach; residual indirect media-folder effect is disclosed.",
+      "recommended_action": "No code change for 5.5; 5.11/5.7 validate host behavior."
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "status": "accepted",
+      "title": "Repeat publication does not re-validate the retained source artifact integrity",
+      "detail": "The Published/NotPublished path reuses state.SourceArtifactId without reading/integrity-checking it. Rendering is out of 5.5 scope and a corrupt source fails the Phase 6 render path before PublishAsync; artifact-integrity gating for the normal pipeline remains task 5.8's concern.",
+      "recommended_action": "No change for 5.5."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "status": "accepted",
+      "title": "Durability probes cover MutationStarted and RepositoryUpdateStarted, not the later two advances",
+      "detail": "Focused tests observe the durable store inside SaveImageAsync (MutationStarted) and PersistItemUpdateAsync (RepositoryUpdateStarted), which is strong evidence for write-before-external-step ordering. VerificationPending/FinalizationPending writes are not boundary-probed, though the code order is unambiguous and the final state-before-journal-commit order is structurally present. Adequate but not maximal coverage.",
+      "recommended_action": "Optional future probe."
+    },
+    {
+      "id": "F7",
+      "severity": "info",
+      "status": "accepted",
+      "title": "Deferred/known limitations are real but not acceptance gaps",
+      "detail": "The static per-subject SemaphoreSlim dictionary is never pruned; OperationalLimits (derived artifact limit) and SourceArtifactStore limits are captured at singleton construction and go stale on runtime configuration replacement (consistent with the existing 5.3 pattern); item-type (Movie/Episode) eligibility is deferred to the Phase 6 pipeline; and no live-host run was performed (5.11). All disclosed and consistent with task scope.",
+      "recommended_action": "No change for 5.5."
+    }
+  ],
+  "tests_checked": [
+    "Focused run (re-run after corrections): dotnet test --filter FullyQualifiedName~ArtworkPublisherTests|FullyQualifiedName~JellyfinArtworkImageWriterTests -> Passed 23, Failed 0, Skipped 0, Total 23.",
+    "Full run (re-run after corrections): ./build.sh test -> Passed 872, Failed 0, Skipped 49, Total 921 (unchanged; matches the claimed +23 over the 849/49/898 task 5.6 baseline).",
+    "Build (re-run after corrections): ./build.sh build -> Build succeeded, 0 warnings, 0 errors.",
+    "Read tests/ArrTags.Tests/ArtworkPublisherTests.cs in full at first review; unchanged by the corrections (no src/ or test mtime change after the prior review; git diff --stat HEAD -- src tests shows only the original ArrTagsServiceRegistrator.cs DI edit). Tests use fakes/DispatchProxy doubles and mutate no real Jellyfin library."
+  ],
+  "research_checked": [
+    "Pinned Jellyfin v12 source at /tmp/opencode/jfsrc: IProviderManager.SaveImage overloads; ProviderManager/ImageSaver (exact byte copy, SetImagePath, SaveLocalMetadata destination choice, only the path overload deletes its source); ImageController lines 379-380/423-424 (SaveImage + UpdateToRepositoryAsync(ImageUpdate)); LibraryManager.GetItemById (cached instance); BaseItem.SetImagePath.",
+    "docs/decisions.md ADR-001/ADR-002/ADR-003/ADR-009/ADR-010; docs/architecture.md section 9 steps 1-10; docs/data-model.md 3.10.1-3.10.4; docs/implementation-readiness.md Resolved Blockers 1 and 2; docs/research/jellyfin-12-architecture.md section 4.4 (corrected).",
+    "src/ArrTags/Artwork provenance/source/journal implementations; src/ArrTags/State StateRepository/AtomicFileWriter; RenderResult/RenderVersion (CurrentRendererVersion=2)."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true,
+  "resolution_summary": "All three required changes (F1 medium documentation accuracy, F2 low research-doc consistency, F3 low worker-report accuracy) are genuinely corrected and internally consistent across PLANS.md, README.md, docs/changelog.md, docs/implementation/5.5/worker-report.json, and docs/research/jellyfin-12-architecture.md. The correction was documentation-only: no src/, test-assertion, lock-file, ADR, RenderVersion, renderer, or later-Phase-5 change was introduced, and no file under src/ or tests/ was modified after the prior review. Build is clean (0 warnings/0 errors), the focused suite is 23/23, and the full suite is 872 passed / 49 skipped / 921 total."
+}

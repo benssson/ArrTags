@@ -12,6 +12,7 @@ using MediaBrowser.Controller;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
+using MediaBrowser.Controller.Providers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -37,6 +38,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
         serviceCollection.TryAddSingleton<IArtworkImageAccess>(CreateArtworkImageAccess);
         serviceCollection.TryAddSingleton<IArtworkSourceReader>(CreateArtworkSourceReader);
+        serviceCollection.TryAddSingleton<IArtworkImageWriter>(CreateArtworkImageWriter);
+        serviceCollection.TryAddSingleton(CreateSourceArtifactStore);
+        serviceCollection.TryAddSingleton(CreatePublishedArtworkStateStore);
+        serviceCollection.TryAddSingleton(CreateArtworkOperationStore);
+        serviceCollection.TryAddSingleton(CreateArtworkPublisher);
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
     }
@@ -95,6 +101,40 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         var limits = serviceProvider.GetRequiredService<ConfigurationSnapshotService>().Current.Limits;
         var access = serviceProvider.GetRequiredService<IArtworkImageAccess>();
         return new ArtworkSourceReader(access, limits);
+    }
+
+    private static JellyfinArtworkImageWriter CreateArtworkImageWriter(IServiceProvider serviceProvider)
+    {
+        return new JellyfinArtworkImageWriter(
+            serviceProvider.GetRequiredService<ILibraryManager>(),
+            serviceProvider.GetRequiredService<IProviderManager>());
+    }
+
+    private static SourceArtifactStore CreateSourceArtifactStore(IServiceProvider serviceProvider)
+    {
+        return new SourceArtifactStore(serviceProvider.GetRequiredService<StateRepository>());
+    }
+
+    private static PublishedArtworkStateStore CreatePublishedArtworkStateStore(IServiceProvider serviceProvider)
+    {
+        return new PublishedArtworkStateStore(serviceProvider.GetRequiredService<StateRepository>());
+    }
+
+    private static ArtworkOperationStore CreateArtworkOperationStore(IServiceProvider serviceProvider)
+    {
+        return new ArtworkOperationStore(serviceProvider.GetRequiredService<StateRepository>());
+    }
+
+    private static ArtworkPublisher CreateArtworkPublisher(IServiceProvider serviceProvider)
+    {
+        var limits = serviceProvider.GetRequiredService<ConfigurationSnapshotService>().Current.Limits;
+        return new ArtworkPublisher(
+            serviceProvider.GetRequiredService<IArtworkSourceReader>(),
+            serviceProvider.GetRequiredService<IArtworkImageWriter>(),
+            serviceProvider.GetRequiredService<SourceArtifactStore>(),
+            serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
+            serviceProvider.GetRequiredService<ArtworkOperationStore>(),
+            limits);
     }
 
     private static Plugin? FindPlugin(IServiceProvider serviceProvider)
