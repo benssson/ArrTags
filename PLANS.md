@@ -49,9 +49,12 @@ verified.
 
 Decision Gate DG-3 is now resolved by ADR-009. The V1 badge fields, priority,
 poster layout, typography, contrast, text bounds, PNG output, scaling, and
-pass-through behavior are fixed for implementation. Phase 4 has begun: task 4.1
-implements the provider-neutral metadata selectors against `BadgeMetadata`; the
-remaining renderer implementation and tests remain incomplete.
+pass-through behavior are fixed for implementation. Phase 4 is in progress:
+tasks 4.1 (metadata selectors), 4.2 (rendering specification), 4.3
+(unknown-value semantics), 4.4 (fingerprints), 4.5 (limit enforcement), 4.7
+(pinned assets and font), and 4.8 (SkiaSharp host-compatibility spike) are
+complete. The renderer service and drawing engine (4.9), behavior tests (4.6),
+configuration (4.10), and golden/determinism tests (4.11) remain incomplete.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -897,7 +900,7 @@ Radarr, or Jellyfin artwork storage.
 - [x] 4.7 Pin the SkiaSharp managed and Linux native asset packages to exact
   versions, embed the DejaVu Sans Bold 2.37 font as a plugin resource, and ship
   the font and Skia license notices (ADR-010).
-- [ ] 4.8 Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the
+- [x] 4.8 Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the
   host's pinned SkiaSharp/HarfBuzzSharp version and native library name, verify
   whether the plugin resolves that shared version or needs its own isolated
   copy, and prove one decode/draw/encode round trip on the pinned Linux runtime
@@ -1015,6 +1018,31 @@ zip. `tests/ArrTags.Tests/BundledFontTests.cs` adds 12 cases and
 `RenderFingerprintTests` gains a font-asset-sensitivity case. Build and test pass
 with 0 warnings and 438 passing tests (13 new). Full native-asset
 plugin-load-context packaging remains the Phase 5 packaging task per ADR-010.
+
+**Task 4.8 status:** Complete. The spike confirmed the pinned Jellyfin 12.0.0
+host renderer stack from its `jellyfin.deps.json` and native files: `SkiaSharp`,
+`SkiaSharp.HarfBuzz`, and `SkiaSharp.NativeAssets.Linux` at `3.119.4`, and
+`HarfBuzzSharp` / `HarfBuzzSharp.NativeAssets.Linux` at `8.3.1.5`, with ELF64
+x86-64 `libSkiaSharp.so` and `libHarfBuzzSharp.so`; the host's SkiaSharp managed
+and native files are byte-identical to the local NuGet `3.119.4` assets. Plugin
+resolution was measured against Jellyfin's pinned `PluginLoadContext` /
+`PluginManager` source and on the pinned .NET 10.0.12 runtime: Jellyfin passes
+the plugin folder to `AssemblyDependencyResolver`, which does not discover a
+deps.json inside that folder, and then loads every DLL in the folder into the
+plugin load context. A plugin that ships no SkiaSharp resolves the host's shared
+managed SkiaSharp and native library; a plugin that ships `SkiaSharp.dll` gets
+its own copy, and its `libSkiaSharp.so` is found only when it sits next to
+`SkiaSharp.dll` in the plugin folder root. The resulting Phase 5 constraint is to
+place the managed and root-level native SkiaSharp assets in the plugin folder.
+The decode/draw/encode proof lives in the environment-guarded
+`SkiaHostCompatibilityTests` suite: it decodes a synthetic PNG, draws with the
+bundled DejaVu Sans Bold font from embedded bytes, encodes a non-interlaced
+8-bit PNG, and decodes it back, all on the pinned SkiaSharp `3.119.4` native
+library. `HarfBuzzSharp` is not needed for ADR-009's single-line bounded labels,
+so the 4.7 omission stands. Findings, evidence, and exact commands are recorded
+in `docs/research/skia-host-compatibility.md`. Default `./build.sh test` passes
+with 0 warnings and 439 passing tests plus 1 environment-guarded skip; the forced
+native run passes both compatibility cases.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

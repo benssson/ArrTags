@@ -1,0 +1,67 @@
+{
+  "task": "4.8",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "severity": "info",
+      "area": "Acceptance criterion 1 - host version/native-name confirmation",
+      "detail": "Independently confirmed from /tmp/opencode/jf/jellyfin/jellyfin.deps.json: SkiaSharp/3.119.4 (assembly 3.119.0.0, file 3.119.4.0), SkiaSharp.HarfBuzz/3.119.4 (deps HarfBuzzSharp 8.3.1.5, SkiaSharp 3.119.4), SkiaSharp.NativeAssets.Linux/3.119.4 -> runtimes/linux-x64/native/libSkiaSharp.so, HarfBuzzSharp/8.3.1.5 (assembly 1.0.0.0, file 8.3.1.5), HarfBuzzSharp.NativeAssets.Linux/8.3.1.5 -> runtimes/linux-x64/native/libHarfBuzzSharp.so, and Jellyfin.Drawing.Skia/12.0.0 depending on all of them. Host files exist: libSkiaSharp.so (11,170,296 bytes), libHarfBuzzSharp.so (2,808,040 bytes); SHA-256 matches the documented values (66c856ea..., 1d5c3afe...). ELF header 7f 45 4c 46 02 01 with e_machine 0x003e confirms ELF64 little-endian x86-64. Host SkiaSharp.dll SHA-256 aaaaa18c... is byte-identical to local NuGet skiaSharp/3.119.4 lib/net10.0/SkiaSharp.dll, and host libSkiaSharp.so is byte-identical to local NuGet skiaSharp.nativeassets.linux/3.119.4. SONAMEs libSkiaSharp.so.119.0.0 and libHarfBuzzSharp.so.0.60831.0 confirmed. Criterion met."
+    },
+    {
+      "severity": "info",
+      "area": "Acceptance criterion 2 - plugin resolution answer",
+      "detail": "The pinned Jellyfin source was re-fetched from the documented commit 6c073e19ddf604b2369c638716164fdab4c952dc and matches the worker's cached copies: PluginLoadContext(string path) : base(true) wraps AssemblyDependencyResolver and Load() returns LoadFromAssemblyPath(resolved) or null, with no LoadUnmanagedDll override; PluginManager.LoadAssemblies constructs PluginLoadContext(plugin.Path) and calls LoadFromAssemblyPath for each file in plugin.DllFiles; TryGetPluginDlls enumerates Directory.GetFiles(plugin.Path, *.dll, AllDirectories) unless a non-empty manifest assemblies whitelist is supplied. The resolver-on-directory vs resolver-on-DLL behavior was independently reproduced (directory -> null for both managed and native; ArrTags.dll path -> plugin-local SkiaSharp.dll and runtimes/linux-x64/native/libSkiaSharp.so). All four load-context scenarios in the doc's section 3.3 were independently re-executed with the /tmp/opencode harness: A (host managed preloaded, plugin ships no SkiaSharp) bound host SkiaSharp.dll in the Default ALC and mapped the host libSkiaSharp.so with pngBytes=4178; B_root bound plugin-local managed and native; B_x64 and B_runtimes failed with DllNotFoundException, and the runtime's own error text confirms only the assembly-root libSkiaSharp.so was probed (x64/ and runtimes/linux-x64/native/ are not); C mapped both native copies and used the plugin-local one. The Phase 5 packaging constraint (ship SkiaSharp.dll and root-level libSkiaSharp.so in the plugin folder; keep the assemblies whitelist empty or include SkiaSharp.dll) is supported by evidence. Host-level validation is correctly labeled Phase 5 to validate. Criterion met."
+    },
+    {
+      "severity": "info",
+      "area": "Acceptance criterion 3 - round-trip proof",
+      "detail": "The committed guarded test PinnedSkiaRuntimeDecodesDrawsAndEncodesARoundTripPng genuinely decodes a 16x16 RGB PNG fixture (verified: PNG signature, IHDR 0x10 x 0x10, bit depth 8, color type 2, non-interlaced), draws a scaled bitmap plus a rounded pill and '1080p Blu-ray' text using the embedded DejaVu Sans Bold bytes, encodes a PNG, asserts the PNG signature and IHDR (240x360, 8-bit, color type 2 or 6, zero compression/filter/interlace), and decodes the output back. Default ./build.sh test reports Passed: 439, Skipped: 1, Total: 440; the documented forced command (ARRTAGS_SKIA_COMPAT=1 with the pinned sysroot on LD_LIBRARY_PATH) reports Passed: 2, Failed: 0, Skipped: 0. The guard is legitimate, not a hidden failure: forcing ARRTAGS_SKIA_COMPAT=1 without the sysroot fails with DllNotFoundException on the transitive libfontconfig.so.1. The test binary's runtimes/linux-x64/native/libSkiaSharp.so is SHA-256 66c856ea..., byte-identical to the pinned host native library. Exact command and environment are recorded. Criterion met."
+    },
+    {
+      "severity": "info",
+      "area": "Acceptance criterion 4 - HarfBuzzSharp decision",
+      "detail": "The reasoning is grounded: ADR-009 fixes single-line, no-italic, bounded-to-24-Unicode-scalar labels with a bundled sans-serif and no fallback, and the executed round trip rendered text with plain SKTypeface/SKFont without any HarfBuzz assembly. The plugin references only SkiaSharp and SkiaSharp.NativeAssets.Linux at 3.119.4. The host's HarfBuzzSharp is correctly identified as a Jellyfin.Drawing.Skia-internal dependency. Criterion met."
+    },
+    {
+      "severity": "info",
+      "area": "Acceptance criterion 5 - documentation/state",
+      "detail": "PLANS.md task 4.8 is checked with an accurate status paragraph; README.md, docs/changelog.md, and docs/implementation-readiness.md were updated consistently with the measured results; docs/research/skia-host-compatibility.md records scope, confirmed/inferred/Phase-5 labels, evidence, hashes, exact commands, and the HarfBuzzSharp decision. Verified numbers (440 total, 439 passed, 1 skipped, 2 passed forced) match the docs. No overclaiming was found; live-host behavior, multi-RID packaging, and packaged-asset behavior are explicitly deferred to Phase 5. Criterion met."
+    },
+    {
+      "severity": "info",
+      "area": "Acceptance criterion 6 - scope/hygiene",
+      "detail": "No production source changes: the task diff is limited to the new guarded test, the new research doc, docs updates, PLANS.md, README.md, and docs/implementation-readiness.md. No 4.9 drawing engine/service contract was added, and no SkiaSharp native assets were added to the plugin package (artifacts/ArrTags_0.1.0.0.zip still contains only ArrTags.dll, build.yaml, THIRD-PARTY-NOTICES.md, and three licenses/ files). ./build.sh restore, build, test, and package all succeed (build: 0 warnings/0 errors). No lock file changes. The pre-existing .opencode/agents/*.md modifications have earlier mtimes (01:06-01:08) than the task files (01:18-01:22) and contain only unrelated model/orchestrator configuration additions; they were not staged or altered by task 4.8. Criterion met."
+    },
+    {
+      "severity": "minor",
+      "area": "Non-blocking observation",
+      "detail": "The Appendix A load-context harness (alcprobe2/probeplugin) lives only under /tmp/opencode and is not committed; reproducibility depends on that environment or on re-creating the harness from the appendix. This does not undermine the evidence because all four scenarios were independently re-executed successfully during this review, and the durable directory-resolver behavior is covered by the committed unguarded test."
+    },
+    {
+      "severity": "minor",
+      "area": "Non-blocking observation",
+      "detail": "The round-trip test accepts PNG color type 2 (RGB) or 6 (RGBA) rather than asserting that a fully opaque output is RGB. This does not affect the decode/draw/encode spike proof, but the stricter ADR-010 RGB-for-opaque requirement should be asserted when the 4.9 drawing engine is implemented."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore (locked mode) - succeeded, all projects up-to-date.",
+    "./build.sh build - Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test - Passed: 439, Skipped: 1, Total: 440 (skip is the environment-guarded native round trip).",
+    "./build.sh package - Build succeeded; artifacts/ArrTags_0.1.0.0.zip contents: ArrTags.dll (864768), THIRD-PARTY-NOTICES.md (1368), build.yaml (671), licenses/DejaVu-Fonts-License.txt (8816), licenses/SkiaSharp-LICENSE.txt (1129), licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt (139775).",
+    "Forced round trip: LD_LIBRARY_PATH=/tmp/opencode/jf/sysroot/usr/lib/x86_64-linux-gnu FONTCONFIG_PATH=/tmp/opencode/jf/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/opencode/jf/sysroot/usr/share ARRTAGS_SKIA_COMPAT=1 dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~SkiaHostCompatibilityTests -> Passed: 2, Failed: 0, Skipped: 0.",
+    "Negative control: same forced filter without the sysroot on LD_LIBRARY_PATH -> Failed: 1 (DllNotFoundException on libfontconfig.so.1), confirming the guard is not hiding a failure.",
+    "Inspected tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs: two facts (guarded native round trip and unguarded directory-resolver regression guard).",
+    "Re-ran /tmp/opencode/alctest resolver harness and /tmp/opencode/alcprobe2 scenarios A, B_root, B_x64, B_runtimes, C against the pinned .NET 10.0.12 runtime."
+  ],
+  "research_checked": [
+    "/tmp/opencode/jf/jellyfin/jellyfin.deps.json - all SkiaSharp/HarfBuzzSharp managed, native, and Jellyfin.Drawing.Skia dependency entries.",
+    "Host native artifacts: libSkiaSharp.so, libHarfBuzzSharp.so (names, sizes, SHA-256, ELF class/machine, SONAMEs, libfontconfig.so.1 dependency via ldd).",
+    "Local NuGet assets: skiaSharp/3.119.4/lib/net10.0/SkiaSharp.dll and skiaSharp.nativeassets.linux/3.119.4/runtimes/linux-x64/native/libSkiaSharp.so - byte-identical SHA-256 to host artifacts.",
+    "Pinned Jellyfin v12.0 source at commit 6c073e19ddf604b2369c638716164fdab4c952dc: PluginLoadContext.cs, PluginManager.cs (LoadAssemblies, LoadManifest, TryGetPluginDlls), fetched from upstream and matched against the worker's cached copies.",
+    "SkiaSharp v3.119.4 binding/Binding.Shared/LibraryLoader.cs (cached) and the observed .NET DllImport probing behavior in the failed scenarios.",
+    "docs/decisions.md ADR-009 (single-line 24-scalar bounded labels, no fallback) and ADR-010 (native assets must be carried, no arbitrary system Skia fallback)."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

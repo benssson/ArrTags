@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike
 
 **Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, and ADR-010; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -131,6 +131,32 @@ Jellyfin host source adapter that reads the unindexed `Primary` image and
 supplies those bytes, plus publication, provenance, restoration, caching,
 stale-artwork lifecycle, and Enhanced coexistence, stays in Phase 5 and later.
 
+## Resolved SkiaSharp host compatibility (task 4.8)
+
+Task 4.8 confirmed the pinned Jellyfin `12.0.0` host versions from its
+`jellyfin.deps.json` and native files: `SkiaSharp` / `SkiaSharp.HarfBuzz` /
+`SkiaSharp.NativeAssets.Linux` `3.119.4`, and `HarfBuzzSharp` /
+`HarfBuzzSharp.NativeAssets.Linux` `8.3.1.5`, with native ELF64 x86-64
+`libSkiaSharp.so` and `libHarfBuzzSharp.so`. The host's SkiaSharp managed and
+native files are byte-identical to the local NuGet `3.119.4` assets.
+
+The plugin load behavior was measured, not assumed. Jellyfin 12 constructs
+`PluginLoadContext(pluginFolder)`, whose `AssemblyDependencyResolver` does not
+discover a deps.json inside that folder, and then loads every DLL in the folder
+into the plugin context. A plugin that ships no SkiaSharp therefore resolves the
+host's shared managed SkiaSharp and uses the host's native library; a plugin that
+ships `SkiaSharp.dll` gets its own managed copy, and its native
+`libSkiaSharp.so` is found only when it sits next to `SkiaSharp.dll` in the
+plugin folder root. The round trip decoded, drew with the bundled DejaVu Sans
+Bold font from embedded bytes, and encoded a non-interlaced 8-bit PNG on the
+pinned runtime. `HarfBuzzSharp` is not needed for ADR-009's single-line bounded
+labels, so the 4.7 decision to omit it stands.
+
+The evidence, exact commands, and the Phase 5 packaging constraint (ship the
+managed and root-level native SkiaSharp assets in the plugin folder) are recorded
+in `docs/research/skia-host-compatibility.md`. Phase 5 must still validate the
+packaged assets on the live host.
+
 ## Compatibility Target
 
 | Value | Pin | Evidence |
@@ -193,6 +219,10 @@ completed as Phase 1 implementation and acceptance work.
   and otherwise non-local) fail closed with a safe no-badge status before
   provider matching, while eligible local files match unchanged (ADR-008, task
   3.8). Paths remain non-identity context only.
+- [x] The pinned Jellyfin 12.0.0 SkiaSharp/HarfBuzzSharp versions and native
+  library names, the plugin load-context resolution behavior, and one
+  decode/draw/encode round trip on the pinned Linux runtime are confirmed (task
+  4.8; see `docs/research/skia-host-compatibility.md`).
 
 The former pre-implementation actions that became Phase 1 implementation tasks
 (1, 2, and 9) are complete. The remaining former actions are implementation-time
@@ -272,7 +302,11 @@ that introduce them.
   and restoration implementation on the target host configuration.
 - Pin and validate the exact SkiaSharp managed package, Linux native asset
   package, and supported Linux RIDs against the declared Jellyfin 12 /
-  `net10.0` target. The renderer library (SkiaSharp) is resolved by ADR-010.
+  `net10.0` target. The renderer library (SkiaSharp) is resolved by ADR-010, and
+  the pinned `3.119.4` host version, native library names, plugin load-context
+  resolution, and one decode/draw/encode round trip were confirmed by task 4.8
+  (see `docs/research/skia-host-compatibility.md`). Multi-RID packaging and the
+  live-host behavior of the packaged assets remain Phase 5 validation.
 - Validate that the bundled DejaVu Sans Bold 2.37 font renders ADR-009's
   typography metrics, record its SHA-256, and confirm where the font and Skia
   license notices are packaged. The font choice is resolved by ADR-010.

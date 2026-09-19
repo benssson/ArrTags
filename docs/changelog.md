@@ -374,9 +374,38 @@ renderer implementation tasks (4.6 through 4.11) follow.
   notices for components 4.7 actually bundles are included; full native-asset
   plugin-load-context packaging remains the Phase 5 packaging task.
 
-Build and test: Task 4.7 pins the renderer stack, embeds the font, and ships the
-notices with 13 new tests; build and test pass with 0 warnings and 438 passing
-tests. `./build.sh package` produced `artifacts/ArrTags_0.1.0.0.zip` containing
-`ArrTags.dll`, `build.yaml`, `THIRD-PARTY-NOTICES.md`, and the three
-`licenses/` files. Tasks 4.8, 4.9, 4.6, 4.10, and 4.11 remain. Gate 4 is not yet
-met.
+- Task 4.8 (`tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs`,
+  `docs/research/skia-host-compatibility.md`, `docs/implementation-readiness.md`):
+  the SkiaSharp host-compatibility spike (ADR-010). The pinned Jellyfin 12.0.0
+  host's `jellyfin.deps.json` and native files confirm `SkiaSharp`,
+  `SkiaSharp.HarfBuzz`, and `SkiaSharp.NativeAssets.Linux` at `3.119.4` plus
+  `HarfBuzzSharp` / `HarfBuzzSharp.NativeAssets.Linux` at `8.3.1.5`, with native
+  ELF64 x86-64 `libSkiaSharp.so` (11,170,296 bytes, SHA-256
+  `66c856ea...26b0cd02`) and `libHarfBuzzSharp.so`; the host's SkiaSharp managed
+  and native files are byte-identical to the local NuGet `3.119.4` assets. The
+  plugin-load-context behavior was measured against Jellyfin's pinned
+  `PluginLoadContext`/`PluginManager` source and on the pinned .NET 10.0.12
+  runtime: Jellyfin passes the plugin folder to `AssemblyDependencyResolver`,
+  which does not discover a manifest inside it, then loads every DLL in the
+  folder into the plugin context. A plugin shipping no SkiaSharp resolves the
+  host's shared managed SkiaSharp and native library; a plugin shipping
+  `SkiaSharp.dll` uses its own copy, and `libSkiaSharp.so` is found only when it
+  sits next to `SkiaSharp.dll` in the plugin folder root. The Phase 5 constraint
+  is therefore to ship the managed and root-level native SkiaSharp assets in the
+  plugin folder. The guarded `PinnedSkiaRuntimeDecodesDrawsAndEncodesARoundTripPng`
+  test decodes a synthetic PNG, draws with the bundled DejaVu Sans Bold font
+  from embedded bytes, encodes a non-interlaced 8-bit PNG, and decodes it back on
+  the pinned `3.119.4` native library. `HarfBuzzSharp` is confirmed unnecessary
+  for ADR-009's single-line bounded labels, so the 4.7 omission stands.
+  `PluginDirectoryStyleResolutionDoesNotDiscoverBundledManagedSkiaSharp` is an
+  unguarded regression guard for the measured resolver behavior. Evidence,
+  commands, and the Phase 5 validation list are in
+  `docs/research/skia-host-compatibility.md`.
+
+Build and test: Task 4.8 adds the two compatibility tests and the evidence doc.
+Build and test pass with 0 warnings and 439 passing tests plus 1
+environment-guarded skip (440 total); the forced native run with
+`ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot on the loader path passes both
+compatibility cases. `./build.sh package` produced
+`artifacts/ArrTags_0.1.0.0.zip` with the same contents as 4.7. Tasks 4.9, 4.6,
+4.10, and 4.11 remain. Gate 4 is not yet met.

@@ -3,9 +3,9 @@
 **Current milestone:** Phase 4 — Badge rendering is in progress. Tasks 4.1
 (provider-neutral metadata selectors), 4.2 (V1 rendering specification, ADR-009),
 4.3 (unknown-versus-confirmed-negative semantics), 4.4 (render request and
-result fingerprints), 4.5 (image and text limit enforcement), and 4.7 (pinned
+result fingerprints), 4.5 (image and text limit enforcement), 4.7 (pinned
 SkiaSharp stack, embedded DejaVu Sans Bold 2.37 font, and shipped license
-notices) are complete.
+notices), and 4.8 (SkiaSharp host-compatibility spike) are complete.
 Milestone 3 is complete (tasks 3.1 through
 3.8; acceptance criteria satisfied and Gate 3 met).
 
@@ -85,18 +85,30 @@ Completed in Phase 4 (Badge rendering):
   font asset changes the fingerprint. `THIRD-PARTY-NOTICES.md` and the
   `licenses/` files (`DejaVu-Fonts-License.txt`, `SkiaSharp-LICENSE.txt`, and
   `SkiaSharp-THIRD-PARTY-NOTICES.txt`) are copied into the plugin package.
+- 4.8 SkiaSharp host-compatibility spike: the pinned Jellyfin 12.0.0 host stack
+  (`SkiaSharp` / `SkiaSharp.HarfBuzz` / `SkiaSharp.NativeAssets.Linux` `3.119.4`
+  and `HarfBuzzSharp` / `HarfBuzzSharp.NativeAssets.Linux` `8.3.1.5`, native
+  ELF64 x86-64 `libSkiaSharp.so` / `libHarfBuzzSharp.so`) is confirmed; plugin
+  load-context resolution was measured; and a decode/draw/encode round trip
+  using the pinned `3.119.4` native library and the embedded DejaVu Sans Bold
+  font is an environment-guarded test. The Phase 5 packaging constraint is to
+  place the managed and root-level native SkiaSharp assets in the plugin folder.
+  `HarfBuzzSharp` is confirmed unnecessary for ADR-009's labels. Evidence is in
+  `docs/research/skia-host-compatibility.md`.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 438 automated tests.
+- Passes 439 automated tests; one additional environment-guarded SkiaSharp
+  native compatibility test is skipped unless `ARRTAGS_SKIA_COMPAT=1` and the
+  pinned native runtime are provided.
 
 Next tasks:
 
 - Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks in the authoritative execution order 4.8, 4.9, 4.6, 4.10, 4.11,
-  beginning with task 4.8 (the SkiaSharp host-compatibility spike). Task 4.6
-  (renderer behavior tests) follows the renderer implementation and assets it
-  exercises; it was reordered after task 4.9.
+  tasks in the authoritative execution order 4.9, 4.6, 4.10, 4.11, beginning
+  with task 4.9 (the provider-neutral renderer service and drawing engine). Task
+  4.6 (renderer behavior tests) follows the renderer implementation and assets
+  it exercises; it was reordered after task 4.9.
