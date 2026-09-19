@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), and 5.4 (renderer managed/native packaging) are complete; the remaining Phase 5 tasks are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), and 5.6 (the durable `ArtworkOperation` write-ahead record and store) are complete; the remaining Phase 5 tasks are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -85,7 +85,11 @@ package now carries the renderer's managed `SkiaSharp.dll`, the matching
 `linux-x64` native `libSkiaSharp.so` and the dependency manifest at the plugin
 folder root, with the `build.yaml` artifact list updated to match, and both the
 live pinned host and a replicated plugin load context confirm the assets resolve
-under the plugin load context. The remaining Phase 5 tasks (5.5 through 5.11 in
+under the plugin load context. Task 5.6 is complete: the durable provider-neutral
+`ArtworkOperation` write-ahead model, its phase and lifecycle-fence rules, and
+its generation-fenced authoritative store are implemented and covered by focused
+tests, so a complete publication/restoration intent can be persisted before any
+Jellyfin image mutation. The remaining Phase 5 tasks (5.5 and 5.7 through 5.11 in
 the authoritative order) are not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
@@ -135,7 +139,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1357,7 +1361,7 @@ provenance and coexisting with Jellyfin Enhanced.
   current `PackagePlugin` target copies only the main assembly (ADR-010).
 - [ ] 5.5 Publish completed artwork through Jellyfin's supported item-image APIs;
   do not write media-folder posters or Jellyfin's image cache directly.
-- [ ] 5.6 Persist a durable `ArtworkOperation` before `SaveImage`, including
+- [x] 5.6 Persist a durable `ArtworkOperation` before `SaveImage`, including
   before and candidate-after identities, artifact references, generation, and
   ownership/publication tokens.
 - [ ] 5.7 Reconcile uncertain `SaveImage`, item update, and provenance
@@ -1544,6 +1548,53 @@ second copy. A full image render through Jellyfin is not wired until tasks
 forced native run passes 821 with 6 skips (827 total), with 0 warnings and no
 regressions. No ADR, `RenderVersion`, renderer behavior, or existing passing
 behavior was changed.
+
+**Task 5.6 status:** Complete. The durable, provider-neutral `ArtworkOperation`
+write-ahead record, its phase/lifecycle-fence rules, and its authoritative store
+are implemented in `src/ArrTags/Artwork`, following ADR-003, `docs/data-model.md`
+sections 3.10.3 and 3.10.4, and `docs/architecture.md` section 9. The model
+carries every documented field (`modelVersion`, `operationId`, `kind`,
+`jellyfinItemId`, `imageSurface`, `generation`, `ownershipToken`,
+`priorPublicationToken`, `publicationToken`, `expectedBeforeIdentity`,
+`candidateAfterContentSha256`, `observedAfterIdentity`, `sourceArtifactId`,
+`derivedArtifactId`, `phase`, `lifecycleFence`, `attempt`, `lastError`,
+`createdAt`/`updatedAt`) plus explicit `sourcePresence` and
+`candidateAfterPresence` fields that make the documented conditional
+requirements enforceable, and `Validate` enforces every conditional rule (a
+valid item/surface/operation id; a publication requires a publication token and
+a derived artifact; a restoration requires a source reference; a present after
+target requires its content hash; a present source requires a content-addressed
+source artifact; generation and attempt are bounded; tokens are opaque and
+bounded; no path or credential field). `ArtworkOperationPhase` matches the
+data-model table exactly and is documented as a durable lower-bound marker;
+`ArtworkOperationPhases` is the pure phase-advance helper (stepwise forward order,
+terminal outcomes from any non-terminal phase, no backward or past-terminal
+advance), and `ArtworkOperationFencing` provides the pure generation and
+lifecycle-fence decisions (`AllowsNewPublication`, `AllowsNewRestoration`,
+`IsStale`, `CanSupersede`, `IsSameGeneration`) without any lifecycle event
+wiring. `ArtworkOperationErrors` redacts control characters and bounds
+`lastError`. `ArtworkOperationStore` persists through the existing versioned,
+integrity-tagged, atomically-written `StateRepository`/`StateAuthority.Authoritative`
+boundary keyed per item/image surface, validates on write, quarantines a
+valid-envelope-but-invalid payload rather than replaying it, fences writes by the
+monotonic generation (a stale generation cannot overwrite a newer durable
+record; a newer generation supersedes; the same generation may only advance the
+same operation through a legal phase), and marks only terminal phases
+(`Committed`, `Aborted`, or `RecoveryBlocked`) eligible for terminal-provenance
+retention so a non-terminal operation is never pruned. A tombstoned item-removal
+operation is terminal because its phase is `Aborted`, not because of its
+lifecycle fence. The store performs no
+image mutation and does not call `SaveImage`; task 5.5 drives the ordering.
+`docs/data-model.md` section 3.10.3 records the two explicit presence fields. New
+tests (`ArtworkOperationTests`, `ArtworkOperationStoreTests`, 101 cases) cover
+every conditional requirement, absent-versus-present after target, token bounds,
+`lastError` redaction, the phase enum and every legal/illegal transition, the
+fence decisions, durability across a reconstructed `StateRepository`, generation
+fencing, one-non-terminal-per-subject, authoritative quarantine on a corrupt or
+semantically invalid record, and terminal-versus-non-terminal retention. Default
+`./build.sh test` passes 849 with 49 guarded skips (898 total) and 0 warnings; no
+ADR, `RenderVersion`, renderer behavior, or existing passing behavior was
+changed.
 
 **Acceptance criteria:**
 

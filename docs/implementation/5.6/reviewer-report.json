@@ -1,0 +1,92 @@
+{
+  "task": "5.6",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "area": "scope/documentation",
+      "title": "Unrelated destructive edit to the PLANS.md task 5.3 status",
+      "status": "resolved",
+      "detail": "Corrected. The task 5.3 status region of PLANS.md now matches commit dda74c7 exactly ('oversized-byte, oversized-dimension, unreadable, hash/length/surface correctness, oriented dimensions, supported non-local conversion, and boundary-neutrality checks'). A full line-range diff of PLANS.md against dda74c7 shows changes only at the project-status line, the Phase 5 position paragraph, the milestone table, the task 5.6 checkbox, and the added task 5.6 status block; no other task status (5.1/5.2/5.3/5.4) was altered.",
+      "required_change": false
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "area": "model/correctness",
+      "title": "Present expectedBeforeIdentity/observedAfterIdentity need not carry a content hash",
+      "status": "open-accepted",
+      "detail": "ArtworkOperation.Validate accepts a Present expectedBeforeIdentity or observedAfterIdentity with a null ContentSha256. This is fail-closed (ArtworkOwnershipComparer returns Unknown), but looser than PublishedArtworkState.Validate. Not an acceptance gap for 5.6; recovery in 5.7 will treat such records as OwnershipUnknown/RecoveryBlocked.",
+      "required_change": false
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "area": "store/correctness",
+      "title": "A newer generation may overwrite an unreconciled non-terminal record",
+      "status": "open-accepted",
+      "detail": "EnsureWriteIsFenced permits a strictly newer generation to replace a non-terminal record whose phase is MutationStarted or later; the store cannot reconcile it. This matches the documented monotonic-generation rule and the per-subject single-record invariant, but depends on 5.5/5.7/5.9 resolving a non-terminal operation before accepting a new generation. Flagged for downstream awareness.",
+      "required_change": false
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "area": "security",
+      "title": "lastError sanitizer has no pattern-based secret detection",
+      "status": "open-accepted",
+      "detail": "Sanitize only strips control/whitespace characters and truncates to 512 chars. The model stores no credential/path/raw-payload field and lastError is a caller-supplied already-redacted diagnostic, so this is acceptable, but it remains a caller contract rather than defence-in-depth.",
+      "required_change": false
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "area": "design",
+      "title": "Two explicit presence fields added to data-model 3.10.3 beyond the flat field list",
+      "status": "open-accepted",
+      "detail": "sourcePresence and candidateAfterPresence are justified and consistently applied: the pre-existing row text already referenced 'presence = Absent' and 'Required when source is present', which cannot be enforced without an explicit presence. It mirrors PublishedArtworkState.sourcePresence in 3.10.1. Validate enforces both.",
+      "required_change": false
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "area": "model/strictness",
+      "title": "ownershipToken is required unconditionally",
+      "status": "open-accepted",
+      "detail": "Data-model 3.10.3 marks ownershipToken 'Yes for an owned session', but Validate requires it on every operation. Stricter than the wording but safe for V1 and consistent with ADR-003 step 3.",
+      "required_change": false
+    },
+    {
+      "id": "F7",
+      "severity": "info",
+      "area": "documentation",
+      "title": "Minor imprecision in the 5.6 retention wording",
+      "status": "resolved",
+      "detail": "Corrected. PLANS.md and docs/changelog.md now state that terminal retention eligibility derives solely from Phase (Committed/Aborted/RecoveryBlocked) and explicitly note that a tombstoned item-removal operation is terminal because its phase is Aborted, not because of its lifecycle fence.",
+      "required_change": false
+    }
+  ],
+  "tests_checked": [
+    "Focused (re-run after correction): dotnet test --filter FullyQualifiedName~ArtworkOperation -> Passed 101, Failed 0, Skipped 0, Total 101.",
+    "Full default (re-run after correction): ./build.sh test -> Passed 849, Failed 0, Skipped 49, Total 898.",
+    "./build.sh restore (locked mode, no lock-file change) and ./build.sh build -> 0 warnings, 0 errors.",
+    "ArtworkOperationTests.cs: model conditional rules, lastError redaction/bounding, 8-value phase enum, every legal/illegal phase transition, IsTerminal, MayHaveStartedMutation, lifecycle and generation fence decisions.",
+    "ArtworkOperationStoreTests.cs: authoritative round trip, restart durability, stale-generation rejection, newer-generation supersession, same-generation advance/conflict/backward/terminal refusal, invalid-write rejection, corrupt-envelope and valid-envelope-invalid-payload quarantine, non-terminal retention immunity, terminal retention pruning, ItemRemoved tombstone, stable/path-safe record id, missing-subject reads.",
+    "Independent inspection of StateRepository, StateAuthority, StateEnvelopeCodec, StateRetention, StateQuarantine, PluginStatePaths, PublishedArtworkStateStore, PublishedArtworkState, ActiveImageIdentity, ArtworkOwnershipComparer.",
+    "Independent check that System.Text.Json replaces a lone surrogate (possible from Sanitize truncation) with U+FFFD rather than throwing."
+  ],
+  "research_checked": [
+    "AGENTS.md.",
+    "PLANS.md Milestone 5, task 5.6, the authoritative Phase 5 execution order, and the task 5.6 status block; line-range diff of PLANS.md against commit dda74c7 to confirm only intended edits.",
+    "docs/decisions.md ADR-002 (full) and ADR-003 (full); confirmed docs/decisions.md is unmodified.",
+    "docs/data-model.md sections 3.10.1, 3.10.2, 3.10.3, and 3.10.4 (including the two added presence rows; diff remains exactly two added rows).",
+    "docs/architecture.md section 9 (publication flow, provenance/ownership contract, durable publication protocol, restart reconciliation).",
+    "docs/implementation-readiness.md Resolved Blocker 1 and 2.",
+    "Existing task 5.2 types in src/ArrTags/Artwork.",
+    "State boundary in src/ArrTags/State.",
+    "Task 5.3 worker/reviewer reports and docs/changelog.md section 5.3 to confirm the restored PLANS.md text is original."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

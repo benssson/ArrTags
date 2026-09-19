@@ -695,8 +695,10 @@ after a newer operation or lifecycle fence has been accepted.
 | `priorPublicationToken` | Opaque token | Optional | Generated | Expected prior ArrTags publication when replacing an owned image. |
 | `publicationToken` | Opaque token | Required for publication | Generated | Candidate publication identity to commit if the postcondition matches. |
 | `expectedBeforeIdentity` | ActiveImageIdentity | Yes | Generated/Jellyfin observation | Exact precondition observed before the external image mutation. |
+| `candidateAfterPresence` | `Present` or `Absent` | Yes | Generated | Explicit candidate after-target presence; `Absent` removes the ArrTags image rather than writing a new one. |
 | `candidateAfterContentSha256` | SHA-256 | Required when the after target is present | Generated | Hash of the durable artifact intended to become active; an absent after target records `presence = Absent`; the complete after identity is learned by readback. |
 | `observedAfterIdentity` | ActiveImageIdentity | Optional | Jellyfin observation | Recorded only after the effective active image is re-observed. |
+| `sourcePresence` | `Present` or `Absent` | Yes | Generated | Explicit presence of the retained source baseline; `Absent` is an explicit baseline with no artifact. |
 | `sourceArtifactId` | Opaque artifact identifier | Required when source is present | Generated | Retained original used by publication or restoration. |
 | `derivedArtifactId` | Opaque artifact identifier | Required for publication | Generated | Durable, validated render output; never only an evictable cache entry. |
 | `phase` | ArtworkOperationPhase | Yes | Generated | Durable lower-bound marker for external side effects. |

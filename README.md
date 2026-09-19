@@ -3,8 +3,9 @@
 **Current milestone:** Phase 5 — Jellyfin artwork integration is in progress.
 Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
 and route variants), 5.2 (source-artwork provenance and guarded restoration
-state), 5.3 (the Jellyfin host source adapter), and 5.4 (renderer managed/native
-packaging) are complete; the remaining Phase 5 tasks are not started.
+state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native
+packaging), and 5.6 (the durable `ArtworkOperation` write-ahead record and store)
+are complete; the remaining Phase 5 tasks are not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -252,30 +253,55 @@ Completed in Phase 5 (Jellyfin artwork integration):
   Jellyfin `PluginLoadContext` over the exact package mapped the plugin-local
   `libSkiaSharp.so` next to `SkiaSharp.dll`. A full image render is not wired
   until tasks 5.5/5.11. New packaging tests live in `PluginPackagingTests`.
+- 5.6 Implemented the durable `ArtworkOperation` write-ahead record and its
+  authoritative store in `src/ArrTags/Artwork` (ADR-003; data-model sections
+  3.10.3 and 3.10.4; architecture section 9). `ArtworkOperation` carries the
+  operation id, kind, item/surface subject, generation, ownership/prior/next
+  publication tokens, the exact `expectedBeforeIdentity`, the explicit
+  source and candidate-after presences, the candidate after content hash, the
+  optional observed after identity, the source/derived artifact references, the
+  phase, the lifecycle fence, the bounded attempt counter, the redacted
+  `lastError`, and the journal timestamps, with `Validate` enforcing every
+  documented conditional rule and excluding paths/credentials. The
+  `ArtworkOperationPhase` enum matches the data-model table and is documented as
+  a durable lower-bound marker; `ArtworkOperationPhases` is the pure phase
+  advance helper and `ArtworkOperationFencing` provides the pure generation and
+  lifecycle-fence decisions (a disable/uninstall/item-removal fence refuses new
+  publication work). `ArtworkOperationStore` persists through the versioned
+  authoritative boundary, keyed per item/image surface, validates on write,
+  quarantines a valid-envelope-but-invalid payload, fences writes by the
+  monotonic generation so stale work cannot overwrite a newer durable record,
+  and keeps non-terminal operations out of terminal-provenance retention. The
+  store performs no image mutation; task 5.5 drives the ordering. New tests
+  (`ArtworkOperationTests`, `ArtworkOperationStoreTests`, 101 cases) cover the
+  model invariants, absent/present after target, token bounds and `lastError`
+  redaction, every legal/illegal phase transition, the fence decisions,
+  restart durability, generation fencing, one-non-terminal-per-subject,
+  quarantine, and retention.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 745 automated tests; 52 additional environment-guarded tests (the task
+- Passes 849 automated tests; 49 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, the task 5.1 host route cases,
   the task 5.3 native source-decode cases, and the task 5.4 package-content
   cases) are skipped unless their environment guard is provided. With
-  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full 827-test suite
-  passes 821 with 6 skips (the five task 5.1 route cases and the non-canonical
-  golden placeholder); adding `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned
-  host unskips the five route cases and leaves only the non-canonical golden
-  skip. Running `./build.sh package` first also unskips the three task 5.4
-  package-content cases.
+  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full suite
+  additionally passes the guarded render cases; adding `ARRTAGS_JELLYFIN_HOST_DIR`
+  pointing at the pinned host unskips the five route cases, and running
+  `./build.sh package` first also unskips the three task 5.4 package-content
+  cases.
 
 Next tasks:
 
-- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3, and
-  5.4 are complete; the next task in the authoritative Phase 5 execution order is
-  5.6 (persist a durable `ArtworkOperation` before `SaveImage`).
+- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3,
+  5.4, and 5.6 are complete; the next task in the authoritative Phase 5
+  execution order is 5.5 (publish completed artwork through Jellyfin's supported
+  item-image APIs).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

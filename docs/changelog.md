@@ -628,7 +628,7 @@ that point and required explicit user approval to begin.
 
 ## Phase 5 - Jellyfin artwork integration (Milestone 5)
 
-**Status:** In progress. Tasks 5.1, 5.2, and 5.3 complete; tasks 5.4 through 5.11 not started.
+**Status:** In progress. Tasks 5.1, 5.2, 5.3, 5.4, and 5.6 complete; tasks 5.5 and 5.7 through 5.11 not started.
 
 ### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
 
@@ -886,3 +886,75 @@ environment-guarded skips (797 total; 748 passed with 49 skips when the package
 is present). The forced native run with `ARRTAGS_SKIA_COMPAT=1` and the pinned
 sysroot passes 821 with 6 skips (827 total). No ADR, `RenderVersion`, renderer
 behavior, or existing passing behavior was changed.
+
+### Task 5.6 - Durable ArtworkOperation write-ahead record and store
+
+Task 5.6 implements the durable provider-neutral `ArtworkOperation` write-ahead
+record, its phase and lifecycle-fence rules, and its generation-fenced
+authoritative store (ADR-003; `docs/data-model.md` sections 3.10.3 and 3.10.4;
+`docs/architecture.md` section 9). It does not call `SaveImage`, run
+reconciliation (5.7), or wire lifecycle events (5.9); task 5.5 drives the
+write-before-mutation ordering.
+
+- `src/ArrTags/Artwork/ArtworkOperationKind.cs`: `Publication` or `Restoration`,
+  selecting the target final state and artifact use.
+- `src/ArrTags/Artwork/ArtworkLifecycleFence.cs`: `Normal`, `Disable`,
+  `Uninstall`, or `ItemRemoved`. The fence is modeled and evaluated here; the
+  lifecycle event wiring that raises it belongs to task 5.9.
+- `src/ArrTags/Artwork/ArtworkOperationPhase.cs`: the eight data-model phases
+  (`Prepared`, `MutationStarted`, `RepositoryUpdateStarted`,
+  `VerificationPending`, `FinalizationPending`, `Committed`, `Aborted`,
+  `RecoveryBlocked`), documented as a durable lower-bound marker.
+- `src/ArrTags/Artwork/ArtworkOperationPhases.cs`: the pure phase rules.
+  `CanAdvance`/`TryAdvance` permit exactly one forward step along the documented
+  order or a terminal outcome from any non-terminal phase, refuse backward and
+  same-phase moves, and refuse to advance out of `Committed`, `Aborted`, or
+  `RecoveryBlocked`. `IsTerminal` and the fail-safe `MayHaveStartedMutation`
+  (only `Prepared` proves no mutation was started) encode the lower-bound
+  semantics.
+- `src/ArrTags/Artwork/ArtworkOperationFencing.cs`: the pure decisions.
+  `AllowsNewPublication` is true only for `Normal`; `AllowsNewRestoration` is
+  true except for `ItemRemoved`; `IsStale`, `CanSupersede`, and
+  `IsSameGeneration` classify generations.
+- `src/ArrTags/Artwork/ArtworkOperationErrors.cs`: redacts control characters
+  and bounds the optional `lastError` diagnostic to 512 characters.
+- `src/ArrTags/Artwork/ArtworkOperation.cs`: the model. It carries every
+  data-model 3.10.3 field plus explicit `sourcePresence` and
+  `candidateAfterPresence` fields, so the conditional rules are enforceable: an
+  operation requires a valid item id, an unindexed surface, and a well-formed
+  opaque operation id; a publication requires a present after target, a
+  publication token, and a derived artifact; a restoration must target the same
+  presence as its source baseline and, for a present source, the retained source
+  content, and cannot carry a publication token or derived artifact; a present
+  source requires a content-addressed source artifact; a present after target
+  requires its SHA-256 content hash; generation and attempt are bounded; tokens
+  and artifact references are opaque/bounded with no path or credential field.
+  The record never contains credentials, media paths, raw external payloads, or
+  artifact bytes.
+- `src/ArrTags/Artwork/ArtworkOperationStore.cs`: persists the record through the
+  existing versioned, integrity-tagged, atomically-written `StateRepository` /
+  `StateAuthority.Authoritative` boundary, keyed per item/image surface so only
+  one operation can exist for a subject at a time. It validates on write,
+  quarantines a valid-envelope-but-invalid payload rather than replaying it,
+  fences writes by the monotonic generation (a stale generation cannot overwrite
+  a newer durable record; a newer generation supersedes; the same generation may
+  only advance the same operation through a legal phase), and marks only terminal
+  phases (`Committed`, `Aborted`, or `RecoveryBlocked`) eligible for
+  terminal-provenance retention so a non-terminal operation is never pruned. A
+  tombstoned item-removal operation is terminal because its phase is `Aborted`,
+  not because of its lifecycle fence.
+- `docs/data-model.md` section 3.10.3 records the two explicit presence fields.
+- Tests: `tests/ArrTags.Tests/ArtworkOperationTests.cs` and
+  `tests/ArrTags.Tests/ArtworkOperationStoreTests.cs` (101 cases with the shared
+  `ArtworkOperationFixtures`) cover every conditional requirement,
+  absent-versus-present after target, token bounds, `lastError` redaction, the
+  phase enum and every legal/illegal transition, the fence decisions, durability
+  across a reconstructed `StateRepository`, generation fencing,
+  one-non-terminal-per-subject, authoritative quarantine on a corrupt or
+  semantically invalid record, and terminal-versus-non-terminal retention.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 849 with 49
+environment-guarded skips (898 total), exactly +101 over the task 5.4 baseline
+(748/49/797 with the package present), with no regressions. No ADR,
+`RenderVersion`, renderer behavior, or existing passing behavior was changed.
