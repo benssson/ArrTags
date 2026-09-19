@@ -286,6 +286,14 @@ is met. Milestone 4 (badge rendering) is next, gated by DG-3.
 
 ### Phase 4 (Badge rendering) - complete
 
+**Status:** Complete. Gate 4 met.
+
+**Commit/tag:** tag `v0.1.0-phase4`, at commit
+`5629eb98235a20b5535382b70968d3e1bdcd54d1` ("Phase 4 complete: Badge
+rendering", 2026-09-19). Tasks 4.1-4.11 landed in commits `a43305d` through
+`e5cbf71`; the phase-completion state is recorded in `1b36e18` and the phase
+review in `5629eb9`.
+
 Tasks 4.1 through 4.11 are complete, all Milestone 4 acceptance criteria are
 satisfied, and Gate 4 is met. DG-3 and ADR-010 are resolved.
 
