@@ -90,6 +90,11 @@ without modifying original media files or external services.
 - Keep milestone order unchanged. A milestone may be worked on only after its
   predecessor's gate is met, unless a task is explicitly marked as research or
   a test spike.
+- Task numbers are stable identifiers only, not an execution sequence. Each
+  phase's **Authoritative Phase X execution order** is the canonical sequence:
+  walk it from the first entry and select the first task that is not complete,
+  after verifying that task's documented prerequisites. When the execution order
+  reorders task numbers, the execution order wins.
 - Update task checkboxes and the status table as work lands; do not mark a
   milestone complete until every acceptance criterion is verified.
 - Record decisions that change an architecture assumption in
@@ -1316,33 +1321,54 @@ provenance and coexisting with Jellyfin Enhanced.
 
 **Tasks:**
 
-- [ ] Confirm the exact supported Jellyfin item-image publication ABI and route
-  variants.
-- [ ] Implement source-artwork provenance and guarded restoration state before
-  publishing derived artwork.
-- [ ] Implement the Jellyfin host source adapter that reads the unindexed
+- [ ] 5.1 Confirm the exact supported Jellyfin item-image publication ABI and
+  route variants.
+- [ ] 5.2 Implement source-artwork provenance and guarded restoration state
+  before publishing derived artwork.
+- [ ] 5.3 Implement the Jellyfin host source adapter that reads the unindexed
   `Primary` source image and supplies the Phase 4 renderer's `SourceImageInput`
   bytes, content type, dimensions, and hash; keep Jellyfin access out of the
   renderer (ADR-010).
-- [ ] Extend plugin packaging so the renderer's managed dependencies, Linux
+- [ ] 5.4 Extend plugin packaging so the renderer's managed dependencies, Linux
   native assets, dependency manifest, and Skia/font license notices are included
   in the plugin zip and resolve under the host's plugin load context; the
   current `PackagePlugin` target copies only the main assembly (ADR-010).
-- [ ] Publish completed artwork through Jellyfin's supported item-image APIs;
+- [ ] 5.5 Publish completed artwork through Jellyfin's supported item-image APIs;
   do not write media-folder posters or Jellyfin's image cache directly.
-- [ ] Persist a durable `ArtworkOperation` before `SaveImage`, including before
-  and candidate-after identities, artifact references, generation, and
+- [ ] 5.6 Persist a durable `ArtworkOperation` before `SaveImage`, including
+  before and candidate-after identities, artifact references, generation, and
   ownership/publication tokens.
-- [ ] Reconcile uncertain `SaveImage`, item update, and provenance persistence
-  outcomes by postcondition; never blindly replay or delete an active artifact.
-- [ ] Preserve the current usable artwork when source capture or rendering
+- [ ] 5.7 Reconcile uncertain `SaveImage`, item update, and provenance
+  persistence outcomes by postcondition; never blindly replay or delete an
+  active artifact.
+- [ ] 5.8 Preserve the current usable artwork when source capture or rendering
   cannot safely complete.
-- [ ] Fence and drain publication operations during disable/uninstall, and
+- [ ] 5.9 Fence and drain publication operations during disable/uninstall, and
   tombstone confirmed item removal without issuing image mutations.
-- [ ] Add the configured disable/limit policy for duplicate or overlapping
+- [ ] 5.10 Add the configured disable/limit policy for duplicate or overlapping
   badges; do not depend on Jellyfin Enhanced internals.
-- [ ] Test Web and image-consuming clients through the supported server image
-  response path.
+- [ ] 5.11 Test Web and image-consuming clients through the supported server
+  image response path.
+
+**Authoritative Phase 5 execution order:** 5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7,
+5.8, 5.9, 5.10, 5.11. Task IDs are stable references only; this execution order
+is the canonical sequence. The order is derived from the documented dependencies,
+not from task numbering:
+
+- 5.1 has no prerequisites and confirms the item-image publication ABI and route
+  variants that the ABI-dependent tasks rely on.
+- 5.2 precedes 5.5 because source-artwork provenance and guarded restoration
+  state must exist before derived artwork is published.
+- 5.3 precedes 5.5 because the publisher consumes the `SourceImageInput` captured
+  by the host source adapter.
+- 5.4 precedes 5.5 because the renderer's managed dependencies, native assets,
+  dependency manifest, and license notices must resolve under the host plugin
+  load context before publication is exercised on a host.
+- 5.6 precedes 5.5 because the durable `ArtworkOperation` must be persisted
+  before `SaveImage`.
+- 5.7 depends on 5.5 and 5.6; 5.8 depends on 5.3 and 5.5; 5.9 depends on 5.5,
+  5.6, and 5.7; 5.10 depends on 5.5 and the DG-8 Enhanced coexistence decision;
+  5.11 depends on 5.1 and 5.5.
 
 **Acceptance criteria:**
 
@@ -1390,24 +1416,46 @@ authoritative.
 
 **Tasks:**
 
-- [ ] Keep library event handlers short: validate relevance, enqueue a bounded
-  hint, and return without external I/O or rendering.
-- [ ] Implement coalescing by item and connection, single-flight work, worker
+- [ ] 6.1 Keep library event handlers short: validate relevance, enqueue a
+  bounded hint, and return without external I/O or rendering.
+- [ ] 6.2 Implement coalescing by item and connection, single-flight work, worker
   cancellation, retry classification, and queue overflow behavior.
-- [ ] Publish metadata state atomically only after current item/configuration
+- [ ] 6.3 Publish metadata state atomically only after current item/configuration
   validation; discard stale long-running work.
-- [ ] Recover non-terminal artwork operations before accepting new work for the
-  same item/image surface, using before/after identity postconditions and
+- [ ] 6.4 Recover non-terminal artwork operations before accepting new work for
+  the same item/image surface, using before/after identity postconditions and
   generation fences.
-- [ ] Separate metadata freshness and bounded stale-last-known-good behavior from
-  artwork retention and eviction.
-- [ ] Regenerate and republish only affected artwork when a metadata fingerprint
-  changes; invalidate relevant publication/work state on schema, renderer, or
-  configuration changes.
-- [ ] Validate and bound webhook authentication, content, rate, and work scope;
-  treat webhooks as hints rather than source of truth.
-- [ ] Test restart, shutdown, corruption, outage, recovery, duplicate events,
+- [ ] 6.5 Separate metadata freshness and bounded stale-last-known-good behavior
+  from artwork retention and eviction.
+- [ ] 6.6 Regenerate and republish only affected artwork when a metadata
+  fingerprint changes; invalidate relevant publication/work state on schema,
+  renderer, or configuration changes.
+- [ ] 6.7 Validate and bound webhook authentication, content, rate, and work
+  scope; treat webhooks as hints rather than source of truth.
+- [ ] 6.8 Test restart, shutdown, corruption, outage, recovery, duplicate events,
   queue pressure, and cancellation behavior.
+
+**Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
+6.8. Task IDs are stable references only; this execution order is the canonical
+sequence. The order is derived from the documented dependencies, not from task
+numbering:
+
+- 6.1 has no prerequisites: the event handler and enqueue boundary is the entry
+  point for all later queue work.
+- 6.2 depends on 6.1 and provides the queue, coalescing, single-flight, and
+  cancellation behavior.
+- 6.3 depends on 6.2 because atomic metadata-state publication and stale-work
+  disposal operate on queued work.
+- 6.4 depends on 6.2 and 6.3 and reuses the queue's generation fences before
+  accepting new work for an item/image surface.
+- 6.5 depends on 6.3 because freshness/staleness policy is applied when
+  metadata state is published.
+- 6.6 depends on 6.3 and 6.4 because fingerprint-driven invalidation must run
+  through the publication and recovery boundaries.
+- 6.7 depends on 6.1 because bounded webhook hints enter through the same
+  handler/enqueue boundary.
+- 6.8 depends on 6.1 through 6.7 because it tests the restart, outage, recovery,
+  duplicate-event, pressure, and cancellation behavior of the complete phase.
 
 **Acceptance criteria:**
 
@@ -1446,17 +1494,33 @@ release artifact and operational documentation.
 
 **Tasks:**
 
-- [ ] Run all unit and integration tests against the exact declared versions.
-- [ ] Verify the plugin installs, upgrades, reloads, and uninstalls safely.
-- [ ] Verify all success criteria in `GOALS.md`, including independent provider
-  configuration, matching, quality retrieval, poster output, update behavior,
-  Enhanced compatibility, graceful failure, and reproducible builds.
-- [ ] Review logs, diagnostics, HTTP behavior, and persisted state for secret
+- [ ] 7.1 Run all unit and integration tests against the exact declared versions.
+- [ ] 7.2 Verify the plugin installs, upgrades, reloads, and uninstalls safely.
+- [ ] 7.3 Verify all success criteria in `GOALS.md`, including independent
+  provider configuration, matching, quality retrieval, poster output, update
+  behavior, Enhanced compatibility, graceful failure, and reproducible builds.
+- [ ] 7.4 Review logs, diagnostics, HTTP behavior, and persisted state for secret
   leakage or unbounded data.
-- [ ] Build the release package from a clean checkout and record the commands,
-  inputs, artifact identity, and supported version ranges.
-- [ ] Document known limitations and any deferred decision without presenting
+- [ ] 7.5 Build the release package from a clean checkout and record the
+  commands, inputs, artifact identity, and supported version ranges.
+- [ ] 7.6 Document known limitations and any deferred decision without presenting
   unsupported behavior as available.
+
+**Authoritative Phase 7 execution order:** 7.1, 7.2, 7.3, 7.4, 7.5, 7.6. Task IDs
+are stable references only; this execution order is the canonical sequence. The
+order is derived from the documented dependencies, not from task numbering:
+
+- 7.1 has no prerequisites and runs the full suite against the exact declared
+  versions.
+- 7.2 depends on 7.1 and verifies install, upgrade, reload, and uninstall safety.
+- 7.3 depends on 7.1 and 7.2 because the `GOALS.md` success criteria span
+  provider, matching, rendering, artwork, update, and lifecycle behavior.
+- 7.4 depends on 7.1 and reviews logs, diagnostics, HTTP behavior, and persisted
+  state produced by the test and install runs.
+- 7.5 depends on 7.1 through 7.4 because the release package may be built only
+  after the tests and checks pass.
+- 7.6 depends on 7.1, 7.3, and 7.5 so the documented limitations and deferred
+  decisions match the verified behavior and the release artifact.
 
 **Acceptance criteria:**
 
