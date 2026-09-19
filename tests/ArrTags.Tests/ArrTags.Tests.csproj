@@ -32,4 +32,11 @@
     <ProjectReference Include="../../src/ArrTags/ArrTags.csproj" />
   </ItemGroup>
 
+  <!-- Phase 4 task 4.11: the committed, repository-owned golden artifacts are
+       read-only test inputs. They are copied to the test output unchanged and no
+       test may write or regenerate them. -->
+  <ItemGroup>
+    <None Update="Goldens/**/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

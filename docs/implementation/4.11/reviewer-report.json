@@ -1,0 +1,97 @@
+{
+  "task": "4.11",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "info",
+      "criterion": 1,
+      "finding": "Golden-image oracle is genuine and non-auto-approving. tests/ArrTags.Tests/Goldens/ holds nine distinct committed PNGs plus manifest.json with nine entries (opaque-jpeg, rgb-png, rgba-png, orientation, all-fields, long-custom, missing-fields, full-rail, upgrade-status); the nine OutputHashes are all distinct, so no fixture is a duplicate. RenderGoldenTests loads the manifest, renders the same request, and asserts status, dimensions, output hash, output fingerprint, exact encoded bytes, PNG color type, decoded channel count, and an exact decoded-pixel-plane comparison, plus alpha behavior. There is no writer, auto-update, or auto-approval path anywhere in the test project (only File.ReadAllBytes/File.ReadAllText on the goldens; the sole write is the determinism probe to a temp path). I independently reproduced the failure property: (a) copying rgb-png.png over bin/.../Goldens/all-fields.png failed the all-fields golden test and the manifest self-consistency (hash) test (2 failed / 11); (b) setting all-fields OutputFingerprint to zeros in the deployed manifest failed the golden test at the fingerprint assertion (1 failed / 11). Both were restored and the on-disk and bin copy SHA-256s re-verified. CommittedGoldenManifestIsCompleteAndSelfConsistent independently re-hashes each file and re-parses IHDR/bit-depth/color-type/interlace without the native renderer; I also verified the IHDR bytes directly with od (RGB type 2 for eight files, RGBA type 6 for rgba-png, bit depth 8, interlace 0) and confirmed every golden carries an sRGB chunk and no iCCP."
+    },
+    {
+      "id": "F2",
+      "severity": "info",
+      "criterion": 2,
+      "finding": "Byte-determinism is covered on the pinned runtime. RenderDeterminismTests proves identical PNG bytes, output hash, and output fingerprint for repeated renders, a changed Jellyfin item identity, a changed observation timestamp, and different source stream chunk sizes; RenderDeterminismProcessProbe plus SeparateProcessProducesTheSameArtifact spawn a fresh `dotnet test` probe process that renders the canonical fixture and has its output byte-compared to the parent render. I confirmed ObservedAt is not part of BadgeMetadata.ComputeFingerprint (it is not appended), so the timestamp test is meaningful rather than vacuous. All cases passed in the forced native full run."
+    },
+    {
+      "id": "F3",
+      "severity": "info",
+      "criterion": 3,
+      "finding": "PNG contract and the F2 fail-closed path are real. RenderPngContractTests asserts non-interlaced 8-bit RGB (opaque) and RGBA (meaningful alpha), a fixed sRGB chunk, absent iCCP/eXIf/tIME/tEXt/zTXt/iTXt chunks (including from a metadata-bearing PNG), canonical #00000000 transparent RGB with non-zero hidden source bytes, straight source-alpha preservation (alpha 128, RGB within one), malformed/random iCCP rejection (Failed + UnsupportedColorProfile + no artifact + source unchanged), and supported-iCCP conversion. Because the in-repo profile tests only exercise PNG, I independently probed the JPEG APP2 branch with an out-of-tree reflection harness outside the repository: a stripped JPEG (encoder ICC removed) rendered Rendered; stripped + 128 garbage profile bytes returned Failed/UnsupportedColorProfile; stripped + the same deterministic minimal ICC used by the PNG test rendered Rendered with the sampled pixel converted (27,62,129) versus the source background (32,64,128); the untouched Skia-encoded baseline JPEG (which already embeds a parseable ICC APP2) rendered Rendered. This confirms both fail-closed and supported conversion on the JPEG path and that malformed profiles are not silently treated as sRGB."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "criterion": 4,
+      "finding": "The cross-runtime comparator implements the ADR-010 rule correctly and is boundary-tested unguarded. CrossRuntimePixelComparator enforces positive dimensions, 3/4 channels, length consistency, exact alpha and exact RGB in Exact mode, and in TolerantAntiAliasedText mode rejects any per-channel difference greater than 1 and any differing-pixel count above floor(width*height*0.001); a >1 channel difference fails before the budget check, so a moved solid region cannot pass as text anti-aliasing. CrossRuntimePixelComparatorTests adds 16 unguarded cases covering both modes, the 0.1% accept boundary, one-pixel-over rejection, a large solid-region move, alpha exactness, and invalid dimensions/channels/length; RendererCrossRuntimeTests runs the exact canonical comparison against every golden. The non-canonical half is not executed: no second non-canonical runtime exists in this environment (only the pinned canonical runtime and the byte-identical Jellyfin host runtime), and the second explicitly supported runtime has not been selected. The tolerant path is data-driven against an optional Goldens/non-canonical set and NonCanonicalRuntimeFactAttribute honestly skips it; I confirmed that ARRTAGS_NONCANONICAL_GOLDENS=1 without that set fails the test rather than passing silently. This is an acceptable environment limitation for 4.11 (the ADR-010 comparator and canonical half are delivered; selecting the second runtime is a testing/release-milestone decision) and is accurately recorded in docs/implementation-readiness.md, docs/changelog.md, PLANS.md, and README.md."
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "criterion": 5,
+      "finding": "The EXIF orientation fix is mathematically correct, not merely self-consistent. With source 500x750 and oriented 750x500, the old translations for RightTop (6) used oriented height (500) so x' = -y + 500 left 250 source rows (125,000 pixels) undrawn; RightBottom (7) used (500,750) leaving 250,000 transparent; LeftBottom (8) used (0,750) leaving 187,500 transparent. The new transforms translate about source.Height/source.Width (750/500) and cover the full output. LeftTop (5) had no translation and is a correct transpose (p -> (y,x)), so it was already correct and correctly left unchanged. I ran RenderOrientationTests on the pinned runtime: all eight orientations report zero non-255 alpha pixels and place the red/green corner markers in the exact expected quadrants (1 TL/TR, 2 TR/TL, 3 BR/BL, 4 BL/BR, 5 TL/BL, 6 TR/BR, 7 BR/TR, 8 BL/TL). The corpus orientation golden is orientation 6 (750x500) and matches byte-for-byte."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "criterion": 6,
+      "finding": "Version-bump consistency holds. RenderVersion.CurrentRendererVersion is 2 and the badge schema version is unchanged (CurrentBadgeSchemaVersion aliases BadgeMetadata.CurrentSchemaVersion). The renderer version appears only in RenderFingerprint.ComputeOutputFingerprint, never in the drawing path, so the eight non-orientation fixtures' PNG bytes are unaffected while all nine manifest fingerprints advance; the manifest and the render agree (all golden tests pass). No test hard-codes version 1, and no other production version constant changed."
+    },
+    {
+      "id": "F7",
+      "severity": "info",
+      "criterion": 7,
+      "finding": "Scope and hygiene are clean. The production diff is limited to RenderFailureReason (one additive enum value), RenderVersion (1 -> 2), SkiaBadgeRenderer (the profile check), SkiaOrientation (three corrected translations), and the two new SourceColorProfile/SourceColorProfileKind files. tests/ArrTags.Tests.csproj adds only a None Update copy item; packages.lock.json is unmodified; docs/decisions.md (ADR-009/ADR-010) is unmodified. There is no package, DI, admin save-surface, provider, or artwork-pipeline wiring. The .opencode/agents/*.md modifications are unrelated agent-configuration edits that predate/are outside this task and are neither in the worker's changed_files list nor referenced by 4.11."
+    },
+    {
+      "id": "F8",
+      "severity": "low",
+      "criterion": 3,
+      "finding": "The JPEG APP2 embedded-ICC branch of SourceColorProfile is production code with no committed automated test; only the PNG iCCP branch is covered. I verified the JPEG branch correct and fail-closed with the out-of-tree probe described in F3, so this is a coverage observation, not a correctness defect. Adding a JPEG-ICC contract case would close the residual gap in a future task."
+    },
+    {
+      "id": "F9",
+      "severity": "low",
+      "criterion": 3,
+      "finding": "In SourceColorProfile.InspectPng the guard `offset + 12 + chunkLength > bytes.Length` can integer-overflow for an intentionally absurd declared chunk length (a length just under int.MaxValue-12): the sum wraps negative, the bound check passes, and bytes.Slice(offset + 8, chunkLength) throws ArgumentOutOfRangeException, which the renderer's catch-all maps to RenderError. The result is still a bounded failure with no artifact (never a guessed sRGB render), so it is not a fail-open, but it would report RenderError rather than UnsupportedColorProfile for that malformed input. Not required by any acceptance criterion."
+    },
+    {
+      "id": "F10",
+      "severity": "low",
+      "criterion": 5,
+      "finding": "Documentation wording is slightly loose: PLANS.md / changelog / implementation-readiness say the dimension-swapping fix corrects 'orientations 5-8' and that 'the transforms now translate about source.Height/source.Width'. Orientation 5 had no translation at all and was already correct; only 6, 7, and 8 were changed. The behavior and tests are correct; only the prose implies all four were wrong."
+    },
+    {
+      "id": "F11",
+      "severity": "low",
+      "criterion": 3,
+      "finding": "Non-PNG/non-JPEG containers (e.g., WebP) that may carry an embedded color profile are not inspected, so a malformed profile there would be left to the decoder and could be treated as sRGB. This boundary is explicitly documented in SourceColorProfile and in the task report, and the renderer's supported source-capture path is not yet wired (Phase 5), so it is a recorded residual risk rather than a 4.11 defect."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore -> All projects are up-to-date for restore (locked mode), no lock-file or package-manifest change",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "./build.sh test (default) -> Passed: 593, Failed: 0, Skipped: 40, Total: 633",
+    "Forced native full suite (pinned LD_LIBRARY_PATH/FONTCONFIG_PATH/XDG_DATA_DIRS + ARRTAGS_SKIA_COMPAT=1, --no-build) -> Passed: 655, Failed: 0, Skipped: 1 (non-canonical placeholder), Total: 656 (run twice, stable)",
+    "Forced native new-test filter (RenderGoldenTests|RenderPngContractTests|RendererCrossRuntimeTests|RenderDeterminismTests|CrossRuntimePixelComparatorTests|RenderOrientationTests) -> Passed: 58, Skipped: 1, Total: 59",
+    "RenderOrientationTests (--logger console;verbosity=normal) -> 8/8 orientation cases passed with correct marker quadrants and zero transparency",
+    "./build.sh package -> Build succeeded, 0 Warning(s), 0 Error(s); artifacts/ArrTags_0.1.0.0.zip produced",
+    "Golden-failure proof (independent): substituted rgb-png.png over the deployed all-fields.png -> 2 failed / 11 (byte-pixel + manifest hash); corrupted all-fields OutputFingerprint in the deployed manifest -> 1 failed / 11 (fingerprint); both reverted and SHA-256 re-verified",
+    "Guard honesty (independent): ARRTAGS_SKIA_COMPAT=1 without the pinned sysroot -> 9 guarded cases failed with the native TypeInitializationException/DllNotFoundException while the 2 unguarded RenderGoldenTests cases passed",
+    "Non-canonical guard honesty (independent): ARRTAGS_NONCANONICAL_GOLDENS=1 without Goldens/non-canonical -> the test failed with 'the Goldens/non-canonical set is missing' rather than skipping",
+    "Exact test-count reconciliation: 633 default total - 37 new default-counted cases = 596 (matches the documented prior total); forced-native 656 = 633 + 23 from skipped-theory case expansion (golden 9 + orientation 8 + cross canonical 9 -> +8+7+8)",
+    "Out-of-tree reflection probe in /tmp/opencode/revprobe2 (not in the repository): validated the JPEG APP2 ICC path (no ICC -> Rendered; garbage ICC -> Failed/UnsupportedColorProfile; valid ICC -> Rendered with converted pixel; Skia-encoded baseline ICC -> Rendered)"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-010 'PNG, alpha, and color handling' (non-interlaced 8-bit RGB/RGBA, unprofiled = sRGB, supported profile converted, invalid/unsupported fails closed, straight alpha, stripped metadata, canonical transparent RGB, fixed sRGB declaration, no random/time bytes) and 'Renderer testing strategy' (golden fixture list, decoded pixel planes with dimensions/alpha/sRGB/fingerprints, determinism after process restart, cross-runtime pixel tolerance of <=1 per channel and <=0.1% differing pixels, no auto-approval of changed goldens).",
+    "docs/decisions.md ADR-009 (V1 visual specification) for the badge field/layout behavior the golden fixtures exercise.",
+    "PLANS.md task 4.11 text, the authoritative Phase 4 execution order (4.1..4.11), task 4.11 status paragraph, and the acceptance criteria that Milestone 4/Gate 4 remain unchecked.",
+    "docs/implementation-readiness.md resolved-items section (orientation defect, ICC support decision, canonical transparent RGB, unselected non-canonical runtime).",
+    "docs/research/skia-host-compatibility.md for the pinned SkiaSharp 3.119.4 managed/native assets and the exact pinned-native test command.",
+    "Verified the F2 fail-closed and conversion behaviors empirically rather than relying on the worker's ICC probe narrative."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

@@ -55,7 +55,11 @@ tasks 4.1 (metadata selectors), 4.2 (rendering specification), 4.3
 (pinned assets and font), 4.8 (SkiaSharp host-compatibility spike), 4.9
 (provider-neutral renderer service and drawing engine), 4.6 (renderer
 behavior matrix), and 4.10 (renderer configuration model, snapshot, and
-fingerprint) are complete. Golden/determinism tests (4.11) remain incomplete.
+fingerprint) are complete. Task 4.11 (golden-image, byte-determinism,
+PNG-contract, and cross-runtime tolerance tests) is complete, including the
+task 4.9 F2 color-profile fail-closed supporting change and the authorized
+task 4.11 fix of the EXIF dimension-swapping orientation transforms with a
+renderer version bump to 2.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -917,7 +921,7 @@ Radarr, or Jellyfin artwork storage.
   enabled V1 selectors, bounded templates, and contrast-validated palette/style
   overrides, including the secret-free renderer configuration fingerprint
   (ADR-010).
-- [ ] 4.11 Add golden-image, byte-determinism, PNG-contract, and cross-runtime
+- [x] 4.11 Add golden-image, byte-determinism, PNG-contract, and cross-runtime
   tolerance tests with synthetic fixtures and no auto-approval of changed
   goldens (ADR-010).
 
@@ -1088,7 +1092,7 @@ source-alpha preservation, palette placement, sRGB/metadata chunks, EXIF
 orientation, unsupported-input failure, source immutability, and byte
 determinism). The dedicated behavior matrix (4.6) and the renderer
 configuration model (4.10) are complete; golden/cross-runtime determinism tests
-(4.11) remain.
+were completed in task 4.11.
 
 **Task 4.6 status:** Complete. The dedicated renderer behavior matrix is
 implemented as seven test-only files under `tests/ArrTags.Tests/`
@@ -1134,8 +1138,8 @@ bounded `Failed` reason with no partial PNG and an unchanged source. Default
 `./build.sh test` passes with 0 warnings and 554 passing tests plus 21
 environment-guarded Skia skips (575 total); with `ARRTAGS_SKIA_COMPAT=1` and the
 pinned sysroot on the loader path the full 575-test suite passes. The renderer
-configuration model was completed in task 4.10; golden/cross-runtime determinism
-tests (4.11) remain.
+configuration model was completed in task 4.10; the golden/cross-runtime
+determinism tests were completed in task 4.11.
 
 **Task 4.10 status:** Complete. The persisted, immutable-replacement
 configuration model now carries the user-adjustable V1 renderer configuration
@@ -1193,7 +1197,68 @@ Build and test pass with 0 warnings and 575 passing tests plus 21
 environment-guarded Skia skips (596 total); the forced native run is unchanged.
 The renderer configuration is not wired to the Jellyfin admin save surface, DI,
 providers, or the artwork pipeline (not a Phase 4 prerequisite), and the
-golden/cross-runtime determinism tests remain task 4.11.
+golden/cross-runtime determinism tests were completed in task 4.11.
+
+**Task 4.11 status:** Complete. The ADR-010 test oracle is in place: committed,
+repository-owned synthetic decoded-pixel goldens for the full fixture list with
+no auto-approval or writer path; byte-determinism across repeated renders, item
+identity, observation timestamp, stream chunking, and a separate fresh process;
+PNG-contract tests for non-interlaced 8-bit RGB/RGBA, the fixed `sRGB`
+declaration, stripped metadata, canonical transparent-pixel RGB, straight
+source-alpha preservation, and malformed/unsupported embedded color-profile
+rejection; and an ADR-010 cross-runtime tolerance comparator with unguarded
+boundary unit tests and an exact canonical-runtime run. New unguarded files are
+`CrossRuntimePixelComparator`, `CrossRuntimePixelComparatorTests`,
+`RenderGoldenFixtures`, `RenderGoldenTests`, `RenderImageFixtures`,
+`RenderPngContractTests`, `RendererCrossRuntimeTests`,
+`RenderDeterminismTests`, `RenderDeterminismProcessProbe`,
+`RenderOrientationTests`, `SkiaNativeTheoryAttribute`, and
+`NonCanonicalRuntimeFactAttribute`; `tests/ArrTags.Tests/Goldens/` holds the nine
+committed PNGs and their manifest. Default `./build.sh test` passes 593 tests
+with 40 environment-guarded skips (633 total); the forced native run with
+`ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot passes 655 tests with one
+non-canonical-golden skip (656 total). The suite fails closed on a mutated
+golden (verified separately by substituting a different committed PNG and by
+corrupting a manifest fingerprint) and there is no test path that writes or
+regenerates a golden.
+
+The F2 supporting production change deferred from task 4.9 is implemented:
+`SourceColorProfile`/`SourceColorProfileKind` inspect a recognized PNG `iCCP` or
+JPEG `APP2` embedded ICC profile, treat an input without a profile as sRGB, and
+fail closed with the new safe `RenderFailureReason.UnsupportedColorProfile` when
+an embedded profile cannot be parsed by `SKColorSpace.CreateIcc`; a supported
+profile is converted to sRGB by the existing sRGB decode destination.
+`RenderPngContractTests` asserts both rejection and conversion. A supported or
+absent profile renders byte-identical output and an invalid profile now produces
+no artifact, so the F2 change alone did not require a version bump.
+
+The authorized task 4.11 correctness fix corrects the pre-existing EXIF
+dimension-swapping orientation defect. `SkiaOrientation.Apply` had used the
+*oriented* `height`/`width` as the translation origin for EXIF orientations 5-8
+instead of the source dimensions, so an opaque 500x750 JPEG with orientation 6
+rendered to 750x500 with 125,000 fully transparent pixels and clipped content,
+orientation 7 left 250,000 transparent, and orientation 8 left 187,500
+transparent. The transforms now translate about `source.Height`/`source.Width`;
+`RenderOrientationTests` proves all eight orientations are fully opaque and place
+two distinct corner markers in the expected quadrants, and the committed
+`orientation` golden now encodes the corrected dimension-swapping orientation 6.
+Because this is an output-affecting drawing change, `RenderVersion` was bumped
+from 1 to 2 and the committed golden manifest was regenerated; the badge schema
+version is unchanged. The orientation golden's decoded pixels are unchanged in
+shape and the other eight fixtures stay byte-identical while all output
+fingerprints advance with the renderer version.
+
+The non-canonical cross-runtime half could not be executed: only the pinned
+canonical runtime (and the identical Jellyfin host runtime) exists in this
+environment, so the ADR-010 0.1 percent anti-aliased-text tolerance is
+implemented and unit-tested and the exact canonical half runs against every
+golden, but no second runtime is available. The comparison is data-driven: an
+optional `Goldens/non-canonical/` set (same manifest shape) runs through the
+tolerant comparator when supplied, and is reported as a skipped
+`NonCanonicalRuntimeFact` while absent. The recommended resolution is to select
+and record the second explicitly supported non-canonical Linux runtime and
+produce its golden set in the testing/release milestone; this remaining
+environment limitation is recorded in `docs/implementation-readiness.md`.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

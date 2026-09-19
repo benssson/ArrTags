@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2)
 
 **Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, and ADR-010; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -34,6 +34,21 @@ decisions below are gated by the milestones that need them.
   safe secret references resolve to short-lived credentials, and how immutable
   configuration replacement and rotation fence workers. See
   `docs/decisions.md` ADR-005 and `docs/data-model.md` sections 3.3 and 3.12.
+
+## Resolved renderer orientation defect (task 4.11)
+
+- [x] Fix the renderer's EXIF dimension-swapping orientation transforms. Task
+  4.11's orientation golden exposed a genuine pre-existing defect:
+  `src/ArrTags/Rendering/SkiaOrientation.cs` used the oriented `height`/`width`
+  as the translation origin for orientations 5-8 instead of the source
+  dimensions, so an opaque 500x750 JPEG with EXIF orientation 6 rendered to
+  750x500 with 125,000 fully transparent pixels and clipped content, orientation
+  7 left 250,000 transparent and lost the corner marker, and orientation 8 left
+  187,500 transparent. The transforms now translate about
+  `source.Height`/`source.Width`; `RenderOrientationTests` proves all eight
+  orientations are fully opaque and place their corner markers correctly. Because
+  the fix is output-affecting, `RenderVersion.CurrentRendererVersion` advanced
+  from 1 to 2 and the committed golden manifest was regenerated under ADR-010.
 
 ## Resolved Blocker 1
 
@@ -313,10 +328,26 @@ that introduce them.
 - Decide whether V1 exposes contrast-validated palette overrides or keeps the
   fixed ADR-009 palette; ADR-010 permits overrides only as a bounded
   configuration value.
-- Define which embedded ICC profiles the renderer treats as supported and the
-  exact pass-through/failure mapping for unsupported or invalid profiles.
-- Fix the canonical RGB value used for fully transparent output pixels and the
-  accepted non-canonical Linux runtime used for cross-runtime tolerance tests.
+- Resolved by task 4.11: the renderer treats an input without an embedded
+  profile as sRGB, converts a PNG `iCCP`/JPEG `APP2` profile that
+  `SKColorSpace.CreateIcc` parses, and fails closed with
+  `RenderFailureReason.UnsupportedColorProfile` for a malformed or unsupported
+  profile. The PNG-contract tests assert both rejection and conversion.
+- The canonical RGB value for fully transparent output pixels is fixed as
+  `#00000000` and verified by the task 4.6/4.11 canonical-transparent tests.
+  The accepted non-canonical Linux runtime for cross-runtime tolerance tests
+  remains unselected: this environment has only the pinned canonical runtime and
+  the identical Jellyfin host runtime, so the task 4.11 tolerant half is a
+  recorded environment limitation, not a fabricated result. The comparison is
+  data-driven against an optional `Goldens/non-canonical/` set and is skipped by
+  `NonCanonicalRuntimeFactAttribute` while absent. Recommended resolution: in the
+  testing/release milestone, select and record a second explicitly supported
+  non-canonical Linux runtime that shares the pinned SkiaSharp 3.119.4
+  managed/native assets, produce its golden set with the same manifest shape, and
+  run the ADR-010 anti-aliased-text tolerance against it.
+- Resolved by task 4.11's F2 supporting change: the exact pass-through/failure
+  mapping for invalid or unsupported embedded color profiles is now implemented
+  and tested (see the first item above).
 - Wire renderer configuration to the administrative save/config surface;
   Gate 4 tests can construct configuration snapshots directly, so this is not a
   Phase 4 prerequisite.

@@ -59,6 +59,12 @@ public enum RenderFailureReason
     UnsupportedInput,
 
     /// <summary>
+    /// The source carries a malformed or unsupported embedded color profile, so
+    /// it cannot be converted to sRGB without guessing.
+    /// </summary>
+    UnsupportedColorProfile,
+
+    /// <summary>
     /// The bundled font resource was missing.
     /// </summary>
     FontUnavailable,

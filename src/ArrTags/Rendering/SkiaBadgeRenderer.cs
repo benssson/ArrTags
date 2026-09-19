@@ -111,6 +111,15 @@ public sealed class SkiaBadgeRenderer : IRenderer
             return RenderResult.Failed(MapLimitReason(outputLimit.Reason));
         }
 
+        // ADR-010: an input without a profile is treated as sRGB, and a
+        // supported embedded profile is converted to sRGB by the sRGB decode
+        // destination. An invalid or unsupported profile fails closed here
+        // rather than being silently guessed as sRGB.
+        if (SourceColorProfile.Inspect(source.Bytes.Span) == SourceColorProfileKind.Invalid)
+        {
+            return RenderResult.Failed(RenderFailureReason.UnsupportedColorProfile);
+        }
+
         var contrast = BadgeContrast.Validate(request.OutputPolicy);
         if (contrast is not null)
         {

@@ -145,18 +145,48 @@ Completed in Phase 4 (Badge rendering):
   private secrets on an invalid candidate. The configuration is not yet wired to
   the Jellyfin admin save surface, DI, providers, or artwork pipeline.
 
+- 4.11 Golden-image, byte-determinism, PNG-contract, and cross-runtime tolerance
+  tests (ADR-010) — complete. The test oracle is in place: committed
+  repository-owned synthetic decoded-pixel goldens (`tests/ArrTags.Tests/Goldens/`)
+  for the ADR-010 fixture list compared as decoded planes, encoded bytes,
+  dimensions, alpha/channel behavior, output hash, and output fingerprint with no
+  auto-approval or golden-writer path; byte-determinism across repeated renders,
+  item identity, observation timestamp, stream chunking, and a separate fresh
+  process; PNG-contract tests for non-interlaced 8-bit RGB/RGBA, fixed `sRGB`,
+  stripped metadata, canonical transparent-pixel RGB, straight source-alpha
+  preservation, and malformed/unsupported embedded-profile rejection; and the
+  ADR-010 cross-runtime comparator (exact canonical rule plus the 0.1 percent
+  anti-aliased-text tolerance) with unguarded boundary tests. The F2 supporting
+  production change deferred from 4.9 is included: an invalid or unsupported
+  embedded PNG `iCCP`/JPEG `APP2` profile now fails closed with
+  `RenderFailureReason.UnsupportedColorProfile`, while a supported profile is
+  converted to sRGB and an unprofiled input is treated as sRGB. The authorized
+  task 4.11 correctness fix corrects the pre-existing EXIF dimension-swapping
+  orientation defect in `SkiaOrientation.Apply` (the transforms now translate
+  about the source dimensions), and `RenderOrientationTests` proves all eight
+  orientations are fully opaque and place their corner markers correctly; because
+  that is an output-affecting drawing change `RenderVersion` advanced to 2 and
+  the committed golden manifest was regenerated. Default `./build.sh test` passes
+  593 tests with 40 guarded skips (633 total); the forced native run passes 655
+  tests with one non-canonical-golden skip (656 total).
+
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 575 automated tests; 21 additional environment-guarded SkiaSharp
-  tests (the task 4.8 round trip, the nine task 4.9 render cases, and the eleven
-  task 4.6 behavior-matrix render cases) are skipped unless
+- Passes 593 automated tests; 40 additional environment-guarded tests (the task
+  4.8 round trip, the task 4.6/4.9 render cases, and the task 4.11 golden,
+  PNG-contract, cross-runtime, determinism, orientation, and profile cases,
+  including the non-canonical-golden placeholder) are skipped unless
   `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime are provided. With that
-  environment the full 596-test suite passes.
+  environment the full 656-test suite passes (655 passed, one non-canonical
+  golden skip).
 
 Next tasks:
 
-- Phase 4 — Badge rendering. Continue with task 4.11, the ADR-010 golden-image,
-  byte-determinism, PNG-contract, and cross-runtime tolerance tests.
+- Phase 4 — Badge rendering. Task 4.11 is complete. The only remaining Phase 4
+  validation gap is the non-canonical cross-runtime half: select and record the
+  second explicitly supported non-canonical Linux runtime, produce its golden set
+  under `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the tolerant
+  comparison. The orchestrator evaluates the phase gate.

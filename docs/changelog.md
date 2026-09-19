@@ -521,6 +521,89 @@ Build and test: Task 4.10 adds the renderer configuration model, snapshot
 mapping, fingerprint, and tests. The build passes with 0 warnings and 0 errors;
 the default test run passes 575 tests plus 21 environment-guarded Skia skips (596
 total), and the forced native run with `ARRTAGS_SKIA_COMPAT=1` and the pinned
-sysroot on the loader path passes all 596 tests. Task 4.11 (golden-image,
-byte-determinism, PNG-contract, and cross-runtime tolerance tests) remains; Gate
-4 is not yet met.
+sysroot on the loader path passes all 596 tests.
+
+- Task 4.11 (`src/ArrTags/Rendering/SourceColorProfile.cs`,
+  `SourceColorProfileKind.cs`, `RenderFailureReason.cs`, `SkiaBadgeRenderer.cs`,
+  `tests/ArrTags.Tests/`): the ADR-010 golden-image, byte-determinism,
+  PNG-contract, and cross-runtime tolerance test oracle, together with the F2
+  supporting production change deferred from task 4.9 and the authorized task
+  4.11 EXIF orientation correctness fix. Complete.
+
+  The F2 change adds `SourceColorProfile`/`SourceColorProfileKind` and the safe
+  `RenderFailureReason.UnsupportedColorProfile`. The renderer inspects a
+  recognized PNG `iCCP` or JPEG `APP2` embedded profile before decode: an input
+  without a profile is treated as sRGB, a profile that `SKColorSpace.CreateIcc`
+  parses is converted to sRGB by the existing sRGB decode destination, and a
+  malformed or unsupported profile fails closed with no artifact. `RenderVersion`
+  was not changed because a supported or absent profile renders byte-identical
+  output and an invalid profile now produces no artifact instead of a different
+  valid one.
+
+  The golden oracle (`tests/ArrTags.Tests/Goldens/`) holds nine committed
+  synthetic PNGs plus a manifest, covering an opaque JPEG-like source, an RGB PNG
+  source, an RGBA source, orientation, every V1 field, long custom values,
+  missing fields, full rail capacity, and the upgrade status. `RenderGoldenTests`
+  compares decoded pixel planes (RGB/RGBA in channel order), dimensions, alpha
+  behavior, the encoded bytes, the recorded SHA-256, and the deterministic output
+  fingerprint with the exact comparator;
+  `CommittedGoldenManifestIsCompleteAndSelfConsistent` validates the committed
+  files' IHDR and hashes without the native renderer. There is no writer,
+  auto-update, or auto-approval path, and both a substituted golden PNG and a
+  corrupted manifest fingerprint were verified to fail the suite.
+  `RenderGoldenFixtures`/`RenderImageFixtures` build all synthetic sources,
+  including a deterministic minimal RGB ICC profile, one- and two-marker oriented
+  JPEGs, and a metadata-bearing PNG (`tEXt`/`tIME`/`eXIf`).
+
+  `RenderDeterminismTests` and `RenderDeterminismProcessProbe` prove identical
+  decoded pixels, output hash, and PNG bytes across repeated renders, a changed
+  item identity, a changed observation timestamp, different source stream chunk
+  sizes, and a separate fresh `dotnet test` process that renders the canonical
+  fixture and writes its artifact for byte comparison.
+
+  `RenderPngContractTests` asserts non-interlaced 8-bit RGB/RGBA output, the
+  fixed `sRGB` declaration, stripped `iCCP`/`eXIf`/`tIME`/`tEXt`/`zTXt`/`iTXt`
+  metadata, canonical transparent-pixel RGB, straight source-alpha preservation,
+  and rejection of malformed and unsupported embedded profiles, with a
+  supported-profile conversion case.
+
+  `CrossRuntimePixelComparator` implements the ADR-010 rule: dimensions, channel
+  count, alpha, and any non-anti-aliased pixel must match exactly, and only
+  one-step per-channel differences within 0.1 percent of pixels are tolerated.
+  `CrossRuntimePixelComparatorTests` unit-tests the pass/fail/boundary behavior
+  unguarded, and `RendererCrossRuntimeTests` runs the canonical exact half
+  against every golden. The comparison is data-driven for a future
+  `Goldens/non-canonical/` set; because only the pinned canonical runtime exists
+  in this environment the tolerant half is a recorded environment limitation, not
+  a fabricated result, and `NonCanonicalRuntimeFactAttribute` skips it until the
+  second runtime's golden set is supplied in the testing/release milestone.
+  `SkiaNativeTheoryAttribute` extends the established `ARRTAGS_SKIA_COMPAT=1`
+  guard to the parameterized fixtures; with the flag set and no pinned runtime
+  the guarded cases fail rather than skip.
+
+  The authorized task 4.11 correctness fix corrects a genuine pre-existing
+  renderer defect in `SkiaOrientation.Apply`: for the dimension-swapping EXIF
+  orientations the translation origin used the oriented `height`/`width` instead
+  of the source dimensions, so an opaque 500x750 JPEG with EXIF orientation 6
+  rendered with 125,000 fully transparent pixels (one third of the 750x500
+  output) and clipped content, orientation 7 left 250,000 transparent and lost
+  the corner marker, and orientation 8 left 187,500 transparent. The transforms
+  now translate about `source.Height`/`source.Width`.
+  `RenderOrientationTests` proves all eight orientations are fully opaque with no
+  introduced transparency and place the two corner markers in the expected
+  quadrants, and the committed `orientation` golden now encodes the corrected
+  dimension-swapping orientation 6. Because this is an output-affecting drawing
+  change, `RenderVersion.CurrentRendererVersion` advanced from 1 to 2 and the
+  committed golden manifest was regenerated; the badge schema version is
+  unchanged and the eight non-orientation fixtures stay byte-identical while all
+  output fingerprints advance with the renderer version.
+
+Build and test: Task 4.11 adds the test oracle, the F2 production change, and the
+orientation correctness fix and version bump. The build passes with 0 warnings
+and 0 errors. The default test run passes 593 tests plus 40 environment-guarded
+skips (633 total), and the forced native run with `ARRTAGS_SKIA_COMPAT=1` and the
+pinned sysroot on the loader path passes 655 tests with one non-canonical-golden
+skip (656 total). `./build.sh package` produced
+`artifacts/ArrTags_0.1.0.0.zip`. Task 4.11 is complete; the only remaining Phase
+4 validation gap is the non-canonical cross-runtime runtime selection, and the
+orchestrator evaluates Gate 4.

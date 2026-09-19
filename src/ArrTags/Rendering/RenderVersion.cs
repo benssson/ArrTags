@@ -13,9 +13,11 @@ public static class RenderVersion
 {
     /// <summary>
     /// The current renderer implementation version. It changes whenever layout,
-    /// drawing, typography, contrast, or encoding behavior changes.
+    /// drawing, typography, contrast, or encoding behavior changes. Version 2
+    /// corrects the EXIF dimension-swapping orientation transforms so an opaque
+    /// source is no longer clipped or made partly transparent (task 4.11).
     /// </summary>
-    public const int CurrentRendererVersion = 1;
+    public const int CurrentRendererVersion = 2;
 
     /// <summary>
     /// The current badge schema version, which is owned by

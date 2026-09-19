@@ -67,16 +67,20 @@ internal static class SkiaOrientation
                 canvas.Scale(1, -1);
                 break;
             case SourceOrientation.RightTop:
-                canvas.Translate(height, 0);
+                // The axis-swapping orientations must translate about the
+                // SOURCE dimensions; width/height are the oriented (swapped)
+                // dimensions here and would leave the output clipped and partly
+                // transparent.
+                canvas.Translate(source.Height, 0);
                 canvas.RotateDegrees(90);
                 break;
             case SourceOrientation.RightBottom:
-                canvas.Translate(height, width);
+                canvas.Translate(source.Height, source.Width);
                 canvas.RotateDegrees(270);
                 canvas.Scale(1, -1);
                 break;
             case SourceOrientation.LeftBottom:
-                canvas.Translate(0, width);
+                canvas.Translate(0, source.Width);
                 canvas.RotateDegrees(270);
                 break;
             default:

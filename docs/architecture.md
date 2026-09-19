@@ -644,7 +644,10 @@ non-interlaced 8-bit sRGB PNG with RGB or RGBA channels, fixed encoder settings,
 stripped nondeterministic metadata, and canonical transparent-pixel values.
 Invalid input, missing runtime/font assets, cancellation, decode/layout/encode
 errors, and resource-limit violations return a safe bounded result without
-mutating source bytes.
+mutating source bytes. An input without an embedded color profile is treated as
+sRGB, a supported embedded profile is converted to sRGB, and a malformed or
+unsupported embedded profile fails closed with a bounded reason instead of being
+guessed as sRGB.
 
 Renderer configuration is part of the immutable versioned plugin configuration
 snapshot and contains only enabled V1 selectors, bounded templates, and
