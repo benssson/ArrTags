@@ -623,5 +623,84 @@ environment-guarded skips. The renderer produces deterministic, bounded,
 non-interlaced 8-bit sRGB PNG output (RGB for opaque sources, straight-alpha
 RGBA otherwise), never claims a value from missing provider data, never modifies
 source bytes, and returns a bounded non-secret failure/pass-through result on
-every failure path. Phase 5 (Jellyfin artwork integration) has not started and
-requires explicit user approval to begin.
+every failure path. Phase 5 (Jellyfin artwork integration) had not started at
+that point and required explicit user approval to begin.
+
+## Phase 5 - Jellyfin artwork integration (Milestone 5)
+
+**Status:** In progress. Task 5.1 complete; tasks 5.2 through 5.11 not started.
+
+### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
+
+Task 5.1 confirms the exact supported Jellyfin 12.0.0 item-image publication and
+read ABI, the standard `ImageController` route variants, the read/write
+authorization split, and Jellyfin's ownership of image tags, caching, and
+resizing. The findings are recorded in
+`docs/research/jellyfin-12-architecture.md` section 4.4, with the route table in
+section 3.1 and the response/authorization behavior in section 3.3. This
+confirms an ABI; it does not reopen ADR-001, ADR-002, ADR-003, ADR-006, or
+ADR-009.
+
+- Publication surface (confirmed from the pinned `12.0.0`
+  `MediaBrowser.Controller.dll` and its XML docs): the stream overload
+  `IProviderManager.SaveImage(BaseItem item, Stream source, string mimeType,
+  ImageType type, int? imageIndex, CancellationToken cancellationToken)`, plus
+  the URL (`string url`) and filesystem-path (`string source, string mimeType,
+  ..., bool? saveLocallyWithMedia`) overloads. `mimeType` selects the file
+  extension, `imageIndex` defaults to `0` for single-image surfaces, and the
+  caller must still run the item update flow.
+- Read/information surface (confirmed): `BaseItem.GetImageInfo(ImageType, int)`
+  returning `MediaBrowser.Controller.Entities.ItemImageInfo`, `BaseItem.ImageInfos`,
+  `MediaBrowser.Model.Dto.ImageInfo` (API DTO with `ImageTag`/`Width`/`Height`/
+  `Size`), `IImageProcessor.GetImageCacheTag(BaseItem, ItemImageInfo)` (MD5 of
+  item path plus image modified ticks in 12.0.0; a cache validator, not a
+  content hash), `IImageProcessor.GetImageDimensions`, and
+  `ILibraryManager.UpdateImagesAsync`/`ConvertImageToLocal`/`GetItemById<T>`.
+- Repository update (confirmed): `BaseItem.UpdateToRepositoryAsync(ItemUpdateType,
+  CancellationToken)` with `ItemUpdateType.ImageUpdate = 4`.
+- Route variants (confirmed from the pinned host `Jellyfin.Api.dll` and its
+  live OpenAPI document): `Items/{itemId}/Images/{imageType}` (GET/HEAD,
+  `GetItemImage`/`HeadItemImage`), `Items/{itemId}/Images/{imageType}/{imageIndex}`
+  (GET/HEAD), `Items/{itemId}/Images/{imageType}/{imageIndex}/{tag}/{format}/{maxWidth}/{maxHeight}/{percentPlayed}/{unplayedCount}`
+  (GET/HEAD, `GetItemImage2`), `Items/{itemId}/Images` (GET,
+  `GetItemImageInfos`), and the POST/DELETE write routes
+  (`SetItemImage`/`SetItemImageByIndex`/`DeleteItemImage`/`DeleteItemImageByIndex`/`UpdateItemImageIndex`).
+- Delivery behavior (confirmed from the pinned source/artifact): a `tag` query
+  parameter yields a quoted ETag and `Cache-Control: public, max-age=31536000,
+  immutable` with `If-None-Match` `304` handling; without a tag `Cache-Control:
+  public` and `If-Modified-Since` apply; `ImageHelper.GetNewImageSize` never
+  upscales; the sealed `Jellyfin.Drawing.ImageProcessor` owns the
+  `resized-images` cache.
+- Authorization (route/status observations live-confirmed; pinned OpenAPI shows
+  `security=null` for the GET/HEAD item-image operations): the GET/HEAD
+  item-image read actions carry no `[Authorize]` attribute. They resolve the
+  item through `_libraryManager.GetItemById<BaseItem>(itemId, User.GetUserId())`;
+  for an anonymous request `ClaimsPrincipalExtensions.GetUserId()` returns
+  `default(Guid)`, which maps to a null user, and `ItemIsVisible(item, null)`
+  returns true for any non-null item. A known item's image is therefore served
+  anonymously (HTTP 200); only an unknown item id (or an item with no image of
+  the requested type) yields `404`. The item-image information action and all
+  write actions carry `[Authorize]`/`[Authorize(Policy = RequiresElevation)]`.
+  Later Phase 5 tasks must not assume a `401` from the read image route and must
+  not treat it as an authorization boundary.
+- Selected V1 surfaces: the unindexed `Primary` poster for Movie and Episode
+  only (ADR-006/ADR-009); indexed and alternate poster surfaces are out of V1.
+
+Automated confirmation: `tests/ArrTags.Tests/JellyfinImageAbiTests.cs` (11
+unguarded cases reflecting the pinned NuGet assemblies) and
+`tests/ArrTags.Tests/JellyfinImageRouteTests.cs` (5 cases guarded by
+`ARRTAGS_JELLYFIN_HOST_DIR`, reflecting the pinned host `Jellyfin.Api.dll`).
+The guarded route confirmation passes 5/5 against
+`/tmp/opencode/jf/jellyfin`. Still needing live-host validation (not ABI
+uncertainty): the exact on-disk representation `SaveImage` produces and the
+post-publication read-back content hash, multi-RID packaging (task 5.4), and
+end-to-end standard-route delivery (task 5.11).
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 604 tests with 45
+environment-guarded skips (649 total). The forced native run with
+`ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot passes 666 with 6 skips (672
+total: the five task 5.1 route cases and the non-canonical golden placeholder);
+adding `ARRTAGS_JELLYFIN_HOST_DIR` passes 671 with only the non-canonical golden
+skip. The guarded task 5.1 route cases pass 5/5 when
+`ARRTAGS_JELLYFIN_HOST_DIR` points at the pinned host.

@@ -314,7 +314,13 @@ that introduce them.
 ## Implementation-Time Questions
 
 - Validate `SaveImage` storage behavior and the selected source-artwork capture
-  and restoration implementation on the target host configuration.
+  and restoration implementation on the target host configuration. The exact
+  Jellyfin 12.0.0 publication/read ABI, the standard item-image route variants,
+  the read/write authorization split, and Jellyfin's ownership of image tags,
+  caching, and resizing are now pinned by task 5.1 in
+  `docs/research/jellyfin-12-architecture.md` section 4.4; the remaining
+  host-behavior items are the exact on-disk representation, post-publication
+  read-back, and standard-route delivery.
 - Pin and validate the exact SkiaSharp managed package, Linux native asset
   package, and supported Linux RIDs against the declared Jellyfin 12 /
   `net10.0` target. The renderer library (SkiaSharp) is resolved by ADR-010, and
@@ -355,7 +361,11 @@ that introduce them.
   image for Movie and Episode items. Item types and badge surfaces are resolved
   by ADR-006 and ADR-009; indexed or alternate poster surfaces are not V1
   render targets. The host source adapter is Phase 5; the renderer-side
-  `SourceImageInput` contract is resolved by ADR-010.
+  `SourceImageInput` contract is resolved by ADR-010. Task 5.1 pinned the read
+  surface it will use (`BaseItem.GetImageInfo`, `ItemImageInfo`, `ImageInfo`,
+  `IImageProcessor.GetImageCacheTag`/`GetImageDimensions`, and the standard
+  item-image route); the exact source-byte read-back and the publication
+  read-back remain host validation.
 - Episode policies for specials, anime/absolute numbering, double episodes, and
   multi-episode files are resolved by ADR-007 and task 3.5. ADR-008 resolves
   DG-5 by deferring path fallback out of V1; virtual, missing, remote, offline,

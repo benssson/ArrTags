@@ -1,12 +1,14 @@
 ## Project Status
 
-**Current milestone:** Phase 4 — Badge rendering is complete (tasks 4.1 through
-4.11; all Milestone 4 acceptance criteria satisfied and Gate 4 met). The
-renderer is provider-neutral and deterministic within the configured limits with
-safe pass-through on failure; the only deferred validation is the ADR-010
-non-canonical cross-runtime comparison, tracked for the testing/release
-milestone. Milestone 3 is complete (tasks 3.1 through 3.8; acceptance criteria
-satisfied and Gate 3 met).
+**Current milestone:** Phase 5 — Jellyfin artwork integration is in progress.
+Task 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
+and route variants) is complete; the remaining Phase 5 tasks are not started.
+Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
+acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
+and deterministic within the configured limits with safe pass-through on
+failure; the only deferred validation is the ADR-010 non-canonical cross-runtime
+comparison, tracked for the testing/release milestone. Milestone 3 is complete
+(tasks 3.1 through 3.8; acceptance criteria satisfied and Gate 3 met).
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -167,24 +169,49 @@ Completed in Phase 4 (Badge rendering):
   593 tests with 40 guarded skips (633 total); the forced native run passes 655
   tests with one non-canonical-golden skip (656 total).
 
+Completed in Phase 5 (Jellyfin artwork integration):
+
+- 5.1 Confirmed the exact supported Jellyfin 12.0.0 item-image publication ABI
+  and route variants. The publication surface
+  (`IProviderManager.SaveImage` stream/URL/path overloads), the read surface
+  (`BaseItem.GetImageInfo`/`ImageInfos`, `ItemImageInfo`, `ImageInfo`,
+  `IImageProcessor.GetImageCacheTag`/`GetImageDimensions`,
+  `ILibraryManager.UpdateImagesAsync`/`ConvertImageToLocal`), and the item
+  update (`BaseItem.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, ...)`)
+  are pinned against the `12.0.0` NuGet assemblies. The standard
+  `ImageController` route templates and the read/write authorization split are
+  pinned against the pinned host `Jellyfin.Api.dll`, and the route/authorization
+  status observations are live-confirmed on the pinned host and its OpenAPI
+  document. Jellyfin's image-tag/`ETag`/`Last-Modified` and cache-header
+  behavior and its never-upscale resize path are confirmed from the pinned
+  source/artifact. Evidence is in
+  `docs/research/jellyfin-12-architecture.md` section 4.4 (routes in section
+  3.1, response/authorization behavior in section 3.3); the confirmation is
+  asserted by `JellyfinImageAbiTests` (11 unguarded cases) and
+  `JellyfinImageRouteTests` (5 host-guarded cases). V1 remains the unindexed
+  `Primary` poster for Movie and Episode only (ADR-006/ADR-009); indexed or
+  alternate poster surfaces are out of V1.
+
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 593 automated tests; 40 additional environment-guarded tests (the task
-  4.8 round trip, the task 4.6/4.9 render cases, and the task 4.11 golden,
-  PNG-contract, cross-runtime, determinism, orientation, and profile cases,
-  including the non-canonical-golden placeholder) are skipped unless
-  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime are provided. With that
-  environment the full 656-test suite passes (655 passed, one non-canonical
-  golden skip).
+- Passes 604 automated tests; 45 additional environment-guarded tests (the task
+  4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
+  PNG-contract, cross-runtime, determinism, orientation, and profile cases
+  including the non-canonical-golden placeholder, and the task 5.1 host route
+  cases) are skipped unless their environment guard is provided. With
+  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full 672-test suite
+  passes 666 with 6 skips (the five task 5.1 route cases and the non-canonical
+  golden placeholder); adding `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned
+  host passes 671 with only the non-canonical golden skip.
 
 Next tasks:
 
-- Phase 5 — Jellyfin artwork integration (Milestone 5). Phase 4 is complete and
-  Gate 4 is met; Phase 5 has not started and requires explicit user approval
-  before it begins per the project's phase-transition rule.
+- Phase 5 — Jellyfin artwork integration (Milestone 5). Task 5.1 is complete;
+  the next task in the authoritative Phase 5 execution order is 5.2
+  (source-artwork provenance and guarded restoration state).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

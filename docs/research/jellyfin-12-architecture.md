@@ -101,6 +101,33 @@ behavior it requires on its own named or typed client and should not create raw
   parameters;
 - analogous routes for several item-by-name image types.
 
+The exact pinned `12.0.0` route templates and action names (task 5.1) are:
+
+| Action | Method(s) | Route template |
+| --- | --- | --- |
+| `GetItemImage` | `GET`, `HEAD` (`HeadItemImage`) | `Items/{itemId}/Images/{imageType}` |
+| `GetItemImageByIndex` | `GET`, `HEAD` (`HeadItemImageByIndex`) | `Items/{itemId}/Images/{imageType}/{imageIndex}` |
+| `GetItemImage2` | `GET`, `HEAD` (`HeadItemImage2`) | `Items/{itemId}/Images/{imageType}/{imageIndex}/{tag}/{format}/{maxWidth}/{maxHeight}/{percentPlayed}/{unplayedCount}` |
+| `GetItemImageInfos` | `GET` | `Items/{itemId}/Images` |
+| `SetItemImage` | `POST` | `Items/{itemId}/Images/{imageType}` |
+| `SetItemImageByIndex` | `POST` | `Items/{itemId}/Images/{imageType}/{imageIndex}` |
+| `DeleteItemImage` | `DELETE` | `Items/{itemId}/Images/{imageType}` |
+| `DeleteItemImageByIndex` | `DELETE` | `Items/{itemId}/Images/{imageType}/{imageIndex}` |
+| `UpdateItemImageIndex` | `POST` | `Items/{itemId}/Images/{imageType}/{imageIndex}/Index` |
+
+`ImageController` directly declares `[Route("")]`. Its base type
+`BaseJellyfinApiController` declares `[Route("[controller]")]`, and
+`RouteAttribute.Inherited` is `true`, so the controller's own `[Route("")]`
+overrides the inherited controller-prefixed base route and the effective paths
+are the root-relative templates listed above. The unindexed and
+indexed read actions additionally accept `maxWidth`, `maxHeight`, `width`,
+`height`, `quality`, `fillWidth`, `fillHeight`, `tag`, `format`,
+`percentPlayed`, `unplayedCount`, `blur`, `backgroundColor`, and
+`foregroundLayer` as query parameters. `GetItemImage2` fixes `tag`, `format`,
+`maxWidth`, `maxHeight`, `percentPlayed`, and `unplayedCount` in the path. The
+route/action names are not treated as a stable plugin contract (see section 6.3);
+the standard image **URLs** are what clients and later Phase 5 verification use.
+
 The item image request passes through Jellyfin's HTTP authentication pipeline,
 and the action resolves the item with the current user:
 
@@ -143,10 +170,54 @@ and cache-control behavior based on the image tag and processing result. The
 action returns a `PhysicalFileResult` for an image body when no conditional
 response short-circuits it.
 
+The exact pinned `12.0.0` behavior (task 5.1) in
+`ImageController.GetImageResult` is:
+
+- `Response.ContentType` is the `IImageProcessor` MIME type (or
+  `text/plain`); `Content-Disposition` is `attachment`; `Age`, `Vary: Accept`,
+  and the DLNA headers are always set.
+- With a `tag` query parameter, `Cache-Control: public, max-age=31536000,
+  immutable` (365 days) is set, `Last-Modified` is emitted, and the ETag is the
+  quoted tag. A matching `If-None-Match` (quoted or bare) returns `304`.
+- Without a tag, `Cache-Control: public` is set and `If-Modified-Since` is
+  honored against the processed file's modified time.
+- A client `Cache-Control: no-cache` forces
+  `no-cache, no-store, must-revalidate` plus `Pragma`.
+- Resizing/format: `ImageProcessingOptions` is built from the query
+  (`Width`/`Height` fixed, `MaxWidth`/`MaxHeight` bounding, `FillWidth`/
+  `FillHeight` box fill, `Quality`, `Blur`, `BackgroundColor`, `ForegroundLayer`
+  opacity, `PercentPlayed`, `UnplayedCount`). `ImageHelper.GetNewImageSize`
+  applies `DrawingUtils.ScaleDownToFit`, so Jellyfin **never upscales** beyond
+  the source dimensions. `Jellyfin.Drawing.ImageProcessor` is the sealed core
+  singleton that owns the `resized-images` cache and incorporates all options
+  and a version char into its cache key.
+
+Authorization: the unindexed/indexed GET/HEAD read actions carry **no**
+`[Authorize]` attribute in the pinned `12.0.0` source. They resolve the item
+through `_libraryManager.GetItemById<BaseItem>(itemId, User.GetUserId())`. For
+an anonymous request `ClaimsPrincipalExtensions.GetUserId()` returns
+`default(Guid)`, `LibraryManager.GetItemById<T>(Guid, Guid)` maps an empty user
+id to a **null user**, and `LibraryManager.ItemIsVisible(item, null)` returns
+`true` for any non-null item. A known item's image is therefore served
+**anonymously** (HTTP 200); only an unknown item id (or an item with no image of
+the requested type) yields `404`. The item-image information action
+(`GET Items/{itemId}/Images`) and all write actions (`POST`/`DELETE`) do carry
+`[Authorize]`/`[Authorize(Policy = RequiresElevation)]`. The route/authorization
+status observations are **live-confirmed** on the pinned host (an anonymous
+`GET /Items/{id}/Images/Primary` reached the action and returned `404` for the
+unknown id, while `GET /Items/{id}/Images` and
+`POST /Items/{id}/Images/Primary` returned `401`), and the pinned host OpenAPI
+document shows `security=null` for the GET/HEAD item-image operations. Later
+Phase 5 tasks must not assume a `401` from the read image route and must not
+treat the route as an authorization boundary. Jellyfin still owns the delivery
+path's caching and resizing; ArrTags must not add a parallel route or response
+validator (ADR-001).
+
 Consequences for a response interceptor:
 
 - an interceptor that short-circuits before the action must preserve Jellyfin's
-  user-scoped authorization and image existence checks itself;
+  item-resolution, item-existence, and image-existence checks (including the
+  user-scoped behavior for authenticated callers) itself;
 - an action filter may observe a `304` result instead of image bytes;
 - a transformed response cannot safely retain an ETag representing only the
   original artwork;
@@ -223,6 +294,164 @@ safe restoration condition.
 It is not a per-request overlay contract. For ArrTags, the selected architecture
 accepts the active-artwork change and preserves the original through a separate
 backup/restoration design.
+
+### 4.4 Confirmed Jellyfin 12.0.0 item-image publication and read ABI (task 5.1)
+
+**Status:** Confirmed against the pinned Jellyfin `12.0.0` artifacts. Task 5.1
+pins the exact publication/read ABI and the standard item-image route variants
+that the later ABI-dependent Phase 5 tasks rely on. This section confirms an
+ABI; it does not reopen ADR-001, ADR-002, ADR-003, ADR-006, or ADR-009.
+
+Evidence sources for this subsection, all at Jellyfin source revision
+`6c073e19ddf604b2369c638716164fdab4c952dc` (tag `v12.0`) unless noted:
+
+- The pinned NuGet assemblies `MediaBrowser.Controller.dll` and
+  `MediaBrowser.Model.dll` `12.0.0` (`~/.nuget/packages/jellyfin.controller/`
+  and `jellyfin.model/`), which are the assemblies the plugin compiles against.
+- The pinned host install at `/tmp/opencode/jf/jellyfin`
+  (`Jellyfin.Api.dll` `12.0.0.0`, `MediaBrowser.Controller.xml`,
+  `MediaBrowser.Model.xml`).
+- The pinned host source extract for `Jellyfin.Api/Controllers/ImageController.cs`,
+  `MediaBrowser.Providers/Manager/ImageSaver.cs`,
+  `MediaBrowser.Providers/Manager/ProviderManager.cs`, and
+  `Emby.Server.Implementations/Library/LibraryManager.cs`.
+- A live pinned-host probe on Jellyfin `12.0.0` (the Phase 1 portable host) for
+  the route/authorization observations marked **live-confirmed**.
+
+The automated confirmation is
+`tests/ArrTags.Tests/JellyfinImageAbiTests.cs` (unguarded; reflects the pinned
+NuGet assemblies) and `tests/ArrTags.Tests/JellyfinImageRouteTests.cs`
+(guarded by `ARRTAGS_JELLYFIN_HOST_DIR`; reflects the pinned host
+`Jellyfin.Api.dll`).
+
+#### Publication API surface (confirmed from the pinned 12.0.0 assembly)
+
+- Interface: `MediaBrowser.Controller.Providers.IProviderManager`
+  (`MediaBrowser.Controller.dll` `12.0.0`).
+- The V1 stream overload, confirmed signature:
+
+  ```csharp
+  Task SaveImage(
+      BaseItem item,
+      Stream source,
+      string mimeType,
+      ImageType type,
+      int? imageIndex,
+      CancellationToken cancellationToken);
+  ```
+
+- Also present and confirmed:
+
+  ```csharp
+  Task SaveImage(BaseItem item, string url, ImageType type, int? imageIndex, CancellationToken cancellationToken);
+  Task SaveImage(BaseItem item, string source, string mimeType, ImageType type, int? imageIndex, bool? saveLocallyWithMedia, CancellationToken cancellationToken);
+  Task SaveImage(Stream source, string mimeType, string path);
+  ```
+
+- Parameter meaning (from the pinned XML docs and
+  `MediaBrowser.Providers/Manager/ProviderManager.cs` /
+  `ImageSaver.cs`): `item` is the target `BaseItem`; `source` is the image byte
+  stream; `mimeType` selects the file extension (an empty MIME type throws);
+  `type` is the `ImageType` surface; `imageIndex` is `int?` and defaults to `0`
+  for single-image surfaces (`null` is only auto-incremented for
+  `AllowsMultipleImages` types: `Backdrop` and `Chapter`). `ImageSaver` writes
+  the bytes and then calls `item.SetImagePath(...)`; the caller must still run
+  the item update flow (below).
+- **Save-locally semantics (confirmed, relevant to the V1 "do not write
+  media-folder artwork" rule).** The stream overload has no
+  `saveLocallyWithMedia` parameter. `ImageSaver` computes `saveLocally` from
+  `item.SupportsLocalMetadata && item.IsSaveLocalMetadataEnabled()` (the
+  library's `SaveLocalMetadata` option) and then writes to the media folder
+  (`poster.png` next to the movie/episode) when it is enabled; it otherwise
+  writes under the item's internal metadata path. Only the filesystem-path
+  overload exposes `bool? saveLocallyWithMedia`, and passing `false` forces the
+  internal metadata path. That overload also deletes the source file after
+  saving (the pinned XML doc: "This method will remove the image on the source
+  path after saving it to the destination"), so it requires a plugin-owned
+  temporary file. Later Phase 5 tasks must choose the overload and the
+  `saveLocallyWithMedia` value that keeps V1 from writing media-folder artwork;
+  the exact host representation and read-back remain implementation validation.
+- `ProviderManager.SaveImage(...)` is registered as the singleton
+  `IProviderManager` in `ApplicationHost` (`AddSingleton<IProviderManager,
+  ProviderManager>()`), so the interface is a confirmed supported plugin
+  resolution target. The implementation type is not a plugin contract; ArrTags
+  consumes the interface only.
+
+#### Item-image read/information surface (confirmed)
+
+- `BaseItem.GetImageInfo(ImageType imageType, int imageIndex)` returns
+  `MediaBrowser.Controller.Entities.ItemImageInfo?` and is the supported
+  in-memory read of the current image identity.
+- `BaseItem.ImageInfos` (`ItemImageInfo[]`) is the current image set;
+  `BaseItem.GetImagePath`, `HasImage`, `GetImageIndex`, and `GetImages` are the
+  related read helpers.
+- `ItemImageInfo` (`MediaBrowser.Controller.Entities`) carries `Path`,
+  `Type` (`ImageType`), `DateModified`, `Width`, `Height`, `BlurHash`, and the
+  `[JsonIgnore] IsLocalFile` flag (`Path` not starting with `http`).
+- `ImageInfo` (`MediaBrowser.Model.Dto`) is the API DTO returned by the
+  item-image information endpoint and carries `ImageType`, `ImageIndex`,
+  `ImageTag`, `Path`, `BlurHash`, `Width`, `Height`, and `Size`.
+- `IImageProcessor.GetImageCacheTag(BaseItem, ItemImageInfo)` produces the
+  `ImageTag`; in the pinned 12.0.0 implementation it is the MD5 of
+  `(item.Path + image.DateModified.Ticks)`. It is a representation/cache
+  validator, not a content hash or ownership token (ADR-002).
+- Dimensions are observable from `ItemImageInfo.Width`/`Height` (0 until
+  resolved) or through `IImageProcessor.GetImageDimensions(...)`. Bytes are
+  observable by reading the image through the normal item-image route or the
+  resolved path; the supported postcondition identity ArrTags persists is its
+  own content hash (ADR-002), not the Jellyfin tag.
+- `ILibraryManager.UpdateImagesAsync(BaseItem, bool forceUpdate = false)`
+  refreshes dimensions/hashes; `ILibraryManager.ConvertImageToLocal(BaseItem,
+  ItemImageInfo, int, bool removeOnFailure = true)` is the supported conversion
+  for a non-local image.
+- `ILibraryManager.GetItemById<T>(Guid id, Guid userId)` is the user-scoped
+  resolution used by the image controller. An empty `userId` (the anonymous
+  case) maps to a null user and therefore applies no visibility filter; a real
+  user id resolves the item under that user's visibility.
+
+#### Item repository update (confirmed)
+
+- `BaseItem.UpdateToRepositoryAsync(ItemUpdateType, CancellationToken)` is the
+  normal item update flow. `ItemUpdateType` (`MediaBrowser.Controller.Library`)
+  is a flags enum; `ImageUpdate = 4`. The controller's write actions call
+  `SaveImage` and then `UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, ...)`.
+  Later Phase 5 tasks must persist the item update after `SaveImage`; the
+  publication protocol is ADR-003.
+
+#### Enum/type locations (confirmed)
+
+| Type | Namespace | Assembly | Notes |
+| --- | --- | --- | --- |
+| `ImageType` | `MediaBrowser.Model.Entities` | `MediaBrowser.Model` | `Primary = 0`, `Art = 1`, `Backdrop = 2`, `Banner = 3`, `Logo = 4`, `Thumb = 5`, `Disc = 6`, `Box = 7`, `Screenshot = 8`, `Menu = 9`, `Chapter = 10`, `BoxRear = 11`, `Profile = 12`. |
+| `ImageFormat` | `MediaBrowser.Model.Drawing` | `MediaBrowser.Model` | `Bmp`, `Gif`, `Jpg`, `Png`, `Webp`, `Svg`. |
+| `ItemImageInfo` | `MediaBrowser.Controller.Entities` | `MediaBrowser.Controller` | Read surface; `Path` is `required`. |
+| `ImageInfo` | `MediaBrowser.Model.Dto` | `MediaBrowser.Model` | API DTO. |
+| `ItemUpdateType` | `MediaBrowser.Controller.Library` | `MediaBrowser.Controller` | `ImageUpdate = 4`. |
+
+#### Selected V1 surfaces
+
+Per ADR-006/ADR-009, V1 publishes only the **unindexed `Primary` poster** for
+**Movie** and **Episode** items. `ImageType.Primary` with `imageIndex: null`
+(or `0`) is the only image surface V1 renders or publishes. Indexed or alternate
+poster surfaces (`Primary` with a non-zero index, `Thumb`, `Backdrop`, `Logo`,
+`Banner`, `Art`, etc.) are explicitly **out of V1** and are not publication or
+source-capture targets. `Series` and `Season` remain structural and are not
+badge surfaces.
+
+#### Still needing live-host validation
+
+The ABI names/signatures and route templates are confirmed from the pinned
+artifacts. The following remain host-behavior validation for later Phase 5 tasks,
+not ABI uncertainty:
+
+- The exact on-disk representation `SaveImage` produces for the selected host
+  configuration (local-metadata vs internal-metadata path) and the read-back
+  content hash equality after publication (ADR-002/ADR-003). `ImageSaver` may
+  save locally (`SaveLocalMetadata` library option) or under the item's internal
+  metadata path; V1 does not write media-folder artwork directly, so the
+  `saveLocallyWithMedia: false` overload semantics must be validated.
+- Multi-RID packaging and packaged-asset resolution (task 5.4).
+- End-to-end standard-route delivery of a published derived image (task 5.11).
 
 ## 5. Approach comparison
 

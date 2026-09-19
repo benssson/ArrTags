@@ -548,7 +548,12 @@ alternatives analysed above are rejected for V1; see ADR-001.
 2. **Publication feasibility.** Validate source-artwork capture, supported
    `IProviderManager.SaveImage` publication, item repository updates, and the
    ADR-002/ADR-003 ownership and crash-recovery contracts on the exact selected
-   Jellyfin ABI.
+   Jellyfin ABI. **Task 5.1 update (confirmed):** the publication/read ABI, the
+   standard item-image route variants, and the read/write authorization split
+   are now pinned against the `12.0.0` artifacts; see
+   [`jellyfin-12-architecture.md`](jellyfin-12-architecture.md) section 4.4.
+   The remaining live-host items are the exact on-disk representation and the
+   post-publication read-back content hash, which later Phase 5 tasks validate.
 3. **Publication storage and ownership.** Resolved by ADR-002 and ADR-003 at
    the design level: ArrTags stores its own source/operation artifacts, compares
    active content identity, and reconciles uncertain calls by postcondition.
@@ -561,14 +566,16 @@ alternatives analysed above are rejected for V1; see ADR-001.
 5. **Performance acceptance criteria.** Define queue/concurrency limits, maximum
    input/output bytes, cache bounds/eviction, cancellation, and a large-library
    test. The middleware plugins' buffering and re-encoding are the cost to beat.
-6. **Multi-version/editions and scope.** Decide which image types and item types
-   are badged (Primary/Thumb/Backdrop; movie/series/season/episode), and how
-   alternate versions/editions map to Arr records (see
+6. **Multi-version/editions and scope.** Resolved for V1 by ADR-006/ADR-009 and
+   confirmed by task 5.1: V1 renders and publishes only the unindexed `Primary`
+   poster for Movie and Episode; indexed or alternate surfaces are out of V1.
+   Alternate-version/edition-to-Arr-record mapping remains post-V1 (see
    [`media-metadata-mapping.md`](media-metadata-mapping.md)).
 7. **Jellyfin 12 validation of the publication path.** JellyTag (10.10 ABI) and
    Quality Overlay (10.11 ABI) are useful response-rewrite references, but are
-   not part of the selected mechanism. Validate the supported item-image
-   publication path on the exact 12.x server instead.
+   not part of the selected mechanism. The supported item-image publication path
+   on the exact 12.x server is pinned by task 5.1; its host-representation and
+   standard-route delivery remain later Phase 5 validation.
 8. **Renderer/format decisions.** Raster format/quality, output size relative to
    the client-requested size (Jellyfin 12 does not upscale), and legibility rules
    remain product decisions.

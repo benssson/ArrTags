@@ -1,0 +1,63 @@
+{
+  "task": "5.1",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "status": "resolved",
+      "title": "Authorization behavior was mischaracterized: anonymous item-image reads are not rejected by item visibility",
+      "resolution": "Corrected in all touched files. docs/research/jellyfin-12-architecture.md section 3.3 and section 4.4, docs/changelog.md, README.md, PLANS.md Task 5.1 status, and docs/implementation/5.1/worker-report.json now state that the GET/HEAD read actions carry no [Authorize] and resolve via GetItemById<BaseItem>(itemId, User.GetUserId()); an anonymous empty user id maps to a null user, ItemIsVisible(item, null) returns true for any non-null item, so a known item's image is served anonymously (HTTP 200) and only an unknown id / missing image yields 404. The retained guidance is that later tasks must not assume a 401 or treat the route as an authorization boundary. The worker-report live-probe note explicitly attributes the 404 to the unknown item id rather than visibility rejection. Re-verified against pinned source and OpenAPI; no contradictory wording remains.",
+      "evidence": [
+        "docs/research/jellyfin-12-architecture.md lines 195-214 and 407-410.",
+        "docs/changelog.md Task 5.1 Authorization bullet (lines ~677-685).",
+        "README.md Phase 5 entry (route/authorization status live-confirmed; cache/resize from source).",
+        "PLANS.md Task 5.1 status (lines ~1399-1405).",
+        "worker-report.json summary, validation item 15, known_limitations item 43.",
+        "Pinned source: ImageController.cs read actions have no [Authorize]; ClaimsPrincipalExtensions.GetUserId() -> default(Guid); LibraryManager.GetItemById<T>(Guid, Guid) -> null user; LibraryManager.ItemIsVisible(item, null) -> true; OpenAPI security=null."
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "status": "resolved",
+      "title": "README/changelog overstated live confirmation of the cache-header and never-upscale resize behavior",
+      "resolution": "Corrected. README.md and docs/changelog.md now label the image-tag/ETag/Last-Modified/cache-header behavior and never-upscale resize path as confirmed from the pinned source/artifact, and reserve live-confirmed for the route/authorization status observations and OpenAPI security metadata. worker-report.json records the same distinction. The research document section 3.3 already labeled only the status observations live-confirmed.",
+      "evidence": [
+        "README.md lines ~182-188: 'Jellyfin's image-tag/ETag/Last-Modified and cache-header behavior and its never-upscale resize path are confirmed from the pinned source/artifact.'",
+        "docs/changelog.md: '- Delivery behavior (confirmed from the pinned source/artifact)' and authorization bullet '(route/status observations live-confirmed; pinned OpenAPI shows security=null ...)'.",
+        "worker-report.json validation item 17 and known_limitations item 44."
+      ]
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "resolved",
+      "title": "[Route] decoration wording was imprecise relative to the inherited base route",
+      "resolution": "Corrected. docs/research/jellyfin-12-architecture.md section 3.1 now states that ImageController directly declares [Route(\"\")], that BaseJellyfinApiController declares [Route(\"[controller]\")] and RouteAttribute.Inherited is true, and that the controller's own [Route(\"\")] overrides the inherited prefix so the effective paths are the root-relative templates listed. Consistent with the pinned OpenAPI, which has no /Image/... paths.",
+      "evidence": [
+        "docs/research/jellyfin-12-architecture.md lines 118-122.",
+        "BaseJellyfinApiController.cs line 13 [Route(\"[controller]\")]; ImageController.cs line 42 [Route(\"\")]; RouteAttribute.Inherited == true; OpenAPI has no /Image/... paths."
+      ]
+    }
+  ],
+  "tests_checked": [
+    "Re-review after corrections: ./build.sh restore (locked) -> 'All projects are up-to-date for restore'; no packages.lock.json change.",
+    "Re-review: ./build.sh build -> Build succeeded, 0 warnings, 0 errors.",
+    "Re-review: ./build.sh test (default) -> Failed 0, Passed 604, Skipped 45, Total 649 (matches worker-report).",
+    "Re-review: dotnet test --filter FullyQualifiedName~JellyfinImage with ARRTAGS_JELLYFIN_HOST_DIR=/tmp/opencode/jf/jellyfin -> Failed 0, Passed 16, Skipped 0, Total 16 (11 ABI + 5 route; matches worker-report).",
+    "Original review also verified: guard unset -> 11 passed / 5 skipped; bad guard path -> 5 failed / 0 skipped; forced native run -> 666 passed / 6 skipped / 672 total; native + host dir -> 671 passed / 1 skipped / 672 total.",
+    "Test files unchanged by the correction: JellyfinImageAbiTests.cs (202 lines), JellyfinImageRouteTests.cs (197 lines), JellyfinHostFactAttribute.cs (29 lines); mtimes predate the correction.",
+    "Inspected the 11 unguarded ABI facts (exact signatures, enum namespaces/values, property types) and 5 host-guarded route/authorization facts; no assertions were altered."
+  ],
+  "research_checked": [
+    "Pinned source re-consulted for F1: Jellyfin.Api/Controllers/ImageController.cs (read actions have no [Authorize]); Jellyfin.Api/Extensions/ClaimsPrincipalExtensions.cs (GetUserId -> default Guid); Emby.Server.Implementations/Library/LibraryManager.cs (empty userId -> null user; ItemIsVisible(item, null) -> true); Jellyfin.Api/Auth/CustomAuthenticationHandler.cs (no token -> NoResult); ApiServiceCollectionExtensions.cs/Startup.cs (no fallback policy or global AuthorizeFilter).",
+    "Pinned host OpenAPI /tmp/opencode/openapi.json: item-image GET/HEAD operations have security=null; GET item-image infos DefaultAuthorization; POST/DELETE RequiresElevation.",
+    "Pinned v12.0 source for ABI/routes: IProviderManager, ProviderManager, ImageSaver, BaseItem, ItemImageInfo, ImageInfo, ImageType, ImageFormat, ItemUpdateType, IImageProcessor, ImageProcessor, DrawingUtils/ImageHelper, ILibraryManager, BaseJellyfinApiController.",
+    "Pinned NuGet/host assembly versions all 12.0.0.0.",
+    "docs/decisions.md ADR-001/002/003/006/009/010 unchanged; GOALS.md, PLANS.md Milestone 5, architecture.md section 9, implementation-readiness.md, poster-rendering-strategies.md reviewed for consistency."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

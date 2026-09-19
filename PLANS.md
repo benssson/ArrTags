@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 task 5.1 (confirm the item-image publication ABI and route variants) is complete; the remaining Phase 5 tasks are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -67,6 +67,13 @@ validation is the ADR-010 non-canonical cross-runtime comparison, which requires
 a second explicitly selected Linux runtime and is tracked for the
 testing/release milestone.
 
+Phase 5 (Jellyfin artwork integration) has begun. Task 5.1 is complete: the
+supported Jellyfin 12.0.0 item-image publication/read ABI and the standard
+`ImageController` route variants are pinned with evidence in
+`docs/research/jellyfin-12-architecture.md` section 4.4, with a new unguarded ABI
+test and a host-guarded route/authorization test. The remaining Phase 5 tasks
+(5.2 through 5.11 in the authoritative order) are not started.
+
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
 configurable derived poster artwork through Jellyfin's supported image APIs
@@ -114,7 +121,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | Not started | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1293,7 +1300,8 @@ stale-artwork lifecycle, and Enhanced coexistence are not pulled into Phase 4.
 **Gate 4:** Met. Renderer unit tests pass for normal, unknown, oversized,
 malformed, cancelled, and failed inputs; the forced native run with the pinned
 SkiaSharp runtime passes 655 tests (one deferred non-canonical cross-runtime
-skip). Phase 5 has not started and requires explicit user approval to begin.
+skip). At the time Gate 4 was met, Phase 5 had not started and required explicit
+user approval; Phase 5 task 5.1 has since begun under that approval.
 
 ### 5. Jellyfin artwork integration
 
@@ -1321,7 +1329,7 @@ provenance and coexisting with Jellyfin Enhanced.
 
 **Tasks:**
 
-- [ ] 5.1 Confirm the exact supported Jellyfin item-image publication ABI and
+- [x] 5.1 Confirm the exact supported Jellyfin item-image publication ABI and
   route variants.
 - [ ] 5.2 Implement source-artwork provenance and guarded restoration state
   before publishing derived artwork.
@@ -1369,6 +1377,44 @@ not from task numbering:
 - 5.7 depends on 5.5 and 5.6; 5.8 depends on 5.3 and 5.5; 5.9 depends on 5.5,
   5.6, and 5.7; 5.10 depends on 5.5 and the DG-8 Enhanced coexistence decision;
   5.11 depends on 5.1 and 5.5.
+
+**Task 5.1 status:** Complete. The exact supported Jellyfin 12.0.0 item-image
+publication/read ABI, the standard `ImageController` route variants, the
+read/write authorization split, and Jellyfin's ownership of image tags, caching,
+and resizing are pinned with evidence tied to the pinned artifacts and recorded
+in `docs/research/jellyfin-12-architecture.md` section 4.4 (with the route table
+in section 3.1 and the response/authorization behavior in section 3.3). The
+publication surface is
+`MediaBrowser.Controller.Providers.IProviderManager.SaveImage(BaseItem, Stream,
+string, ImageType, int?, CancellationToken)` plus its URL and path overloads; the
+read surface is `BaseItem.GetImageInfo`/`ImageInfos`, `ItemImageInfo`,
+`ImageInfo`, `IImageProcessor.GetImageCacheTag`/`GetImageDimensions`, and
+`ILibraryManager.UpdateImagesAsync`/`ConvertImageToLocal`; the repository update
+is `BaseItem.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, ...)`. The
+confirmed routes are `Items/{itemId}/Images/{imageType}` (GET/HEAD),
+`Items/{itemId}/Images/{imageType}/{imageIndex}` (GET/HEAD),
+`Items/{itemId}/Images/{imageType}/{imageIndex}/{tag}/{format}/{maxWidth}/{maxHeight}/{percentPlayed}/{unplayedCount}`
+(GET/HEAD), `Items/{itemId}/Images` (GET), and the POST/DELETE write routes. The
+GET/HEAD item-image read actions carry no `[Authorize]`; they resolve the item
+through `GetItemById<BaseItem>(itemId, User.GetUserId())`, where an anonymous
+user id is empty and maps to a null user, so a known item's image is served
+anonymously (HTTP 200) and only an unknown item id or missing image yields 404.
+The item-image information action and all write actions require authorization,
+and the pinned host OpenAPI shows `security=null` for the GET/HEAD item-image
+operations. Later Phase 5 tasks must not assume a 401 from the read image route
+or treat it as an authorization boundary. A new unguarded ABI test
+(`JellyfinImageAbiTests`, 11 cases) reflects the pinned `12.0.0` NuGet
+assemblies, and a new host-guarded route/authorization test
+(`JellyfinImageRouteTests`, 5 cases) reflects the pinned host `Jellyfin.Api.dll`
+via `ARRTAGS_JELLYFIN_HOST_DIR`. The host-guarded route confirmation was
+executed against `/tmp/opencode/jf/jellyfin` (5/5 passed, alongside the 11/11
+ABI cases) and cross-checked against the live pinned host's generated OpenAPI
+document. V1 remains the
+unindexed `Primary` poster for Movie and Episode only (ADR-006/ADR-009);
+indexed/alternate poster surfaces are out of V1. The ABI is confirmed; the exact
+on-disk representation, post-publication read-back, multi-RID packaging, and
+end-to-end standard-route delivery remain later Phase 5 validation, not ABI
+uncertainty.
 
 **Acceptance criteria:**
 
