@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-3 complete. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), and Milestone 3 (media matching, tasks 3.1 through 3.8) are complete; Gates 1, 2, and 3 are met.
+**Status:** Phases 1-4 complete. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -49,7 +49,7 @@ verified.
 
 Decision Gate DG-3 is now resolved by ADR-009. The V1 badge fields, priority,
 poster layout, typography, contrast, text bounds, PNG output, scaling, and
-pass-through behavior are fixed for implementation. Phase 4 is in progress:
+pass-through behavior are fixed for implementation. Phase 4 is complete:
 tasks 4.1 (metadata selectors), 4.2 (rendering specification), 4.3
 (unknown-value semantics), 4.4 (fingerprints), 4.5 (limit enforcement), 4.7
 (pinned assets and font), 4.8 (SkiaSharp host-compatibility spike), 4.9
@@ -59,7 +59,13 @@ fingerprint) are complete. Task 4.11 (golden-image, byte-determinism,
 PNG-contract, and cross-runtime tolerance tests) is complete, including the
 task 4.9 F2 color-profile fail-closed supporting change and the authorized
 task 4.11 fix of the EXIF dimension-swapping orientation transforms with a
-renderer version bump to 2.
+renderer version bump to 2. All Milestone 4 acceptance criteria are satisfied
+and Gate 4 is met: the forced native renderer run passes 655 tests with one
+non-canonical cross-runtime skip (656 total), covering normal, unknown,
+oversized, malformed, cancelled, and failed inputs. The only deferred Phase 4
+validation is the ADR-010 non-canonical cross-runtime comparison, which requires
+a second explicitly selected Linux runtime and is tracked for the
+testing/release milestone.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -102,7 +108,7 @@ without modifying original media files or external services.
 | 1 | Plugin foundation | Complete | Plugin loads on the selected Jellyfin 12 ABI with valid configuration and lifecycle behavior. |
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
-| 4 | Badge rendering | In progress | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
+| 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Not started | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
@@ -1271,16 +1277,18 @@ stale-artwork lifecycle, and Enhanced coexistence are not pulled into Phase 4.
 
 **Acceptance criteria:**
 
-- [ ] The same source image, canonical metadata, configuration, request
+- [x] The same source image, canonical metadata, configuration, request
   parameters, and renderer version produce the same logical output.
-- [ ] The renderer never claims a value based only on missing provider data.
-- [ ] Quality badges show actual observed quality, not requested quality policy.
-- [ ] Original source bytes are not modified by rendering.
-- [ ] Every rendering failure leaves the current usable artwork unchanged and
+- [x] The renderer never claims a value based only on missing provider data.
+- [x] Quality badges show actual observed quality, not requested quality policy.
+- [x] Original source bytes are not modified by rendering.
+- [x] Every rendering failure leaves the current usable artwork unchanged and
   records a bounded, non-secret diagnostic.
 
-**Gate 4:** Renderer unit tests pass for normal, unknown, oversized, malformed,
-cancelled, and failed inputs.
+**Gate 4:** Met. Renderer unit tests pass for normal, unknown, oversized,
+malformed, cancelled, and failed inputs; the forced native run with the pinned
+SkiaSharp runtime passes 655 tests (one deferred non-canonical cross-runtime
+skip). Phase 5 has not started and requires explicit user approval to begin.
 
 ### 5. Jellyfin artwork integration
 

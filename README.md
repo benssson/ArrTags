@@ -1,15 +1,12 @@
 ## Project Status
 
-**Current milestone:** Phase 4 — Badge rendering is in progress. Tasks 4.1
-(provider-neutral metadata selectors), 4.2 (V1 rendering specification, ADR-009),
-4.3 (unknown-versus-confirmed-negative semantics), 4.4 (render request and
-result fingerprints), 4.5 (image and text limit enforcement), 4.7 (pinned
-SkiaSharp stack, embedded DejaVu Sans Bold 2.37 font, and shipped license
-notices), 4.8 (SkiaSharp host-compatibility spike), 4.9 (provider-neutral
-renderer service and drawing engine), 4.6 (renderer behavior matrix), and 4.10
-(renderer configuration model, snapshot, and fingerprint) are complete.
-Milestone 3 is complete (tasks 3.1 through
-3.8; acceptance criteria satisfied and Gate 3 met).
+**Current milestone:** Phase 4 — Badge rendering is complete (tasks 4.1 through
+4.11; all Milestone 4 acceptance criteria satisfied and Gate 4 met). The
+renderer is provider-neutral and deterministic within the configured limits with
+safe pass-through on failure; the only deferred validation is the ADR-010
+non-canonical cross-runtime comparison, tracked for the testing/release
+milestone. Milestone 3 is complete (tasks 3.1 through 3.8; acceptance criteria
+satisfied and Gate 3 met).
 
 Completed in Phase 2 (Sonarr & Radarr integration):
 
@@ -185,8 +182,10 @@ The plugin:
 
 Next tasks:
 
-- Phase 4 — Badge rendering. Task 4.11 is complete. The only remaining Phase 4
-  validation gap is the non-canonical cross-runtime half: select and record the
-  second explicitly supported non-canonical Linux runtime, produce its golden set
-  under `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the tolerant
-  comparison. The orchestrator evaluates the phase gate.
+- Phase 5 — Jellyfin artwork integration (Milestone 5). Phase 4 is complete and
+  Gate 4 is met; Phase 5 has not started and requires explicit user approval
+  before it begins per the project's phase-transition rule.
+- Deferred to the testing/release milestone: select and record the second
+  explicitly supported non-canonical Linux runtime, produce its golden set under
+  `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant
+  cross-runtime comparison.

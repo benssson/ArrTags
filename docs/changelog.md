@@ -284,11 +284,10 @@ and task 3.8 verifies fail-closed ineligible-location rejection. The Phase 3 tas
 list is complete, all Milestone 3 acceptance criteria are satisfied, and Gate 3
 is met. Milestone 4 (badge rendering) is next, gated by DG-3.
 
-### Phase 4 (Badge rendering) - in progress
+### Phase 4 (Badge rendering) - complete
 
-Tasks 4.1 through 4.10 are complete, and the task 4.6 behavior matrix is
-complete. DG-3 and ADR-010 are resolved; the golden/cross-runtime determinism
-tests (4.11) follow.
+Tasks 4.1 through 4.11 are complete, all Milestone 4 acceptance criteria are
+satisfied, and Gate 4 is met. DG-3 and ADR-010 are resolved.
 
 - Task 4.1 (`src/ArrTags/Rendering/`): the provider-neutral `BadgeSelector`
   vocabulary (Quality, Resolution, DynamicRange, Source, VideoCodec, Audio,
@@ -605,5 +604,16 @@ skips (633 total), and the forced native run with `ARRTAGS_SKIA_COMPAT=1` and th
 pinned sysroot on the loader path passes 655 tests with one non-canonical-golden
 skip (656 total). `./build.sh package` produced
 `artifacts/ArrTags_0.1.0.0.zip`. Task 4.11 is complete; the only remaining Phase
-4 validation gap is the non-canonical cross-runtime runtime selection, and the
-orchestrator evaluates Gate 4.
+4 validation gap is the non-canonical cross-runtime runtime selection, which is
+deferred to the testing/release milestone.
+
+Phase 4 is complete: all Milestone 4 acceptance criteria are satisfied and Gate
+4 is met. The forced native renderer run with `ARRTAGS_SKIA_COMPAT=1` and the
+pinned sysroot passes 655 tests with one deferred non-canonical cross-runtime
+skip (656 total); the default `./build.sh test` run passes 593 tests with 40
+environment-guarded skips. The renderer produces deterministic, bounded,
+non-interlaced 8-bit sRGB PNG output (RGB for opaque sources, straight-alpha
+RGBA otherwise), never claims a value from missing provider data, never modifies
+source bytes, and returns a bounded non-secret failure/pass-through result on
+every failure path. Phase 5 (Jellyfin artwork integration) has not started and
+requires explicit user approval to begin.
