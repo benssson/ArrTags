@@ -199,20 +199,32 @@ library. The measured constraint for the Phase 5 packaging task is:
 
 ### 3.5 What Phase 5 must still confirm on the live host
 
-- **Phase 5 to validate:** install the packaged plugin on the live Jellyfin
-  12.0.0 host with the root-level managed + native SkiaSharp assets and confirm
-  the plugin ALC loads and renders, and that the host's image pipeline is
-  unaffected.
-- **Phase 5 to validate:** confirm the real host's native search path and
-  `LD_LIBRARY_PATH`/sysroot behavior do not change which `libSkiaSharp.so` the
-  plugin uses, and that two same-SONAME copies can coexist in the host process
-  across a restart and plugin reload.
-- **Phase 5 to validate:** confirm multi-architecture packaging decisions (which
-  Linux RIDs are claimed) and the corresponding native asset layout; this spike
-  only exercised `linux-x64`.
+Resolved by task 5.4 (packaging), except where noted:
+
+- **Resolved (task 5.4, live host):** the packaged plugin was installed on the
+  pinned Jellyfin 12.0.0 host with the root-level managed and native SkiaSharp
+  assets. The host log records
+  `Loaded assembly "SkiaSharp, Version=3.119.0.0, ..." from ".../ArrTags_0.1.0.0/SkiaSharp.dll"`
+  and `Loaded plugin: "ArrTags" "0.1.0.0"`, and the host's
+  `/proc/<pid>/maps` maps both `ArrTags.dll` and `SkiaSharp.dll` from the plugin
+  folder. A full artwork render through Jellyfin is not wired until tasks
+  5.5/5.11, so the host did not invoke the renderer.
+- **Resolved (task 5.4, replicated load context):** a byte-for-byte replica of
+  Jellyfin's `PluginLoadContext` was run against the exact extracted package with
+  the host's managed and native SkiaSharp preloaded (scenario C). The plugin ALC
+  bound `SkiaSharp` to the plugin-folder copy, a native encode call succeeded,
+  and `/proc/self/maps` showed the plugin-folder `libSkiaSharp.so` mapped as a
+  distinct second copy alongside the host's. The plugin-local native is the
+  one used by the plugin-context call.
+- **Resolved (task 5.4):** V1 claims only `linux-x64`. The package carries the
+  single `runtimes/linux-x64/native/libSkiaSharp.so` asset at the plugin folder
+  root, asserted to be an ELF64 x86-64 shared object. Other Linux RIDs are not
+  claimed in V1 and no arbitrary system Skia library is loaded.
 - **Inferred:** the host loads its own SkiaSharp from
   `Jellyfin.Drawing.Skia` before or independently of ArrTags; the spike modeled
-  this by preloading the host's managed and native libraries in scenario C.
+  this by preloading the host's managed and native libraries in scenario C. The
+  live-host and replicated-load-context runs above confirm that both copies
+  coexist.
 
 ## 4. Decode/draw/encode round-trip proof (Confirmed)
 
@@ -305,8 +317,10 @@ Consequently, the plugin keeps only `SkiaSharp` and
 - Only the `linux-x64` RID and the Ubuntu 24.04 sysroot were exercised.
 - The round-trip proof is not part of the default `./build.sh test` execution;
   it runs only with `ARRTAGS_SKIA_COMPAT=1` and the sysroot on the loader path.
-- The plugin is not yet packaged with the managed/native SkiaSharp assets; that
-  is the Phase 5 packaging task.
+- The plugin is now packaged with the managed and root-level native SkiaSharp
+  assets (task 5.4). The live-host run and the replicated load-context run in
+  section 3.5 confirm the layout; a full image render through Jellyfin remains
+  task 5.5/5.11.
 
 ## 7. References
 

@@ -825,3 +825,64 @@ environment-guarded skips (789 total). The forced native run with
 `ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot passes 813 with 6 skips (819
 total). No ADR, `RenderVersion`, renderer behavior, or existing passing behavior
 was changed.
+
+### Task 5.4 - Renderer managed and Linux native packaging
+
+Task 5.4 extends the plugin package so the renderer's managed binding, its
+matching Linux native asset, the plugin dependency manifest, and the Skia/font
+license notices are included and resolve under the host's plugin load context
+(ADR-010). It does not implement publication (5.5), the `ArtworkOperation`
+journal (5.6), reconciliation (5.7), or lifecycle fencing (5.9).
+
+- `src/ArrTags/ArrTags.csproj`: the `PackagePlugin` target derives the managed
+  `SkiaSharp.dll` from `@(RuntimeCopyLocalItems)` and the matching
+  `linux-x64` `libSkiaSharp.so` from `@(RuntimeTargetsCopyLocalItems)` (filtered
+  by the declared `PluginRuntimeIdentifier`), so the assets come from the
+  project's MSBuild-resolved pinned references rather than a hard-coded NuGet
+  cache path. Both are staged at the plugin folder root next to `ArrTags.dll`,
+  and the build fails when either cannot be resolved. The target also stages
+  `ArrTags.deps.json`, `build.yaml`, `THIRD-PARTY-NOTICES.md`, and the
+  `licenses/` notices, and deletes any previous archive before zipping so the
+  target is idempotent.
+- V1 claims only `linux-x64`. The measured Jellyfin 12 plugin load context
+  probes only the plugin folder root, not `x64/` or `runtimes/<rid>/native/`
+  (`docs/research/skia-host-compatibility.md` section 3), so the package carries
+  that single RID's native asset at the root and never loads an arbitrary system
+  Skia library. Multi-RID packaging is not part of V1.
+- `build.yaml`: `artifacts` now lists `ArrTags.dll`, `SkiaSharp.dll`,
+  `libSkiaSharp.so`, and `ArrTags.deps.json`. `assemblies` is left empty so
+  Jellyfin's folder scan loads the bundled `SkiaSharp.dll` into the plugin load
+  context. The identity, `targetAbi: 12.0.0.0`, and `framework: net10.0` are
+  unchanged.
+- The produced `artifacts/ArrTags_0.1.0.0.zip` contains, at the root:
+  `ArrTags.dll` (940,544 bytes, SHA-256 `6caa3914...`), `SkiaSharp.dll`
+  (489,824 bytes, SHA-256 `aaaaa18c68ba1f3a3408b00dff28b11d5705198e17ba9d3aa59222bfd35407c8`),
+  `libSkiaSharp.so` (11,170,296 bytes, SHA-256
+  `66c856eaf1a47a00b23204c30c6ee407987bf5086ecc0a1a6b4fd67526b0cd02`),
+  `ArrTags.deps.json`, `build.yaml`, `THIRD-PARTY-NOTICES.md`, and the three
+  `licenses/` notices.
+- Tests: `tests/ArrTags.Tests/PluginPackagingTests.cs` adds five unguarded
+  packaging-contract facts (`build.yaml` artifacts and identity, the
+  `PackagePlugin` target's resolved-asset and RID contract, and the shipped
+  notice/license files) and three package-content facts guarded on the presence
+  of `artifacts/ArrTags_*.zip` (`build.yaml` artifacts present in the archive,
+  the required root files, and the pinned managed/native hashes with an ELF64
+  x86-64 header check on the native asset).
+- Live host: the package was installed on the pinned Jellyfin 12.0.0 host, which
+  logged `Loaded assembly "SkiaSharp, Version=3.119.0.0, ..." from
+  ".../ArrTags_0.1.0.0/SkiaSharp.dll"`, `Loaded plugin: "ArrTags" "0.1.0.0"`,
+  completed startup with no errors, mapped `ArrTags.dll` and `SkiaSharp.dll`
+  from the plugin folder in `/proc/<pid>/maps`, and wrote `meta.json` with
+  `targetAbi: 12.0.0.0` and `status: Active`. A byte-for-byte replica of
+  Jellyfin's `PluginLoadContext` run over the exact extracted package, with the
+  host's managed and native SkiaSharp preloaded, bound the plugin-context
+  `SkiaSharp` to the plugin folder, completed a native decode/draw/encode call,
+  and mapped the plugin-folder `libSkiaSharp.so` as a distinct second copy.
+  A full image render through Jellyfin is not wired until tasks 5.5/5.11.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 745 with 52
+environment-guarded skips (797 total; 748 passed with 49 skips when the package
+is present). The forced native run with `ARRTAGS_SKIA_COMPAT=1` and the pinned
+sysroot passes 821 with 6 skips (827 total). No ADR, `RenderVersion`, renderer
+behavior, or existing passing behavior was changed.

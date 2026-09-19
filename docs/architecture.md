@@ -659,6 +659,16 @@ plugin-owned direct SkiaSharp service with exact managed/native package pins and
 no use of Jellyfin's global image services. It loads the bundled DejaVu Sans
 Bold 2.37 font by resource bytes and has no host-font fallback.
 
+The plugin package carries the renderer's managed binding, its matching Linux
+native asset, the plugin dependency manifest, the plugin manifest (`build.yaml`),
+and the Skia/font license notices. The measured Jellyfin 12 plugin load context probes only the
+plugin folder root, not `x64/` or `runtimes/<rid>/native/`, so `SkiaSharp.dll`
+and `libSkiaSharp.so` are staged next to `ArrTags.dll`; the managed asset is
+loaded into the plugin load context by Jellyfin's folder scan and the native
+asset is resolved from the same directory. V1 claims only `linux-x64`: the
+package carries that single RID's native asset and does not load an arbitrary
+system Skia library. Multi-RID packaging is not part of V1.
+
 The host boundary supplies a bounded, read-only `SourceImageInput` containing
 the exact source bytes or artifact handle, content type, dimensions, and source
 hash. It does not pass paths, Jellyfin entities, provider DTOs, credentials, or

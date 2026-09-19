@@ -3,8 +3,8 @@
 **Current milestone:** Phase 5 — Jellyfin artwork integration is in progress.
 Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
 and route variants), 5.2 (source-artwork provenance and guarded restoration
-state), and 5.3 (the Jellyfin host source adapter) are complete; the remaining
-Phase 5 tasks are not started.
+state), 5.3 (the Jellyfin host source adapter), and 5.4 (renderer managed/native
+packaging) are complete; the remaining Phase 5 tasks are not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -238,30 +238,44 @@ Completed in Phase 5 (Jellyfin artwork integration):
   absent, unsupported-surface, unsupported-container, oversized-byte,
   oversized-dimension, unreadable, hash/length/surface correctness, oriented
   dimensions, supported non-local conversion, and boundary-neutrality checks.
+- 5.4 Extended the plugin package so the renderer's managed binding, matching
+  Linux native asset, dependency manifest, `build.yaml`, and Skia/font notices
+  ship at the plugin folder root. The `PackagePlugin` target now derives
+  `SkiaSharp.dll` and the `linux-x64` `libSkiaSharp.so` from the project's
+  MSBuild-resolved runtime assets and fails if either is missing;
+  `build.yaml` `artifacts` lists `ArrTags.dll`, `SkiaSharp.dll`,
+  `libSkiaSharp.so`, and `ArrTags.deps.json` for the unchanged identity and
+  `targetAbi: 12.0.0.0`. V1 claims only `linux-x64` (multi-RID packaging is out
+  of V1), and no arbitrary system Skia library is loaded. The package was
+  installed on the pinned Jellyfin 12.0.0 host, which loaded `SkiaSharp
+  3.119.0.0` from the plugin folder and started cleanly, and a replicated
+  Jellyfin `PluginLoadContext` over the exact package mapped the plugin-local
+  `libSkiaSharp.so` next to `SkiaSharp.dll`. A full image render is not wired
+  until tasks 5.5/5.11. New packaging tests live in `PluginPackagingTests`.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 740 automated tests; 49 additional environment-guarded tests (the task
+- Passes 745 automated tests; 52 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, the task 5.1 host route cases,
-  and the task 5.3 native source-decode cases) are skipped unless their
-  environment guard is provided. With `ARRTAGS_SKIA_COMPAT=1` and the pinned
-  native runtime the full 819-test suite passes 813 with 6 skips (the five task
-  5.1 route cases and the non-canonical golden placeholder); adding
-  `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host unskips the five route
-  cases and leaves only the non-canonical golden skip.
+  the task 5.3 native source-decode cases, and the task 5.4 package-content
+  cases) are skipped unless their environment guard is provided. With
+  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full 827-test suite
+  passes 821 with 6 skips (the five task 5.1 route cases and the non-canonical
+  golden placeholder); adding `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned
+  host unskips the five route cases and leaves only the non-canonical golden
+  skip. Running `./build.sh package` first also unskips the three task 5.4
+  package-content cases.
 
 Next tasks:
 
-- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, and 5.3
-  are complete; the next task in the authoritative Phase 5 execution order is 5.4
-  (extend plugin packaging so the renderer's managed dependencies, Linux native
-  assets, dependency manifest, and Skia/font license notices are included in the
-  plugin zip and resolve under the host's plugin load context).
+- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3, and
+  5.4 are complete; the next task in the authoritative Phase 5 execution order is
+  5.6 (persist a durable `ArtworkOperation` before `SaveImage`).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

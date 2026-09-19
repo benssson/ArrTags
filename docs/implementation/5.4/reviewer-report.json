@@ -1,0 +1,67 @@
+{
+  "task": "5.4",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "title": "build.yaml artifacts omits build.yaml, THIRD-PARTY-NOTICES.md and licenses/",
+      "detail": "artifacts lists ArrTags.dll, SkiaSharp.dll, libSkiaSharp.so, ArrTags.deps.json, but the produced zip also carries build.yaml, THIRD-PARTY-NOTICES.md and the three licenses/ notices. The mismatch is a pre-existing repository convention (the custom PackagePlugin target ships the extra files) and is explicitly disclosed in the worker report. It is harmless for this repository because build.yaml is not consumed by the Jellyfin local loader (PluginManifest has no artifacts property; no host source references it). It would only matter if packaging moved to jprm/repository tooling, where the notices would be dropped unless added to artifacts. Not a task 5.4 acceptance gap: the notices are present in the plugin zip and verified by hash."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "title": "Shipped ArrTags.deps.json still references runtimes/linux-x64/native while the native asset is flattened to the root",
+      "detail": "Independently confirmed harmless. A fresh extraction plus a replica resolver showed AssemblyDependencyResolver(pluginFolder) resolves neither managed SkiaSharp nor libSkiaSharp (null/null), and AssemblyDependencyResolver(pluginFolder/ArrTags.dll) resolves managed SkiaSharp.dll but returns null for the unmanaged name. The effective mechanism is Jellyfin's explicit LoadFromAssemblyPath folder DLL scan plus the runtime's same-directory native probing, so the root-level libSkiaSharp.so is the one loaded. The worker's stated limitation is accurate and does not hide a gap."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "title": "Package-content tests do not run in the standard `./build.sh test`/`all` flow",
+      "detail": "The three [PackagedPluginFact] facts skip unless artifacts/ArrTags_*.zip already exists, and build.sh all runs test before package, so archive-content assertions are skipped in the normal flow and only run if `./build.sh package` is executed first (as the README documents). The five unguarded facts are contract/text assertions and do not functionally prove the archive. This is a test-ergonomics weakness, not an acceptance gap: the real archive was independently rebuilt and its nine entries hash-verified, including the pinned managed/native SHA-256 values from the test constants."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "title": "Live host did not invoke the renderer; native resolution confirmed indirectly and reproduced by this review",
+      "detail": "The pinned Jellyfin 12.0.0 host log at 2026-09-19 22:26 records `Loaded assembly \"SkiaSharp, Version=3.119.0.0, ...\" from .../ArrTags_0.1.0.0/SkiaSharp.dll`, `Loaded plugin: \"ArrTags\" \"0.1.0.0\"`, and reaches startup completion; the extracted host plugin folder and meta.json (targetAbi 12.0.0.0, status Active, assemblies []) match the package. The host could not exercise a render because 5.5/5.11 are not implemented. Reviewer independently reproduced the byte-for-byte PluginLoadContext replica over a fresh extraction: with the host managed+native SkiaSharp preloaded, the plugin ALC loaded SkiaSharp.dll and ArrTags.dll from the plugin folder, the plugin-context decode/encode succeeded (134-byte PNG), and /proc/self/maps showed the plugin-folder libSkiaSharp.so and the host libSkiaSharp.so as two distinct inode mappings. Task 5.4 acceptance (packaging + resolution under the plugin load context) is satisfied to the extent possible before 5.5/5.11."
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "title": "Zip is not byte-for-byte reproducible",
+      "detail": "MSBuild ZipDirectory records source timestamps, so archive bytes differ between runs although every entry content hash is identical. Reproducible packaging is a Milestone 7 exit-gate concern, not a 5.4 requirement; the limitation is disclosed."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "title": "architecture.md refers to build.yaml as `the plugin manifest`",
+      "detail": "Terminology nit only. build.yaml is the build/repository manifest; the runtime manifest Jellyfin reads is meta.json. The surrounding statement is otherwise accurate and matches the measured load-context behavior."
+    }
+  ],
+  "tests_checked": [
+    "Full default suite with package present: dotnet test (./build.sh test) -> Passed: 748, Failed: 0, Skipped: 49, Total: 797 (matches worker).",
+    "Full default suite with package absent (archive moved aside): 745 passed, 52 skipped, 797 total (matches worker; +5 unguarded new facts, +3 package-guarded skips vs the 740/49/789 baseline).",
+    "Focused dotnet test --filter FullyQualifiedName~PluginPackagingTests with package present -> 8 passed, 0 skipped, 0 failed (5 Fact + 3 PackagedPluginFact, matches worker).",
+    "Forced native run ARRTAGS_SKIA_COMPAT=1 with pinned sysroot and package present (./build.sh test) -> Passed: 821, Failed: 0, Skipped: 6, Total: 827 (matches worker).",
+    "./build.sh build -> Build succeeded, 0 warnings, 0 errors.",
+    "./build.sh package -> Build succeeded, 0 warnings, 0 errors; rebuilt archive content hashes byte-identical to the preserved worker archive across all 9 entries.",
+    "Negative packaging test: dotnet build -p:PackagePlugin=true -p:PluginRuntimeIdentifier=win-x64 -> Build FAILED with the expected `PackagePlugin: the Linux native renderer asset libSkiaSharp.so was not resolved for RID 'win-x64'` error, proving the RID filter and the fail-on-missing behavior; the pre-existing zip was not overwritten (Error precedes Delete/Zip).",
+    "Independent plugin-load-context reproduction (net10.0 harness with a byte-for-byte PluginLoadContext replica): host managed+native preloaded, fresh package extraction, plugin ALC bound plugin-folder SkiaSharp.dll (not default context), native decode/encode succeeded, /proc/self/maps showed both libSkiaSharp.so copies.",
+    "Independent AssemblyDependencyResolver probe: folder path resolves null/null; ArrTags.dll path resolves managed SkiaSharp.dll and null unmanaged.",
+    "Independent zip inspection (perl IO::Uncompress::Unzip): all 9 root entries and SHA-256 values verified, including SkiaSharp.dll aaaaa18c... and libSkiaSharp.so 66c856ea... (matches pinned research values), and no other RID/native asset present."
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-010 (renderer library, package must carry native assets for every Linux architecture it claims, must not silently load an arbitrary system Skia library, license notices shipped).",
+    "docs/research/skia-host-compatibility.md sections 3.1-3.5 and 6 (measured root-level managed+native requirement, folder-style resolver behavior, x64/runtimes subdirs not probed).",
+    "docs/architecture.md section 9 (renderer implementation contract) as updated by the task.",
+    "PLANS.md Milestone 5, task 5.4 text, and the Authoritative Phase 5 execution order (5.1,5.2,5.3,5.4,5.6,5.5,5.7,...), confirming README's next-task statement.",
+    "Pinned Jellyfin v12 source /tmp/opencode/jfsrc: Emby.Server.Implementations/Plugins/PluginLoadContext.cs (base(isCollectible:true), AssemblyDependencyResolver(path), overrides only managed Load, no native override), Emby.Server.Implementations/Plugins/PluginManager.cs (PluginLoadContext(plugin.Path) folder; TryGetPluginDlls uses Directory.GetFiles(folder, \"*.dll\", AllDirectories); empty manifest assemblies loads all folder DLLs; load-all-then-GetTypes order), MediaBrowser.Common/Plugins/LocalPlugin.cs (Path = plugin folder), MediaBrowser.Common/Plugins/PluginManifest.cs (no artifacts property).",
+    "src/ArrTags/ArrTags.csproj PackagePlugin target (RuntimeCopyLocalItems / RuntimeTargetsCopyLocalItems filtered by PluginRuntimeIdentifier, Error on unresolved assets, Delete-before-Zip idempotence).",
+    "build.sh, Directory.Build.props, global.json, build.yaml, packages.lock.json (unchanged).",
+    "Pinned host artifacts under /tmp/opencode/jf (jellyfin/SkiaSharp.dll, jellyfin/libSkiaSharp.so) and the live host log meta.json/plugin folder."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

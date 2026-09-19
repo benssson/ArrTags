@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), and 5.3 (the Jellyfin host source adapter) are complete; the remaining Phase 5 tasks are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), and 5.4 (renderer managed/native packaging) are complete; the remaining Phase 5 tasks are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -80,8 +80,13 @@ source adapter reads the unindexed `Primary` image through the pinned 12.0.0 rea
 surface, confines accepted source containers to the PNG/JPEG profiles the renderer
 inspects, derives the post-orientation display dimensions from the exact bytes,
 and supplies the renderer's `SourceImageInput` plus the task 5.2
-`ActiveImageIdentity` from one bounded read. The remaining Phase 5 tasks (5.4
-through 5.11 in the authoritative order) are not started.
+`ActiveImageIdentity` from one bounded read. Task 5.4 is complete: the plugin
+package now carries the renderer's managed `SkiaSharp.dll`, the matching
+`linux-x64` native `libSkiaSharp.so` and the dependency manifest at the plugin
+folder root, with the `build.yaml` artifact list updated to match, and both the
+live pinned host and a replicated plugin load context confirm the assets resolve
+under the plugin load context. The remaining Phase 5 tasks (5.5 through 5.11 in
+the authoritative order) are not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -130,7 +135,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1346,7 +1351,7 @@ provenance and coexisting with Jellyfin Enhanced.
   `Primary` source image and supplies the Phase 4 renderer's `SourceImageInput`
   bytes, content type, dimensions, and hash; keep Jellyfin access out of the
   renderer (ADR-010).
-- [ ] 5.4 Extend plugin packaging so the renderer's managed dependencies, Linux
+- [x] 5.4 Extend plugin packaging so the renderer's managed dependencies, Linux
   native assets, dependency manifest, and Skia/font license notices are included
   in the plugin zip and resolve under the host's plugin load context; the
   current `PackagePlugin` target copies only the main assembly (ADR-010).
@@ -1502,6 +1507,43 @@ dimensions, supported non-local conversion, and boundary-neutrality checks. The
 default suite passes 740 with 49 guarded skips (789 total) and the forced native
 suite passes 813 with 6 skips (819 total), with 0 warnings and no regressions. No
 ADR, `RenderVersion`, renderer behavior, or existing passing behavior was changed.
+
+**Task 5.4 status:** Complete. The plugin package now ships the renderer's
+runtime closure at the plugin folder root, and both the live pinned host and a
+replicated plugin load context confirm it resolves under the host's plugin load
+context. `src/ArrTags/ArrTags.csproj`'s `PackagePlugin` target takes the managed
+`SkiaSharp.dll` and the matching `linux-x64` `libSkiaSharp.so` from the project's
+MSBuild-resolved runtime assets (`RuntimeCopyLocalItems` and
+`RuntimeTargetsCopyLocalItems`) rather than a hard-coded NuGet cache path, stages
+them next to `ArrTags.dll` along with `ArrTags.deps.json`, `build.yaml`,
+`THIRD-PARTY-NOTICES.md`, and the `licenses/` notices, and fails the build when
+either renderer asset is not resolved. The `linux-x64` RID is declared by
+`PluginRuntimeIdentifier` (the measured layout: the Jellyfin 12 plugin load
+context probes only the plugin folder root, not `x64/` or
+`runtimes/<rid>/native/`). `build.yaml`'s `artifacts` now lists `ArrTags.dll`,
+`SkiaSharp.dll`, `libSkiaSharp.so`, and `ArrTags.deps.json`; the identity,
+`targetAbi: 12.0.0.0`, and `framework: net10.0` are unchanged, and `assemblies`
+is left empty so Jellyfin's folder scan loads the bundled `SkiaSharp.dll`.
+V1 claims only `linux-x64`; other Linux RIDs are not claimed and no arbitrary
+system Skia library is loaded. Multi-RID packaging is not part of V1. The
+package is verified by `tests/ArrTags.Tests/PluginPackagingTests.cs` (five
+unguarded contract facts plus three package-content facts guarded on the
+presence of `artifacts/ArrTags_*.zip`) and by manual inspection of
+`./build.sh package` output. Live-host validation installed the package on the
+pinned Jellyfin 12.0.0 host: the log records loading `SkiaSharp, Version=3.119.0.0`
+from the plugin folder and `Loaded plugin: "ArrTags" "0.1.0.0"`, startup
+completed, `/proc/<pid>/maps` maps `ArrTags.dll` and `SkiaSharp.dll` from the
+plugin folder, and the host wrote `meta.json` with `targetAbi: 12.0.0.0` and
+`status: Active`. A replicated `PluginLoadContext` run over the exact extracted
+package, with the host's managed and native SkiaSharp preloaded, bound the
+plugin-context `SkiaSharp` to the plugin folder, completed a native
+decode/draw/encode call, and mapped the plugin-folder `libSkiaSharp.so` as a
+second copy. A full image render through Jellyfin is not wired until tasks
+5.5/5.11, so that path is not claimed. Default `./build.sh test` passes 745 with
+52 guarded skips (797 total; 748/49/797 when the package is present) and the
+forced native run passes 821 with 6 skips (827 total), with 0 warnings and no
+regressions. No ADR, `RenderVersion`, renderer behavior, or existing passing
+behavior was changed.
 
 **Acceptance criteria:**
 
