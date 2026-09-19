@@ -533,9 +533,14 @@ active artwork unchanged.
 
 **Phase 4 implementation note:** The provider-neutral renderer service (task
 4.9, ADR-010) implements the 3.6-3.8 contract in `src/ArrTags/Rendering`. The V1
-`BadgeDefinition` snapshot is deliberately minimal for this phase (selector,
-enabled flag, and one bounded `{value}` template); the remaining definition,
-style, placement, and visibility fields are configuration-surfaced in task 4.10.
+`BadgeDefinition` snapshot is deliberately minimal (selector, enabled flag, and
+one bounded `{value}` template); task 4.10 persists exactly those two
+user-adjustable dimensions per selector, plus contrast-validated palette
+overrides, into `RendererConfiguration` and maps them back through
+`RendererConfigurationResolver`. The remaining definition, style, placement, and
+visibility fields above stay code-owned per ADR-009/ADR-010: V1 does not expose
+user-selectable format, color space, alpha, font, geometry, text-limit, or
+version values, so they are not part of the persisted configuration.
 `BadgeDefinitionResolver` applies the bounded templates on top of the existing
 `BadgeSelectorResolver`, so semantic priority remains code-owned. `RenderResult`
 has three bounded variants: `Rendered` (complete PNG artifact plus content type,
@@ -543,7 +548,10 @@ oriented dimensions, output hash, and output fingerprint), `PassThrough`, and
 `Failed` with exactly one safe reason code; `NotEligible` and `CacheHit` remain
 conceptual policy states handled outside the renderer. `SourceImageInput` is
 the bounded, read-only bytes descriptor defined by ADR-010; the Jellyfin host
-adapter that supplies it remains Phase 5 work.
+adapter that supplies it remains Phase 5 work. `PluginConfigurationSnapshot`
+exposes the validated definitions, the effective `RenderOutputPolicy`, and the
+secret-free renderer configuration fingerprint that feeds
+`RenderRequest.configurationFingerprint`.
 
 ### 3.9 MetadataCacheEntry
 

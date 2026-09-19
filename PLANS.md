@@ -53,9 +53,9 @@ pass-through behavior are fixed for implementation. Phase 4 is in progress:
 tasks 4.1 (metadata selectors), 4.2 (rendering specification), 4.3
 (unknown-value semantics), 4.4 (fingerprints), 4.5 (limit enforcement), 4.7
 (pinned assets and font), 4.8 (SkiaSharp host-compatibility spike), 4.9
-(provider-neutral renderer service and drawing engine), and 4.6 (renderer
-behavior matrix) are complete. Configuration (4.10) and golden/determinism tests
-(4.11) remain incomplete.
+(provider-neutral renderer service and drawing engine), 4.6 (renderer
+behavior matrix), and 4.10 (renderer configuration model, snapshot, and
+fingerprint) are complete. Golden/determinism tests (4.11) remain incomplete.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -913,7 +913,7 @@ Radarr, or Jellyfin artwork storage.
   (ADR-010).
 - [x] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
   renderer failure pass-through.
-- [ ] 4.10 Extend the immutable configuration model, snapshot, and validator with
+- [x] 4.10 Extend the immutable configuration model, snapshot, and validator with
   enabled V1 selectors, bounded templates, and contrast-validated palette/style
   overrides, including the secret-free renderer configuration fingerprint
   (ADR-010).
@@ -1086,8 +1086,9 @@ sysroot on the loader path the full suite passes all 524 tests, including the
 nine real decode/draw/encode render cases (RGB/RGBA dimensions and channels,
 source-alpha preservation, palette placement, sRGB/metadata chunks, EXIF
 orientation, unsupported-input failure, source immutability, and byte
-determinism). The dedicated behavior matrix (4.6), the renderer configuration
-model (4.10), and golden/cross-runtime determinism tests (4.11) remain.
+determinism). The dedicated behavior matrix (4.6) and the renderer
+configuration model (4.10) are complete; golden/cross-runtime determinism tests
+(4.11) remain.
 
 **Task 4.6 status:** Complete. The dedicated renderer behavior matrix is
 implemented as seven test-only files under `tests/ArrTags.Tests/`
@@ -1133,8 +1134,66 @@ bounded `Failed` reason with no partial PNG and an unchanged source. Default
 `./build.sh test` passes with 0 warnings and 554 passing tests plus 21
 environment-guarded Skia skips (575 total); with `ARRTAGS_SKIA_COMPAT=1` and the
 pinned sysroot on the loader path the full 575-test suite passes. The renderer
-configuration model (4.10) and golden/cross-runtime determinism tests (4.11)
-remain.
+configuration model was completed in task 4.10; golden/cross-runtime determinism
+tests (4.11) remain.
+
+**Task 4.10 status:** Complete. The persisted, immutable-replacement
+configuration model now carries the user-adjustable V1 renderer configuration
+under ADR-010. `RendererConfiguration` (with the `BadgeSelectorConfiguration`
+entries) expresses only the enabled/disabled V1 `BadgeSelector` set and one
+bounded provider-neutral `{value}` template per selector, plus four optional
+palette overrides (technical and upgrade-status background/text). Output format,
+color space, alpha policy, font identity, geometry/reference values, text limits,
+and the renderer version remain code-owned and are deliberately not representable
+in configuration; no geometry or placement value is exposed because ADR-009
+fixes them and ADR-010 does not authorize a user-selectable override for them.
+Defaults reproduce ADR-009 exactly: an absent selector keeps the code-owned
+`BadgeDefinition.V1Default` entry (all selectors enabled, `{value}` technical
+templates, fixed `UPGRADE` status text) and an unset palette keeps the ADR-009
+colors.
+
+`RendererConfiguration.Validate` (called from `PluginConfigurationValidator`)
+rejects unknown or duplicate selector entries, empty/too-long templates or more
+than one `{value}` placeholder, malformed color values, and any style pair whose
+WCAG contrast is below `BadgeContrast.MinimumRatio` (4.5:1) with a safe,
+secret-free message. `RendererConfigurationResolver` maps a configuration to the
+ordered `BadgeDefinition` snapshot (canonical selector order; first valid entry
+per selector; tolerant fallback to defaults for a configuration that has not been
+validated) and to the effective `RenderOutputPolicy` (configured palette applied,
+every other value copied from `RenderOutputPolicy.Default`). `RendererPalette`
+canonicalizes a valid override to `#RRGGBB` so an equivalent color cannot change
+the fingerprint. `PluginConfigurationSnapshot` exposes the validated
+`BadgeDefinitions`, `RendererOutputPolicy`, and the secret-free
+`RendererConfigurationFingerprint`; it remains immutable and secret-free, and
+`From` keeps working for callers/tests that build from a plain configuration.
+
+`RendererConfigurationFingerprint.Compute` is a deterministic uppercase SHA-256
+over the renderer configuration schema version, the ordered selector
+enablement/templates, and the effective palette. It excludes credentials, the
+webhook secret, timestamps, and correlation identifiers by construction, so
+rotating a secret cannot change it; equivalent color casing and selector entry
+order are normalized. The value is the one supplied to
+`RenderRequest.ConfigurationFingerprint`. The ADR-005 secret boundary is
+unchanged: no credential or webhook secret enters the renderer configuration,
+the snapshot renderer fields, or the fingerprint. `ConfigurationSnapshotService`
+`TryReplace` still activates a candidate only when it validates, so an invalid
+renderer configuration leaves the last valid public snapshot (and private
+secrets) active.
+
+`tests/ArrTags.Tests/RendererConfigurationTests.cs` adds 21 unguarded cases
+covering the default-to-ADR-009 mapping, valid/invalid selector and template
+configuration, palette acceptance and canonicalization, malformed colors, the
+4.5:1 contrast boundary (`#767676`/`#FFFFFF` accepted, `#777777`/`#FFFFFF`
+rejected, `#757575`/`#000000` accepted, `#747474`/`#000000` rejected),
+snapshot immutability and secret exclusion, fingerprint determinism and
+sensitivity to every output-affecting value, XML round-trip persistence, and
+last-valid retention plus private-secret retention through
+`ConfigurationSnapshotService.TryReplace`. No Skia native runtime is required.
+Build and test pass with 0 warnings and 575 passing tests plus 21
+environment-guarded Skia skips (596 total); the forced native run is unchanged.
+The renderer configuration is not wired to the Jellyfin admin save surface, DI,
+providers, or the artwork pipeline (not a Phase 4 prerequisite), and the
+golden/cross-runtime determinism tests remain task 4.11.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

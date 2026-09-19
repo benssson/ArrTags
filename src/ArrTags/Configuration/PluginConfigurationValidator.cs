@@ -31,6 +31,7 @@ public static class PluginConfigurationValidator
         ValidateConnection("Radarr", configuration.Radarr, errors);
         ValidateLibraryScope(configuration.EnabledLibraries, errors);
         (configuration.Limits ?? new OperationalLimits()).Validate(errors);
+        (configuration.Renderer ?? new RendererConfiguration()).Validate(errors);
 
         return new ConfigurationValidationResult(errors);
     }

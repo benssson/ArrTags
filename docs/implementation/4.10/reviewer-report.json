@@ -1,0 +1,97 @@
+{
+  "task": "4.10",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "info",
+      "criterion": 1,
+      "finding": "Configuration model exposes exactly the authorized surface: per-selector enabled/disabled and a single bounded template, plus four palette overrides. No output format, color space, alpha, font identity, geometry, text-limit, or renderer-version property exists on RendererConfiguration, so those code-owned values are not user-selectable. Defaults reproduce ADR-009 / BadgeDefinition.V1Default exactly (verified by DefaultConfigurationMapsToTheAdr009Defaults and independently by reading BuildDefaults/ResolveDefinitions)."
+    },
+    {
+      "id": "F2",
+      "severity": "info",
+      "criterion": 2,
+      "finding": "RendererConfiguration.Validate (invoked unconditionally by PluginConfigurationValidator) rejects null/unknown selectors, duplicate selectors, empty/whitespace templates, templates over BadgeDefinition.MaximumTemplateLength (128), more than one {value} placeholder, malformed non-RRGGBB colors, and text/background pairs below 4.5:1. Messages contain no user template, color value, or secret; only the selector enum name is echoed."
+    },
+    {
+      "id": "F3",
+      "severity": "info",
+      "criterion": 2,
+      "finding": "Contrast boundary independently recomputed from the WCAG relative-luminance formula in RgbColor: #767676/#FFFFFF = 4.5422 (accepted), #777777/#FFFFFF = 4.4781 (rejected), #757575/#000000 = 4.5578 (accepted), #747474/#000000 = 4.4929 (rejected). The check is strictly less-than BadgeContrast.MinimumRatio (4.5), so a pair at exactly 4.5:1 is accepted, matching 'below 4.5:1 rejected'. Note: the worker report quoted 4.429 for #747474 with black; the correct value is ~4.493, but the value is still below 4.5 and the test's accept/reject assertions are correct, so this is a report-comment inaccuracy only, not an implementation defect."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "criterion": 2,
+      "finding": "ConfigurationSnapshotService.TryReplace still calls PluginConfigurationValidator before activating and swaps neither _current nor _secrets on failure. The new test SnapshotServiceRetainsLastValidRendererConfigurationOnInvalidReplacement confirms the prior public snapshot, its fingerprint, its BadgeDefinitions, and a version-matched Sonarr secret lease all survive an invalid renderer replacement."
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "criterion": 3,
+      "finding": "PluginConfigurationSnapshot.From now derives ordered BadgeDefinitions (RendererConfigurationResolver.ResolveDefinitions), the effective RenderOutputPolicy (configured palette applied, every other field copied from RenderOutputPolicy.Default), and the renderer configuration fingerprint. The list is a ReadOnlyCollection (Add throws NotSupportedException) and the policy is an init-only immutable object; no secret value is copied (WebhookSecret is reduced to a bool). Existing properties and the From signature remain source-compatible."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "criterion": 4,
+      "finding": "The fingerprint is a length-prefixed, unambiguous netstring-style encoding of schema version, definition count, each definition's selector/enabled/template, and the four effective palette colors, hashed with SHA-256 and returned uppercase. The length prefix makes the mapping from logical configuration to hashed bytes injective, so distinct effective configurations cannot collide through field-separator injection. I confirmed empirically with an out-of-tree harness: identical effective configs (absent vs explicit default selector; #ffffff vs #FFFFFF; explicit default color) produce the same 64-hex fingerprint, while a changed enabled selector/template or palette color produces a different one, and rotating Sonarr/Radarr API keys and the webhook secret does not change it."
+    },
+    {
+      "id": "F7",
+      "severity": "info",
+      "criterion": 5,
+      "finding": "The fingerprint, snapshot renderer fields, and RendererConfiguration contain no credential, webhook secret, timestamp, or correlation identifier by construction. ADR-005 secret handling (BuildSecrets/TryAcquire/SecretLease) is untouched."
+    },
+    {
+      "id": "F8",
+      "severity": "info",
+      "criterion": 6,
+      "finding": "The 21 new unguarded cases (14 facts + two theories with 3 and 4 rows) execute with no Skia runtime. The filtered run reported Passed: 21, Skipped: 0. They cover valid/invalid selectors and templates, both contrast boundary directions, malformed color, palette canonicalization, default-to-ADR-009 mapping, XML round-trip, snapshot immutability/secret exclusion, fingerprint determinism/sensitivity/canonicalization, and last-valid plus private-secret retention. Assertions compare real values rather than mere non-null checks."
+    },
+    {
+      "id": "F9",
+      "severity": "low",
+      "criterion": 4,
+      "finding": "The fingerprint is over-sensitive in one direction: a disabled selector's template still contributes, so two configurations that render identically but differ only in an unused disabled-selector template produce different fingerprints. This is defensible for a configuration fingerprint and does not violate any acceptance criterion (which requires sensitivity, not minimality), so it is recorded as an observation, not a required change."
+    },
+    {
+      "id": "F10",
+      "severity": "low",
+      "criterion": 1,
+      "finding": "ADR-010's 'Configuration schema/version' is represented as the code-owned RendererConfiguration.CurrentSchemaVersion constant, included in the fingerprint, rather than as a persisted scalar property. The task's explicit acceptance criteria do not require a persisted schema property, and the code-owned constant satisfies the intent that the schema version be non-user-selectable and fingerprinted. Recorded as an observation only."
+    },
+    {
+      "id": "F11",
+      "severity": "low",
+      "criterion": 7,
+      "finding": "docs/data-model.md refers to 'RenderRequest.configurationFingerprint' with a lowercase 'c'; the actual property is ConfigurationFingerprint. Documentation-only naming nit with no behavioral impact."
+    },
+    {
+      "id": "F12",
+      "severity": "info",
+      "criterion": 7,
+      "finding": "Scope is clean: only the three intended configuration files are modified in src; the five new configuration types and one test file are untracked; docs updated (PLANS.md, README.md, docs/changelog.md, docs/data-model.md). No Rendering/* changes, no decisions.md (ADR-009/010) changes, no csproj/package/lock changes, no DI/host/provider/artwork-pipeline wiring, no golden/PNG/ICC/cross-runtime 4.11 work. The pre-existing .opencode/agents/*.md edits remain unstaged and are unrelated to task 4.10."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore -> all projects up-to-date (locked mode), no lock-file change",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "./build.sh test -> Passed: 575, Skipped: 21, Total: 596 (the +21 over the prior 554/21/575 is exactly the new RendererConfigurationTests cases)",
+    "./build.sh package -> Build succeeded, 0 Warning(s), 0 Error(s); artifacts/ArrTags_0.1.0.0.zip produced",
+    "Forced native run (LD_LIBRARY_PATH/FONTCONFIG_PATH/XDG_DATA_DIRS pinned sysroot + ARRTAGS_SKIA_COMPAT=1) -> Passed: 596, Skipped: 0, Failed: 0",
+    "dotnet test --filter FullyQualifiedName~RendererConfigurationTests -> Passed: 21, Skipped: 0, Failed: 0",
+    "Out-of-tree fingerprint harness referencing ArrTags (temporary, removed) -> confirmed determinism, secret exclusion, casing/order canonicalization, and distinct-effective-config divergence"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-009 (V1 Badge Rendering Specification): V1 fields/templates, palette #111827/#FFFFFF and #B45309/#FFFFFF, 4.5:1 minimum contrast, bounded templates, code-owned format/font/geometry/text limits.",
+    "docs/decisions.md ADR-010 (V1 Renderer Implementation Contract): renderer configuration persistence clause (enabled selectors + bounded templates + contrast-validated overrides + schema/version + secret-free fingerprint; format/color-space/alpha/font/geometry/text/version code-owned), testing strategy.",
+    "docs/architecture.md section 9 'Renderer implementation contract' and lines 619-623 on output-affecting fingerprint values.",
+    "docs/implementation-readiness.md lines 122-127 (configuration persists only selectors/templates/overrides) and 313-322 (palette-override decision; admin save-surface wiring explicitly not a Phase 4 prerequisite).",
+    "Independently recomputed the WCAG relative-luminance/contrast values used by RgbColor.ContrastRatio rather than trusting the worker's quoted numbers."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

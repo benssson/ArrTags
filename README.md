@@ -6,8 +6,8 @@
 result fingerprints), 4.5 (image and text limit enforcement), 4.7 (pinned
 SkiaSharp stack, embedded DejaVu Sans Bold 2.37 font, and shipped license
 notices), 4.8 (SkiaSharp host-compatibility spike), 4.9 (provider-neutral
-renderer service and drawing engine), and 4.6 (renderer behavior matrix) are
-complete.
+renderer service and drawing engine), 4.6 (renderer behavior matrix), and 4.10
+(renderer configuration model, snapshot, and fingerprint) are complete.
 Milestone 3 is complete (tasks 3.1 through
 3.8; acceptance criteria satisfied and Gate 3 met).
 
@@ -128,21 +128,35 @@ Completed in Phase 4 (Badge rendering):
   that limitation is recorded in the task status. Default `./build.sh test`
   passes 554 tests with 21 guarded Skia skips (575 total); the forced native run
   passes all 575.
+- 4.10 Renderer configuration model, snapshot, and fingerprint (ADR-010):
+  `RendererConfiguration`/`BadgeSelectorConfiguration` persist only enabled V1
+  selectors, one bounded provider-neutral `{value}` template per selector, and
+  four optional contrast-validated palette overrides; output format, color
+  space, alpha, font, geometry, text limits, and renderer version stay
+  code-owned. `PluginConfigurationValidator` rejects unknown/duplicate
+  selectors, unusable templates, malformed colors, and any style below 4.5:1
+  contrast. `RendererConfigurationResolver` maps the configuration to the
+  ordered `BadgeDefinition` snapshot and effective `RenderOutputPolicy`, and
+  `PluginConfigurationSnapshot` exposes both plus a deterministic secret-free
+  `RendererConfigurationFingerprint` (SHA-256 over selector enablement/templates
+  and palette, excluding credentials, the webhook secret, timestamps, and
+  correlation identifiers). Defaults reproduce ADR-009 exactly and
+  `ConfigurationSnapshotService.TryReplace` retains the last valid snapshot and
+  private secrets on an invalid candidate. The configuration is not yet wired to
+  the Jellyfin admin save surface, DI, providers, or artwork pipeline.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 554 automated tests; 21 additional environment-guarded SkiaSharp
+- Passes 575 automated tests; 21 additional environment-guarded SkiaSharp
   tests (the task 4.8 round trip, the nine task 4.9 render cases, and the eleven
   task 4.6 behavior-matrix render cases) are skipped unless
   `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime are provided. With that
-  environment the full 575-test suite passes.
+  environment the full 596-test suite passes.
 
 Next tasks:
 
-- Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks in the authoritative execution order 4.10, 4.11. Task 4.10 adds the
-  immutable renderer configuration model and fingerprint; task 4.11 adds
-  golden-image and cross-runtime determinism tests.
+- Phase 4 — Badge rendering. Continue with task 4.11, the ADR-010 golden-image,
+  byte-determinism, PNG-contract, and cross-runtime tolerance tests.

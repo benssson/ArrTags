@@ -1,0 +1,46 @@
+{
+  "task": "4.10",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Extended the persisted, immutable-replacement plugin configuration with the ADR-010 user-adjustable V1 renderer surface and wired it through validation, the secret-free snapshot, and the renderer configuration fingerprint. Added BadgeSelectorConfiguration (selector, enabled flag, one bounded {value} template) and RendererConfiguration (selector entries plus four optional palette overrides: technical/status background and text). The model deliberately exposes no output format, color space, alpha policy, font identity, geometry/reference value, text limit, or renderer version; those remain code-owned per ADR-010, and no geometry/placement value is exposed because ADR-009 fixes it and ADR-010 does not authorize an override. Defaults reproduce ADR-009 exactly (absent selector keeps BadgeDefinition.V1Default; unset palette keeps the ADR-009 colors). RendererConfiguration.Validate (invoked by PluginConfigurationValidator) rejects unknown/duplicate selectors, empty/too-long templates or more than one {value} placeholder, malformed colors, and any style pair below BadgeContrast.MinimumRatio (4.5:1) with safe, secret-free messages. RendererConfigurationResolver maps configuration to the ordered BadgeDefinition snapshot (canonical selector order, first valid entry per selector, tolerant fallback for an unvalidated configuration) and the effective RenderOutputPolicy (configured palette applied, every other value copied from RenderOutputPolicy.Default); RendererPalette canonicalizes a valid override to #RRGGBB. PluginConfigurationSnapshot now exposes BadgeDefinitions, RendererOutputPolicy, and RendererConfigurationFingerprint while remaining immutable and secret-free, and From still works for plain configurations. RendererConfigurationFingerprint.Compute is a deterministic uppercase SHA-256 over the renderer configuration schema version, the ordered selector enablement/templates, and the effective palette; it excludes credentials, the webhook secret, timestamps, and correlation identifiers by construction, normalizes equivalent color casing and selector entry order, and is the value supplied to RenderRequest.ConfigurationFingerprint. The ADR-005 secret boundary is unchanged. ConfigurationSnapshotService.TryReplace still activates a candidate only when it validates, so an invalid renderer configuration leaves the last valid public snapshot and private secrets active. Added 21 unguarded xUnit tests requiring no Skia native runtime.",
+  "validation": [
+    "Read authoritative context before changing anything: AGENTS.md, GOALS.md, PLANS.md (Milestone 4, authoritative Phase 4 order, tasks 4.5/4.6/4.9/4.10/4.11 status), docs/decisions.md ADR-009 and ADR-010 (V1 fields/templates, colors/accessibility, text limits, determinism, renderer configuration persistence and testing strategy), docs/architecture.md section 9 'V1 rendering contract' and 'Renderer implementation contract', docs/implementation-readiness.md (palette-override question and the note that admin save-surface wiring is not a Phase 4 prerequisite), all of src/ArrTags/Configuration, and the relevant src/ArrTags/Rendering types (BadgeDefinition, BadgeDefinitionResolver, BadgeSelector, RenderOutputPolicy, RenderFontIdentity, BadgeContrast, RgbColor, RenderRequest, RenderVersion, RenderFingerprint).",
+    "Read docs/implementation/4.9/worker-report.json and reviewer-report.json; confirmed the F2 ICC fail-closed item is owned by task 4.11 and is not part of 4.10.",
+    "./build.sh restore -> all projects up-to-date in locked mode; no lock-file changes.",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test -> Passed: 575, Skipped: 21, Total: 596 (the previous 554/21/575 plus the 21 new RendererConfigurationTests cases). The 21 skips are the environment-guarded Skia tests (task 4.8 round trip, nine task 4.9 render cases, eleven task 4.6 behavior-matrix cases).",
+    "./build.sh package -> Build succeeded, 0 Warning(s), 0 Error(s); produced artifacts/ArrTags_0.1.0.0.zip with the same package structure as task 4.9.",
+    "Forced native run with LD_LIBRARY_PATH=/tmp/opencode/jf/sysroot/usr/lib/x86_64-linux-gnu FONTCONFIG_PATH=/tmp/opencode/jf/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/opencode/jf/sysroot/usr/share ARRTAGS_SKIA_COMPAT=1 ./build.sh test -> Passed: 596, Skipped: 0, Failed: 0, confirming no renderer regression.",
+    "Independent contrast boundary computed from the WCAG relative-luminance formula used by RgbColor: white on #767676 = 4.542:1 (accepted) and white on #777777 = 4.478:1 (rejected); black on #757575 = 4.558:1 (accepted) and black on #747474 = 4.429:1 (rejected). These four boundary pairs are asserted by PaletteContrastBoundaryIsEnforced.",
+    "Inspected git status/git diff: no staged changes; only the intended task-4.10 source, test, and documentation files are modified/added; the pre-existing unstaged .opencode/agents/*.md modifications remain untouched; no package manifest, lock file, RenderVersion, or RenderOutputPolicy.Default change; no DI/host/provider/artwork-pipeline wiring and no Jellyfin or ArrTags.Providers namespace usage in the new configuration code.",
+    "Updated documentation consistently with actual results: PLANS.md (checked the 4.10 box, added an accurate 4.10 status paragraph, updated the current-position and 4.9 status references), README.md (task 4.10 entry, 575/21/596 counts, next task 4.11), docs/changelog.md (task 4.10 entry and updated Phase 4 totals), and docs/data-model.md (minimal 3.6-3.8 Phase 4 implementation note correction)."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/BadgeSelectorConfiguration.cs",
+    "src/ArrTags/Configuration/RendererConfiguration.cs",
+    "src/ArrTags/Configuration/RendererConfigurationResolver.cs",
+    "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs",
+    "src/ArrTags/Configuration/RendererPalette.cs",
+    "src/ArrTags/Configuration/PluginConfiguration.cs",
+    "src/ArrTags/Configuration/PluginConfigurationValidator.cs",
+    "src/ArrTags/Configuration/PluginConfigurationSnapshot.cs",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation/4.10/worker-report.json"
+  ],
+  "known_limitations": [
+    "No geometry or placement value is exposed in configuration. ADR-009 fixes the reference geometry, scale policy, and rail layout, and ADR-010's renderer configuration persistence clause only names enabled selectors, bounded templates, and contrast-validated palette overrides as user-adjustable (plus 'the bounded V1 style/placement values allowed by ADR-009', of which none are defined as configurable). Exposing geometry would require a new accepted decision, so it was kept code-owned and the ADR-010/ADR-009 reading is recorded in PLANS.md and the new type documentation.",
+    "The palette override is stored as a free-form string validated on load and canonicalized to #RRGGBB; a semantically equal but differently written color (for example without the leading '#', or with different casing) resolves to the same effective policy and fingerprint, so the raw persisted string is not itself fingerprinted. This is intentional determinism behavior, not a data-loss concern.",
+    "The renderer configuration is deliberately not wired to the Jellyfin admin save/config surface, DI, providers, or the artwork pipeline; the implementation-readiness doc states this is not a Phase 4 prerequisite, and no host/network dependency was added.",
+    "The renderer configuration fingerprint is computed over the resolved effective definitions and palette, so an invalid selector entry that validation would reject falls back to the code-owned default rather than entering the fingerprint. This matches the last-valid retention semantics: only a validated configuration is ever snapshotted by ConfigurationSnapshotService.",
+    "Golden-image, byte-determinism, PNG-contract, and cross-runtime tolerance tests (task 4.11) and the reviewer F2 ICC fail-closed item remain out of scope and were not implemented."
+  ],
+  "ready_for_next_task": true
+}

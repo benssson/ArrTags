@@ -50,4 +50,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the configured operational limits.
     /// </summary>
     public OperationalLimits Limits { get; set; } = new OperationalLimits();
+
+    /// <summary>
+    /// Gets or sets the user-adjustable renderer configuration. It contains only
+    /// enabled V1 selectors, their bounded templates, and contrast-validated
+    /// palette overrides; code-owned output values are not representable here
+    /// (ADR-010).
+    /// </summary>
+    public RendererConfiguration Renderer { get; set; } = new RendererConfiguration();
 }

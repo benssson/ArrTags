@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ArrTags.Rendering;
 
 namespace ArrTags.Configuration;
 
@@ -26,7 +27,10 @@ public sealed class PluginConfigurationSnapshot
         IReadOnlyList<string> enabledLibraries,
         bool badgeMoviePosters,
         bool badgeEpisodePosters,
-        OperationalLimits limits)
+        OperationalLimits limits,
+        IReadOnlyList<BadgeDefinition> badgeDefinitions,
+        RenderOutputPolicy rendererOutputPolicy,
+        string rendererConfigurationFingerprint)
     {
         ConfigurationVersion = configurationVersion;
         SonarrEnabled = sonarrEnabled;
@@ -44,6 +48,9 @@ public sealed class PluginConfigurationSnapshot
         BadgeMoviePosters = badgeMoviePosters;
         BadgeEpisodePosters = badgeEpisodePosters;
         Limits = limits;
+        BadgeDefinitions = badgeDefinitions;
+        RendererOutputPolicy = rendererOutputPolicy;
+        RendererConfigurationFingerprint = rendererConfigurationFingerprint;
     }
 
     /// <summary>
@@ -128,6 +135,30 @@ public sealed class PluginConfigurationSnapshot
     public OperationalLimits Limits { get; }
 
     /// <summary>
+    /// Gets the ordered, provider-neutral badge definitions resolved from the
+    /// validated renderer configuration. A selector absent from configuration
+    /// keeps the code-owned ADR-009 default, so the default snapshot equals
+    /// <see cref="BadgeDefinition.V1Default"/>.
+    /// </summary>
+    public IReadOnlyList<BadgeDefinition> BadgeDefinitions { get; }
+
+    /// <summary>
+    /// Gets the effective renderer output policy. The configured palette is
+    /// applied while every code-owned format, color-space, alpha, font, geometry,
+    /// text, and version value is preserved.
+    /// </summary>
+    public RenderOutputPolicy RendererOutputPolicy { get; }
+
+    /// <summary>
+    /// Gets the secret-free, deterministic renderer configuration fingerprint
+    /// over the selector enablement/templates and the effective palette. It
+    /// excludes credentials, the webhook secret, timestamps, and correlation
+    /// identifiers, and is the value supplied to
+    /// <see cref="RenderRequest.ConfigurationFingerprint"/>.
+    /// </summary>
+    public string RendererConfigurationFingerprint { get; }
+
+    /// <summary>
     /// Creates a secret-free snapshot from a validated configuration.
     /// </summary>
     /// <param name="configuration">The validated configuration.</param>
@@ -146,6 +177,13 @@ public sealed class PluginConfigurationSnapshot
             libraries.Add(library);
         }
 
+        var renderer = configuration.Renderer ?? new RendererConfiguration();
+        var badgeDefinitions = RendererConfigurationResolver.ResolveDefinitions(renderer);
+        var rendererOutputPolicy = RendererConfigurationResolver.ResolveOutputPolicy(renderer);
+        var rendererConfigurationFingerprint = RendererConfigurationResolver.ComputeFingerprint(
+            badgeDefinitions,
+            rendererOutputPolicy);
+
         return new PluginConfigurationSnapshot(
             configurationVersion,
             sonarr.Enabled,
@@ -162,6 +200,9 @@ public sealed class PluginConfigurationSnapshot
             libraries,
             configuration.BadgeMoviePosters,
             configuration.BadgeEpisodePosters,
-            limits.Clone());
+            limits.Clone(),
+            badgeDefinitions,
+            rendererOutputPolicy,
+            rendererConfigurationFingerprint);
     }
 }

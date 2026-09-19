@@ -286,9 +286,9 @@ is met. Milestone 4 (badge rendering) is next, gated by DG-3.
 
 ### Phase 4 (Badge rendering) - in progress
 
-Tasks 4.1 through 4.9 are complete, and the task 4.6 behavior matrix is
-complete. DG-3 and ADR-010 are resolved; the renderer configuration model (4.10)
-and golden/cross-runtime determinism tests (4.11) follow.
+Tasks 4.1 through 4.10 are complete, and the task 4.6 behavior matrix is
+complete. DG-3 and ADR-010 are resolved; the golden/cross-runtime determinism
+tests (4.11) follow.
 
 - Task 4.1 (`src/ArrTags/Rendering/`): the provider-neutral `BadgeSelector`
   vocabulary (Quality, Resolution, DynamicRange, Source, VideoCodec, Audio,
@@ -474,3 +474,53 @@ the default test run passes 554 tests plus 21 environment-guarded Skia skips (57
 total); the forced native run with `ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot
 on the loader path passes all 575 tests. Tasks 4.10 and 4.11 remain; Gate 4 is
 not yet met.
+
+- Task 4.10 (`src/ArrTags/Configuration/`, `tests/ArrTags.Tests/`): the persisted
+  renderer configuration, its validation, snapshot mapping, and the secret-free
+  renderer configuration fingerprint (ADR-010). `RendererConfiguration` and
+  `BadgeSelectorConfiguration` add only the user-adjustable V1 surface: the
+  enabled/disabled V1 `BadgeSelector` set with one bounded provider-neutral
+  `{value}` template per selector, plus four optional palette overrides for the
+  technical and upgrade-status background/text colors. Output format, color
+  space, alpha policy, font identity, geometry/reference values, text limits, and
+  the renderer version are not representable in configuration and remain
+  code-owned per ADR-010; no geometry or placement value is exposed because
+  ADR-009 fixes them and ADR-010 does not authorize an override. Defaults
+  reproduce ADR-009 exactly: an absent selector keeps the code-owned
+  `BadgeDefinition.V1Default` entry, and an unset palette keeps the ADR-009
+  colors. `RendererConfiguration.Validate`, invoked by
+  `PluginConfigurationValidator`, rejects unknown/duplicate selectors,
+  empty/too-long templates or more than one `{value}` placeholder, malformed
+  colors, and any style pair below the 4.5:1 contrast minimum with safe,
+  secret-free messages. `RendererConfigurationResolver` maps a configuration to
+  the ordered `BadgeDefinition` snapshot and the effective `RenderOutputPolicy`
+  (configured palette applied, all other values copied from
+  `RenderOutputPolicy.Default`); `RendererPalette` canonicalizes a valid override
+  to `#RRGGBB`. `PluginConfigurationSnapshot` exposes the validated
+  `BadgeDefinitions`, `RendererOutputPolicy`, and
+  `RendererConfigurationFingerprint` while remaining immutable and secret-free,
+  and `From` keeps working for plain configurations.
+  `RendererConfigurationFingerprint.Compute` is a deterministic uppercase SHA-256
+  over the renderer configuration schema version, the ordered selector
+  enablement/templates, and the effective palette; it excludes credentials, the
+  webhook secret, timestamps, and correlation identifiers, normalizes equivalent
+  color casing and selector entry order, and is the value supplied to
+  `RenderRequest.ConfigurationFingerprint`. The ADR-005 secret boundary is
+  unchanged, and `ConfigurationSnapshotService.TryReplace` retains the last valid
+  snapshot and private secrets when an invalid candidate is rejected.
+  `tests/ArrTags.Tests/RendererConfigurationTests.cs` adds 21 unguarded cases
+  (no Skia native runtime required) covering the default mapping, valid/invalid
+  selectors and templates, palette acceptance/canonicalization and malformed
+  colors, the 4.5:1 contrast boundary, snapshot immutability and secret
+  exclusion, fingerprint determinism and sensitivity to every output-affecting
+  value, XML persistence round-trip, and last-valid plus private-secret
+  retention through `TryReplace`. The configuration is not wired to the Jellyfin
+  admin save surface, DI, providers, or the artwork pipeline.
+
+Build and test: Task 4.10 adds the renderer configuration model, snapshot
+mapping, fingerprint, and tests. The build passes with 0 warnings and 0 errors;
+the default test run passes 575 tests plus 21 environment-guarded Skia skips (596
+total), and the forced native run with `ARRTAGS_SKIA_COMPAT=1` and the pinned
+sysroot on the loader path passes all 596 tests. Task 4.11 (golden-image,
+byte-determinism, PNG-contract, and cross-runtime tolerance tests) remains; Gate
+4 is not yet met.
