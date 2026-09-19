@@ -1,5 +1,7 @@
 ---
 description: Implements one assigned project task, performs required research and validation, and reports completion status
+model: opencode-go/deepseek-v4.1-flash
+variant: high
 mode: subagent
 ---
 
