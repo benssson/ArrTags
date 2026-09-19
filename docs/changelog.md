@@ -286,8 +286,9 @@ is met. Milestone 4 (badge rendering) is next, gated by DG-3.
 
 ### Phase 4 (Badge rendering) - in progress
 
-Tasks 4.1 through 4.5 are complete. DG-3 and ADR-010 are resolved; the remaining
-renderer implementation tasks (4.6 through 4.11) follow.
+Tasks 4.1 through 4.9 are complete, and the task 4.6 behavior matrix is
+complete. DG-3 and ADR-010 are resolved; the renderer configuration model (4.10)
+and golden/cross-runtime determinism tests (4.11) follow.
 
 - Task 4.1 (`src/ArrTags/Rendering/`): the provider-neutral `BadgeSelector`
   vocabulary (Quality, Resolution, DynamicRange, Source, VideoCodec, Audio,
@@ -441,4 +442,35 @@ environment-guarded Skia skips (524 total); the forced native run with
 `ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot on the loader path passes all 524
 tests, including the nine task 4.9 render cases and the task 4.8 round trip.
 `./build.sh package` produced `artifacts/ArrTags_0.1.0.0.zip` with the same
-contents as 4.7. Tasks 4.6, 4.10, and 4.11 remain. Gate 4 is not yet met.
+contents as 4.7. Tasks 4.10 and 4.11 remain. Gate 4 is not yet met.
+
+- Task 4.6 (`tests/ArrTags.Tests/RendererBehavior*.cs`): the renderer behavior
+  matrix for dimensions, format, truncation, layout, cancellation, and failure
+  pass-through, added as test-only work with no production change. Seven files
+  add 51 cases (40 unguarded and 11 environment-guarded real render cases):
+  `RendererBehaviorFixtures`, `RendererBehaviorDimensionTests`,
+  `RendererBehaviorFormatTests`, `RendererBehaviorTruncationTests`,
+  `RendererBehaviorLayoutTests`, `RendererBehaviorCancellationTests`, and
+  `RendererBehaviorFailureTests`. The unguarded cases assert the
+  `clamp(width / 1000, 0.5, 4.0)` geometry scale, the 24-scalar truncation and
+  width-fitting rules, the two-row/three-pill rail, safe-area bounds on narrow
+  and short posters, the confirmed-true-only top-right `UPGRADE` pill,
+  cancellation precedence and its bounded result, and every pre-decode
+  pass-through/failure decision (missing metadata, no displayable value,
+  ineligible surface, non-matched result, unavailable source, source-byte and
+  source-dimension and derived-output limits, low contrast, invalid color,
+  missing font resource). The guarded cases assert real decode/encode source
+  dimensions for opaque, alpha, and EXIF orientation-3/8 sources, structural PNG
+  format behavior (non-interlaced 8-bit RGB versus RGBA, straight semi-transparent
+  alpha, canonical transparent-pixel RGB, `sRGB` with no retained `iCCP`/`eXIf`/
+  `tIME`/`tEXt`/`zTXt`/`iTXt`), and the malformed/unsupported decode failures.
+  The renderer's later cancellation checkpoints are not independently reachable
+  through the public synchronous contract without production-only test hooks; the
+  earliest checkpoint and its precedence are covered and the limitation is
+  recorded.
+
+Build and test: Task 4.6 adds only tests. The build passes with 0 warnings and
+the default test run passes 554 tests plus 21 environment-guarded Skia skips (575
+total); the forced native run with `ARRTAGS_SKIA_COMPAT=1` and the pinned sysroot
+on the loader path passes all 575 tests. Tasks 4.10 and 4.11 remain; Gate 4 is
+not yet met.

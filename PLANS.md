@@ -52,10 +52,10 @@ poster layout, typography, contrast, text bounds, PNG output, scaling, and
 pass-through behavior are fixed for implementation. Phase 4 is in progress:
 tasks 4.1 (metadata selectors), 4.2 (rendering specification), 4.3
 (unknown-value semantics), 4.4 (fingerprints), 4.5 (limit enforcement), 4.7
-(pinned assets and font), 4.8 (SkiaSharp host-compatibility spike), and 4.9
-(provider-neutral renderer service and drawing engine) are complete. Behavior
-tests (4.6), configuration (4.10), and golden/determinism tests (4.11) remain
-incomplete.
+(pinned assets and font), 4.8 (SkiaSharp host-compatibility spike), 4.9
+(provider-neutral renderer service and drawing engine), and 4.6 (renderer
+behavior matrix) are complete. Configuration (4.10) and golden/determinism tests
+(4.11) remain incomplete.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -911,7 +911,7 @@ Radarr, or Jellyfin artwork storage.
   ADR-009 selectors, priority, rail layout, typography, truncation, and
   contrast, and the ADR-010 sRGB PNG encode, alpha, and metadata policy
   (ADR-010).
-- [ ] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
+- [x] 4.6 Test dimensions, format behavior, truncation, layout, cancellation, and
   renderer failure pass-through.
 - [ ] 4.10 Extend the immutable configuration model, snapshot, and validator with
   enabled V1 selectors, bounded templates, and contrast-validated palette/style
@@ -1088,6 +1088,53 @@ source-alpha preservation, palette placement, sRGB/metadata chunks, EXIF
 orientation, unsupported-input failure, source immutability, and byte
 determinism). The dedicated behavior matrix (4.6), the renderer configuration
 model (4.10), and golden/cross-runtime determinism tests (4.11) remain.
+
+**Task 4.6 status:** Complete. The dedicated renderer behavior matrix is
+implemented as seven test-only files under `tests/ArrTags.Tests/`
+(`RendererBehaviorFixtures`, `RendererBehaviorDimensionTests`,
+`RendererBehaviorFormatTests`, `RendererBehaviorTruncationTests`,
+`RendererBehaviorLayoutTests`, `RendererBehaviorCancellationTests`, and
+`RendererBehaviorFailureTests`) with 51 new cases (40 unguarded and 11
+environment-guarded real render cases) and no production change. Dimensions: the
+pure scale theory proves `clamp(width / 1000, 0.5, 4.0)` scales the ADR-009
+geometry (pill height and inset) for widths 320/500/1000/2000/5000, and guarded
+renders prove a 320x480 opaque source, a 2000x3000 opaque source, a 720x480 alpha
+source, an EXIF orientation-3 JPEG, and an EXIF orientation-8 JPEG all keep the
+oriented source dimensions and the IHDR dimensions with no upscaling or
+downscaling. Format: guarded structural parsing proves a non-interlaced 8-bit PNG,
+RGB (color type 2) for opaque output and RGBA (color type 6) for meaningful
+alpha, an `sRGB` chunk, an `IEND` terminator, and no retained
+`iCCP`/`eXIf`/`tIME`/`tEXt`/`zTXt`/`iTXt` source metadata; a semi-transparent
+source pixel keeps straight alpha (alpha 128 and RGB within one channel step), and
+a hand-crafted source with non-zero hidden RGB on a fully transparent pixel is
+canonicalized to `#00000000`. Truncation: a resolved 40-scalar custom value
+normalizes to a 21-scalar prefix plus `...` (24 total), a 24-scalar value is
+unchanged, whitespace/control scalars are normalized first, a value that cannot
+fit any pill is omitted without expanding lower-priority values, width fitting
+shortens an over-wide 24-scalar label further while staying within the 24-scalar
+bound, and width fitting never splits a supplementary scalar. Layout: the rail
+packs three pills per row across two rows, overflow moves to the next row,
+lower-priority candidates are omitted once both rows are full, no pill is split
+across rows, every pill stays inside the safe area of narrow and short posters,
+the independent top-right `UPGRADE` status pill resolves only from a confirmed
+true value and never overlaps the rail, and the technical rail is anchored
+bottom-left. Cancellation: a cancelled token is observed before decode and before
+the ineligible-surface, source-limit, and contrast decisions, returning
+`Failed(Cancelled)` with no artifact and an unchanged source; the renderer's
+documented later checkpoints are not independently reachable through the public
+synchronous contract without production-only test hooks, so the earliest
+checkpoint is the one deterministically exercised and that limitation is recorded.
+Failure/pass-through: ineligible Series/Season surfaces, a non-matched result,
+missing metadata, no displayable value, and an unavailable source pass through;
+source-byte, source-dimension, and derived-output limit violations, low contrast,
+an invalid color policy, a missing font resource, unsupported source bytes, and a
+descriptor that does not match the decoded dimensions all return exactly one
+bounded `Failed` reason with no partial PNG and an unchanged source. Default
+`./build.sh test` passes with 0 warnings and 554 passing tests plus 21
+environment-guarded Skia skips (575 total); with `ARRTAGS_SKIA_COMPAT=1` and the
+pinned sysroot on the loader path the full 575-test suite passes. The renderer
+configuration model (4.10) and golden/cross-runtime determinism tests (4.11)
+remain.
 
 **ADR-010 implementation tasks:** ADR-010 adds the renderer library, bundled
 font, PNG/alpha/color, service-contract, configuration, and test-oracle work

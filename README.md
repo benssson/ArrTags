@@ -5,8 +5,9 @@
 4.3 (unknown-versus-confirmed-negative semantics), 4.4 (render request and
 result fingerprints), 4.5 (image and text limit enforcement), 4.7 (pinned
 SkiaSharp stack, embedded DejaVu Sans Bold 2.37 font, and shipped license
-notices), 4.8 (SkiaSharp host-compatibility spike), and 4.9 (provider-neutral
-renderer service and drawing engine) are complete.
+notices), 4.8 (SkiaSharp host-compatibility spike), 4.9 (provider-neutral
+renderer service and drawing engine), and 4.6 (renderer behavior matrix) are
+complete.
 Milestone 3 is complete (tasks 3.1 through
 3.8; acceptance criteria satisfied and Gate 3 met).
 
@@ -109,22 +110,39 @@ Completed in Phase 4 (Badge rendering):
   otherwise with canonical transparent-pixel RGB). Cancellation is checked at
   each documented checkpoint and never yields a partial artifact or mutates the
   source. The renderer is a pure library and is not yet wired to plugin
-  configuration, DI, providers, or Jellyfin (tasks 4.6, 4.10, and 4.11 remain).
+  configuration, DI, providers, or Jellyfin (tasks 4.10 and 4.11 remain).
+- 4.6 Renderer behavior matrix: seven test-only files add 51 cases covering the
+  named behaviors with no production change. Unguarded cases cover the
+  `clamp(width / 1000, 0.5, 4.0)` geometry scale, resolved-value truncation and
+  width fitting, two-row/three-pill rail packing, lower-priority omission,
+  safe-area bounds on narrow and short posters, independent top-right `UPGRADE`
+  placement, cancellation precedence and bounded cancellation, and every
+  pre-decode pass-through/failure decision (limits, contrast, invalid color,
+  missing font resource, no metadata/source). Environment-guarded cases cover
+  real decode/encode dimensions for opaque, alpha, and EXIF-oriented sources,
+  structural PNG format behavior (8-bit non-interlaced RGB/RGBA, straight
+  semi-transparent alpha, canonical transparent pixels, `sRGB` and stripped
+  source metadata), and the malformed/unsupported decode failures. The
+  renderer's later cancellation checkpoints are not independently reachable
+  through the public synchronous contract without production-only test hooks;
+  that limitation is recorded in the task status. Default `./build.sh test`
+  passes 554 tests with 21 guarded Skia skips (575 total); the forced native run
+  passes all 575.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 514 automated tests; ten additional environment-guarded SkiaSharp
-  tests (the task 4.8 round trip and the nine task 4.9 render cases) are skipped
-  unless `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime are provided. With
-  that environment the full 524-test suite passes.
+- Passes 554 automated tests; 21 additional environment-guarded SkiaSharp
+  tests (the task 4.8 round trip, the nine task 4.9 render cases, and the eleven
+  task 4.6 behavior-matrix render cases) are skipped unless
+  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime are provided. With that
+  environment the full 575-test suite passes.
 
 Next tasks:
 
 - Phase 4 — Badge rendering. Continue with the ADR-010 renderer implementation
-  tasks in the authoritative execution order 4.6, 4.10, 4.11. Task 4.6 (renderer
-  behavior tests) exercises the now-implemented contract and assets; task 4.10
-  adds the immutable renderer configuration model and fingerprint; task 4.11 adds
+  tasks in the authoritative execution order 4.10, 4.11. Task 4.10 adds the
+  immutable renderer configuration model and fingerprint; task 4.11 adds
   golden-image and cross-runtime determinism tests.
