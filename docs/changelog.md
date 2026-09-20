@@ -628,7 +628,7 @@ that point and required explicit user approval to begin.
 
 ## Phase 5 - Jellyfin artwork integration (Milestone 5)
 
-**Status:** In progress. Tasks 5.1, 5.2, 5.3, 5.4, 5.6, 5.5, and 5.7 complete; tasks 5.8 through 5.11 not started.
+**Status:** In progress. Tasks 5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7, and 5.8 complete; tasks 5.9 through 5.11 not started.
 
 ### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
 
@@ -1096,5 +1096,65 @@ mutation (task 5.9).
 Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
 and `./build.sh test` pass. The default suite passes 896 with 49
 environment-guarded skips (945 total), exactly +24 over the task 5.5 baseline,
+with no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed.
+
+### Task 5.8 - Preserve the current usable artwork when source capture or rendering cannot safely complete
+
+Task 5.8 implements the provider-neutral, single-subject artwork generation
+coordination that composes the host source adapter, the renderer, and the durable
+publisher (`docs/architecture.md` section 9; `docs/data-model.md` sections
+3.7-3.8). It does not add event, queue, or library-scan wiring (Phase 6), the
+lifecycle fencing and guarded restoration mutation (task 5.9), Enhanced
+coexistence (task 5.10), route/client tests (task 5.11), or caching and
+invalidation.
+
+- `src/ArrTags/Artwork/ArtworkGenerationRequest.cs`: the canonical caller input
+  (Jellyfin item id, V1 surface, `MediaIdentity`, `MediaMatch`, optional
+  `BadgeMetadata`, ordered `BadgeDefinition` snapshot, secret-free configuration
+  fingerprint, effective `RenderOutputPolicy`, `OperationalLimits`, and the
+  renderer/badge schema versions). It carries no source bytes, source artifact,
+  provider DTO, path, entity, or credential.
+- `src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs`: observes the current
+  source through `IArtworkSourceReader`, builds the `SourceImageInput` and
+  `RenderRequest`, calls `IRenderer.RenderAsync`, and only publishes through
+  `ArtworkPublisher` when the render is `Rendered`. An absent source returns a
+  no-op; a failed (unavailable, unsupported, or oversized) source read, a render
+  pass-through, and a failed render preserve the current artwork and never call
+  the renderer or publisher respectively. Cancellation is honored, no exception
+  escapes, and the coordinator never calls Jellyfin directly.
+- `src/ArrTags/Artwork/ArtworkGenerationOutcome.cs` and
+  `ArtworkGenerationResult.cs`: the bounded result distinguishing published,
+  no-source/absent, source-unavailable, render-pass-through (including missing
+  metadata and an ineligible match), render-failed, publication-not-completed,
+  blocked, and cancelled, with the safe source/render/publication classification
+  and no secret, path, entity, or artifact content.
+- Source consistency: the exact source observation the coordinator rendered from
+  is supplied to the publisher's new-session capture, so the retained provenance
+  baseline and the derived artifact describe the same source. This is an additive
+  plugin-internal `ArtworkPublisher.PublishAsync` overload; the public overload
+  keeps its previous behavior, and the before-mutation revalidation is unchanged,
+  so a source that changes after the observation still prevents the mutation.
+- Missing metadata and an ineligible match rely on the existing renderer
+  pass-through convention (`NoMetadata`, `MatchNotEligible`); the coordinator
+  adds no new badge policy and performs no mutation on those paths.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers
+  `IRenderer` (`SkiaBadgeRenderer`) and `ArtworkGenerationCoordinator` with the
+  existing lazy factory pattern and no startup work.
+- Tests: `tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs` (23 cases)
+  cover the published path; absent source with skipped renderer/publisher; failed
+  source reads for unreadable, unsupported, oversized, and oversized-dimension
+  classifications; render pass-through and failure; the real renderer's
+  null-metadata and ineligible-match pass-through; renderer exception
+  containment; publication failure, blocked publication, and publication
+  cancellation; cancellation before start and during the source read; a source
+  change after the render observation aborting without mutation; invalid bounded
+  input; the shared source observation with the retained provenance baseline;
+  state/path hygiene; the provider-neutral boundary; and DI registration. All
+  preservation paths assert zero image mutation.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 919 with 49
+environment-guarded skips (968 total), exactly +23 over the task 5.7 baseline,
 with no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
 passing behavior was changed.

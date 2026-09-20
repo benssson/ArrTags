@@ -553,6 +553,17 @@ exposes the validated definitions, the effective `RenderOutputPolicy`, and the
 secret-free renderer configuration fingerprint that feeds
 `RenderRequest.configurationFingerprint`.
 
+**Phase 5 implementation note:** The task 5.8
+`ArtworkGenerationCoordinator` composes the 3.7-3.8 request/result with the
+source adapter and publisher. It maps the renderer's bounded outcome into an
+`ArtworkGenerationOutcome` that distinguishes published, absent source,
+source-unavailable, render pass-through, render failure, publication not
+completed, blocked, and cancelled; only a published outcome changes the active
+artwork. Missing metadata and an ineligible match remain renderer pass-through
+states and produce no badge and no mutation. The coordinator supplies the exact
+observed source to the publisher so the retained provenance baseline matches the
+render source.
+
 ### 3.9 MetadataCacheEntry
 
 **Purpose:** A versioned, restart-safe logical cache record for a match and its

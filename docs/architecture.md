@@ -613,6 +613,27 @@ an explicit boundary: the event, queue, startup-scan, and library-event wiring
 that drives it belongs to later tasks, and the guarded restoration mutation
 remains the lifecycle task 5.9.
 
+Task 5.8 implements the generation step as the provider-neutral
+`ArtworkGenerationCoordinator`, which composes the host source adapter, the
+renderer, and the publisher for one item and V1 surface. It observes the current
+source, builds the renderer input, and publishes only a `Rendered` result; an
+absent source, a failed source read, a render pass-through (including missing
+metadata or an ineligible match), and a failed render all leave the current
+usable artwork unchanged and perform no image mutation. Missing metadata and an
+ineligible match use the existing ADR-009 renderer pass-through convention rather
+than a new badge policy. The coordinator never calls Jellyfin directly. For
+source consistency, the exact source observation used for the render is supplied
+to the publisher's new-session capture, so the retained provenance baseline and
+the derived artifact describe the same bounded observation; the publisher's
+before-mutation revalidation is unchanged, so a source that changes after that
+observation still prevents the mutation. The render source is the observed active
+surface. Selecting the retained original artifact as the render source for a
+repeat publication while an ArrTags session is already owned (publication-flow
+step 4) is an explicit boundary of this task: the coordinator observes the
+current surface and does not consult the retained artifact store, and the pipeline
+that selects the retained source and the event/queue wiring that invokes it
+belong to Phase 6.
+
 #### Disable, uninstall, and item removal
 
 - Disable and uninstall first write a durable lifecycle fence that prevents new

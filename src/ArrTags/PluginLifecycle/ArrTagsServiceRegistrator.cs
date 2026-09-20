@@ -5,6 +5,7 @@ using ArrTags.Artwork;
 using ArrTags.Configuration;
 using ArrTags.Media;
 using ArrTags.Providers;
+using ArrTags.Rendering;
 using ArrTags.Secrets;
 using ArrTags.State;
 using MediaBrowser.Common.Plugins;
@@ -44,6 +45,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateArtworkOperationStore);
         serviceCollection.TryAddSingleton(CreateArtworkPublisher);
         serviceCollection.TryAddSingleton(CreateArtworkReconciler);
+        serviceCollection.TryAddSingleton<IRenderer>(static _ => new SkiaBadgeRenderer());
+        serviceCollection.TryAddSingleton(CreateArtworkGenerationCoordinator);
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
     }
@@ -144,6 +147,14 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<IArtworkSourceReader>(),
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<ArtworkOperationStore>(),
+            serviceProvider.GetRequiredService<ArtworkPublisher>());
+    }
+
+    private static ArtworkGenerationCoordinator CreateArtworkGenerationCoordinator(IServiceProvider serviceProvider)
+    {
+        return new ArtworkGenerationCoordinator(
+            serviceProvider.GetRequiredService<IArtworkSourceReader>(),
+            serviceProvider.GetRequiredService<IRenderer>(),
             serviceProvider.GetRequiredService<ArtworkPublisher>());
     }
 

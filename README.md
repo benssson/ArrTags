@@ -5,9 +5,11 @@ Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication AB
 and route variants), 5.2 (source-artwork provenance and guarded restoration
 state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native
 packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store),
-5.5 (publish completed artwork through Jellyfin's supported item-image APIs), and
-5.7 (postcondition reconciliation of uncertain publication outcomes) are
-complete; the remaining Phase 5 tasks are not started.
+5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7
+(postcondition reconciliation of uncertain publication outcomes), and 5.8
+(preserve the current usable artwork when source capture or rendering cannot
+safely complete)
+are complete; the remaining Phase 5 tasks are not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -349,13 +351,37 @@ Completed in Phase 5 (Jellyfin artwork integration):
   item-absent tombstone, the durable-final-state completion, resolution of a
   previously `RecoveryBlocked` operation, cancellation, exception containment,
   DI registration, and boundary-neutrality.
+- 5.8 Implemented the provider-neutral single-subject artwork generation
+  coordination in `src/ArrTags/Artwork` (architecture section 9; data-model
+  sections 3.7-3.8). `ArtworkGenerationCoordinator` composes the host source
+  adapter, the renderer, and the durable publisher: it observes the current
+  source, builds the `SourceImageInput` and `RenderRequest` from canonical
+  inputs, and publishes only a `Rendered` result. An absent source is a no-op; a
+  failed source read (unavailable, unsupported, oversized, or oversized
+  dimension), a render pass-through (including missing metadata and an
+  ineligible match), and a failed render preserve the current usable artwork and
+  perform no image mutation, and the renderer or publisher is skipped
+  accordingly. Missing metadata and an ineligible match rely on the existing
+  ADR-009/ADR-010 renderer pass-through convention. The bounded
+  `ArtworkGenerationResult` distinguishes published, no-source/absent,
+  source-unavailable, render pass-through, render failed,
+  publication-not-completed, blocked, and cancelled with no secret, path, entity,
+  source bytes, or artifact. Cancellation is honored and no exception escapes.
+  The exact observed source is supplied to the publisher's new-session capture
+  through an additive internal overload so the render and the retained provenance
+  baseline share one observation, while the public publisher behavior and the
+  before-mutation revalidation are unchanged. `IRenderer`
+  (`SkiaBadgeRenderer`) and the coordinator are registered with the existing lazy
+  DI pattern and no startup work, with no event, queue, or library-scan wiring.
+  New tests (`ArtworkGenerationCoordinatorTests`, 23 cases) cover every outcome
+  and preservation path with injectable doubles and assert zero image mutation.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 896 automated tests; 49 additional environment-guarded tests (the task
+- Passes 919 automated tests; 49 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, the task 5.1 host route cases,
@@ -370,9 +396,9 @@ The plugin:
 Next tasks:
 
 - Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3,
-  5.4, 5.6, 5.5, and 5.7 are complete; the next task in the authoritative
-  Phase 5 execution order is 5.8 (preserve the current usable artwork when
-  source capture or rendering cannot safely complete).
+  5.4, 5.6, 5.5, 5.7, and 5.8 are complete; the next task in the authoritative
+  Phase 5 execution order is 5.9 (fence and drain publication operations during
+  disable/uninstall and tombstone confirmed item removal).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

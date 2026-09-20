@@ -1,0 +1,58 @@
+{
+  "task": "5.8",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "title": "Deferred retained-source selection for repeat publication (known limitation a)",
+      "detail": "The coordinator always renders the observed active surface. When an ArrTags Published session already exists, the active surface is the previous ArrTags output, so a repeat generation would derive from (and double-badge) that output instead of the retained original artifact (architecture section 9 step 4). This is safety-neutral in this task: the coordinator is not wired to any invoker (no event/queue/startup scan), the publisher reuses the retained session artifact and ownership/publication tokens, and the before-mutation revalidation still aborts on any external change. The architecture explicitly assigns retained-source selection and the invoking pipeline to Phase 6, and the worker report documents it. Not a 5.8 acceptance gap, but Phase 6 must gate repeat publication before this entry point is driven."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "title": "A few defensive coordinator branches are untested",
+      "detail": "The 23 focused cases exercise every acceptance-relevant branch (published; absent source; four failed-read classes; pass-through including real-renderer NoMetadata/MatchNotEligible; render failure/exception; publication failure/blocked/cancelled; cancellation before and during read; invalid input; shared observation; source-changed abort). Not directly exercised: reader returning null, reader throwing a non-cancellation exception, publisher throwing an exception, the internal overload's non-present-observation rejection, and the TryCreateSourceImageInput false branch. These are single-path defensive guards and do not hide an acceptance gap, but explicit coverage would strengthen the gate."
+    },
+    {
+      "id": "F3",
+      "severity": "LOW",
+      "title": "Preserved/Cancelled wording can overstate the guarantee after a mutation may have started",
+      "detail": "ArtworkGenerationResult.Preserved is defined as the inverse of Published, and ArtworkGenerationOutcome.Cancelled is documented as 'no partial artifact or publication occurred'. Publication outcomes such as cancellation during SaveImage or a readback mismatch can leave the external image in an uncertain state; task 5.7 reconciliation owns that uncertainty. This mirrors the pre-existing ArtworkPublicationOutcome convention and the preservation guarantee the task actually requires (absent/failed source, render pass-through, render failure, missing/ineligible metadata) is exact. Documentation nuance only."
+    },
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "title": "Request doc claims no filesystem path while embedded MediaIdentity can carry one",
+      "detail": "The ArtworkGenerationRequest summary states the request carries no path, but MediaIdentity.MediaLocation.PrimaryPath is a raw path that a caller may populate. This is the same pre-existing pattern as RenderRequest (both carry MediaIdentity). The result and persisted state do not carry that path, and the boundary test only inspects top-level property names/namespaces, so it would not catch a nested path. Consider narrowing the doc claim or asserting nested host-neutrality."
+    },
+    {
+      "id": "F5",
+      "severity": "INFO",
+      "title": "Caller-supplied OperationalLimits only bound the renderer",
+      "detail": "The request's Limits are passed to RenderRequest and bound decode/output, but the source read and derived-artifact promotion use the DI-configured limits of the reader/publisher. This is the established task 5.3/5.5 design and is harmless for the preservation guarantee; worth documenting so callers do not assume request.Limits are fully authoritative."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore - All projects are up-to-date for restore (locked mode)",
+    "./build.sh build - Build succeeded, 0 Warning(s), 0 Error(s)",
+    "./build.sh test - Passed: 919, Failed: 0, Skipped: 49, Total: 968",
+    "dotnet test --filter FullyQualifiedName~ArtworkGenerationCoordinatorTests - Passed: 23, Failed: 0, Skipped: 0, Total: 23",
+    "Read tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs in full and traced each of the 23 cases to its asserted branch and mutation counters",
+    "Confirmed existing ArtworkPublisherTests and all other pre-existing suites remain green (968 total equals the 945 baseline + 23 new cases)",
+    "Confirmed the new tests use fake IArtworkSourceReader/IArtworkImageWriter doubles and a temp data folder, so no real Jellyfin library is mutated and no test is host-guarded (23/23 ran unguarded)"
+  ],
+  "research_checked": [
+    "AGENTS.md",
+    "PLANS.md Milestone 5, task 5.8 checkbox and status, authoritative Phase 5 order (5.1,5.2,5.3,5.4,5.6,5.5,5.7,5.8,5.9,5.10,5.11), and Phase 5 acceptance criteria (correctly left unchecked)",
+    "docs/architecture.md section 9 publication flow steps 1-11, provenance/ownership contract (v2 renders from retained original artifact), crash-consistent durable protocol steps 1-10, and section 11 failure/consistency/security policy",
+    "docs/data-model.md sections 3.7 RenderRequest, 3.8 RenderResult, 3.10.1 PublishedArtworkState, 3.10.2 transitions, 3.10.3 ArtworkOperation, 3.10.4 recovery decision table",
+    "docs/decisions.md ADR-002 (ownership), ADR-003 (durable write-ahead), ADR-009 (V1 visual/pass-through contract), ADR-010 (renderer implementation) - unchanged by this task",
+    "src/ArrTags/Artwork existing task 5.2/5.3/5.5/5.6/5.7 components: IArtworkSourceReader, ArtworkSourceReadResult, PublishedArtworkStateTransitions.BeginPublication/CaptureSession/CommitPublication, ArtworkPublisher full source",
+    "src/ArrTags/Rendering: IRenderer, RenderRequest, RenderResult, RenderStatus, RenderPassThroughReason, RenderFailureReason, SkiaBadgeRenderer early pass-through order (IneligibleSurface, MatchNotEligible, NoMetadata, NoDisplayableValue, SourceUnavailable)",
+    "Full git diff of tracked files and full contents of the new untracked production/test files; confirmed no diff to docs/decisions.md, RenderVersion.cs, renderer behavior, or packages.lock.json"
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

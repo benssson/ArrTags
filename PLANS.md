@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), and 5.7 (postcondition reconciliation of uncertain publication outcomes) are complete; the remaining Phase 5 tasks (5.8 through 5.11) are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), and 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete) are complete; the remaining Phase 5 tasks (5.9 through 5.11) are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -101,7 +101,7 @@ recapturing a source, commits the intended final state when the after identity i
 observed, records ownership loss or uncertainty without mutating the image,
 tombstones a confirmed item removal without an image call, and blocks or
 quarantines invalid state without replay or cleanup. The remaining Phase 5 tasks
-(5.8 through 5.11 in the authoritative order) are not started.
+(5.9 through 5.11 in the authoritative order) are not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -150,7 +150,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7, 5.8 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1378,7 +1378,7 @@ provenance and coexisting with Jellyfin Enhanced.
 - [x] 5.7 Reconcile uncertain `SaveImage`, item update, and provenance
   persistence outcomes by postcondition; never blindly replay or delete an
   active artifact.
-- [ ] 5.8 Preserve the current usable artwork when source capture or rendering
+- [x] 5.8 Preserve the current usable artwork when source capture or rendering
   cannot safely complete.
 - [ ] 5.9 Fence and drain publication operations during disable/uninstall, and
   tombstone confirmed item removal without issuing image mutations.
@@ -1708,6 +1708,57 @@ the DI registration, and boundary-neutrality. Default `./build.sh test` passes
 896 with 49 guarded skips (945 total) and 0 warnings, exactly +24 over the task
 5.5 baseline; no ADR, `RenderVersion`, renderer behavior, or existing passing
 behavior was changed.
+
+**Task 5.8 status:** Complete. The provider-neutral single-subject artwork
+generation coordination is implemented in `src/ArrTags/Artwork` following
+`docs/architecture.md` section 9 (publication flow and source consistency) and
+`docs/data-model.md` sections 3.7-3.8. `ArtworkGenerationRequest` carries the
+canonical caller inputs (Jellyfin item id, V1 surface, `MediaIdentity`,
+`MediaMatch`, optional `BadgeMetadata`, the ordered `BadgeDefinition` snapshot,
+the secret-free configuration fingerprint, the effective `RenderOutputPolicy`,
+the `OperationalLimits`, and the renderer/badge schema versions) with no source
+bytes, artifact, provider DTO, path, entity, or credential.
+`ArtworkGenerationCoordinator` observes the current source through
+`IArtworkSourceReader`, builds the `SourceImageInput` and `RenderRequest`, calls
+`IRenderer.RenderAsync`, and calls `ArtworkPublisher.PublishAsync` only when the
+render is `Rendered`. An absent source returns a no-op; a failed source read
+(unavailable, unsupported, oversized, or oversized-dimension), a render
+pass-through (including missing metadata and an ineligible match), and a failed
+render preserve the current artwork and perform no image mutation; the renderer
+is not invoked for an absent or failed source and the publisher is not invoked
+unless the render is complete. Missing metadata and an ineligible match rely on
+the existing ADR-009/ADR-010 renderer pass-through convention rather than a new
+policy. `ArtworkGenerationOutcome` and the bounded `ArtworkGenerationResult`
+distinguish published, no-source/absent, source-unavailable, render
+pass-through, render-failed, publication-not-completed, blocked, and cancelled,
+carrying only the safe source/render/publication classification and never a
+secret, path, entity, source bytes, or artifact. Cancellation is honored and no
+exception escapes. For source consistency, the exact source observation used for
+the render is supplied to the publisher's new-session capture through a new
+additive plugin-internal `ArtworkPublisher.PublishAsync` overload, so the
+retained provenance baseline and the derived artifact describe the same source;
+the public overload and the before-mutation revalidation are unchanged, so a
+source that changes after the observation still prevents the mutation. The render
+source is the observed active surface; selecting the retained original artifact
+as the render source for a repeat publication while an ArrTags session is already
+owned (publication-flow step 4) is an explicit boundary of this task and belongs
+to the Phase 6 pipeline.
+`ArrTagsServiceRegistrator` registers `IRenderer` (`SkiaBadgeRenderer`) and
+`ArtworkGenerationCoordinator` with the existing lazy factory pattern and no
+startup work; no event, queue, or library-scan wiring is added. New tests
+(`ArtworkGenerationCoordinatorTests`, 23 cases) cover the published path; absent
+source with skipped renderer/publisher; failed source reads for the unreadable,
+unsupported, oversized-byte, and oversized-dimension classifications; render
+pass-through and failure; the real renderer's null-metadata and ineligible-match
+pass-through conventions; renderer exception containment; publication failure,
+blocked publication, and publication cancellation; cancellation before start and
+during the source read; a source change after the render observation aborting
+without mutation; invalid bounded input; the shared source observation with the
+retained provenance baseline; state/path hygiene; the provider-neutral boundary;
+and DI registration, asserting zero image mutation on every preservation path. Default
+`./build.sh test` passes 919 with 49 guarded skips (968 total) and 0 warnings,
+exactly +23 over the task 5.7 baseline; no ADR, `RenderVersion`, renderer
+behavior, or existing passing behavior was changed.
 
 **Acceptance criteria:**
 

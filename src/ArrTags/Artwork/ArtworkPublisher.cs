@@ -74,8 +74,35 @@ public sealed class ArtworkPublisher
     /// <param name="cancellationToken">The cancellation signal.</param>
     /// <returns>The bounded publication result.</returns>
     /// <exception cref="ArgumentNullException">The request is <see langword="null"/>.</exception>
-    public async Task<ArtworkPublicationResult> PublishAsync(
+    public Task<ArtworkPublicationResult> PublishAsync(
         ArtworkPublicationRequest request,
+        CancellationToken cancellationToken)
+    {
+        return PublishAsync(request, observedSource: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Publishes one completed render result using an already-observed source
+    /// read for a new-session capture. This is the plugin-internal entry point
+    /// used by the artwork generation coordinator so the render and the retained
+    /// provenance baseline come from the exact same bounded observation, closing
+    /// the window in which the active source could change between the coordinator
+    /// read and an independent publisher capture. It still performs the
+    /// before-mutation revalidation, so a source that changes after the supplied
+    /// observation prevents the mutation. It never weakens the public
+    /// <see cref="PublishAsync(ArtworkPublicationRequest, CancellationToken)"/>
+    /// guarantee that a caller cannot inject a source baseline.
+    /// </summary>
+    /// <param name="request">The bounded publication request.</param>
+    /// <param name="observedSource">The exact present source read the coordinator
+    /// rendered from, or <see langword="null"/> to capture a fresh baseline. A
+    /// non-present observation is rejected as unavailable.</param>
+    /// <param name="cancellationToken">The cancellation signal.</param>
+    /// <returns>The bounded publication result.</returns>
+    /// <exception cref="ArgumentNullException">The request is <see langword="null"/>.</exception>
+    internal async Task<ArtworkPublicationResult> PublishAsync(
+        ArtworkPublicationRequest request,
+        ArtworkSourceReadResult? observedSource,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -83,6 +110,13 @@ public sealed class ArtworkPublisher
         if (!TryValidateRequest(request, out var validationReason))
         {
             return ArtworkPublicationResult.Failure(ArtworkPublicationOutcome.InvalidRequest, validationReason);
+        }
+
+        if (observedSource is not null && observedSource.Status != ArtworkSourceReadStatus.Present)
+        {
+            return ArtworkPublicationResult.Failure(
+                ArtworkPublicationOutcome.SourceUnavailable,
+                "The observed source baseline is not a present image.");
         }
 
         var gate = ArtworkSubjectGate.Acquire(request.JellyfinItemId, request.ImageSurface);
@@ -100,7 +134,7 @@ public sealed class ArtworkPublisher
 
         try
         {
-            return await PublishCoreAsync(request, cancellationToken).ConfigureAwait(false);
+            return await PublishCoreAsync(request, observedSource, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -122,6 +156,7 @@ public sealed class ArtworkPublisher
 
     private async Task<ArtworkPublicationResult> PublishCoreAsync(
         ArtworkPublicationRequest request,
+        ArtworkSourceReadResult? observedSource,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -163,7 +198,7 @@ public sealed class ArtworkPublisher
 
         if (state is null || state.State is ArtworkPublicationState.Restored or ArtworkPublicationState.Removed)
         {
-            var capture = await CaptureAsync(state, item, surface, cancellationToken).ConfigureAwait(false);
+            var capture = await CaptureAsync(state, item, surface, observedSource, cancellationToken).ConfigureAwait(false);
             if (capture.Failure is not null)
             {
                 return capture.Failure;
@@ -417,9 +452,23 @@ public sealed class ArtworkPublisher
         PublishedArtworkState? previous,
         Guid item,
         ArtworkImageSurface surface,
+        ArtworkSourceReadResult? observedSource,
         CancellationToken cancellationToken)
     {
-        var read = await _reader.ReadAsync(item, surface, cancellationToken).ConfigureAwait(false);
+        ArtworkSourceReadResult read;
+        if (observedSource is not null)
+        {
+            // The coordinator rendered from this exact observation, so the
+            // retained provenance baseline and the derived artifact describe the
+            // same source; the before-mutation revalidation still guards against
+            // a later external change.
+            read = observedSource;
+        }
+        else
+        {
+            read = await _reader.ReadAsync(item, surface, cancellationToken).ConfigureAwait(false);
+        }
+
         if (!read.TryCreateActiveImageIdentity(out var captured) || captured is null)
         {
             return new SessionCapture(
