@@ -14,6 +14,7 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.IO;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -495,6 +496,8 @@ public sealed class ArtworkPublisherTests : IDisposable
 
         public int UpdateCalls { get; private set; }
 
+        public int RemoveCalls { get; private set; }
+
         public string? SavedContentType { get; private set; }
 
         public byte[]? SavedBytes { get; private set; }
@@ -502,6 +505,8 @@ public sealed class ArtworkPublisherTests : IDisposable
         public ArtworkOperationPhase? PhaseAtSave { get; private set; }
 
         public ArtworkOperationPhase? PhaseAtUpdate { get; private set; }
+
+        public ArtworkOperationPhase? PhaseAtRemove { get; private set; }
 
         public ArtworkSourceReadResult Current(ArtworkImageSurface surface)
         {
@@ -568,6 +573,18 @@ public sealed class ArtworkPublisherTests : IDisposable
                 ? ArtworkImageMutationResult.Failure(ArtworkImageMutationStatus.Failed, "The fake update failed.")
                 : ArtworkImageMutationResult.Success());
         }
+
+        public Task<ArtworkImageMutationResult> RemoveImageAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RemoveCalls++;
+            PhaseAtRemove = PhaseProbe?.Invoke();
+            CurrentBytes = null;
+            return Task.FromResult(ArtworkImageMutationResult.Success());
+        }
     }
 }
 
@@ -615,6 +632,46 @@ public sealed class JellyfinArtworkImageWriterTests
         Assert.True(result.Succeeded);
         Assert.Equal(1, item.UpdateCalls);
         Assert.Equal(ItemUpdateType.ImageUpdate, item.LastUpdateType);
+    }
+
+    [Fact]
+    public async Task RemoveImageUsesTheSupportedDeletionFlowAndNeverTheProvider()
+    {
+        var (writer, library, provider) = Create();
+        var imagePath = Path.Combine(Path.GetTempPath(), "arrtags-remove-" + Guid.NewGuid().ToString("N") + ".png");
+        Directory.CreateDirectory(Path.GetDirectoryName(imagePath)!);
+        await File.WriteAllBytesAsync(imagePath, PngBytes);
+        var item = new TestMovie
+        {
+            ImageInfos =
+            [
+                new ItemImageInfo
+                {
+                    Path = imagePath,
+                    Type = ImageType.Primary,
+                    DateModified = DateTimeOffset.UtcNow.UtcDateTime,
+                },
+            ],
+        };
+        library.Items = _ => item;
+
+        var previousFileSystem = BaseItem.FileSystem;
+        BaseItem.FileSystem = DispatchProxy.Create<IFileSystem, FakeFileSystem>();
+        try
+        {
+            var result = await writer.RemoveImageAsync(Item, Surface, CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.False(File.Exists(imagePath));
+            Assert.Empty(item.ImageInfos);
+            Assert.Equal(1, item.UpdateCalls);
+            Assert.Equal(ItemUpdateType.ImageUpdate, item.LastUpdateType);
+            Assert.Equal(0, provider.StreamCalls);
+        }
+        finally
+        {
+            BaseItem.FileSystem = previousFileSystem;
+        }
     }
 
     [Fact]
@@ -697,6 +754,20 @@ public sealed class JellyfinArtworkImageWriterTests
             UpdateCalls++;
             LastUpdateType = updateReason;
             return Task.CompletedTask;
+        }
+    }
+
+    public class FakeFileSystem : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod?.Name == nameof(IFileSystem.DeleteFile))
+            {
+                File.Delete((string)args![0]!);
+                return null;
+            }
+
+            throw new NotSupportedException(targetMethod?.Name);
         }
     }
 

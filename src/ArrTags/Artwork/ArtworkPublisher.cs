@@ -35,6 +35,7 @@ public sealed class ArtworkPublisher
     private readonly SourceArtifactStore _artifacts;
     private readonly PublishedArtworkStateStore _states;
     private readonly ArtworkOperationStore _operations;
+    private readonly ArtworkLifecycleFenceStore? _fences;
     private readonly long _derivedArtifactLimitBytes;
 
     /// <summary>
@@ -46,6 +47,7 @@ public sealed class ArtworkPublisher
     /// <param name="states">The authoritative published-artwork state store.</param>
     /// <param name="operations">The authoritative durable operation store.</param>
     /// <param name="limits">The operational limits; the derived artifact byte limit is enforced before promotion.</param>
+    /// <param name="fences">The durable active lifecycle fence, or <see langword="null"/> to accept only a normal fence.</param>
     /// <exception cref="ArgumentNullException">A dependency or the limits are <see langword="null"/>.</exception>
     public ArtworkPublisher(
         IArtworkSourceReader reader,
@@ -53,7 +55,8 @@ public sealed class ArtworkPublisher
         SourceArtifactStore artifacts,
         PublishedArtworkStateStore states,
         ArtworkOperationStore operations,
-        OperationalLimits limits)
+        OperationalLimits limits,
+        ArtworkLifecycleFenceStore? fences = null)
     {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _writer = writer ?? throw new ArgumentNullException(nameof(writer));
@@ -62,6 +65,7 @@ public sealed class ArtworkPublisher
         _operations = operations ?? throw new ArgumentNullException(nameof(operations));
         ArgumentNullException.ThrowIfNull(limits);
         _derivedArtifactLimitBytes = limits.DerivedArtifactLimitBytes;
+        _fences = fences;
     }
 
     /// <summary>
@@ -163,6 +167,17 @@ public sealed class ArtworkPublisher
         var item = request.JellyfinItemId;
         var surface = request.ImageSurface;
 
+        // The durable lifecycle fence is authoritative for new work: a disable,
+        // uninstall, or confirmed item removal refuses it, and an invalid fence
+        // record fails closed.
+        var fenceState = _fences is null ? ArtworkLifecycleFenceState.Normal : _fences.Read();
+        if (!fenceState.AllowsNewPublication)
+        {
+            return ArtworkPublicationResult.Failure(
+                ArtworkPublicationOutcome.Blocked,
+                "The active lifecycle fence refuses new publication work.");
+        }
+
         var stateRead = _states.Read(item, surface);
         if (stateRead.Status is StateReadStatus.InvalidQuarantined or StateReadStatus.InvalidDiscarded)
         {
@@ -263,7 +278,7 @@ public sealed class ArtworkPublisher
             session.SourcePresence.Value,
             ArtworkImagePresence.Present,
             ArtworkOperationPhase.Prepared,
-            ArtworkLifecycleFence.Normal,
+            fenceState.Fence,
             now,
             now,
             ownershipToken: session.OwnershipToken,
@@ -446,6 +461,459 @@ public sealed class ArtworkPublisher
 
         _operations.Write(Advance(finalizing, ArtworkOperationPhase.Committed, observedAfter));
         return ArtworkPublicationResult.Success(operation.OperationId, committedState);
+    }
+
+    /// <summary>
+    /// Creates and executes one guarded restoration for a still-owned published
+    /// surface under the supplied lifecycle fence. It uses the same durable
+    /// phases, readback, and postcondition commit rules as publication: a present
+    /// baseline is restored through the supported image-save API and an absent
+    /// baseline removes the ArrTags image through the supported removal API. It
+    /// serializes with publication and recovery for the same subject and never
+    /// lets a failure or uncertainty escape as an exception.
+    /// </summary>
+    /// <param name="jellyfinItemId">The Jellyfin item identifier.</param>
+    /// <param name="surface">The image surface; V1 supports only the unindexed <c>Primary</c> surface.</param>
+    /// <param name="fence">The lifecycle fence in effect; it is recorded on the operation.</param>
+    /// <param name="cancellationToken">The cancellation signal.</param>
+    /// <returns>The bounded reconciliation result for the restoration attempt.</returns>
+    /// <exception cref="ArgumentNullException">The surface is <see langword="null"/>.</exception>
+    internal async Task<ArtworkReconciliationResult> RestoreAsync(
+        Guid jellyfinItemId,
+        ArtworkImageSurface surface,
+        ArtworkLifecycleFence fence,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(surface);
+
+        if (!ArtworkOperationFencing.AllowsNewRestoration(fence))
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.NothingToReconcile,
+                "The active lifecycle fence refuses restoration work.");
+        }
+
+        var gate = ArtworkSubjectGate.Acquire(jellyfinItemId, surface);
+        try
+        {
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.Cancelled,
+                "The restoration was cancelled before it started.");
+        }
+
+        try
+        {
+            return await RestoreCoreAsync(jellyfinItemId, surface, fence, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.Cancelled,
+                "The restoration was cancelled before it completed.");
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                "The restoration could not be completed safely; the active image is left untouched.");
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async Task<ArtworkReconciliationResult> RestoreCoreAsync(
+        Guid jellyfinItemId,
+        ArtworkImageSurface surface,
+        ArtworkLifecycleFence fence,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (jellyfinItemId == Guid.Empty
+            || surface.Index is not null
+            || surface.ImageType != ArtworkImageType.Primary)
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.NothingToReconcile,
+                "Only a non-empty Jellyfin item and the unindexed Primary image surface can be restored.");
+        }
+
+        var stateRead = _states.Read(jellyfinItemId, surface);
+        if (stateRead.Status is StateReadStatus.InvalidQuarantined or StateReadStatus.InvalidDiscarded)
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                "The published artwork state failed integrity validation; no restoration is permitted.");
+        }
+
+        var state = stateRead.Value;
+        if (state is not { State: ArtworkPublicationState.Published })
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.NothingToReconcile,
+                "No published artwork state is eligible for restoration.",
+                state: state);
+        }
+
+        var operationRead = _operations.Read(jellyfinItemId, surface);
+        if (operationRead.Status is StateReadStatus.InvalidQuarantined or StateReadStatus.InvalidDiscarded)
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                "The durable artwork operation record failed integrity validation; no restoration is permitted.");
+        }
+
+        if (operationRead.Value is { } existing && !existing.IsTerminal)
+        {
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                "A non-terminal artwork operation must be reconciled before restoration.",
+                existing.OperationId,
+                state);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var restorePending = PublishedArtworkStateTransitions.RequestRestore(state, now).State;
+
+        ReadOnlyMemory<byte> sourceBytes = ReadOnlyMemory<byte>.Empty;
+        string? sourceContentType = null;
+        if (state.SourcePresence == ArtworkImagePresence.Present)
+        {
+            if (state.SourceArtifactId is null)
+            {
+                var missingReference = WriteRestoreBlocked(restorePending, operationId: null);
+                return ArtworkReconciliationResult.Create(
+                    ArtworkReconciliationOutcome.RecoveryBlocked,
+                    "The published state has no retained source artifact identifier.",
+                    state: missingReference);
+            }
+
+            var artifact = _artifacts.Read(state.SourceArtifactId);
+            if (artifact.Status != SourceArtifactReadStatus.Found || artifact.Info is null)
+            {
+                var blocked = WriteRestoreBlocked(restorePending, operationId: null);
+                return ArtworkReconciliationResult.Create(
+                    ArtworkReconciliationOutcome.RecoveryBlocked,
+                    "The retained source artifact is missing or failed integrity validation; restoration is blocked.",
+                    state: blocked);
+            }
+
+            sourceBytes = artifact.Bytes;
+            sourceContentType = artifact.Info.ContentType;
+        }
+
+        _states.Write(restorePending);
+
+        var generation = operationRead.Value is null ? 1 : operationRead.Value.Generation + 1;
+        var present = state.SourcePresence == ArtworkImagePresence.Present;
+        var operation = new ArtworkOperation(
+            ArtworkTokens.Create(),
+            ArtworkOperationKind.Restoration,
+            jellyfinItemId,
+            surface,
+            generation,
+            state.ActiveImageIdentity!,
+            state.SourcePresence!.Value,
+            state.SourcePresence.Value,
+            ArtworkOperationPhase.Prepared,
+            fence,
+            now,
+            now,
+            ownershipToken: state.OwnershipToken,
+            priorPublicationToken: state.PublicationToken,
+            candidateAfterContentSha256: present ? state.SourceArtifactId : null,
+            sourceArtifactId: present ? state.SourceArtifactId : null);
+
+        // The complete restoration intent is durable before any external mutation.
+        _operations.Write(operation);
+
+        return await ExecuteRestorationAsync(operation, restorePending, sourceBytes, sourceContentType, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Executes the deterministic restoration protocol for a durable
+    /// <see cref="ArtworkOperation"/> whose intent is already recorded. The
+    /// normal restoration path and restart reconciliation share this method so
+    /// the supported image mutation, the durable phase ordering, the readback,
+    /// and the final state commit are never reimplemented. It assumes the
+    /// per-subject gate is held by the caller.
+    /// </summary>
+    /// <param name="operation">The durable restoration operation to execute or resume.</param>
+    /// <param name="restorePending">The restore-pending state whose target state will be committed.</param>
+    /// <param name="sourceBytes">The exact retained source bytes, or empty for an absent baseline.</param>
+    /// <param name="sourceContentType">The confined retained source content type, or <see langword="null"/> for an absent baseline.</param>
+    /// <param name="cancellationToken">The cancellation signal.</param>
+    /// <returns>The bounded reconciliation result.</returns>
+    private async Task<ArtworkReconciliationResult> ExecuteRestorationAsync(
+        ArtworkOperation operation,
+        PublishedArtworkState restorePending,
+        ReadOnlyMemory<byte> sourceBytes,
+        string? sourceContentType,
+        CancellationToken cancellationToken)
+    {
+        var item = operation.JellyfinItemId;
+        var surface = operation.ImageSurface;
+        var now = DateTimeOffset.UtcNow;
+
+        // Revalidate the active image immediately before mutation.
+        var revalidation = await _reader.ReadAsync(item, surface, cancellationToken).ConfigureAwait(false);
+        revalidation.TryCreateActiveImageIdentity(out var revalidated);
+        var beforeComparison = ArtworkOwnershipComparer.Compare(operation.ExpectedBeforeIdentity, revalidated, now);
+        if (beforeComparison.Status != ArtworkOwnershipStatus.Owned)
+        {
+            var authorized = PublishedArtworkStateTransitions
+                .AuthorizeRestoration(restorePending, revalidated, sourceArtifactIntegrityValid: true, now)
+                .State;
+            _states.Write(WithOperationId(authorized, operation.OperationId));
+
+            var phase = beforeComparison.Status == ArtworkOwnershipStatus.Unknown
+                ? ArtworkOperationPhase.RecoveryBlocked
+                : ArtworkOperationPhase.Aborted;
+            PersistResolution(operation, phase, revalidated, beforeComparison.Reason, null);
+
+            var outcome = beforeComparison.Status == ArtworkOwnershipStatus.Unknown
+                ? ArtworkReconciliationOutcome.OwnershipUnknown
+                : ArtworkReconciliationOutcome.OwnershipLost;
+            return ArtworkReconciliationResult.Create(outcome, beforeComparison.Reason, operation.OperationId, authorized);
+        }
+
+        // Record the mutation lower bound, then perform the supported mutation.
+        var mutation = operation.Phase == ArtworkOperationPhase.Prepared
+            ? Advance(operation, ArtworkOperationPhase.MutationStarted)
+            : operation;
+        if (!ReferenceEquals(mutation, operation))
+        {
+            _operations.Write(mutation);
+        }
+
+        ArtworkImageMutationResult mutationResult;
+        try
+        {
+            // A present baseline restores the retained source through the same
+            // supported stream SaveImage API as publication; an absent baseline
+            // removes the ArrTags image through the supported removal API.
+            mutationResult = operation.CandidateAfterPresence == ArtworkImagePresence.Present
+                ? await _writer.SaveImageAsync(item, surface, sourceBytes, sourceContentType!, cancellationToken).ConfigureAwait(false)
+                : await _writer.RemoveImageAsync(item, surface, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            PersistResolution(mutation, ArtworkOperationPhase.RecoveryBlocked, null, "The restoration mutation was cancelled.", null);
+            WriteRestoreBlocked(restorePending, operation.OperationId);
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.Cancelled,
+                "The restoration was cancelled during the image mutation.",
+                operation.OperationId);
+        }
+
+        if (!mutationResult.Succeeded)
+        {
+            PersistResolution(mutation, ArtworkOperationPhase.RecoveryBlocked, null, mutationResult.Reason, null);
+            var blocked = WriteRestoreBlocked(restorePending, operation.OperationId);
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                mutationResult.Reason,
+                operation.OperationId,
+                blocked);
+        }
+
+        var update = mutation.Phase == ArtworkOperationPhase.MutationStarted
+            ? Advance(mutation, ArtworkOperationPhase.RepositoryUpdateStarted)
+            : mutation;
+        if (!ReferenceEquals(update, mutation))
+        {
+            _operations.Write(update);
+        }
+
+        if (operation.CandidateAfterPresence == ArtworkImagePresence.Present)
+        {
+            // The removal ABI persists the normal item update itself; a
+            // present-source restoration uses the same explicit update flow as
+            // publication.
+            ArtworkImageMutationResult updateResult;
+            try
+            {
+                updateResult = await _writer.PersistItemUpdateAsync(item, surface, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                PersistResolution(update, ArtworkOperationPhase.RecoveryBlocked, null, "The restoration item update was cancelled.", null);
+                WriteRestoreBlocked(restorePending, operation.OperationId);
+                return ArtworkReconciliationResult.Create(
+                    ArtworkReconciliationOutcome.Cancelled,
+                    "The restoration was cancelled during the item update.",
+                    operation.OperationId);
+            }
+
+            if (!updateResult.Succeeded)
+            {
+                PersistResolution(update, ArtworkOperationPhase.RecoveryBlocked, null, updateResult.Reason, null);
+                var blocked = WriteRestoreBlocked(restorePending, operation.OperationId);
+                return ArtworkReconciliationResult.Create(
+                    ArtworkReconciliationOutcome.RecoveryBlocked,
+                    updateResult.Reason,
+                    operation.OperationId,
+                    blocked);
+            }
+        }
+
+        var verification = update.Phase == ArtworkOperationPhase.RepositoryUpdateStarted
+            ? Advance(update, ArtworkOperationPhase.VerificationPending)
+            : update;
+        if (!ReferenceEquals(verification, update))
+        {
+            _operations.Write(verification);
+        }
+
+        var readback = await _reader.ReadAsync(item, surface, cancellationToken).ConfigureAwait(false);
+        readback.TryCreateActiveImageIdentity(out var observedAfter);
+        if (observedAfter is null)
+        {
+            PersistResolution(verification, ArtworkOperationPhase.RecoveryBlocked, null, "The restored surface could not be observed.", null);
+            WriteRestoreBlocked(restorePending, operation.OperationId);
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                "The restored surface could not be observed.",
+                operation.OperationId);
+        }
+
+        if (!MatchesRestorationCandidate(operation, observedAfter))
+        {
+            PersistResolution(verification, ArtworkOperationPhase.RecoveryBlocked, observedAfter, "The observed surface does not match the retained baseline.", null);
+            var blocked = WriteRestoreBlocked(restorePending, operation.OperationId);
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                "The observed surface does not match the retained baseline.",
+                operation.OperationId,
+                blocked);
+        }
+
+        var finalizing = Advance(verification, ArtworkOperationPhase.FinalizationPending, observedAfter);
+        _operations.Write(finalizing);
+
+        var restored = PublishedArtworkStateTransitions
+            .CommitRestoration(restorePending, restorationVerified: true, DateTimeOffset.UtcNow)
+            .State;
+        restored = WithOperationId(restored, operation.OperationId);
+        _states.Write(restored);
+
+        _operations.Write(Advance(finalizing, ArtworkOperationPhase.Committed, observedAfter));
+        return ArtworkReconciliationResult.Create(
+            ArtworkReconciliationOutcome.Completed,
+            "The retained baseline was restored and verified.",
+            operation.OperationId,
+            restored);
+    }
+
+    private async Task<ArtworkReconciliationResult> ResumeRestorationAsync(
+        ArtworkOperation operation,
+        PublishedArtworkState? state,
+        CancellationToken cancellationToken)
+    {
+        if (state is not { State: ArtworkPublicationState.RestorePending } restorePending)
+        {
+            const string NoState = "The restoration operation has no restore-pending state to resume.";
+            PersistResolution(operation, ArtworkOperationPhase.RecoveryBlocked, null, NoState, null);
+            return ArtworkReconciliationResult.Create(
+                ArtworkReconciliationOutcome.RecoveryBlocked,
+                NoState,
+                operation.OperationId,
+                state);
+        }
+
+        ReadOnlyMemory<byte> sourceBytes = ReadOnlyMemory<byte>.Empty;
+        string? sourceContentType = null;
+        if (operation.SourcePresence == ArtworkImagePresence.Present)
+        {
+            if (operation.SourceArtifactId is null)
+            {
+                const string NoArtifact = "The restoration operation is missing its retained source artifact reference.";
+                PersistResolution(operation, ArtworkOperationPhase.RecoveryBlocked, null, NoArtifact, null);
+                return ArtworkReconciliationResult.Create(
+                    ArtworkReconciliationOutcome.RecoveryBlocked,
+                    NoArtifact,
+                    operation.OperationId,
+                    state);
+            }
+
+            var artifact = _artifacts.Read(operation.SourceArtifactId);
+            if (artifact.Status != SourceArtifactReadStatus.Found || artifact.Info is null)
+            {
+                const string CorruptArtifact = "The retained source artifact is missing or failed integrity validation.";
+                PersistResolution(operation, ArtworkOperationPhase.RecoveryBlocked, null, CorruptArtifact, null);
+                var blocked = WriteRestoreBlocked(restorePending, operation.OperationId);
+                return ArtworkReconciliationResult.Create(
+                    ArtworkReconciliationOutcome.RecoveryBlocked,
+                    CorruptArtifact,
+                    operation.OperationId,
+                    blocked);
+            }
+
+            sourceBytes = artifact.Bytes;
+            sourceContentType = artifact.Info.ContentType;
+        }
+
+        var working = operation.Phase == ArtworkOperationPhase.RecoveryBlocked
+            ? Reopen(operation, ArtworkOperationPhase.Prepared)
+            : operation;
+
+        return await ExecuteRestorationAsync(working, restorePending, sourceBytes, sourceContentType, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private PublishedArtworkState WriteRestoreBlocked(PublishedArtworkState restorePending, string? operationId)
+    {
+        var blocked = PublishedArtworkStateTransitions
+            .CommitRestoration(restorePending, restorationVerified: false, DateTimeOffset.UtcNow)
+            .State;
+        if (operationId is not null)
+        {
+            blocked = WithOperationId(blocked, operationId);
+        }
+
+        _states.Write(blocked);
+        return blocked;
+    }
+
+    private static PublishedArtworkState WithOperationId(PublishedArtworkState state, string operationId)
+    {
+        return new PublishedArtworkState(
+            state.JellyfinItemId,
+            state.ImageSurface,
+            state.State,
+            state.UpdatedAt,
+            state.ModelVersion,
+            state.StateRevision,
+            state.SourcePresence,
+            state.SourceArtifactId,
+            state.SourceFingerprint,
+            state.SourceCaptureIdentity,
+            state.OwnershipToken,
+            state.PublicationToken,
+            state.ActiveImageIdentity,
+            state.PublishedFingerprint,
+            state.RendererVersion,
+            state.LastOwnershipObservation,
+            operationId);
+    }
+
+    private static bool MatchesRestorationCandidate(ArtworkOperation operation, ActiveImageIdentity observedAfter)
+    {
+        if (operation.CandidateAfterPresence == ArtworkImagePresence.Absent)
+        {
+            return observedAfter.Presence == ArtworkImagePresence.Absent;
+        }
+
+        return observedAfter.Presence == ArtworkImagePresence.Present
+            && operation.CandidateAfterContentSha256 is not null
+            && string.Equals(observedAfter.ContentSha256, operation.CandidateAfterContentSha256, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<SessionCapture> CaptureAsync(
@@ -755,13 +1223,7 @@ public sealed class ArtworkPublisher
     {
         if (operation.Kind == ArtworkOperationKind.Restoration)
         {
-            // The guarded restoration mutation is owned by the lifecycle task
-            // (5.9); recovery leaves the durable operation and artifacts in place.
-            return ArtworkReconciliationResult.Create(
-                ArtworkReconciliationOutcome.Deferred,
-                "Restoration execution is deferred to the lifecycle handling task.",
-                operation.OperationId,
-                state);
+            return await ResumeRestorationAsync(operation, state, cancellationToken).ConfigureAwait(false);
         }
 
         if (!TryValidateRecoveryArtifacts(operation, requireDerived: true, out var derivedBytes, out var reason))

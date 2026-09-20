@@ -1,0 +1,77 @@
+{
+  "task": "5.9",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "status": "resolved",
+      "area": "lifecycle drain outcome reporting",
+      "title": "Drain can report Completed while a reconciled operation is persisted RecoveryBlocked via the OwnershipUnknown outcome",
+      "detail": "ArtworkLifecycleCoordinator.IsResolvedOperation treated ArtworkReconciliationOutcome.OwnershipUnknown as resolved even though ArtworkPublisher.ExecuteRecoveryAsync persists the operation as RecoveryBlocked. The correction removes IsResolvedOperation entirely; DrainCoreAsync now re-reads the durable operation after reconciliation and counts it resolved only when the durable phase is Committed or Aborted, otherwise it counts blockedOperations (a RecoveryBlocked or still-non-terminal or unreadable operation). A non-throwing source-read failure now yields ArtworkLifecycleOutcome.Incomplete. Verified by inspection (src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs:171-186) and by the new regression test DrainReportsIncompleteWhenAReadFailureMakesAnOperationRecoveryBlocked, which asserts Incomplete, OperationsReconciled == 0, the operation phase RecoveryBlocked, and zero image calls.",
+      "evidence": "src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs:171-186; tests/ArrTags.Tests/ArtworkLifecycleTests.cs:388-404"
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "status": "resolved",
+      "area": "fence durability / fail-closed",
+      "title": "Startup Reset() overwrote an invalid (corrupt) fence with Normal",
+      "detail": "ArtworkLifecycleFenceStore.Read() now reads the record directly through StateEnvelopeCodec.TryDeserialize without quarantining it, and Reset() returns early when the fence is invalid, so a corrupt fence is preserved and the publication read path stays fail-closed. The codec still validates the schema version and the payload SHA-256 integrity tag, and the previous repository read did not validate envelope kind/recordId/authority either, so no validation was lost. Verified by the new test ResetPreservesAnInvalidFenceInsteadOfOverwritingItWithNormal.",
+      "evidence": "src/ArrTags/Artwork/ArtworkLifecycleFenceStore.cs:42-110; tests/ArrTags.Tests/ArtworkLifecycleTests.cs:133-149"
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "resolved",
+      "area": "item removal tombstone",
+      "title": "Confirmed item-removal result was returned even when the reconciler did not tombstone the in-flight operation",
+      "detail": "HandleItemRemovedCoreAsync now returns Blocked with tombstoned:false when the durable operation record is invalid/quarantined, when the state record is invalid/quarantined, or when the post-reconcile operation is not actually Aborted; it claims a tombstone only after the reconciler aborted the in-flight operation. Verified by the new test ConfirmedItemRemovalWithAnInvalidStateDoesNotClaimATombstone, which asserts Blocked, Tombstoned == false, the operation still MutationStarted, and zero image calls.",
+      "evidence": "src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs:303-368; tests/ArrTags.Tests/ArtworkLifecycleTests.cs:435-461"
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "status": "open",
+      "area": "host shutdown bound",
+      "title": "StopAsync's drain bound is cooperative, not a hard timeout",
+      "detail": "ArrTagsLifecycleService.StopAsync links the shutdown token and uses CancelAfter(_boundedDrainTimeout) but awaits the coordinator directly rather than Task.WaitAsync. Every in-repo await honors the token, so the documented 15s bound holds in practice; a host API that ignores cancellation could still extend shutdown. Non-blocking defense-in-depth note retained.",
+      "evidence": "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs:78-98"
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "status": "resolved",
+      "area": "test coverage",
+      "title": "No direct tests for Plugin.OnUninstalling glue or StateRepository.Enumerate",
+      "detail": "Focused tests were added: three Plugin.OnUninstalling cases (resolves the coordinator and drains the Uninstall fence, contains a coordinator failure, and is safe without a resolvable coordinator) and nine StateRepository.Enumerate / PluginStatePaths.GetKindDirectory cases (path under authority root, unsafe-kind rejection, deterministic ordering, requested bound, invalid-record omission, unsafe filename skip, and missing kind directory). All are meaningful and assert the relevant behavior.",
+      "evidence": "tests/ArrTags.Tests/LifecycleFoundationTests.cs:124-166,269-280; tests/ArrTags.Tests/StateBoundaryTests.cs:207-289"
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "status": "open",
+      "area": "test isolation",
+      "title": "Removal test mutates the process-global BaseItem.FileSystem static",
+      "detail": "JellyfinArtworkImageWriterTests.RemoveImageUsesTheSupportedDeletionFlowAndNeverTheProvider replaces the static BaseItem.FileSystem with a DispatchProxy and performs a real temp-file delete, restoring the previous value in a finally block. No other test uses BaseItem.FileSystem, so the risk is low; non-blocking test-isolation note retained.",
+      "evidence": "tests/ArrTags.Tests/ArtworkPublisherTests.cs:637-676"
+    }
+  ],
+  "tests_checked": [
+    "Restored with pinned sysroot: ./build.sh restore -> All projects are up-to-date for restore (no packages.lock.json change).",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Focused: dotnet test --filter FullyQualifiedName~ArtworkLifecycleTests -> Passed 28, Failed 0, Skipped 0, Total 28 (matches the worker claim).",
+    "./build.sh test -> Passed 964, Failed 0, Skipped 49, Total 1013 (matches the worker claim; +45 over the task 5.8 baseline of 919/49/968, and +15 over the first-pass 949/49/998).",
+    "Inspected the three new ArtworkLifecycleTests cases (F1 non-throwing read failure -> RecoveryBlocked + Incomplete; F2 invalid fence preserved across Reset; F3 invalid state -> Blocked/no tombstone), the three Plugin.OnUninstalling cases, and the nine StateRepository.Enumerate/GetKindDirectory cases.",
+    "Verified no existing test was weakened: across all test diffs the only removed assertions are the four task 5.7 Deferred assertions that task 5.9 is chartered to replace, plus the ArrTagsLifecycleService constructor-signature updates; no other assertion or test was removed."
+  ],
+  "research_checked": [
+    "Re-confirmed the previously verified pinned Jellyfin 12 facts are unaffected by the corrections: PluginManager.cs:605 DI construction via ActivatorUtilities.CreateInstance; BaseItem.DeleteImageAsync(ImageType,int) deletes the local file and persists ItemUpdateType.ImageUpdate; BasePlugin.OnUninstalling is virtual and InstallationManager calls it before DeletePlugin deletes the plugin/data folder; IPluginManager.Plugins exposes the persisted manifest status and there is no OnDisable hook.",
+    "Re-confirmed Plugin DI construction compatibility: the Plugin(IApplicationPaths, IXmlSerializer, IServiceProvider) constructor is unchanged by the corrections and remains resolvable by ActivatorUtilities with the pinned Microsoft.Extensions.DependencyInjection 10.0.11 (verified empirically in the first pass).",
+    "Verified the correction did not change the guarded-restoration protocol, ownership gating before removal, fence enforcement, or the removal primitive: ArtworkPublisher.cs (fence read + AllowsNewPublication, immediate before-mutation ownership comparison, present-SaveImage/absent-RemoveImage) and JellyfinArtworkImageWriter.RemoveImageAsync (supported DeleteImageAsync only) are byte-identical to the first-pass review.",
+    "Confirmed no MediaBrowser.* reference was added to host-neutral code and no ADR, RenderVersion, renderer, lock file, or unrelated behavior changed; no 5.10/5.11/Phase 6 wiring was added. Docs (PLANS.md, README.md, docs/architecture.md, docs/changelog.md) were updated accurately to describe the corrected drain classification, fail-closed invalid fence, and tombstone-only-after-abort behavior and the 964/1013 totals."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

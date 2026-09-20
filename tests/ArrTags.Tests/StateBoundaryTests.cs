@@ -204,6 +204,90 @@ public sealed class StateBoundaryTests : IDisposable
             _repository.Write(StateAuthority.Cache, "metadata", "big", payload));
     }
 
+    [Fact]
+    public void KindDirectoryIsUnderTheAuthorityRoot()
+    {
+        var directory = _repository.Paths.GetKindDirectory(StateAuthority.Authoritative, "metadata");
+
+        Assert.Equal(
+            Path.Combine(_repository.Paths.GetDirectory(StateAuthority.Authoritative), "metadata"),
+            directory);
+    }
+
+    [Theory]
+    [InlineData("../escape")]
+    [InlineData("..")]
+    [InlineData("nested/kind")]
+    public void KindDirectoryRejectsAnUnsafeKind(string kind)
+    {
+        Assert.Throws<ArgumentException>(() =>
+            _repository.Paths.GetKindDirectory(StateAuthority.Authoritative, kind));
+    }
+
+    [Fact]
+    public void EnumerateReturnsValidRecordsInDeterministicOrder()
+    {
+        _repository.Write(StateAuthority.Authoritative, "metadata", "c", new TestPayload { Name = "c" });
+        _repository.Write(StateAuthority.Authoritative, "metadata", "a", new TestPayload { Name = "a" });
+        _repository.Write(StateAuthority.Authoritative, "metadata", "b", new TestPayload { Name = "b" });
+
+        var records = _repository.Enumerate<TestPayload>(StateAuthority.Authoritative, "metadata", 100);
+
+        Assert.Equal(3, records.Count);
+        Assert.Equal("a", records[0].Name);
+        Assert.Equal("b", records[1].Name);
+        Assert.Equal("c", records[2].Name);
+    }
+
+    [Fact]
+    public void EnumerateIsBoundedByTheRequestedMaximum()
+    {
+        for (var index = 0; index < 5; index++)
+        {
+            _repository.Write(StateAuthority.Authoritative, "metadata", "item-" + index, new TestPayload { Name = "n" + index });
+        }
+
+        var records = _repository.Enumerate<TestPayload>(StateAuthority.Authoritative, "metadata", 2);
+
+        Assert.Equal(2, records.Count);
+    }
+
+    [Fact]
+    public void EnumerateOmitsAnInvalidRecordRatherThanReturningIt()
+    {
+        _repository.Write(StateAuthority.Authoritative, "metadata", "good", new TestPayload { Name = "good" });
+        _repository.Write(StateAuthority.Authoritative, "metadata", "bad", new TestPayload { Name = "bad" });
+        var badPath = _repository.Paths.GetRecordPath(StateAuthority.Authoritative, "metadata", "bad");
+        File.WriteAllText(badPath, "{ this is not valid json");
+
+        var records = _repository.Enumerate<TestPayload>(StateAuthority.Authoritative, "metadata", 100);
+
+        Assert.Single(records);
+        Assert.Equal("good", records[0].Name);
+    }
+
+    [Fact]
+    public void EnumerateSkipsAFileWhoseNameIsNotASafeRecordIdentifier()
+    {
+        var directory = _repository.Paths.GetKindDirectory(StateAuthority.Authoritative, "metadata");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "..eviltest.json"), "{}");
+        _repository.Write(StateAuthority.Authoritative, "metadata", "good", new TestPayload { Name = "good" });
+
+        var records = _repository.Enumerate<TestPayload>(StateAuthority.Authoritative, "metadata", 100);
+
+        Assert.Single(records);
+        Assert.Equal("good", records[0].Name);
+    }
+
+    [Fact]
+    public void EnumerateReturnsNothingWhenTheKindDirectoryDoesNotExist()
+    {
+        var records = _repository.Enumerate<TestPayload>(StateAuthority.Authoritative, "absent-kind", 100);
+
+        Assert.Empty(records);
+    }
+
     public void Dispose()
     {
         TryDeleteDirectory(_root);

@@ -65,6 +65,31 @@ public sealed class ArtworkReconciler
         ArtworkImageSurface surface,
         CancellationToken cancellationToken)
     {
+        return await ReconcileAsync(jellyfinItemId, surface, ArtworkLifecycleFence.Normal, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Reconciles the durable artwork operation for one Jellyfin item and image
+    /// surface under an explicit active lifecycle fence. During a disable or
+    /// uninstall drain the active fence is authoritative for an in-flight
+    /// publication, so a prepared publication is aborted rather than resumed
+    /// even when it was created before the fence was raised. The call serializes
+    /// with normal publication for the same subject and never lets a failure or
+    /// an uncertainty escape as an exception.
+    /// </summary>
+    /// <param name="jellyfinItemId">The Jellyfin item identifier.</param>
+    /// <param name="surface">The image surface; V1 supports only the unindexed <c>Primary</c> surface.</param>
+    /// <param name="activeFence">The lifecycle fence currently active for the subject.</param>
+    /// <param name="cancellationToken">The cancellation signal.</param>
+    /// <returns>The bounded reconciliation result.</returns>
+    /// <exception cref="ArgumentNullException">The surface is <see langword="null"/>.</exception>
+    public async Task<ArtworkReconciliationResult> ReconcileAsync(
+        Guid jellyfinItemId,
+        ArtworkImageSurface surface,
+        ArtworkLifecycleFence activeFence,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(surface);
 
         if (jellyfinItemId == Guid.Empty
@@ -90,7 +115,7 @@ public sealed class ArtworkReconciler
 
         try
         {
-            return await ReconcileCoreAsync(jellyfinItemId, surface, cancellationToken).ConfigureAwait(false);
+            return await ReconcileCoreAsync(jellyfinItemId, surface, activeFence, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -113,6 +138,7 @@ public sealed class ArtworkReconciler
     private async Task<ArtworkReconciliationResult> ReconcileCoreAsync(
         Guid jellyfinItemId,
         ArtworkImageSurface surface,
+        ArtworkLifecycleFence activeFence,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -151,7 +177,8 @@ public sealed class ArtworkReconciler
             stateRead.Value,
             current,
             itemAbsent,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            activeFence == ArtworkLifecycleFence.Normal ? null : activeFence);
 
         return await _publisher
             .ExecuteRecoveryAsync(operation, stateRead.Value, current, decision, cancellationToken)

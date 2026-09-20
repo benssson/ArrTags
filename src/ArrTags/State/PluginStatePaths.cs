@@ -43,6 +43,18 @@ public sealed class PluginStatePaths
     }
 
     /// <summary>
+    /// Gets the absolute directory that holds every record of a kind.
+    /// </summary>
+    /// <param name="authority">The state authority.</param>
+    /// <param name="kind">The record kind.</param>
+    /// <returns>The absolute kind directory.</returns>
+    public string GetKindDirectory(StateAuthority authority, string kind)
+    {
+        ValidateSegment(kind, nameof(kind));
+        return Path.Combine(GetDirectory(authority), kind);
+    }
+
+    /// <summary>
     /// Gets the absolute record path for a kind and identifier.
     /// </summary>
     /// <param name="authority">The state authority.</param>
@@ -53,7 +65,7 @@ public sealed class PluginStatePaths
     {
         ValidateSegment(kind, nameof(kind));
         ValidateSegment(recordId, nameof(recordId));
-        return Path.Combine(GetDirectory(authority), kind, string.Concat(recordId, ".json"));
+        return Path.Combine(GetKindDirectory(authority, kind), string.Concat(recordId, ".json"));
     }
 
     /// <summary>

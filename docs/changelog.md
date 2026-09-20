@@ -1158,3 +1158,113 @@ and `./build.sh test` pass. The default suite passes 919 with 49
 environment-guarded skips (968 total), exactly +23 over the task 5.7 baseline,
 with no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
 passing behavior was changed.
+
+### Task 5.9 - Fence and drain publication operations during disable/uninstall, and tombstone confirmed item removal
+
+Task 5.9 implements the durable lifecycle fence, the disable/uninstall drain and
+guarded restoration, the supported image-removal primitive, and confirmed
+item-removal tombstoning (`docs/architecture.md` section 9; `docs/data-model.md`
+sections 3.10.1-3.10.4; ADR-002/ADR-003). It does not add Enhanced coexistence
+(task 5.10), route/client tests (task 5.11), or the broader queue, event,
+scheduled-scan, caching, or invalidation pipeline (Phase 6) beyond the minimal
+`ItemRemoved` tombstone handling and the host lifecycle fence triggers it
+requires.
+
+- `src/ArrTags/Artwork/ArtworkLifecycleFenceRecord.cs` and
+  `ArtworkLifecycleFenceStore.cs`: the versioned, integrity-tagged, atomically
+  written authoritative record and store for the active `Normal`/`Disable`/
+  `Uninstall`/`ItemRemoved` fence. A missing record is `Normal`; an invalid
+  record is quarantined and fails closed; the record never contains a credential,
+  path, entity, or provider payload.
+- `src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs`,
+  `IArtworkLifecycleCoordinator.cs`, `ArtworkLifecycleResult.cs`, and
+  `ArtworkRemovalResult.cs`: the provider-neutral lifecycle service. It records
+  the durable fence, reconciles every non-terminal operation to a terminal result
+  before creating the guarded restoration, restores every still-owned
+  `Published` surface, reports `Incomplete` when a restoration is blocked,
+  externally changed, or uncertain while retaining all recovery records, and
+  tombstones a confirmed item removal with no Jellyfin image call. A
+  recovery-blocked operation is reported as incomplete and no artifact or journal
+  record is deleted eagerly.
+- `src/ArrTags/Artwork/ArtworkPublisher.cs`: reads the durable fence before
+  accepting new work and refuses it unless the fence is a valid `Normal`, records
+  the fence on the operation it creates, and adds a guarded `RestoreAsync` that
+  reuses the same durable phases, immediate before-mutation revalidation, and
+  readback postcondition commit as publication. An absent baseline removes the
+  ArrTags image; a present baseline restores the retained source; an unverifiable
+  result enters `RecoveryBlocked` and `RestoreBlocked`.
+- `src/ArrTags/Artwork/IArtworkImageWriter.cs` and
+  `JellyfinArtworkImageWriter.cs`: the supported
+  `BaseItem.DeleteImageAsync(ImageType, int)` removal primitive, which removes
+  the local image file when the image is local, removes the image information,
+  and persists the normal `ItemUpdateType.ImageUpdate` repository update. No
+  media file or image-cache entry is ever deleted directly and all
+  `MediaBrowser.*` references stay confined to that single implementation file.
+- `src/ArrTags/Artwork/ArtworkRecoveryDecisions.cs` and
+  `ArtworkReconciler.cs`: an optional active-fence argument and a matching
+  `ReconcileAsync` overload, so a disable/uninstall drain aborts an in-flight
+  prepared publication (`AbortFenced`) instead of resuming it, and a restoration
+  resume now executes the guarded restoration instead of reporting `Deferred`.
+- `src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs`: the drain classifies each
+  reconciled operation by its durable phase rather than the transient
+  reconciliation outcome, so an operation that becomes `RecoveryBlocked`
+  (including through an `OwnershipUnknown` or non-throwing source-read failure)
+  yields `ArtworkLifecycleOutcome.Incomplete`; the item-removal path only claims a
+  tombstone after the reconciler actually aborted the in-flight operation and returns
+  `Blocked` with `tombstoned: false` when the reconciler cannot reach the
+  `ItemRemoved` decision (for example an invalid/quarantined state or operation).
+- `src/ArrTags/Artwork/ArtworkLifecycleFenceStore.cs`: an invalid/corrupt durable
+  fence is read without quarantining it away and a normal reset never overwrites
+  it, so the publication read path stays fail-closed until an explicit recovery
+  decision.
+- `src/ArrTags/State/StateRepository.cs` and `PluginStatePaths.cs`: a bounded,
+  deterministic authoritative enumeration and a kind-directory accessor so the
+  coordinator can list durable operations and states.
+- `src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs`: `StartAsync` clears a
+  stale fence when the host loaded the plugin active; `StopAsync` unsubscribes
+  and performs a bounded `DrainForHostShutdownAsync` plus tracked item-removal
+  confirmations; the formerly no-op `ItemRemoved` handler now runs a tracked,
+  bounded confirmation task so synchronous library event delivery is never
+  blocked. A plain shutdown resolves `Normal` and is a no-op.
+- `src/ArrTags/PluginLifecycle/IPluginLifecycleFenceProvider.cs` and
+  `JellyfinPluginLifecycleState.cs` (plus `IPluginLifecycleFenceProvider` on the
+  artwork side): the host-neutral fence source and its single Jellyfin
+  implementation, which maps the persisted plugin manifest status to the fence
+  through the supported `IPluginManager`.
+- `src/ArrTags/Plugin.cs`: the supported `OnUninstalling` hook records the
+  `Uninstall` fence and performs a bounded synchronous drain because the pinned
+  host deletes the plugin data folder immediately after the hook returns; it
+  never throws into the host and leaves a blocked or uncertain restoration
+  untouched.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers the fence
+  store, the fence provider, the coordinator, and the interface mapping with the
+  existing lazy factory pattern and no startup work.
+- Trigger boundary: there is no Jellyfin disable hook. Disable is observed from
+  the persisted manifest status during the graceful `StopAsync` of the still
+  loaded instance; uninstall comes from `OnUninstalling`; item removal is
+  confirmed by a fresh read. A disable that is only observed after the plugin has
+  been unloaded (for example a disable followed by a hard kill without a graceful
+  shutdown) is not detectable from inside the plugin; the durable fence still
+  prevents new publication work while it is present. See
+  `docs/architecture.md` section 9.
+- Tests: `tests/ArrTags.Tests/ArtworkLifecycleTests.cs` (28 cases) plus focused
+  additions to `ArtworkReconcilerTests`, `ArtworkPublisherTests`
+  (`RemoveImageUsesTheSupportedDeletionFlowAndNeverTheProvider`),
+  `LifecycleFoundationTests`, and `StateBoundaryTests` cover fence durability
+  across a reconstructed `StateRepository`, missing/invalid fences and the
+  not-overwritten-by-reset fail-closed rule, publication refusal under every
+  non-normal fence, present- and absent-baseline guarded restoration,
+  reconcile-before-restore ordering, blocked/changed/uncertain retention and
+  incomplete reporting (including a recovery-blocked source-read failure),
+  source-artifact absence, bounded cancellation, the confirmed item-removal
+  tombstone with zero image calls, the not-confirmed, reader-failure, and
+  invalid-state-no-tombstone paths, the host status-to-fence mapping, the bounded
+  hosted shutdown drain, the `Plugin.OnUninstalling` lazy resolution and
+  failure-containment, bounded deterministic traversal-safe
+  `StateRepository.Enumerate`, DI registration, and boundary-neutrality.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 964 with 49
+environment-guarded skips (1013 total), exactly +45 over the task 5.8 baseline,
+with no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed.

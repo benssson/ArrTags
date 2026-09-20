@@ -529,6 +529,8 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
 
         public int UpdateCalls { get; private set; }
 
+        public int RemoveCalls { get; private set; }
+
         public byte[]? SavedBytes { get; private set; }
 
         public ArtworkSourceReadResult Current(ArtworkImageSurface surface)
@@ -595,6 +597,17 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
             return Task.FromResult(FailUpdate
                 ? ArtworkImageMutationResult.Failure(ArtworkImageMutationStatus.Failed, "The fake update failed.")
                 : ArtworkImageMutationResult.Success());
+        }
+
+        public Task<ArtworkImageMutationResult> RemoveImageAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RemoveCalls++;
+            CurrentBytes = null;
+            return Task.FromResult(ArtworkImageMutationResult.Success());
         }
     }
 }

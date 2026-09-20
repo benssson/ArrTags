@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using ArrTags.State;
 
@@ -89,6 +90,21 @@ public sealed class PublishedArtworkStateStore
         }
 
         return Quarantine(recordId, reason);
+    }
+
+    /// <summary>
+    /// Enumerates the valid published-artwork state records in a bounded,
+    /// deterministic order. An invalid record is quarantined and omitted rather
+    /// than returned as current state.
+    /// </summary>
+    /// <param name="maxRecords">The bounded maximum number of records; defaults to the repository bound.</param>
+    /// <returns>The valid state records.</returns>
+    public IReadOnlyList<PublishedArtworkState> Enumerate(int maxRecords = StateRepository.MaxEnumerationRecords)
+    {
+        return _repository.Enumerate<PublishedArtworkState>(
+            StateAuthority.Authoritative,
+            RecordKind,
+            maxRecords);
     }
 
     /// <summary>

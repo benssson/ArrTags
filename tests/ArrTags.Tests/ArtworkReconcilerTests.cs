@@ -397,7 +397,7 @@ public sealed class ArtworkReconcilerTests : IDisposable
     }
 
     [Fact]
-    public async Task RestorationResumeIsDeferredToLifecycleHandling()
+    public async Task RestorationResumeExecutesTheGuardedRestoration()
     {
         var sourceHash = _sourceArtifactId;
         var operation = new ArtworkOperation(
@@ -423,10 +423,15 @@ public sealed class ArtworkReconcilerTests : IDisposable
 
         var result = await _reconciler.ReconcileAsync(_item, Surface, CancellationToken.None);
 
-        Assert.Equal(ArtworkReconciliationOutcome.Deferred, result.Outcome);
-        Assert.Equal(0, _host.SaveCalls);
-        Assert.Equal(0, _host.UpdateCalls);
-        Assert.Equal(ArtworkOperationPhase.Prepared, _operations.Read(_item, Surface).Value!.Phase);
+        Assert.Equal(ArtworkReconciliationOutcome.Completed, result.Outcome);
+        Assert.Equal(1, _host.SaveCalls);
+        Assert.Equal(1, _host.UpdateCalls);
+        Assert.Equal(_source, _host.SavedBytes);
+
+        var restored = _states.Read(_item, Surface).Value!;
+        Assert.Equal(ArtworkPublicationState.Restored, restored.State);
+        Assert.Equal(operation.OperationId, restored.LastOperationId);
+        Assert.Equal(ArtworkOperationPhase.Committed, _operations.Read(_item, Surface).Value!.Phase);
     }
 
     // ---- No work and bounded failure -------------------------------------------
@@ -685,6 +690,8 @@ public sealed class ArtworkReconcilerTests : IDisposable
 
         public int UpdateCalls { get; private set; }
 
+        public int RemoveCalls { get; private set; }
+
         public byte[]? SavedBytes { get; private set; }
 
         public Task<ArtworkSourceReadResult> ReadAsync(
@@ -736,6 +743,17 @@ public sealed class ArtworkReconcilerTests : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             UpdateCalls++;
+            return Task.FromResult(ArtworkImageMutationResult.Success());
+        }
+
+        public Task<ArtworkImageMutationResult> RemoveImageAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RemoveCalls++;
+            CurrentBytes = null;
             return Task.FromResult(ArtworkImageMutationResult.Success());
         }
 

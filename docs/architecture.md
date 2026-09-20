@@ -651,6 +651,62 @@ belong to Phase 6.
   confirmed, ArrTags tombstones in-flight operations, performs no Jellyfin image
   calls, and cleans only plugin-owned artifacts under the retention policy.
 
+Task 5.9 implements this lifecycle handling as the provider-neutral
+`ArtworkLifecycleCoordinator` (`IArtworkLifecycleCoordinator`) backed by the
+authoritative `ArtworkLifecycleFenceStore`, the `ArtworkReconciler`, and the
+`ArtworkPublisher`. The publisher refuses new publication unless the durable
+fence is a valid `Normal`; a disable or uninstall drain records the fence,
+reconciles every non-terminal operation to a terminal result, and then creates
+and executes one guarded `Restoration` operation per still-owned `Published`
+surface through the same durable phases, readback, and postcondition commit as
+publication. A present retained source is written through the supported stream
+`SaveImage` API and an absent baseline is removed through the supported
+`BaseItem.DeleteImageAsync` flow exposed as
+`IArtworkImageWriter.RemoveImageAsync`; a blocked, externally changed, or
+uncertain restoration leaves the active image and all recovery records in place
+and reports an incomplete result, and no source artifact or journal record is
+deleted eagerly. The drain classifies each reconciled operation by its durable
+phase rather than by the transient reconciliation outcome, so an operation that
+becomes `RecoveryBlocked` (including through a non-throwing source-read failure)
+is never counted as resolved and the lifecycle result stays `Incomplete`. An
+invalid or corrupt durable fence is preserved as fail-closed and is never
+quarantined away or overwritten with `Normal`, so the publication read path
+stays closed until an explicit recovery decision. A confirmed item removal
+claims a tombstone only after the reconciler actually aborted the in-flight operation; when
+the reconciler cannot reach the `ItemRemoved` decision the result is `Blocked`
+and no tombstone is claimed.
+
+The host trigger mapping is explicit because Jellyfin 12 exposes no plugin
+disable hook:
+
+- **Uninstall** is raised by the supported `Plugin.OnUninstalling()` hook. The
+  pinned host deletes the plugin data folder immediately after that synchronous
+  void hook returns, so the hook records the durable `Uninstall` fence and
+  performs a bounded synchronous drain (with cancellation) before returning; a
+  blocked or uncertain restoration is left untouched and the host still
+  completes the uninstall. The hook never throws into the host.
+- **Disable** is detected from the persisted plugin manifest status through the
+  supported `IPluginManager` when the hosted `ArrTagsLifecycleService.StopAsync`
+  runs. Disabling a plugin writes the manifest status and takes effect on the
+  next restart; the still-loaded instance observes the `Disabled` status during
+  its graceful shutdown and drains a `Disable` fence. A plain server shutdown
+  leaves the status active and resolves `Normal`, so it never triggers
+  restoration. The hosted lifecycle service also clears a stale fence on
+  `StartAsync` when the host has loaded the plugin active, and per-subject state
+  and operation records continue to guard unsafe work.
+- **Item removal** is the `ILibraryEventSource.ItemRemoved` hint. It is acted on
+  only after the item absence is confirmed by a fresh read; the handler runs on
+  a tracked, bounded background task so synchronous library event delivery is
+  never blocked. A confirmed removal tombstones the in-flight operation and
+  marks the state `Removed` with no Jellyfin image call; a not-confirmed hint
+  changes nothing.
+
+A disable that is only observed after the plugin has already been unloaded
+(for example a disable followed by a hard kill without a graceful shutdown)
+cannot be detected from inside the plugin; that boundary is a documented host
+limitation, and the durable fence still prevents new publication work while it
+is present.
+
 ### Rendering constraints
 
 - Cap source bytes, output bytes, decoded dimensions, and concurrent renders.

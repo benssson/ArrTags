@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using ArrTags.State;
 
@@ -92,6 +93,21 @@ public sealed class ArtworkOperationStore
         }
 
         return Quarantine(recordId, reason);
+    }
+
+    /// <summary>
+    /// Enumerates the valid durable operation records in a bounded,
+    /// deterministic order. An invalid record is quarantined and omitted rather
+    /// than returned as current state.
+    /// </summary>
+    /// <param name="maxRecords">The bounded maximum number of records; defaults to the repository bound.</param>
+    /// <returns>The valid operation records.</returns>
+    public IReadOnlyList<ArtworkOperation> Enumerate(int maxRecords = StateRepository.MaxEnumerationRecords)
+    {
+        return _repository.Enumerate<ArtworkOperation>(
+            StateAuthority.Authoritative,
+            RecordKind,
+            maxRecords);
     }
 
     /// <summary>

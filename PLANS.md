@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), and 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete) are complete; the remaining Phase 5 tasks (5.9 through 5.11) are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), and 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal) are complete; the remaining Phase 5 tasks (5.10 and 5.11) are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -100,8 +100,16 @@ publication only under the current generation and lifecycle fence without
 recapturing a source, commits the intended final state when the after identity is
 observed, records ownership loss or uncertainty without mutating the image,
 tombstones a confirmed item removal without an image call, and blocks or
-quarantines invalid state without replay or cleanup. The remaining Phase 5 tasks
-(5.9 through 5.11 in the authoritative order) are not started.
+quarantines invalid state without replay or cleanup. Task 5.8 is complete: the
+single-subject generation coordinator composes the host source adapter, the
+renderer, and the durable publisher and preserves the current usable artwork on
+an absent source, a failed source read, a render pass-through, or a failed
+render. Task 5.9 is complete: the durable active lifecycle fence, the
+disable/uninstall drain and guarded restoration through the supported item-image
+save/removal APIs, and confirmed item-removal tombstoning are implemented, and
+the reconciler now executes a restoration resume instead of deferring it. The
+remaining Phase 5 tasks (5.10 and 5.11 in the authoritative order) are not
+started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -1380,7 +1388,7 @@ provenance and coexisting with Jellyfin Enhanced.
   active artifact.
 - [x] 5.8 Preserve the current usable artwork when source capture or rendering
   cannot safely complete.
-- [ ] 5.9 Fence and drain publication operations during disable/uninstall, and
+- [x] 5.9 Fence and drain publication operations during disable/uninstall, and
   tombstone confirmed item removal without issuing image mutations.
 - [ ] 5.10 Add the configured disable/limit policy for duplicate or overlapping
   badges; do not depend on Jellyfin Enhanced internals.
@@ -1696,9 +1704,10 @@ gained the optional `candidatePublicationFingerprint` and `rendererVersion`
 fields, documented in data-model 3.10.3) so an after-match recovery can commit the
 target state without re-rendering. `ArtworkReconciler` is registered with the
 existing lazy DI pattern and adds no startup work; the event/queue/startup-scan
-wiring belongs to Phase 6, and the guarded restoration mutation remains the
-lifecycle task 5.9 (restoration resume is reported as `Deferred` and left in
-place). New tests (`ArtworkReconcilerTests`, 24 cases) cover every branch of the
+wiring belongs to Phase 6, and at the time of task 5.7 the guarded restoration
+mutation remained the lifecycle task 5.9 (task 5.9 now executes a restoration
+resume in the publisher instead of reporting `Deferred`). New tests
+(`ArtworkReconcilerTests`, 24 cases) cover every branch of the
 decision table, the lifecycle-fence abort, before-identity revalidation on
 resume, source-artifact retention (no recapture), derived/source artifact
 corruption entering `RecoveryBlocked`, the item-absent tombstone with no
@@ -1758,6 +1767,96 @@ retained provenance baseline; state/path hygiene; the provider-neutral boundary;
 and DI registration, asserting zero image mutation on every preservation path. Default
 `./build.sh test` passes 919 with 49 guarded skips (968 total) and 0 warnings,
 exactly +23 over the task 5.7 baseline; no ADR, `RenderVersion`, renderer
+behavior, or existing passing behavior was changed.
+
+**Task 5.9 status:** Complete. The durable lifecycle fence, the disable/uninstall
+drain and guarded restoration, the supported image-removal primitive, and
+confirmed item-removal tombstoning are implemented in `src/ArrTags/Artwork` and
+`src/ArrTags/PluginLifecycle`, following ADR-002/ADR-003, `docs/architecture.md`
+section 9 ("Disable, uninstall, and item removal"), and `docs/data-model.md`
+sections 3.10.1-3.10.4. `ArtworkLifecycleFenceRecord` is the versioned
+authoritative record and `ArtworkLifecycleFenceStore` is its store: the active
+`Normal`/`Disable`/`Uninstall`/`ItemRemoved` fence is integrity-tagged, atomically
+written, and quarantined on corruption, a missing record is `Normal`, and an
+invalid record fails closed. `StateRepository` gained a bounded, deterministic
+`Enumerate` scan and `PluginStatePaths` gained a kind-directory accessor so the
+coordinator can list durable operations and states without a Jellyfin item
+listing. `ArtworkPublisher` reads the durable fence before accepting new work and
+refuses it when the fence is not a valid `Normal`, and it records the fence on
+the operation it creates. The publisher also gained a guarded restoration path
+(`RestoreAsync`) that reuses the same durable `Prepared` ->
+`MutationStarted` -> `RepositoryUpdateStarted` -> `VerificationPending` ->
+`FinalizationPending` -> `Committed` ordering, the same immediate
+before-mutation revalidation, and the same readback postcondition commit as
+publication: a present retained source is written through the supported stream
+`SaveImage` API, an absent baseline is removed through the new
+`IArtworkImageWriter.RemoveImageAsync`, and a resulting surface that does not
+match the retained baseline enters `RecoveryBlocked` and the state enters
+`RestoreBlocked` without any further automatic mutation.
+`JellyfinArtworkImageWriter.RemoveImageAsync` uses the supported
+`BaseItem.DeleteImageAsync(ImageType, int)` flow (which removes the local image
+file when the image is local, removes the image information, and persists the
+normal `ItemUpdateType.ImageUpdate` repository update) and never deletes a media
+file or image-cache entry directly; all `MediaBrowser.*` references remain
+confined to that single implementation file.
+`ArtworkRecoveryDecisions.Evaluate` gained an optional active-fence argument and
+`ArtworkReconciler` a matching `ReconcileAsync` overload, so a disable/uninstall
+drain aborts an in-flight prepared publication (`AbortFenced`) instead of
+resuming it, and the publisher's recovery path now executes a restoration resume
+instead of reporting `Deferred`. `ArtworkLifecycleCoordinator` implements the
+host-neutral `IArtworkLifecycleCoordinator`: it records the durable fence,
+reconciles every non-terminal operation to a terminal result before creating the
+guarded restoration, restores every still-owned `Published` surface, leaves the
+active image and all recovery records in place and reports `Incomplete` when a
+restoration is blocked, externally changed, or uncertain, and tombstones a
+confirmed item removal with no Jellyfin image call. The drain classifies each
+reconciled operation by its durable phase, not by the transient reconciliation
+outcome, so an operation that becomes `RecoveryBlocked` (including through an
+`OwnershipUnknown` or non-throwing source-read failure) is never counted as
+resolved and the lifecycle result is `Incomplete`. The item-removal result claims
+a tombstone only after the reconciler actually aborted the in-flight operation; if the
+reconciler cannot reach the `ItemRemoved` decision (for example an
+invalid/quarantined state or operation) the result is `Blocked` and no tombstone
+is claimed. An invalid/corrupt durable fence is preserved as fail-closed rather
+than quarantined away or overwritten with `Normal`, so the publisher read path
+stays closed until an explicit recovery decision. Cleanup is always deferred (no
+source artifact or journal record is deleted eagerly).
+`ArrTagsLifecycleService` now depends on `ILibraryEventSource` and
+`IArtworkLifecycleCoordinator`: `StartAsync` clears a stale fence when the host
+has loaded the plugin active, `StopAsync` performs a bounded
+`DrainForHostShutdownAsync` (a plain shutdown resolves `Normal` and is a no-op)
+and awaits tracked item-removal confirmations within the same bound, and the
+previously no-op `ItemRemoved` hint now runs a tracked, bounded confirmation task
+so synchronous library event delivery is never blocked. `IPluginLifecycleFenceProvider`
+is the host-neutral fence-source boundary and `JellyfinPluginLifecycleState` is
+its single Jellyfin implementation, which reads the plugin manifest status
+through the supported `IPluginManager`; the host has no `OnDisable` hook, so the
+supported disable trigger is the graceful shutdown of the still-loaded instance
+(which can see the persisted `Disabled` manifest status), and a disable that is
+only observed after the plugin is unloaded is not detectable. `Plugin.OnUninstalling`
+runs a bounded synchronous drain because the pinned host deletes the plugin data
+folder immediately after the hook returns; the hook records the `Uninstall`
+fence and restores while the retained source and journal are still present, never
+throws into the host, and leaves a blocked or uncertain restoration untouched.
+All new services use the existing lazy DI factory pattern (no startup work).
+`docs/architecture.md` section 9 documents the exact trigger mapping and the
+undetectable-disabled-after-unload boundary. New tests (`ArtworkLifecycleTests`,
+28 cases, plus focused additions to `ArtworkReconcilerTests`,
+`ArtworkPublisherTests`, `LifecycleFoundationTests`, and `StateBoundaryTests`)
+cover fence durability across a reconstructed `StateRepository`,
+missing/invalid fences, the invalid-fence-not-overwritten-by-reset fail-closed
+rule, publication refusal under every non-normal fence, the present- and
+absent-baseline guarded restoration, reconcile-before-restore ordering,
+blocked/externally-changed/uncertain retention and incomplete reporting
+(including a non-throwing source-read failure that persists `RecoveryBlocked`),
+source-artifact absence, bounded cancellation, the confirmed item-removal
+tombstone with zero image calls, the not-confirmed, reader-failure, and
+invalid-state-no-tombstone paths, the host status-to-fence mapping, the bounded
+hosted shutdown drain, the `Plugin.OnUninstalling` lazy resolution and
+failure-containment, bounded deterministic and traversal-safe
+`StateRepository.Enumerate`, DI registration, and boundary-neutrality. Default
+`./build.sh test` passes 964 with 49 guarded skips (1013 total) and 0 warnings,
+exactly +45 over the task 5.8 baseline; no ADR, `RenderVersion`, renderer
 behavior, or existing passing behavior was changed.
 
 **Acceptance criteria:**

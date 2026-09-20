@@ -49,4 +49,19 @@ public interface IArtworkImageWriter
         Guid itemId,
         ArtworkImageSurface surface,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Removes the current image from the V1 surface through the supported
+    /// Jellyfin item-image removal flow. This is used only to restore an absent
+    /// source baseline; the implementation uses the supported deletion API and
+    /// never deletes a media file or an image-cache entry directly.
+    /// </summary>
+    /// <param name="itemId">A non-empty Jellyfin item identifier.</param>
+    /// <param name="surface">The image surface; V1 supports only the unindexed <c>Primary</c> surface.</param>
+    /// <param name="cancellationToken">The cancellation signal.</param>
+    /// <returns>The bounded mutation result.</returns>
+    Task<ArtworkImageMutationResult> RemoveImageAsync(
+        Guid itemId,
+        ArtworkImageSurface surface,
+        CancellationToken cancellationToken);
 }

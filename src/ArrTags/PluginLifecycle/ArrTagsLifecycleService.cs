@@ -1,29 +1,52 @@
 using System;
+using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ArrTags.Artwork;
 using Microsoft.Extensions.Hosting;
 
 namespace ArrTags.PluginLifecycle;
 
 /// <summary>
 /// The ArrTags hosted lifecycle. It owns library-event subscription for the
-/// duration of its lifetime and performs no provider, rendering, or
-/// full-library work during registration or startup. It remains idle until the
-/// reconciliation milestones register bounded workers.
+/// duration of its lifetime and performs no provider, rendering, or full-library
+/// work during registration or startup. On a graceful shutdown it establishes a
+/// bounded disable/uninstall drain through the lifecycle coordinator, and it
+/// re-reads an <c>ItemRemoved</c> hint on a tracked, bounded background task so
+/// synchronous library event delivery is never blocked.
 /// </summary>
 public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
 {
+    /// <summary>
+    /// The bounded time a graceful shutdown is allowed to spend draining
+    /// lifecycle work before the host stops waiting.
+    /// </summary>
+    public static readonly TimeSpan BoundedDrainTimeout = TimeSpan.FromSeconds(15);
+
     private readonly ILibraryEventSource _libraryEvents;
+    private readonly IArtworkLifecycleCoordinator _coordinator;
+    private readonly TimeSpan _boundedDrainTimeout;
     private readonly EventHandler<LibraryItemChangedEventArgs> _libraryChangedHandler = (_, _) => { };
+    private readonly ConcurrentDictionary<Task, byte> _pendingRemovals = new();
     private int _subscribed;
+    private int _stopping;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrTagsLifecycleService"/> class.
     /// </summary>
     /// <param name="libraryEvents">The library event source to observe.</param>
-    public ArrTagsLifecycleService(ILibraryEventSource libraryEvents)
+    /// <param name="coordinator">The lifecycle coordinator that drains fences and handles item removal.</param>
+    /// <param name="boundedDrainTimeout">An optional bounded drain timeout; defaults to <see cref="BoundedDrainTimeout"/>.</param>
+    /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
+    public ArrTagsLifecycleService(
+        ILibraryEventSource libraryEvents,
+        IArtworkLifecycleCoordinator coordinator,
+        TimeSpan? boundedDrainTimeout = null)
     {
         _libraryEvents = libraryEvents ?? throw new ArgumentNullException(nameof(libraryEvents));
+        _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+        _boundedDrainTimeout = boundedDrainTimeout ?? BoundedDrainTimeout;
     }
 
     /// <inheritdoc />
@@ -31,27 +54,105 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // The host loaded the plugin active, so a previous disable or uninstall
+        // fence did not take effect and must not lock out future publication. The
+        // per-subject state and operation records still guard unsafe work.
+        _coordinator.ResetStaleFence();
+
         if (Interlocked.Exchange(ref _subscribed, 1) == 0)
         {
             _libraryEvents.ItemAdded += _libraryChangedHandler;
             _libraryEvents.ItemUpdated += _libraryChangedHandler;
-            _libraryEvents.ItemRemoved += _libraryChangedHandler;
+            _libraryEvents.ItemRemoved += OnItemRemoved;
         }
 
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
+        Interlocked.Exchange(ref _stopping, 1);
         Unsubscribe();
-        return Task.CompletedTask;
+
+        try
+        {
+            using var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            bounded.CancelAfter(_boundedDrainTimeout);
+            await _coordinator.DrainForHostShutdownAsync(bounded.Token).ConfigureAwait(false);
+            await AwaitPendingRemovalsAsync(bounded.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // A cancelled or timed-out drain is bounded and safe: the durable
+            // fence and recovery records remain for the next reconciliation.
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // The host must still be allowed to shut down; the durable fence and
+            // journal remain authoritative.
+        }
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
         Unsubscribe();
+    }
+
+    private void OnItemRemoved(object? sender, LibraryItemChangedEventArgs e)
+    {
+        if (Volatile.Read(ref _stopping) != 0 || e.ItemId == Guid.Empty)
+        {
+            return;
+        }
+
+        var task = TrackRemovalAsync(e.ItemId);
+        _pendingRemovals.TryAdd(task, 0);
+        _ = task.ContinueWith(
+            static (completed, state) => ((ConcurrentDictionary<Task, byte>)state!).TryRemove(completed, out _),
+            _pendingRemovals,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private async Task TrackRemovalAsync(Guid itemId)
+    {
+        try
+        {
+            using var bounded = new CancellationTokenSource(_boundedDrainTimeout);
+            await _coordinator
+                .HandleItemRemovedAsync(itemId, ArtworkImageSurface.Primary, bounded.Token)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // A bounded item-removal confirmation may be safely abandoned.
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // A bounded item-removal confirmation must never surface to the host.
+        }
+    }
+
+    private async Task AwaitPendingRemovalsAsync(CancellationToken cancellationToken)
+    {
+        var pending = _pendingRemovals.Keys.ToArray();
+        if (pending.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await Task.WhenAll(pending).WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The bounded shutdown wait elapsed; outstanding confirmations are
+            // abandoned without affecting the host.
+        }
     }
 
     private void Unsubscribe()
@@ -63,6 +164,6 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
 
         _libraryEvents.ItemAdded -= _libraryChangedHandler;
         _libraryEvents.ItemUpdated -= _libraryChangedHandler;
-        _libraryEvents.ItemRemoved -= _libraryChangedHandler;
+        _libraryEvents.ItemRemoved -= OnItemRemoved;
     }
 }

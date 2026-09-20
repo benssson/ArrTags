@@ -45,6 +45,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateArtworkOperationStore);
         serviceCollection.TryAddSingleton(CreateArtworkPublisher);
         serviceCollection.TryAddSingleton(CreateArtworkReconciler);
+        serviceCollection.TryAddSingleton(CreateArtworkLifecycleFenceStore);
+        serviceCollection.TryAddSingleton<IPluginLifecycleFenceProvider>(CreatePluginLifecycleFenceProvider);
+        serviceCollection.TryAddSingleton(CreateArtworkLifecycleCoordinator);
+        serviceCollection.TryAddSingleton<IArtworkLifecycleCoordinator>(
+            static serviceProvider => serviceProvider.GetRequiredService<ArtworkLifecycleCoordinator>());
         serviceCollection.TryAddSingleton<IRenderer>(static _ => new SkiaBadgeRenderer());
         serviceCollection.TryAddSingleton(CreateArtworkGenerationCoordinator);
         RegisterProviderHttpClients(serviceCollection);
@@ -138,7 +143,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<SourceArtifactStore>(),
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<ArtworkOperationStore>(),
-            limits);
+            limits,
+            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>());
     }
 
     private static ArtworkReconciler CreateArtworkReconciler(IServiceProvider serviceProvider)
@@ -148,6 +154,28 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<ArtworkOperationStore>(),
             serviceProvider.GetRequiredService<ArtworkPublisher>());
+    }
+
+    private static ArtworkLifecycleFenceStore CreateArtworkLifecycleFenceStore(IServiceProvider serviceProvider)
+    {
+        return new ArtworkLifecycleFenceStore(serviceProvider.GetRequiredService<StateRepository>());
+    }
+
+    private static IPluginLifecycleFenceProvider CreatePluginLifecycleFenceProvider(IServiceProvider serviceProvider)
+    {
+        return new JellyfinPluginLifecycleState(serviceProvider.GetService<IPluginManager>());
+    }
+
+    private static ArtworkLifecycleCoordinator CreateArtworkLifecycleCoordinator(IServiceProvider serviceProvider)
+    {
+        return new ArtworkLifecycleCoordinator(
+            serviceProvider.GetRequiredService<IArtworkSourceReader>(),
+            serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
+            serviceProvider.GetRequiredService<ArtworkOperationStore>(),
+            serviceProvider.GetRequiredService<ArtworkReconciler>(),
+            serviceProvider.GetRequiredService<ArtworkPublisher>(),
+            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>(),
+            serviceProvider.GetRequiredService<IPluginLifecycleFenceProvider>());
     }
 
     private static ArtworkGenerationCoordinator CreateArtworkGenerationCoordinator(IServiceProvider serviceProvider)

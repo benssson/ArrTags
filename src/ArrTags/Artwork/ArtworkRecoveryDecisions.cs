@@ -28,6 +28,7 @@ public static class ArtworkRecoveryDecisions
     /// <param name="current">The fresh active-image observation, or <see langword="null"/> when it could not be observed.</param>
     /// <param name="itemAbsent">Whether the Jellyfin item is confirmed absent.</param>
     /// <param name="observedAt">The comparison time.</param>
+    /// <param name="activeFence">The lifecycle fence currently active for the subject, or <see langword="null"/> to use the fence stored on the operation.</param>
     /// <returns>The bounded recovery decision.</returns>
     /// <exception cref="ArgumentNullException">The operation is <see langword="null"/>.</exception>
     public static ArtworkRecoveryDecision Evaluate(
@@ -35,7 +36,8 @@ public static class ArtworkRecoveryDecisions
         PublishedArtworkState? state,
         ActiveImageIdentity? current,
         bool itemAbsent,
-        DateTimeOffset observedAt)
+        DateTimeOffset observedAt,
+        ArtworkLifecycleFence? activeFence = null)
     {
         ArgumentNullException.ThrowIfNull(operation);
 
@@ -78,8 +80,12 @@ public static class ArtworkRecoveryDecisions
         if (ArtworkOwnershipComparer.Compare(operation.ExpectedBeforeIdentity, current, observedAt).Status
             == ArtworkOwnershipStatus.Owned)
         {
+            // The currently active fence is authoritative during a disable or
+            // uninstall drain; otherwise the fence stored on the operation is
+            // used so a previously fenced operation stays fenced.
+            var fence = activeFence ?? operation.LifecycleFence;
             if (operation.Kind == ArtworkOperationKind.Publication
-                && !ArtworkOperationFencing.AllowsNewPublication(operation.LifecycleFence))
+                && !ArtworkOperationFencing.AllowsNewPublication(fence))
             {
                 return new ArtworkRecoveryDecision(
                     ArtworkReconciliationAction.AbortFenced,

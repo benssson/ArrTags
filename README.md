@@ -6,10 +6,11 @@ and route variants), 5.2 (source-artwork provenance and guarded restoration
 state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native
 packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store),
 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7
-(postcondition reconciliation of uncertain publication outcomes), and 5.8
+(postcondition reconciliation of uncertain publication outcomes), 5.8
 (preserve the current usable artwork when source capture or rendering cannot
-safely complete)
-are complete; the remaining Phase 5 tasks are not started.
+safely complete), and 5.9 (fence and drain publication operations during
+disable/uninstall and tombstone confirmed item removal)
+are complete; the remaining Phase 5 tasks (5.10 and 5.11) are not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -344,13 +345,13 @@ Completed in Phase 5 (Jellyfin artwork integration):
   now records the logical publication fingerprint and renderer version on the
   operation so an after-match recovery commits without re-rendering. The
   reconciler adds no startup work; Phase 6 owns the event/queue/startup-scan
-  wiring and task 5.9 owns the guarded restoration mutation (restoration resume
-  is reported as `Deferred` and left in place). New tests
-  (`ArtworkReconcilerTests`, 24 cases) cover every decision branch, the fence
+  wiring. Task 5.9 now executes the guarded restoration in the publisher, so a
+  restoration resume is no longer reported as `Deferred`. New tests
+  (`ArtworkReconcilerTests`) cover every decision branch, the fence
   abort, resume revalidation, source retention, artifact corruption, the
   item-absent tombstone, the durable-final-state completion, resolution of a
-  previously `RecoveryBlocked` operation, cancellation, exception containment,
-  DI registration, and boundary-neutrality.
+  previously `RecoveryBlocked` operation, guarded restoration execution,
+  cancellation, exception containment, DI registration, and boundary-neutrality.
 - 5.8 Implemented the provider-neutral single-subject artwork generation
   coordination in `src/ArrTags/Artwork` (architecture section 9; data-model
   sections 3.7-3.8). `ArtworkGenerationCoordinator` composes the host source
@@ -375,13 +376,60 @@ Completed in Phase 5 (Jellyfin artwork integration):
   DI pattern and no startup work, with no event, queue, or library-scan wiring.
   New tests (`ArtworkGenerationCoordinatorTests`, 23 cases) cover every outcome
   and preservation path with injectable doubles and assert zero image mutation.
+- 5.9 Implemented the durable lifecycle fence, the disable/uninstall drain and
+  guarded restoration, the supported image-removal primitive, and confirmed
+  item-removal tombstoning in `src/ArrTags/Artwork` and
+  `src/ArrTags/PluginLifecycle`. `ArtworkLifecycleFenceStore` records the active
+  `Normal`/`Disable`/`Uninstall`/`ItemRemoved` fence as authoritative,
+  integrity-tagged, atomically written state, and the publisher now refuses new
+  publication unless the durable fence is a valid `Normal`. `ArtworkPublisher`
+  gained a guarded restoration path that reuses the same durable phases,
+  readback, and postcondition commit rules as publication: a present baseline
+  restores the retained source through the supported stream `SaveImage` API and
+  an absent baseline removes the ArrTags image through the new
+  `IArtworkImageWriter.RemoveImageAsync` primitive, which is implemented in
+  `JellyfinArtworkImageWriter` with the supported `BaseItem.DeleteImageAsync`
+  flow (never a direct media-file or image-cache delete). `ArtworkReconciler`
+  now executes a restoration resume instead of deferring it, and its
+  `ArtworkRecoveryDecisions` evaluation accepts the currently active fence so a
+  disable/uninstall drain aborts an in-flight prepared publication before
+  restoration. `ArtworkLifecycleCoordinator` records the fence, reconciles every
+  non-terminal operation to a terminal result before restoring, leaves the image
+  and its recovery records in place and reports an incomplete result when a
+  restoration is blocked, externally changed, or uncertain, and tombstones a
+  confirmed item removal with no Jellyfin image call. The drain classifies each
+  reconciled operation by its durable phase, so an operation that becomes
+  `RecoveryBlocked` (including through a non-throwing source-read failure) is
+  reported `Incomplete` rather than resolved; the item-removal result claims a
+  tombstone only when the reconciler actually aborted the in-flight operation; and an
+  invalid/corrupt fence is preserved as fail-closed rather than overwritten with
+  `Normal`. The hosted
+  `ArrTagsLifecycleService` resolves the fence at graceful shutdown and performs
+  a bounded drain (a plain shutdown is a no-op), and wires the previously no-op
+  `ItemRemoved` hint to a tracked, bounded confirmation task. The
+  `Plugin.OnUninstalling` hook performs a bounded synchronous drain because the
+  pinned host deletes the plugin data folder immediately after the hook; it
+  never throws into the host. All new services use the existing lazy DI pattern
+  with no startup work, and no source artifact or journal record is deleted
+  eagerly. New tests (`ArtworkLifecycleTests`, 28 cases, plus focused additions
+  to `ArtworkReconcilerTests`, `ArtworkPublisherTests`,
+  `LifecycleFoundationTests`, and `StateBoundaryTests`) cover fence durability,
+  invalid-fence fail-closed and not-overwritten-by-reset, publication refusal
+  under every non-normal fence, present/absent-baseline restoration,
+  reconcile-before-restore ordering, blocked/changed/uncertain retention
+  (including a recovery-blocked source-read failure reported `Incomplete`),
+  bounded cancellation, item-removal confirmation and the invalid-state
+  no-tombstone path, the hosted lifecycle wiring, the `Plugin.OnUninstalling`
+  lazy resolution and failure containment, bounded deterministic traversal-safe
+  `StateRepository.Enumerate`, DI registration, and boundary-neutrality. See
+  `docs/architecture.md` section 9 and `docs/data-model.md` section 3.10.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 919 automated tests; 49 additional environment-guarded tests (the task
+- Passes 964 automated tests; 49 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, the task 5.1 host route cases,
@@ -396,9 +444,9 @@ The plugin:
 Next tasks:
 
 - Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3,
-  5.4, 5.6, 5.5, 5.7, and 5.8 are complete; the next task in the authoritative
-  Phase 5 execution order is 5.9 (fence and drain publication operations during
-  disable/uninstall and tombstone confirmed item removal).
+  5.4, 5.6, 5.5, 5.7, 5.8, and 5.9 are complete; the next task in the
+  authoritative Phase 5 execution order is 5.10 (the configured disable/limit
+  policy for duplicate or overlapping badges).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

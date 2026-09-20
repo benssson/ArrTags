@@ -109,6 +109,58 @@ public sealed class JellyfinArtworkImageWriter : IArtworkImageWriter
     }
 
     /// <inheritdoc />
+    public async Task<ArtworkImageMutationResult> RemoveImageAsync(
+        Guid itemId,
+        ArtworkImageSurface surface,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(surface);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (itemId == Guid.Empty)
+        {
+            return ArtworkImageMutationResult.Failure(
+                ArtworkImageMutationStatus.ItemNotFound,
+                "A non-empty Jellyfin item identifier is required.");
+        }
+
+        if (surface.ImageType != ArtworkImageType.Primary || surface.Index is not null)
+        {
+            return ArtworkImageMutationResult.Failure(
+                ArtworkImageMutationStatus.UnsupportedSurface,
+                "Only the unindexed Primary image surface is supported.");
+        }
+
+        try
+        {
+            var item = _libraryManager.GetItemById(itemId);
+            if (item is null)
+            {
+                return ArtworkImageMutationResult.Failure(
+                    ArtworkImageMutationStatus.ItemNotFound,
+                    "The Jellyfin item was not found.");
+            }
+
+            // The supported deletion flow removes the local image file when the
+            // image is local, removes the image information from the item, and
+            // persists the normal item-image update. ArrTags never deletes a
+            // media file or an image-cache entry directly.
+            await item.DeleteImageAsync(V1ImageType, 0).ConfigureAwait(false);
+            return ArtworkImageMutationResult.Success();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return ArtworkImageMutationResult.Failure(
+                ArtworkImageMutationStatus.Failed,
+                "The active image could not be removed through Jellyfin.");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<ArtworkImageMutationResult> PersistItemUpdateAsync(
         Guid itemId,
         ArtworkImageSurface surface,

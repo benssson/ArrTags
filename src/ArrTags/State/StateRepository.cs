@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using ArrTags.Configuration;
 
@@ -16,6 +17,11 @@ public sealed class StateRepository
     /// hold bounded metadata and references, not image artifacts.
     /// </summary>
     public const int MaxStateRecordBytes = 4 * 1024 * 1024;
+
+    /// <summary>
+    /// The default bounded maximum number of records returned by an enumeration.
+    /// </summary>
+    public const int MaxEnumerationRecords = 100_000;
 
     private readonly PluginStatePaths _paths;
     private readonly OperationalLimits _limits;
@@ -95,6 +101,78 @@ public sealed class StateRepository
         }
 
         AtomicFileWriter.Write(_paths.GetRecordPath(authority, kind, recordId), bytes);
+    }
+
+    /// <summary>
+    /// Enumerates the valid records of one kind. The enumeration is bounded and
+    /// materialized before any record is read so a quarantining read cannot
+    /// disturb the scan. An invalid authoritative record is quarantined by
+    /// <see cref="Read{T}"/> and omitted from the result rather than returned as
+    /// current state; it is never treated as absent by the caller.
+    /// </summary>
+    /// <typeparam name="T">The record payload type.</typeparam>
+    /// <param name="authority">The state authority.</param>
+    /// <param name="kind">The record kind.</param>
+    /// <param name="maxRecords">The bounded maximum number of returned records.</param>
+    /// <returns>The valid records in a bounded, deterministic order.</returns>
+    public IReadOnlyList<T> Enumerate<T>(StateAuthority authority, string kind, int maxRecords)
+        where T : class
+    {
+        if (maxRecords <= 0)
+        {
+            return Array.Empty<T>();
+        }
+
+        var directory = _paths.GetKindDirectory(authority, kind);
+        if (!Directory.Exists(directory))
+        {
+            return Array.Empty<T>();
+        }
+
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Array.Empty<T>();
+        }
+
+        Array.Sort(files, StringComparer.Ordinal);
+        var results = new List<T>(Math.Min(files.Length, maxRecords));
+        foreach (var file in files)
+        {
+            if (results.Count >= maxRecords)
+            {
+                break;
+            }
+
+            var recordId = Path.GetFileNameWithoutExtension(file);
+            if (string.IsNullOrEmpty(recordId))
+            {
+                continue;
+            }
+
+            StateReadResult<T> read;
+            try
+            {
+                read = Read<T>(authority, kind, recordId);
+            }
+            catch (ArgumentException)
+            {
+                // A file whose name is not a safe record identifier is not a
+                // plugin record and is skipped rather than treated as state.
+                continue;
+            }
+
+            if (read.Status == StateReadStatus.Found && read.Value is not null)
+            {
+                results.Add(read.Value);
+            }
+        }
+
+        return results;
     }
 
     /// <summary>
