@@ -701,6 +701,8 @@ after a newer operation or lifecycle fence has been accepted.
 | `sourcePresence` | `Present` or `Absent` | Yes | Generated | Explicit presence of the retained source baseline; `Absent` is an explicit baseline with no artifact. |
 | `sourceArtifactId` | Opaque artifact identifier | Required when source is present | Generated | Retained original used by publication or restoration. |
 | `derivedArtifactId` | Opaque artifact identifier | Required for publication | Generated | Durable, validated render output; never only an evictable cache entry. |
+| `candidatePublicationFingerprint` | Opaque logical publication fingerprint | Required for publication | Generated | The target `publishedFingerprint` to commit when the after postcondition is recovered; recorded so recovery never has to re-render or re-derive it. |
+| `rendererVersion` | Version identifier | Required for publication | Plugin | The renderer version that produced the candidate derived artifact; recorded so a recovered commit does not misattribute the active image to a later renderer version. |
 | `phase` | ArtworkOperationPhase | Yes | Generated | Durable lower-bound marker for external side effects. |
 | `lifecycleFence` | Normal, Disable, Uninstall, or ItemRemoved | Yes | Generated | Prevents new publication work during lifecycle transitions. |
 | `attempt` | Non-negative integer | Yes | Generated | Bounded recovery/retry accounting. |

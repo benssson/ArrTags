@@ -4,8 +4,10 @@
 Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
 and route variants), 5.2 (source-artwork provenance and guarded restoration
 state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native
-packaging), and 5.6 (the durable `ArtworkOperation` write-ahead record and store)
-are complete; the remaining Phase 5 tasks are not started.
+packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store),
+5.5 (publish completed artwork through Jellyfin's supported item-image APIs), and
+5.7 (postcondition reconciliation of uncertain publication outcomes) are
+complete; the remaining Phase 5 tasks are not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -318,13 +320,42 @@ Completed in Phase 5 (Jellyfin artwork integration):
   derived-artifact rejection, state hygiene, the stream overload (not the
   deleting path or URL overload), the normal image update flow, and
   boundary-neutrality.
+- 5.7 Implemented the provider-neutral, postcondition-based reconciliation
+  service in `src/ArrTags/Artwork` (ADR-003; data-model section 3.10.4;
+  architecture section 9). `ArtworkRecoveryDecisions` is the pure 3.10.4
+  decision table and `ArtworkReconciler` is the registered invocable boundary:
+  it serializes with normal publication through the shared subject gate, reads
+  the authoritative state and durable operation (quarantining an invalid
+  record), re-observes the item and active image, and delegates execution to the
+  publisher. A before-identity match resumes or retries the same deterministic
+  operation only under the current generation and lifecycle fence and reads the
+  retained derived artifact instead of recapturing the active image; a lifecycle
+  fence aborts a prepared publication without mutation. An after-identity match
+  ensures the normal item update is persisted and commits the intended final
+  state. An observable mismatch records `OwnershipLost` and aborts; an
+  unobservable image records `OwnershipUnknown` and leaves the image untouched; a
+  confirmed missing item writes an `ItemRemoved` tombstone with no image
+  mutation; a durable final state completes the journal without further
+  mutation; and invalid state or a missing/corrupt required artifact enters
+  `RecoveryBlocked` with no replay or cleanup. Reconciliation deletes no
+  artifacts, so an artifact not proven non-active is retained, and the publisher
+  now records the logical publication fingerprint and renderer version on the
+  operation so an after-match recovery commits without re-rendering. The
+  reconciler adds no startup work; Phase 6 owns the event/queue/startup-scan
+  wiring and task 5.9 owns the guarded restoration mutation (restoration resume
+  is reported as `Deferred` and left in place). New tests
+  (`ArtworkReconcilerTests`, 24 cases) cover every decision branch, the fence
+  abort, resume revalidation, source retention, artifact corruption, the
+  item-absent tombstone, the durable-final-state completion, resolution of a
+  previously `RecoveryBlocked` operation, cancellation, exception containment,
+  DI registration, and boundary-neutrality.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 872 automated tests; 49 additional environment-guarded tests (the task
+- Passes 896 automated tests; 49 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, the task 5.1 host route cases,
@@ -339,9 +370,9 @@ The plugin:
 Next tasks:
 
 - Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3,
-  5.4, 5.6, and 5.5 are complete; the next task in the authoritative Phase 5
-  execution order is 5.7 (reconcile uncertain `SaveImage`, item update, and
-  provenance persistence outcomes by postcondition).
+  5.4, 5.6, 5.5, and 5.7 are complete; the next task in the authoritative
+  Phase 5 execution order is 5.8 (preserve the current usable artwork when
+  source capture or rendering cannot safely complete).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

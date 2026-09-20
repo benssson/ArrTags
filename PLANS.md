@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), and 5.5 (publish completed artwork through Jellyfin's supported item-image APIs) are complete; the remaining Phase 5 tasks (5.7 through 5.11) are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), and 5.7 (postcondition reconciliation of uncertain publication outcomes) are complete; the remaining Phase 5 tasks (5.8 through 5.11) are not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -93,8 +93,15 @@ Jellyfin image mutation. Task 5.5 is complete: the single-subject durable
 publication orchestration and the single Jellyfin image-mutation implementation
 are implemented in `src/ArrTags/Artwork`, driving the write-ahead ordering
 through the supported stream `SaveImage` and `UpdateToRepositoryAsync(ImageUpdate)`
-flow with a fail-closed revalidation and readback. The remaining Phase 5 tasks
-(5.7 through 5.11 in the authoritative order) are not started.
+flow with a fail-closed revalidation and readback. Task 5.7 is complete: the
+provider-neutral postcondition reconciliation service applies the data-model
+3.10.4 decision table to a durable operation, resumes the deterministic
+publication only under the current generation and lifecycle fence without
+recapturing a source, commits the intended final state when the after identity is
+observed, records ownership loss or uncertainty without mutating the image,
+tombstones a confirmed item removal without an image call, and blocks or
+quarantines invalid state without replay or cleanup. The remaining Phase 5 tasks
+(5.8 through 5.11 in the authoritative order) are not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -143,7 +150,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1368,7 +1375,7 @@ provenance and coexisting with Jellyfin Enhanced.
 - [x] 5.6 Persist a durable `ArtworkOperation` before `SaveImage`, including
   before and candidate-after identities, artifact references, generation, and
   ownership/publication tokens.
-- [ ] 5.7 Reconcile uncertain `SaveImage`, item update, and provenance
+- [x] 5.7 Reconcile uncertain `SaveImage`, item update, and provenance
   persistence outcomes by postcondition; never blindly replay or delete an
   active artifact.
 - [ ] 5.8 Preserve the current usable artwork when source capture or rendering
@@ -1653,6 +1660,54 @@ instead of the deleting path or URL overload, the normal image update flow, and
 boundary-neutrality. Default `./build.sh test` passes 872 with 49 guarded skips
 (921 total) and 0 warnings, exactly +23 over the task 5.6 baseline; no ADR,
 `RenderVersion`, renderer behavior, or existing passing behavior was changed.
+
+**Task 5.7 status:** Complete. The provider-neutral, postcondition-based
+reconciliation service is implemented in `src/ArrTags/Artwork` following
+ADR-003, `docs/data-model.md` section 3.10.4, and `docs/architecture.md`
+section 9 ("Crash-consistent publication and recovery" and "Restart
+reconciliation"). `ArtworkRecoveryDecisions` is the pure implementation of the
+3.10.4 decision table: it returns a bounded action (`NothingToReconcile`,
+`Resume`, `AbortFenced`, `CompleteAfter`, `FinalStateDurable`, `OwnershipLost`,
+`OwnershipUnknown`, `ItemRemoved`, or `RecoveryBlocked`) from the durable
+operation, the associated `PublishedArtworkState`, a fresh active-image
+observation, and item absence, and it performs no I/O or image mutation.
+`ArtworkReconciler` is the registered invocable boundary: it serializes with
+normal publication through the shared `ArtworkSubjectGate`, reads the
+authoritative state and durable operation (quarantining an invalid record),
+re-observes the item and active image, distinguishes a confirmed missing item
+from an unobservable image, and delegates execution to the publisher's
+deterministic protocol. `ArtworkPublisher` now exposes an internal recoverable
+execution path that the normal publication route and reconciliation share, so
+the supported `SaveImage`, the durable phase ordering, the readback, and the
+final-state commit are never reimplemented. A before-identity match resumes or
+retries the same deterministic operation only when the generation and lifecycle
+fence permit it and never recaptures a source; the publisher reads the retained
+derived artifact instead of the active image. An after-identity match ensures the
+normal item update is persisted and commits the intended final state. An
+observable mismatch records `OwnershipLost` and aborts; an unobservable image
+records `OwnershipUnknown` and leaves the image untouched; a confirmed missing
+item writes an `ItemRemoved` tombstone and performs no image mutation; a durable
+final state completes the journal without a further mutation; and an invalid
+operation, state, or required artifact enters `RecoveryBlocked` with no replay or
+cleanup. Reconciliation performs no artifact deletion, so an artifact that is not
+proven non-active is retained. The publisher records the logical publication
+fingerprint and renderer version on a publication operation (`ArtworkOperation`
+gained the optional `candidatePublicationFingerprint` and `rendererVersion`
+fields, documented in data-model 3.10.3) so an after-match recovery can commit the
+target state without re-rendering. `ArtworkReconciler` is registered with the
+existing lazy DI pattern and adds no startup work; the event/queue/startup-scan
+wiring belongs to Phase 6, and the guarded restoration mutation remains the
+lifecycle task 5.9 (restoration resume is reported as `Deferred` and left in
+place). New tests (`ArtworkReconcilerTests`, 24 cases) cover every branch of the
+decision table, the lifecycle-fence abort, before-identity revalidation on
+resume, source-artifact retention (no recapture), derived/source artifact
+corruption entering `RecoveryBlocked`, the item-absent tombstone with no
+mutation, the durable-final-state completion, resolution of a previously
+`RecoveryBlocked` operation, cancellation, containment of a reader exception,
+the DI registration, and boundary-neutrality. Default `./build.sh test` passes
+896 with 49 guarded skips (945 total) and 0 warnings, exactly +24 over the task
+5.5 baseline; no ADR, `RenderVersion`, renderer behavior, or existing passing
+behavior was changed.
 
 **Acceptance criteria:**
 

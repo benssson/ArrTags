@@ -78,7 +78,9 @@ internal static class ArtworkOperationFixtures
             candidateAfterContentSha256: derivedHash,
             sourceArtifactId: sourcePresence == ArtworkImagePresence.Present ? sourceHash : null,
             derivedArtifactId: ArtworkTokens.Create(),
-            lastError: lastError);
+            lastError: lastError,
+            candidatePublicationFingerprint: ArtworkHashes.ComputeSha256(Encoding.UTF8.GetBytes("publication-fingerprint")),
+            rendererVersion: 1);
     }
 
     /// <summary>
@@ -185,6 +187,8 @@ internal static class ArtworkOperationFixtures
             operation.SourceArtifactId,
             operation.DerivedArtifactId,
             operation.Attempt,
-            operation.LastError);
+            operation.LastError,
+            operation.CandidatePublicationFingerprint,
+            operation.RendererVersion);
     }
 }

@@ -628,7 +628,7 @@ that point and required explicit user approval to begin.
 
 ## Phase 5 - Jellyfin artwork integration (Milestone 5)
 
-**Status:** In progress. Tasks 5.1, 5.2, 5.3, 5.4, and 5.6 complete; tasks 5.5 and 5.7 through 5.11 not started.
+**Status:** In progress. Tasks 5.1, 5.2, 5.3, 5.4, 5.6, 5.5, and 5.7 complete; tasks 5.8 through 5.11 not started.
 
 ### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
 
@@ -1031,3 +1031,70 @@ and `./build.sh test` pass. The default suite passes 872 with 49
 environment-guarded skips (921 total), exactly +23 over the task 5.6 baseline
 (849/49/898 with the package present), with no regressions. No ADR,
 `RenderVersion`, renderer behavior, or existing passing behavior was changed.
+
+### Task 5.7 - Postcondition reconciliation of uncertain publication outcomes
+
+Task 5.7 implements provider-neutral, postcondition-based reconciliation for the
+durable `ArtworkOperation` journal (ADR-003; `docs/data-model.md` section 3.10.4;
+`docs/architecture.md` section 9). It does not add event, queue, startup-scan, or
+library-event wiring (Phase 6) and does not implement the guarded restoration
+mutation (task 5.9).
+
+- `src/ArrTags/Artwork/ArtworkReconciliationAction.cs`,
+  `ArtworkRecoveryDecision.cs`, and `ArtworkRecoveryDecisions.cs`: the pure
+  implementation of the 3.10.4 decision table. `Evaluate` takes the durable
+  operation, the associated `PublishedArtworkState`, a fresh active-image
+  observation, and confirmed item absence, and returns a bounded action
+  (`NothingToReconcile`, `Resume`, `AbortFenced`, `CompleteAfter`,
+  `FinalStateDurable`, `OwnershipLost`, `OwnershipUnknown`, `ItemRemoved`, or
+  `RecoveryBlocked`). It performs no I/O and no image mutation.
+- `src/ArrTags/Artwork/ArtworkReconciliationResult.cs` and
+  `ArtworkReconciliationOutcome.cs`: the bounded result of one reconciliation
+  attempt, carrying only a bounded outcome, reason, operation id, and state.
+- `src/ArrTags/Artwork/ArtworkReconciler.cs`: the registered, provider-neutral
+  invocable boundary. It serializes with normal publication through
+  `ArtworkSubjectGate`, reads the authoritative state and durable operation
+  (quarantining an invalid record rather than replaying it), distinguishes a
+  confirmed missing item from an unobservable image, evaluates the table, and
+  delegates execution to `ArtworkPublisher.ExecuteRecoveryAsync`. A failure or
+  uncertainty is contained and never escapes as an exception.
+- `src/ArrTags/Artwork/ArtworkPublisher.cs`: the deterministic publication
+  protocol was extracted into a shared recoverable execution path used by both
+  the normal publication route and reconciliation, so the supported `SaveImage`,
+  the durable phase ordering, the readback, and the final-state commit are never
+  reimplemented. Resume re-reads the before identity immediately before mutation
+  and reads the retained derived artifact rather than the active image. An
+  after-identity match ensures the normal item update is persisted and commits
+  the intended final state; an observable mismatch records `OwnershipLost` and
+  aborts; an unobservable image records `OwnershipUnknown`; a confirmed missing
+  item writes an `ItemRemoved` tombstone with no image mutation; a durable final
+  state completes the journal; and invalid state or a missing/corrupt required
+  artifact enters `RecoveryBlocked` with no replay or cleanup. No artifact is
+  deleted, so an artifact not proven non-active is retained. The per-subject
+  serialization gate moved to the shared internal `ArtworkSubjectGate` so
+  publication and reconciliation cannot interleave.
+- `src/ArrTags/Artwork/ArtworkOperation.cs` and `docs/data-model.md` section
+  3.10.3: a publication operation now records the logical
+  `candidatePublicationFingerprint` and the `rendererVersion` that produced its
+  derived artifact, so an after-match recovery commits the target
+  `PublishedArtworkState` without re-rendering or misattributing the renderer
+  version. Both fields are required for a publication and forbidden for a
+  restoration.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers
+  `ArtworkReconciler` with the existing lazy factory pattern and no startup work.
+- Tests: `tests/ArrTags.Tests/ArtworkReconcilerTests.cs` (24 cases) cover the
+  prepared and mutation-started before-match resume/retry, the candidate and
+  observed-after completion, the durable-final-state completion, ownership loss
+  and uncertainty, the item-absent tombstone with no mutation, the lifecycle
+  fence abort, before-identity revalidation on resume, missing derived/source
+  artifacts entering `RecoveryBlocked`, resolution of a previously
+  `RecoveryBlocked` operation, restoration resume deferral, no-op for a terminal
+  or absent operation, cancellation, containment of a reader exception, the DI
+  registration, and boundary-neutrality. `ArtworkOperationFixtures` and the
+  `ArtworkOperationTests` helper supply the new required publication fields.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 896 with 49
+environment-guarded skips (945 total), exactly +24 over the task 5.5 baseline,
+with no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed.

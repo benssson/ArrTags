@@ -1,0 +1,94 @@
+{
+  "task": "5.7",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "INFO",
+      "area": "Artifact cleanup / postcondition safety",
+      "summary": "Reconciliation performs no artifact deletion at all; the FinalStateDurable 'safe cleanup' step is a no-op.",
+      "detail": "No Delete/Remove/Evict call exists in ArtworkReconciler or the ArtworkPublisher recovery path (grep confirms). The data-model 3.10.4 FinalStateDurable row says 'perform only safe cleanup', and docs/architecture.md and the task require that an artifact not proven non-active is retained. Doing nothing is the strictest fail-closed interpretation and satisfies 'never blindly ... delete an active artifact'. It does not hide an acceptance gap for 5.7 (cleanup is optional and bounded, not required), though bounded non-active cleanup remains future work.",
+      "evidence": "src/ArrTags/Artwork/ArtworkPublisher.cs ExecuteRecoveryAsync/PersistResolution; ArtworkReconciler.cs; no delete primitives referenced."
+    },
+    {
+      "id": "F2",
+      "severity": "INFO",
+      "area": "Scope / restoration",
+      "summary": "A restoration resume (before-identity match) returns Deferred and leaves the operation in Prepared; it never claims completion.",
+      "detail": "ResumeRecoveryAsync short-circuits ArtworkOperationKind.Restoration to ArtworkReconciliationOutcome.Deferred without any image mutation. This correctly defers the guarded restoration mutation (remove/restore through the supported API) to task 5.9 and does not falsely mark the operation Committed. Restoration after-match completion, ownership loss/uncertainty, item-removal tombstone, and durable-final-state completion are still handled. No image-removal primitive was added to IArtworkImageWriter, which is appropriate for 5.7.",
+      "evidence": "src/ArrTags/Artwork/ArtworkPublisher.cs ResumeRecoveryAsync (lines ~702-716); test RestorationResumeIsDeferredToLifecycleHandling."
+    },
+    {
+      "id": "F3",
+      "severity": "INFO",
+      "area": "Scope / wiring",
+      "summary": "No event, queue, startup-scan, or hosted-service wiring was added; ArtworkReconciler is an invocable boundary only.",
+      "detail": "Only a lazy singleton DI registration was added (ArrTagsServiceRegistrator.CreateArtworkReconciler). No IHostedService, library event hook, or scheduled scan references the reconciler. This matches the task statement ('invocable provider-neutral boundary') and docs/architecture.md, which assigns driving to Phase 6. The normal PublishAsync still refuses new work while a non-terminal RecoveryBlocked operation exists, so the fail-closed invariant holds even without a driver.",
+      "evidence": "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs diff; grep shows ArtworkReconciler referenced only in its own file, the registrator, and tests."
+    },
+    {
+      "id": "F4",
+      "severity": "INFO",
+      "area": "Generation / lifecycle fencing",
+      "summary": "Generation gating is provided by the shared per-subject gate plus ArtworkOperationStore's generation fence, not by carrying a separate generation token into the decision.",
+      "detail": "ArtworkRecoveryDecisions.Evaluate revalidates the lifecycle fence (AbortFenced for a fenced publication) but does not itself compare operation.Generation. Because ReconcileAsync reads the single durable operation under the same ArtworkSubjectGate used by PublishAsync, the reconciled record is the current generation; stale writes are rejected by ArtworkOperationStore.EnsureWriteIsFenced (IsStale / IsSameGeneration). The worker documentation acknowledges this. It is an acceptable realization for 5.7, which has no Phase 6 queue to carry a separate generation token.",
+      "evidence": "ArtworkSubjectGate.cs; ArtworkOperationStore.EnsureWriteIsFenced; ArtworkRecoveryDecisions.Evaluate lines 78-92; worker known_limitations item (f)."
+    },
+    {
+      "id": "F5",
+      "severity": "LOW",
+      "area": "Recovery edge case",
+      "summary": "ReconstructPublicationSession builds an internally inconsistent session if a repeated-publication operation's persisted Published state is missing/mismatched, causing the final-state write to throw and be contained as RecoveryBlocked.",
+      "detail": "The fallback session sets sourceCaptureIdentity = operation.ExpectedBeforeIdentity and sourceFingerprint = operation.SourceArtifactId. For a repeated publication (v2) the expected-before identity is the v1 derived image, while the fingerprint is the original source hash; PublishedArtworkState.Validate requires SourceCaptureIdentity.ContentSha256 == SourceFingerprint. If the Published state is absent (not merely invalid, which is caught earlier) the CommitPublication result is invalid, _states.Write throws, and the reconciler's catch-all returns RecoveryBlocked. The already-performed image mutation is not corrupted and nothing is replayed/recaptured, so the outcome is fail-closed, but the operation cannot be adopted in this state-loss edge case. Not reachable in normal crash/restart: the first-publication captured session reconstructs consistently (expected-before == source), and a repeated publication normally has a persisted Published state that ReconstructPublicationSession returns unchanged. Recommend a follow-up to reconstruct the source capture identity from the retained source artifact, not from expectedBefore, when a prior publication is implied.",
+      "evidence": "src/ArrTags/Artwork/ArtworkPublisher.cs ReconstructPublicationSession (~1003-1026); PublishedArtworkState.ValidateSourceSession (lines 304-329); PublishedArtworkStateStore.Write throws on invalid state; ReconcileAsync catch-all."
+    },
+    {
+      "id": "F6",
+      "severity": "INFO",
+      "area": "Decision-table fidelity",
+      "summary": "Evaluation precedence matches the 3.10.4 table and architecture section 9 restart-reconciliation ordering.",
+      "detail": "Evaluate checks: terminal -> NothingToReconcile; item absent -> ItemRemoved; durable final state -> FinalStateDurable; unobservable -> OwnershipUnknown; after match -> CompleteAfter; before match -> Resume/AbortFenced; otherwise OwnershipLost. The final-state-durable row is intentionally checked before the current observation (architecture: 'the final state and verified active identity take precedence'), and the after match is checked before the before match (architecture lists the after rule first). ItemRemoved takes precedence over FinalStateDurable, consistent with 'if the item is absent, write a tombstone'. The method performs no I/O or mutation (only ArtworkOwnershipComparer and ArtworkOperationFencing, both pure). Prepareed vs mutation-started before-match share the Resume action, but the executor preserves/reopens the phase so it never moves the durable phase backward and never recaptures a source.",
+      "evidence": "ArtworkRecoveryDecisions.Evaluate lines 33-97; docs/data-model.md 3.10.4; docs/architecture.md lines 568-599."
+    },
+    {
+      "id": "F7",
+      "severity": "INFO",
+      "area": "Test coverage",
+      "summary": "The new ArtworkOperation publication-required validation branches (missing candidatePublicationFingerprint, non-positive rendererVersion, restoration-forbidden fields) have no direct unit assertion; they are only exercised indirectly.",
+      "detail": "ArtworkOperationTests exercises the pre-existing required publication fields but not the two new ones. The CompleteAfter defensive branch in ArtworkPublisher that rejects a publication lacking the fingerprint is effectively unreachable because ArtworkOperationStore.Write/Read validate and quarantine such records; the reconciler tests that pass through the store do confirm the two new fields survive serialization (RecoveryBlockedOperationWithAfterMatchCompletes). This is a minor coverage gap, not a correctness gap; no existing assertion was weakened (the 5.6 fixtures only supply the new required fields).",
+      "evidence": "tests/ArrTags.Tests/ArtworkOperationTests.cs helper diff; ArtworkOperationTests validate cases at lines 87-113; ArtworkReconcilerTests RecoveryBlockedOperationWithAfterMatchCompletes."
+    },
+    {
+      "id": "F8",
+      "severity": "INFO",
+      "area": "Attribute-level contract",
+      "summary": "ItemRemoved tombstones a non-terminal operation with an ItemRemoved lifecycle fence and MarkRemoved state, performing no image mutation; RecoveryBlocked operations remain re-evaluatable rather than being treated as permanently terminal.",
+      "detail": "Evaluate's terminal short-circuit covers only Committed/Aborted, so a RecoveryBlocked operation is re-evaluated and can be resumed (reopened at generation+1) or completed, as the table and the worker's documented limitation (d) intend. Corrupt state/operation are quarantined by the stores and short-circuit to the RecoveryBlocked outcome before evaluation, so no replay or cleanup occurs.",
+      "evidence": "ArtworkRecoveryDecisions.Evaluate line 42; ArtworkPublisher.ExecuteRecoveryAsync ItemRemoved/RecoveryBlocked cases; tests ItemAbsentWritesARemovalTombstoneAndPerformsNoMutation, CorruptStateRecordIsQuarantinedAndBlocksRecovery, CorruptOperationRecordIsQuarantinedAndBlocksRecovery, RecoveryBlockedOperationIsResumedByALaterReconciliation."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh restore -> 'All projects are up-to-date for restore' (locked mode, no packages.lock.json change).",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test (pinned sysroot env) -> Passed: 896, Failed: 0, Skipped: 49, Total: 945 (matches worker claim; task 5.5 baseline 872/49/921, +24).",
+    "dotnet test --filter FullyQualifiedName~ArtworkReconcilerTests -> Passed: 24, Failed: 0, Skipped: 0 (all 24 [Fact] cases).",
+    "Reviewed tests/ArrTags.Tests/ArtworkReconcilerTests.cs (24 cases) branch-by-branch: Prepared and MutationStarted before-match resume/retry with the retained derived bytes; repeat-publication source/ownership-token reuse with a new publication token; candidate-after and observed-after completion with item update; durable-final-state completion; ownership loss on external change; ownership uncertainty on unobservable image; item-absent tombstone with retained artifacts and no mutation; lifecycle-fence abort; before-identity revalidation between observation and resume; missing derived/source artifacts; corrupt state/operation quarantine; supersede of a previously RecoveryBlocked operation; restoration deferral; terminal/absent no-op; cancellation; reader-exception containment; DI registration; boundary neutrality.",
+    "Confirmed no test uses a real Jellyfin library: all reconciler tests use the in-tree FakeArtworkHost doubles and a temp directory under Path.GetTempPath(), deleted in Dispose.",
+    "Confirmed the worker's focused pass count: 24/24, and full 896/49/945."
+  ],
+  "research_checked": [
+    "AGENTS.md (Jellyfin 12 plugin conventions; smallest change; build/test; no unrequested commits).",
+    "PLANS.md Milestone 5 / task 5.7 and the authoritative Phase 5 order (5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7, 5.8, 5.9, 5.10, 5.11); Phase 5 acceptance criteria for crash recovery and externally changed images.",
+    "docs/decisions.md ADR-002 (guarded artwork ownership and restoration) and ADR-003 (crash-recoverable artwork publication), including the write-ahead protocol, postcondition recovery rules, and 'final plugin state durable before journal Committed'.",
+    "docs/data-model.md sections 3.10.1, 3.10.2, 3.10.3 (including the two added fields) and the exact 3.10.4 decision table.",
+    "docs/architecture.md section 9: publication flow, provenance/ownership contract, durable publication protocol, restart reconciliation, and disable/uninstall/item-removal boundaries.",
+    "docs/implementation-readiness.md Resolved Blocker 2.",
+    "Existing 5.2/5.3/5.5/5.6 implementation: ArtworkPublisher (pre-change via git show d6633ea for regression comparison), ArtworkOperation/Phases/Fencing/Store, PublishedArtworkState/Store/Transitions, ActiveImageIdentity, ArtworkOwnershipComparer, SourceArtifactStore (artifact id == SHA-256 == source fingerprint), IArtworkSourceReader, ArtworkSourceReadResult, IArtworkImageWriter, and the registration.",
+    "Independently verified there are no MediaBrowser.* references in the new reconciliation files; no ADR, RenderVersion, renderer, or lock-file changes (git diff --name-only).",
+    "Independently verified scope: no 5.8/5.9/5.10/5.11 or Phase 6 wiring (grep for Reconciler references); only the ItemRemoved tombstone is implemented from the 5.9 boundary as the recovery table requires.",
+    "Independently verified the extracted ExecutePublicationAsync preserves the 5.5 durable ordering: revalidate before identity, MutationStarted, SaveImage, RepositoryUpdateStarted, PersistItemUpdate, VerificationPending, readback, FinalizationPending, state commit before Committed. The normal PublishAsync behavior and the phase-write conditions are equivalent for a Prepared operation."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

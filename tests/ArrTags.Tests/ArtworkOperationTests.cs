@@ -490,7 +490,9 @@ public sealed class ArtworkOperationTests
             sourcePresence == ArtworkImagePresence.Present ? sourceArtifactId ?? sourceHash : sourceArtifactId,
             derivedArtifactId,
             attempt,
-            lastError);
+            lastError,
+            ArtworkHashes.ComputeSha256(Encoding.UTF8.GetBytes("publication-fingerprint")),
+            1);
     }
 
     private static ArtworkOperation Restoration(

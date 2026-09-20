@@ -598,6 +598,21 @@ the journal and performs safe cleanup. If the journal was durably committed but
 the final state is absent or invalid, ArrTags reconstructs it only from the
 operation's verified postcondition and artifacts; otherwise it remains blocked.
 
+Task 5.7 implements this reconciliation as the provider-neutral
+`ArtworkReconciler` entry point backed by the pure `ArtworkRecoveryDecisions`
+table. The reconciler serializes with normal publication through the same
+per-item/image-surface gate, re-observes the item and active image, and delegates
+the deterministic mutation, readback, and final-state commit to the
+`ArtworkPublisher`'s recoverable execution path so that execution is never
+reimplemented. A resume or retry is permitted only when the generation and
+lifecycle fence allow it and the operation can be re-executed from its retained
+artifacts without recapturing the active image; a lifecycle fence aborts a
+prepared publication. Reconciliation performs no artifact deletion, so an
+artifact that is not proven non-active is retained or quarantined. Invocation is
+an explicit boundary: the event, queue, startup-scan, and library-event wiring
+that drives it belongs to later tasks, and the guarded restoration mutation
+remains the lifecycle task 5.9.
+
 #### Disable, uninstall, and item removal
 
 - Disable and uninstall first write a durable lifecycle fence that prevents new

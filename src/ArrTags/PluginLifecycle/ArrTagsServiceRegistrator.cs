@@ -43,6 +43,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreatePublishedArtworkStateStore);
         serviceCollection.TryAddSingleton(CreateArtworkOperationStore);
         serviceCollection.TryAddSingleton(CreateArtworkPublisher);
+        serviceCollection.TryAddSingleton(CreateArtworkReconciler);
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
     }
@@ -135,6 +136,15 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<ArtworkOperationStore>(),
             limits);
+    }
+
+    private static ArtworkReconciler CreateArtworkReconciler(IServiceProvider serviceProvider)
+    {
+        return new ArtworkReconciler(
+            serviceProvider.GetRequiredService<IArtworkSourceReader>(),
+            serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
+            serviceProvider.GetRequiredService<ArtworkOperationStore>(),
+            serviceProvider.GetRequiredService<ArtworkPublisher>());
     }
 
     private static Plugin? FindPlugin(IServiceProvider serviceProvider)

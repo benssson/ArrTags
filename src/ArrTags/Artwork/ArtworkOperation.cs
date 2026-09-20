@@ -61,6 +61,8 @@ public sealed class ArtworkOperation
     /// <param name="derivedArtifactId">The durable derived artifact identifier for a publication.</param>
     /// <param name="attempt">The bounded recovery/retry attempt counter.</param>
     /// <param name="lastError">An optional redacted, bounded diagnostic summary.</param>
+    /// <param name="candidatePublicationFingerprint">The logical publication fingerprint to commit when a publication postcondition is recovered.</param>
+    /// <param name="rendererVersion">The renderer version that produced the candidate derived artifact.</param>
     /// <exception cref="ArgumentNullException">The surface or before identity is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An enum value is undefined.</exception>
     public ArtworkOperation(
@@ -85,7 +87,9 @@ public sealed class ArtworkOperation
         string? sourceArtifactId = null,
         string? derivedArtifactId = null,
         int attempt = 0,
-        string? lastError = null)
+        string? lastError = null,
+        string? candidatePublicationFingerprint = null,
+        int? rendererVersion = null)
     {
         ArgumentNullException.ThrowIfNull(imageSurface);
         ArgumentNullException.ThrowIfNull(expectedBeforeIdentity);
@@ -117,6 +121,8 @@ public sealed class ArtworkOperation
         DerivedArtifactId = derivedArtifactId;
         Attempt = attempt;
         LastError = ArtworkOperationErrors.Sanitize(lastError);
+        CandidatePublicationFingerprint = candidatePublicationFingerprint;
+        RendererVersion = rendererVersion;
     }
 
     /// <summary>
@@ -230,6 +236,20 @@ public sealed class ArtworkOperation
     public string? LastError { get; }
 
     /// <summary>
+    /// Gets the logical publication fingerprint to commit when a publication
+    /// postcondition is recovered, or <see langword="null"/> when the operation
+    /// did not record one. A publication created by the publisher always records
+    /// one; recovery refuses to reconstruct a final state without it.
+    /// </summary>
+    public string? CandidatePublicationFingerprint { get; }
+
+    /// <summary>
+    /// Gets the renderer version that produced the candidate derived artifact, or
+    /// <see langword="null"/> when the operation did not record one.
+    /// </summary>
+    public int? RendererVersion { get; }
+
+    /// <summary>
     /// Gets a value indicating whether the operation reached a terminal phase and
     /// is eligible for bounded terminal-provenance retention cleanup.
     /// </summary>
@@ -301,6 +321,18 @@ public sealed class ArtworkOperation
         if (PriorPublicationToken is not null && !ArtworkTokens.IsValid(PriorPublicationToken))
         {
             reason = "The prior publication token is not a well-formed opaque token.";
+            return false;
+        }
+
+        if (CandidatePublicationFingerprint is not null && !ArtworkHashes.IsSha256Hex(CandidatePublicationFingerprint))
+        {
+            reason = "The candidate publication fingerprint is not a SHA-256 value.";
+            return false;
+        }
+
+        if (RendererVersion is <= 0)
+        {
+            reason = "A recorded renderer version must be positive.";
             return false;
         }
 
@@ -418,6 +450,18 @@ public sealed class ArtworkOperation
             return false;
         }
 
+        if (!ArtworkHashes.IsSha256Hex(CandidatePublicationFingerprint))
+        {
+            reason = "A publication requires the logical publication fingerprint to commit on recovery.";
+            return false;
+        }
+
+        if (RendererVersion is null or <= 0)
+        {
+            reason = "A publication requires the positive renderer version that produced its derived artifact.";
+            return false;
+        }
+
         reason = string.Empty;
         return true;
     }
@@ -433,6 +477,18 @@ public sealed class ArtworkOperation
         if (DerivedArtifactId is not null)
         {
             reason = "A restoration cannot reference a derived artifact.";
+            return false;
+        }
+
+        if (CandidatePublicationFingerprint is not null)
+        {
+            reason = "A restoration cannot carry a candidate publication fingerprint.";
+            return false;
+        }
+
+        if (RendererVersion is not null)
+        {
+            reason = "A restoration cannot carry a renderer version.";
             return false;
         }
 
