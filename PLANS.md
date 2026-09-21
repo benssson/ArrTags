@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011) are complete; the remaining Phase 5 task (5.11) is not started.
+**Status:** Phases 1-5 complete; Phase 6 not started. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -67,7 +67,7 @@ validation is the ADR-010 non-canonical cross-runtime comparison, which requires
 a second explicitly selected Linux runtime and is tracked for the
 testing/release milestone.
 
-Phase 5 (Jellyfin artwork integration) has begun. Task 5.1 is complete: the
+Phase 5 (Jellyfin artwork integration) is complete. Task 5.1 is complete: the
 supported Jellyfin 12.0.0 item-image publication/read ABI and the standard
 `ImageController` route variants are pinned with evidence in
 `docs/research/jellyfin-12-architecture.md` section 4.4, with a new unguarded ABI
@@ -115,7 +115,17 @@ existing poster and selector enable flags remain the user's control surface),
 with coexistence tests that assert the production assembly has no Enhanced
 reference, the renderer/publication surface has no spoiler/hidden/suppression
 branch, and badge output varies only with the existing ArrTags configuration.
-The remaining Phase 5 task (5.11 in the authoritative order) is not started.
+Task 5.11 is complete: the supported standard Jellyfin server image response
+path is exercised in-process against the pinned host `ImageController`, covering
+the unindexed and indexed `Primary` routes, the path-form route, content type
+and served bytes, the image-tag `ETag` and `304` conditional response,
+`immutable`/`public` cache headers, `no-cache` revalidation, requested
+size/format and the never-upscale clamp, non-200 pass-through, and a
+publish-then-read-back through the real ArrTags image-mutation boundary and the
+standard route. A live HTTP round-trip against a running host was not performed;
+the task 5.1 route tests pin the route templates and the task 5.11 facts invoke
+the real pinned controller actions and response pipeline. Phase 5 is complete
+and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -164,7 +174,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7, 5.8, 5.9, 5.10 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1403,7 +1413,7 @@ provenance and coexisting with Jellyfin Enhanced.
   automatic duplicate/overlap suppression and no Enhanced-internals dependency;
   user control is through the existing poster and selector enable flags, and
   Spoiler Guard renders normally.
-- [ ] 5.11 Test Web and image-consuming clients through the supported server
+- [x] 5.11 Test Web and image-consuming clients through the supported server
   image response path.
 
 **Authoritative Phase 5 execution order:** 5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7,
@@ -1891,30 +1901,99 @@ the renderer decision is a pure function of the canonical render request with no
 hidden global state. Default `./build.sh test` passes 971 with 49 guarded skips
 (1020 total) and 0 warnings, exactly +7 over the task 5.9 baseline.
 
+**Task 5.11 status:** Complete. The supported standard Jellyfin server image
+response path that Web and other image-consuming clients use is exercised
+in-process against the pinned 12.0.0 host; no parallel route or response
+interception was added (ADR-001). A new host-guarded test file
+`tests/ArrTags.Tests/JellyfinImageResponseTests.cs` (9 guarded cases plus 2
+unguarded resize-contract cases) loads the pinned host `Jellyfin.Api.dll`,
+constructs the real `Jellyfin.Api.Controllers.ImageController` with
+`DispatchProxy` host doubles and a real `DefaultHttpContext`, and invokes the
+actual `GetItemImage`, `GetItemImageByIndex`, and `GetItemImage2` actions. It
+asserts the unindexed, indexed, and path-form `Primary` routes all deliver the
+same server-rendered `PhysicalFileResult` that the route builds from
+`IImageProcessor.ProcessImage` (path and content type); the quoted image-tag
+`ETag`, `Cache-Control: public, max-age=31536000, immutable`, `Last-Modified`,
+`Vary: Accept`, `Content-Disposition: attachment`, and DLNA headers; `304 Not
+Modified` for a matching quoted or bare `If-None-Match` and for
+`If-Modified-Since`; the `no-cache` revalidation
+headers; the size/format plumbing into `ImageProcessingOptions`; and the `404`
+pass-through for an unknown item and for an item with no image (with no processor
+call). The pinned core `ImageHelper.GetNewImageSize` never-upscale clamp is
+asserted unguarded. A publish-then-read-back case uses the real
+`JellyfinArtworkImageWriter` with a provider double that mirrors the supported
+`ImageSaver` write-and-update flow, then serves the item through the real
+standard route and asserts the derived bytes (not the stale source) are
+delivered and the original source file is untouched. The route templates and
+read/write authorization split are independently pinned by the existing task 5.1
+route/authorization tests over the same pinned `Jellyfin.Api.dll`; a live HTTP
+round-trip against a running Jellyfin server was **not** performed for this task,
+and the full ArrTags generation-to-publication pipeline could not be driven
+end-to-end on a host because the Phase 6 queue/event wiring that triggers
+generation does not exist yet. The default `./build.sh test` run (host guard
+unset) passes 973 with 58 guarded skips (1031 total, exactly +2 over the task
+5.10 baseline because the 9 new host-guarded cases skip); with
+`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/opencode/jf/jellyfin` the full suite passes 987
+with 44 skips (1031 total, 0 failures), unskipping all 14 host-guarded image-route
+cases. No production behavior, `RenderVersion`, renderer, ADR, configuration
+schema, or existing passing test was changed.
+
 **Acceptance criteria:**
 
-- [ ] A standard Jellyfin poster response contains the configured derived image
-  when valid metadata exists.
-- [ ] Disabling ArrTags restores the original source when the active image is
-  still ArrTags-owned.
-- [ ] Original media files remain byte-for-byte untouched.
-- [ ] Failed publication, missing metadata, and failed rendering preserve the
-  current usable artwork.
-- [ ] Crashes before, during, and after `SaveImage` and item persistence recover
+- [x] A standard Jellyfin poster response contains the configured derived image
+  when valid metadata exists. Demonstrated by `JellyfinImageResponseTests`
+  (real host `ImageController` actions and the real ArrTags image-mutation
+  boundary over the standard route); no live-host HTTP round-trip was performed.
+- [x] Disabling ArrTags restores the original source when the active image is
+  still ArrTags-owned. Demonstrated at the integration level by the task 5.9
+  guarded-restoration cases (`ArtworkLifecycleTests`,
+  `DisableDrainRestoresTheRetainedSourceForAPresentBaseline` and the
+  absent-baseline, externally-changed, and unverifiable cases) and the task 5.9
+  reconciler restore-resume case; no live-host disable/restore run was performed.
+- [x] Original media files remain byte-for-byte untouched. Demonstrated by the
+  task 5.11 publish-then-read-back case (the source file is retained
+  byte-for-byte) and the task 5.5 image-writer tests
+  (`SaveImageUsesTheStreamOverloadAndNeverThePathOrUrlOverload`).
+- [x] Failed publication, missing metadata, and failed rendering preserve the
+  current usable artwork. Demonstrated by the task 5.8 `ArtworkPublisherTests`
+  and `ArtworkGenerationCoordinatorTests` containment cases.
+- [x] Crashes before, during, and after `SaveImage` and item persistence recover
   to a committed publication, a safe abort, or an explicit recovery-blocked
-  state without losing source provenance.
-- [ ] Restart reconciliation never overwrites an externally changed image and
-  never treats an uncertain operation as proof of ownership.
-- [ ] Disable, uninstall, and confirmed item removal leave no untracked
-  non-terminal operation or unsafe cleanup obligation.
+  state without losing source provenance. Demonstrated by the task 5.6
+  `ArtworkOperationStoreTests` and the task 5.7 `ArtworkReconcilerTests`
+  resume/abort/recovery-blocked cases.
+- [x] Restart reconciliation never overwrites an externally changed image and
+  never treats an uncertain operation as proof of ownership. Demonstrated by
+  the task 5.7 `ArtworkReconcilerTests`
+  (`ExternalChangeRecordsOwnershipLostAndAbortsWithoutMutation`,
+  `UnobservableIdentityRecordsOwnershipUnknownAndLeavesTheImageUntouched`).
+- [x] Disable, uninstall, and confirmed item removal leave no untracked
+  non-terminal operation or unsafe cleanup obligation. Demonstrated by the task
+  5.9 `ArtworkLifecycleTests` drain/tombstone cases; no live-host
+  disable/uninstall run was performed.
 - [x] ArrTags does not interfere with Jellyfin Enhanced, including configured
   duplicate handling and Spoiler Guard expectations. Resolved by ADR-011 and
   covered by `EnhancedCoexistenceTests`: no automatic duplicate/overlap
   suppression, no Enhanced-internals dependency, and no special spoiler/hidden
   handling.
 
-**Gate 5:** Publication and standard image-route integration tests pass for the
-selected Jellyfin 12 ABI, and source preservation/restoration is demonstrated.
+**Gate 5:** Met for the selected Jellyfin 12.0.0 ABI at the integration-test
+level. Publication and standard image-route integration tests pass:
+`JellyfinImageResponseTests` invokes the real pinned host `ImageController`
+actions and response pipeline in-process (route variants, content type, served
+bytes, tag/ETag/304, cache headers, `no-cache` revalidation, size/format
+plumbing, 404 pass-through and the never-upscale clamp), and the existing task
+5.1 `JellyfinImageRouteTests` pin the same host's route templates and
+authorization attributes. Source preservation is demonstrated by the
+publish-then-read-back case (the original source file is retained byte-for-byte
+while the derived image is served by the standard route) and by the task 5.9
+guarded-restoration/removal and task 5.7 reconciliation tests. The full ArrTags
+generation-to-publication pipeline on a live host is not triggered because the
+Phase 6 queue/event wiring that drives generation does not exist yet, and a live
+HTTP round-trip against a running Jellyfin server was not performed; the
+in-process case uses the real ArrTags writer and the real pinned controller, and
+the remaining host-behavior validation is listed in
+`docs/research/jellyfin-12-architecture.md` section 4.4.
 
 ### 6. Caching, updates & performance
 

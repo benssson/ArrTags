@@ -1,0 +1,92 @@
+{
+  "task": "5.11",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "status": "resolved",
+      "summary": "The docs claimed the facts assert `Last-Modified`; the test now asserts it and the assertion matches the pinned controller's exact value/format.",
+      "detail": "`UnindexedPrimaryRouteServesTheServerRenderedRepresentationWithTagCacheHeaders` now asserts `harness.Response.Headers.LastModified` equals `harness.ProcessorStub.DateModified.ToUniversalTime().ToString(\"ddd, dd MMM yyyy HH:mm:ss \\\"GMT\\\"\", CultureInfo.InvariantCulture)` (lines 63-65), with `using System.Globalization;` added. The pinned `Jellyfin.Api/Controllers/ImageController.cs` GetImageResult appends exactly `dateImageModified.ToUniversalTime().ToString(\"ddd, dd MMM yyyy HH:mm:ss \\\"GMT\\\"\", CultureInfo.InvariantCulture)`, and the stub's `ProcessImage` returns `DateModified` as that `dateImageModified`; the two strings are therefore identical. The host-dir response filter passes 9/9 including this assertion. The workspace docs now list exactly the asserted headers/behaviors: PLANS.md 1915-1917, docs/changelog.md 1331-1333, and docs/research/jellyfin-12-architecture.md 238-240 all include `Last-Modified` and it is asserted; README 452-456 under-lists it (no overclaim)."
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "status": "resolved",
+      "summary": "docs/changelog.md Phase 5 section status now matches the Phase 5 completion.",
+      "detail": "docs/changelog.md line 631 now reads '**Status:** Complete. Gate 5 met.' (consistent with the Phase 1 'Complete. Gate 1 met.' and Phase 4 'Complete. Gate 4 met.' headers and with the new Task 5.11 section that says 'Task 5.11 completes Phase 5'). The changelog no longer contradicts README/PLANS/readiness/research on Phase 5/Gate 5 completion."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "resolved",
+      "summary": "The top-level README and PLANS completion statements are now qualified at the integration-test level.",
+      "detail": "README.md lines 15-17 now read '...Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level. The standard image response path is validated in-process against the real pinned host `ImageController` plus the real ArrTags publication boundary; a live HTTP round-trip against a running Jellyfin server was not [performed]'. PLANS.md line 5 now adds '(validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed)'. Both summary statements now agree with the detailed Gate 5 wording."
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "status": "open",
+      "summary": "The publish-then-read-back fact demonstrates the route/writer contract but not the real host ImageSaver or the host's on-disk image representation.",
+      "detail": "In `PublishedDerivedImageIsServedByTheStandardRouteInsteadOfTheStaleSource`, `JellyfinArtworkImageWriter` (real) calls the `IProviderManager` DispatchProxy, whose `OnStreamSave` callback itself writes the derived temp file and replaces `item.ImageInfos` before the real route is invoked. The test therefore proves that IF the writer's SaveImage results in the item pointing at the derived bytes, the standard route serves them; it does not prove the real `ImageSaver` produces that item state or on-disk layout. This is disclosed in the worker report and docs/research section 4.4 and is an accepted boundary while the Phase 6 queue/event wiring does not exist."
+    },
+    {
+      "id": "F5",
+      "severity": "info",
+      "status": "open",
+      "summary": "The in-process harness is a genuine test of the real pinned controller response logic; the doubles only supply dependencies and do not bypass the route/response code.",
+      "detail": "`HostControllerType` loads `Jellyfin.Api.dll` from ARRTAGS_JELLYFIN_HOST_DIR (the test project references Jellyfin.Controller/Jellyfin.Model but not Jellyfin.Api). Reflection argument order matches the pinned GetItemImage/GetItemImageByIndex/GetItemImage2 signatures. The ETag, Cache-Control, Last-Modified, Vary, Content-Disposition, DLNA, Age, 304, no-cache, and 404 behavior all execute in the real `GetImageResult`/`GetImageInternal` code. `DependencyFor` asserts the host interface is assignable from each double. ASP.NET routing/model binding is not exercised, but the route templates and authorization split are separately pinned by the task 5.1 `JellyfinImageRouteTests` over the same assembly."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "status": "open",
+      "summary": "Guard honesty and V1-surface confinement remain verified by execution.",
+      "detail": "Unset ARRTAGS_JELLYFIN_HOST_DIR -> 9 skipped / 0 passed for the response filter; bad path -> 9 failed / 0 passed; valid path -> 9/9 response and 14/14 with the route tests. The only unguarded facts are the two pure `ImageHelper.GetNewImageSize` checks. Publication uses unindexed `ArtworkImageSurface.Primary`; the writer rejects indexed/alternate surfaces; all test files are temp files deleted after use."
+    },
+    {
+      "id": "F7",
+      "severity": "info",
+      "status": "open",
+      "summary": "Scope is correct; no production or existing-test change beyond the F1 assertion.",
+      "detail": "git status/diff show only PLANS.md, README.md, docs/changelog.md, docs/implementation-readiness.md, docs/research/jellyfin-12-architecture.md modified, plus untracked tests/ArrTags.Tests/JellyfinImageResponseTests.cs and docs/implementation/5.11/. No src/ file, RenderVersion, renderer, ADR (docs/decisions.md untouched), configuration schema, packages.lock.json, or existing test was changed. The new test file grew from 698 to 702 lines (+1 `using System.Globalization;`, +3 assertion lines), exactly the claimed F1 change. Verified totals: default 973 passed / 58 skipped / 1031 total; host-dir response filter 9/9; full host-dir 987 passed / 44 skipped / 1031 total."
+    },
+    {
+      "id": "F8",
+      "severity": "low",
+      "status": "open",
+      "summary": "docs/architecture.md section 13 lists range requests among the standard-route integration checks, which task 5.11 does not exercise.",
+      "detail": "The pinned controller returns `PhysicalFile(path, contentType)` without enabling range processing, so ranges are arguably not a supported behavior to prove. This is a tracking observation for the Phase 7 release-validation milestone, not a task 5.11 defect."
+    },
+    {
+      "id": "F9",
+      "severity": "info",
+      "status": "resolved",
+      "summary": "PLANS.md line 121 still uses the summary phrase 'content type and served bytes' for route coverage; this is not an unsupported claim.",
+      "detail": "The detailed task 5.11 status paragraph (PLANS.md 1913-1926) now correctly scopes the three routes to '(path and content type)' and attributes the served/derived bytes assertion to the publish-then-read-back case. The line 121 summary lists the publish-then-read-back in the same sentence, so 'served bytes' is covered by that case; the docs/research and changelog phrasings were narrowed accordingly. No remaining claim asserts that the three basic routes' bytes are compared."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh test (ARRTAGS_JELLYFIN_HOST_DIR unset) -> Failed 0, Passed 973, Skipped 58, Total 1031.",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/opencode/jf/jellyfin dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~JellyfinImageResponseTests -> Failed 0, Passed 9, Skipped 0, Total 9 (includes the new Last-Modified assertion).",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/opencode/jf/jellyfin dotnet test ArrTags.slnx -c Release --no-build -> Failed 0, Passed 987, Skipped 44, Total 1031.",
+    "Guard honesty re-confirmed by the host-dir filter behavior (unset skip / bad-dir fail) and the source of JellyfinHostFactAttribute.",
+    "Source inspection of tests/ArrTags.Tests/JellyfinImageResponseTests.cs (702 lines) and comparison of the new Last-Modified expectation against the pinned Jellyfin.Api/Controllers/ImageController.cs GetImageResult format string."
+  ],
+  "research_checked": [
+    "AGENTS.md (Jellyfin 12 conventions, no unrelated changes, no unverified claims).",
+    "PLANS.md project status, task 5.11 status, Gate 5, milestone table row 5, and the corrected summary/status wording.",
+    "README.md project status, Phase 5 task 5.11 bullet, test totals.",
+    "docs/changelog.md Phase 5 section header (now Complete) and Task 5.11 section.",
+    "docs/implementation-readiness.md task 5.11 statement.",
+    "docs/research/jellyfin-12-architecture.md sections 3.3 and 4.4.",
+    "docs/architecture.md sections 9, 13, and 10.",
+    "docs/decisions.md ADR-001 (persisted derived poster artwork; no parallel route) and the absence of any ADR change.",
+    "Pinned host Jellyfin 12 source at /tmp/opencode/jfsrc: Jellyfin.Api/Controllers/ImageController.cs (GetImageResult Last-Modified append), MediaBrowser.Controller/Drawing/ImageHelper.cs.",
+    "docs/implementation/5.9/worker-report.json and docs/implementation/5.10/worker-report.json (sibling Phase 5 evidence)."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

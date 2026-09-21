@@ -225,6 +225,30 @@ Consequences for a response interceptor:
 - the interceptor must own or explicitly reject transformed conditional, range,
   `HEAD`, and cache behavior.
 
+**Task 5.11 in-process route/response confirmation.** The pinned route, cache,
+conditional-request, size/format, and pass-through behavior above was exercised
+in-process against the pinned `Jellyfin.Api.dll`
+`Jellyfin.Api.Controllers.ImageController` by
+`tests/ArrTags.Tests/JellyfinImageResponseTests.cs`: the real `GetItemImage`,
+`GetItemImageByIndex`, and `GetItemImage2` actions are invoked with a real
+`DefaultHttpContext` and `DispatchProxy` doubles for `ILibraryManager`,
+`IProviderManager`, and `IImageProcessor`. The facts assert the unindexed,
+indexed, and path-form `Primary` routes deliver the server-rendered
+`PhysicalFileResult` (path and content type); the quoted
+image-tag `ETag`, `Cache-Control: public, max-age=31536000, immutable`,
+`Last-Modified`, `Vary: Accept`, `Content-Disposition: attachment`, and DLNA
+headers; `304` for a matching quoted/bare `If-None-Match` and for
+`If-Modified-Since`; the `no-cache` revalidation headers; the requested
+size/format plumbing; the never-upscale clamp; and the `404` pass-through. The
+route templates and the read/write authorization split are separately pinned by
+the task 5.1 `JellyfinImageRouteTests` over the same host assembly. A
+publish-then-read-back case uses the real `JellyfinArtworkImageWriter` (with a
+provider double that mirrors the supported `ImageSaver` write-and-update flow)
+and then serves the derived bytes through the real standard route. A **live HTTP
+round-trip against a running Jellyfin server was not performed** by task 5.11;
+the running-host on-disk representation and a live end-to-end read-back remain
+in the "Still needing live-host validation" list below.
+
 ## 4. Supported artwork provider APIs
 
 ### 4.1 `IImageProvider`
@@ -504,7 +528,10 @@ not ABI uncertainty:
   filesystem-path overload, so the stream-overload storage representation and the
   post-publication read-back equality remain host behavior to validate.
 - Multi-RID packaging and packaged-asset resolution (task 5.4).
-- End-to-end standard-route delivery of a published derived image (task 5.11).
+- End-to-end standard-route delivery of a published derived image on a running
+  host (task 5.11 exercises the pinned controller route/response pipeline and a
+  real-writer publish-then-read-back in-process, but no live HTTP round-trip was
+  performed).
 
 ## 5. Approach comparison
 

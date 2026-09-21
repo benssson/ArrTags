@@ -628,7 +628,7 @@ that point and required explicit user approval to begin.
 
 ## Phase 5 - Jellyfin artwork integration (Milestone 5)
 
-**Status:** In progress. Tasks 5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7, and 5.8 complete; tasks 5.9 through 5.11 not started.
+**Status:** Complete. Gate 5 met.
 
 ### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
 
@@ -1313,3 +1313,51 @@ Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
 and `./build.sh test` pass. The default suite passes 971 with 49
 environment-guarded skips (1020 total), exactly +7 over the task 5.9 baseline,
 with no regressions.
+
+### Task 5.11 - Standard server image response path for image-consuming clients
+
+Task 5.11 completes Phase 5. It exercises the supported standard Jellyfin server
+image response path that Web and other image-consuming clients use, without
+adding a parallel route, middleware, response interceptor, or any production
+behavior; it does not add Phase 6 queue, event, or caching wiring.
+
+- Tests: `tests/ArrTags.Tests/JellyfinImageResponseTests.cs` loads the pinned
+  host `Jellyfin.Api.dll`, constructs the real
+  `Jellyfin.Api.Controllers.ImageController` from `DispatchProxy` host doubles
+  and a real `DefaultHttpContext`, and invokes the actual `GetItemImage`,
+  `GetItemImageByIndex`, and `GetItemImage2` actions. The 9 host-guarded cases
+  cover: the unindexed and indexed and path-form `Primary` routes all returning
+  the same server-rendered `PhysicalFileResult` (path and content type);
+  the quoted image-tag `ETag`, `Cache-Control: public, max-age=31536000,
+  immutable`, `Last-Modified`, `Vary: Accept`, `Content-Disposition: attachment`,
+  and DLNA headers; `304 Not Modified` for a matching quoted or bare
+  `If-None-Match` and for `If-Modified-Since`; the `no-cache` revalidation
+  headers; the requested size/format plumbing into `ImageProcessingOptions`; and
+  the `404` pass-through for an unknown item or an item without an image with no
+  processor call. A publish-then-read-back case uses the real
+  `JellyfinArtworkImageWriter` with a provider double that mirrors the supported
+  `ImageSaver` write-and-update flow, serves the item through the real standard
+  route, and asserts the derived bytes (not the stale source) plus an untouched
+  original source file. Two unguarded cases pin
+  `ImageHelper.GetNewImageSize`'s never-upscale clamp.
+- Host distance: the existing task 5.1 `JellyfinImageRouteTests` pin the same
+  pinned host's route templates and authorization attributes. A live HTTP
+  round-trip against a running Jellyfin server was **not** performed for this
+  task, and the full ArrTags generation-to-publication pipeline could not be
+  driven on a host because the Phase 6 queue/event wiring that triggers
+  generation does not exist yet; the in-process publish-then-read-back case uses
+  the real ArrTags writer and the real pinned controller.
+- Docs: `PLANS.md` marks task 5.11 complete, records the task 5.11 status,
+  reconciles the Phase 5 acceptance criteria with the completed-task tests
+  (noting that validation is integration-level, not a live-host run), and
+  records Gate 5 as met with the Phase 6-wiring and no-live-HTTP limitation; the
+  Milestone 5 status row is complete. `README.md` records the completed task and
+  updated test totals.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 973 with 58
+environment-guarded skips (1031 total), exactly +2 over the task 5.10 baseline
+because the 9 new host-guarded cases skip; with
+`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/opencode/jf/jellyfin` the full suite passes 987
+with 44 skips (1031 total, 0 failures), unskipping all 14 host-guarded image-route
+cases, with no regressions.

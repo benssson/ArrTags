@@ -405,7 +405,9 @@ that introduce them.
   renderer selector enable flags are the user's control surface, and Spoiler
   Guard has no material effect on ArrTags badge display. `EnhancedCoexistenceTests`
   (task 5.10) covers the policy without a live Enhanced install; confirming the
-  standard image route remains task 5.11.
+  standard image route is completed by task 5.11 (`JellyfinImageResponseTests`
+  invokes the real pinned host `ImageController` actions and response pipeline
+  in-process; no live HTTP round-trip was performed).
 - Implement per-item generation tokens, publication serialization, and
   ArrTags-generated event-loop suppression.
 - Finalize DTO nullability, optional-field compatibility, provider fixtures, and

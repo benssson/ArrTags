@@ -1,6 +1,6 @@
 ## Project Status
 
-**Current milestone:** Phase 5 — Jellyfin artwork integration is in progress.
+**Current milestone:** Phase 5 — Jellyfin artwork integration is complete.
 Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
 and route variants), 5.2 (source-artwork provenance and guarded restoration
 state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native
@@ -9,9 +9,15 @@ packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store),
 (postcondition reconciliation of uncertain publication outcomes), 5.8
 (preserve the current usable artwork when source capture or rendering cannot
 safely complete), 5.9 (fence and drain publication operations during
-disable/uninstall and tombstone confirmed item removal), and 5.10 (the Jellyfin
-Enhanced coexistence policy, resolved by ADR-011)
-are complete; the remaining Phase 5 task (5.11) is not started.
+disable/uninstall and tombstone confirmed item removal), 5.10 (the Jellyfin
+Enhanced coexistence policy, resolved by ADR-011), and 5.11 (standard server
+image-response integration tests for Web and other image-consuming clients) are
+complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the
+integration-test level. The standard image response path is validated in-process
+against the real pinned host `ImageController` plus the real ArrTags publication
+boundary; a live HTTP round-trip against a running Jellyfin server was not
+performed, and the full generation-to-publication pipeline is not driven on a
+host until the Phase 6 queue/event wiring exists.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -440,31 +446,51 @@ Completed in Phase 5 (Jellyfin artwork integration):
   surface and the renderer/publication reason enums have no
   spoiler/hidden/duplicate/overlap suppression branch, and that badge
   eligibility and output vary only with the existing ArrTags configuration.
-  Route/client confirmation remains task 5.11.
+- 5.11 Exercised the supported standard Jellyfin server image response path with
+  the pinned 12.0.0 host and no parallel route or response interception
+  (ADR-001). New tests in `tests/ArrTags.Tests/JellyfinImageResponseTests.cs`
+  load the pinned host `Jellyfin.Api.dll`, construct the real
+  `Jellyfin.Api.Controllers.ImageController` with host doubles and a real
+  `DefaultHttpContext`, and invoke the actual `GetItemImage`,
+  `GetItemImageByIndex`, and `GetItemImage2` actions. They cover the
+  unindexed/indexed/path-form `Primary` routes and the server-rendered
+  `PhysicalFileResult` (path and content type), the quoted image-tag `ETag`
+  and `304` conditional response (quoted/bare `If-None-Match` and
+  `If-Modified-Since`), `Cache-Control: public, max-age=31536000, immutable`,
+  `Vary`, `Content-Disposition`, DLNA headers, `no-cache` revalidation, the
+  size/format plumbing, the pinned never-upscale clamp, and the `404`
+  pass-through. A publish-then-read-back case uses the real
+  `JellyfinArtworkImageWriter` and serves the result through the real standard
+  route, asserting the derived bytes (not the stale source) and an untouched
+  original. The task 5.1 `JellyfinImageRouteTests` pin the same host's route
+  templates and authorization attributes. A live HTTP round-trip against a
+  running Jellyfin server was not performed, and the pipeline was not driven from
+  ArrTags generation on a live host because the Phase 6 queue/event wiring does
+  not exist yet; the in-process case uses the real ArrTags writer and the real
+  pinned `ImageController`.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 971 automated tests; 49 additional environment-guarded tests (the task
+- Passes 973 automated tests; 58 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
-  including the non-canonical-golden placeholder, the task 5.1 host route cases,
-  the task 5.3 native source-decode cases, and the task 5.4 package-content
-  cases) are skipped unless their environment guard is provided. With
-  `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full suite
+  including the non-canonical-golden placeholder, the task 5.1/5.11 host route
+  cases, the task 5.3 native source-decode cases, and the task 5.4
+  package-content cases) are skipped unless their environment guard is provided.
+  With `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full suite
   additionally passes the guarded render cases; adding `ARRTAGS_JELLYFIN_HOST_DIR`
-  pointing at the pinned host unskips the five route cases, and running
-  `./build.sh package` first also unskips the three task 5.4 package-content
-  cases.
+  pointing at the pinned host unskips the fourteen image route/response cases
+  (987 passed, 44 skipped, 1031 total), and running `./build.sh package` first
+  also unskips the three task 5.4 package-content cases.
 
 Next tasks:
 
-- Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3,
-  5.4, 5.6, 5.5, 5.7, 5.8, 5.9, and 5.10 are complete; the next task in the
-  authoritative Phase 5 execution order is 5.11 (test Web and image-consuming
-  clients through the supported server image response path).
+- Phase 6 — Caching, updates & performance (Milestone 6). Phase 5 is complete;
+  Phase 6 task 6.1 (keep library event handlers short) is the next task in the
+  authoritative execution order.
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant
