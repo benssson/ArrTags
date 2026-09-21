@@ -1,0 +1,222 @@
+{
+  "phase": "Phase 5 - Jellyfin artwork integration",
+  "reviewer_status": "APPROVED",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "area": "Lifecycle fence / concurrency (publisher vs disable-uninstall drain)",
+      "description": "ArtworkPublisher.PublishCoreAsync reads the durable lifecycle fence exactly once, at the start, and never re-checks it before writing the Prepared operation, before the external SaveImage/image-removal call, or before committing the final PublishedArtworkState. ArtworkLifecycleCoordinator.DrainCoreAsync sets the fence and only then enumerates durable operations and Published states. A publication that observed Normal immediately before the fence was written can therefore durably record its Prepared operation after the drain has already enumerated operations, then mutate the image and commit Published after the drain has completed, so the drain reports Completed while the original artwork was not restored and an untracked publication survives the disable/uninstall fence. This cannot manifest in Phase 5 because no production caller drives PublishAsync (the generation/queue wiring is Phase 6), but it is a latent correctness gap in the core V1 lifecycle guarantee that must be closed before Phase 6 enables concurrent publication and lifecycle drains.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:173-179 (single fence read), :294 (Prepared write), :313-464 (no fence re-check before SaveImage/commit)",
+        "src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs:137-233 (Set fence, then Enumerate operations and states)",
+        "src/ArrTags/Artwork/ArtworkSubjectGate.cs:15-34 (serialization is per-subject, not global against the drain)"
+      ],
+      "recommended_action": "Before Phase 6 drives this entry point, re-read and enforce the durable fence immediately before the first mutation and again before the final commit (abort/block on a non-normal fence), or add a drain/publication coordination barrier so the fence cannot be crossed by an in-flight publication. Add a test that interleaves a publication with DrainAsync."
+    },
+    {
+      "severity": "MEDIUM",
+      "area": "Jellyfin host compatibility / plugin construction (DI)",
+      "description": "Task 5.9 changed the production Plugin constructor to take IServiceProvider (for the uninstall drain), but the packaged plugin has not been loaded on the pinned Jellyfin 12.0.0 host since that change. The last live-host package validation was task 5.4, which predates it. The assumption is supported: the pinned host constructs plugins with ActivatorUtilities.CreateInstance(_appHost.ServiceProvider!, type), and Microsoft.Extensions.DependencyInjection resolves IServiceProvider as a built-in service (independently reproduced with the pinned DI package: injection succeeds), so the constructor is host-compatible by framework semantics and pinned-host source. However, per the review rules, a build/test pass is not proof of the host lifecycle assumption; the actual package load path is unvalidated in its current form.",
+      "evidence": [
+        "src/ArrTags/Plugin.cs:25 (Plugin(IApplicationPaths, IXmlSerializer, IServiceProvider))",
+        "/tmp/opencode/jfsrc Emby.Server.Implementations/Plugins/PluginManager.cs:605 (ActivatorUtilities.CreateInstance(_appHost.ServiceProvider!, type))",
+        "docs/implementation/5.9/worker-report.json known_limitations: 'No live-host ... validation was performed for this task' and the Plugin-constructor note",
+        "Independent ActivatorUtilities + IServiceProvider resolution check (passed)"
+      ],
+      "recommended_action": "Add a host-guarded construction/load fact (ActivatorUtilities over the real host service set) or re-run the package install/load on the pinned host, and record the result before or during Phase 6/7 host acceptance."
+    },
+    {
+      "severity": "MEDIUM",
+      "area": "Persistence / upgrade and migration risk",
+      "description": "ArrTags stores all authoritative state (PublishedArtworkState, ArtworkOperation, SourceArtifactStore bytes, lifecycle fence) under IPlugin.DataFolderPath. For a Jellyfin plugin that path is derived from the assembly location (plugins/<assemblyName>[_version]); catalog installs extract to plugins/<name>_<version> and older version folders are deleted on upgrade. If the plugin folder is the versioned install folder, an upgrade removes the retained source artifacts and ownership state while an ArrTags-published image may still be the active item image. ArrTags would then lose the ability to restore the original and, on the next publication, would capture its own output as a new source baseline (the exact failure ADR-002 seeks to prevent). Whether this occurs depends on the install layout (non-versioned manual install keeps a stable state root). This is a V1 release risk (GOALS success criterion 7 / Gate 7), not a Phase 5 execution gap.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:88-97 (state root = plugin.DataFolderPath)",
+        "/tmp/opencode/jfsrc MediaBrowser.Common/Plugins/BasePluginOfT.cs:50-57 (DataFolderPath derivation)",
+        "/tmp/opencode/jfsrc Emby.Server.Implementations/Updates/InstallationManager.cs:538,598 and Emby.Server.Implementations/Plugins/PluginManager.cs:832-850 (versioned install and older-version cleanup)"
+      ],
+      "recommended_action": "Track for Phase 7 install/upgrade/reload/uninstall validation. Validate upgrade behavior explicitly, and if state loss is confirmed, move the state root to a stable location or add a documented state-migration/preservation step; document the user-visible consequence from GOALS.md accordingly."
+    },
+    {
+      "severity": "MEDIUM",
+      "area": "Storage / artifact lifecycle management",
+      "description": "No mechanism ever deletes artifact bytes. SourceArtifactStore is append-only, and StateRetention.ApplyAuthoritativeRetention deletes only terminal state JSON records, never the artifacts/source/*.bin bytes. Every distinct source and every distinct derived output accumulates, and SourceArtifactStore.Promote rejects new work once ArtifactStorageQuotaBytes is exceeded. Because the quota is authoritative storage that is never reclaimed, a busy item can permanently stop receiving new derived work (safe, but indefinitely degraded) until manual cleanup. ApplyRetention is also currently invoked only from tests, so even the terminal state pruning is not scheduled in production (expected before Phase 6).",
+      "evidence": [
+        "src/ArrTags/Artwork/SourceArtifactStore.cs:117-145 (append-only promotion; quota rejection)",
+        "src/ArrTags/State/StateRetention.cs:89-114 (deletes *.json only)",
+        "grep: ApplyRetention is referenced only from tests, not from production wiring"
+      ],
+      "recommended_action": "In Phase 6 add bounded artifact retention/GC that proves a candidate artifact is not the active image and not the retained session source before deletion, schedule ApplyRetention, and test quota reclamation on repeated publication."
+    },
+    {
+      "severity": "MEDIUM",
+      "area": "Cross-task integration (5.8 repeat publication / Phase 6 pipeline)",
+      "description": "ArtworkGenerationCoordinator always renders the observed active surface. When an ArrTags Published session already exists, that surface is the previous ArrTags output, so a repeat generation would derive from (and stack a badge onto) the previous derived image instead of the retained original source artifact (architecture section 9 step 4). Safety is preserved in Phase 5 because the coordinator is not wired to any invoker, the publisher reuses the retained source/ownership tokens, and the before-mutation revalidation aborts on external change, but the retained-source selection and repeat-publication gate must be implemented before Phase 6 drives the pipeline.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:99-157 and remarks",
+        "docs/architecture.md:619-638 (explicit boundary)",
+        "docs/implementation/5.8/reviewer-report.json F1 (MEDIUM, deferred)"
+      ],
+      "recommended_action": "Before Phase 6 invokes generation, add retained-source selection plus a fingerprint/idempotence gate for repeat publication, and test that a repeat publication renders from the retained original and does not double-badge."
+    },
+    {
+      "severity": "MEDIUM",
+      "area": "Test coverage carried forward from Phase 4 (configuration to render)",
+      "description": "The Phase 4 review's MEDIUM integration-test finding remains open: there is still no end-to-end test that builds a PluginConfiguration with an overridden palette and a disabled selector, resolves it through PluginConfigurationSnapshot, and renders with the resolved definitions/policy. RendererConfigurationTests still validates only snapshot-level resolution; the render tests use BadgeDefinition.V1Default and RenderOutputPolicy.Default. Phase 5 now feeds snapshot-derived definitions into new paths, so this gap is more relevant.",
+      "evidence": [
+        "docs/implementation/phase-4/phase-review.json MEDIUM 'Integration test coverage (4.9 <-> 4.10 boundary)'",
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs (no RenderAsync call)",
+        "git diff v0.1.0-phase4..HEAD -- tests/ArrTags.Tests/RendererConfigurationTests.cs (unchanged)"
+      ],
+      "recommended_action": "Add the configuration-to-render integration test in Phase 6 when renderer configuration is wired to the administrative save/config surface."
+    },
+    {
+      "severity": "LOW",
+      "area": "Memory / scalability",
+      "description": "ArtworkSubjectGate is a process-wide static ConcurrentDictionary keyed by item id + surface. Entries (SemaphoreSlim + string key) are created lazily and never removed, so a large library processed over time accumulates one entry per processed subject permanently. This is bounded by the number of subjects ever processed but is unbounded in the sense that removal/item-deletion never releases the entry.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkSubjectGate.cs:15-34"
+      ],
+      "recommended_action": "Track for Phase 6: prune idle per-subject gates (for example reference-count or weak-cache them), or document the bound as accepted."
+    },
+    {
+      "severity": "LOW",
+      "area": "Configuration / DI lifetime",
+      "description": "Artwork singletons (IArtworkImageAccess, IArtworkSourceReader, ArtworkPublisher, StateRepository) capture OperationalLimits from ConfigurationSnapshotService.Current at first resolution and never refresh them. A runtime configuration replacement (changed source/derived/storage limits) is therefore not applied to the artwork boundary until process restart. A stale larger limit is still re-checked against the render request; a stale smaller limit fails conservatively. The 5.3 reviewer noted the same pattern.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:88-113,137-148",
+        "src/ArrTags/Artwork/ArtworkSourceReader.cs:31-37, ArtworkPublisher.cs:52-69",
+        "docs/implementation/5.3/reviewer-report.json (DI lifetime vs runtime configuration replacement)"
+      ],
+      "recommended_action": "When limits become user-tunable (Phase 6 / DG-6), resolve limits per operation from the current snapshot rather than capturing them at singleton construction, or document the restart-required behavior."
+    },
+    {
+      "severity": "LOW",
+      "area": "Lifecycle shutdown bound",
+      "description": "StopAsync's drain bound is cooperative: it links the shutdown token and sets CancelAfter(15s) but awaits the coordinator directly, so a host API that ignores cancellation could extend shutdown. Plugin.OnUninstalling similarly blocks the uninstall thread on a bounded synchronous wait. All in-repo awaits honor the token, so the documented bound holds in practice. This is a defense-in-depth note, not an observed defect (5.9 reviewer F4).",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs:73-95, :139-156",
+        "src/ArrTags/Plugin.cs:71-91",
+        "docs/implementation/5.9/reviewer-report.json F4 (open, low)"
+      ],
+      "recommended_action": "Consider Task.WaitAsync for a hard bound if a real host path is found to ignore cancellation; otherwise retain as documented."
+    },
+    {
+      "severity": "LOW",
+      "area": "Recovery edge case (state loss)",
+      "description": "ReconstructPublicationSession's fallback (used when the associated Published state is absent for a non-terminal publication) sets SourceFingerprint = operation.SourceArtifactId while SourceCaptureIdentity = operation.ExpectedBeforeIdentity. For a repeat publication these disagree (expected-before is the prior derived image; source fingerprint is the original source hash), so PublishedArtworkState.Validate rejects the reconstructed state and CompleteAfterRecovery enters RecoveryBlocked after the image was already updated. The outcome is fail-closed and the normal crash/restart paths reconstruct consistently, so this is an edge-case robustness gap (5.7 reviewer F5).",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:1514-1537 (ReconstructPublicationSession)",
+        "src/ArrTags/Artwork/PublishedArtworkState.cs:304-328 (source session invariants)",
+        "docs/implementation/5.7/reviewer-report.json F5 (LOW)"
+      ],
+      "recommended_action": "Reconstruct the source capture identity from the retained source artifact (not expectedBefore) when a prior publication is implied, and add a targeted test."
+    },
+    {
+      "severity": "LOW",
+      "area": "Boundary hardening (carried from 5.3)",
+      "description": "PNG/JPEG confinement is enforced in the host adapter and re-checked in ArtworkSourceReader, but SourceImageInput still accepts any content type beginning with 'image/'. A future caller that builds a SourceImageInput without going through IArtworkSourceReader could reintroduce the Phase 4 color-profile fail-open gap for an uninspected container. The supported path is closed (5.3), and the renderer was intentionally not modified.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkSourceReader.cs:118-127",
+        "src/ArrTags/Artwork/JellyfinArtworkImageAccess.cs:139-146",
+        "docs/implementation/5.3/reviewer-report.json ('Confinement enforcement location', low)"
+      ],
+      "recommended_action": "Track as a hardening item: narrow SourceImageInput/SourceImageDescriptor acceptance to the inspected containers, or add a guard at the renderer input boundary."
+    },
+    {
+      "severity": "LOW",
+      "area": "Test fidelity (5.11 publication read-back)",
+      "description": "The task 5.11 publish-then-read-back case uses the real JellyfinArtworkImageWriter but a DispatchProxy IProviderManager whose OnStreamSave callback writes the derived temp file and replaces item.ImageInfos; it does not exercise the real host ImageSaver or the host's actual on-disk image representation. The test therefore proves the route/writer contract given that item state, not that the real ImageSaver produces it. The limitation is disclosed in the worker report and research section 4.4; no live HTTP round-trip was performed and the Phase 6 generation-to-publication pipeline is not wired.",
+      "evidence": [
+        "tests/ArrTags.Tests/JellyfinImageResponseTests.cs:212-272",
+        "docs/research/jellyfin-12-architecture.md:515-533 ('Still needing live-host validation')",
+        "docs/implementation/5.11/reviewer-report.json F4"
+      ],
+      "recommended_action": "Close with a live-host acceptance check (package install + real ImageSaver + HTTP GET) in Phase 6/7."
+    },
+    {
+      "severity": "LOW",
+      "area": "Robustness / repeat publication",
+      "description": "On the Published/NotPublished repeat-publication path the publisher reuses state.SourceArtifactId without reading or integrity-validating the retained source artifact, so a corrupt or missing retained source is not detected at that point (rendering is out of publisher scope and the Phase 6 render path would fail first). Not an acceptance gap, but the source integrity check is stronger in the restoration path than in the repeat-publication path.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:225-298 (state reuse path), :1365-1403 (artifact validation only on recovery)",
+        "docs/implementation/5.5/reviewer-report.json F5"
+      ],
+      "recommended_action": "Optionally validate the retained source artifact when reusing a published session, or rely on the Phase 6 pipeline gate and document the assumption."
+    },
+    {
+      "severity": "LOW",
+      "area": "Documentation consistency",
+      "description": "Several documents remain stale or imprecise relative to the completed implementation: (a) docs/implementation-readiness.md Status line 5 does not record Phase 5 completion, and its deferred-item text still says 'the live-host behavior of the packaged assets remain Phase 5 validation' (task 5.4 performed that validation) and 'the exact publication read-back remains host validation'; (b) implementation-readiness.md:43 still attributes the EXIF defect to 'orientations 5-8' although orientation 5 was already correct (Phase 4 review LOW); (c) docs/architecture.md:3 still reads 'Phase 1 complete'; (d) docs/architecture.md:754 summarises 'failure returns pass-through' while the renderer returns a bounded Failed for decode/limit/contrast/encode cases (ADR-010 permits both); (e) docs/data-model.md 3.7 lists RenderRequest.requestId and imageSurface as fields while the mapping table 4.7 marks them Not applicable to the implemented contract. None of these affect behavior.",
+      "evidence": [
+        "docs/implementation-readiness.md:5,43,350,383",
+        "docs/architecture.md:3,754",
+        "docs/data-model.md:504-513 vs :965-973",
+        "docs/implementation/phase-4/phase-review.json (Documentation consistency, LOW)"
+      ],
+      "recommended_action": "Update the readiness status/deferred wording, the orientation wording, the architecture status/failure wording, and the data-model RenderRequest note in the next documentation pass. PLANS.md, README.md, and docs/changelog.md already state Phase 5 completion/Gate 5 consistently at the integration-test level."
+    }
+  ],
+  "tasks_checked": [
+    "5.1 confirm item-image publication ABI and route variants (complete; commit 72264a7)",
+    "5.2 source-artwork provenance and guarded restoration state (complete; commit a0d56f0)",
+    "5.3 Jellyfin host source adapter with content-type confinement (complete; commit efb65f8)",
+    "5.4 renderer managed/native packaging and notices (complete; commit dda74c7)",
+    "5.6 durable ArtworkOperation write-ahead journal (complete; commit 9312fc3)",
+    "5.5 publish completed artwork via supported item-image APIs (complete; commit d6633ea)",
+    "5.7 postcondition reconciliation of uncertain outcomes (complete; commit ba1a30c)",
+    "5.8 preserve artwork on source/render failure (complete; commit 60aab30)",
+    "5.9 lifecycle fence, guarded restoration, item-removal tombstone (complete; commit 92344eb)",
+    "5.10 DG-8 Enhanced coexistence policy resolved by ADR-011 (complete; commit 2f082c3)",
+    "5.11 standard server image-response integration tests (complete; commit be4eda5)"
+  ],
+  "commits_checked": [
+    "72264a7 Execute task 5.1: confirm Jellyfin item-image publication ABI and routes",
+    "a0d56f0 Execute task 5.2: source-artwork provenance and guarded restoration state",
+    "efb65f8 Execute task 5.3: Jellyfin host source adapter with content-type confinement",
+    "dda74c7 Execute task 5.4: package renderer managed/native assets and notices",
+    "9312fc3 Execute task 5.6: durable ArtworkOperation write-ahead journal",
+    "d6633ea Execute task 5.5: publish completed artwork via supported item-image APIs",
+    "ba1a30c Execute task 5.7: reconcile uncertain artwork outcomes by postcondition",
+    "60aab30 Execute task 5.8: preserve artwork when source capture or rendering fails",
+    "92344eb Execute task 5.9: lifecycle fence, guarded restoration, and item-removal tombstone",
+    "2f082c3 Execute task 5.10: resolve DG-8 with ADR-011 Enhanced coexistence policy",
+    "be4eda5 Execute task 5.11: standard server image-response integration tests"
+  ],
+  "requirements_checked": [
+    "Milestone 5 AC1 (standard poster response contains configured derived image): fully satisfied at integration-test level (JellyfinImageResponseTests real pinned ImageController + real writer; no live host).",
+    "Milestone 5 AC2 (disable restores original when ArrTags-owned): partially satisfied; ArtworkLifecycleTests guarded restoration cases pass, but no live-host disable run and the fence/publication race (finding 1) is a latent gap.",
+    "Milestone 5 AC3 (original media files byte-for-byte untouched): fully satisfied; stream SaveImage overload only, never the deleting path/URL overload; 5.11 read-back retains the source and 5.5 writer tests assert the overload.",
+    "Milestone 5 AC4 (failed publication/missing metadata/failed render preserve current artwork): fully satisfied; ArtworkGenerationCoordinatorTests pass-through/unavailable/failed branches assert zero mutation.",
+    "Milestone 5 AC5 (crashes before/during/after SaveImage recover): fully satisfied at unit/integration level (ArtworkOperationStoreTests + ArtworkReconcilerTests resume/abort/recovery-blocked); no process-kill injection.",
+    "Milestone 5 AC6 (restart reconciliation never overwrites externally changed image, never treats uncertainty as ownership): fully satisfied; ArtworkReconcilerTests external-change and unobservable cases.",
+    "Milestone 5 AC7 (disable/uninstall/item removal leave no untracked non-terminal operation or unsafe cleanup): partially satisfied; ArtworkLifecycleTests drain/tombstone cases; no live-host uninstall run and the fence race remains.",
+    "Milestone 5 AC8 (Enhanced coexistence): fully satisfied; ADR-011 + EnhancedCoexistenceTests (no Enhanced reference, no spoiler/suppression branch, output varies only with ArrTags config).",
+    "Gate 5 (publication and standard image-route integration tests pass for the selected 12.0.0 ABI, and source preservation/restoration is demonstrated): MET at the integration-test level as scoped by PLANS.md. JellyfinImageResponseTests (9 host-guarded) and JellyfinImageRouteTests (5) pass with ARRTAGS_JELLYFIN_HOST_DIR; source preservation/restoration demonstrated by the read-back case and the 5.9 guarded-restoration tests. Residual: no live HTTP round-trip, no real host ImageSaver, and the Phase 6 generation pipeline is unwired; the phase documents this and lists it in research section 4.4.",
+    "GOALS.md success criteria relevant to this phase: poster output (5), no repeated processing (6, Phase 6), Enhanced compatibility (7), graceful artwork failure isolation (8) are advanced; criterion 1 (install/load) was last host-validated before the task 5.9 constructor change (finding 2)."
+  ],
+  "architecture_checked": [
+    "ADR-001: derived artwork published only through supported item-image APIs; no middleware/filter/route interception; JellyfinArtworkImageWriter uses the stream SaveImage overload + UpdateToRepositoryAsync(ImageUpdate), matching the pinned ImageController.",
+    "ADR-002: retained content-addressed source artifact, expected active-image identity, ownership/publication tokens, fail-closed comparer, no automatic re-baseline of blocked states.",
+    "ADR-003: durable Prepared-before-mutation, MutationStarted, RepositoryUpdateStarted, VerificationPending, FinalizationPending, state-before-journal-commit ordering, postcondition reconciliation, no blind replay/cleanup.",
+    "ADR-009: rendering contract not modified; only unindexed Primary Movie/Episode posters; publication preserves source dimensions via renderer output.",
+    "ADR-010: renderer remains Jellyfin-free (no MediaBrowser references in src/ArrTags/Rendering); host/config references confined to JellyfinArtworkImageAccess.cs, JellyfinArtworkImageWriter.cs, and lifecycle adapters; packaged managed/native assets at plugin root.",
+    "ADR-011 / architecture section 10: no Enhanced-internals dependency; no duplicate/overlap suppression; no spoiler handling; tests assert the production assembly and renderer/publication surface expose none.",
+    "docs/data-model.md 3.10.1-3.10.4: PublishedArtworkState fields/invariants, ownership transitions, ArtworkOperation fields/phases, and the 3.10.4 recovery decision table are implemented and validated (ArtworkRecoveryDecisions order matches the table).",
+    "docs/architecture.md section 9: publication flow, provenance/ownership, crash-consistent recovery, disable/uninstall/item-removal mapping, and the documented undetectable-disable-after-unload limitation are implemented.",
+    "Authoritative execution order 5.1,5.2,5.3,5.4,5.6,5.5,5.7,5.8,5.9,5.10,5.11 is internally consistent with the documented dependencies and matches the commit order exactly.",
+    "Jellyfin API/platform assumptions re-checked against the pinned source: ActivatorUtilities plugin construction resolves IServiceProvider; IProviderManager.SaveImage stream overload delegates to ImageSaver and does not update the repository (writer adds UpdateToRepositoryAsync, as ImageController does); BaseItem.DeleteImageAsync removes the local file, removes image info, and persists ImageUpdate; IPluginManager is DI-registered and disable updates the in-memory manifest status; no OnDisable hook exists."
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-12-architecture.md section 4.4 (pinned publication/read ABI, route variants, authorization split, still-needing-live-host-validation list) — consistent with the pinned source; the stream overload update flow and delete flow independently confirmed.",
+    "docs/research/skia-host-compatibility.md and task 5.4 packaging: linux-x64 managed/native assets staged at the plugin folder root; no arbitrary system Skia load; multi-RID explicitly out of V1."
+  ],
+  "documentation_checked": [
+    "GOALS.md (Jellyfin compatibility, guarded restoration, Enhanced compatibility, reliability) — conforms; upgrade-state risk is a documented future item.",
+    "PLANS.md Milestone 5 objective/deliverables/tasks/execution order/acceptance criteria/Gate 5 and the Decision Gates table (DG-8 resolved by ADR-011) — consistent with the implementation.",
+    "AGENTS.md, README.md, docs/architecture.md section 9/10, docs/decisions.md ADR-001/002/003/009/010/011, docs/data-model.md 3.10.1-3.10.4, docs/implementation-readiness.md, docs/changelog.md — reviewed; the stale items are recorded in the LOW documentation finding.",
+    "docs/implementation/5.1-5.11 worker-report.json and reviewer-report.json — present for all eleven tasks; task-level reviewer findings were independently spot-checked against the code and are accurately reflected."
+  ],
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 5 (Jellyfin artwork integration) is complete and independently verified. All eleven tasks in the authoritative execution order are complete, each with worker and reviewer evidence and a commit, and the commit order exactly matches the execution order; the working tree is clean. The implementation conforms to ADR-001/002/003/009/010/011, data-model 3.10.1-3.10.4, and architecture section 9/10: a Jellyfin-free renderer, host-confined source/read and image-mutation adapters, a content-addressed source store, a durable generation-fenced ArtworkOperation write-ahead journal, a single deterministic publication/restoration executor, postcondition reconciliation, a durable lifecycle fence with guarded restoration and item-removal tombstoning, and the ADR-011 Enhanced coexistence policy. I independently built the solution (0 warnings/0 errors) and ran the suites: the default run reproduced 973 passed / 58 skipped / 1031 total and the host-guarded run reproduced 987 passed / 44 skipped / 1031 total, matching the claims. Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level as the phase scopes it: the real pinned ImageController route/response pipeline and the real ArrTags image-mutation boundary pass, and source preservation/restoration is demonstrated. No BLOCKER or HIGH finding was identified; the residual items are MEDIUMs (a latent lifecycle-fence race between publication and the disable/uninstall drain that only becomes reachable once Phase 6 drives publication; the plugin IServiceProvider constructor change not re-validated by an actual pinned-host load since task 5.9, though framework semantics confirm it; provenance loss on plugin upgrade when the state root is the versioned plugin folder; no artifact garbage collection so the authoritative quota is never reclaimed; the deferred repeat-publication retained-source selection; and the still-open Phase 4 configuration-to-render integration test) plus LOW notes (unpruned per-subject gate dictionary, limits captured at singleton construction, cooperative shutdown bound, a state-loss recovery edge, SourceImageInput confinement hardening, the double-backed 5.11 read-back, repeat-publication source-integrity, and documentation staleness). Phase 5 is approved and Phase 6 may proceed, with the MEDIUM items tracked for Phase 6/7."
+}
