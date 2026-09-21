@@ -37,6 +37,11 @@ public class LifecycleFoundationTests
         // as the other foundation tests supply their fakes.
         services.AddSingleton<IMediaLibraryResolver>(new ReconciliationLibraryResolver());
 
+        // Task 6.4: the work pipeline and the startup recovery service resolve the
+        // artwork recovery gate, whose real implementation composes the whole
+        // artwork stack. The gate boundary is supplied here as a foundation stub.
+        services.AddSingleton<IArtworkRecoveryGate>(new StubArtworkRecoveryGate());
+
         new ArrTagsServiceRegistrator().RegisterServices(services, null!);
 
         using var provider = services.BuildServiceProvider();
@@ -391,6 +396,31 @@ public class LifecycleFoundationTests
             return Task.FromResult(ArtworkRemovalResult.Create(
                 ArtworkRemovalOutcome.NotConfirmed,
                 "Not confirmed."));
+        }
+    }
+
+    /// <summary>
+    /// A foundation stub for the task 6.4 artwork recovery gate so the hosted
+    /// startup recovery service and the work pipeline resolve without the real
+    /// host artwork stack.
+    /// </summary>
+    private sealed class StubArtworkRecoveryGate : IArtworkRecoveryGate
+    {
+        public Task<ArtworkRecoveryGateResult> EnsureRecoveredAsync(
+            Guid jellyfinItemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ArtworkRecoveryGateResult.Create(
+                ArtworkRecoveryGateOutcome.NoOperation,
+                "No durable artwork operation."));
+        }
+
+        public Task<ArtworkRecoveryScanResult> RecoverStartupAsync(
+            int batchSize,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new ArtworkRecoveryScanResult(0, 0, 0, 0, 0, false, false));
         }
     }
 }

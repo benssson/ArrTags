@@ -1,0 +1,46 @@
+{
+  "task": "6.4",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Wired durable artwork-operation recovery into the Phase 6 pipeline and closed the Phase 5 review MEDIUM lifecycle-fence race. ArtworkRecoveryGate (IArtworkRecoveryGate) is the provider-neutral per-subject gate: it reads the durable ArtworkOperation record and, when a non-terminal operation exists, reconciles it through the existing task 5.7 ArtworkReconciler (reusing the pure ArtworkRecoveryDecisions table and the shared ArtworkSubjectGate) under the current durable lifecycle fence, then re-reads the record as a postcondition. New work proceeds only when the record is absent, already terminal (Committed/Aborted/RecoveryBlocked), or has reached a terminal outcome; a corrupt record, a non-terminal result, or an older durable generation fails closed. It never recaptures the current image as a new source, never mutates a changed or unverifiable image, and never deletes an artifact not proven non-active, and it exposes the authoritative durable generation so accepted work can only supersede it through the store's monotonic generation fence. ArtworkRecoveringWorkItemProcessor composes the gate ahead of the unchanged, artwork-free MetadataReconciliationProcessor behind IWorkItemProcessor; a subject with a non-terminal operation is deferred (bounded retry) or failed closed instead of processed. ArtworkStartupRecoveryService runs one bounded, cancellation-aware, non-blocking startup scan over the persisted operation records limited by OperationalLimits.ReconciliationBatchSize; any record beyond the batch is recovered lazily by the per-subject gate. ArtworkPublisher now re-reads and enforces the durable fence immediately before the first image mutation (aborting the operation without an external effect) and again before the final PublishedArtworkState commit (recording the verified postcondition but leaving the final commit to reconciliation), so an in-flight publication cannot cross a disable/uninstall drain; interleaved drain/publication tests prove no untracked non-terminal publication survives the fence. DI registers the gate, the concrete metadata processor, the recovering decorator, and the startup recovery service after the lifecycle service and before the work worker. The task 6.1/6.2/6.3 queue, worker, coalescing, single-flight, retry, event-handler, and metadata-publication behavior is unchanged.",
+  "validation": [
+    "./build.sh build => Build succeeded, 0 warnings, 0 errors",
+    "./build.sh test => Passed 1047, Skipped 58, Failed 0, Total 1105 (baseline after 6.3 was 1032/58/0/1090; +15 passed, no new skips, no regressions)",
+    "dotnet test --filter \"FullyQualifiedName~ArtworkRecoveryGateTests|FullyQualifiedName~ArtworkPublisherTests|FullyQualifiedName~ArtworkLifecycleTests|FullyQualifiedName~ArtworkReconcilerTests|FullyQualifiedName~MetadataReconciliationProcessorTests|FullyQualifiedName~LifecycleFoundationTests\" => Passed 114, Failed 0, Skipped 0, Total 114",
+    "dotnet test --filter \"FullyQualifiedName~ArtworkRecoveryGateTests\" => Passed 15, Failed 0, Skipped 0, Total 15",
+    "git status and full diff inspection => only task-relevant production, test, and documentation files changed (new recovery gate + startup service + decorator, publisher fence re-checks, DI composition, focused tests, PLANS/changelog/architecture updates)",
+    "Acceptance criteria check: recovery-before-new-work (GateRecoversANonTerminalPublicationBeforeAllowingNewWork, decorator deferral/terminal/block tests), before/after identity postconditions (reconciler decision table via gate tests), generation-fence rejection of stale writes (GateBindsAcceptedWorkToTheCurrentGenerationAndRejectsStaleWrites), lifecycle-fence abort before mutation (FenceRaisedAfterPreparationAbortsBeforeAnyMutation), the interleaved drain/publication race (FenceRaisedAfterPreparationAbortsBeforeAnyMutation and FenceRaisedDuringMutationPreventsTheFinalCommitAndLeavesARecoverableOperation), no-recapture (GateRecoveryReusesTheRetainedSourceAndNeverRecapturesTheActiveImage), artifact non-deletion (GateFailClosedRecoveryRetainsArtifactsAndMutatesNothing), corrupt-state fail-closed (GateBlocksNewWorkWhenTheOperationRecordIsCorrupt), and startup recovery bounds/cancellation (StartupScanIsBoundedToTheBatchSize, StartupScanIsCancellableAndPerformsNoRecoveryWhenCancelled, StartupRecoveryServiceRunsTheConfiguredBatchAndStopsBounded) are all covered",
+    "Phase 5 lifecycle-fence finding is CLOSED: ArtworkPublisher enforces the durable fence before the first image mutation and before the final commit, and the two interleaved drain/publication tests demonstrate that no untracked non-terminal publication survives the fence"
+  ],
+  "changed_files": [
+    "src/ArrTags/Artwork/ArtworkRecoveryGate.cs",
+    "src/ArrTags/Artwork/IArtworkRecoveryGate.cs",
+    "src/ArrTags/Artwork/ArtworkRecoveryGateResult.cs",
+    "src/ArrTags/Artwork/ArtworkRecoveryGateOutcome.cs",
+    "src/ArrTags/Artwork/ArtworkRecoveryScanResult.cs",
+    "src/ArrTags/Artwork/ArtworkPublisher.cs",
+    "src/ArrTags/Updates/ArtworkRecoveringWorkItemProcessor.cs",
+    "src/ArrTags/PluginLifecycle/ArtworkStartupRecoveryService.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/ArtworkRecoveryGateTests.cs",
+    "tests/ArrTags.Tests/MetadataReconciliationProcessorTests.cs",
+    "tests/ArrTags.Tests/LifecycleFoundationTests.cs",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/implementation/6.4/worker-report.json"
+  ],
+  "known_limitations": [
+    "The startup scan is bounded to OperationalLimits.ReconciliationBatchSize persisted operation records (default 100) and does not attempt a full scan over every record; records beyond the batch are recovered lazily by the per-subject gate before that subject's next work item, which is the fail-closed guarantee. The scan is best-effort and non-blocking, so it does not delay host startup.",
+    "ArtworkOperationStore.Enumerate reads and quarantines invalid authoritative records and omits them from the scan result, so a corrupt record is not counted by the startup scan; the per-subject gate blocks the first read of a corrupt record and the bytes are preserved in quarantine. This matches the existing quarantine semantics.",
+    "Task 6.4 exposes the authoritative durable generation on the gate result but does not create a superseding publication operation from metadata; the actual fingerprint-driven creation of new artwork work is task 6.6. The store's monotonic generation fence (already enforced by ArtworkOperationStore and used by ArtworkPublisher as durable generation + 1) rejects a stale write, and the gate's postcondition fails closed on an older durable generation.",
+    "RecoveryBlocked is a durable terminal phase, so the gate permits the metadata work pipeline to proceed for that subject (per the task acceptance wording); the publisher still refuses artwork publication while a RecoveryBlocked operation exists, so no unsafe image mutation can follow.",
+    "Only in-process validation was performed; no live Jellyfin host was available, consistent with the pinned-host absence noted for the environment. The host-guarded Jellyfin image facts skip as expected.",
+    "The publisher fence re-checks apply to the publication path; the guarded restoration path remains governed by its own lifecycle fence permission (disable/uninstall allow restoration, item removal refuses it), which task 5.9 already enforced."
+  ],
+  "ready_for_next_task": true
+}

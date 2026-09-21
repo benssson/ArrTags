@@ -634,9 +634,40 @@ lifecycle fence allow it and the operation can be re-executed from its retained
 artifacts without recapturing the active image; a lifecycle fence aborts a
 prepared publication. Reconciliation performs no artifact deletion, so an
 artifact that is not proven non-active is retained or quarantined. Invocation is
-an explicit boundary: the event, queue, startup-scan, and library-event wiring
-that drives it belongs to later tasks, and the guarded restoration mutation
-remains the lifecycle task 5.9.
+an explicit boundary: the guarded restoration mutation remains the lifecycle
+task 5.9, and the event/webhook wiring that feeds the work queue remains later
+tasks.
+
+Task 6.4 drives this recovery entry point from the Phase 6 pipeline as the
+provider-neutral `ArtworkRecoveryGate` (`IArtworkRecoveryGate`). Before a queued
+item is processed, the gate reads the durable `ArtworkOperation` record and, when
+a non-terminal operation exists, reconciles it through the `ArtworkReconciler`
+under the current durable lifecycle fence and re-reads the record as a
+postcondition. New work proceeds only when the record is absent, already
+terminal, or has reached a terminal outcome; a corrupt record, a recovery that
+does not reach a terminal outcome, or an older durable generation fails closed.
+The gate serializes through the same `ArtworkSubjectGate`, exposes the
+authoritative durable generation so accepted work can only supersede it through
+the store's monotonic generation fence, and never recaptures the current image as
+a new source, mutates a changed or unverifiable image, or deletes an artifact
+that is not proven non-active. `ArtworkRecoveringWorkItemProcessor` composes the
+gate ahead of the artwork-free metadata reconciliation processor, and
+`ArtworkStartupRecoveryService` runs one bounded, cancellation-aware startup scan
+over the persisted operation records limited by
+`OperationalLimits.ReconciliationBatchSize`. The scan is best-effort and never
+blocks host startup; any record beyond the batch is recovered lazily by the
+per-subject gate before that subject's next work item, so a non-terminal
+operation is always reconciled before new work for its item/image surface.
+
+The publication protocol additionally re-reads and enforces the durable lifecycle
+fence at two checkpoints inside `ArtworkPublisher`: immediately before the first
+image mutation (the operation is aborted without an external effect) and again
+before the final `PublishedArtworkState` commit (the verified postcondition is
+recorded but the final commit is left to reconciliation). An in-flight
+publication therefore cannot cross a disable or uninstall drain that was raised
+after the operation was prepared; the drain reconciles the operation before
+creating its guarded restoration, so no untracked non-terminal publication
+survives the fence.
 
 Task 5.8 implements the generation step as the provider-neutral
 `ArtworkGenerationCoordinator`, which composes the host source adapter, the

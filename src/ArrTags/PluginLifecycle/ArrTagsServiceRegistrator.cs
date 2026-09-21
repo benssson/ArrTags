@@ -50,7 +50,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             ServiceDescriptor.Singleton<IArrMetadataReader, RadarrMetadataReader>());
         serviceCollection.TryAddEnumerable(
             ServiceDescriptor.Singleton<IArrMetadataReader, SonarrMetadataReader>());
-        serviceCollection.TryAddSingleton<IWorkItemProcessor, MetadataReconciliationProcessor>();
+        serviceCollection.TryAddSingleton<MetadataReconciliationProcessor>();
+        serviceCollection.TryAddSingleton(CreateArtworkRecoveryGate);
+        serviceCollection.TryAddSingleton<IArtworkRecoveryGate>(
+            static serviceProvider => serviceProvider.GetRequiredService<ArtworkRecoveryGate>());
+        serviceCollection.TryAddSingleton<IWorkItemProcessor>(CreateArtworkRecoveringWorkItemProcessor);
         serviceCollection.TryAddSingleton<IArtworkImageAccess>(CreateArtworkImageAccess);
         serviceCollection.TryAddSingleton<IArtworkSourceReader>(CreateArtworkSourceReader);
         serviceCollection.TryAddSingleton<IArtworkImageWriter>(CreateArtworkImageWriter);
@@ -68,6 +72,12 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateArtworkGenerationCoordinator);
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
+
+        // Registered after the lifecycle service (which clears a stale fence) so
+        // the bounded startup scan runs against the active fence, and before the
+        // work worker so it starts first. New work is additionally gated per
+        // subject, so a scan that does not cover every record is still safe.
+        serviceCollection.AddHostedService<ArtworkStartupRecoveryService>();
 
         // Registered after the lifecycle service so a host shutdown stops
         // accepting and cancels queued/in-flight work before the lifecycle drain
@@ -188,6 +198,21 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<ArtworkOperationStore>(),
             serviceProvider.GetRequiredService<ArtworkPublisher>());
+    }
+
+    private static ArtworkRecoveryGate CreateArtworkRecoveryGate(IServiceProvider serviceProvider)
+    {
+        return new ArtworkRecoveryGate(
+            serviceProvider.GetRequiredService<ArtworkOperationStore>(),
+            serviceProvider.GetRequiredService<ArtworkReconciler>(),
+            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>());
+    }
+
+    private static IWorkItemProcessor CreateArtworkRecoveringWorkItemProcessor(IServiceProvider serviceProvider)
+    {
+        return new ArtworkRecoveringWorkItemProcessor(
+            serviceProvider.GetRequiredService<MetadataReconciliationProcessor>(),
+            serviceProvider.GetRequiredService<IArtworkRecoveryGate>());
     }
 
     private static ArtworkLifecycleFenceStore CreateArtworkLifecycleFenceStore(IServiceProvider serviceProvider)

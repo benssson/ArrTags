@@ -212,10 +212,18 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
 
         new ArrTagsServiceRegistrator().RegisterServices(services, null!);
 
+        // Task 6.4 composes the real metadata processor with the per-subject
+        // artwork recovery gate behind the IWorkItemProcessor boundary; the
+        // metadata processor remains artwork-free and is registered concretely.
+        var processor = Assert.Single(services, descriptor => descriptor.ServiceType == typeof(IWorkItemProcessor));
+        Assert.NotNull(processor.ImplementationFactory);
         Assert.Contains(
             services,
-            descriptor => descriptor.ServiceType == typeof(IWorkItemProcessor)
-                && descriptor.ImplementationType == typeof(MetadataReconciliationProcessor));
+            descriptor => descriptor.ServiceType == typeof(MetadataReconciliationProcessor));
+        Assert.Contains(
+            services,
+            descriptor => descriptor.ServiceType == typeof(IArtworkRecoveryGate)
+                && descriptor.ImplementationFactory is not null);
         Assert.DoesNotContain(
             services,
             descriptor => descriptor.ImplementationType is { } implementation

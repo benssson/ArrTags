@@ -1370,7 +1370,7 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Tasks 6.1, 6.2, and 6.3 complete; Gate 6 not yet met.
+**Status:** In progress. Tasks 6.1, 6.2, 6.3, and 6.4 complete; Gate 6 not yet met.
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
 
@@ -1592,3 +1592,71 @@ passing behavior was changed. The Phase 5 review MEDIUM finding that
 made reachable by this task because the reconciliation processor does not drive
 artwork publication; it remains open for the later task that wires artwork
 publication into the worker (6.4/6.6).
+
+### Task 6.4 - Recover non-terminal artwork operations before accepting new work
+
+Task 6.4 drives the task 5.7 durable artwork-operation recovery entry point from
+the Phase 6 pipeline (`docs/architecture.md` section 9 "Restart reconciliation";
+`docs/data-model.md` sections 3.10.3-3.10.4; ADR-003; ADR-002) and closes the
+Phase 5 review MEDIUM lifecycle-fence race. It does not implement metadata
+freshness/staleness (6.5), fingerprint-driven artwork regeneration/invalidation
+(6.6), webhooks (6.7), or the restart/outage/pressure test matrix (6.8).
+
+- `src/ArrTags/Artwork/ArtworkRecoveryGate.cs`,
+  `IArtworkRecoveryGate.cs`, `ArtworkRecoveryGateResult.cs`,
+  `ArtworkRecoveryGateOutcome.cs`, and `ArtworkRecoveryScanResult.cs`: the
+  provider-neutral per-subject recovery gate and its bounded startup scan. The
+  gate reads the durable `ArtworkOperation` record and, when a non-terminal
+  operation exists, reconciles it through the existing `ArtworkReconciler` under
+  the current durable lifecycle fence and re-reads the record as a postcondition.
+  New work proceeds only when the record is absent, already terminal, or reached
+  a terminal outcome; a corrupt record, a non-terminal result, or an older
+  durable generation fails closed. The gate reuses the pure
+  `ArtworkRecoveryDecisions` table and the shared `ArtworkSubjectGate`, exposes
+  the authoritative durable generation so accepted work can only supersede it
+  through the store's monotonic generation fence, and never recaptures the
+  current image as a new source, mutates a changed or unverifiable image, or
+  deletes an artifact not proven non-active.
+- `src/ArrTags/Updates/ArtworkRecoveringWorkItemProcessor.cs`: composes the gate
+  ahead of the unchanged, artwork-free `MetadataReconciliationProcessor` behind
+  the `IWorkItemProcessor` boundary. A queued item defers (bounded retry) or
+  fails closed instead of being processed while its subject has a non-terminal
+  artwork operation.
+- `src/ArrTags/PluginLifecycle/ArtworkStartupRecoveryService.cs`: a hosted
+  service that runs one bounded, cancellation-aware startup scan over the
+  persisted operation records, limited by
+  `OperationalLimits.ReconciliationBatchSize`. The scan never blocks host
+  startup and is cancelled and awaited within a bounded timeout on shutdown; any
+  record beyond the batch is recovered lazily by the per-subject gate before that
+  subject's next work item.
+- `src/ArrTags/Artwork/ArtworkPublisher.cs`: re-reads and enforces the durable
+  lifecycle fence immediately before the first image mutation (aborting the
+  operation without an external effect) and again before the final
+  `PublishedArtworkState` commit (recording the verified postcondition but
+  leaving the final commit to reconciliation). An in-flight publication can no
+  longer cross a disable or uninstall drain raised after the operation was
+  prepared.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers the
+  recovery gate, keeps `MetadataReconciliationProcessor` as the concrete
+  artwork-free processor, wires the recovering decorator as `IWorkItemProcessor`,
+  and adds the startup recovery service after the lifecycle service and before
+  the work worker.
+- Tests: `tests/ArrTags.Tests/ArtworkRecoveryGateTests.cs` (15 cases) plus
+  updated `MetadataReconciliationProcessorTests` and `LifecycleFoundationTests`
+  registration checks. They cover recovery-before-new-work, already-terminal and
+  no-operation fast paths, deferral/terminal classification at the decorator,
+  corrupt-state fail-closed, fail-closed artifact retention with no mutation,
+  externally changed image handling, no-recapture of the active image as a new
+  source, generation-fence rejection of stale writes, the startup scan bound and
+  cancellation, the configured startup batch, and two interleaved
+  drain/publication races that prove no untracked non-terminal publication
+  survives the fence.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1047 with 58 environment-guarded skips (1105
+total), exactly +15 over the task 6.3 baseline (1032/58/1090), with no new skips
+and no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed. The Phase 5 review MEDIUM lifecycle-fence finding
+is closed: the publisher enforces the durable fence before the first mutation and
+before the final commit, and the interleaved drain/publication tests demonstrate
+that no untracked publication survives the fence.

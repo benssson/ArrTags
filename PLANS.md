@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, and 6.3 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, 6.3, and 6.4 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -2025,7 +2025,7 @@ authoritative.
   cancellation, retry classification, and queue overflow behavior.
 - [x] 6.3 Publish metadata state atomically only after current item/configuration
   validation; discard stale long-running work.
-- [ ] 6.4 Recover non-terminal artwork operations before accepting new work for
+- [x] 6.4 Recover non-terminal artwork operations before accepting new work for
   the same item/image surface, using before/after identity postconditions and
   generation fences.
 - [ ] 6.5 Separate metadata freshness and bounded stale-last-known-good behavior
@@ -2126,6 +2126,42 @@ discard on advanced configuration version/disabled connection/absent or changed
 or ineligible item, retryable versus terminal provider failure, no overwrite of
 an existing published state on discard, provider reader matching/mapping, and the
 DI replacement.
+
+**Task 6.4 status:** Complete. Non-terminal artwork-operation recovery is driven
+from the Phase 6 pipeline in `src/ArrTags/Artwork`, `src/ArrTags/Updates`, and
+`src/ArrTags/PluginLifecycle`. `ArtworkRecoveryGate`
+(`IArtworkRecoveryGate`) is the provider-neutral per-subject gate: it reads the
+durable `ArtworkOperation` record and, when a non-terminal operation exists,
+reconciles it through the task 5.7 `ArtworkReconciler` under the current durable
+lifecycle fence, then re-reads the record as a postcondition. New work proceeds
+only when the record is absent, already terminal, or has reached a terminal
+outcome; a corrupt record, a recovery that does not reach a terminal outcome, or
+an older durable generation fails closed. The gate reuses the pure
+`ArtworkRecoveryDecisions` table and the shared `ArtworkSubjectGate`; it never
+recaptures the current image as a new source, never mutates a changed or
+unverifiable image, and never deletes an artifact not proven non-active. The gate
+exposes the authoritative durable generation so accepted new work can only
+supersede it through the store's monotonic generation fence.
+`ArtworkRecoveringWorkItemProcessor` composes the gate ahead of the unchanged,
+artwork-free `MetadataReconciliationProcessor`, so a queued item defers (bounded
+retry) or fails closed instead of being processed while its subject has a
+non-terminal artwork operation. `ArtworkStartupRecoveryService` runs one bounded,
+cancellation-aware startup scan over the persisted operation records, limited by
+`OperationalLimits.ReconciliationBatchSize`; the scan is best-effort and
+non-blocking, and any record beyond the batch is recovered lazily by the
+per-subject gate before that subject's next work item. The Phase 5 review MEDIUM
+lifecycle-fence race is closed: `ArtworkPublisher` re-reads and enforces the
+durable fence immediately before the first image mutation (aborting the
+operation) and again before the final commit (leaving the verified postcondition
+non-terminal for recovery), so an in-flight publication cannot cross a
+disable/uninstall drain; an interleaved drain/publication test proves no
+untracked non-terminal publication survives the fence. Focused tests cover
+recovery-before-new-work, deferral/terminal classification, generation-fence
+rejection of stale writes, lifecycle-fence abort before mutation, the interleaved
+drain/publication race, no-recapture, artifact non-deletion, corrupt-state
+fail-closed, and the startup scan bound and cancellation. Metadata freshness
+(6.5), fingerprint-driven regeneration (6.6), webhooks (6.7), and the
+restart/outage test matrix (6.8) remain.
 
 **Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
 6.8. Task IDs are stable references only; this execution order is the canonical

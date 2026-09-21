@@ -1,0 +1,46 @@
+{
+  "task": "6.4",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "6.4-F1",
+      "severity": "LOW",
+      "status": "resolved",
+      "summary": "RESOLVED: docs/changelog.md task 6.4 entry test count corrected to 1047 passed / 58 skipped / 1105 total, +15 over the 1032/58/1090 task 6.3 baseline.",
+      "detail": "RESOLVED: docs/changelog.md:1655-1658 now reads \"passes 1047 with 58 environment-guarded skips (1105 total), exactly +15 over the task 6.3 baseline (1032/58/1090)\", matching the independently reproduced ./build.sh test run (Passed 1047, Skipped 58, Failed 0, Total 1105) and docs/implementation/6.4/worker-report.json. The correction changed only the three counts (1046->1047, 1104->1105, +14->+15); the rest of the entry remains accurate, and the historical task 6.1 entry (987/58/1045, +14 over the 973/58/1031 task 5.11 baseline) was left untouched."
+    },
+    {
+      "id": "6.4-F2",
+      "severity": "LOW",
+      "status": "closed",
+      "summary": "Phase 5 lifecycle-fence MEDIUM is closed; a Prepared record may still be written after a drain enumeration, but no mutation/commit can cross the fence and the record is immediately aborted (terminal).",
+      "detail": "Verified by code inspection and by the interleaved test FenceRaisedAfterPreparationAbortsBeforeAnyMutation: ArtworkPublisher now re-reads the durable fence immediately before the first mutation (aborts without an external effect) and again immediately before the final PublishedArtworkState commit (leaves the verified FinalizationPending postcondition for reconciliation). The invariant is: a mutation/commit implies the operation was durable before the drain's Enumerate (Prepared before the pre-mutation check; FinalizationPending before the pre-commit check), and the drain's per-subject reconcile serializes with the publisher through ArtworkSubjectGate, so a committed Published state is seen by the drain and restored. In the test's paused-capture interleaving the publication does write Prepared after the drain enumerated, but it then aborts before any mutation; the durable outcome is terminal, so no untracked non-terminal publication survives. This satisfies the finding's recommended action/recommended barrier and the reviewer requirement that no untracked non-terminal publication survives the fence."
+    },
+    {
+      "id": "6.4-F3",
+      "severity": "LOW",
+      "status": "closed",
+      "summary": "Generation fence is enforced by the store; creation of superseding artwork work is intentionally deferred to 6.6.",
+      "detail": "ArtworkOperationStore.Write -> EnsureWriteIsFenced throws InvalidOperationException on a stale generation, and ArtworkRecoveryGate's postcondition fails closed (Blocked) when the re-read durable generation is older than the reconciled record (ArtworkOperationFencing.IsStale). The gate exposes the authoritative durable generation, but 6.4 does not itself create a superseding publication operation from metadata; docs/implementation/6.4/worker-report.json discloses this and fingerprint-driven creation is task 6.6. This is consistent with the task scope and not a defect."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build => Build succeeded, 0 Warning(s), 0 Error(s) (independently reproduced)",
+    "./build.sh test => Passed 1047, Skipped 58, Failed 0, Total 1105 (independently reproduced; baseline 1032/58/1090 => +15)",
+    "dotnet test --filter FullyQualifiedName~ArtworkRecoveryGateTests => Passed 15, Failed 0, Skipped 0 (independently reproduced)",
+    "dotnet test --filter (ArtworkPublisherTests|ArtworkLifecycleTests|ArtworkReconcilerTests|MetadataReconciliationProcessorTests|LifecycleFoundationTests|ArtworkRecoveryGateTests) => Passed 114, Failed 0, Skipped 0 (independently reproduced)",
+    "Inspected tests/ArrTags.Tests/ArtworkRecoveryGateTests.cs (15 cases) including the interleaving cases FenceRaisedAfterPreparationAbortsBeforeAnyMutation and FenceRaisedDuringMutationPreventsTheFinalCommitAndLeavesARecoverableOperation; the former genuinely pauses the publication in its first source read while DrainAsync runs to completion.",
+    "Inspected updated MetadataReconciliationProcessorTests registration assertions (concrete MetadataReconciliationProcessor + single IWorkItemProcessor factory + IArtworkRecoveryGate factory) and LifecycleFoundationTests StubArtworkRecoveryGate wiring."
+  ],
+  "research_checked": [
+    "docs/implementation/phase-5/phase-review.json finding 1 (MEDIUM lifecycle fence / publisher vs disable-uninstall drain) and its recommended_action — closed by the two new publisher fence checkpoints.",
+    "docs/data-model.md 3.10.4 recovery decision table — ArtworkRecoveryDecisions order/actions match (resume only under a permitting fence, complete-after, ownership lost/unknown, item-removed tombstone, final-state-durable).",
+    "docs/architecture.md section 9 (publication flow 5-10, restart reconciliation, disable/uninstall/item removal) — updated text is consistent with the implemented checkpoints and recovery gate.",
+    "docs/decisions.md ADR-003/ADR-002 — durable Prepared-before-mutation, postcondition reconciliation, no blind replay, retained source artifact and fail-closed ownership; the fence aborts preserve artifacts and recovery records and do not delete or replay blindly.",
+    "src/ArrTags/Artwork/ArtworkReconciler.cs, ArtworkRecoveryDecisions.cs, ArtworkLifecycleCoordinator.cs, ArtworkOperationStore.cs, ArtworkOperationFencing.cs, ArtworkLifecycleFenceStore.cs, ArtworkLifecycleFenceState.cs — inspected for the fence/generation/recovery semantics.",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs — DI order verified: metadata processor (concrete), recovery gate, IWorkItemProcessor decorator, then AddHostedService<ArtworkStartupRecoveryService> after ArrTagsLifecycleService and before LibraryWorkWorker."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

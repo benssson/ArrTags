@@ -340,6 +340,22 @@ public sealed class ArtworkPublisher
             return ArtworkPublicationResult.Failure(outcome, beforeComparison.Reason, operation.OperationId);
         }
 
+        // Re-read and enforce the durable lifecycle fence immediately before the
+        // first image mutation. A disable, uninstall, or confirmed item removal
+        // raised after this operation was prepared must abort it before any
+        // external effect, so an in-flight publication cannot cross the fence.
+        if (!AllowsNewPublication())
+        {
+            _operations.Write(Advance(
+                operation,
+                ArtworkOperationPhase.Aborted,
+                lastError: "The active lifecycle fence refuses the image mutation."));
+            return ArtworkPublicationResult.Failure(
+                ArtworkPublicationOutcome.Blocked,
+                "The active lifecycle fence refuses new publication work.",
+                operation.OperationId);
+        }
+
         // Step 6: record the mutation lower bound when it is not already durable,
         // then call the supported image mutation. Re-running the same
         // deterministic mutation for the same durable bytes is idempotent and
@@ -450,6 +466,19 @@ public sealed class ArtworkPublisher
         // Step 9: the postcondition is observed; commit the final state, then the journal.
         var finalizing = Advance(verification, ArtworkOperationPhase.FinalizationPending, observedAfter);
         _operations.Write(finalizing);
+
+        // Re-read and enforce the durable lifecycle fence again before the final
+        // commit. A fence raised while the mutation was in flight must prevent
+        // this path from committing outside the drain: the verified postcondition
+        // is recorded and the final state commit is left to recovery, which the
+        // disable/uninstall drain runs before creating a guarded restoration.
+        if (!AllowsNewPublication())
+        {
+            return ArtworkPublicationResult.Failure(
+                ArtworkPublicationOutcome.Blocked,
+                "The active lifecycle fence changed while the publication was in flight; the final state commit is deferred to reconciliation.",
+                operation.OperationId);
+        }
 
         var committedState = Commit(
             session,
@@ -1088,6 +1117,22 @@ public sealed class ArtworkPublisher
             lastError ?? operation.LastError,
             operation.CandidatePublicationFingerprint,
             operation.RendererVersion);
+    }
+
+    /// <summary>
+    /// Re-reads the durable active lifecycle fence and reports whether new
+    /// publication work is still permitted. An absent fence store means the
+    /// caller supplied no durable fence; an invalid fence record fails closed
+    /// because <see cref="ArtworkLifecycleFenceState.AllowsNewPublication"/> is
+    /// false for it. This is the fence enforcement used at the pre-mutation and
+    /// final-commit checkpoints; the initial check in
+    /// <see cref="PublishCoreAsync"/> remains the entry-point refusal.
+    /// </summary>
+    /// <returns><see langword="true"/> when the durable fence still permits new publication work.</returns>
+    private bool AllowsNewPublication()
+    {
+        var fenceState = _fences is null ? ArtworkLifecycleFenceState.Normal : _fences.Read();
+        return fenceState.AllowsNewPublication;
     }
 
     private static bool MatchesCandidate(
