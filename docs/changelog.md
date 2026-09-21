@@ -1367,3 +1367,78 @@ because the 9 new host-guarded cases skip; with
 `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/opencode/jf/jellyfin` the full suite passes 987
 with 44 skips (1031 total, 0 failures), unskipping all 14 host-guarded image-route
 cases, with no regressions.
+
+## Phase 6 - Caching, updates & performance (Milestone 6)
+
+**Status:** In progress. Task 6.1 complete; Gate 6 not yet met.
+
+### Task 6.1 - Short library event handlers and the bounded enqueue boundary
+
+Task 6.1 implements the Phase 6 entry boundary in `src/ArrTags/PluginLifecycle`
+and `src/ArrTags/Updates`: a short, synchronous library-event handler that
+validates relevance, converts the change into a bounded provider-neutral work
+hint, and enqueues it through a narrow, non-blocking boundary
+(`docs/architecture.md` section 8; ADR-004; ADR-005). It does not implement the
+task 6.2 queue/worker (coalescing by item and connection, single-flight, worker
+cancellation, retry classification, and the full overflow policy), the metadata
+cache (6.3/6.5), recovery (6.4), fingerprint invalidation (6.6), or webhooks
+(6.7).
+
+- `src/ArrTags/PluginLifecycle/LibraryItemChangedEventArgs.cs`: the boundary
+  event now carries the bounded change facts a short handler needs - the Jellyfin
+  item id, the `LibraryWorkReason` (`Added`, `Updated`, or `Removed`), the
+  structural `MediaItemType?` when known, and the `LibraryItemChangeOrigin`
+  (`Library` or `Image`). It carries no provider DTO, path, credential, or the
+  Jellyfin item.
+- `src/ArrTags/PluginLifecycle/JellyfinLibraryEventSource.cs`: the adapter maps
+  each Jellyfin `ItemChangeEventArgs` synchronously and in memory. It reads only
+  the item id, the structural type switch, and whether
+  `ItemUpdateType.ImageUpdate` is set; it performs no provider, rendering, image,
+  or library lookup. The mapping is exposed as a static `MapChange` so the rules
+  are verifiable without a live host.
+- `src/ArrTags/PluginLifecycle/LibraryEventRelevance.cs`: the pure relevance
+  policy. It drops an empty item id, an image-only or ArrTags-generated internal
+  update, a non-badge-bearing type for an add/update (V1 badge surfaces are Movie
+  and Episode only, ADR-006), and any change when no Arr connection is enabled.
+  A removal stays relevant regardless of the current type because a previously
+  published surface may need reconciliation. Configured library scope and current
+  item state are re-validated by the future worker rather than looked up here.
+- `src/ArrTags/Updates/LibraryWorkHint.cs` and `LibraryWorkReason.cs`: the
+  bounded, provider-neutral unit of work containing only the Jellyfin item id,
+  the reason, and the safe configuration generation observed at the boundary.
+  It contains no API key, secret lease, credential, provider DTO, path, or
+  unbounded payload (ADR-005).
+- `src/ArrTags/Updates/IWorkHintSink.cs` and `BoundedWorkHintSink.cs`: the narrow
+  enqueue boundary and its minimal implementation. The sink is thread-safe and
+  bounded by the ADR-004 `QueueCapacity`; it coalesces a redundant hint for an
+  item that already has pending work, drops overflow, never blocks on external
+  work, and never throws. A `TryDequeue` primitive is provided for the future
+  task 6.2 worker; no worker or processing pipeline is implemented here.
+- `src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs`: one synchronous
+  handler serves `ItemAdded`, `ItemUpdated`, and `ItemRemoved`. It performs the
+  relevance check and enqueue, and it contains any unexpected exception so a
+  handler failure can never surface to the host's event publisher. The task 5.9
+  `ItemRemoved` tracked, bounded drain/tombstone behavior is preserved unchanged
+  and now also emits a removal hint through the same boundary.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers
+  `IWorkHintSink` as a lazy singleton factory bounded by the current
+  `OperationalLimits.QueueCapacity`; registration still performs no startup work.
+- Tests: `tests/ArrTags.Tests/LibraryUpdateBoundaryTests.cs` (14 cases) and the
+  shared `LibraryEventFixtures` double the boundary. They cover synchronous hint
+  enqueue with no coordinator call, dropping when no provider is enabled,
+  dropping non-badge and unknown types, dropping image-only and empty-id changes,
+  Episode-to-Sonarr and removal relevance, the preserved `ItemRemoved` drain,
+  never throwing on a full sink, coalescing, bounded overflow, empty-id
+  rejection, FIFO dequeue and coalescing release, the absence of
+  provider/renderer/image/secret dependencies in the handler constructor,
+  the Jellyfin item-type/image-origin mapping, and DI registration at the
+  configured capacity. `LifecycleFoundationTests` keeps its existing lifecycle
+  behavior coverage and now supplies the configuration and sink dependencies.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 987 with 58
+environment-guarded skips (1045 total), exactly +14 over the task 5.11 baseline
+(973/58/1031), with no new skips and no regressions. No ADR, `RenderVersion`,
+renderer behavior, or existing passing behavior was changed. The full queue
+worker, coalescing-by-connection, caching, recovery, and invalidation behavior
+remains tasks 6.2-6.8.

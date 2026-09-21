@@ -8,6 +8,7 @@ using ArrTags.Providers;
 using ArrTags.Rendering;
 using ArrTags.Secrets;
 using ArrTags.State;
+using ArrTags.Updates;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Drawing;
@@ -36,6 +37,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             static serviceProvider => serviceProvider.GetRequiredService<ConfigurationSnapshotService>());
         serviceCollection.AddSingleton(CreateStateRepository);
         serviceCollection.TryAddSingleton<ILibraryEventSource, JellyfinLibraryEventSource>();
+        serviceCollection.TryAddSingleton<IWorkHintSink>(CreateWorkHintSink);
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
         serviceCollection.TryAddSingleton<IArtworkImageAccess>(CreateArtworkImageAccess);
         serviceCollection.TryAddSingleton<IArtworkSourceReader>(CreateArtworkSourceReader);
@@ -94,6 +96,12 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             : plugin!.DataFolderPath;
 
         return new StateRepository(root, limits);
+    }
+
+    private static BoundedWorkHintSink CreateWorkHintSink(IServiceProvider serviceProvider)
+    {
+        var capacity = serviceProvider.GetRequiredService<ConfigurationSnapshotService>().Current.Limits.QueueCapacity;
+        return new BoundedWorkHintSink(capacity);
     }
 
     private static JellyfinArtworkImageAccess CreateArtworkImageAccess(IServiceProvider serviceProvider)

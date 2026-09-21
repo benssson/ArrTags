@@ -8,6 +8,7 @@ using ArrTags.Artwork;
 using ArrTags.Configuration;
 using ArrTags.PluginLifecycle;
 using ArrTags.State;
+using ArrTags.Updates;
 using MediaBrowser.Common.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -81,7 +82,11 @@ public class LifecycleFoundationTests
     public async Task StartSubscribesAndStopUnsubscribes()
     {
         var libraryEvents = new FakeLibraryEventSource();
-        var service = new ArrTagsLifecycleService(libraryEvents, new FakeArtworkLifecycleCoordinator());
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            new FakeArtworkLifecycleCoordinator(),
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
 
         await service.StartAsync(CancellationToken.None);
         Assert.Equal(1, libraryEvents.AddedSubscriberCount);
@@ -96,7 +101,11 @@ public class LifecycleFoundationTests
     public async Task LifecycleCanBeRestarted()
     {
         var libraryEvents = new FakeLibraryEventSource();
-        var service = new ArrTagsLifecycleService(libraryEvents, new FakeArtworkLifecycleCoordinator());
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            new FakeArtworkLifecycleCoordinator(),
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
 
         await service.StartAsync(CancellationToken.None);
         await service.StopAsync(CancellationToken.None);
@@ -112,7 +121,11 @@ public class LifecycleFoundationTests
     public async Task CanceledStartDoesNotSubscribe()
     {
         var libraryEvents = new FakeLibraryEventSource();
-        var service = new ArrTagsLifecycleService(libraryEvents, new FakeArtworkLifecycleCoordinator());
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            new FakeArtworkLifecycleCoordinator(),
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
@@ -170,7 +183,11 @@ public class LifecycleFoundationTests
     {
         var libraryEvents = new FakeLibraryEventSource();
         var coordinator = new FakeArtworkLifecycleCoordinator();
-        var service = new ArrTagsLifecycleService(libraryEvents, coordinator);
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            coordinator,
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
         await service.StartAsync(CancellationToken.None);
 
         libraryEvents.RaiseRemoved(Guid.NewGuid());
@@ -190,7 +207,11 @@ public class LifecycleFoundationTests
     {
         var libraryEvents = new FakeLibraryEventSource();
         var coordinator = new FakeArtworkLifecycleCoordinator();
-        var service = new ArrTagsLifecycleService(libraryEvents, coordinator);
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            coordinator,
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
         await service.StartAsync(CancellationToken.None);
 
         await service.StopAsync(CancellationToken.None);
@@ -203,7 +224,12 @@ public class LifecycleFoundationTests
     {
         var libraryEvents = new FakeLibraryEventSource();
         var coordinator = new FakeArtworkLifecycleCoordinator { BlockShutdownDrain = true };
-        var service = new ArrTagsLifecycleService(libraryEvents, coordinator, TimeSpan.FromMilliseconds(100));
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            coordinator,
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4),
+            TimeSpan.FromMilliseconds(100));
         await service.StartAsync(CancellationToken.None);
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -219,7 +245,11 @@ public class LifecycleFoundationTests
     {
         var libraryEvents = new FakeLibraryEventSource();
         var coordinator = new FakeArtworkLifecycleCoordinator { ThrowShutdownDrain = true };
-        var service = new ArrTagsLifecycleService(libraryEvents, coordinator);
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            coordinator,
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
         await service.StartAsync(CancellationToken.None);
 
         await service.StopAsync(CancellationToken.None);
@@ -231,7 +261,11 @@ public class LifecycleFoundationTests
     public async Task StopUnsubscribesWhenStopTokenIsAlreadyCanceled()
     {
         var libraryEvents = new FakeLibraryEventSource();
-        var service = new ArrTagsLifecycleService(libraryEvents, new FakeArtworkLifecycleCoordinator());
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            new FakeArtworkLifecycleCoordinator(),
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
         await service.StartAsync(CancellationToken.None);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
@@ -245,7 +279,11 @@ public class LifecycleFoundationTests
     public async Task DisposeUnsubscribesAfterStart()
     {
         var libraryEvents = new FakeLibraryEventSource();
-        var service = new ArrTagsLifecycleService(libraryEvents, new FakeArtworkLifecycleCoordinator());
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            new FakeArtworkLifecycleCoordinator(),
+            new ConfigurationSnapshotService(),
+            new BoundedWorkHintSink(4));
         await service.StartAsync(CancellationToken.None);
 
         service.Dispose();
@@ -347,71 +385,6 @@ public class LifecycleFoundationTests
             return Task.FromResult(ArtworkRemovalResult.Create(
                 ArtworkRemovalOutcome.NotConfirmed,
                 "Not confirmed."));
-        }
-    }
-
-    private sealed class FakeLibraryEventSource : ILibraryEventSource
-    {
-        private EventHandler<LibraryItemChangedEventArgs>? _added;
-        private EventHandler<LibraryItemChangedEventArgs>? _updated;
-        private EventHandler<LibraryItemChangedEventArgs>? _removed;
-
-        public int AddedSubscriberCount { get; private set; }
-
-        public int UpdatedSubscriberCount { get; private set; }
-
-        public int RemovedSubscriberCount { get; private set; }
-
-        public int SubscriberCount => AddedSubscriberCount + UpdatedSubscriberCount + RemovedSubscriberCount;
-
-        public void RaiseRemoved(Guid itemId)
-        {
-            _removed?.Invoke(this, new LibraryItemChangedEventArgs(itemId));
-        }
-
-        public event EventHandler<LibraryItemChangedEventArgs>? ItemAdded
-        {
-            add
-            {
-                AddedSubscriberCount++;
-                _added += value;
-            }
-
-            remove
-            {
-                AddedSubscriberCount--;
-                _added -= value;
-            }
-        }
-
-        public event EventHandler<LibraryItemChangedEventArgs>? ItemUpdated
-        {
-            add
-            {
-                UpdatedSubscriberCount++;
-                _updated += value;
-            }
-
-            remove
-            {
-                UpdatedSubscriberCount--;
-                _updated -= value;
-            }
-        }
-
-        public event EventHandler<LibraryItemChangedEventArgs>? ItemRemoved
-        {
-            add
-            {
-                RemovedSubscriberCount++;
-                _removed += value;
-            }
-
-            remove
-            {
-                RemovedSubscriberCount--;
-                _removed -= value;
-            }
         }
     }
 }

@@ -1,0 +1,42 @@
+{
+  "task": "6.1",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the Phase 6 entry boundary for library events. JellyfinLibraryEventSource now maps Jellyfin ItemChangeEventArgs synchronously and in memory to a bounded LibraryItemChangedEventArgs (item id, LibraryWorkReason, structural MediaItemType?, and LibraryItemChangeOrigin). LibraryEventRelevance validates relevance against the current public PluginConfigurationSnapshot with no I/O (an enabled Arr connection, a V1 badge-bearing Movie/Episode for add/update, and no image-only or ArrTags-generated internal update). Relevant changes become a bounded provider-neutral LibraryWorkHint (item id, reason, safe configuration version) and are enqueued through the narrow IWorkHintSink boundary; BoundedWorkHintSink is a thread-safe, QueueCapacity-bounded implementation that coalesces redundant hints, drops overflow, performs no external I/O, and never throws. ArrTagsLifecycleService uses one synchronous handler for added/updated/removed, contains unexpected exceptions so they never reach the host publisher, and preserves the task 5.9 ItemRemoved tracked/bounded drain/tombstone behavior while also emitting a removal hint. DI registers the sink lazily from OperationalLimits.QueueCapacity with no startup work. The full queue/worker policy (coalescing by connection, single-flight, cancellation, retry classification, overflow policy) remains task 6.2.",
+  "validation": [
+    ". /config/arrtags-env.sh && dotnet build src/ArrTags/ArrTags.csproj -c Release => Build succeeded, 0 warnings, 0 errors",
+    "./build.sh build => Build succeeded, 0 warnings, 0 errors",
+    "dotnet test --filter \"FullyQualifiedName~LibraryUpdateBoundaryTests|FullyQualifiedName~LifecycleFoundationTests\" => Passed 31, Failed 0, Skipped 0, Total 31",
+    "./build.sh test => Passed 987, Skipped 58, Failed 0, Total 1045 (baseline 973 passed / 58 skipped / 1031 total; +14 passed, no new skips)",
+    "git status and full diff inspection => only task-relevant production, test, and documentation files changed"
+  ],
+  "changed_files": [
+    "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "src/ArrTags/PluginLifecycle/JellyfinLibraryEventSource.cs",
+    "src/ArrTags/PluginLifecycle/LibraryItemChangedEventArgs.cs",
+    "src/ArrTags/PluginLifecycle/LibraryEventRelevance.cs",
+    "src/ArrTags/PluginLifecycle/LibraryItemChangeOrigin.cs",
+    "src/ArrTags/Updates/LibraryWorkHint.cs",
+    "src/ArrTags/Updates/LibraryWorkReason.cs",
+    "src/ArrTags/Updates/IWorkHintSink.cs",
+    "src/ArrTags/Updates/BoundedWorkHintSink.cs",
+    "tests/ArrTags.Tests/LibraryEventFixtures.cs",
+    "tests/ArrTags.Tests/LibraryUpdateBoundaryTests.cs",
+    "tests/ArrTags.Tests/LifecycleFoundationTests.cs",
+    "PLANS.md",
+    "docs/changelog.md",
+    "docs/implementation/6.1/worker-report.json"
+  ],
+  "known_limitations": [
+    "The handler drops every Jellyfin image-only update (ItemUpdateType.ImageUpdate) because the event boundary cannot distinguish an ArrTags-generated image publication from an external image change without an in-memory marker or an I/O read. A changed source image is therefore picked up by a later work item or by fingerprint-driven invalidation (task 6.6) rather than by this handler; this is documented in LibraryItemChangeOrigin and LibraryItemChangedEventArgs.",
+    "The bounded sink has no consumer in task 6.1: hints remain queued up to QueueCapacity and overflow is dropped until task 6.2 supplies the worker, coalescing-by-connection, single-flight, and cancellation policy.",
+    "Coalescing by connection, single-flight work, worker cancellation, retry classification, dynamic capacity changes, restart-safe draining, and the full queue-overflow policy are deliberately out of scope and remain task 6.2.",
+    "Only an in-process validation was performed; no live Jellyfin host was available, consistent with the pinned-host absence noted for the environment."
+  ],
+  "ready_for_next_task": true
+}

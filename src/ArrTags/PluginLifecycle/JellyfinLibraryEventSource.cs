@@ -1,5 +1,10 @@
 using System;
 using System.Threading;
+using ArrTags.Media;
+using ArrTags.Updates;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 
 namespace ArrTags.PluginLifecycle;
@@ -7,7 +12,10 @@ namespace ArrTags.PluginLifecycle;
 /// <summary>
 /// Adapts Jellyfin's <see cref="ILibraryManager"/> change events to the
 /// ArrTags <see cref="ILibraryEventSource"/> boundary and unsubscribes when
-/// disposed.
+/// disposed. The mapping is synchronous and in-memory: it reads only the item
+/// identity, structural type, and update reason already present on the Jellyfin
+/// event arguments and performs no provider, rendering, image, or library
+/// lookup.
 /// </summary>
 public sealed class JellyfinLibraryEventSource : ILibraryEventSource, IDisposable
 {
@@ -36,6 +44,27 @@ public sealed class JellyfinLibraryEventSource : ILibraryEventSource, IDisposabl
     /// <inheritdoc />
     public event EventHandler<LibraryItemChangedEventArgs>? ItemRemoved;
 
+    /// <summary>
+    /// Maps a Jellyfin change event to the ArrTags boundary without performing
+    /// any I/O. It is public so the mapping rules can be verified without a live
+    /// host; it is not part of the runtime event flow.
+    /// </summary>
+    /// <param name="change">The Jellyfin change event arguments.</param>
+    /// <param name="reason">The ArrTags reason for the observed change.</param>
+    /// <returns>The bounded ArrTags change description.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="change"/> is <see langword="null"/>.</exception>
+    public static LibraryItemChangedEventArgs MapChange(ItemChangeEventArgs change, LibraryWorkReason reason)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+
+        var item = change.Item;
+        var origin = (change.UpdateReason & ItemUpdateType.ImageUpdate) != 0
+            ? LibraryItemChangeOrigin.Image
+            : LibraryItemChangeOrigin.Library;
+
+        return new LibraryItemChangedEventArgs(item?.Id ?? Guid.Empty, reason, GetItemType(item), origin);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -49,23 +78,30 @@ public sealed class JellyfinLibraryEventSource : ILibraryEventSource, IDisposabl
         _libraryManager.ItemRemoved -= OnItemRemoved;
     }
 
+    private static MediaItemType? GetItemType(BaseItem? item)
+    {
+        return item switch
+        {
+            Movie => MediaItemType.Movie,
+            Series => MediaItemType.Series,
+            Season => MediaItemType.Season,
+            Episode => MediaItemType.Episode,
+            _ => null,
+        };
+    }
+
     private void OnItemAdded(object? sender, ItemChangeEventArgs e)
     {
-        ItemAdded?.Invoke(this, ToArgs(e));
+        ItemAdded?.Invoke(this, MapChange(e, LibraryWorkReason.Added));
     }
 
     private void OnItemUpdated(object? sender, ItemChangeEventArgs e)
     {
-        ItemUpdated?.Invoke(this, ToArgs(e));
+        ItemUpdated?.Invoke(this, MapChange(e, LibraryWorkReason.Updated));
     }
 
     private void OnItemRemoved(object? sender, ItemChangeEventArgs e)
     {
-        ItemRemoved?.Invoke(this, ToArgs(e));
-    }
-
-    private static LibraryItemChangedEventArgs ToArgs(ItemChangeEventArgs e)
-    {
-        return new LibraryItemChangedEventArgs(e.Item?.Id ?? Guid.Empty);
+        ItemRemoved?.Invoke(this, MapChange(e, LibraryWorkReason.Removed));
     }
 }

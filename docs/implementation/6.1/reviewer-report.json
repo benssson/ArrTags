@@ -1,0 +1,51 @@
+{
+  "task": "6.1",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "status": "accepted",
+      "summary": "The entry boundary drops every image-only (ItemUpdateType.ImageUpdate) change, including external source-image changes, not only ArrTags-generated ones.",
+      "detail": "LibraryEventRelevance.TryCreateHint rejects any change whose Origin is LibraryItemChangeOrigin.Image, and JellyfinLibraryEventSource.MapChange sets that origin whenever the ImageUpdate flag is set. This is broader than 'ignore ArrTags-generated internal changes' (architecture section 8, step 2) because Jellyfin's ItemUpdateType is a [Flags] enum and the boundary cannot distinguish an ArrTags publication from an external image change without an in-memory marker or an I/O read, both of which are out of scope for a short handler. The consequence is bounded: badge inputs come from provider metadata, an external image change is picked up by a later work item or fingerprint-driven invalidation (task 6.6), and the worker re-reads the item. The worker documented this explicitly as a known limitation. Not a blocker for 6.1; worth confirming task 6.6 actually covers the external-source-image-change case."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "status": "accepted",
+      "summary": "Boundary relevance checks item type and 'any provider enabled' but not configured library scope or the item-type-specific provider.",
+      "detail": "TryCreateHint requires at least one of SonarrEnabled/RadarrEnabled rather than the provider matching the item type, and it does not check EnabledLibraries. Architecture section 8 step 1 mentions 'an enabled library/item type', but architecture section 8 also requires the worker to 're-read the item and current configuration before processing', so scope and connection resolution are correctly deferred. The bounded event carries no library identity and resolving it would require I/O, which the handler must avoid. Accepted; no correctness or integrity impact, only a small amount of deferred/rejected work."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "accepted",
+      "summary": "BoundedWorkHintSink captures QueueCapacity once at DI resolution, so a later QueueCapacity change is not reflected.",
+      "detail": "CreateWorkHintSink reads ConfigurationSnapshotService.Current.Limits.QueueCapacity when the singleton is first resolved. Dynamic capacity changes are explicitly assigned to task 6.2 by the task scope boundary and the worker report. The sink is a minimal 6.1 primitive; no impact on 6.1 acceptance. Accepted."
+    },
+    {
+      "id": "F4",
+      "severity": "informational",
+      "status": "accepted",
+      "summary": "JellyfinLibraryEventSource.MapChange XML doc says 'it is not part of the runtime event flow', which is inaccurate.",
+      "detail": "MapChange is called by OnItemAdded/OnItemUpdated/OnItemRemoved, so it is on the runtime path; the doc comment is contradictory but does not affect behavior or any project documentation. Cosmetic only."
+    }
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/LibraryUpdateBoundaryTests.cs (14 facts: synchronous enqueue with no coordinator call; drop when no provider enabled; drop non-badge/unknown types; drop image-only and empty-id; Episode-to-Sonarr and removal relevance; ItemRemoved still drains the coordinator; handler never throws on a full sink; sink coalescing, bounded overflow, empty-id rejection, FIFO dequeue and coalescing release; constructor has no provider/renderer/image/secret dependency; Jellyfin item-type and image-origin mapping; DI registration at the configured capacity)",
+    "tests/ArrTags.Tests/LifecycleFoundationTests.cs (updated to supply ConfigurationSnapshotService and IWorkHintSink; startup/shutdown, restart, cancellation, unsubscribe, uninstall hook, and ItemRemoved drain coverage preserved)",
+    "tests/ArrTags.Tests/LibraryEventFixtures.cs (shared FakeLibraryEventSource, RecordingWorkHintSink, configuration/change builders)",
+    "./build.sh build => Build succeeded, 0 Warning(s), 0 Error(s)",
+    "./build.sh test => Passed 987, Failed 0, Skipped 58, Total 1045 (matches the claimed +14 over the 973/58/1031 task 5.11 baseline; no new skips)"
+  ],
+  "research_checked": [
+    "docs/architecture.md section 7 (provider integration) and section 8 (short handlers: relevance, ignore internal changes, enqueue item id + reason/version hint, return without external I/O/rendering/image writes; work items carry no API keys or leases; worker re-reads item and configuration)",
+    "docs/architecture.md section 9 (item removal as a hint, confirmed absence only after a fresh read, tombstone without image calls) and section 12 (update queue capacity default 512, range 1-100000, overflow coalesces or drops redundant work, library events never block; per-item/surface in-flight 1)",
+    "docs/decisions.md ADR-004 (foundation operational limits, QueueCapacity, authoritative-state priority) and ADR-005 (versioned secret access boundary: queue items carry only safe references/versions, never leases or secrets)",
+    "docs/decisions.md ADR-006 (V1 badge surfaces are Movie and Episode only)",
+    "Jellyfin 12.0.0 pinned package XML docs (ItemChangeEventArgs.Item/UpdateReason) and Jellyfin master source for ItemUpdateType ([Flags]: None=1, MetadataImport=2, ImageUpdate=4, MetadataDownload=8, MetadataEdit=16) and LibraryManager event raising; confirmed no combined ItemUpdateType flags are used in LibraryManager.cs and that ItemAdded/ItemRemoved leave UpdateReason at default"
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

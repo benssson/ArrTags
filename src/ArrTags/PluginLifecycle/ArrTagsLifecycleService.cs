@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Artwork;
+using ArrTags.Configuration;
+using ArrTags.Updates;
 using Microsoft.Extensions.Hosting;
 
 namespace ArrTags.PluginLifecycle;
@@ -11,10 +13,13 @@ namespace ArrTags.PluginLifecycle;
 /// <summary>
 /// The ArrTags hosted lifecycle. It owns library-event subscription for the
 /// duration of its lifetime and performs no provider, rendering, or full-library
-/// work during registration or startup. On a graceful shutdown it establishes a
-/// bounded disable/uninstall drain through the lifecycle coordinator, and it
-/// re-reads an <c>ItemRemoved</c> hint on a tracked, bounded background task so
-/// synchronous library event delivery is never blocked.
+/// work during registration or startup. Its library-event handlers are short and
+/// synchronous: they validate relevance against the current public configuration
+/// snapshot, enqueue a bounded provider-neutral work hint, and return without
+/// external I/O, rendering, or image writes. On a graceful shutdown it
+/// establishes a bounded disable/uninstall drain through the lifecycle
+/// coordinator, and it re-reads an <c>ItemRemoved</c> hint on a tracked, bounded
+/// background task so synchronous library event delivery is never blocked.
 /// </summary>
 public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
 {
@@ -26,8 +31,9 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
 
     private readonly ILibraryEventSource _libraryEvents;
     private readonly IArtworkLifecycleCoordinator _coordinator;
+    private readonly ConfigurationSnapshotService _configuration;
+    private readonly IWorkHintSink _workHints;
     private readonly TimeSpan _boundedDrainTimeout;
-    private readonly EventHandler<LibraryItemChangedEventArgs> _libraryChangedHandler = (_, _) => { };
     private readonly ConcurrentDictionary<Task, byte> _pendingRemovals = new();
     private int _subscribed;
     private int _stopping;
@@ -37,15 +43,21 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
     /// </summary>
     /// <param name="libraryEvents">The library event source to observe.</param>
     /// <param name="coordinator">The lifecycle coordinator that drains fences and handles item removal.</param>
+    /// <param name="configuration">The current public configuration snapshot used for synchronous relevance checks.</param>
+    /// <param name="workHints">The bounded, non-blocking enqueue boundary for relevant update work.</param>
     /// <param name="boundedDrainTimeout">An optional bounded drain timeout; defaults to <see cref="BoundedDrainTimeout"/>.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public ArrTagsLifecycleService(
         ILibraryEventSource libraryEvents,
         IArtworkLifecycleCoordinator coordinator,
+        ConfigurationSnapshotService configuration,
+        IWorkHintSink workHints,
         TimeSpan? boundedDrainTimeout = null)
     {
         _libraryEvents = libraryEvents ?? throw new ArgumentNullException(nameof(libraryEvents));
         _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _workHints = workHints ?? throw new ArgumentNullException(nameof(workHints));
         _boundedDrainTimeout = boundedDrainTimeout ?? BoundedDrainTimeout;
     }
 
@@ -61,9 +73,9 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
 
         if (Interlocked.Exchange(ref _subscribed, 1) == 0)
         {
-            _libraryEvents.ItemAdded += _libraryChangedHandler;
-            _libraryEvents.ItemUpdated += _libraryChangedHandler;
-            _libraryEvents.ItemRemoved += OnItemRemoved;
+            _libraryEvents.ItemAdded += OnLibraryItemChanged;
+            _libraryEvents.ItemUpdated += OnLibraryItemChanged;
+            _libraryEvents.ItemRemoved += OnLibraryItemChanged;
         }
 
         return Task.CompletedTask;
@@ -100,14 +112,39 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
         Unsubscribe();
     }
 
-    private void OnItemRemoved(object? sender, LibraryItemChangedEventArgs e)
+    private void OnLibraryItemChanged(object? sender, LibraryItemChangedEventArgs e)
     {
         if (Volatile.Read(ref _stopping) != 0 || e.ItemId == Guid.Empty)
         {
             return;
         }
 
-        var task = TrackRemovalAsync(e.ItemId);
+        // An item removal additionally preserves the task 5.9 durable lifecycle
+        // semantics: a tracked, bounded background confirmation and tombstone.
+        // It stays off the library-event thread.
+        if (e.Reason == LibraryWorkReason.Removed)
+        {
+            TrackRemoval(e.ItemId);
+        }
+
+        try
+        {
+            var snapshot = _configuration.Current;
+            if (LibraryEventRelevance.TryCreateHint(e, snapshot, out var hint))
+            {
+                _workHints.TryEnqueue(in hint);
+            }
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // A library-event handler must never surface a failure to the host's
+            // event publisher; the next reconciliation repairs missed work.
+        }
+    }
+
+    private void TrackRemoval(Guid itemId)
+    {
+        var task = TrackRemovalAsync(itemId);
         _pendingRemovals.TryAdd(task, 0);
         _ = task.ContinueWith(
             static (completed, state) => ((ConcurrentDictionary<Task, byte>)state!).TryRemove(completed, out _),
@@ -162,8 +199,8 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
             return;
         }
 
-        _libraryEvents.ItemAdded -= _libraryChangedHandler;
-        _libraryEvents.ItemUpdated -= _libraryChangedHandler;
-        _libraryEvents.ItemRemoved -= OnItemRemoved;
+        _libraryEvents.ItemAdded -= OnLibraryItemChanged;
+        _libraryEvents.ItemUpdated -= OnLibraryItemChanged;
+        _libraryEvents.ItemRemoved -= OnLibraryItemChanged;
     }
 }
