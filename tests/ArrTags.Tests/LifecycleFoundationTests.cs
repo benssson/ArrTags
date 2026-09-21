@@ -324,14 +324,21 @@ public class LifecycleFoundationTests
 
     public class FakeApplicationPaths : DispatchProxy
     {
+        /// <summary>
+        /// Gets a per-proxy host data root so the relocated state folder cannot
+        /// collide across tests.
+        /// </summary>
+        public string RootPath { get; } = Path.Combine(Path.GetTempPath(), "arrtags-host-" + Guid.NewGuid().ToString("N"));
+
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
-            if (targetMethod?.Name == "get_PluginsPath")
+            return targetMethod?.Name switch
             {
-                return Path.Combine(Path.GetTempPath(), "arrtags-plugin");
-            }
-
-            throw new NotSupportedException(targetMethod?.Name);
+                "get_PluginsPath" => Path.Combine(RootPath, "plugins"),
+                "get_ProgramDataPath" => RootPath,
+                "get_DataPath" => Path.Combine(RootPath, "data"),
+                _ => throw new NotSupportedException(targetMethod?.Name),
+            };
         }
     }
 

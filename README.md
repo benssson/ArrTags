@@ -422,9 +422,10 @@ Completed in Phase 5 (Jellyfin artwork integration):
   `ArrTagsLifecycleService` resolves the fence at graceful shutdown and performs
   a bounded drain (a plain shutdown is a no-op), and wires the previously no-op
   `ItemRemoved` hint to a tracked, bounded confirmation task. The
-  `Plugin.OnUninstalling` hook performs a bounded synchronous drain because the
-  pinned host deletes the plugin data folder immediately after the hook; it
-  never throws into the host. All new services use the existing lazy DI pattern
+  `Plugin.OnUninstalling` hook performs a bounded synchronous drain and never
+  throws into the host. The pinned host removes only the versioned install
+  folder, not the plugin's relocated `DataFolderPath`, so after a completed drain
+  the hook also removes the plugin's own state root (ADR-014). All new services use the existing lazy DI pattern
   with no startup work, and no source artifact or journal record is deleted
   eagerly. New tests (`ArtworkLifecycleTests`, 28 cases, plus focused additions
   to `ArtworkReconcilerTests`, `ArtworkPublisherTests`,

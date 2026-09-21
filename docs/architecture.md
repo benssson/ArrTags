@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2's live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host is complete, but Phase 7 acceptance criterion 2 is **not met**: the standard versioned install layout collides with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and the install folder is deleted on the next restart. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.)
+**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.)
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -105,7 +105,7 @@ by an ArrTags response interceptor.
 
 | Component | Responsibility | Boundary |
 | --- | --- | --- |
-| `Plugin` | Identity, configuration, data-folder ownership, uninstall hook | Thin `BasePlugin<PluginConfiguration>` entry point |
+| `Plugin` | Identity, configuration, data-folder ownership, uninstall hook | Thin `BasePlugin<PluginConfiguration>` entry point; state root relocated to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) |
 | Service registrator | Register services, hosted services, controllers, artwork publication, and tasks | Parameterless `IPluginServiceRegistrator` |
 | Configuration service | Validate and publish immutable configuration snapshots | Uses plugin configuration persistence; never exposes secrets |
 | Credential boundary | Publish the private versioned secret snapshot and issue bounded credential leases | Singleton `IPluginSecretResolver`; never serializes or persists secret values |
@@ -251,7 +251,11 @@ credentials.
 ### Plugin state
 
 State is stored under `DataFolderPath`, not in Jellyfin's database or image
-cache. Each record is written as a versioned envelope carrying a schema version
+cache. `DataFolderPath` is relocated by the `Plugin` constructor to
+`ProgramDataPath/ArrTags`, a sibling of the plugins directory and therefore
+outside `PluginsPath` (ADR-014); Jellyfin's derived `PluginsPath/<assembly name>`
+is never used because it collides with the supported versioned install folder.
+Each record is written as a versioned envelope carrying a schema version
 and a SHA-256 integrity hash over its payload. Writes go through a flushed
 temporary file and an atomic replacement in the same directory, and record kinds
 and identifiers are validated as single path segments so state cannot escape its
@@ -842,11 +846,14 @@ The host trigger mapping is explicit because Jellyfin 12 exposes no plugin
 disable hook:
 
 - **Uninstall** is raised by the supported `Plugin.OnUninstalling()` hook. The
-  pinned host deletes the plugin data folder immediately after that synchronous
-  void hook returns, so the hook records the durable `Uninstall` fence and
-  performs a bounded synchronous drain (with cancellation) before returning; a
-  blocked or uncertain restoration is left untouched and the host still
-  completes the uninstall. The hook never throws into the host.
+  hook records the durable `Uninstall` fence and performs a bounded synchronous
+  drain (with cancellation) before returning; a blocked or uncertain restoration
+  is left untouched and the host still completes the uninstall. The hook never
+  throws into the host. The pinned host's uninstall removes only the versioned
+  install folder, not the plugin's relocated `DataFolderPath`, so once the drain
+  completes the plugin removes its own state root to preserve the previous
+  cleanup semantics; an incomplete or cancelled drain retains the recovery
+  records for later reconciliation (ADR-014).
 - **Disable** is detected from the persisted plugin manifest status through the
   supported `IPluginManager` when the hosted `ArrTagsLifecycleService.StopAsync`
   runs. Disabling a plugin writes the manifest status and takes effect on the

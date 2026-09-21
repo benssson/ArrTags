@@ -1,0 +1,102 @@
+{
+  "task": "7.7",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "7.7-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation",
+      "summary": "The test-host fixture doc still frames ArrTags' DataFolderPath as PluginsPath/ArrTags and the release blocker as open; canonical current-state surfaces were updated and are accurate.",
+      "detail": "docs/testing/jellyfin-12-musl-test-host.md (lines 149-156, unmodified by the task) states Jellyfin derives ArrTags' DataFolderPath as data/plugins/ArrTags and says 'the release blocker is recorded in PLANS.md', which now records it as resolved. The general derivation statement is still true of BasePlugin<T>, and the caution 'Do not leave ArrTags state under data/plugins/ArrTags' remains valid (an orphaned folder still triggers the collision, per ADR-014), so this is a minor staleness in a test-fixture doc rather than a contradiction. All canonical surfaces (PLANS.md, changelog, README, architecture, readiness, decisions) were updated consistently.",
+      "evidence": [
+        "git status --short: docs/testing/jellyfin-12-musl-test-host.md not modified",
+        "docs/testing/jellyfin-12-musl-test-host.md:149-156",
+        "docs/decisions.md ADR-014 Consequences (orphan guidance)"
+      ],
+      "recommended_action": "Optional follow-up: refresh the test-host doc bullet to note the 7.7 relocation/ADR-014 when task 7.3-7.5 next touch the fixture."
+    },
+    {
+      "id": "7.7-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "lifecycle/uninstall",
+      "summary": "The new OnUninstalling state-root deletion could not be exercised through the live host uninstall API; it is covered in-process and the live host limitation is documented.",
+      "detail": "DELETE /Plugins/40322d52-5680-449f-b33e-e01836ee2f46/0.1.0.0 returned HTTP 401 (RequiresElevation policy, StartupWizardCompleted=false), independently reproduced. The worker's live 'uninstall' therefore removed the folder manually, which does not invoke OnUninstalling and leaves the relocated state root. The explicit cleanup is covered by PluginStateLocationTests (completed drain deletes, incomplete drain retains) and the pre-existing drain facts; InstallationManager.UninstallPlugin -> OnUninstalling was confirmed by source inspection. This is the same pre-existing live limitation recorded for task 7.2.",
+      "evidence": [
+        "curl -X DELETE .../Plugins/<guid>/0.1.0.0 -> HTTP 401",
+        "InstallationManager.UninstallPlugin calls plugin.Instance?.OnUninstalling() then _pluginManager.RemovePlugin(plugin)",
+        "tests/ArrTags.Tests/PluginStateLocationTests.cs:86-142"
+      ],
+      "recommended_action": "None required; retain the documented limitation for the remaining Phase 7 verifications."
+    },
+    {
+      "id": "7.7-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "operational/residual risk",
+      "summary": "An orphaned pre-release PluginsPath/ArrTags folder would still trigger the discovery collision until an operator deletes it once; ADR-014 documents this and V1 has no released installs.",
+      "detail": "The fix stops the plugin from creating PluginsPath/ArrTags, but if an unreleased developer install already left that folder, the live negative control showed discovery still deletes the versioned install and loads no plugin. ADR-014 and docs/implementation-readiness.md document the one-time operator deletion; released V1 installs never create the folder, so no migration is implemented (consistent with the no-released-installs constraint).",
+      "evidence": [
+        "Live negative control: /tmp/jf/data/plugins/ArrTags + ArrTags_0.1.0.0 -> install folder deleted, 0 ArrTags loads",
+        "docs/decisions.md ADR-014 Consequences",
+        "docs/implementation-readiness.md Resolved section"
+      ],
+      "recommended_action": "None required for V1; keep the one-time-deletion note visible for any pre-release tester."
+    },
+    {
+      "id": "7.7-R4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation evidence",
+      "summary": "The live state record was written with production code via a probe, not by the running plugin, because the plugin performs no state I/O on startup with no configured providers or library items.",
+      "detail": "The plugin path derivation (DataFolderPath -> ArrTagsServiceRegistrator.CreateStateRepository root) is deterministic and unit-tested, and the probe constructed the real production Plugin. The live A/B still proves discovery safety. A live end-to-end state write by a running plugin remains a Phase 5/7 carry-forward unrelated to this task (no provider/library item available).",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:174-183",
+        "Worker report known_limitations[1]",
+        "Live positive run: /tmp/jf/data/ArrTags state present, install folder survived restart"
+      ],
+      "recommended_action": "None required for this task."
+    }
+  ],
+  "tests_checked": [
+    "Default suite: ./build.sh test -> Failed 0, Passed 1219, Skipped 60, Total 1279 (reproduced; 60 = 58 prior + 2 new host-guarded facts skipped).",
+    "Host-guarded suite: ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test -> Failed 0, Passed 1235, Skipped 44, Total 1279 (reproduced).",
+    "Focused unguarded: PluginStateLocationTests + PluginDiscoveryHostTests -> Passed 4, Skipped 2, Total 6.",
+    "Focused host-guarded: same filter -> Passed 6, Skipped 0.",
+    "Guard honesty: ARRTAGS_JELLYFIN_HOST_DIR unset -> host facts skipped; set to /tmp/jf/nonexistent -> 2 failed with the expected pinned-assembly message.",
+    "Old-behavior reproduction (throwaway copy of the repo with the relocation replaced by the previous PluginsPath derivation; repo not modified): PluginStateLocationTests.DataFolderIsRelocatedOutsideThePluginsPath, PluginStateLocationTests.PersistedStateDoesNotCreateASameNamedPluginFolderUnderThePluginsPath and PluginDiscoveryHostTests.PinnedDiscoveryKeepsTheVersionedInstallFolderWhenStateIsRelocatedOutsideThePluginsPath all failed (3 failed / 3 passed), confirming the regression tests genuinely exercise the fixed behavior.",
+    "Build: dotnet build -t:Rebuild -> 0 Warning(s), 0 Error(s).",
+    "Live positive (pinned Jellyfin 12.0.0 host, /tmp/jf): versioned ArrTags_0.1.0.0 folder + state at /tmp/jf/data/ArrTags -> 'Loaded plugin: ArrTags 0.1.0.0', install folder and state survived, no plugins/ArrTags folder, 0 [ERR]/[FTL], Startup complete.",
+    "Live reload: restart with state present -> exactly 1 'Loaded plugin: ArrTags' line, install folder and state survived, 0 [ERR]/[FTL].",
+    "Live upgrade: temporary 0.1.0.1 build installed alongside 0.1.0.0 -> only 0.1.0.1 loaded, older folder auto-deleted, state survived, 0 [ERR]/[FTL]; build.yaml/Directory.Build.props reverted (git diff empty, both 0.1.0.0) and artifacts/ArrTags_0.1.0.1.zip removed.",
+    "Live uninstall-equivalent: install folder removed and restart -> 0 ArrTags loads, 0 ArrTags log lines, 0 [ERR]/[FTL], clean Startup complete.",
+    "Live negative control: state placed at plugins/ArrTags (old derivation) alongside versioned install -> install folder deleted and no plugin loaded, reproducing the task 7.2 failure live."
+  ],
+  "research_checked": [
+    "Pinned jellyfin/jellyfin rev 6c073e19ddf604b2369c638716164fdab4c952dc: MediaBrowser.Common/Plugins/BasePlugin.cs -> public SetAttributes and BasePlugin implements IPluginAssembly; IPluginAssembly.cs contract.",
+    "BasePluginOfT.cs -> DataFolderPath = Path.Combine(ApplicationPaths.PluginsPath, Path.GetFileNameWithoutExtension(assemblyFilePath)); the '_<version>' branch is dead because Version is null at that point; constructor calls SetAttributes(last).",
+    "Emby.Server.Implementations/Plugins/PluginManager.cs -> CreatePluginInstance uses ActivatorUtilities.CreateInstance (constructor runs last, relocation not overwritten); DiscoverPlugins groups directories by manifest name and deletes same-named duplicates; DeletePlugin deletes only plugin.Path.",
+    "MediaBrowser.Common/Plugins/LocalPlugin.cs -> Path is the folder passed to LoadManifest; Instance is an auto-property and does not change Path.",
+    "Emby.Server.Implementations/Updates/InstallationManager.cs -> UninstallPlugin calls OnUninstalling then RemovePlugin, deleting only the install folder (not DataFolderPath).",
+    "MediaBrowser.Common/Configuration/IApplicationPaths.cs and Emby.Server.Implementations/AppBase/BaseApplicationPaths.cs -> ProgramDataPath exists; PluginsPath = ProgramDataPath/plugins; DataPath = ProgramDataPath/data, so ProgramDataPath/ArrTags is outside PluginsPath.",
+    "Scan of the pinned host's plugin-instantiation/startup files for SetAttributes callers found none (only BasePlugin<T> calls it), so no post-construction overwrite.",
+    "ArrTags source: src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs CreateStateRepository roots persisted state at plugin.DataFolderPath."
+  ],
+  "documentation_checked": [
+    "PLANS.md: task 7.7 checkbox [x]; Project Status and Milestone 7 row updated with AC2 met; Phase 7 acceptance criterion 2 changed to [x]; Gate 7 still described as not ready/undeclared and AC3-AC5 unchecked.",
+    "docs/changelog.md: Phase 7 status updated and a new Task 7.7 entry; historical task 7.2 entry left as history.",
+    "README.md: OnUninstalling paragraph updated to the host-deletes-install-folder / plugin-removes-relocated-state-root behavior.",
+    "docs/architecture.md: status line, component table entry, plugin-state section, and uninstall trigger mapping updated (ADR-014).",
+    "docs/implementation-readiness.md: status line and the task 7.2 blocker converted to the resolved-by-7.7 item with the no-migration note.",
+    "docs/decisions.md: ADR-014 added with context, decision, consequences, rejected alternatives, references; matches the pinned-source evidence.",
+    "docs/data-model.md: reviewed; it does not describe the persisted state root, so no change was required.",
+    "docs/testing/jellyfin-12-musl-test-host.md: unmodified (see 7.7-R1).",
+    "git status --short / git diff --name-only build.yaml Directory.Build.props: only intended files changed and no temporary version edits remain."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

@@ -2057,7 +2057,7 @@ are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
 
 ## Phase 7 - Testing & release (Milestone 7)
 
-**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); tasks 7.2-7.6 pending.
+**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); tasks 7.3-7.6 pending.
 
 ### Decision - Supported provider release ranges and optional-field compatibility (DG-9)
 
@@ -2141,3 +2141,62 @@ uninstall API returns HTTP `401` while the startup wizard is incomplete); the
 drain remains covered in-process by `LifecycleFoundationTests` and
 `ArtworkLifecycleTests`, and live `ImageSaver` read-back remains unexercised (no
 media library item).
+
+### Task 7.7 - Relocate the plugin state root outside the Jellyfin plugins path
+
+**Status:** Complete. Resolves task 7.2 finding 7.2-F1; Phase 7 acceptance
+criterion 2 is now met.
+
+The `Plugin` constructor now calls the public
+`BasePlugin.SetAttributes(assemblyFilePath, dataFolderPath, version)` contract
+(the `IPluginAssembly` method the host loader itself uses) to re-point
+`DataFolderPath` to `Path.Combine(ApplicationPaths.ProgramDataPath, "ArrTags")`,
+a sibling of the plugins directory and therefore outside
+`ApplicationPaths.PluginsPath`. Jellyfin's derived `PluginsPath/<assembly name>`
+is no longer used. `AssemblyFilePath` and `Version` are passed through unchanged,
+so `CanUninstall`, configuration-file naming, and version reporting are
+preserved. The decision, the collision it avoids, the supported-contract
+mechanism, the rejected alternatives, and the V1 no-migration consequence are
+recorded in `docs/decisions.md` ADR-014.
+
+Uninstall cleanup was preserved explicitly. Inspection of the pinned host source
+(`Emby.Server.Implementations/Updates/InstallationManager.UninstallPlugin` ->
+`PluginManager.RemovePlugin` -> `DeletePlugin`) shows the host deletes only
+`plugin.Path` (the install folder), never `DataFolderPath`; the Phase 5
+assumption that the host deletes the data folder held only for the unversioned
+layout where the two were the same directory. `Plugin.OnUninstalling` now runs
+the bounded synchronous uninstall drain and, only when the drain result is
+complete (every operation terminal and every owned surface restored), deletes
+its own relocated state root; an incomplete or cancelled drain retains the
+recovery records. Cleanup is best-effort and never throws into the host.
+
+Regression tests. `tests/ArrTags.Tests/PluginStateLocationTests.cs` (4 facts)
+asserts the relocated data folder is outside `PluginsPath`, that a versioned
+install folder plus a real persisted state write does not create a same-named
+`PluginsPath/ArrTags` folder, that a completed uninstall drain removes the state
+root, and that an incomplete drain retains it. Both location facts fail against
+the previous derivation. `tests/ArrTags.Tests/PluginDiscoveryHostTests.cs` (2
+host-guarded facts) executes the pinned host's real `PluginManager` discovery
+from `Emby.Server.Implementations.dll` and proves the versioned install folder is
+deleted when state lives at `PluginsPath/ArrTags` and is preserved when the state
+root comes from the production `Plugin`. The facts skip when
+`ARRTAGS_JELLYFIN_HOST_DIR` is unset and fail when it is set but the pinned
+assembly is missing.
+
+Live re-verification on the pinned Jellyfin `12.0.0` musl host
+(`http://127.0.0.1:8096`, `/tmp/jf`, plugins at `/tmp/jf/data/plugins`). A real
+versioned state record was written at the production location with production
+code (`Plugin.DataFolderPath` = `/tmp/jf/data/ArrTags`, confirmed by a net10.0
+probe that constructed the real `Plugin` and wrote an
+`artwork-lifecycle-fence/active.json` through `StateRepository`). Installing the
+rebuilt package as `ArrTags_0.1.0.0` and restarting loaded
+`Loaded plugin: ArrTags 0.1.0.0` with the state present, and the install folder
+and state record both survived the restart (the task 7.2 A/B/A failure is fixed).
+A further restart reloaded exactly one instance. A temporary `0.1.0.1` upgrade
+loaded only the newer version and the host auto-deleted the older folder; all
+temporary version edits were reverted with `git checkout -- build.yaml
+Directory.Build.props` and the temporary artifact was removed. Removing the
+plugin folder produced zero ArrTags loads and a clean `Startup complete`. Build
+0 warnings / 0 errors; default suite Failed 0, Passed 1219, Skipped 60, Total
+1279; host-guarded suite (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) Failed 0,
+Passed 1235, Skipped 44, Total 1279.
