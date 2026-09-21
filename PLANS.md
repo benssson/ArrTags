@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, and 6.7 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1 through 6.8 complete; the Gate 6 review is separate). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -175,7 +175,7 @@ without modifying original media files or external services.
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
-| 6 | Caching, updates & performance | In progress (6.7 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
+| 6 | Caching, updates & performance | In progress (6.8 complete; Gate 6 review pending) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
@@ -2035,7 +2035,7 @@ authoritative.
   renderer, or configuration changes.
 - [x] 6.7 Validate and bound webhook authentication, content, rate, and work
   scope; treat webhooks as hints rather than source of truth.
-- [ ] 6.8 Test restart, shutdown, corruption, outage, recovery, duplicate events,
+- [x] 6.8 Test restart, shutdown, corruption, outage, recovery, duplicate events,
   queue pressure, and cancellation behavior.
 
 **Task 6.1 status:** Complete. The library-event entry boundary is implemented in
@@ -2302,6 +2302,45 @@ batch-size bound, and the hosted service feeding the deduplicated queue. The
 task 6.1-6.6 queue, worker, metadata publication, recovery, freshness,
 retention, and regeneration behavior is unchanged. The restart/outage test
 matrix (6.8) remains.
+
+**Task 6.8 status:** Complete. The phase-wide Phase 6 verification matrix is
+implemented in `tests/ArrTags.Tests` with no production behavior change. A
+composed `Phase6Harness` builds the full Phase 6 graph (durable stores, the
+reconciliation processor, the artwork publication pipeline, the per-subject
+recovery gate, the lifecycle drain coordinator, the bounded work queue/worker,
+and the injectable host/renderer doubles) over one plugin data directory, and
+`Phase6Harness.Restart()` rebuilds every in-memory service over the same durable
+directory so the guarded decisions are proven not to rely on in-memory state.
+Restart tests cover metadata state and freshness reload, published-artwork
+ownership/provenance, non-terminal operation recovery before new work, retention
+of the live session and artifacts with only expired metadata pruned, and the
+production startup recovery scan. Shutdown tests cover bounded cancellation and
+await of queued/in-flight work, no partial image or committed state across a
+cancelled mutation, coordination of the worker shutdown with the publisher fence
+and the lifecycle drain (leaving no untracked non-terminal publication), and
+bounded retry-backoff cancellation. Corruption tests cover torn/incompatible/
+semantically invalid metadata-cache discard and rebuild without blocking
+startup, and quarantine plus fail-closed (pipeline and publisher) with no image
+mutation, no blind replay, and no artifact cleanup for corrupt authoritative
+artwork-state and operation records. Outage tests cover bounded last-known-good
+within the window without extending it, no keep/use of expired metadata, and an
+outage beyond the bounded retries, all leaving the current artwork unchanged.
+Recovery tests cover the durable generation fence and the lifecycle fence
+(including a corrupt fence that fails closed toward restoration). Duplicate tests
+cover duplicate/out-of-order library events and duplicate/replayed webhook
+deliveries coalescing with no duplicate render or publication. Queue-pressure
+tests cover concurrent overflow, a slow provider under thousands of synchronous
+events, and capacity reuse after a drain. Cancellation tests cover a provider
+read, a render, the image mutation, and a pre-cancelled item, each publishing no
+partial state or image. The default suite passes 1170 with 58 environment-guarded
+skips (1228 total), exactly +29 over the task 6.7 baseline (1141/58/1199), with
+no new skips and no regressions. Gate 6 is not self-declared here; the phase
+review that confirms the recorded operational limits and the phase acceptance
+criteria is separate. One pre-existing, documented quarantine limitation is
+recorded rather than changed: an invalid authoritative record is quarantined on
+the read that detects it, and a later read of the same subject then observes the
+record as absent (the detecting read is the one that fails closed, matching the
+task 6.4 quarantine semantics).
 
 **Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
 6.8. Task IDs are stable references only; this execution order is the canonical

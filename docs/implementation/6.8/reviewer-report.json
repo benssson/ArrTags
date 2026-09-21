@@ -1,0 +1,49 @@
+{
+  "task": "6.8",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "status": "resolved",
+      "summary": "The worker report's summary sentence said 'Thirty new tests', but the task delivered exactly 29 tests.",
+      "detail": "Verified corrected: docs/implementation/6.8/worker-report.json now says 'Twenty-nine new tests'. The correct count is 29 (Restart 4 + Shutdown 4 + Corruption 5 + Outage 3 + Recovery 3 + DuplicateEvent 3 + QueuePressure 3 + Cancellation 4), confirmed by grep and dotnet test --list-tests. The report's validation line ('+29 passed'), changed_files list, and docs/changelog.md per-file counts (summing to 29) are all consistent. Documentation-only correction; no test or production file changed."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "status": "resolved",
+      "summary": "The worker report summary and docs/changelog.md claimed the composed Phase6Harness builds the bounded WebhookIntake; the harness does not compose it.",
+      "detail": "Verified corrected: worker-report.json now states 'the bounded WebhookIntake and its coalescing/replay behavior are exercised directly by the duplicate-event test rather than composed in the harness', and docs/changelog.md contains the same corrected wording (lines 1894-1895). Phase6Harness.cs still has no ArrTags.Webhooks reference, so the corrected statements match reality; the intake remains directly and meaningfully covered by Phase6DuplicateEventTests.DuplicateAndReplayedWebhookDeliveriesCoalesceAndBoundedOverflowDrops. Documentation-only correction; no test or production file changed."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "noted",
+      "summary": "One assertion in the expired-metadata outage test is near-tautological.",
+      "detail": "Phase6OutageTests.OutageAfterTheStaleWindowDoesNotKeepOrUseExpiredMetadataAndLeavesArtworkUnchanged passes 'metadataUsable: false' to ArtworkRegenerationPlanner.Decide and then asserts ShouldGenerate is false; Decide short-circuits on !metadataUsable (ArtworkRegenerationPlanner.cs line 72), so this assertion cannot fail independently. The category is still genuinely covered: the test also asserts the durable snapshot is Expired and not usable-as-current, and that no render or image save occurs with the artwork unchanged, which is the real fail-closed path. A stronger form would pass the actual IsUsableAsCurrent result rather than the literal. No change required."
+    }
+  ],
+  "tests_checked": [
+    "Reproduced ./build.sh build after sourcing /config/arrtags-env.sh: Build succeeded, 0 warnings, 0 errors (matches worker claim).",
+    "Reproduced ./build.sh test: Failed 0, Passed 1170, Skipped 58, Total 1228 (matches worker claim; +29 over the 6.7 baseline 1141/58/1199).",
+    "Reproduced dotnet test --filter FullyQualifiedName~Phase6 eight times (3 + 5 additional runs): each Passed 29, Failed 0, Skipped 0, Total 29; deterministic across runs.",
+    "Listed all 29 Phase6 test names with dotnet test --list-tests; confirmed no skipped and no multi-row theories.",
+    "Inspected every new file: Phase6Harness.cs (584 lines), Phase6Doubles.cs, Phase6RestartTests.cs, Phase6ShutdownTests.cs, Phase6CorruptionTests.cs, Phase6OutageTests.cs, Phase6RecoveryTests.cs, Phase6DuplicateEventTests.cs, Phase6QueuePressureTests.cs, Phase6CancellationTests.cs.",
+    "Cross-checked harness composition and constructor argument order against production ArrTagsServiceRegistrator.cs: MetadataReconciliationProcessor, ArtworkPublisher, ArtworkReconciler, ArtworkRecoveryGate, ArtworkLifecycleCoordinator, ArtworkGenerationCoordinator, ArtworkPublishingWorkItemProcessor, ArtworkRecoveringWorkItemProcessor, LibraryWorkQueue/LibraryWorkWorker all match the production graph.",
+    "Verified Phase6Harness.Restart() rebuilds new stores/services over the same Root (ownsRoot:false, copyBytesFrom) so restart assertions cannot rely on in-memory state.",
+    "Inspected production behavior behind the assertions: LibraryWorkQueue (coalescing/bounded overflow/stopped-rejecting), LibraryWorkWorker (bounded shutdown, retry/backoff cancellation), WorkRetryPolicy (attempt count), ArtworkRecoveryGate (quarantine -> Blocked, postcondition/terminal re-read), ArtworkOperationStore (generation fence), ArtworkGenerationCoordinator (invalid-state fail-closed, retained-source selection), ArtworkPublishingWorkItemProcessor (invalid authoritative state short-circuit), ArtworkPublisher fence/FinalizationPending, ArtworkLifecycleCoordinator drain, ArtworkRegenerationPlanner, StateQuarantine, MetadataReconciliationProcessor constructor and cancellation propagation.",
+    "Post-correction re-check: git status/diff shows only PLANS.md and docs/changelog.md modified plus the 10 untracked Phase6*.cs files and docs/implementation/6.8/; git diff --stat -- src tests is empty (no test or production files changed by the documentation corrections).",
+    "Post-correction re-check: docs/changelog.md per-file '(N cases)' counts still sum to 29, and the corrected WebhookIntake wording is present at lines 1894-1895; no other factual inaccuracy introduced."
+  ],
+  "research_checked": [
+    "docs/architecture.md sections 5, 6, 8, 9, 11, 12, 13 references; docs/data-model.md 3.9/3.10.x/6/7 references (cited by the changelog; consistent with the pipeline behavior inspected).",
+    "docs/decisions.md ADR-002/003/004/005/009/010/011/012 themes (bounded work queue, retry/backoff, freshness, lifecycle fence, Enhanced coexistence) as reflected in OperationalLimits (QueueCapacity 512, PerItemInFlightWork 1, TransientRetryCount 2) and the worker/queue/gate code.",
+    "PLANS.md Phase 6 acceptance criteria and Gate 6 (lines 2375-2383): Gate 6 is defined but not self-declared by task 6.8; PLANS status says '6.8 complete; Gate 6 review pending' and the changelog says Gate 6 is not yet declared met. No over-claim.",
+    "docs/changelog.md task 5.4/5.2 entries (lines 755-774, 940-960) confirming the quarantine-on-detect/absent-on-later-read semantics are pre-existing and documented, matching the worker's recorded known limitation; task 6.8 introduced no production change.",
+    "AGENTS.md workflow rules (build, run tests, review diff, no unrelated changes, no commits): satisfied."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

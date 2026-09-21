@@ -1370,8 +1370,8 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Tasks 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, and 6.7 complete;
-Gate 6 not yet met.
+**Status:** In progress. Tasks 6.1 through 6.8 are complete; Gate 6 is not yet
+declared met (the Phase 6 review that confirms the gate is separate).
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
 
@@ -1880,3 +1880,95 @@ and no regressions. DG-7 is resolved by ADR-012; `docs/architecture.md` sections
 were updated to match the implemented behavior. No queue, worker, publication,
 recovery, freshness, or regeneration mechanic was changed and no secret enters a
 queue item, cache, fingerprint, or diagnostic.
+
+### Task 6.8 - Restart, shutdown, corruption, outage, recovery, duplicate, pressure, and cancellation verification
+
+Task 6.8 is the Phase 6 verification task. It adds a focused end-to-end test
+matrix over the complete Phase 6 pipeline (`docs/architecture.md` sections 5, 6,
+8, 9, 11, 12, and 13; `docs/data-model.md` sections 3.9, 3.10.x, 6, and 7; ADR-002
+through ADR-005, ADR-009 through ADR-012). It adds no production behavior change
+and no new feature; it composes the existing production graph - the durable
+stores, the reconciliation processor, the artwork publication pipeline, the
+per-subject recovery gate, the lifecycle drain coordinator, and the bounded work
+queue and worker - over one plugin data directory using only injectable
+host/renderer doubles; the bounded webhook intake and its coalescing/replay
+behavior are exercised directly by the duplicate-event test rather than composed
+in the harness. No live Jellyfin or Arr
+instance is required, and the tests do not skip in this environment.
+
+- `tests/ArrTags.Tests/Phase6Harness.cs`: the composed Phase 6 harness plus the
+  injectable host source/image boundary (`Phase6Host`, with pause/cancel/crash
+  hooks), the hooked fingerprinting renderer (`Phase6Renderer`), and the
+  lifecycle fence provider double. `Phase6Harness.Restart()` rebuilds every
+  in-memory service over the same durable directory, so a test proves the
+  queue/worker, metadata state, freshness, artwork recovery, and retention make
+  the same guarded decisions without in-memory state.
+- `tests/ArrTags.Tests/Phase6Doubles.cs`: the blocking processor, the recording
+  processor (per-key peak concurrency), and the asynchronous provider-reader
+  double used by the shutdown, duplicate/pressure, and cancellation tests.
+- `tests/ArrTags.Tests/Phase6RestartTests.cs` (4 cases): metadata state,
+  freshness, and published-artwork ownership/provenance survive a restart with no
+  redundant render or image mutation; a crashed non-terminal publication is
+  recovered before new work (an inner probe asserts the operation was terminal
+  first); a restart retention pass prunes only expired metadata while preserving
+  the live session, source, and active derived artifacts; and the production
+  startup scan recovers the durable non-terminal operation from durable state
+  alone.
+- `tests/ArrTags.Tests/Phase6ShutdownTests.cs` (4 cases): graceful shutdown
+  cancels queued and in-flight work within the bound, rejects new work, and never
+  starts abandoned work; a shutdown during the image mutation leaves no partial
+  image and no committed state; a shutdown that races the publisher fence leaves a
+  verified postcondition that the lifecycle drain then restores with no untracked
+  non-terminal operation; and a long retry backoff is cancelled without another
+  attempt.
+- `tests/ArrTags.Tests/Phase6CorruptionTests.cs` (5 cases): a torn metadata cache
+  is discarded and rebuilt after restart without blocking startup and without
+  touching published artwork; incompatible and semantically invalid metadata
+  cache records are discarded; a corrupt authoritative artwork-state record fails
+  closed for the composed pipeline and for the publisher with no image mutation
+  and no artifact cleanup; and a corrupt authoritative operation record is
+  quarantined and fails closed without blind replay or cleanup.
+- `tests/ArrTags.Tests/Phase6OutageTests.cs` (3 cases): a temporary provider
+  outage keeps bounded last-known-good metadata (window not extended) and leaves
+  the current artwork byte-for-byte unchanged; after the stale window the expired
+  snapshot is neither kept nor used and the planner refuses to generate from it;
+  and an outage beyond the bounded work retries flags the snapshot as bounded
+  stale with the artwork untouched throughout.
+- `tests/ArrTags.Tests/Phase6RecoveryTests.cs` (3 cases): the durable generation
+  fence rejects a stale operation and a second operation at the same generation,
+  accepting only the next generation; the durable lifecycle fence rejects a
+  changed-fingerprint publication with no image mutation, after which the disable
+  drain restores the baseline; and a corrupt lifecycle fence fails closed toward
+  restoration rather than a normal publication window.
+- `tests/ArrTags.Tests/Phase6DuplicateEventTests.cs` (3 cases): duplicate and
+  out-of-order library events coalesce into one single-flight processing and one
+  publication, and a replay reuses the unchanged fingerprint with no second render
+  or mutation; duplicate and replayed webhook deliveries coalesce while a distinct
+  event kind is admitted and bounded overflow drops; and duplicate hints never
+  grow the queue beyond capacity.
+- `tests/ArrTags.Tests/Phase6QueuePressureTests.cs` (3 cases): concurrent
+  overflow never blocks and stays within the bounded capacity; a slow provider
+  while thousands of library events are delivered synchronously never blocks
+  delivery and keeps the queue bounded; and overflow drains and then accepts new
+  work once capacity is freed.
+- `tests/ArrTags.Tests/Phase6CancellationTests.cs` (4 cases): cancellation during
+  a provider read, a render, and the image mutation publishes no partial
+  metadata, publication state, or image, and preserves the durable intent for a
+  later safe recovery; and an already-cancelled work item publishes nothing.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1170 with 58 environment-guarded skips (1228
+total), exactly +29 over the task 6.7 baseline (1141/58/1199), with no new skips
+and no regressions; the host-guarded facts and the native Skia facts continue to
+skip as expected on this Alpine/musl environment. No production behavior, ADR,
+`RenderVersion`, renderer behavior, or existing passing test was changed. Gate 6
+is not self-declared: the Phase 6 review that confirms the recorded operational
+limits and the phase acceptance criteria is separate.
+
+Observed pre-existing limitation (not introduced or changed by task 6.8): an
+invalid authoritative operation or artwork-state record is quarantined on the
+read that detects it, and a later read of the same subject then observes the
+record as absent. The failing read (the recovery gate for the operation record,
+or the publisher/pipeline for the artwork state) is the one that fails closed;
+this matches the task 6.4 documented quarantine semantics and the accepted
+quarantine/recovery model, and task 6.8 asserts that first-read contract.

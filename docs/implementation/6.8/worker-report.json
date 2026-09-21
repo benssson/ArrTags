@@ -1,0 +1,39 @@
+{
+  "task": "6.8",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Added the phase-wide Phase 6 verification matrix as focused test coverage over the complete production pipeline, with no production behavior change. A composed Phase6Harness builds the full Phase 6 graph (durable metadata/artwork-operation/published-artwork/artifact/lifecycle-fence stores, the MetadataReconciliationProcessor, the ArtworkPublishingWorkItemProcessor, the ArtworkRecoveringWorkItemProcessor, the ArtworkRecoveryGate, the ArtworkLifecycleCoordinator, the bounded LibraryWorkQueue/LibraryWorkWorker) over one plugin data directory using only injectable host source/image and renderer doubles; the bounded WebhookIntake and its coalescing/replay behavior are exercised directly by the duplicate-event test rather than composed in the harness, and Phase6Harness.Restart() rebuilds every in-memory service over the same durable directory. Twenty-nine new tests cover all eight required categories with meaningful assertions: restart (4: metadata/freshness reload, published-artwork ownership/provenance with no redundant render/mutation, non-terminal recovery before new work, restart retention pruning only expired metadata, and the production startup scan), shutdown (4: bounded cancellation/await of queued and in-flight work, no partial image or committed state across a cancelled mutation, worker-shutdown coordination with the publisher fence plus lifecycle drain leaving no untracked non-terminal publication, and bounded retry-backoff cancellation), corruption (5: torn metadata cache discarded and rebuilt after restart; incompatible and semantically invalid metadata discarded; corrupt authoritative artwork-state fails closed for the pipeline and the publisher without mutation or cleanup; corrupt authoritative operation record quarantined and fails closed without blind replay), outage (3: bounded last-known-good within the window without extension, no keep/use of expired metadata with the planner refusing to generate, and an outage beyond the bounded retries), recovery (3: generation fence rejects stale and same-generation operations and accepts only the next generation, lifecycle fence rejects a changed-fingerprint publication before mutation with the drain restoring the baseline, corrupt fence fails closed toward restoration), duplicate events (3: duplicate/out-of-order library events coalesce to one single-flight processing/publication and a replay reuses the unchanged fingerprint; duplicate/replayed webhook deliveries coalesce with distinct kinds admitted and bounded overflow dropped; duplicate hints never exceed capacity), queue pressure (3: concurrent overflow never blocks and stays bounded, a slow provider under thousands of synchronous events never blocks delivery and keeps the queue bounded, and capacity is reusable after a drain), and cancellation (4: during a provider read, a render, the image mutation, and a pre-cancelled item, each publishing no partial metadata/state/image). No genuine defect requiring a production fix was found; one pre-existing documented quarantine limitation is recorded in known_limitations. PLANS.md task 6.8 status/checkbox and docs/changelog.md were updated; Gate 6 is not self-declared.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build => Build succeeded, 0 Warning(s), 0 Error(s)",
+    ". /config/arrtags-env.sh && ./build.sh test => Passed 1170, Skipped 58, Failed 0, Total 1228 (baseline after 6.7 was 1141/58/0/1199; +29 passed, no new skips, no failures)",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build --filter \"FullyQualifiedName~Phase6\" => Passed 29, Skipped 0, Failed 0, Total 29 (run 4 times, deterministic; every category covered, none skipped in this environment)",
+    "dotnet build tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release => Build succeeded, 0 Warning(s), 0 Error(s)",
+    "git status and git diff inspection => only PLANS.md and docs/changelog.md modified plus the 10 new tests/ArrTags.Tests/Phase6*.cs files; no unrelated production, test, or documentation files changed and no commits created"
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/Phase6Harness.cs",
+    "tests/ArrTags.Tests/Phase6Doubles.cs",
+    "tests/ArrTags.Tests/Phase6RestartTests.cs",
+    "tests/ArrTags.Tests/Phase6ShutdownTests.cs",
+    "tests/ArrTags.Tests/Phase6CorruptionTests.cs",
+    "tests/ArrTags.Tests/Phase6OutageTests.cs",
+    "tests/ArrTags.Tests/Phase6RecoveryTests.cs",
+    "tests/ArrTags.Tests/Phase6DuplicateEventTests.cs",
+    "tests/ArrTags.Tests/Phase6QueuePressureTests.cs",
+    "tests/ArrTags.Tests/Phase6CancellationTests.cs",
+    "PLANS.md",
+    "docs/changelog.md",
+    "docs/implementation/6.8/worker-report.json"
+  ],
+  "known_limitations": [
+    "Pre-existing, already-documented quarantine semantic (not introduced or changed by 6.8): an invalid authoritative operation or artwork-state record is quarantined on the read that detects it, and a later read of the same subject then observes the record as absent. The detecting read (the recovery gate for the operation record; the publisher/pipeline for the artwork state) is the one that fails closed, which is the contract task 6.8 asserts. Changing this to a durable fail-closed tombstone would be a product/architectural decision and is out of the task 6.8 test-coverage scope (it matches the task 6.4 documented quarantine semantics).",
+    "No live Jellyfin host or live Arr/provider HTTP endpoint is available in this environment; the tests use injectable host source/image and renderer doubles and in-process provider readers. The pinned host-guarded facts and the native Skia facts continue to skip as expected on Alpine/musl; no task 6.8 test skips.",
+    "Several shutdown/pressure tests use bounded asynchronous polling (Phase6Wait with a 10s ceiling) and small injected retry/backoff limits so they remain bounded and deterministic rather than relying on long sleeps.",
+    "Gate 6 is not self-declared by this task; the separate Phase 6 review confirms the recorded operational limits and the phase acceptance criteria."
+  ],
+  "ready_for_next_task": true
+}
