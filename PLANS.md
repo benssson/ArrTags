@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1 through 6.9 complete; the Gate 6 review is separate). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-6 complete; Phase 7 not started. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items are tracked for Phase 7 rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, and a safe metrics/diagnostic-status surface; no live Jellyfin host or live Arr instance was exercised. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -175,7 +175,7 @@ without modifying original media files or external services.
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
-| 6 | Caching, updates & performance | In progress (tasks 6.1 through 6.9 complete; Gate 6 review pending) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
+| 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
@@ -2418,29 +2418,38 @@ from task numbering:
 
 **Acceptance criteria:**
 
-- [ ] Unchanged metadata and source state do not repeatedly fetch, render, or
-  publish work unnecessarily.
-- [ ] A changed Arr file, source image, badge configuration, or renderer version
+- [x] Unchanged metadata and source state do not repeatedly fetch, render, or
+  publish work unnecessarily. (Met for render and publication, which are
+  fingerprint-gated; provider metadata is still fetched for every work item and a
+  provider inventory/catalogue cache is tracked for Phase 7, so this criterion is
+  accepted as partially met at the integration-test level.)
+- [x] A changed Arr file, source image, badge configuration, or renderer version
   produces the required new fingerprint and render result.
-- [ ] Temporary provider outages use bounded last-known-good state only within
+- [x] Temporary provider outages use bounded last-known-good state only within
   policy, then leave the current usable artwork unchanged.
-- [ ] Queue overflow and slow providers never block Jellyfin library event
+- [x] Queue overflow and slow providers never block Jellyfin library event
   delivery indefinitely.
-- [ ] Restart or cancellation cannot publish partial state or partial image
+- [x] Restart or cancellation cannot publish partial state or partial image
   output.
-- [ ] Plugin cache and provenance entries are bounded where applicable,
+- [x] Plugin cache and provenance entries are bounded where applicable,
   versioned, recoverable, and free of credentials.
 
-The Phase 6 acceptance criteria remain unchecked pending the Gate 6 review. The
-Phase 6 review's HIGH deliverable gap (scheduled, post-scan, and manual/periodic
-reconciliation) and its MEDIUM concurrency-enforcement gap are addressed by task
-6.9. Acceptance criterion 1 remains only partially met: render and publication
-are fingerprint-gated, but provider metadata is still fetched for every work
-item because a provider inventory/catalogue cache is deferred to Phase 7 and is
-tracked in the Post-V1 Backlog rather than presented as solved.
+The Phase 6 acceptance criteria are accepted with the Gate 6 review. The review's
+HIGH deliverable gap (scheduled, post-scan, and manual/periodic reconciliation)
+and its MEDIUM concurrency-enforcement gap were addressed by task 6.9. Acceptance
+criterion 1 is accepted as partially met: render and publication are
+fingerprint-gated, but provider metadata is still fetched for every work item
+because a provider inventory/catalogue cache is deferred to Phase 7 and is
+tracked in the Post-V1 Backlog rather than presented as solved. The review's
+remaining MEDIUM item (reconciliation coverage capped by the bounded, droppable
+queue on a scope larger than `QueueCapacity`) is tracked for Phase 7.
 
-**Gate 6:** Load, outage, restart, invalidation, and recovery tests meet the
-recorded operational limits without degrading Jellyfin operations.
+**Gate 6:** Met at the integration-test level (tag `v0.1.0-phase6`). Load,
+outage, restart, invalidation, and recovery tests meet the recorded operational
+limits without degrading Jellyfin operations. No live Jellyfin host or live Arr
+instance was exercised; the scheduled-task/post-scan discovery and the
+provider/render concurrency enforcement are validated in-process against the
+pinned 12.0.0 ABI and host source.
 
 ### 7. Testing & release
 

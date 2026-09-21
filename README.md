@@ -1,23 +1,31 @@
 ## Project Status
 
-**Current milestone:** Phase 5 — Jellyfin artwork integration is complete.
-Tasks 5.1 (confirm the exact supported Jellyfin 12.0.0 item-image publication ABI
-and route variants), 5.2 (source-artwork provenance and guarded restoration
-state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native
-packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store),
-5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7
-(postcondition reconciliation of uncertain publication outcomes), 5.8
-(preserve the current usable artwork when source capture or rendering cannot
-safely complete), 5.9 (fence and drain publication operations during
-disable/uninstall and tombstone confirmed item removal), 5.10 (the Jellyfin
-Enhanced coexistence policy, resolved by ADR-011), and 5.11 (standard server
-image-response integration tests for Web and other image-consuming clients) are
-complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the
-integration-test level. The standard image response path is validated in-process
-against the real pinned host `ImageController` plus the real ArrTags publication
-boundary; a live HTTP round-trip against a running Jellyfin server was not
-performed, and the full generation-to-publication pipeline is not driven on a
-host until the Phase 6 queue/event wiring exists.
+**Current milestone:** Phase 6 — Caching, updates & performance is complete
+(tasks 6.1 through 6.9; Gate 6 met at the integration-test level, tag
+`v0.1.0-phase6`). Library-event, authenticated webhook, scheduled/periodic,
+post-scan, and manual reconciliation feed a bounded, coalescing, single-flight
+work queue; metadata state is published atomically after current
+item/configuration re-validation, with an explicit freshness and bounded
+stale-last-known-good policy separated from artwork retention and bounded
+artifact GC; non-terminal artwork operations are recovered before new work for
+the same item/image surface; artwork is regenerated only when a publication
+fingerprint changes, and repeat publication renders from the retained original
+source rather than the previous ArrTags output; and the authenticated, bounded
+webhook boundary is pinned by ADR-012. The provider and render concurrency limits
+from ADR-004 are enforced at their boundaries. No live Jellyfin host or live Arr
+instance was exercised, so host-guarded and native-Skia facts skip in this
+environment. The provider inventory/catalogue cache, runtime configuration
+replacement wiring, and a safe metrics/diagnostic-status surface remain tracked
+for Phase 7.
+
+Phase 5 — Jellyfin artwork integration is complete (tasks 5.1 through 5.11; Gate
+5 met for the pinned 12.0.0 ABI at the integration-test level). Phase 5 derived
+poster artwork is published through Jellyfin's supported item-image APIs with
+retained-source provenance and guarded restoration; the standard image response
+path is validated in-process against the real pinned host `ImageController` plus
+the real ArrTags publication boundary, and a live HTTP round-trip was not
+performed. Phase 7 wires the Phase 6 pipeline to that publication path on a
+host.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on

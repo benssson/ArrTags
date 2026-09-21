@@ -1535,6 +1535,13 @@ that supported mechanism and does not replace or intercept any host route.
 - A webhook can only accelerate work for items ArrTags already tracks. New or
   missed items continue to rely on library events and periodic reconciliation,
   which stays authoritative.
+- The periodic/post-scan repair guarantee is bounded by the ADR-004 queue
+  capacity: reconciliation enqueues the same bounded hints through the bounded,
+  coalescing queue, and a run over a scope larger than `QueueCapacity` drops the
+  tail and re-enumerates from the start of a deterministic order on the next run.
+  Successive runs therefore overlap rather than advancing across a larger scope;
+  making successive runs cover the whole scope is tracked for Phase 7 (see
+  `docs/architecture.md` section 8).
 - The controller registration depends on Jellyfin's documented plugin
   controller discovery; the exact host routing behavior remains an
   implementation-time validation item.

@@ -1370,8 +1370,16 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Tasks 6.1 through 6.9 are complete; Gate 6 is not yet
-declared met (the Phase 6 review that confirms the gate is separate).
+**Status:** Complete. Gate 6 met at the integration-test level.
+
+**Commit/tag:** tag `v0.1.0-phase6`, at commit
+`52dec772b904fd188890123f9fc3e776840bb30a` ("execute post phase 6 review",
+2026-09-21). Tasks 6.1-6.9 landed in commits `cf285f5` through `a513216` in the
+authoritative execution order (6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9); the
+phase review is in `52dec77`. Phase 6 residuals tracked for Phase 7 rather than
+presented as solved: the provider inventory/catalogue cache, runtime configuration
+replacement wiring, the reconciliation coverage bound on a scope larger than the
+bounded queue, and a safe metrics/diagnostic-status surface.
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
 

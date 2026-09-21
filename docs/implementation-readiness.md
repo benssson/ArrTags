@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011; Phase 5 Jellyfin artwork integration complete (tasks 5.1 through 5.11, Gate 5 met at the integration-test level); Phase 6 caching, updates, and performance complete (tasks 6.1 through 6.9, Gate 6 met at the integration-test level, tag `v0.1.0-phase6`; the provider inventory/catalogue cache, runtime configuration replacement, the reconciliation coverage bound, and a metrics/status surface are tracked for Phase 7)
 
 **Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, ADR-010, and ADR-011; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two

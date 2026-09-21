@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-5 complete and Phase 6 implemented through task 6.9; Gate 6 review pending)
+**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 not started. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.)
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -463,6 +463,16 @@ Webhooks are accelerators, not the source of truth. Payloads are validated,
 bounded, and converted into the same deduplicated work as other triggers. A
 periodic reconciliation repairs missed or forged notifications.
 
+All reconciliation triggers (events, webhooks, post-scan, and manual/periodic
+scheduled) enqueue the same bounded work hints through the bounded, coalescing
+queue, so reconciliation is bounded by `QueueCapacity` (ADR-004). The scheduled
+and post-scan scopes are enumerated from the start of a deterministic order and
+the queue drops overflow, so a single run over a scope larger than
+`QueueCapacity` covers a bounded prefix; successive runs overlap rather than
+advancing. Making successive runs cover the whole scope (a persisted enumeration
+cursor, stale/unknown-only enqueue, or direct pipeline drive) is tracked for
+Phase 7 rather than presented as solved.
+
 The installed webhook boundary (`src/ArrTags/Webhooks`, ADR-012) realizes this
 contract. `ArrTagsWebhookController` is an anonymous plugin route
 (`POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr`) discovered
@@ -732,8 +742,8 @@ artifacts without recapturing the active image; a lifecycle fence aborts a
 prepared publication. Reconciliation performs no artifact deletion, so an
 artifact that is not proven non-active is retained or quarantined. Invocation is
 an explicit boundary: the guarded restoration mutation remains the lifecycle
-task 5.9, and the event/webhook wiring that feeds the work queue remains later
-tasks.
+task 5.9, and the event/webhook/scheduled/post-scan wiring that feeds the work
+queue is provided by tasks 6.1, 6.7, and 6.9.
 
 Task 6.4 drives this recovery entry point from the Phase 6 pipeline as the
 provider-neutral `ArtworkRecoveryGate` (`IArtworkRecoveryGate`). Before a queued
