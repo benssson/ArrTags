@@ -630,6 +630,12 @@ that point and required explicit user approval to begin.
 
 **Status:** Complete. Gate 5 met.
 
+**Commit/tag:** tag `v0.1.0-phase5`, at commit
+`2a9298fa567d0dc23f535e854336e6f2cbeabbbd` ("Phase 5 complete: Jellyfin artwork
+integration", 2026-09-21). Tasks 5.1-5.11 landed in commits `72264a7` through
+`be4eda5` in the authoritative execution order (5.1, 5.2, 5.3, 5.4, 5.6, 5.5,
+5.7, 5.8, 5.9, 5.10, 5.11); the phase review is in `2a9298f`.
+
 ### Task 5.1 - Jellyfin item-image publication ABI and route confirmation
 
 Task 5.1 confirms the exact supported Jellyfin 12.0.0 item-image publication and
