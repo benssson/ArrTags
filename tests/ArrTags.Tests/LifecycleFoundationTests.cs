@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Artwork;
 using ArrTags.Configuration;
+using ArrTags.Media;
 using ArrTags.PluginLifecycle;
 using ArrTags.State;
 using ArrTags.Updates;
@@ -30,6 +31,11 @@ public class LifecycleFoundationTests
         var services = new ServiceCollection();
         services.AddSingleton<ILibraryEventSource>(new FakeLibraryEventSource());
         services.AddSingleton<IArtworkLifecycleCoordinator>(new FakeArtworkLifecycleCoordinator());
+
+        // Task 6.3: the registered real work processor resolves the library and
+        // provider-read boundaries, so the host library boundary is supplied here
+        // as the other foundation tests supply their fakes.
+        services.AddSingleton<IMediaLibraryResolver>(new ReconciliationLibraryResolver());
 
         new ArrTagsServiceRegistrator().RegisterServices(services, null!);
 

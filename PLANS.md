@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1 and 6.2 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, and 6.3 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -175,7 +175,7 @@ without modifying original media files or external services.
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
-| 6 | Caching, updates & performance | In progress (6.2 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
+| 6 | Caching, updates & performance | In progress (6.3 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
@@ -2023,7 +2023,7 @@ authoritative.
   bounded hint, and return without external I/O or rendering.
 - [x] 6.2 Implement coalescing by item and connection, single-flight work, worker
   cancellation, retry classification, and queue overflow behavior.
-- [ ] 6.3 Publish metadata state atomically only after current item/configuration
+- [x] 6.3 Publish metadata state atomically only after current item/configuration
   validation; discard stale long-running work.
 - [ ] 6.4 Recover non-terminal artwork operations before accepting new work for
   the same item/image surface, using before/after identity postconditions and
@@ -2090,6 +2090,42 @@ open (see `docs/implementation/6.2/worker-report.json`). Focused tests cover
 coalescing by item and connection, single-flight, cancellation during processing
 and backoff, transient/terminal retry classification and bounded attempts,
 overflow, no-blocking enqueue, bounded diagnostics, and restartability.
+
+**Task 6.3 status:** Complete. The canonical metadata state and the real
+reconciliation/publication path are implemented in `src/ArrTags/Reconciliation`
+with provider composition in `src/ArrTags/Providers/Radarr` and
+`src/ArrTags/Providers/Sonarr`. `MetadataStateEntry` is the versioned,
+secret-free, provider-neutral record for a match and its last-known-good
+normalized metadata (item and library scope, provider/connection scope, typed
+record/file identity, match classification and fingerprint, normalized metadata
+snapshot and fingerprint, optional provider version/token, fetch timestamp, and
+explicit `MetadataStateKind`); the freshness-window fields are recorded but the
+stale-last-known-good policy remains task 6.5. `MetadataStateStore` persists the
+record through the existing versioned cache state boundary, so a corrupt or
+semantically invalid entry is discarded and rebuildable without blocking startup
+or publication, and an in-place replacement is a single atomic write.
+`MetadataReconciliationProcessor` implements `IWorkItemProcessor`: it re-reads
+the current configuration snapshot and Jellyfin item, resolves the applicable
+Sonarr/Radarr connection, matches the item through the provider-neutral reader
+(`RadarrMetadataReader`/`SonarrMetadataReader` compose the existing read clients,
+candidate factories, matching order, episode-file join, and metadata mappers),
+computes the canonical metadata fingerprint, re-reads the current configuration
+and item immediately before publishing, and only then atomically publishes. A
+metadata state is discarded and never published or overwritten when the
+configuration version advanced, the connection was disabled or changed, the item
+was removed, changed, or is no longer eligible, or when the provider read fails
+(a transient failure stays retryable; a terminal failure does not). The
+processor publishes metadata state only and never invokes
+`ArtworkGenerationCoordinator`/`ArtworkPublisher`, so fingerprint-driven artwork
+work remains tasks 6.4 and 6.6. `DeferredWorkItemProcessor` is removed and the
+real processor is registered in DI; the task 6.1/6.2 queue, worker, coalescing,
+single-flight, retry, and shutdown behavior is unchanged. Focused tests cover
+atomic publication, in-place fingerprint replacement, corrupt and
+semantically-invalid cache discard, reload round-trip, secret-free persistence,
+discard on advanced configuration version/disabled connection/absent or changed
+or ineligible item, retryable versus terminal provider failure, no overwrite of
+an existing published state on discard, provider reader matching/mapping, and the
+DI replacement.
 
 **Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
 6.8. Task IDs are stable references only; this execution order is the canonical

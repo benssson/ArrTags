@@ -1370,7 +1370,7 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Tasks 6.1 and 6.2 complete; Gate 6 not yet met.
+**Status:** In progress. Tasks 6.1, 6.2, and 6.3 complete; Gate 6 not yet met.
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
 
@@ -1512,5 +1512,83 @@ and no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
 passing behavior was changed. The Phase 5 review MEDIUM finding that
 `ArtworkPublisher.PublishCoreAsync` reads the durable lifecycle fence once is not
 made reachable by this task because the placeholder processor does not drive
+artwork publication; it remains open for the later task that wires artwork
+publication into the worker (6.4/6.6).
+
+### Task 6.3 - Atomic metadata state publication and stale-work disposal
+
+Task 6.3 implements the reconciliation and metadata-state publication path
+(`docs/architecture.md` sections 6, 8, and 9; `docs/data-model.md` sections 3.9,
+4.9, 6, and 7; ADR-002; ADR-004; ADR-005) and replaces the task 6.2
+`DeferredWorkItemProcessor` placeholder with the real processor. It does not
+implement metadata freshness/staleness (6.5), non-terminal artwork-operation
+recovery and generation fences (6.4), fingerprint-driven artwork
+regeneration/invalidation (6.6), webhooks (6.7), or the restart/outage/pressure
+test matrix (6.8).
+
+- `src/ArrTags/Reconciliation/MetadataStateEntry.cs`: the canonical, versioned,
+  secret-free, provider-neutral metadata state record. It carries the Jellyfin
+  item and library scope, provider/connection scope, typed record/file identity,
+  match status/method/fingerprint, the last-known-good normalized metadata
+  snapshot and its canonical fingerprint, optional provider version/token, the
+  fetch timestamp, and an explicit `MetadataStateKind`. The `expiresAt`/
+  `staleUntil` fields are recorded but intentionally not computed here; the
+  bounded stale-last-known-good policy is task 6.5.
+- `src/ArrTags/Reconciliation/MetadataSnapshot.cs` and
+  `MetadataRecordIdentity.cs`: serializable, provider-neutral forms of
+  `BadgeMetadata` and the abstract connection-scoped `ArrRecordIdentity`, so the
+  record round-trips through the plain `System.Text.Json` state boundary without
+  a polymorphic discriminator and without provider DTOs.
+- `src/ArrTags/Reconciliation/MetadataStateStore.cs`: persists the record through
+  the existing versioned cache state boundary (`StateAuthority.Cache`) with the
+  stable record kind `metadata-state` and an item/provider record identifier. A
+  corrupt or semantically invalid entry is discarded as rebuildable and never
+  treated as authoritative; an in-place replacement is one atomic write.
+- `src/ArrTags/Reconciliation/IArrMetadataReader.cs`,
+  `ArrMetadataReadResult.cs`, `IArrReadClientFactory.cs`, and
+  `ArrReadClientFactory.cs`: the provider-neutral reconciliation read boundary
+  and the connection-scoped read-client factory. Operational limits are resolved
+  from the current configuration snapshot at client creation.
+- `src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs` and
+  `src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs`: compose the existing
+  read clients, candidate factories, documented matching order, the validated
+  `episodeFileId` join, and the metadata mappers, returning a canonical match and
+  metadata without leaking provider DTOs.
+- `src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs`: implements
+  `IWorkItemProcessor`. It re-reads the current configuration snapshot and
+  Jellyfin item, resolves the applicable connection, matches and maps through the
+  reader, computes the canonical fingerprint, re-reads the current configuration
+  and item immediately before publishing, and only then atomically publishes. A
+  changed basis (advanced configuration version, disabled/changed connection,
+  removed/changed/ineligible item) or a provider read failure discards the work
+  and never publishes or overwrites metadata state. A transient provider failure
+  remains retryable; a terminal failure does not. The processor publishes
+  metadata state only and never invokes
+  `ArtworkGenerationCoordinator`/`ArtworkPublisher`.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers the
+  metadata state store, the read-client factory, the two provider readers, and
+  the real processor in place of `DeferredWorkItemProcessor`.
+  `src/ArrTags/Updates/DeferredWorkItemProcessor.cs` is removed. The task 6.2
+  queue, worker, coalescing, single-flight, retry, and shutdown behavior is
+  unchanged.
+- Tests: `tests/ArrTags.Tests/MetadataStateStoreTests.cs` (10 cases),
+  `MetadataReconciliationProcessorTests.cs` (13 cases), `MetadataReaderTests.cs`
+  (6 cases), `ReconciliationFixtures.cs`, and an updated
+  `LifecycleFoundationTests` registration test. They cover atomic publication,
+  in-place fingerprint replacement, corrupt and semantically invalid cache
+  discard, reload round-trip, secret-free persistence, discard on advanced
+  configuration version or configuration change during processing, disabled
+  connection, absent item, ineligible item, and changed item, discard without
+  overwriting an existing published state, retryable versus terminal provider
+  failure, provider reader matching and metadata mapping, the DI replacement, and
+  the absence of an artwork-publication dependency.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1032 with 58 environment-guarded skips (1090
+total), exactly +29 over the task 6.2 baseline (1003/58/1061), with no new skips
+and no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed. The Phase 5 review MEDIUM finding that
+`ArtworkPublisher.PublishCoreAsync` reads the durable lifecycle fence once is not
+made reachable by this task because the reconciliation processor does not drive
 artwork publication; it remains open for the later task that wires artwork
 publication into the worker (6.4/6.6).

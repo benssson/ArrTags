@@ -407,7 +407,16 @@ terminal or unclassified failure is not retried. A redundant hint for work that
 is already pending or in flight is coalesced, and overflow coalesces or drops
 without ever blocking or throwing into the library-event publisher. On shutdown
 the worker stops accepting, cancels queued and in-flight work, and awaits the
-workers within a bounded host-shutdown timeout.
+workers within a bounded host-shutdown timeout. The reconciliation work
+dispatched by the worker is installed in `src/ArrTags/Reconciliation`
+(`MetadataReconciliationProcessor`): it re-reads the current item and
+configuration, resolves the applicable connection, matches and maps the current
+provider metadata through the provider readers, revalidates the work's basis
+immediately before publishing, and atomically publishes the metadata state
+through the versioned cache boundary; a changed basis (advanced configuration
+version, disabled or changed connection, removed/changed/ineligible item) or a
+provider read failure discards the work rather than publishing partial or stale
+state.
 
 Refresh triggers are:
 

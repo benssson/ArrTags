@@ -1,0 +1,80 @@
+{
+  "task": "6.3",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "status": "open",
+      "summary": "Post-read item re-validation compares the episode's own identity but not the parent series' provider identifiers/source fingerprint.",
+      "detail": "MetadataReconciliationProcessor.SubjectMatches (src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:218-228) re-validates the current Jellyfin subject against the work basis before publishing. For an episode it compares ItemType, LibraryId, season/episode numbers, SourceFingerprint, the episode's ProviderIds, and SeriesIdentity.JellyfinItemId only. The Sonarr reader matches the parent series using the basis SeriesIdentity.ProviderIds (SonarrMetadataReader.cs:81), and MediaMatch.MatchFingerprint / the persisted MetadataSnapshot do not carry the parent series' provider ids. If a Jellyfin series' TVDB/TMDB provider ids changed during the provider read (a metadata refresh landing inside the read window), the episode match could be based on the stale parent identity while SubjectMatches still returns true. The episode's own source fingerprint/location and provider ids are covered, so this is a narrow residual staleness gap, not an observed defect; no production caller mutates parent provider ids mid-item. Recorded for the later task that extends basis re-validation or when connection/webhook-scoped triggers make concurrent refreshes more likely.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:218-247 (SubjectMatches compares SeriesIdentity.JellyfinItemId only)",
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:81-92 (series match uses basis identity.SeriesIdentity)",
+        "src/ArrTags/Matching/MediaMatch.cs (fingerprint excludes series provider ids)",
+        "src/ArrTags/Media/MediaIdentityFactory.cs (parent identity carries its own ProviderIds/SourceFingerprint)"
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "status": "open",
+      "summary": "The 'changed item' discard path (SubjectMatches false) is implemented but not exercised by a test; the tests that claim a changed item actually remove the item.",
+      "detail": "The worker report and changelog state that discard on a changed item is covered. DiscardsWhenTheItemChangesWhileProcessing and DiscardDoesNotOverwriteAnExistingPublishedState both use _reader.OnRead = () => _resolver.Items.Remove(itemId), which exercises the publishItem is null (removed) path, not the SubjectMatches false (present but changed) path. The SubjectMatches branch is new and non-trivial (provider-id ordering/count comparison). The behaviour is clearly implemented and safe (it discards, never publishes), so this is a coverage-strengthening note rather than a correctness gap; the acceptance criterion states changed/removed/ineligible and removed/ineligible are directly tested.",
+      "evidence": [
+        "tests/ArrTags.Tests/MetadataReconciliationProcessorTests.cs:149-175 (both tests remove the item)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:158-166 (changed path via SubjectMatches)",
+        "docs/implementation/6.3/worker-report.json validation line 16 (claims changed item coverage)"
+      ]
+    },
+    {
+      "id": "F3",
+      "severity": "informational",
+      "status": "accepted",
+      "summary": "MetadataStateStore.GetRecordId scopes the on-disk record by Jellyfin item + provider kind only; the connection/record-file scope lives in the stored CacheKey, not the record id.",
+      "detail": "MetadataStateStore.GetRecordId (MetadataStateStore.cs:44-55) produces '<itemN>-<providerName>'. MetadataStateEntry.ComputeCacheKey (MetadataStateEntry.cs:336-352) includes the Jellyfin item, item type, provider kind, provider instance, connection id, match status/method, and every typed record/file identity component, so all data-model section 6 key inputs are present in the persisted CacheKey as required. Because V1 configures at most one connection per provider kind (ArrConnectionId remarks) and metadata state is non-authoritative rebuildable cache, an in-place replacement on connection change is safe: the new state's CacheKey/ConnectionId change and consumers can detect the scope. A future multi-connection or webhook-scoped consumer that reads by RecordId alone should compare CacheKey before trusting the state.",
+      "evidence": [
+        "src/ArrTags/State/StateRepository.cs:94-104 (atomic write through the versioned boundary)",
+        "src/ArrTags/Reconciliation/MetadataStateStore.cs:44-55,101-117",
+        "src/ArrTags/Reconciliation/MetadataStateEntry.cs:336-352",
+        "docs/data-model.md section 6 (cache key inputs)",
+        "src/ArrTags/Providers/ArrConnectionId.cs (at most one connection per provider kind in V1)"
+      ]
+    },
+    {
+      "id": "F4",
+      "severity": "informational",
+      "status": "accepted",
+      "summary": "The processor publishes unconditionally on a successful, re-validated read; it does not skip the write when the metadata fingerprint is unchanged.",
+      "detail": "MetadataReconciliationProcessor always calls _store.Write after re-validation. docs/data-model.md section 7 says a changed metadata snapshot fingerprint causes replacement; writing an identical fingerprint is idempotent (same payload apart from the envelope UpdatedUtc) and remains a correct single atomic write. Fingerprint-driven skip/invalidation and artwork regeneration are explicitly task 6.6 scope, so this is correct for 6.3 and not a defect.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:181-193",
+        "docs/data-model.md section 7 (metadata changed flow)",
+        "docs/implementation/6.3/worker-report.json known_limitations (6.6 owns fingerprint-driven artwork work)"
+      ]
+    }
+  ],
+  "tests_checked": [
+    "Reproduced ./build.sh build (after . /config/arrtags-env.sh): Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Reproduced ./build.sh test: Failed 0, Passed 1032, Skipped 58, Total 1090 (Duration ~17s), matching the worker claim and exactly +29 over the task 6.2 baseline 1003/58/1061 with no new skips.",
+    "Reproduced focused filter (MetadataStateStoreTests|MetadataReconciliationProcessorTests|MetadataReaderTests): Passed 29, Failed 0, Skipped 0, matching the worker claim.",
+    "Inspected tests/ArrTags.Tests/MetadataStateStoreTests.cs (10 facts): cache round-trip, unknown-vs-empty audio features, unmatched-without-metadata, in-place fingerprint replacement (single file), corrupt-envelope discard/rebuild, semantically-invalid-payload discard, write invariant rejection, fresh-store reload, secret-free persistence (API key absent from CacheKey and persisted bytes), stable path-safe record id.",
+    "Inspected tests/ArrTags.Tests/MetadataReconciliationProcessorTests.cs (13 facts): fresh publication, unmatched publication, discard on advanced configuration version, discard on configuration replacement during read, disabled connection, absent item, ineligible item, item removal during read, no overwrite of existing published state on discard, retryable vs terminal provider failure, DI replacement (real processor, no DeferredWorkItemProcessor, two readers), and constructor has no ArrTags.Artwork dependency.",
+    "Inspected tests/ArrTags.Tests/MetadataReaderTests.cs (6 facts): Radarr match + current-file map, Radarr non-match without metadata, Radarr file-read failure propagation, Sonarr episode match + file map, Sonarr parent-series non-match, Sonarr missing-parent-context Unsupported.",
+    "Inspected the updated tests/ArrTags.Tests/LifecycleFoundationTests.cs: the foundation registration test now supplies a fake IMediaLibraryResolver (needed only because GetServices<IHostedService>() constructs LibraryWorkWorker -> MetadataReconciliationProcessor); no existing assertion was weakened."
+  ],
+  "research_checked": [
+    "docs/data-model.md 3.9 (MetadataCacheEntry: cacheVersion, cacheKey, mediaIdentity, match, optional metadata/metadataFingerprint/providerVersion/providerVersionToken/fetchedAt/expiresAt/staleUntil, required explicit state, optional lastError) and 4.9 mapping: MetadataStateEntry carries all required fields plus a typed provider-neutral MetadataRecordIdentity and MetadataSnapshot; providerVersion/token and expiresAt/staleUntil are optional and correctly recorded null.",
+    "docs/data-model.md section 6 (cache model): metadata key inputs (item id, connection id, provider kind, every typed record/file identity component, cache version) are all present in ComputeCacheKey; metadata fingerprint is the canonical BadgeMetadata.MetadataFingerprint covering schema version, provider/record identity, and every badge-affecting value; last-known-good may outlive an outage until staleUntil (policy deferred to 6.5).",
+    "docs/data-model.md section 7 (event model): 'Metadata changed -> re-match or re-read current provider state, then replace the snapshot if its fingerprint changed'; provider webhooks never publish directly. The processor re-reads and publishes; fingerprint skip is 6.6.",
+    "docs/architecture.md section 6 (persisted state): versioned envelope + SHA-256 integrity hash, flushed temp + atomic replacement, corrupt non-authoritative cache discarded/rebuilt, authoritative state quarantined. MetadataStateStore uses StateRepository/StateAuthority.Cache and AtomicFileWriter; no second storage mechanism.",
+    "docs/architecture.md section 8 (reconciliation flow) and section 12: worker re-reads item/config before processing, re-checks long-running work before publishing and discards a changed fingerprint, and resolves the connection/lease at the external-I/O boundary. The processor performs these steps; the stale-last-known-good window (24h) is ADR-004/6.5 scope and is intentionally not implemented here.",
+    "docs/decisions.md ADR-004 (bounded retries, retry vocabulary) and ADR-005 (version-matched lease, secrets never persisted): ArrReadClientFactory/readers acquire the connection's version-matched lease inside the client (RadarrClient.cs:148, SonarrClient.cs:173), and the persisted state carries only provider kind/instance, connection id, and normalized metadata with no secret.",
+    "docs/decisions.md ADR-006/ADR-009 (V1 badge surfaces Movie/Episode; unknown values hidden, not asserted): MediaEligibility.IsEligible restricts publication to Movie/Episode badge surfaces and mappers preserve null/unknown for unreported technical values.",
+    "Independent grep confirmed no ArrTags.Artwork symbol (ArtworkGenerationCoordinator, ArtworkPublisher, ArtworkReconciler, ArtworkLifecycleCoordinator) is referenced anywhere under src/ArrTags/Reconciliation or in the two provider readers, so the Phase 5 lifecycle-fence MEDIUM finding remains unreachable from 6.3.",
+    "Compared the deleted 6.2 DeferredWorkItemProcessor placeholder and confirmed no production code still references it; git status shows only task-scoped production/test/doc changes plus the new docs/implementation/6.3 worker report."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

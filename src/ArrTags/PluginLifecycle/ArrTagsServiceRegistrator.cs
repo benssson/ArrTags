@@ -5,6 +5,9 @@ using ArrTags.Artwork;
 using ArrTags.Configuration;
 using ArrTags.Media;
 using ArrTags.Providers;
+using ArrTags.Providers.Radarr;
+using ArrTags.Providers.Sonarr;
+using ArrTags.Reconciliation;
 using ArrTags.Rendering;
 using ArrTags.Secrets;
 using ArrTags.State;
@@ -40,8 +43,14 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateLibraryWorkQueue);
         serviceCollection.TryAddSingleton<IWorkHintSink>(
             static serviceProvider => serviceProvider.GetRequiredService<LibraryWorkQueue>());
-        serviceCollection.TryAddSingleton<IWorkItemProcessor, DeferredWorkItemProcessor>();
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
+        serviceCollection.TryAddSingleton(CreateMetadataStateStore);
+        serviceCollection.TryAddSingleton<IArrReadClientFactory, ArrReadClientFactory>();
+        serviceCollection.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IArrMetadataReader, RadarrMetadataReader>());
+        serviceCollection.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IArrMetadataReader, SonarrMetadataReader>());
+        serviceCollection.TryAddSingleton<IWorkItemProcessor, MetadataReconciliationProcessor>();
         serviceCollection.TryAddSingleton<IArtworkImageAccess>(CreateArtworkImageAccess);
         serviceCollection.TryAddSingleton<IArtworkSourceReader>(CreateArtworkSourceReader);
         serviceCollection.TryAddSingleton<IArtworkImageWriter>(CreateArtworkImageWriter);
@@ -114,6 +123,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         // current snapshot on each operation, so a replaced configuration takes
         // effect without rebuilding the singleton.
         return new LibraryWorkQueue(() => configuration.Current.Limits);
+    }
+
+    private static MetadataStateStore CreateMetadataStateStore(IServiceProvider serviceProvider)
+    {
+        return new MetadataStateStore(serviceProvider.GetRequiredService<StateRepository>());
     }
 
     private static JellyfinArtworkImageAccess CreateArtworkImageAccess(IServiceProvider serviceProvider)
