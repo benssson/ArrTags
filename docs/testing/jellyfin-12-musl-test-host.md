@@ -114,9 +114,17 @@ Host directories under `PREFIX`:
 | --- | --- |
 | `jellyfin/` | Extracted server and its managed/native assemblies (includes `Jellyfin.Api.dll`) |
 | `sysroot/root/` | Extracted Alpine runtime packages (`usr/lib`, `usr/bin/ffmpeg`, ICU data) |
-| `data/` | Jellyfin data/database |
-| `config/` | Jellyfin configuration; **plugins live in `config/plugins/`** |
+| `data/` | Jellyfin data (`--datadir`, Jellyfin's `ProgramDataPath`) and database; **plugins live in `data/plugins/`** |
+| `config/` | Jellyfin configuration (`--configdir`); plugin configuration XML lives in `data/plugins/configurations/` |
 | `cache/`, `log/` | Jellyfin cache and logs; `console.log` is the launcher console |
+
+`--datadir` is Jellyfin's `ProgramDataPath`, so `PluginManager`'s `PluginsPath`
+is `PREFIX/data/plugins` (confirmed by the `.jellyfin-plugin` marker and the
+`configurations/` plugin-config directory created at startup), **not**
+`PREFIX/config/plugins`. `--configdir` holds `system.xml`, `encoding.xml`, and
+the other configuration files. A plugin package is extracted into a versioned
+folder `data/plugins/<Name>_<Version>/`, which is the layout
+`InstallationManager` produces for a repository install.
 
 Because the host is running, `ARRTAGS_JELLYFIN_HOST_DIR` can be pointed at
 `PREFIX/jellyfin` to unskip the reflection-over-`Jellyfin.Api.dll` host facts in
@@ -138,3 +146,11 @@ the ArrTags test suite.
   filesystem installation works without either.
 - No live Sonarr or Radarr instance is available here; provider behavior remains
   contract/unit tested. Only the Jellyfin host is exercised live.
+- Jellyfin derives a plugin's `DataFolderPath` as `PluginsPath/<assembly name>`
+  (for ArrTags, `data/plugins/ArrTags`). Task 7.2 found that the standard
+  versioned install folder `data/plugins/ArrTags_<version>/` and that data folder
+  are treated by `PluginManager` as two versions of the same-named plugin, and
+  the older/other folder is deleted on the next host restart. Do not leave
+  ArrTags state under `data/plugins/ArrTags` while using the versioned layout;
+  the release blocker is recorded in `PLANS.md` and
+  `docs/implementation/7.2/worker-report.json`.

@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 not started. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.)
+**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2's live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host is complete, but Phase 7 acceptance criterion 2 is **not met**: the standard versioned install layout collides with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and the install folder is deleted on the next restart. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.)
 
 **Last reviewed against:**
 - Jellyfin 12.x

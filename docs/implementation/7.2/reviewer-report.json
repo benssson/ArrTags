@@ -1,0 +1,110 @@
+{
+  "task": "7.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "7.2-F1",
+      "severity": "BLOCKER",
+      "status": "open",
+      "area": "requirements / Phase 7 acceptance criterion 2 (install/upgrade/uninstall safety)",
+      "summary": "CONFIRMED release blocker: the standard versioned install layout (PluginsPath/ArrTags_<version>) is destroyed by Jellyfin on the next restart once the plugin has written state under its derived data folder PluginsPath/ArrTags, so no ArrTags plugin loads.",
+      "detail": "Independently reproduced A/B/A against the live pinned host (http://127.0.0.1:8096, /System/Info/Public Version 12.0.0, plugin path /tmp/jf/data/plugins). (A) Extract committed artifacts/ArrTags_0.1.0.0.zip to /tmp/jf/data/plugins/ArrTags_0.1.0.0, restart -> console shows 'Loaded plugin: ArrTags 0.1.0.0', the host writes meta.json (guid 40322d52-5680-449f-b33e-e01836ee2f46, targetAbi 12.0.0.0, status Active), 'Startup complete 0:00:14.7', no ERR/FTL. (B) mkdir -p /tmp/jf/data/plugins/ArrTags/authoritative with sentinel.json, restart -> grep -c 'Loaded plugin: ArrTags' = 0, ArrTags_0.1.0.0 folder is gone while the ArrTags data folder and sentinel survive, 'Startup complete'. (A') rm -rf data/plugins/ArrTags, re-extract the same zip, restart -> 'Loaded plugin: ArrTags 0.1.0.0' again. Root cause in the pinned host source (rev 6c073e19): MediaBrowser.Common/Plugins/BasePluginOfT.cs:50-57 sets DataFolderPath = PluginsPath/Path.GetFileNameWithoutExtension(assemblyFilePath) and the 'append _<version>' branch at line 51 requires 'Version is not null', which is always false during construction because Version is assigned by SetAttributes only afterwards; an independent net10.0 probe referencing the deployed /tmp/jf/jellyfin/MediaBrowser.Common.dll printed 'DataFolderPath = <pluginsPath>/ArrTags' for both a nonexistent and an existing ArrTags directory. Emby.Server.Implementations/Plugins/PluginManager.cs:793-872 (DiscoverPlugins) enumerates every plugins subdirectory, groups entries by manifest Name, sorts by Name then Id then Version (LocalPlugin.Compare), traverses newest-first, and at lines 838-867 deletes the earlier entry's folder whenever a later entry with the same name and non-empty lastName exists; the unversioned Auto-manifest created in LoadManifest (lines 775-786, Id = metafile.GetMD5(), Name = 'ArrTags', Status = Active, supported = true) therefore shadows the real install folder and causes its deletion, after which the data folder is discarded by the final 'DllFiles.Count != 0' filter, yielding zero plugins. The defect hits the supported install flow, not only a manual layout: Emby.Server.Implementations/Updates/InstallationManager.cs:538 + :598 installs to PluginsPath/<package.Name> + '_' + package.Version, i.e. exactly data/plugins/ArrTags_<version>. The plugin's own state root is plugin.DataFolderPath (src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:174-183), so any reconciliation/metadata/artwork state write creates data/plugins/ArrTags and triggers the wipe on the subsequent start; the recovery is manual. Phase 7 acceptance criterion 2 is therefore genuinely NOT met, exactly as the worker reported.",
+      "evidence": [
+        "Live A/B/A on /tmp/jf host: 'Loaded plugin: ArrTags 0.1.0.0' (A) -> 0 loads and ArrTags_0.1.0.0 deleted while data/plugins/ArrTags/sentinel.json survives (B) -> loads again after removing data folder (A')",
+        "meta.json after A: {\"guid\":\"40322d52-5680-449f-b33e-e01836ee2f46\",\"name\":\"ArrTags\",\"targetAbi\":\"12.0.0.0\",\"version\":\"0.1.0.0\",\"status\":\"Active\"}",
+        "Independent DataFolderPath probe against /tmp/jf/jellyfin/MediaBrowser.Common.dll -> '/tmp/7.2/fakeplugins/ArrTags' for both nonexistent and existing directory",
+        "Pinned source: MediaBrowser.Common/Plugins/BasePluginOfT.cs:50-57; Emby.Server.Implementations/Plugins/PluginManager.cs:720-787, 793-872; Emby.Server.Implementations/Updates/InstallationManager.cs:538,598; src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:174-183",
+        "Counter-check that the unversioned layout data/plugins/ArrTags (install folder == data folder) still loads once per restart and preserves the sentinel across restarts"
+      ],
+      "recommended_action": "Do not advance to Gate 7; the orchestrator/user must make a production or installation-layout decision before AC2 can be met. Viable directions include a plugin-side workaround (BasePlugin.SetAttributes is public, so the Plugin constructor can install a non-colliding data root, e.g. under PluginsPath/<name>-data or a subdirectory, instead of the auto-derived PluginsPath/<assembly name>), changing the supported install layout to unversioned, and/or an upstream Jellyfin fix to the dead versioned-data-folder branch. The verification task itself should not absorb the production change."
+    },
+    {
+      "id": "7.2-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "architecture / root-cause accuracy",
+      "summary": "The worker's mechanism explanation is accurate for the observed scenario, and the defect is even more robust than stated: deletion does not depend on the MD5 GUID ordering.",
+      "detail": "Verified the worker's numeric claim: GetMD5 is new Guid(MD5.HashData(Encoding.Unicode.GetBytes(str))) (MediaBrowser.Common/Extensions/BaseExtensions.cs:30-35); MD5(UTF-16LE 'ArrTags') bytes 30f1a5628e6cdd59cdcc3e1a380fd309 form the .NET Guid 62a5f130-6c8e-59dd-cdcc-3e1a380fd309, which compares greater than the real 40322d52-... GUID. Because the install folder's meta.json (real GUID) and the data folder's Auto-manifest (MD5 GUID) share Name 'ArrTags', LocalPlugin.Compare orders by Id and the data folder is traversed first, so the install folder is deleted - as described. Note additionally that if neither folder has meta.json, both Auto-manifests get the same MD5 GUID and the ordering falls through to Version, where the data folder's _appVersion (12.0.0.0) again exceeds the install folder's version, producing the same deletion. The claim therefore holds and the outcome is not an artifact of a particular GUID ordering. The worker's report is accurate; no correction needed.",
+      "evidence": [
+        "Computed MD5(UTF-16LE 'ArrTags') -> Guid 62a5f130-6c8e-59dd-cdcc-3e1a380fd309 > 40322d52-5680-449f-b33e-e01836ee2f46",
+        "MediaBrowser.Common/Plugins/LocalPlugin.cs:94-110 compare order Name -> Id -> Version",
+        "Emby.Server.Implementations/Plugins/PluginManager.cs:775-786 auto-manifest, :809-868 cleanup loop"
+      ],
+      "recommended_action": "None; this strengthens finding 7.2-F1 rather than requiring rework."
+    },
+    {
+      "id": "7.2-F3",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "testing / live uninstall hook",
+      "summary": "The live Plugin.OnUninstalling drain was not exercised (uninstall API requires elevation); the worker disclosed this and it is covered in-process.",
+      "detail": "Reproduced the API constraint: GET /Plugins and DELETE /Plugins/<guid>/<version> both return HTTP 401 on this host, and Jellyfin.Api/Controllers/PluginsController.cs is annotated [Authorize(Policy = Policies.RequiresElevation)]; StartupWizardCompleted is false, so no authenticated/elevated uninstall is possible in this fixture. The install-folder removal/uninstall lifecycle itself was exercised live (0 loads, clean 'Startup complete'). The worker states the drain remains covered by LifecycleFoundationTests.PluginUninstallHook* and ArtworkLifecycleTests. This is a genuine but bounded residual of the environment, not a verification gap that should block task 7.2.",
+      "evidence": [
+        "curl GET /Plugins -> 401; curl -X DELETE /Plugins/40322d52-.../0.1.0.0 -> 401",
+        "Jellyfin.Api/Controllers/PluginsController.cs:25,115-126",
+        "Live uninstall: grep -c 'Loaded plugin: ArrTags' = 0, no ArrTags lines, Startup complete"
+      ],
+      "recommended_action": "None for 7.2. Re-exercise the live uninstall drain when an authenticated/elevated host or a completed setup wizard is available (naturally owned by a later Phase 7 task)."
+    },
+    {
+      "id": "7.2-F4",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "testing / Phase 5 carry-forward",
+      "summary": "Live ImageSaver read-back fidelity remains unverified; this is a pre-existing, documented Phase 5 carry-forward rather than a task 7.2 defect.",
+      "detail": "The pinned host has no media library item (no library, no media file, StartupWizardCompleted false), so a live publish-then-read-back through the real host ImageSaver could not be exercised. The worker reports this openly and notes task 5.11's read-back uses a DispatchProxy IProviderManager. This is consistent with the Phase 5 documentation in PLANS.md and does not affect task 7.2's owned criterion (AC2 is about load/operate on the ABI, and the plugin did load and operate).",
+      "evidence": [
+        "docs/implementation/7.2/worker-report.json known_limitations",
+        "PLANS.md Phase 5 status (live HTTP round-trip / ImageSaver noted as unperformed)"
+      ],
+      "recommended_action": "None for 7.2."
+    },
+    {
+      "id": "7.2-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / README current-state surface",
+      "summary": "README.md's 'Current milestone' paragraph still describes Phase 6 complete and does not mention Phase 7 progress or the new blocker; this predates task 7.1 and is not contradicted by task 7.2.",
+      "detail": "README.md:5-24 says Phase 6 is complete and that several items remain tracked for Phase 7; it makes no claim that Phase 7 acceptance criteria are met and does not assert the plugin installs safely, so it is not left false by this task. Task 7.1 (committed before this work) likewise did not update it, so the omission is pre-existing and out of this task's documented scope. The canonical Phase 7 status surfaces (PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md) were updated accurately.",
+      "evidence": [
+        "README.md:5-24",
+        "git diff shows PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md updated"
+      ],
+      "recommended_action": "None required for task 7.2; consider a README refresh when Phase 7 status next changes materially."
+    }
+  ],
+  "tests_checked": [
+    "Live A/B/A on the pinned Jellyfin 12.0.0 musl host with the committed artifacts/ArrTags_0.1.0.0.zip: versioned-only load ('Loaded plugin: ArrTags 0.1.0.0', Active meta.json, Startup complete, no ERR/FTL); data-folder collision (0 loads, install folder deleted, data folder + sentinel survive); recovery after removing the data folder (loads again).",
+    "Live unversioned layout (data/plugins/ArrTags == install and data folder): loads once per restart and preserves authoritative/sentinel.json across two restarts.",
+    "Live uninstall: removal of the plugin folder yields grep -c 'Loaded plugin: ArrTags' = 0, no ArrTags console lines, no ERR/FTL, 'Startup complete', /System/Info/Public still Version 12.0.0.",
+    "Unauthenticated plugin API: GET /Plugins -> HTTP 401 and DELETE /Plugins/40322d52-5680-449f-b33e-e01836ee2f46/0.1.0.0 -> HTTP 401.",
+    "Default suite: dotnet test ArrTags.slnx --configuration Release --no-build -> Failed 0, Passed 1215, Skipped 58, Total 1273 (matches the worker claim exactly).",
+    "Host-guarded suite: ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin dotnet test ... -> Failed 0, Passed 1229, Skipped 44, Total 1273 (matches the worker claim exactly).",
+    "Focused packaged-plugin facts: dotnet test ... --filter FullyQualifiedName~PluginPackagingTests -> Failed 0, Passed 8, Skipped 0, Total 8.",
+    "Package contents: unzip -l artifacts/ArrTags_0.1.0.0.zip -> 9 entries (ArrTags.dll, SkiaSharp.dll, libSkiaSharp.so, ArrTags.deps.json, build.yaml, THIRD-PARTY-NOTICES.md, licenses/ x3); embedded build.yaml version 0.1.0.0 / targetAbi 12.0.0.0.",
+    "Not independently rerun: the 0.1.0.1 upgrade rebuild. Its outcome (only the newer version loads, older versioned folder auto-deleted) follows directly from the verified PluginManager.DiscoverPlugins grouping/deletion code path and the same live folder-collision behavior reproduced here."
+  ],
+  "research_checked": [
+    "Pinned Jellyfin source at revision 6c073e19ddf604b2369c638716164fdab4c952dc (shallow clone, 'Bump version to 12.0') reviewed directly: MediaBrowser.Common/Plugins/BasePluginOfT.cs, BasePlugin.cs, LocalPlugin.cs, PluginManifest.cs, IPluginAssembly.cs; Emby.Server.Implementations/Plugins/PluginManager.cs; Emby.Server.Implementations/Updates/InstallationManager.cs; Emby.Server.Implementations/AppBase/BaseApplicationPaths.cs; MediaBrowser.Common/Extensions/BaseExtensions.cs; MediaBrowser.Common/Configuration/IApplicationPaths.cs; Jellyfin.Api/Controllers/PluginsController.cs.",
+    "Independent net10.0 probe referencing the deployed /tmp/jf/jellyfin/MediaBrowser.Common.dll (AssemblyName=ArrTags, DispatchProxy IApplicationPaths/IXmlSerializer) printed DataFolderPath = <pluginsPath>/ArrTags for both a nonexistent and an existing ArrTags directory, confirming DataFolderPath is PluginsPath/<DLL file base name> with no _<version> suffix.",
+    "MD5/GUID computation: MD5(UTF-16LE 'ArrTags') = 30f1a5628e6cdd59cdcc3e1a380fd309 -> Guid 62a5f130-6c8e-59dd-cdcc-3e1a380fd309 > 40322d52-5680-449f-b33e-e01836ee2f46, matching the worker's claimed value and relative order.",
+    "Host layout: PluginsPath = Path.Combine(ProgramDataPath, 'plugins') (BaseApplicationPaths.cs:58) and the live host shows /tmp/jf/data/plugins with the .jellyfin-plugin marker and configurations/ while /tmp/jf/config/plugins does not exist.",
+    "Supported install flow: InstallationManager.PerformPackageInstallation installs to PluginsPath/<package.Name> then appends '_' + package.Version (lines 538, 598), confirming the versioned layout is what real repository installs produce.",
+    "Jellyfin has no in-process plugin reload; restart is the reload mechanism (PluginManager loads at construction / ApplicationHost startup)."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status paragraph (Phase 7 in progress, AC2 not met, blocker described), Milestone Status table row for Phase 7, task 7.2 checkbox now [x], task 7.2 status + release-blocker text, Phase 7 acceptance criteria list where AC2 remains unchecked with an explicit 'Not met' note, and Gate 7 remains unclaimed. No other Phase 7 acceptance criterion was altered.",
+    "docs/architecture.md: status line updated to Phase 7 in progress with the blocker and AC2 not met; no architecture content overclaimed.",
+    "docs/changelog.md: new task 7.2 entry records install/upgrade/reload/uninstall evidence, the host-guided/default suite counts, and the release blocker; wording matches the observed results.",
+    "docs/implementation-readiness.md: status line updated; a new 'Added by task 7.2' deferral/blocker entry is recorded as an open blocker, not solved.",
+    "docs/testing/jellyfin-12-musl-test-host.md: plugins path corrected from config/plugins to data/plugins, matching the live host and BaseApplicationPaths.PluginsPath; the versioned InstallationManager layout and the collision warning are documented accurately.",
+    "scripts/provision-jellyfin-test-host.sh: the startup summary now reports plugins under DATA_DIR/plugins; matches the real layout (verified live).",
+    "README.md: 'Current milestone' paragraph reviewed; it does not contradict task 7.2 (see finding 7.2-F5).",
+    "docs/implementation/7.2/worker-report.json: full report compared against the independently reproduced evidence; its validation entries, changed_files list, known_limitations, status COMPLETE and ready_for_next_task=false accurately reflect the work performed."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

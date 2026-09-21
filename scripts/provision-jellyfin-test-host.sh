@@ -118,7 +118,8 @@ for _ in $(seq 1 60); do
         curl -fsS "http://127.0.0.1:${PORT}/System/Info/Public"
         echo
         echo "    datadir:   ${DATA_DIR}"
-        echo "    configdir: ${CONFIG_DIR}  (plugins live in ${CONFIG_DIR}/plugins)"
+        echo "    configdir: ${CONFIG_DIR}"
+        echo "    plugins:   ${DATA_DIR}/plugins"
         echo "    cachedir:  ${CACHE_DIR}"
         echo "    logdir:    ${LOG_DIR}"
         exit 0

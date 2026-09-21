@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011; Phase 5 Jellyfin artwork integration complete (tasks 5.1 through 5.11, Gate 5 met at the integration-test level); Phase 6 caching, updates, and performance complete (tasks 6.1 through 6.9, Gate 6 met at the integration-test level, tag `v0.1.0-phase6`; the provider inventory/catalogue cache, runtime configuration replacement, the reconciliation coverage bound, and a metrics/status surface are tracked for Phase 7)
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011; Phase 5 Jellyfin artwork integration complete (tasks 5.1 through 5.11, Gate 5 met at the integration-test level); Phase 6 caching, updates, and performance complete (tasks 6.1 through 6.9, Gate 6 met at the integration-test level, tag `v0.1.0-phase6`; the provider inventory/catalogue cache, runtime configuration replacement, the reconciliation coverage bound, and a metrics/status surface are tracked for Phase 7); Phase 7 in progress - task 7.1 complete and task 7.2's live install/upgrade/reload/uninstall verification complete, but Phase 7 acceptance criterion 2 is **not met** because the standard versioned install layout deletes the install folder on the next restart once the plugin persists state under `data/plugins/ArrTags`
 
 **Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, ADR-010, and ADR-011; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -489,3 +489,11 @@ that introduce them.
 - Safe metrics/diagnostic-status surface: bounded queue, provider-health,
   matching, cache, render, and stale-data counters exist internally but no
   bounded, secret-free user-facing or diagnostic status surface exists yet.
+
+**Added by task 7.2 (Phase 7 release blocker; not presented as solved):**
+
+- Versioned-install-layout data-folder collision: the plugin's Jellyfin-derived
+  `DataFolderPath` is `PluginsPath/<assembly name>` and the plugin persists state
+  there, so a standard versioned install (`PluginsPath/ArrTags_<version>`) is
+  deleted by `PluginManager.DiscoverPlugins` on the next host restart. Resolving
+  it requires a production or installation-layout decision.

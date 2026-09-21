@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-6 complete; Phase 7 in progress (task 7.1 complete; tasks 7.2-7.6 pending). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items are tracked for Phase 7 rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, and a safe metrics/diagnostic-status surface; no live Jellyfin host or live Arr instance was exercised. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-6 complete; Phase 7 in progress (tasks 7.1 and the task 7.2 install/upgrade/reload/uninstall verification are complete, but Phase 7 acceptance criterion 2 is **not met**: the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin has persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treats that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deletes the install folder, and loads no ArrTags plugin; task 7.7 resolves this collision and re-runs the live verification, and tasks 7.3-7.6 remain pending). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items are tracked for Phase 7 rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, and a safe metrics/diagnostic-status surface; no live Jellyfin host or live Arr instance was exercised. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -176,7 +176,7 @@ without modifying original media files or external services.
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
-| 7 | Testing & release | In progress (task 7.1 complete; tasks 7.2-7.6 pending) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
+| 7 | Testing & release | In progress (tasks 7.1-7.2 verification complete; Phase 7 acceptance criterion 2 not met pending resolution of the versioned-install-layout data-folder collision by task 7.7, which then re-runs the live verification; tasks 7.3-7.6 pending) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
 
@@ -2471,7 +2471,7 @@ release artifact and operational documentation.
 **Tasks:**
 
 - [x] 7.1 Run all unit and integration tests against the exact declared versions.
-- [ ] 7.2 Verify the plugin installs, upgrades, reloads, and uninstalls safely.
+- [x] 7.2 Verify the plugin installs, upgrades, reloads, and uninstalls safely.
 - [ ] 7.3 Verify all success criteria in `GOALS.md`, including independent
   provider configuration, matching, quality retrieval, poster output, update
   behavior, Enhanced compatibility, graceful failure, and reproducible builds.
@@ -2481,21 +2481,30 @@ release artifact and operational documentation.
   commands, inputs, artifact identity, and supported version ranges.
 - [ ] 7.6 Document known limitations and any deferred decision without presenting
   unsupported behavior as available.
+- [ ] 7.7 Relocate the persisted plugin state root outside Jellyfin's
+  `PluginsPath` so the supported versioned install layout
+  (`plugins/ArrTags_<version>`) is not deleted on restart once state exists, add
+  a regression test for the versioned-install-plus-state case, and re-run the
+  live install, upgrade, reload, and uninstall verification (task 7.2 finding
+  7.2-F1; the Phase 5 versioned-install-folder provenance carry-forward).
 
-**Authoritative Phase 7 execution order:** 7.1, 7.2, 7.3, 7.4, 7.5, 7.6. Task IDs
-are stable references only; this execution order is the canonical sequence. The
-order is derived from the documented dependencies, not from task numbering:
+**Authoritative Phase 7 execution order:** 7.1, 7.2, 7.7, 7.3, 7.4, 7.5, 7.6. Task
+IDs are stable references only; this execution order is the canonical sequence.
+The order is derived from the documented dependencies, not from task numbering:
 
 - 7.1 has no prerequisites and runs the full suite against the exact declared
   versions.
 - 7.2 depends on 7.1 and verifies install, upgrade, reload, and uninstall safety.
-- 7.3 depends on 7.1 and 7.2 because the `GOALS.md` success criteria span
+- 7.7 depends on 7.1 and 7.2 because it resolves the release-blocking
+  versioned-install/data-folder collision that task 7.2 confirmed live and then
+  re-runs the live install, upgrade, reload, and uninstall verification.
+- 7.3 depends on 7.1, 7.2, and 7.7 because the `GOALS.md` success criteria span
   provider, matching, rendering, artwork, update, and lifecycle behavior.
-- 7.4 depends on 7.1 and reviews logs, diagnostics, HTTP behavior, and persisted
-  state produced by the test and install runs.
-- 7.5 depends on 7.1 through 7.4 because the release package may be built only
-  after the tests and checks pass.
-- 7.6 depends on 7.1, 7.3, and 7.5 so the documented limitations and deferred
+- 7.4 depends on 7.1, 7.2, and 7.7 and reviews logs, diagnostics, HTTP behavior,
+  and persisted state produced by the test and install runs.
+- 7.5 depends on 7.1 through 7.4 and 7.7 because the release package may be built
+  only after the tests and checks pass.
+- 7.6 depends on 7.1, 7.3, 7.5, and 7.7 so the documented limitations and deferred
   decisions match the verified behavior and the release artifact.
 
 **DG-9 ownership:** DG-9 is resolved by ADR-013. Task 7.1 exercises the declared
@@ -2520,6 +2529,37 @@ missing identity, fully-populated mapping, sparse/optional-missing mapping to
 explicit unknowns, and absent file identity). No production behavior changed, and
 no live Jellyfin host or live Arr instance was exercised (contract-fixture level).
 
+**Task 7.2 status:** Complete (verification executed; Phase 7 acceptance criterion
+2 is **not met**). A live install -> load -> upgrade -> reload -> uninstall
+sequence was exercised against the pinned Jellyfin `12.0.0` musl host. The
+package (`./build.sh package` -> `artifacts/ArrTags_0.1.0.0.zip`) was installed
+into the host's actual plugin path `PREFIX/data/plugins` (Jellyfin's
+`ProgramDataPath`/`--datadir`, **not** `config/plugins`) as the versioned folder
+`ArrTags_0.1.0.0`; the host logged `Loaded plugin: ArrTags 0.1.0.0`, wrote an
+Active `meta.json`, and reported no load errors, which also validates the pinned
+host load of the `Plugin(IServiceProvider)` constructor (a Phase 5
+carry-forward). A real `0.1.0.1` upgrade loaded only the newer version and the
+host deleted the older versioned folder; a restart reloaded the plugin exactly
+once (Jellyfin has no in-process plugin reload, so restart is the reload
+mechanism); and removing the folder uninstalled cleanly with `Startup complete`
+and no errors.
+
+**Task 7.2 release blocker (Phase 7 acceptance criterion 2 not met).** The
+plugin's Jellyfin-derived data folder is `PluginsPath/<assembly name>` =
+`data/plugins/ArrTags` (proved against the release `MediaBrowser.Common.dll`),
+and the plugin persists its state there. When that data folder exists alongside
+the standard versioned install folder `data/plugins/ArrTags_<version>/`,
+`PluginManager.DiscoverPlugins` treats them as two versions of the same-named
+plugin and deletes the install folder on the next host restart (the
+`MD5("ArrTags")` auto-manifest GUID sorts after the plugin GUID), so no ArrTags
+plugin is loaded. The normal unversioned folder `data/plugins/ArrTags/` (install
+folder == data folder) and the no-state case are unaffected. Exercising
+`Plugin.OnUninstalling` live requires an authenticated admin uninstall (the
+endpoint returns HTTP `401` while the startup wizard is incomplete); the drain is
+covered in-process by `LifecycleFoundationTests` and `ArtworkLifecycleTests`.
+Live `ImageSaver` read-back remains unexercised (no media library item is
+available). Gate 7 is not ready.
+
 **Acceptance criteria:**
 
 - [x] The full test suite passes from a clean checkout. Met by task 7.1 from a
@@ -2530,6 +2570,10 @@ no live Jellyfin host or live Arr instance was exercised (contract-fixture level
   `ProviderContractFixtureTests` adding 18 ADR-013 provider-contract cases; no new
   skips.
 - [ ] The packaged plugin loads and operates on the declared Jellyfin 12 ABI.
+  Not met. Task 7.2 found that the standard versioned install layout deletes the
+  install folder on the next host restart once the plugin has persisted state
+  under the Jellyfin-derived data folder `data/plugins/ArrTags`; see the task 7.2
+  status above.
 - [ ] Sonarr and Radarr movie/television scenarios pass with unchanged and
   changed metadata.
 - [ ] Provider, matching, rendering, artwork, cache, and lifecycle failures do
@@ -2616,6 +2660,16 @@ not presented as solved; Phase 7 owns verifying and closing them:
   bounded, secret-free user-facing or diagnostic status surface. Architecture
   section 12 states this as a recommendation, not a hard gate, so it is deferred
   rather than implemented.
+
+**Task 7.2 release blocker (Phase 7 acceptance criterion 2).** The standard
+versioned install layout (`PluginsPath/<Name>_<Version>`) is unsafe once the
+plugin has persisted state: the plugin's Jellyfin-derived data folder
+`PluginsPath/<assembly name>` and the versioned install folder collide in
+`PluginManager.DiscoverPlugins`, which deletes the install folder on the next
+host restart and loads no ArrTags plugin (observed live on the pinned Jellyfin
+`12.0.0` host; see the task 7.2 status). Resolving it requires a production or
+installation-layout decision, so it is recorded as an open release blocker rather
+than presented as solved.
 
 The following remain excluded from this plan unless `GOALS.md` is deliberately
 changed: Jellyfin versions before 12, modifying original media files, writing or

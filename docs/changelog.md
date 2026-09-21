@@ -2102,3 +2102,42 @@ populated payload mapping to canonical badge metadata and a sparse/optional-miss
 payload mapping to explicit unknowns for both providers, and confirm a missing
 required identity field fails closed as `ProviderIncompatible` with `Incompatible`
 health. No production behavior changed.
+
+### Task 7.2 - Install, upgrade, reload, and uninstall verification on the pinned host
+
+**Status:** Complete (verification executed; Phase 7 acceptance criterion 2 is
+**not met**: a release blocker was found).
+
+The packaged plugin (`./build.sh package` ->
+`artifacts/ArrTags_0.1.0.0.zip`, containing `ArrTags.dll`, `SkiaSharp.dll`,
+`libSkiaSharp.so`, `ArrTags.deps.json`, `build.yaml`, `THIRD-PARTY-NOTICES.md`,
+and `licenses/`) was installed into the pinned Jellyfin `12.0.0` musl host. The
+host's real plugin path was determined empirically to be
+`<prefix>/data/plugins` (Jellyfin's `ProgramDataPath`/`--datadir`), **not**
+`<prefix>/config/plugins`; `docs/testing/jellyfin-12-musl-test-host.md` and
+`scripts/provision-jellyfin-test-host.sh` were corrected accordingly. The host
+logged `Loaded plugin: ArrTags 0.1.0.0`, wrote an Active `meta.json`, and
+reported no load errors, validating the pinned-host load of the
+`Plugin(IServiceProvider)` constructor. A real `0.1.0.0` -> `0.1.0.1` upgrade
+loaded only the newer version and the host deleted the older versioned folder; a
+restart reloaded the plugin exactly once (Jellyfin has no in-process plugin
+reload); removing the folder uninstalled cleanly. The host-guarded suite
+(`ARRTAGS_JELLYFIN_HOST_DIR=<prefix>/jellyfin`) reported Failed 0, Passed 1229,
+Skipped 44, Total 1273 (14 image route/response facts unskipped); the default
+suite reported Failed 0, Passed 1215, Skipped 58, Total 1273.
+
+**Release blocker (Phase 7 acceptance criterion 2 not met).** Jellyfin derives a
+plugin's `DataFolderPath` as `PluginsPath/<assembly name>` (for ArrTags,
+`data/plugins/ArrTags`), and the plugin persists state there. When that data
+folder exists alongside the standard versioned install folder
+`data/plugins/ArrTags_<version>/`, `PluginManager.DiscoverPlugins` groups them by
+manifest name and deletes the install folder on the next host restart (the
+`MD5("ArrTags")` auto-manifest GUID sorts after the plugin GUID), so no ArrTags
+plugin loads. This was reproduced live with the committed `0.1.0.0` package and
+proved against the release `MediaBrowser.Common.dll`. The unversioned layout
+(`data/plugins/ArrTags/`, install folder == data folder) and the no-state case
+are unaffected. `Plugin.OnUninstalling` could not be exercised live (the
+uninstall API returns HTTP `401` while the startup wizard is incomplete); the
+drain remains covered in-process by `LifecycleFoundationTests` and
+`ArtworkLifecycleTests`, and live `ImageSaver` read-back remains unexercised (no
+media library item).
