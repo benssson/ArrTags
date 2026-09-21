@@ -1613,3 +1613,95 @@ both providers support the transport.
 - `docs/research/radarr-api.md`, "Webhooks / events (keeping badges current)"
 - `docs/research/jellyfin-12-architecture.md`, section 2
 - `docs/implementation-readiness.md`, webhook readiness item
+
+## ADR-013: Supported Sonarr/Radarr Release Ranges and Optional-Field Compatibility Policy
+
+**Status:** Accepted
+
+**Date:** 2026-09-21
+
+### Context
+
+Decision gate DG-9 requires the supported live Sonarr/Radarr release ranges and
+the optional-field compatibility policy to be decided and recorded before the
+testing/release milestone (`PLANS.md` gate table, "Required before Milestones 2
+and 7"). Milestone 2 implemented the read-only `/api/v3` provider boundary and
+its failure matrix, but the release ranges were never accepted as an explicit
+support claim, and `docs/architecture.md` item 9 and
+`docs/implementation-readiness.md` still list the initial provider-version matrix
+as open.
+
+The provider research pins the available surface. Sonarr's `/api/v3` API applies
+to Sonarr v3 and v4, while a separate v5 API is in development and must not be
+depended on (`docs/research/sonarr-api.md`). Radarr's `/api/v3` surface is shared
+across Radarr v3, v4, v5 and v6, with `6.4.x` the current stable line at the time
+of writing and the OpenAPI `info.version` still reporting `3.0.0`
+(`docs/research/radarr-api.md`). Both integrations call `/api/v3` exclusively and
+probe `appName` and record `version`, but the implementation applies no
+version-number gate.
+
+### Decision
+
+ArrTags V1 supports the following live provider releases through the pinned
+`/api/v3` API contract.
+
+- Sonarr: 3.x and 4.x.
+- Radarr: 3.x, 4.x, 5.x and 6.x.
+- API contract: `/api/v3` only, using the `ArrProvider.V3ApiContract` constant.
+- Excluded: Sonarr 2.x and earlier, the in-development Sonarr v5 API surface, and
+  any provider that does not identify itself as `Sonarr` or `Radarr` through its
+  `system/status` probe.
+
+Compatibility is behavioural, not a version-number gate. The connection probe
+requires the exact application identity (`appName`) and the `/api/v3` contract;
+the observed `version` is recorded in the canonical `ArrProvider` identity for
+diagnostics and capability reporting, and no minimum or maximum version number is
+enforced. A provider that identifies correctly but cannot satisfy the required
+field shape fails closed with `ArrProviderErrorCode.ProviderIncompatible` and an
+`Incompatible` connection health, and ArrTags leaves the current usable artwork
+unchanged.
+
+Only identity and quality-critical fields are mandatory. Every absent, null, or
+unrecognized optional technical field maps to ArrTags' explicit unknown-value
+state instead of a guessed or default value; no badge, fingerprint, or
+publication decision depends on an optional field being present. A malformed or
+missing required field is an incompatibility, never a silent default.
+
+The declared ranges and the optional-field policy are documented in the release
+artifact, the README/config UI, and `docs/architecture.md`, and the supported
+ranges are exercised by provider contract fixtures across the declared lines in
+the testing/release milestone.
+
+### Consequences
+
+- V1 makes a bounded, explicit support claim instead of an implicit "any v3"
+  claim, so an operator on Sonarr v5 or Radarr v2 receives an incompatibility
+  rather than undefined behavior.
+- Because there is no numeric gate, a newer provider release that keeps the
+  `/api/v3` contract and required field shapes keeps working; when it does not,
+  the failure is classified as `ProviderIncompatible` and degrades safely.
+- Missing optional fields remain explicit unknowns; the badge set does not change
+  on an optional-field difference alone, preserving fingerprint stability.
+- Provider contract fixtures become the evidence for the declared lines and must
+  cover both a fully populated and a sparse/optional-missing payload.
+
+### Rejected alternatives
+
+- A numeric minimum/maximum version gate was rejected: the API contract, not the
+  marketing version, is the compatibility boundary, and a numeric gate would
+  reject compatible newer builds.
+- Claiming Sonarr v5 support was rejected: its API is a separate in-development
+  surface that the provider research explicitly excludes.
+- Assuming a default for an absent optional field was rejected: it would fabricate
+  technical metadata and destabilize fingerprints.
+
+### References
+
+- `PLANS.md`, decision gate DG-9, Phase 7 tasks 7.1, 7.5 and 7.6
+- `docs/research/sonarr-api.md`, "Scope, versions, and evidence" and "Connection
+  probe and version gate"
+- `docs/research/radarr-api.md`, "Baseline versions" and "Capability/version
+  probes"
+- `docs/architecture.md`, section 4 and the remaining-decision item 9
+- `docs/implementation-readiness.md`, provider-version-matrix item
+- ADR-004: Foundation Operational Limits and Defaults

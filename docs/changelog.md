@@ -2054,3 +2054,24 @@ configuration replacement wiring (`ConfigurationSnapshotService.TryReplace` is
 not observed until restart), and a safe metrics/diagnostic-status surface. These
 are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
 `docs/implementation-readiness.md`.
+
+## Phase 7 - Testing & release (Milestone 7)
+
+**Status:** In progress. DG-9 resolved by ADR-013; tasks 7.1-7.6 pending.
+
+### Decision - Supported provider release ranges and optional-field compatibility (DG-9)
+
+DG-9 is resolved by ADR-013 (`docs/decisions.md`). V1 supports Sonarr 3.x-4.x and
+Radarr 3.x-6.x through the pinned `/api/v3` contract, with the in-development
+Sonarr v5 surface and Sonarr 2.x and earlier excluded. Compatibility is
+behavioural rather than a version-number gate: the probe requires the exact
+`appName` and the `/api/v3` contract, records the observed `version` for
+diagnostics, keeps absent optional technical fields as explicit unknowns, and
+fails closed with `ArrProviderErrorCode.ProviderIncompatible` on a malformed or
+missing required field without changing the current usable artwork. Ownership:
+task 7.1 exercises the declared provider lines with contract fixtures, task 7.5
+records the ranges in the release artifact, and task 7.6 documents the ranges and
+the optional-field policy. The provider inventory/catalogue cache, runtime
+configuration replacement wiring, the reconciliation coverage bound, the ADR-010
+non-canonical runtime comparison, and the metrics/diagnostic-status surface remain
+tracked for this phase and are not presented as solved.

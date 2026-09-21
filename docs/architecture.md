@@ -1200,6 +1200,10 @@ The following are intentionally not guessed by this architecture:
    no Enhanced-internals dependency, and no special spoiler/hidden handling; the
    existing poster and selector enable flags are the user's control surface.
 9. Supported live Sonarr/Radarr release ranges and optional-field compatibility.
+   Resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on
+   `/api/v3`, absent optional fields map to explicit unknown values, and a
+   malformed or missing required field fails closed as `ProviderIncompatible`
+   with no version-number gate.
 
 These decisions must be recorded in `docs/decisions.md` or
 `docs/implementation-readiness.md` and reflected in a future architecture
@@ -1210,7 +1214,8 @@ the library scope identifier) is resolved by ADR-006. Item 4 (episode numbering)
 is resolved by ADR-007. Item 5 (path fallback) is resolved by ADR-008. Item 6
 (foundation operational limits) is resolved by ADR-004, with the accepted values
 recorded in section 12. Item 8 (Jellyfin Enhanced coexistence) is resolved by
-ADR-011. The credential persistence and access boundary is resolved by ADR-005.
+ADR-011. Item 9 (supported provider release ranges and optional-field
+compatibility) is resolved by ADR-013. The credential persistence and access boundary is resolved by ADR-005.
 Item 7 (webhook exposure, authentication, payload limits, replay handling, rate
 policy, and administration flow) is resolved by ADR-012, with the accepted
 payload bound recorded in section 12.

@@ -394,7 +394,12 @@ that introduce them.
 - Define connection-to-library routing and ambiguity behavior for multiple
   Sonarr/Radarr instances.
 - Define the Sonarr catalogue cache, provider inventory strategy, initial
-  supported provider-version matrix, and cross-provider normalization rules.
+  supported provider-version matrix, and cross-provider normalization rules. The
+  initial supported provider-version matrix is resolved by ADR-013: Sonarr
+  3.x-4.x and Radarr 3.x-6.x on `/api/v3`, with absent optional fields mapped to
+  explicit unknowns and a malformed required field failing closed as
+  `ProviderIncompatible`. The provider catalogue/inventory cache and
+  cross-provider normalization strategy remain tracked for Phase 7.
 - Decide whether stale metadata retains the active derived artwork, restores the
   source, or publishes an unbadged source image.
 - Define webhook authentication, replay protection, rate limits, payload bounds,
