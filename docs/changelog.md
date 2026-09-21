@@ -1370,7 +1370,7 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Task 6.1 complete; Gate 6 not yet met.
+**Status:** In progress. Tasks 6.1 and 6.2 complete; Gate 6 not yet met.
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
 
@@ -1442,3 +1442,75 @@ environment-guarded skips (1045 total), exactly +14 over the task 5.11 baseline
 renderer behavior, or existing passing behavior was changed. The full queue
 worker, coalescing-by-connection, caching, recovery, and invalidation behavior
 remains tasks 6.2-6.8.
+
+### Task 6.2 - Bounded coalescing work queue, single-flight, and cancellation-aware workers
+
+Task 6.2 implements the Phase 6 queue and worker mechanics in
+`src/ArrTags/Updates`, built on the task 6.1 `IWorkHintSink`/`LibraryWorkHint`
+boundary (`docs/architecture.md` sections 4, 5, 8, and 12; ADR-004; ADR-005). It
+supersedes the task 6.1 `BoundedWorkHintSink` with the production queue and does
+not implement the later Phase 6 tasks: atomic metadata-state publication and
+stale-work disposal (6.3), non-terminal artwork-operation recovery and generation
+fences (6.4), metadata freshness (6.5), fingerprint-driven invalidation (6.6),
+webhooks (6.7), or the restart/outage/pressure test matrix (6.8).
+
+- `src/ArrTags/Updates/WorkItemKey.cs` and `LibraryWorkItem.cs`: the coalescing
+  and single-flight identity (Jellyfin item, resolved connection, and image
+  surface) and the bounded queued unit (key, reason, safe configuration
+  generation). A hint-derived item leaves the connection unresolved with the
+  unindexed Primary surface. Neither type carries a credential, secret lease,
+  provider DTO, path, or unbounded payload (ADR-005).
+- `src/ArrTags/Updates/LibraryWorkQueue.cs` (replacing `BoundedWorkHintSink.cs`):
+  the bounded, thread-safe queue. It implements `IWorkHintSink` and coalesces a
+  redundant hint or work item for a key that is already pending or in flight, so
+  a duplicate event never creates duplicate concurrent processing. Pending work
+  is bounded by `OperationalLimits.QueueCapacity` and single-flight by
+  `OperationalLimits.PerItemInFlightWork`; both are resolved from the current
+  configuration snapshot on each operation, addressing the Phase 5 review LOW
+  finding for queue limits. `TryEnqueue` is a short in-memory critical section
+  with no external I/O, so overflow coalesces or drops and never blocks the
+  library-event publisher. A stopped queue rejects new work.
+- `src/ArrTags/Updates/LibraryWorkWorker.cs`: the hosted consumer. It owns a
+  fixed, bounded pool of cancellation-aware workers (default four) that dequeue
+  asynchronously and dispatch through the narrow `IWorkItemProcessor` boundary.
+  It is registered after `ArrTagsLifecycleService` so a host shutdown stops
+  accepting and cancels queued/in-flight work before the lifecycle drain
+  establishes the durable fence, then awaits the workers within a bounded
+  timeout. No fire-and-forget task or unmanaged thread is created.
+- `src/ArrTags/Updates/IWorkItemProcessor.cs` and `WorkProcessingResult.cs`: the
+  narrow processing/dispatch boundary for tasks 6.3-6.6 and the classified
+  outcome. The outcome reuses the provider retry vocabulary
+  (`ArrErrorRetryability`): transient (`Later`) outcomes retry, terminal outcomes
+  do not.
+- `src/ArrTags/Updates/WorkRetryPolicy.cs`: the bounded retry policy. It derives
+  the attempt count from `TransientRetryCount` and mirrors the provider-boundary
+  exponential backoff (`RetryBackoffInitialSeconds`, `RetryBackoffFactor`,
+  `RetryBackoffMaxSeconds`), so queue-level retries cannot become an unbounded
+  loop.
+- `src/ArrTags/Updates/DeferredWorkItemProcessor.cs`: the Phase 6 placeholder
+  dispatch. It completes each dequeued item as a safe no-op until the
+  reconciliation pipeline lands, so no metadata or artwork is published yet.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers the
+  `LibraryWorkQueue` singleton (capacity and single-flight resolved from the
+  current snapshot), maps `IWorkHintSink` to it, registers the placeholder
+  `IWorkItemProcessor`, and adds `LibraryWorkWorker` as a hosted service after
+  the lifecycle service. Registration still performs no startup work.
+- Tests: `tests/ArrTags.Tests/LibraryWorkQueueTests.cs` (16 cases) plus updated
+  `LibraryUpdateBoundaryTests` and `LifecycleFoundationTests`. They cover
+  coalescing by item and connection (including distinct connections and
+  surfaces), coalescing of a redundant hint while work is in flight, single-flight
+  per item/surface, rejection of an empty item id, bounded overflow with a
+  non-blocking enqueue, FIFO dequeue and capacity release, bounded pending and
+  in-flight diagnostics, transient-then-complete retry, no terminal retry, bounded
+  attempt abandonment, cancellation during processing and during backoff, stopping
+  acceptance and restarting, and the pure retry policy and retry classification.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1003 with 58 environment-guarded skips (1061
+total), exactly +16 over the task 6.1 baseline (987/58/1045), with no new skips
+and no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed. The Phase 5 review MEDIUM finding that
+`ArtworkPublisher.PublishCoreAsync` reads the durable lifecycle fence once is not
+made reachable by this task because the placeholder processor does not drive
+artwork publication; it remains open for the later task that wires artwork
+publication into the worker (6.4/6.6).

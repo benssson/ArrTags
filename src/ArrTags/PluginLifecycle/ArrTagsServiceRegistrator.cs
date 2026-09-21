@@ -37,7 +37,10 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             static serviceProvider => serviceProvider.GetRequiredService<ConfigurationSnapshotService>());
         serviceCollection.AddSingleton(CreateStateRepository);
         serviceCollection.TryAddSingleton<ILibraryEventSource, JellyfinLibraryEventSource>();
-        serviceCollection.TryAddSingleton<IWorkHintSink>(CreateWorkHintSink);
+        serviceCollection.TryAddSingleton(CreateLibraryWorkQueue);
+        serviceCollection.TryAddSingleton<IWorkHintSink>(
+            static serviceProvider => serviceProvider.GetRequiredService<LibraryWorkQueue>());
+        serviceCollection.TryAddSingleton<IWorkItemProcessor, DeferredWorkItemProcessor>();
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
         serviceCollection.TryAddSingleton<IArtworkImageAccess>(CreateArtworkImageAccess);
         serviceCollection.TryAddSingleton<IArtworkSourceReader>(CreateArtworkSourceReader);
@@ -56,6 +59,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateArtworkGenerationCoordinator);
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
+
+        // Registered after the lifecycle service so a host shutdown stops
+        // accepting and cancels queued/in-flight work before the lifecycle drain
+        // establishes the durable fence.
+        serviceCollection.AddHostedService<LibraryWorkWorker>();
     }
 
     private static void RegisterProviderHttpClients(IServiceCollection serviceCollection)
@@ -98,10 +106,14 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         return new StateRepository(root, limits);
     }
 
-    private static BoundedWorkHintSink CreateWorkHintSink(IServiceProvider serviceProvider)
+    private static LibraryWorkQueue CreateLibraryWorkQueue(IServiceProvider serviceProvider)
     {
-        var capacity = serviceProvider.GetRequiredService<ConfigurationSnapshotService>().Current.Limits.QueueCapacity;
-        return new BoundedWorkHintSink(capacity);
+        var configuration = serviceProvider.GetRequiredService<ConfigurationSnapshotService>();
+
+        // The capacity and per-item in-flight bound are resolved from the
+        // current snapshot on each operation, so a replaced configuration takes
+        // effect without rebuilding the singleton.
+        return new LibraryWorkQueue(() => configuration.Current.Limits);
     }
 
     private static JellyfinArtworkImageAccess CreateArtworkImageAccess(IServiceProvider serviceProvider)

@@ -86,7 +86,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             new FakeArtworkLifecycleCoordinator(),
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
 
         await service.StartAsync(CancellationToken.None);
         Assert.Equal(1, libraryEvents.AddedSubscriberCount);
@@ -105,7 +105,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             new FakeArtworkLifecycleCoordinator(),
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
 
         await service.StartAsync(CancellationToken.None);
         await service.StopAsync(CancellationToken.None);
@@ -125,7 +125,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             new FakeArtworkLifecycleCoordinator(),
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
@@ -187,7 +187,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             coordinator,
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
         await service.StartAsync(CancellationToken.None);
 
         libraryEvents.RaiseRemoved(Guid.NewGuid());
@@ -211,7 +211,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             coordinator,
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
         await service.StartAsync(CancellationToken.None);
 
         await service.StopAsync(CancellationToken.None);
@@ -228,7 +228,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             coordinator,
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4),
+            new LibraryWorkQueue(4),
             TimeSpan.FromMilliseconds(100));
         await service.StartAsync(CancellationToken.None);
 
@@ -249,7 +249,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             coordinator,
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
         await service.StartAsync(CancellationToken.None);
 
         await service.StopAsync(CancellationToken.None);
@@ -265,7 +265,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             new FakeArtworkLifecycleCoordinator(),
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
         await service.StartAsync(CancellationToken.None);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
@@ -283,7 +283,7 @@ public class LifecycleFoundationTests
             libraryEvents,
             new FakeArtworkLifecycleCoordinator(),
             new ConfigurationSnapshotService(),
-            new BoundedWorkHintSink(4));
+            new LibraryWorkQueue(4));
         await service.StartAsync(CancellationToken.None);
 
         service.Dispose();

@@ -1,0 +1,64 @@
+{
+  "task": "6.2",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "status": "open",
+      "summary": "Single-flight is enforced per full WorkItemKey (item + connection + surface), not literally per item/image surface.",
+      "detail": "LibraryWorkQueue tracks in-flight work in a Dictionary<WorkItemKey,int> and TryEnqueue drops a redundant item only when the full key's in-flight count reaches OperationalLimits.PerItemInFlightWork (validated to exactly 1). WorkItemKey equality includes ConnectionId, so a connection-scoped item and an unresolved-connection hint item for the same Jellyfin item/surface are distinct keys and could be processed concurrently. For every trigger reachable in task 6.2 (library events -> LibraryWorkHint -> LibraryWorkItem.FromHint -> null connection + unindexed Primary) an item maps to exactly one key, so at most one in-flight work item per item/surface is genuinely enforced and the acceptance criterion is met. The divergence from architecture section 12 ('per-item/surface in-flight work = 1') only becomes reachable when a later task enqueues connection-scoped items (for example the 6.7 webhook path) while a hint-derived item for the same item/surface is pending or in flight. No 6.2 production caller enqueues a connection-scoped item (only tests do). Recorded for the later task that wires connection resolution/webhooks: confirm the intended single-flight scope or normalize the key before enqueue.",
+      "evidence": [
+        "src/ArrTags/Updates/WorkItemKey.cs:88-107 (equality/hash include ConnectionId and Surface)",
+        "src/ArrTags/Updates/LibraryWorkQueue.cs:151-164 (in-flight/pending check keyed by WorkItemKey) and :260-264 (PerItemInFlightWork)",
+        "src/ArrTags/Configuration/OperationalLimits.cs:32,133 (PerItemInFlightWork default 1, range 1-1)",
+        "src/ArrTags/Updates/LibraryWorkItem.cs:95-103 (FromHint leaves connection null)",
+        "docs/architecture.md section 12 (per-item/surface in-flight work = 1)"
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "informational",
+      "status": "accepted",
+      "summary": "Changelog attributes dynamic queue-limit resolution to the wrong prior finding.",
+      "detail": "docs/changelog.md (task 6.2 section) says the per-operation limit resolution addresses 'the Phase 5 review LOW finding for queue limits'. The specific finding that BoundedWorkHintSink captured QueueCapacity once at DI resolution is task 6.1 reviewer finding F3 (low, accepted), not a Phase 5 finding; the Phase 5 LOW configuration/DI finding was about Artwork singletons capturing limits. The behavior is implemented and correct; only the attribution is imprecise. Documentation-only, no behavioral or state impact. The same changelog bullet also accurately states the SemaphoreSlim is not resized, which matches the implementation.",
+      "evidence": [
+        "docs/changelog.md task 6.2 bullet on LibraryWorkQueue dynamic limits",
+        "docs/implementation/6.1/reviewer-report.json finding F3",
+        "docs/implementation/phase-5/phase-review.json LOW 'Configuration / DI lifetime'",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:109-117"
+      ]
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "accepted",
+      "summary": "Bounded worker shutdown composes with the lifecycle drain, and workers are abandoned unawaited after the bounded wait elapses.",
+      "detail": "LibraryWorkQueue/LibraryWorkWorker correctly stop accepting, cancel the worker CTS, and await the worker tasks with WaitAsync against a 15s bound; cancellation of both queued waits and retry backoff is genuinely honoured (verified by StopCancelsInFlightProcessing and StopCancelsRetryBackoff). Two residual properties are worth recording rather than fixing in 6.2: (a) after the bounded wait elapses, Task.WhenAll(workers) is no longer awaited, so a processor that ignores the supplied token could leave its worker tasks running past StopAsync (the workers remain cancellation-aware and the IWorkItemProcessor contract requires honoring the token, so this is not observed with the deferred placeholder); (b) the worker's 15s shutdown wait and ArrTagsLifecycleService's own 15s drain run sequentially on host shutdown, so a pathological non-cooperative processor could consume up to ~30s. This mirrors the existing phase-5 LOW 'cooperative shutdown bound' note and is defense-in-depth, not an observed defect.",
+      "evidence": [
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:94-127 (bounded WaitAsync, abandoned WhenAll after timeout), :140-177 (worker loop), :179-214 (bounded retry/backoff)",
+        "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs:35,73-95 (independent 15s drain)",
+        "tests/ArrTags.Tests/LibraryWorkQueueTests.cs StopCancelsInFlightProcessing / StopCancelsRetryBackoff",
+        "docs/implementation/phase-5/phase-review.json LOW 'Lifecycle shutdown bound'"
+      ]
+    }
+  ],
+  "tests_checked": [
+    "Reproduced ./build.sh build (after . /config/arrtags-env.sh): Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Reproduced ./build.sh test: Failed 0, Passed 1003, Skipped 58, Total 1061 (Duration ~17s), matching the worker claim and exactly +16 over the task 6.1 baseline 987/58/1045 with no new skips.",
+    "Reproduced focused filter (LibraryWorkQueueTests|LibraryUpdateBoundaryTests|LifecycleFoundationTests): Passed 47, Failed 0, Skipped 0.",
+    "Inspected tests/ArrTags.Tests/LibraryWorkQueueTests.cs (16 facts): coalescing by item and by item+connection+surface; coalescing a redundant hint while in flight with MaxConcurrencyFor == 1; single-flight; empty-id rejection; bounded overflow with a non-blocking bound; FIFO dequeue and capacity release; bounded pending/in-flight diagnostics; coalesced exactly-once processing across 4 workers; transient-then-complete retry; no terminal retry; bounded attempt abandonment; cancellation during processing and during retry backoff; stop/restart acceptance; pure retry-policy computations; provider-retryability classification.",
+    "Inspected updated tests/ArrTags.Tests/LibraryUpdateBoundaryTests.cs (handler still short/non-throwing on a full queue, sink contract, FIFO/coalescing release, DI registration now asserts IsType<LibraryWorkQueue> and configured capacity) and tests/ArrTags.Tests/LifecycleFoundationTests.cs (BoundedWorkHintSink -> LibraryWorkQueue substitutions preserve startup/shutdown/restart/cancellation/uninstall/removal-drain coverage)."
+  ],
+  "research_checked": [
+    "docs/architecture.md sections 3, 4, 5, 8, and 12: bounded deduplicating queue, hosted cancellation-aware workers, coalescing by item and connection, worker re-reads current item/config, queue capacity 512 (1-100000), per-item/surface in-flight 1, bounded transient retries/backoff, overflow never blocks library events, shutdown cancels queued work and awaits workers. The implementation and the section 8/12 updates are consistent with these constraints.",
+    "docs/decisions.md ADR-004: QueueCapacity/PerItemInFlightWork/TransientRetryCount/RetryBackoff* ranges and bounded-retry intent are reused by the resolution and WorkRetryPolicy, so queue-level retries cannot become an unbounded loop.",
+    "docs/decisions.md ADR-005: queue key and item carry only item id, non-secret connection identity, reason, and configuration version; WorkItemKey/LibraryWorkItem carry no credential, lease, provider DTO, path, or unbounded payload; ArrConnectionId excludes user info and the API key.",
+    "Independent comparison of WorkRetryPolicy.ComputeBackoff with RadarrClient/SonarrClient ComputeBackoff: identical formula (InitialSeconds * Factor^attemptIndex, capped at MaxSeconds) and equivalent delay sequence (the worker delays after a failed attempt index; the provider delays before attempt > 0), so the 'mirrors the provider boundary' claim holds.",
+    "docs/implementation/phase-5/phase-review.json MEDIUM lifecycle-fence finding: confirmed independently that no file under src/ArrTags/Updates references ArtworkPublisher or ArtworkGenerationCoordinator, that DeferredWorkItemProcessor is a pure cancellation-honoring no-op, and that DI maps IWorkItemProcessor to DeferredWorkItemProcessor only. The Phase 5 race therefore remains unreachable from 6.2 and correctly stays open for the task that wires artwork publication.",
+    "docs/implementation/6.1/reviewer-report.json (F3 queue-capacity capture) and 6.1 worker report: confirmed the 6.2 queue supersedes BoundedWorkHintSink, that no production code still references the deleted type, and that the 6.1 event-handler contract (short handler, no external I/O/rendering/image writes, exceptions contained) is unchanged."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

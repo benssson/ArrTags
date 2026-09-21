@@ -1,0 +1,46 @@
+{
+  "task": "6.2",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the Phase 6 bounded, coalescing, cancellation-aware work queue and hosted worker in src/ArrTags/Updates, built on the task 6.1 IWorkHintSink/LibraryWorkHint boundary. WorkItemKey is the coalescing and single-flight identity (Jellyfin item, resolved connection, image surface); LibraryWorkItem is the bounded queued unit and LibraryWorkItem.FromHint leaves the connection unresolved with the unindexed Primary surface. LibraryWorkQueue replaces BoundedWorkHintSink, implements IWorkHintSink, coalesces redundant hints/items for a key that is already pending or in flight, bounds pending work by the ADR-004 QueueCapacity and single-flight by PerItemInFlightWork (both resolved from the current configuration snapshot per operation), never blocks or throws on coalescing/overflow, and rejects new work once stopped. LibraryWorkWorker is the hosted consumer: a fixed bounded pool of cancellation-aware workers (default four) that dequeue asynchronously, dispatch through the narrow IWorkItemProcessor boundary, and retry only transient (ArrErrorRetryability.Later) outcomes within WorkRetryPolicy's bounded attempt count and exponential backoff while terminal/unclassified failures do not retry. On shutdown it stops accepting, cancels queued/in-flight work, and awaits workers within a bounded timeout with no fire-and-forget task or unmanaged thread. DeferredWorkItemProcessor is a safe no-op placeholder until tasks 6.3-6.6 deliver the reconciliation pipeline, so task 6.2 drives no artwork publication. DI registers the queue (limits resolved dynamically), maps IWorkHintSink to it, registers the placeholder processor, and adds the worker as a hosted service after the lifecycle service so shutdown cancels work before the lifecycle drain. The task 6.1 event-handler contract is unchanged.",
+  "validation": [
+    "./build.sh build => Build succeeded, 0 warnings, 0 errors",
+    "./build.sh test => Passed 1003, Skipped 58, Failed 0, Total 1061 (baseline 987/58/0/1045; +16 passed, no new skips, no regressions)",
+    "dotnet test --filter \"FullyQualifiedName~LibraryWorkQueueTests|FullyQualifiedName~LibraryUpdateBoundaryTests|FullyQualifiedName~LifecycleFoundationTests\" => Passed 47, Failed 0, Skipped 0, Total 47",
+    "git status and full diff inspection => only task-relevant production, test, and documentation files changed",
+    "Phase 5 lifecycle-fence finding reachability check => the placeholder IWorkItemProcessor never invokes ArtworkPublisher/ArtworkGenerationCoordinator, so 6.2 does not make the concurrent-publication race reachable and the finding remains open"
+  ],
+  "changed_files": [
+    "src/ArrTags/Updates/WorkItemKey.cs",
+    "src/ArrTags/Updates/LibraryWorkItem.cs",
+    "src/ArrTags/Updates/WorkProcessingResult.cs",
+    "src/ArrTags/Updates/IWorkItemProcessor.cs",
+    "src/ArrTags/Updates/WorkRetryPolicy.cs",
+    "src/ArrTags/Updates/LibraryWorkQueue.cs",
+    "src/ArrTags/Updates/LibraryWorkWorker.cs",
+    "src/ArrTags/Updates/DeferredWorkItemProcessor.cs",
+    "src/ArrTags/Updates/IWorkHintSink.cs",
+    "src/ArrTags/Updates/BoundedWorkHintSink.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/LibraryWorkQueueTests.cs",
+    "tests/ArrTags.Tests/LibraryUpdateBoundaryTests.cs",
+    "tests/ArrTags.Tests/LifecycleFoundationTests.cs",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/implementation/6.2/worker-report.json"
+  ],
+  "known_limitations": [
+    "DeferredWorkItemProcessor completes each dequeued item as a safe no-op until the reconciliation pipeline lands in tasks 6.3-6.6; no metadata state or artwork is published, and the queue's real processing boundary is exercised only by test doubles in this task.",
+    "The Phase 5 review MEDIUM finding (ArtworkPublisher.PublishCoreAsync reads the durable lifecycle fence once and does not re-check it before mutation/commit) remains OPEN. Task 6.2 does not invoke artwork publication from the worker, so the race is not made reachable; the later Phase 6 task that drives artwork generation/publication from the worker (tasks 6.4 and/or 6.6) must close it before concurrent publication and lifecycle drains are enabled.",
+    "A redundant hint or work item for a key that is already in flight is dropped rather than queued for a follow-up run; this is the architecture's documented 'coalesce or drop redundant work' behavior and is safe because the worker re-reads current item/configuration state and later reconciliation repairs missed changes.",
+    "The worker pool size is a fixed code-owned internal scheduling bound (LibraryWorkWorker.DefaultWorkerCount = 4), not a persisted user-tunable limit; provider and render concurrency limits are not enforced at their boundaries by this task (they are pre-existing limits whose enforcement lands with the pipeline that performs those calls).",
+    "Queue capacity and the per-item in-flight bound are resolved from the current configuration snapshot on each operation, but the underlying SemaphoreSlim-backed waiting is not resized; only the capacity comparison changes, which is the relevant behavior.",
+    "Only in-process validation was performed; no live Jellyfin host was available, consistent with the pinned-host absence noted for the environment."
+  ],
+  "ready_for_next_task": true
+}

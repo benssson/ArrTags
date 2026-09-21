@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (task 6.1 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1 and 6.2 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -175,7 +175,7 @@ without modifying original media files or external services.
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
-| 6 | Caching, updates & performance | In progress (6.1 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
+| 6 | Caching, updates & performance | In progress (6.2 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
@@ -2021,7 +2021,7 @@ authoritative.
 
 - [x] 6.1 Keep library event handlers short: validate relevance, enqueue a
   bounded hint, and return without external I/O or rendering.
-- [ ] 6.2 Implement coalescing by item and connection, single-flight work, worker
+- [x] 6.2 Implement coalescing by item and connection, single-flight work, worker
   cancellation, retry classification, and queue overflow behavior.
 - [ ] 6.3 Publish metadata state atomically only after current item/configuration
   validation; discard stale long-running work.
@@ -2059,6 +2059,37 @@ keeps every handler synchronous and preserves the task 5.9 `ItemRemoved` tracked
 bounded drain/tombstone behavior unchanged; it also emits a removal hint through
 the same boundary. The full coalescing-by-connection, single-flight, cancellation,
 retry-classification, worker, and queue-overflow policy remains task 6.2.
+
+**Task 6.2 status:** Complete. The bounded, coalescing, cancellation-aware work
+queue and hosted worker are implemented in `src/ArrTags/Updates`.
+`WorkItemKey` is the coalescing and single-flight identity (Jellyfin item,
+resolved connection, and image surface); `LibraryWorkItem` is the bounded queued
+unit (key, reason, safe configuration generation) and `LibraryWorkItem.FromHint`
+leaves the connection unresolved with the unindexed Primary surface.
+`LibraryWorkQueue` replaces the task 6.1 `BoundedWorkHintSink`, implements the
+`IWorkHintSink` enqueue boundary, and coalesces a redundant hint or work item for
+a key that is already pending or in flight. It bounds pending work by the ADR-004
+`QueueCapacity` and single-flight by `PerItemInFlightWork`, resolving both from
+the current configuration snapshot on each operation so a replaced snapshot takes
+effect without rebuilding the singleton; `TryEnqueue` never blocks and never
+throws for ordinary coalescing or overflow, so the library-event publisher is
+never blocked. A stopped queue rejects new work. `LibraryWorkWorker` is the
+hosted consumer: a fixed, bounded pool of cancellation-aware workers (default
+four) dequeues items, dispatches them through the narrow `IWorkItemProcessor`
+boundary, and classifies each outcome with the provider retry vocabulary
+(`ArrErrorRetryability`). Transient (`Later`) outcomes retry with the bounded
+ADR-004 `TransientRetryCount` and exponential backoff computed by
+`WorkRetryPolicy`; terminal and unclassified processor failures do not retry. On
+shutdown the worker stops accepting, cancels queued and in-flight work, and
+awaits the workers within a bounded timeout, leaving no fire-and-forget task or
+unmanaged thread. `DeferredWorkItemProcessor` is the Phase 6 placeholder
+dispatch: it completes each dequeued item as a safe no-op until tasks 6.3-6.6
+deliver the reconciliation pipeline, so no metadata is published and the
+concurrent-publication lifecycle-fence finding from the Phase 5 review remains
+open (see `docs/implementation/6.2/worker-report.json`). Focused tests cover
+coalescing by item and connection, single-flight, cancellation during processing
+and backoff, transient/terminal retry classification and bounded attempts,
+overflow, no-blocking enqueue, bounded diagnostics, and restartability.
 
 **Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
 6.8. Task IDs are stable references only; this execution order is the canonical

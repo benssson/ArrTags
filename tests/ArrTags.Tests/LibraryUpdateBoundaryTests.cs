@@ -163,10 +163,10 @@ public class LibraryUpdateBoundaryTests
     }
 
     [Fact]
-    public async Task HandlerNeverThrowsWhenTheBoundedSinkIsFull()
+    public async Task HandlerNeverThrowsWhenTheWorkQueueIsFull()
     {
         var libraryEvents = new FakeLibraryEventSource();
-        var sink = new BoundedWorkHintSink(1);
+        var sink = new LibraryWorkQueue(1);
         var service = new ArrTagsLifecycleService(
             libraryEvents,
             new RecordingLifecycleCoordinator(),
@@ -182,9 +182,9 @@ public class LibraryUpdateBoundaryTests
     }
 
     [Fact]
-    public void BoundedSinkCoalescesDuplicateItemHints()
+    public void WorkQueueCoalescesDuplicateItemHints()
     {
-        var sink = new BoundedWorkHintSink(8);
+        var sink = new LibraryWorkQueue(8);
         var itemId = Guid.NewGuid();
 
         Assert.True(sink.TryEnqueue(new LibraryWorkHint(itemId, LibraryWorkReason.Added, 1)));
@@ -193,9 +193,9 @@ public class LibraryUpdateBoundaryTests
     }
 
     [Fact]
-    public void BoundedSinkDropsOverflowAndNeverThrows()
+    public void WorkQueueDropsOverflowAndNeverThrows()
     {
-        var sink = new BoundedWorkHintSink(2);
+        var sink = new LibraryWorkQueue(2);
 
         Assert.True(sink.TryEnqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
         Assert.True(sink.TryEnqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
@@ -205,30 +205,36 @@ public class LibraryUpdateBoundaryTests
     }
 
     [Fact]
-    public void BoundedSinkRejectsAnEmptyItemIdWithoutThrowing()
+    public void WorkQueueRejectsAnEmptyItemIdWithoutThrowing()
     {
-        var sink = new BoundedWorkHintSink(4);
+        var sink = new LibraryWorkQueue(4);
 
-        Assert.False(sink.TryEnqueue(default));
+        Assert.False(sink.TryEnqueue(default(LibraryWorkHint)));
         Assert.Equal(0, sink.Count);
     }
 
     [Fact]
-    public void BoundedSinkDequeuesInOrderAndReleasesTheItemForCoalescing()
+    public async Task WorkQueueDequeuesInOrderAndReleasesTheItemForCoalescing()
     {
-        var sink = new BoundedWorkHintSink(2);
+        var sink = new LibraryWorkQueue(2);
         var first = new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1);
         var second = new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Updated, 1);
 
         Assert.True(sink.TryEnqueue(first));
         Assert.True(sink.TryEnqueue(second));
 
-        Assert.True(sink.TryDequeue(out var dequeuedFirst));
-        Assert.Equal(first, dequeuedFirst);
+        var dequeuedFirst = await sink.DequeueAsync(CancellationToken.None);
+        Assert.Equal(first.ItemId, dequeuedFirst.Key.ItemId);
+        Assert.Equal(first.Reason, dequeuedFirst.Reason);
+        sink.CompleteProcessing(dequeuedFirst.Key);
 
+        // The dequeued item is no longer pending, so it can be coalesced again.
         Assert.True(sink.TryEnqueue(new LibraryWorkHint(first.ItemId, LibraryWorkReason.Removed, 2)));
-        Assert.True(sink.TryDequeue(out var dequeuedSecond));
-        Assert.Equal(second, dequeuedSecond);
+        Assert.Equal(2, sink.Count);
+
+        var dequeuedSecond = await sink.DequeueAsync(CancellationToken.None);
+        Assert.Equal(second.ItemId, dequeuedSecond.Key.ItemId);
+        sink.CompleteProcessing(dequeuedSecond.Key);
     }
 
     [Fact]
@@ -276,7 +282,7 @@ public class LibraryUpdateBoundaryTests
     }
 
     [Fact]
-    public void RegistratorRegistersABoundedWorkHintSinkFromConfiguration()
+    public void RegistratorRegistersTheLibraryWorkQueueFromConfiguration()
     {
         var services = new ServiceCollection();
         services.AddSingleton<ILibraryEventSource>(new FakeLibraryEventSource());
@@ -288,6 +294,7 @@ public class LibraryUpdateBoundaryTests
         var sink = provider.GetRequiredService<IWorkHintSink>();
         var limits = provider.GetRequiredService<ConfigurationSnapshotService>().Current.Limits;
 
+        Assert.IsType<LibraryWorkQueue>(sink);
         Assert.Equal(limits.QueueCapacity, sink.Capacity);
     }
 

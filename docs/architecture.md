@@ -396,6 +396,19 @@ current public snapshot and acquire a matching lease at the external-I/O
 boundary; configuration rotation or disablement therefore fences new provider
 requests without requiring queue contents to be scrubbed for credentials.
 
+The installed implementation (`src/ArrTags/Updates`) realizes this boundary as a
+bounded in-memory work queue with a fixed, bounded pool of cancellation-aware
+hosted workers. Work is single-flight per item and image surface; the pending
+bound and the per-item in-flight bound are resolved from the current
+configuration snapshot. A worker classifies each outcome with the provider retry
+vocabulary (`ArrErrorRetryability`) and retries only a transient (`Later`)
+outcome, within `TransientRetryCount` and the bounded exponential backoff; a
+terminal or unclassified failure is not retried. A redundant hint for work that
+is already pending or in flight is coalesced, and overflow coalesces or drops
+without ever blocking or throwing into the library-event publisher. On shutdown
+the worker stops accepting, cancels queued and in-flight work, and awaits the
+workers within a bounded host-shutdown timeout.
+
 Refresh triggers are:
 
 - Jellyfin `ItemAdded`, relevant `ItemUpdated`, and `ItemRemoved` events.
