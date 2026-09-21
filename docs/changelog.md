@@ -1268,3 +1268,48 @@ and `./build.sh test` pass. The default suite passes 964 with 49
 environment-guarded skips (1013 total), exactly +45 over the task 5.8 baseline,
 with no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
 passing behavior was changed.
+
+### Task 5.10 - Jellyfin Enhanced coexistence policy (DG-8)
+
+Task 5.10 resolves decision gate DG-8 with `docs/decisions.md` ADR-011 and adds
+the coexistence policy and tests. It does not add automatic duplicate/overlap
+suppression, an Enhanced-internals dependency, or any new configuration, and it
+does not add route/client tests (task 5.11) or Phase 6 queue, event, or caching
+wiring. No production behavior, `RenderVersion`, renderer behavior, or existing
+ADR was changed; ADR-011 is the only ADR added.
+
+- `docs/decisions.md` ADR-011: records the resolved policy. ArrTags does not
+  implement automatic duplicate-badge detection, overlap suppression, or a
+  dependency on Jellyfin Enhanced internals; Jellyfin Enhanced can choose its
+  own overlay placement, so overlap handling is deferred to the user. ArrTags
+  badge output is controlled only by the existing `BadgeMoviePosters`/
+  `BadgeEpisodePosters` poster enable flags and the renderer selector
+  enablement. Enhanced's Spoiler Guard has no material effect on ArrTags badge
+  display, so ArrTags renders its derived badge normally with no special
+  spoiler/hidden handling.
+- `docs/architecture.md` section 10: states the coexistence policy; the
+  configuration section records that no separate coexistence field is persisted;
+  the testing section, the decisions-required list (item 8), and the data-model
+  `enhancedCoexistencePolicy` rows are aligned with ADR-011.
+- `PLANS.md`: DG-8 is marked resolved by ADR-011, task 5.10 is checked with a
+  status paragraph, the Milestone 5 status row and Enhanced acceptance criterion
+  are updated, and the Enhanced risk mitigation and Phase 5 deliverable are
+  aligned with the resolved policy.
+- `docs/implementation-readiness.md`: Former Action Disposition item 10 is marked
+  resolved by ADR-011, a "Resolved DG-8" section is added, and the
+  implementation-time question is closed for the policy (route confirmation
+  remains task 5.11).
+- Tests: `tests/ArrTags.Tests/EnhancedCoexistenceTests.cs` (7 cases) assert that
+  the production assembly references no Enhanced assembly and declares no
+  Enhanced/spoiler/suppression type; that the policy surface and the renderer/
+  publication reason enums expose no Enhanced, spoiler, hidden, blur, suppress,
+  or overlap member; that Movie/Episode poster eligibility and renderer badge
+  selection vary only with the existing poster and selector flags; and that the
+  renderer decision is a pure function of the canonical render request with no
+  hidden global state. The tests run without a live Jellyfin host, a live
+  Enhanced install, or the Skia native runtime.
+
+Build and test: `./build.sh restore`, `./build.sh build` (0 warnings, 0 errors),
+and `./build.sh test` pass. The default suite passes 971 with 49
+environment-guarded skips (1020 total), exactly +7 over the task 5.9 baseline,
+with no regressions.

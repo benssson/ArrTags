@@ -1,0 +1,76 @@
+{
+  "task": "5.10",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "info",
+      "summary": "ADR-011 faithfully records the authoritative DG-8 decision, is correctly numbered, and follows the established ADR format.",
+      "detail": "docs/decisions.md ADR-011 (Status Accepted, Date 2026-09-20) follows the Context/Decision/Consequences/Rejected alternatives/References structure used by ADR-001..ADR-010. It is appended after ADR-010 with 94 insertions and 0 deletions, so no existing ADR text was modified. It records exactly the user policy: no automatic duplicate/overlap detection or suppression, no Enhanced-internals dependency, overlap deferred to the user because Enhanced chooses its own overlay placement, output controlled only by existing poster and selector enable flags, and Spoiler Guard rendering normally with no special spoiler/hidden handling. The references (PLANS.md DG-8/task 5.10, architecture.md section 10, GOALS.md compatibility + success criterion 7, ADR-001/ADR-009) all exist and point to supported sources."
+    },
+    {
+      "id": "F2",
+      "severity": "info",
+      "summary": "DG-8 is marked resolved consistently across the authoritative tracking documents, with no unresolved contradiction there.",
+      "detail": "PLANS.md (status line, task 5.10 checkbox, Task 5.10 status paragraph, Milestone 5 status row, Enhanced acceptance criterion, Phase 5 deliverable, DG-8 gate row, Enhanced risk row), docs/architecture.md (section 6 config list, section 10, section 13 testing, section 14 item 8), docs/implementation-readiness.md (Status, Basis, Former Action Disposition item 10, implementation-time question, new Resolved DG-8 section, Ready-for-Implementation checklist), docs/data-model.md (3.12 and 4.12 enhancedCoexistencePolicy rows plus prose), docs/changelog.md, and README.md all state the same resolved policy. The obsolete architecture statements ('ArrTags exposes a policy to disable or limit its server badges' and the standalone Spoiler Guard route-testing bullet) were replaced with the ADR-011 policy rather than left contradicting it."
+    },
+    {
+      "id": "F3",
+      "severity": "info",
+      "summary": "The controlled-configuration claim is accurate and does not overstate what existing configuration can do.",
+      "detail": "MediaEligibility.IsBadgeSurface consults only PluginConfigurationSnapshot.BadgeMoviePosters/BadgeEpisodePosters (src/ArrTags/Media/MediaEligibility.cs:61-69), and renderer badge output is resolved through RendererConfiguration.Selectors / PluginConfigurationSnapshot.BadgeDefinitions before BadgeSelectorResolver.Resolve (src/ArrTags/Rendering/BadgeDefinitionResolver.cs:47). The docs accurately state these flags are the user's disable/limit control surface and do not claim automatic overlap detection, duplicate suppression, or a new knob. No production file changed (no src/ or .csproj edits), so no configuration schema or behavior was altered."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "summary": "The coexistence tests are meaningful, host/runtime-free, and sensitive to the coupling they guard against.",
+      "detail": "The 7 tests in tests/ArrTags.Tests/EnhancedCoexistenceTests.cs use reflection over the real ArrTags assembly (typeof(Plugin).Assembly) to assert no referenced assembly name and no declared type name matches Enhanced/JellyfinEnhanced/Spoiler/Suppress/Blur/Hidden/Overlap, assert the listed policy-surface types expose no such member, and assert the renderer/publication/reconciliation/lifecycle enums expose no such value. The behavioral tests exercise real MediaEligibility, BadgeSelectorResolver, and SkiaBadgeRenderer with canonical inputs and vary only the poster flags and selector enablement. They run with 0 skips and no live host, live Enhanced install, or Skia native runtime (the renderer cases return pass-through before native decoding). A newly introduced Enhanced assembly reference, Enhanced/spoiler/suppression type, or enum branch would fail the corresponding assertion, so the checks are not trivially true."
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "summary": "The forbidden-token list includes the broad token 'blur', which is also a substring of 'bluray'; this is a latent false-positive risk, not a current defect.",
+      "detail": "ForbiddenNameTokens contains 'blur', which matches unrelated names such as 'Bluray'. No current production type or policy-surface member contains 'blur'/'bluray' (the only matches are XML doc comments in RadarrQuality.cs/SonarrQuality.cs), so all assertions pass today. A future legitimate member/type such as a Bluray source name would trip the tests. This is a minor maintainability note only and does not affect the correctness of task 5.10."
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "summary": "The Milestone 5 Enhanced acceptance criterion is checked while route/client validation remains task 5.11 and sibling criteria stay unchecked.",
+      "detail": "PLANS.md marks 'ArrTags does not interfere with Jellyfin Enhanced ...' as [x] while the other Milestone 5 acceptance criteria remain [ ] (all prior tasks also left them unchecked). Because ADR-011 frames coexistence as a policy/non-interference property and the docs explicitly state route/client confirmation remains task 5.11, this is not an overclaim of route coverage; it is noted only for tracking consistency."
+    },
+    {
+      "id": "F7",
+      "severity": "info",
+      "summary": "The frozen pre-implementation review still labels Enhanced behavior a pre-implementation assumption, but it is not an authoritative tracking document.",
+      "detail": "docs/reviews/pre-implementation-review-01.md line 27 still reads 'PRE-IMPLEMENTATION: behavior is still an acceptance assumption'. That file is a single-commit historical review snapshot (added by commit 0cf6e28) containing many other since-resolved pre-implementation gaps that were never edited in place; the authoritative live trackers (PLANS.md, docs/implementation-readiness.md, docs/architecture.md, docs/decisions.md) all mark DG-8 resolved. No change is required."
+    },
+    {
+      "id": "F8",
+      "severity": "info",
+      "summary": "Architecture and data-model edits removed only policy-related content and introduced no unrelated contradictions.",
+      "detail": "docs/architecture.md removed the obsolete 'exposes a policy to disable or limit' bullet and the standalone Spoiler Guard route-testing bullet and replaced them with ADR-011 statements; the route-testing obligation survives under section 13 and Gate 5/README task 5.11. docs/data-model.md changed only the two enhancedCoexistencePolicy rows and adjacent prose to say the policy is realized by the existing poster/selector flags and adds no snapshot field. No unrelated architecture or data-model content was deleted."
+    }
+  ],
+  "tests_checked": [
+    "Focused: dotnet test -c Release --no-build --filter FullyQualifiedName~EnhancedCoexistenceTests -> Passed 7, Failed 0, Skipped 0, Total 7",
+    "Full: ./build.sh test -> Passed 971, Failed 0, Skipped 49, Total 1020 (baseline 964/49/1013, exactly +7)",
+    "./build.sh restore -> all projects up-to-date, no packages.lock.json change",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "tests/ArrTags.Tests/EnhancedCoexistenceTests.cs source inspection (all 7 cases and helpers)",
+    "Source verification of MediaEligibility.IsBadgeSurface, BadgeSelectorResolver.Resolve, RendererConfiguration.Selectors, PluginConfiguration.BadgeMoviePosters/BadgeEpisodePosters, and BadgeDefinitionResolver wiring"
+  ],
+  "research_checked": [
+    "AGENTS.md (Jellyfin 12 plugin conventions, no unrelated changes, no unverified claims)",
+    "GOALS.md 'Jellyfin Enhanced compatibility' (lines 33-37) and success criterion 7 (line 88)",
+    "PLANS.md DG-8 gate row, Milestone 5 deliverables/acceptance criteria, task 5.10, and authoritative Phase 5 execution order",
+    "docs/decisions.md ADR-001..ADR-010 format and the new ADR-011",
+    "docs/architecture.md sections 6, 10, 13, 14 and the removed/replaced policy text",
+    "docs/implementation-readiness.md Former Action Disposition item 10 and the Enhanced implementation-time question",
+    "docs/data-model.md sections 3.12 and 4.12 enhancedCoexistencePolicy rows and prose",
+    "Repository-wide search confirming no Enhanced/JellyfinEnhanced/Spoiler/Overlap/Suppress reference in src/ (only auto-generated obj/bin matches)",
+    "git status/diff/numstat confirming only 7 documentation files modified plus the new test and worker report; decisions.md is +94/-0"
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), and 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal) are complete; the remaining Phase 5 tasks (5.10 and 5.11) are not started.
+**Status:** Phases 1-4 complete; Phase 5 in progress. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011) are complete; the remaining Phase 5 task (5.11) is not started.
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -107,9 +107,15 @@ an absent source, a failed source read, a render pass-through, or a failed
 render. Task 5.9 is complete: the durable active lifecycle fence, the
 disable/uninstall drain and guarded restoration through the supported item-image
 save/removal APIs, and confirmed item-removal tombstoning are implemented, and
-the reconciler now executes a restoration resume instead of deferring it. The
-remaining Phase 5 tasks (5.10 and 5.11 in the authoritative order) are not
-started.
+the reconciler now executes a restoration resume instead of deferring it. Task
+5.10 is complete: the DG-8 Jellyfin Enhanced coexistence policy is resolved by
+ADR-011 (no automatic duplicate/overlap detection or suppression, no
+Enhanced-internals dependency, and no special spoiler/hidden handling; the
+existing poster and selector enable flags remain the user's control surface),
+with coexistence tests that assert the production assembly has no Enhanced
+reference, the renderer/publication surface has no spoiler/hidden/suppression
+branch, and badge output varies only with the existing ArrTags configuration.
+The remaining Phase 5 task (5.11 in the authoritative order) is not started.
 
 **V1 outcome:** A Jellyfin 12 plugin that independently reads Sonarr and Radarr
 metadata, matches it to eligible Jellyfin media, and asynchronously publishes
@@ -158,7 +164,7 @@ without modifying original media files or external services.
 | 2 | Sonarr & Radarr integration | Complete | Both providers can be configured independently, probed, queried read-only, and mapped into canonical observations. |
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
-| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7, 5.8 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
+| 5 | Jellyfin artwork integration | In progress (5.1, 5.2, 5.3, 5.4, 5.6, 5.5, 5.7, 5.8, 5.9, 5.10 complete) | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Not started | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
@@ -1362,7 +1368,9 @@ provenance and coexisting with Jellyfin Enhanced.
   publication intent, postcondition reconciliation, and guarded lifecycle
   handling for disable, uninstall, and item removal.
 - Jellyfin Enhanced coexistence policy and tests, including spoiler/hidden image
-  behavior.
+  behavior. The policy is resolved by ADR-011: no automatic duplicate/overlap
+  suppression, no Enhanced-internals dependency, and no special spoiler/hidden
+  handling.
 
 **Tasks:**
 
@@ -1390,8 +1398,11 @@ provenance and coexisting with Jellyfin Enhanced.
   cannot safely complete.
 - [x] 5.9 Fence and drain publication operations during disable/uninstall, and
   tombstone confirmed item removal without issuing image mutations.
-- [ ] 5.10 Add the configured disable/limit policy for duplicate or overlapping
-  badges; do not depend on Jellyfin Enhanced internals.
+- [x] 5.10 Add the configured disable/limit policy for duplicate or overlapping
+  badges; do not depend on Jellyfin Enhanced internals. Resolved by ADR-011: no
+  automatic duplicate/overlap suppression and no Enhanced-internals dependency;
+  user control is through the existing poster and selector enable flags, and
+  Spoiler Guard renders normally.
 - [ ] 5.11 Test Web and image-consuming clients through the supported server
   image response path.
 
@@ -1859,6 +1870,27 @@ failure-containment, bounded deterministic and traversal-safe
 exactly +45 over the task 5.8 baseline; no ADR, `RenderVersion`, renderer
 behavior, or existing passing behavior was changed.
 
+**Task 5.10 status:** Complete. Decision gate DG-8 is resolved by ADR-011, and
+the Jellyfin Enhanced coexistence policy is recorded in `docs/architecture.md`
+section 10. ArrTags adds no automatic duplicate-badge detection, overlap
+suppression, or Enhanced-internals dependency: Jellyfin Enhanced chooses its own
+overlay placement, so overlap handling is deferred to the user, and ArrTags badge
+output is controlled only by the existing configuration (the
+`BadgeMoviePosters`/`BadgeEpisodePosters` poster enable flags and
+`RendererConfiguration.Selectors`). Spoiler Guard has no material effect on
+ArrTags badge display, so ArrTags renders its derived badge normally and adds no
+spoiler/hidden handling or Enhanced filter-ordering dependency. No production
+behavior, `RenderVersion`, renderer behavior, or existing ADR was changed. New
+tests in `tests/ArrTags.Tests/EnhancedCoexistenceTests.cs` (7 cases) assert that
+the production assembly references no Enhanced assembly and declares no
+Enhanced/spoiler/suppression type; that the policy surface and the
+renderer/publication reason enums expose no Enhanced, spoiler, hidden, blur,
+suppress, or overlap member; that Movie/Episode poster eligibility and renderer
+badge selection vary only with the existing poster and selector flags; and that
+the renderer decision is a pure function of the canonical render request with no
+hidden global state. Default `./build.sh test` passes 971 with 49 guarded skips
+(1020 total) and 0 warnings, exactly +7 over the task 5.9 baseline.
+
 **Acceptance criteria:**
 
 - [ ] A standard Jellyfin poster response contains the configured derived image
@@ -1875,8 +1907,11 @@ behavior, or existing passing behavior was changed.
   never treats an uncertain operation as proof of ownership.
 - [ ] Disable, uninstall, and confirmed item removal leave no untracked
   non-terminal operation or unsafe cleanup obligation.
-- [ ] ArrTags does not interfere with Jellyfin Enhanced, including configured
-  duplicate handling and Spoiler Guard expectations.
+- [x] ArrTags does not interfere with Jellyfin Enhanced, including configured
+  duplicate handling and Spoiler Guard expectations. Resolved by ADR-011 and
+  covered by `EnhancedCoexistenceTests`: no automatic duplicate/overlap
+  suppression, no Enhanced-internals dependency, and no special spoiler/hidden
+  handling.
 
 **Gate 5:** Publication and standard image-route integration tests pass for the
 selected Jellyfin 12 ABI, and source preservation/restoration is demonstrated.
@@ -2038,7 +2073,7 @@ an implementation assumption.
 | DG-5 | Whether path mappings are needed, and their connection-scoped representation. Resolved by ADR-008: configured path fallback is deferred out of V1, so V1 has no path mapping schema, normalization, or `ConfiguredPath` rule. | Milestone 3 |
 | DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. Foundation defaults are resolved by ADR-004; Milestone 6 may tune within the documented validation ranges. | Milestone 6 |
 | DG-7 | Webhook exposure, authentication, payload limits, replay handling, and route administration flow. Secret persistence and versioned access are resolved by ADR-005. | Milestone 6 |
-| DG-8 | Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior. | Milestone 5 |
+| DG-8 | Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior. Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap detection or suppression and no Enhanced-internals dependency; the existing poster and selector enable flags are the user's control surface, and Spoiler Guard has no material effect on ArrTags badge display. | Milestone 5 |
 | DG-9 | Supported live Sonarr/Radarr release ranges and optional-field compatibility policy. | Milestones 2 and 7 |
 
 ## Risks and Mitigations
@@ -2053,7 +2088,7 @@ an implementation assumption.
 | Generated artwork is published incorrectly. | Original artwork is lost or Enhanced behavior is disrupted. | Require source provenance, guarded restoration, supported item-image APIs, and tests for manual image changes. |
 | Cache/state corruption survives restart. | Repeated failures or unavailable badges. | Versioned records, atomic writes, integrity checks, quarantine/discard, and rebuild tests. |
 | Webhook payloads trigger unbounded or unauthorized work. | Security or resource exhaustion. | Shared-secret authentication, bounded payloads, rate/coalescing limits, and re-read current provider state. |
-| Enhanced and ArrTags show overlapping information. | Confusing or duplicated client presentation. | Explicit coexistence configuration, no Enhanced internals, and tests with quality tags and spoiler behavior enabled/disabled. |
+| Enhanced and ArrTags show overlapping information. | Confusing or duplicated client presentation. | No automatic duplicate/overlap suppression and no Enhanced-internals dependency (ADR-011); user control through the existing poster and selector enable flags, with coexistence tests covering quality tags and spoiler behavior. |
 
 ## Post-V1 Backlog
 

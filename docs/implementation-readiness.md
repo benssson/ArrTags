@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2)
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011
 
-**Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, and ADR-010; findings in
+**Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, ADR-010, and ADR-011; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
 artwork blockers, and the provider credential-access question is resolved for
 Milestone 2 implementation.
@@ -146,6 +146,26 @@ Jellyfin host source adapter that reads the unindexed `Primary` image and
 supplies those bytes, plus publication, provenance, restoration, caching,
 stale-artwork lifecycle, and Enhanced coexistence, stays in Phase 5 and later.
 
+## Resolved DG-8
+
+ADR-011 resolves the Jellyfin Enhanced coexistence policy. ArrTags does not
+implement automatic duplicate-badge detection, overlap suppression, or a
+dependency on Enhanced internals; Jellyfin Enhanced chooses its own overlay
+placement, so overlap handling is deferred to the user. ArrTags badge output is
+controlled only by the existing configuration (the
+`BadgeMoviePosters`/`BadgeEpisodePosters` poster enable flags and the renderer
+selector enablement), with no new suppression knob or coexistence field.
+Enhanced's Spoiler Guard has no material effect on ArrTags badge display, so
+ArrTags renders its derived badge normally and adds no special spoiler/hidden
+handling or Enhanced filter-ordering dependency.
+
+The coexistence tests in `tests/ArrTags.Tests/EnhancedCoexistenceTests.cs`
+assert the absence of an Enhanced reference and of an Enhanced/spoiler/
+suppression type in the production assembly, the absence of a spoiler, hidden,
+or duplicate/overlap suppression branch in the policy surface and the renderer/
+publication reason enums, and that badge eligibility and output vary only with
+the existing ArrTags poster and selector flags.
+
 ## Resolved SkiaSharp host compatibility (task 4.8)
 
 Task 4.8 confirmed the pinned Jellyfin `12.0.0` host versions from its
@@ -215,7 +235,7 @@ completed as Phase 1 implementation and acceptance work.
 | 7 | Decide the policy for active derived artwork after metadata becomes stale. | Implementation-time decision | Finalize before stale-state artwork handling and publication invalidation are implemented. |
 | 8 | Define webhook security, bounds, replay handling, and provider-record resolution, or defer webhooks. | Implementation-time decision | Decide before webhook work; deferral remains an available V1 scope decision. |
 | 9 | Record concrete queue, concurrency, retry, timeout, response-size, retention, storage, and stale-state limits. | Should become a Phase 1 implementation task | Complete for the foundation defaults; recorded in ADR-004 and `docs/architecture.md` section 12, with runtime enforcement and tuning in later milestones. |
-| 10 | Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior. | Implementation-time decision | Finalize and test before the Jellyfin artwork integration milestone. |
+| 10 | Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior. | Resolved for V1 | Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap detection or suppression and no Enhanced-internals dependency, the existing poster/selector enable flags remain the user's control surface, and Spoiler Guard has no material effect on ArrTags badge display. Covered by `EnhancedCoexistenceTests` in task 5.10. |
 | 11 | Define secret persistence, safe references, credential access, rotation, and webhook-secret reuse. | Should become a Milestone 2 implementation task | Resolved by ADR-005 and implemented in task 2.3; the credential-boundary tests pass before authenticated provider reads. |
 | 12 | Define the V1 badge rendering contract. | Resolved for V1 | Resolved by ADR-009; implementation must use its provider-neutral fields, layout, bounds, output, scaling, contrast, and pass-through rules. |
 | 13 | Define the V1 renderer implementation contract. | Resolved for V1 | Resolved by ADR-010; implementation must use the pinned SkiaSharp stack, bundled DejaVu Sans Bold 2.37 font, bounded source/result contract, sRGB PNG policy, immutable renderer configuration, and golden/determinism tests. See the Phase 4 tasks in `PLANS.md`. |
@@ -380,8 +400,12 @@ that introduce them.
 - Define webhook authentication, replay protection, rate limits, payload bounds,
   route exposure, and provider-record-to-Jellyfin resolution, or explicitly
   defer webhooks. Secret persistence/access is resolved by ADR-005.
-- Define Jellyfin Enhanced duplicate-badge and Spoiler Guard behavior and test
-  the selected policy through the standard image path.
+- Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap detection or
+  suppression and no Enhanced-internals dependency; the existing poster and
+  renderer selector enable flags are the user's control surface, and Spoiler
+  Guard has no material effect on ArrTags badge display. `EnhancedCoexistenceTests`
+  (task 5.10) covers the policy without a live Enhanced install; confirming the
+  standard image route remains task 5.11.
 - Implement per-item generation tokens, publication serialization, and
   ArrTags-generated event-loop suppression.
 - Finalize DTO nullability, optional-field compatibility, provider fixtures, and
@@ -405,6 +429,10 @@ that introduce them.
 - [x] Publication and restoration use durable operation intent, staged artifacts,
   postcondition recovery, lifecycle fences, and fail-closed ambiguity handling.
 - [x] Jellyfin Enhanced internals are not a dependency.
+- [x] The Jellyfin Enhanced coexistence policy is resolved by ADR-011: no
+  automatic duplicate/overlap suppression, no Enhanced-internals dependency, and
+  no special spoiler/hidden handling; the existing poster and selector enable
+  flags remain the user's control surface.
 - [x] Provider credentials remain in persisted plugin configuration and are
   obtained through the versioned, short-lived secret boundary in ADR-005.
 - [x] DG-3 badge fields, provider-neutral selectors, layout, typography,

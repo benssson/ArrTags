@@ -8,9 +8,10 @@ packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store),
 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7
 (postcondition reconciliation of uncertain publication outcomes), 5.8
 (preserve the current usable artwork when source capture or rendering cannot
-safely complete), and 5.9 (fence and drain publication operations during
-disable/uninstall and tombstone confirmed item removal)
-are complete; the remaining Phase 5 tasks (5.10 and 5.11) are not started.
+safely complete), 5.9 (fence and drain publication operations during
+disable/uninstall and tombstone confirmed item removal), and 5.10 (the Jellyfin
+Enhanced coexistence policy, resolved by ADR-011)
+are complete; the remaining Phase 5 task (5.11) is not started.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on
@@ -423,13 +424,30 @@ Completed in Phase 5 (Jellyfin artwork integration):
   lazy resolution and failure containment, bounded deterministic traversal-safe
   `StateRepository.Enumerate`, DI registration, and boundary-neutrality. See
   `docs/architecture.md` section 9 and `docs/data-model.md` section 3.10.
+- 5.10 Resolved decision gate DG-8 with `docs/decisions.md` ADR-011 and recorded
+  the Jellyfin Enhanced coexistence policy in `docs/architecture.md` section 10.
+  ArrTags does not implement automatic duplicate-badge detection, overlap
+  suppression, or a dependency on Enhanced internals; Jellyfin Enhanced chooses
+  its own overlay placement, so overlap handling is deferred to the user, and
+  ArrTags badge output is controlled only by the existing `BadgeMoviePosters`/
+  `BadgeEpisodePosters` poster enable flags and the renderer selector
+  enablement. Enhanced's Spoiler Guard has no material effect on ArrTags badge
+  display, so ArrTags renders its derived badge normally and adds no special
+  spoiler/hidden handling. No new configuration knob, production behavior,
+  `RenderVersion`, or renderer behavior was added. New tests
+  (`EnhancedCoexistenceTests`, 7 cases) assert that the production assembly has
+  no Enhanced reference or Enhanced/spoiler/suppression type, that the policy
+  surface and the renderer/publication reason enums have no
+  spoiler/hidden/duplicate/overlap suppression branch, and that badge
+  eligibility and output vary only with the existing ArrTags configuration.
+  Route/client confirmation remains task 5.11.
 
 The plugin:
 
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 964 automated tests; 49 additional environment-guarded tests (the task
+- Passes 971 automated tests; 49 additional environment-guarded tests (the task
   4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
   PNG-contract, cross-runtime, determinism, orientation, and profile cases
   including the non-canonical-golden placeholder, the task 5.1 host route cases,
@@ -444,9 +462,9 @@ The plugin:
 Next tasks:
 
 - Phase 5 — Jellyfin artwork integration (Milestone 5). Tasks 5.1, 5.2, 5.3,
-  5.4, 5.6, 5.5, 5.7, 5.8, and 5.9 are complete; the next task in the
-  authoritative Phase 5 execution order is 5.10 (the configured disable/limit
-  policy for duplicate or overlapping badges).
+  5.4, 5.6, 5.5, 5.7, 5.8, 5.9, and 5.10 are complete; the next task in the
+  authoritative Phase 5 execution order is 5.11 (test Web and image-consuming
+  clients through the supported server image response path).
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

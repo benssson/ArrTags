@@ -184,7 +184,10 @@ The persisted configuration includes:
 - V1 does not persist or publish path mappings. Configured path fallback is
   deferred out of V1 by ADR-008.
 - Webhook token or equivalent secret for inbound Arr notifications.
-- Jellyfin Enhanced coexistence and duplicate-badge policy.
+- No separate Jellyfin Enhanced coexistence field is persisted. The coexistence
+  policy (ADR-011) is realized entirely through the existing poster enable flags
+  and renderer selector enablement, with no automatic duplicate/overlap
+  suppression and no Enhanced-internals dependency.
 
 API keys and webhook secrets must not appear in logs, status responses, cache
 keys, fingerprints, or exception messages. TLS certificate validation is strict
@@ -805,15 +808,28 @@ tolerances as defined by ADR-010.
 
 ArrTags has no source-level dependency on Jellyfin Enhanced. Enhanced's quality
 tags are client-side Web overlays; ArrTags' badges are persisted through the
-standard server-side image path. Therefore:
+standard server-side image path. DG-8 is resolved by
+[ADR-011](decisions.md), and the coexistence policy is:
 
-- Native clients receive ArrTags badges without requiring the Web UI.
-- Jellyfin Web may show both systems and duplicate information.
-- ArrTags exposes a policy to disable or limit its server badges where needed.
+- ArrTags does not implement automatic duplicate-badge detection, overlap
+  suppression, or any dependency on Enhanced internals. Jellyfin Enhanced can
+  choose where it draws its own overlays, so overlap handling is deferred to the
+  user.
+- ArrTags badge output is controlled only by the existing ArrTags configuration:
+  the `BadgeMoviePosters`/`BadgeEpisodePosters` poster enable flags and the
+  renderer selector enablement. No duplicate/overlap suppression knob or new
+  coexistence field is introduced. A user who does not want overlapping
+  presentation disables the relevant ArrTags poster surface or selector, or
+  configures Enhanced.
+- Enhanced's Spoiler Guard has no material effect on ArrTags badge display.
+  ArrTags renders its derived badge normally and adds no special handling for a
+  spoiler or hidden state; it never reads or reproduces Enhanced filter ordering.
+- Native clients receive ArrTags badges without requiring the Web UI, and
+  Jellyfin Web may show both systems and duplicate information. That duplicate
+  presentation is a documented, user-managed outcome rather than an ArrTags
+  detection problem.
 - Documentation may recommend disabling overlapping Enhanced quality tags, but
   ArrTags does not alter Enhanced configuration.
-- Spoiler Guard and hidden/blurred image behavior must be tested through the
-  normal image route; ArrTags must not depend on Enhanced filter ordering.
 
 ## 11. Failure, consistency, and security policy
 
@@ -925,7 +941,9 @@ Jellyfin 12.x ABI and supported Arr versions.
   corruption; restart reconciliation; lifecycle fences; and item tombstones.
 - Arr authentication, URL bases, timeouts, outages, upgrades, missing files,
   and webhook authentication.
-- Jellyfin Enhanced Quality Tags and Spoiler Guard enabled and disabled.
+- Jellyfin Enhanced coexistence: ArrTags output and eligibility are independent
+  of Enhanced Quality Tags and Spoiler Guard state, and no Enhanced internals are
+  referenced (ADR-011).
 - Restart during reconciliation and rendering, corrupted state, and cache
   eviction.
 
@@ -975,6 +993,9 @@ The following are intentionally not guessed by this architecture:
    flow. Secret persistence and versioned access are resolved by ADR-005; route
    exposure and webhook authorization remain open.
 8. Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior.
+   Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap suppression,
+   no Enhanced-internals dependency, and no special spoiler/hidden handling; the
+   existing poster and selector enable flags are the user's control surface.
 9. Supported live Sonarr/Radarr release ranges and optional-field compatibility.
 
 These decisions must be recorded in `docs/decisions.md` or
@@ -985,9 +1006,10 @@ resolved in `docs/implementation-readiness.md`. Item 2 (V1 badge surfaces and
 the library scope identifier) is resolved by ADR-006. Item 4 (episode numbering)
 is resolved by ADR-007. Item 5 (path fallback) is resolved by ADR-008. Item 6
 (foundation operational limits) is resolved by ADR-004, with the accepted values
-recorded in section 12. The credential persistence and access boundary is
-resolved by ADR-005. The remaining webhook decision is route exposure and request
-policy, not secret storage.
+recorded in section 12. Item 8 (Jellyfin Enhanced coexistence) is resolved by
+ADR-011. The credential persistence and access boundary is resolved by ADR-005.
+The remaining webhook decision is route exposure and request policy, not secret
+storage.
 The remaining items stay open and are tracked by the decision gates in
 `PLANS.md`.
 

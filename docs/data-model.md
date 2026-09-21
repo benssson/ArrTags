@@ -800,7 +800,7 @@ badge selection, rendering, cache policy, and update behavior.
 | `renderingPolicy` | Render size, format, placement, and limits | Yes | Configuration | Output-affecting values belong in the configuration fingerprint. |
 | `cachePolicy` | TTL, stale window, size, and eviction limits | Yes | Configuration | Separate metadata freshness from artwork retention. |
 | `updatePolicy` | Schedule, webhook, retry, and queue policy | Yes | Configuration | Webhooks accelerate reconciliation; they do not replace it. |
-| `enhancedCoexistencePolicy` | Duplicate/spoiler surface policy | Yes | Configuration | No dependency on Jellyfin Enhanced internals. |
+| `enhancedCoexistencePolicy` | Existing poster and selector enable flags | Yes | Configuration | Realized by the existing `BadgeMoviePosters`/`BadgeEpisodePosters` flags and renderer selector enablement; ADR-011 adds no automatic duplicate/overlap suppression and no Enhanced-internals dependency. |
 | `pathMappings` | Optional connection-scoped mappings | Optional | Configuration | Reserved post-V1; ADR-008 defers path fallback and V1 snapshots do not carry this field. |
 | `secretReferences` | Protected, typed secret-slot references | Optional | Configuration | API keys and webhook secrets are represented only by safe references; values are excluded from fingerprints, logs, canonical snapshots, and state. |
 
@@ -822,7 +822,9 @@ by reference and configuration version immediately before external
 authentication. Badge definition persistence and rendering-style configuration
 remain implementation work, but their V1 selector, layout, output, and failure
 semantics are fixed by ADR-009. Path mappings are explicitly post-V1 under
-ADR-008 and are not part of the V1 snapshot.
+ADR-008 and are not part of the V1 snapshot. The Jellyfin Enhanced coexistence
+policy (ADR-011) is realized by the existing poster and renderer selector enable
+flags; it adds no snapshot field and no automatic duplicate/overlap suppression.
 
 #### 3.12.1 Secret resolution semantics
 
@@ -1039,7 +1041,7 @@ Mapping labels:
 | `renderingPolicy` | Published image format, placement, and limits | Not applicable | Not applicable | Plugin configuration plus Jellyfin image context. |
 | `cachePolicy` | Not applicable | Provider freshness/capability inputs | Provider freshness/capability inputs | Configuration controls retention; provider does not define plugin TTL. |
 | `updatePolicy` | Library events/schedules | Webhook connection hints | Webhook connection hints | Common reconciliation policy. |
-| `enhancedCoexistencePolicy` | Jellyfin Enhanced surface behavior | Not applicable | Not applicable | Configuration only; no Enhanced model is imported. |
+| `enhancedCoexistencePolicy` | Existing poster/selector enable flags | Not applicable | Not applicable | Configuration only; no Enhanced model is imported and ADR-011 adds no new field. |
 | `pathMappings` | Jellyfin path namespace | Sonarr path namespace | Radarr path namespace | Reserved post-V1; V1 does not persist mappings or perform path fallback (ADR-008). |
 | `secretReferences` | Protected plugin settings | API key/webhook secret | API key/webhook secret | References only; values are not domain data. |
 
