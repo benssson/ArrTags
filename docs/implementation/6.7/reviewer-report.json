@@ -1,0 +1,52 @@
+{
+  "task": "6.7",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "status": "accepted",
+      "summary": "The Jellyfin plugin-controller registration contract is structurally verified against the pinned v12.0 host source, but no live HTTP round-trip was performed.",
+      "detail": "The controller contract test only asserts attributes/types. I independently fetched the pinned Jellyfin v12.0 host source: Jellyfin.Server/Startup.cs calls AddJellyfinApi(GetApiPluginAssemblies(), ...); Emby.Server.Implementations/ApplicationHost.cs GetApiPluginAssemblies() selects assemblies of _allConcreteTypes assignable to ControllerBase (from plugin LoadAssemblies via DiscoverTypes/GetExportedTypes, filtering public non-abstract classes); Jellyfin.Server/Extensions/ApiServiceCollectionExtensions.cs AddJellyfinApi adds each plugin assembly with AddApplicationPart and calls AddControllersAsServices(); Startup.Configure maps controllers with endpoints.MapControllers(). ArrTagsWebhookController is a public sealed ControllerBase named *Controller with [ApiController]/[AllowAnonymous]/[Route]/[HttpPost], so it satisfies discovery, activation (constructor deps ConfigurationSnapshotService/IPluginSecretResolver/IWebhookIntake are all registered), and routing. This confirms the mechanism rather than merely asserting it; only the live route/authorization behavior under a running host remains unverified, which ADR-012 already records as an implementation-time validation item. Acceptable; no change required."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "status": "accepted",
+      "summary": "The bounded resolution scan can inspect more metadata-state files than the batch-size bound when records are invalid, though it returns at most the bound.",
+      "detail": "StateRepository.Enumerate<T> stops once maxRecords valid records are collected, but invalid/undecodable files do not count toward that limit, so a directory with many corrupt records can be read in full. This is bounded by the number of tracked items (library size), runs only on the hosted intake service thread (never the request thread), and returns at most ReconciliationBatchSize results, so it cannot drive unbounded work. The ADR-012 statement 'scans at most that many persisted metadata-state records' is slightly imprecise for corrupt records but not materially wrong. No change required."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "noted",
+      "summary": "Pre-existing: ConfigurationSnapshotService.TryReplace is never wired to Jellyfin configuration-update events, so a webhook secret saved after startup appears to require a restart; this is project-wide, not introduced by 6.7.",
+      "detail": "A repository-wide search shows TryReplace is referenced only by tests; the production snapshot is built once at DI construction and the singleton is not refreshed on configuration saves. This affects all ArrTags configuration (Sonarr/Radarr API keys too) and predates task 6.7, matching the existing 'restart required' behavior. ADR-012's route-administration flow remains valid; it does not claim immediate effect. Reported only because the DG-7 administration flow is under review; not a 6.7 defect and not required to change."
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "status": "noted",
+      "summary": "Minor citation inconsistency in ADR-012 references versus the updated data-model sections.",
+      "detail": "ADR-012 references docs/data-model.md sections 3.3, 3.11, 4.11, and 7, but the changelog/worker summary say sections 3.3, 4.11, and 7 were updated; section 3.11 (canonical UpdateEvent) was not modified. References may cite related unmodified sections, so this is an informational documentation nit with no effect on correctness. No change required."
+    }
+  ],
+  "tests_checked": [
+    "Reproduced ./build.sh build after sourcing /config/arrtags-env.sh: Build succeeded, 0 warnings, 0 errors.",
+    "Reproduced ./build.sh test: Failed 0, Passed 1141, Skipped 58, Total 1199 (matches worker claim; +45 over the 6.6 baseline 1096/58/1154; skips are the expected host-guarded/native-Skia environment skips).",
+    "Inspected tests/ArrTags.Tests/WebhookBoundaryTests.cs (25 [Fact] + one 9-case [Theory] = 34 cases): constant-time lease auth success (asserts SecretReference.WebhookAuthentication and snapshot version), missing/wrong/near-miss/oversized/absent-configuration fail-closed 401 with no work, declared and streamed 413, 9 malformed/truncated/empty/wrong-shaped 400 cases, unsupported-event 202 no work, duplicate/replay intake coalescing, bounded overflow drop, stopped-intake rejection, coalescing-window eviction/expiry, Sonarr/Radarr hint mapping, casing/unknown-field tolerance, episode-count bound, controller registration-attribute contract, no provider-write/renderer/publisher dependencies, new limit validation, registrator wiring.",
+    "Inspected tests/ArrTags.Tests/WebhookResolutionTests.cs (11 [Fact]): only-known Radarr association resolves, unknown association / disabled connection / provider-kind mismatch / unsupported event produce no hint, series-level resolves known episodes, episode-level scopes to advertised episode, batch-size bound, hosted service enqueues LibraryWorkHint(Updated) via the existing sink, replay+distinct events coalesce to one queue item, bounded stop.",
+    "Inspected production behavior behind the tests: ArrTagsWebhookController, WebhookAuthentication, WebhookBodyReader, WebhookEventParser, WebhookIntake/WebhookCoalescingWindow, WebhookReconciliationResolver, WebhookIntakeService, MetadataStateStore.Enumerate, OperationalLimits.WebhookMaxPayloadBytes, ArrTagsServiceRegistrator."
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-012 (route exposure, header auth via ADR-005 constant-time lease, payload bounds/tolerant parsing, bounded provider-record-to-Jellyfin resolution, replay coalescing, rate/overflow drop, administration flow, work-scope guarantees, rejected alternatives, references) and ADR-005 (versioned secret boundary, constant-time webhook lease, activation/replacement semantics).",
+    "docs/research/sonarr-api.md 'Keeping badges current' (webhook events, treat as hints, validate-before-implementation checklist, unsigned payloads) and docs/research/radarr-api.md section 11 (PascalCase eventType set, camelCase base/Download payload, unsigned endpoints, health/grab caveats).",
+    "docs/research/jellyfin-12-architecture.md sections 2.1/2.2 (IPluginServiceRegistrator and plugin ControllerBase discovery) and 6.1 (plugin ControllerBase routes classified as confirmed supported).",
+    "Pinned Jellyfin v12.0 host source (GitHub v12.0 tag): Jellyfin.Server/Startup.cs, Jellyfin.Server/Extensions/ApiServiceCollectionExtensions.cs, Emby.Server.Implementations/ApplicationHost.cs, MediaBrowser.Controller/IServerApplicationHost.cs, MediaBrowser.Common/IApplicationHost.cs — used to independently confirm controller discovery/activation/routing.",
+    "docs/architecture.md (sections 4 component table, 5/6 startup and configuration, 8 webhook contract, 11 failure isolation, 12 operational limits, 14 open items), docs/data-model.md (3.3 secret slot, 4.11 update-event mapping, 7 event model), docs/implementation-readiness.md, docs/changelog.md, PLANS.md DG-7 and task 6.7, AGENTS.md.",
+    "Security/secret-path grep: confirmed no logging/response/exception/state path emits the secret, candidate, headers, or body; only SecretLease.Matches (CryptographicOperations.FixedTimeEquals) compares the candidate; controller returns bodyless 202/400/401/413; SecretPurpose.WebhookAuthentication is distinct from ArrApiKey."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

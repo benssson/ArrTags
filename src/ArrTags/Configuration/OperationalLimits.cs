@@ -27,6 +27,12 @@ public sealed class OperationalLimits
     public const int DefaultMetadataStaleWindowMinutes = 24 * MinutesPerHour;
 
     /// <summary>
+    /// The default maximum inbound webhook request payload size in bytes
+    /// (ADR-012).
+    /// </summary>
+    public const long DefaultWebhookMaxPayloadBytes = 256L * Kibibyte;
+
+    /// <summary>
     /// Gets or sets the maximum number of pending update queue entries.
     /// </summary>
     public int QueueCapacity { get; set; } = 512;
@@ -80,6 +86,12 @@ public sealed class OperationalLimits
     /// Gets or sets the maximum provider JSON response size in bytes.
     /// </summary>
     public long ProviderResponseLimitBytes { get; set; } = 8L * Mebibyte;
+
+    /// <summary>
+    /// Gets or sets the maximum inbound webhook request payload size in bytes.
+    /// An oversized request is rejected before parsing and produces no work.
+    /// </summary>
+    public long WebhookMaxPayloadBytes { get; set; } = DefaultWebhookMaxPayloadBytes;
 
     /// <summary>
     /// Gets or sets the maximum source artifact size in bytes.
@@ -145,6 +157,7 @@ public sealed class OperationalLimits
         AddRangeError(errors, nameof(RetryBackoffFactor), RetryBackoffFactor, 1, 10);
         AddRangeError(errors, nameof(RetryBackoffMaxSeconds), RetryBackoffMaxSeconds, 1, 120);
         AddRangeError(errors, nameof(ProviderResponseLimitBytes), ProviderResponseLimitBytes, 64L * Kibibyte, 64L * Mebibyte);
+        AddRangeError(errors, nameof(WebhookMaxPayloadBytes), WebhookMaxPayloadBytes, 4L * Kibibyte, 4L * Mebibyte);
         AddRangeError(errors, nameof(SourceArtifactLimitBytes), SourceArtifactLimitBytes, 64L * Kibibyte, 128L * Mebibyte);
         AddRangeError(errors, nameof(DerivedArtifactLimitBytes), DerivedArtifactLimitBytes, 64L * Kibibyte, 128L * Mebibyte);
         AddRangeError(errors, nameof(MaxImageDimensionPixels), MaxImageDimensionPixels, 512, 16384);
@@ -180,6 +193,7 @@ public sealed class OperationalLimits
             RetryBackoffFactor = RetryBackoffFactor,
             RetryBackoffMaxSeconds = RetryBackoffMaxSeconds,
             ProviderResponseLimitBytes = ProviderResponseLimitBytes,
+            WebhookMaxPayloadBytes = WebhookMaxPayloadBytes,
             SourceArtifactLimitBytes = SourceArtifactLimitBytes,
             DerivedArtifactLimitBytes = DerivedArtifactLimitBytes,
             MaxImageDimensionPixels = MaxImageDimensionPixels,

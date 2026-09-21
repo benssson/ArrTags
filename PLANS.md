@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, 6.3, 6.4, 6.5, and 6.6 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, and 6.7 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -175,7 +175,7 @@ without modifying original media files or external services.
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
-| 6 | Caching, updates & performance | In progress (6.6 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
+| 6 | Caching, updates & performance | In progress (6.7 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
@@ -2033,7 +2033,7 @@ authoritative.
 - [x] 6.6 Regenerate and republish only affected artwork when a metadata
   fingerprint changes; invalidate relevant publication/work state on schema,
   renderer, or configuration changes.
-- [ ] 6.7 Validate and bound webhook authentication, content, rate, and work
+- [x] 6.7 Validate and bound webhook authentication, content, rate, and work
   scope; treat webhooks as hints rather than source of truth.
 - [ ] 6.8 Test restart, shutdown, corruption, outage, recovery, duplicate events,
   queue pressure, and cancellation behavior.
@@ -2261,6 +2261,48 @@ config-to-render integration, and the DI composition. The task 6.1-6.5 queue,
 worker, metadata publication, recovery gate, freshness, and retention behavior is
 unchanged. Webhooks (6.7) and the restart/outage test matrix (6.8) remain.
 
+**Task 6.7 status:** Complete. DG-7 is resolved by `docs/decisions.md` ADR-012,
+and the authenticated, bounded inbound Arr webhook boundary is implemented in
+`src/ArrTags/Webhooks`. `ArrTagsWebhookController` is an anonymous plugin
+`ControllerBase` discovered by Jellyfin's plugin controller registration and
+exposes `POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr`. It
+authenticates the `X-ArrTags-Webhook-Secret` header through the ADR-005 webhook
+lease (`SecretReference.WebhookAuthentication`,
+`TryAcquire(reference, configurationVersion)`, `SecretLease.Matches`) with a
+constant-time comparison; a missing configuration, a missing candidate, an
+oversized candidate, a rotated generation, and a mismatch all fail closed with
+the same bounded `401` and no secret/header/body leakage. `WebhookBodyReader`
+enforces `OperationalLimits.WebhookMaxPayloadBytes` (default 256 KiB, range
+4 KiB-4 MiB) before buffering and returns `413`; `WebhookEventParser` is
+tolerant of unknown fields and casing and bounded in JSON depth and episode
+count, maps only the event kind, upgrade flag, and provider record/file hints,
+rejects empty/malformed/truncated/wrong-shaped payloads with `400`, and
+acknowledges an unsupported event kind with `202` and no work. The bounded,
+coalescing `WebhookIntake` suppresses duplicate, out-of-order, and replayed
+deliveries within a short window and drops overflow without blocking, and the
+hosted `WebhookIntakeService` resolves accepted events off the request path.
+`WebhookReconciliationResolver` performs bounded provider-record-to-Jellyfin
+resolution: it returns only the Jellyfin items already associated with the
+advertised provider record in the persisted metadata-state mapping for the
+resolved connection, bounded by `ReconciliationBatchSize`, so a payload item id
+is never permission and no Arr write or direct publication occurs. Resolved
+items are enqueued through the existing `IWorkHintSink` as the same bounded
+`LibraryWorkHint` work as every other trigger, so the worker re-reads current
+Jellyfin and Arr state. `MetadataStateStore` gained a bounded `Enumerate`
+accessor used only by the resolution, and DI registers the resolver, intake, and
+hosted service after the work worker. Focused tests in `WebhookBoundaryTests`
+(34 cases) and `WebhookResolutionTests` (11 cases) cover authentication
+success/failure, the constant-time lease path, declared and streamed size
+limits, malformed/truncated/empty/wrong-shaped payloads, unsupported event
+types, replay/duplicate coalescing, bounded overflow and coalescing windows,
+hint mapping, the controller registration contract, the no-write/no-publication
+dependency boundary, the new limit validation, provider-record resolution,
+disabled/mismatched/unsupported no-ops, series and episode scoping, the
+batch-size bound, and the hosted service feeding the deduplicated queue. The
+task 6.1-6.6 queue, worker, metadata publication, recovery, freshness,
+retention, and regeneration behavior is unchanged. The restart/outage test
+matrix (6.8) remains.
+
 **Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
 6.8. Task IDs are stable references only; this execution order is the canonical
 sequence. The order is derived from the documented dependencies, not from task
@@ -2374,7 +2416,7 @@ an implementation assumption.
 | DG-4 | Episode numbering rules, including specials, anime, absolute numbering, double episodes, and multi-episode files. Resolved by ADR-007: number fallback is limited to regular single episodes; season zero specials, multi-episode spans, and absolute/scene numbering are excluded. | Milestone 3 |
 | DG-5 | Whether path mappings are needed, and their connection-scoped representation. Resolved by ADR-008: configured path fallback is deferred out of V1, so V1 has no path mapping schema, normalization, or `ConfiguredPath` rule. | Milestone 3 |
 | DG-6 | Queue, timeout, retry, concurrency, image-size, cache, and stale-state defaults. Foundation defaults are resolved by ADR-004; Milestone 6 may tune within the documented validation ranges. | Milestone 6 |
-| DG-7 | Webhook exposure, authentication, payload limits, replay handling, and route administration flow. Secret persistence and versioned access are resolved by ADR-005. | Milestone 6 |
+| DG-7 | Webhook exposure, authentication, payload limits, replay handling, and route administration flow. Resolved by ADR-012: an anonymous plugin route authenticated by the `X-ArrTags-Webhook-Secret` header through the constant-time versioned webhook lease, a bounded tolerant payload with a configured size limit, a bounded coalescing intake with idempotent replay handling, bounded provider-record-to-Jellyfin resolution into the existing work-hint path, and an administration flow that reuses the ADR-005 `WebhookSecret` slot. Secret persistence and versioned access remain resolved by ADR-005. | Milestone 6 |
 | DG-8 | Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior. Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap detection or suppression and no Enhanced-internals dependency; the existing poster and selector enable flags are the user's control surface, and Spoiler Guard has no material effect on ArrTags badge display. | Milestone 5 |
 | DG-9 | Supported live Sonarr/Radarr release ranges and optional-field compatibility policy. | Milestones 2 and 7 |
 

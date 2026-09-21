@@ -1370,8 +1370,8 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Tasks 6.1, 6.2, 6.3, 6.4, 6.5, and 6.6 complete; Gate 6
-not yet met.
+**Status:** In progress. Tasks 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, and 6.7 complete;
+Gate 6 not yet met.
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
 
@@ -1810,3 +1810,73 @@ repeat publication" is addressed by the retained-artifact validation, and the LO
 `docs/architecture.md` section 9. The Phase 5 review LOW "Configuration / DI
 lifetime" is unchanged and remains tracked for a later task: the artwork
 singletons still capture `OperationalLimits` at first resolution.
+
+### Task 6.7 - Inbound Arr webhook boundary (DG-7)
+
+Task 6.7 resolves decision gate DG-7 with `docs/decisions.md` ADR-012 and
+implements the authenticated, bounded inbound Arr webhook boundary in
+`src/ArrTags/Webhooks`. A webhook is a hint, never a source of truth: it
+authenticates with the configured shared secret through the ADR-005 webhook
+lease, bounds and tolerantly parses the payload, and feeds the existing bounded,
+deduplicated work-hint path so the worker re-reads current Jellyfin and Arr
+state.
+
+- `src/ArrTags/Webhooks/ArrTagsWebhookController.cs`: an anonymous plugin
+  `ControllerBase` discovered by Jellyfin's plugin controller registration,
+  exposing `POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr`. It
+  authenticates the `X-ArrTags-Webhook-Secret` header first, enforces the
+  configured payload bound, parses the payload, performs a non-blocking bounded
+  submit, and returns only bounded safe status codes (`202`, `400`, `401`,
+  `413`). It never logs, returns, or retains the secret, headers, or body.
+- `src/ArrTags/Webhooks/WebhookAuthentication.cs`: constant-time authentication
+  through `TryAcquire(SecretReference.WebhookAuthentication, version)` and
+  `SecretLease.Matches`. A missing configuration, a missing candidate, an
+  oversized candidate, a rotated generation, and a mismatch all fail closed with
+  the same safe status.
+- `src/ArrTags/Webhooks/WebhookBodyReader.cs` and `WebhookBodyReadResult.cs`: a
+  hard bounded body read that rejects a declared or streamed oversize before
+  buffering the whole body.
+- `src/ArrTags/Webhooks/WebhookEventParser.cs`, `WebhookEvent.cs`,
+  `WebhookEventType.cs`, and `WebhookParseError.cs`: a bounded, tolerant parser
+  (bounded JSON depth and episode count, unknown fields and casing tolerated)
+  that maps only the event kind, upgrade flag, and provider record/file hints.
+  Empty, malformed, truncated, or wrong-shaped payloads are rejected; an
+  unsupported event kind is acknowledged and produces no work.
+- `src/ArrTags/Webhooks/WebhookIntake.cs`, `IWebhookIntake.cs`,
+  `WebhookCoalescingWindow.cs`, and `WebhookCoalesceKey.cs`: a bounded,
+  non-blocking intake that suppresses duplicate, out-of-order, and replayed
+  deliveries within a short bounded window and drops overflow without blocking
+  or growing without bound.
+- `src/ArrTags/Webhooks/WebhookReconciliationResolver.cs`: bounded
+  provider-record-to-Jellyfin resolution. It looks up only the Jellyfin items
+  ArrTags already associated with the advertised provider record in the
+  persisted metadata-state mapping for the resolved connection, bounded by
+  `OperationalLimits.ReconciliationBatchSize`; it never trusts the payload as
+  current state and never grants permission to work on an arbitrary item.
+- `src/ArrTags/Webhooks/WebhookIntakeService.cs`: the hosted consumer that
+  resolves accepted events off the request path and enqueues the same bounded
+  `LibraryWorkHint` work as every other trigger, with a bounded shutdown.
+- `src/ArrTags/Configuration/OperationalLimits.cs`:
+  `WebhookMaxPayloadBytes` (default 256 KiB, range 4 KiB to 4 MiB).
+- `src/ArrTags/Reconciliation/MetadataStateStore.cs`: a bounded `Enumerate`
+  accessor used only by the bounded webhook resolution.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers the
+  resolver, the intake, and the hosted intake service after the work worker.
+- Tests: `WebhookBoundaryTests.cs` (34 cases) and `WebhookResolutionTests.cs`
+  (11 cases) covering authentication success/failure, the constant-time lease
+  path, declared and streamed size limits, malformed/truncated/empty/
+  wrong-shaped payloads, unsupported event types, replay/duplicate coalescing,
+  bounded overflow and coalescing windows, hint mapping, safe status codes, the
+  controller registration contract, the no-write/no-publication dependency
+  boundary, the new limit validation, provider-record resolution,
+  disabled/mismatched/unsupported no-ops, series and episode scoping, the
+  batch-size bound, and the hosted service feeding the deduplicated queue.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1141 with 58 environment-guarded skips (1199
+total), exactly +45 over the task 6.6 baseline (1096/58/1154), with no new skips
+and no regressions. DG-7 is resolved by ADR-012; `docs/architecture.md` sections
+4, 5, 6, 8, 11, 12, and 14 and `docs/data-model.md` sections 3.3, 4.11, and 7
+were updated to match the implemented behavior. No queue, worker, publication,
+recovery, freshness, or regeneration mechanic was changed and no secret enters a
+queue item, cache, fingerprint, or diagnostic.

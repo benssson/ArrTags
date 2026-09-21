@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using ArrTags.Providers;
 using ArrTags.State;
@@ -90,6 +91,37 @@ public sealed class MetadataStateStore
 
         TryDiscard(recordId);
         return StateResults.Discarded<MetadataStateEntry>(reason);
+    }
+
+    /// <summary>
+    /// Enumerates a bounded number of valid metadata state records. The scan is
+    /// bounded by <paramref name="maxRecords"/> and every returned record has
+    /// passed the same semantic validation as <see cref="Read(string)"/>; a
+    /// corrupt or invalid cache record is discarded by the repository scan and
+    /// omitted. The enumeration is used by the bounded webhook
+    /// provider-record-to-Jellyfin resolution (ADR-012) and must never be used
+    /// to drive unbounded work.
+    /// </summary>
+    /// <param name="maxRecords">The bounded maximum number of records to inspect.</param>
+    /// <returns>The valid records in the repository's bounded deterministic order.</returns>
+    public IReadOnlyList<MetadataStateEntry> Enumerate(int maxRecords)
+    {
+        if (maxRecords <= 0)
+        {
+            return Array.Empty<MetadataStateEntry>();
+        }
+
+        var records = _repository.Enumerate<MetadataStateEntry>(StateAuthority.Cache, RecordKind, maxRecords);
+        var valid = new List<MetadataStateEntry>(records.Count);
+        foreach (var record in records)
+        {
+            if (record.Validate(out _))
+            {
+                valid.Add(record);
+            }
+        }
+
+        return valid;
     }
 
     /// <summary>

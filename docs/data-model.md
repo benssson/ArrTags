@@ -287,6 +287,7 @@ provider URL or looked up in a general-purpose vault. V1 has one slot for the
 Sonarr API key and one for the Radarr API key because V1 has at most one
 connection of each provider kind. The webhook shared secret has a separate
 typed slot and must never be interchangeable with an Arr API-key reference.
+ADR-012 uses that slot only for constant-time inbound webhook authentication.
 Future multi-connection support must add connection-scoped slots before it is
 enabled.
 
@@ -1023,7 +1024,7 @@ Mapping labels:
 | `occurredAt` | Event/receipt time | Webhook event time when present | Webhook event time when present | Direct where trustworthy, otherwise generated receipt time. |
 | `jellyfinItemId` | Event item ID | Not normally supplied | Not normally supplied | Direct Jellyfin or resolved from provider identity. |
 | `connectionId` | Configuration scope | Configured Sonarr connection | Configured Radarr connection | Generated from receiving endpoint/connection. |
-| `providerRecordId` | Not applicable | Series/episode ID in webhook | Movie ID in webhook | Direct hint, revalidated through reads. |
+| `providerRecordId` | Not applicable | Series/episode ID in webhook | Movie ID in webhook | Direct hint; used only to resolve already-known Jellyfin associations within the bounded reconciliation batch size, then revalidated through reads (ADR-012). |
 | `providerFileIds` | Not applicable | Episode file ID/current file hints | Movie file ID/deleted-file hints | Direct hint where supplied. |
 | `reason` | Library update/removal | Import, rename, file delete, health | Download/upgrade, rename, delete, health | Normalized event reason. |
 | `invalidationScope` | Item/match/metadata/artwork | Provider record/file impact | Provider record/file impact | Generated from reason and policy. |
@@ -1139,6 +1140,16 @@ when the relevant cache version changes.
 
 Events are internal work hints. They are bounded, deduplicated, cancellation-
 aware, and safe to replay. Provider webhooks never directly publish metadata.
+
+An authenticated inbound Arr webhook (ADR-012) is mapped into this same hint
+path. Only the event kind, upgrade flag, and provider-local record/file
+identifiers are read from the bounded payload; those identifiers are hints used
+to find the Jellyfin items ArrTags has already associated with the provider
+record in its persisted metadata-state mapping. The resolution is bounded by the
+configured reconciliation batch size, the resulting bounded work hint is
+deduplicated with every other trigger, and the worker re-reads current Jellyfin
+and Arr state before publishing. A webhook never publishes metadata, mutates
+artwork, calls an Arr endpoint, or widens work beyond already-known items.
 
 | Event | Required data | Effect |
 | --- | --- | --- |

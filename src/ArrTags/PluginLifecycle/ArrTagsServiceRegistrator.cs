@@ -12,6 +12,7 @@ using ArrTags.Rendering;
 using ArrTags.Secrets;
 using ArrTags.State;
 using ArrTags.Updates;
+using ArrTags.Webhooks;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Drawing;
@@ -90,6 +91,17 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         // accepting and cancels queued/in-flight work before the lifecycle drain
         // establishes the durable fence.
         serviceCollection.AddHostedService<LibraryWorkWorker>();
+
+        // The bounded webhook intake and its hosted resolver. Registered after
+        // the work worker so the bounded queue is accepting before webhook
+        // resolution can enqueue hints. The inbound controller itself is
+        // discovered by Jellyfin's plugin controller registration and resolves
+        // these services from DI.
+        serviceCollection.TryAddSingleton(CreateWebhookReconciliationResolver);
+        serviceCollection.TryAddSingleton(static _ => new WebhookIntake());
+        serviceCollection.TryAddSingleton<IWebhookIntake>(
+            static serviceProvider => serviceProvider.GetRequiredService<WebhookIntake>());
+        serviceCollection.AddHostedService<WebhookIntakeService>();
     }
 
     private static void RegisterProviderHttpClients(IServiceCollection serviceCollection)
@@ -270,6 +282,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<ArtworkOperationStore>(),
             serviceProvider.GetRequiredService<SourceArtifactStore>());
+    }
+
+    private static WebhookReconciliationResolver CreateWebhookReconciliationResolver(IServiceProvider serviceProvider)
+    {
+        return new WebhookReconciliationResolver(serviceProvider.GetRequiredService<MetadataStateStore>());
     }
 
     private static Plugin? FindPlugin(IServiceProvider serviceProvider)

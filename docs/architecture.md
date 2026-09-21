@@ -118,7 +118,8 @@ by an ArrTags response interceptor.
 | Artwork publisher | Publish validated derived artwork through Jellyfin's public image APIs | Does not write media files or Jellyfin's image-cache directory directly |
 | Badge renderer | Draw configured labels onto retained source artwork | Plugin-owned, provider-neutral SkiaSharp service with bundled DejaVu Sans Bold 2.37; bounded input/output and render concurrency |
 | Render work cache | Avoid repeated generation before publication where useful | Optional, bounded, fingerprint-keyed work state; not the client response path |
-| Webhook controller | Accept authenticated low-latency Arr hints | Validates token and payload; never trusts payload as source of truth |
+| Webhook controller | Accept authenticated low-latency Arr hints | Anonymous plugin route; validates the shared secret with a constant-time lease comparison and a bounded payload, then submits to a bounded intake; never trusts payload as source of truth (ADR-012) |
+| Webhook intake | Resolve accepted hints and feed the bounded work queue off the request path | Bounded, coalescing, non-blocking; resolves only already-known provider-record associations and never publishes, mutates artwork, or calls Arr |
 | Scheduled task | Manual and periodic full reconciliation | Cancellable, progress-reporting, retry-safe |
 
 No component accesses Jellyfin database tables, image-cache directories,
@@ -134,7 +135,9 @@ API is available.
    the service provider.
 3. The registrator registers configuration, API clients, caches, matching and
    rendering services, the hosted worker, scheduled task, webhook controller,
-   and artwork publication services.
+   and artwork publication services. Jellyfin discovers the plugin's exported
+   `ControllerBase` webhook controller through its standard plugin controller
+   registration; ArrTags does not register a route outside that mechanism.
 4. The hosted service subscribes to library events and starts the bounded queue
    consumer after the host is ready.
 5. Startup must not perform unbounded Arr requests or a full-library render
@@ -183,7 +186,11 @@ The persisted configuration includes:
   section 12 and ADR-004).
 - V1 does not persist or publish path mappings. Configured path fallback is
   deferred out of V1 by ADR-008.
-- Webhook token or equivalent secret for inbound Arr notifications.
+- Webhook token or equivalent secret for inbound Arr notifications. V1 uses the
+  `WebhookSecret` slot as the inbound shared secret; the anonymous
+  `POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr` endpoints
+  authenticate it through the versioned secret boundary and never place it in a
+  URL (ADR-012).
 - No separate Jellyfin Enhanced coexistence field is persisted. The coexistence
   policy (ADR-011) is realized entirely through the existing poster enable flags
   and renderer selector enablement, with no automatic duplicate/overlap
@@ -454,6 +461,27 @@ Refresh triggers are:
 Webhooks are accelerators, not the source of truth. Payloads are validated,
 bounded, and converted into the same deduplicated work as other triggers. A
 periodic reconciliation repairs missed or forged notifications.
+
+The installed webhook boundary (`src/ArrTags/Webhooks`, ADR-012) realizes this
+contract. `ArrTagsWebhookController` is an anonymous plugin route
+(`POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr`) discovered
+by Jellyfin's plugin controller registration. It authenticates the
+`X-ArrTags-Webhook-Secret` header through the ADR-005 webhook lease with a
+constant-time comparison, enforces the configured bounded payload size, parses
+only the event type, upgrade flag, and provider record/file hints with a bounded
+tolerant parser, and performs a non-blocking submit; it returns only bounded
+safe status codes and never logs, returns, or retains the secret or body. A
+bounded, coalescing `WebhookIntake` plus the hosted `WebhookIntakeService`
+resolve an accepted event off the request path through
+`WebhookReconciliationResolver`, which looks up only the Jellyfin items ArrTags
+has already associated with the advertised provider record in its persisted
+metadata-state mapping, bounded by the configured reconciliation batch size. The
+resolved items are enqueued through `IWorkHintSink` as the same bounded
+`LibraryWorkHint` work as every other trigger, so the worker re-reads current
+Jellyfin and Arr state and discards a changed or ineligible basis. Duplicate,
+out-of-order, and replayed deliveries coalesce in the short intake window and in
+the work queue; an unmatched event is a bounded no-op that periodic
+reconciliation repairs.
 
 ## 9. Persisted artwork rendering
 
@@ -952,21 +980,32 @@ Failures are isolated by layer:
 - Corrupt, torn, or ambiguous operation records fail closed and never trigger a
   blind image replay or cleanup.
 
-Inbound webhook endpoints require a configured shared secret or equivalent
-boundary authentication, validate content size and payload shape, and rate-limit
-or coalesce requests. They must not accept arbitrary item IDs as permission to
-perform unbounded work.
+Inbound webhook endpoints require a configured shared secret, validate content
+size and payload shape, and rate-limit or coalesce requests. They must not
+accept arbitrary item IDs as permission to perform unbounded work. ADR-012 fixes
+the V1 contract: an anonymous plugin route authenticated by the
+`X-ArrTags-Webhook-Secret` header through the versioned webhook lease and a
+constant-time comparison; a bounded request payload rejected with a safe status
+before allocation; a bounded tolerant parser that rejects malformed,
+wrong-shaped, or oversized payloads; a bounded intake that coalesces duplicate,
+out-of-order, and replayed deliveries and drops overflow without blocking; and a
+bounded provider-record-to-Jellyfin resolution that enqueues only the same
+deduplicated work hints as every other trigger. A webhook never publishes
+metadata, mutates artwork, calls an Arr endpoint, or widens work beyond items
+ArrTags already tracks.
 
 API-key and webhook-secret values are available only through the versioned
 private secret boundary described in section 6 and ADR-005. Authentication
 failures expose only bounded safe status codes; request headers, bodies, URLs,
-and secret-bearing exceptions are never retained in diagnostics. ADR-005 does
-not by itself decide whether or how a webhook route is exposed.
+and secret-bearing exceptions are never retained in diagnostics. ADR-012
+resolves the route exposure, authentication transport, payload policy, replay
+handling, rate policy, and administration flow that ADR-005 left open.
 
 ## 12. Performance and operational limits
 
 The decision that accepts these foundation defaults and its rationale are
-recorded in [ADR-004](decisions.md). The accepted values, units, validation
+recorded in [ADR-004](decisions.md); the inbound webhook payload bound is
+recorded in [ADR-012](decisions.md). The accepted values, units, validation
 ranges, and safe failure behavior are listed below. Limits are validated at
 configuration load time; a value outside its documented range, or a non-finite
 value where a finite value is required, rejects the new configuration and
@@ -983,6 +1022,7 @@ retains the last valid snapshot rather than partially applying it.
 | Transient retries | 2 | attempts | integer `0`–`5` | After exhaustion the connection is unhealthy and bounded last-known-good state applies. |
 | Retry backoff | 1 initial, factor 2, 15 cap | seconds | base `1`–`60`, cap at least base and at most `120` | Retries are bounded; no unbounded retry loop. |
 | Provider JSON response size | 8 | MiB | `64 KiB`–`64 MiB` | Response is rejected, classified invalid, and produces no badge. |
+| Inbound webhook payload size | 256 | KiB | `4 KiB`–`4 MiB` | Request is rejected with `413` before the body is buffered and produces no work. |
 | Source artifact size | 32 | MiB | `64 KiB`–`128 MiB` | Capture is rejected and the current artwork is preserved. |
 | Derived artifact size | 32 | MiB | `64 KiB`–`128 MiB` | Render output is discarded and the current artwork is preserved. |
 | Decoded image dimensions | 8192 per side | pixels | `512`–`16384` per side | Oversized input is rejected before decode. |
@@ -1098,8 +1138,13 @@ The following are intentionally not guessed by this architecture:
    state limits. Resolved for the foundation by ADR-004; the accepted values are
    in section 12.
 7. Webhook endpoint exposure, replay policy, and shared-secret administration
-   flow. Secret persistence and versioned access are resolved by ADR-005; route
-   exposure and webhook authorization remain open.
+   flow. Resolved by ADR-012: an anonymous plugin route authenticated by the
+   `X-ArrTags-Webhook-Secret` header through the constant-time versioned webhook
+   lease, bounded payload and tolerant parsing, bounded coalescing intake,
+   idempotent replay handling, bounded provider-record-to-Jellyfin resolution
+   into the existing work-hint path, and an administrator flow that reuses the
+   ADR-005 `WebhookSecret` slot. Secret persistence and versioned access remain
+   resolved by ADR-005.
 8. Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior.
    Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap suppression,
    no Enhanced-internals dependency, and no special spoiler/hidden handling; the
@@ -1116,8 +1161,9 @@ is resolved by ADR-007. Item 5 (path fallback) is resolved by ADR-008. Item 6
 (foundation operational limits) is resolved by ADR-004, with the accepted values
 recorded in section 12. Item 8 (Jellyfin Enhanced coexistence) is resolved by
 ADR-011. The credential persistence and access boundary is resolved by ADR-005.
-The remaining webhook decision is route exposure and request policy, not secret
-storage.
+Item 7 (webhook exposure, authentication, payload limits, replay handling, rate
+policy, and administration flow) is resolved by ADR-012, with the accepted
+payload bound recorded in section 12.
 The remaining items stay open and are tracked by the decision gates in
 `PLANS.md`.
 

@@ -399,7 +399,17 @@ that introduce them.
   source, or publishes an unbadged source image.
 - Define webhook authentication, replay protection, rate limits, payload bounds,
   route exposure, and provider-record-to-Jellyfin resolution, or explicitly
-  defer webhooks. Secret persistence/access is resolved by ADR-005.
+  defer webhooks. Secret persistence/access is resolved by ADR-005. Resolved by
+  ADR-012 (task 6.7): the anonymous `/ArrTags/Webhook/Sonarr` and
+  `/ArrTags/Webhook/Radarr` plugin routes authenticate the
+  `X-ArrTags-Webhook-Secret` header through the constant-time versioned webhook
+  lease, bound and tolerantly parse the payload, coalesce duplicate/replayed
+  deliveries in a bounded intake, resolve only already-known provider-record
+  associations bounded by the reconciliation batch size, and enqueue the same
+  deduplicated `LibraryWorkHint` work as every other trigger; a webhook never
+  publishes metadata, mutates artwork, or calls an Arr endpoint.
+  `WebhookBoundaryTests` and `WebhookResolutionTests` cover the boundary without
+  a live host.
 - Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap detection or
   suppression and no Enhanced-internals dependency; the existing poster and
   renderer selector enable flags are the user's control surface, and Spoiler

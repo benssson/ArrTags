@@ -1366,3 +1366,243 @@ unsupported behavioral coupling without improving badge correctness.
 - ADR-001: Persisted Derived Poster Artwork
 - ADR-009: V1 Badge Rendering Specification
 - `docs/implementation-readiness.md`, Former Action Disposition item 10
+
+## ADR-012: Inbound Arr Webhook Boundary
+
+**Status:** Accepted
+
+**Date:** 2026-09-21
+
+### Context
+
+Decision gate DG-7 requires a decision for webhook exposure, authentication,
+payload limits, replay handling, and the route administration flow. Secret
+persistence and versioned access are already resolved by ADR-005, which provides
+the `SecretReference.WebhookAuthentication` slot, the `IPluginSecretResolver`
+boundary, and the constant-time `SecretLease.Matches` comparison, but
+deliberately does not authorize exposing a route or define request policy.
+
+The provider research confirms the available transport. Sonarr and Radarr each
+expose a first-class outbound Webhook connection that issues an HTTP `POST` or
+`PUT` with a JSON body and configurable custom headers; Sonarr also supports
+optional basic-auth credentials. Neither provider signs webhook payloads, so the
+receiving endpoint must protect itself independently. The event names and
+payload shapes are provider-specific and version-sensitive, and the research
+explicitly requires treating webhooks as hints that accelerate a read-based
+reconciliation rather than as a source of truth.
+
+Jellyfin 12 discovers exported `ControllerBase` types in plugin assemblies as
+independently routed API controllers, so a plugin can add a supported route
+without replacing any host controller. ArrTags already has a bounded,
+coalescing, single-flight `LibraryWorkHint`/`LibraryWorkQueue` path (tasks 6.1
+and 6.2) that every trigger feeds, and a persisted metadata-state mapping (task
+6.3) from a Jellyfin item to a connection-scoped provider record identity.
+
+### Decision
+
+ArrTags accepts the following V1 inbound webhook contract.
+
+#### Route exposure and controller registration
+
+ArrTags exposes one plugin MVC controller, `ArrTagsWebhookController`, derived
+from `ControllerBase` and exported from the plugin assembly. Jellyfin's plugin
+controller registration discovers and routes it; ArrTags adds no route outside
+that supported mechanism and does not replace or intercept any host route.
+
+- Sonarr deliveries: `POST /ArrTags/Webhook/Sonarr`.
+- Radarr deliveries: `POST /ArrTags/Webhook/Radarr`.
+- The controller is `[AllowAnonymous]` because the caller is a Sonarr or Radarr
+  instance, not a Jellyfin user. It is not protected by Jellyfin's user
+  authorization and must not rely on it; the shared secret header is the
+  authentication boundary.
+- The route identifies the provider family. A delivery for a provider whose
+  connection is absent or disabled resolves to no work.
+
+#### Authentication and constant-time comparison
+
+- The request presents the shared secret in the `X-ArrTags-Webhook-Secret`
+  header. The secret is never accepted in the URL or a query string, and it is
+  never logged, echoed, or returned.
+- The candidate is compared with the configured secret through the ADR-005
+  webhook lease: the boundary reads the current public snapshot, checks
+  `WebhookConfigured`, acquires
+  `TryAcquire(SecretReference.WebhookAuthentication, snapshot.ConfigurationVersion)`,
+  and calls `SecretLease.Matches`, which uses a constant-time comparison.
+- The comparison is bounded. An empty candidate, a candidate longer than 1024
+  characters, a missing or rotated configuration generation, or an absent
+  secret all fail closed before any comparison proportional to the candidate.
+- Every authentication failure returns the same bounded `401 Unauthorized` with
+  no body. The response never reveals whether a secret is configured, whether
+  the slot resolved, or why the candidate was rejected.
+
+#### Payload bounds and tolerant parsing
+
+- The request body is bounded by `OperationalLimits.WebhookMaxPayloadBytes`
+  (default 256 KiB, validation range 4 KiB to 4 MiB), resolved from the current
+  snapshot per request. A declared or streamed body above the bound is rejected
+  with `413 Payload Too Large` before the whole body is buffered.
+- JSON parsing is tolerant of unknown fields and property-name casing and
+  bounded by a maximum nesting depth and a maximum number of episode entries.
+  Only the event type, the upgrade flag, and the provider-local record/file
+  identifiers are read; the raw payload is never retained.
+- An empty, malformed, truncated, or wrong-shaped payload, or a relevant event
+  that advertises no usable provider record identifier, is rejected with
+  `400 Bad Request`. No body or parser exception detail is returned.
+- An unsupported or non-relevant event type (for example `Test`, `Grab`,
+  `Health`, `ApplicationUpdate`, or `ManualInteractionRequired`) is
+  acknowledged with `202 Accepted` and produces no work and no retained state.
+
+#### Provider-record-to-Jellyfin resolution
+
+- A webhook is a hint. The advertised provider record/file identifiers are used
+  only to find the Jellyfin items ArrTags has already associated with that
+  provider record in its persisted metadata-state mapping for the resolved
+  connection. The payload is never trusted as current state and never grants
+  permission to work on an arbitrary item.
+- Resolution is bounded by `OperationalLimits.ReconciliationBatchSize`. It
+  scans at most that many persisted metadata-state records and returns at most
+  that many distinct Jellyfin item ids. A record that does not exist, an absent
+  association, a provider-kind or connection mismatch, or a disabled connection
+  produces no hint.
+- Each resolved item is enqueued through the existing `IWorkHintSink` as a
+  bounded `LibraryWorkHint` with the current safe configuration generation, so a
+  webhook enters exactly the same deduplicated work path as library events,
+  post-scan, and scheduled reconciliation. The worker re-reads the current
+  Jellyfin item and Arr state and discards a changed or ineligible basis; the
+  webhook never publishes metadata, mutates artwork, or calls an Arr endpoint.
+- This bounded lookup is best-effort by design. A webhook for a record that
+  ArrTags has not yet associated with a Jellyfin item produces no work; the
+  authoritative library-event and periodic reconciliation remain responsible
+  for new or missed items. A webhook can never widen the set of items beyond
+  those already known and eligible.
+
+#### Replay handling
+
+- Duplicate, out-of-order, and replayed deliveries are handled by idempotent
+  coalescing rather than a persistent nonce store: the intake suppresses a
+  repeated provider record/file event within a short bounded window, and the
+  `LibraryWorkQueue` coalesces the resolved work by item, connection, and
+  surface. The worker re-reads current state, so repeating or reordering a
+  delivery cannot duplicate or extend work.
+- A replay after the short window is admitted and re-resolves, but still
+  coalesces into the same deduplicated work and cannot produce a second
+  publication because publication is fingerprint-gated and single-flight.
+
+#### Rate limiting and coalescing
+
+- The controller authenticates, bounds, parses, and performs a non-blocking
+  bounded submit, then returns. It performs no resolution, provider read, or
+  disk scan on the request thread and never blocks a Jellyfin request.
+- A hosted `WebhookIntakeService` consumes a bounded in-memory intake queue off
+  the request path, resolves at most one delivery at a time, and enqueues the
+  bounded hints. The intake is bounded; overflow drops the new delivery rather
+  than growing without bound or blocking. A burst therefore cannot create
+  unbounded work, and any dropped delivery is repaired by the authoritative
+  periodic reconciliation.
+- A stopped intake and a stopped work queue reject new work so host shutdown
+  stops accepting before the drain.
+
+#### Work-scope guarantees
+
+- Webhooks never publish metadata, never mutate or restore artwork, never call
+  an Arr write endpoint, and never use a payload item identifier as permission.
+- Webhooks do not change the queue, worker, publication, recovery, freshness, or
+  regeneration mechanics; they are one more bounded producer on the existing
+  hint boundary.
+
+#### Route administration flow
+
+- The administrator configures the shared secret in the existing
+  `PluginConfiguration.WebhookSecret` slot. It is persisted by Jellyfin's
+  supported plugin configuration mechanism and accessed only through the
+  ADR-005 versioned secret boundary; ArrTags adds no second secret store and
+  never displays the value in diagnostics.
+- The administrator configures the Sonarr and/or Radarr Webhook connection with
+  the fixed endpoint URL and adds the `X-ArrTags-Webhook-Secret` custom header
+  carrying the same secret. The endpoint is a fixed, documented plugin route;
+  no secret appears in the URL.
+- If no secret is configured, every request fails closed with `401`. There is no
+  unauthenticated mode, no default secret, and no auto-generated secret.
+
+### Consequences
+
+- DG-7 is resolved: route exposure, authentication, payload bounds, replay
+  handling, rate limiting, and the administration flow are fixed for V1.
+- The webhook boundary reuses the ADR-005 secret lease and the task 6.1/6.2
+  bounded hint path, so no queue, worker, publication, or state model changes
+  are required and no credential enters a queue item, cache, fingerprint, or
+  diagnostic.
+- A webhook can only accelerate work for items ArrTags already tracks. New or
+  missed items continue to rely on library events and periodic reconciliation,
+  which stays authoritative.
+- The controller registration depends on Jellyfin's documented plugin
+  controller discovery; the exact host routing behavior remains an
+  implementation-time validation item.
+- A future provider that signs payloads, or a change to the auth transport,
+  requires a new decision; this ADR does not add HMAC or source-IP allowlisting.
+
+### Rejected alternatives
+
+#### Secret in the URL or query string
+
+Rejected. URLs are routinely logged, cached, and persisted, and ADR-005 already
+rejects query-string credentials for the provider API keys. The shared secret is
+carried only in a request header.
+
+#### HTTP basic auth as the only mechanism
+
+Rejected as the primary contract. It is supported by both providers, but it
+couples the secret to a username/password form, is more likely to be captured by
+intermediaries, and does not add protection over a dedicated header. The header
+is the single documented mechanism.
+
+#### HMAC/signature verification
+
+Rejected for V1. The inspected Sonarr and Radarr webhook implementations do not
+sign payloads, so requiring a signature would reject every real delivery. A
+future signed transport requires a new decision.
+
+#### Source-IP allowlisting
+
+Rejected as a V1 requirement. Reverse-proxy and container networking make the
+observed source address unreliable, and the shared-secret boundary already
+authenticates the request. It remains a deployment-level option.
+
+#### Treating the payload as the source of truth
+
+Rejected. Provider event names and payload shapes are version-sensitive and
+unsigned; publishing or mutating from a payload would let an untrusted request
+or a provider bug drive incorrect artwork. The worker always re-reads current
+Jellyfin and Arr state.
+
+#### Direct per-request reconciliation or full-library scan
+
+Rejected. Resolving and scanning on the request thread, or scanning the whole
+library per delivery, would let a burst block or amplify work. The boundary uses
+a bounded intake, a bounded resolution scan, and the existing coalescing queue.
+
+#### A persistent replay/nonce store
+
+Rejected for V1. Work is idempotent because the worker re-reads current state
+and the queue coalesces, so a durable nonce store would add authoritative state
+and failure modes without changing the outcome. A short bounded in-memory
+coalescing window plus the queue provides the required replay behavior.
+
+#### No webhook route
+
+Rejected. The architecture and Milestone 6 deliverable include authenticated Arr
+webhook hints as a low-latency accelerator, and the provider research confirms
+both providers support the transport.
+
+### References
+
+- `PLANS.md`, decision gate DG-7, Milestone 6 task 6.7, and the Milestone 6
+  deliverable for authenticated Arr webhook hints
+- `docs/architecture.md`, sections 4, 5, 6, 8, 11, 12, and 14
+- `docs/data-model.md`, sections 3.3, 3.11, 4.11, and 7
+- ADR-004: Foundation Operational Limits and Defaults
+- ADR-005: Versioned Secret Access Boundary
+- `docs/research/sonarr-api.md`, "Keeping badges current: webhook and SignalR options"
+- `docs/research/radarr-api.md`, "Webhooks / events (keeping badges current)"
+- `docs/research/jellyfin-12-architecture.md`, section 2
+- `docs/implementation-readiness.md`, webhook readiness item
