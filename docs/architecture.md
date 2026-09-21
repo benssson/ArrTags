@@ -431,6 +431,19 @@ extending the bounded window; after the window the snapshot is expired and is
 not usable as current, so new artwork publication must stop or retain the
 current usable artwork.
 
+The artwork stage of step 7 is installed in `src/ArrTags/Updates`
+(`ArtworkPublishingWorkItemProcessor`) behind the pure
+`src/ArrTags/Artwork/ArtworkRegenerationPlanner`. For a published metadata state
+it compares the logical publication fingerprint against the persisted
+`PublishedArtworkState` and drives the coordinator only when the fingerprint or
+the renderer/schema identity changed or a new recoverable source baseline is
+required; metadata that is not usable as current under the freshness policy is
+never rendered or published, and artwork generation is best-effort after the
+successful metadata publication so a render or publication failure preserves the
+current usable artwork. The task 6.4 recovery gate still runs before any new work
+for a subject, and every generation enters the publisher through its normal
+durable write-ahead protocol and per-subject serialization.
+
 Refresh triggers are:
 
 - Jellyfin `ItemAdded`, relevant `ItemUpdated`, and `ItemRemoved` events.
@@ -502,6 +515,23 @@ section 4.4 (task 5.1) and asserted by
 `tests/ArrTags.Tests/JellyfinImageAbiTests.cs` and
 `tests/ArrTags.Tests/JellyfinImageRouteTests.cs`. That section confirms the ABI;
 it does not change the publication semantics defined here.
+
+Task 6.6 implements steps 3 and 4 as production behavior.
+`ArtworkGenerationCoordinator` selects the render source before rendering: for an
+owned `Published` (or captured `NotPublished`) session it reads and
+integrity-validates the retained original source artifact from the task 5.2 store
+and renders from it, never from the observed active surface, so a repeat
+publication can never stack a badge onto a previous ArrTags output. A missing,
+corrupt, or dimension-less retained baseline fails closed with no mutation rather
+than re-capturing the derived image as a new original. The exact retained-source
+read is supplied to the publisher's session path, and the publisher still
+revalidates the before identity before any mutation. The per-subject
+serialization gate (`ArtworkSubjectGate`) is a process-local, lazy
+`ConcurrentDictionary` keyed by item and surface whose entries are retained for
+the process lifetime; the bound is the number of subjects ever processed and is
+documented here as accepted for V1 rather than periodically pruned, because
+pruning cannot be done safely without reference-counting an in-flight gate and
+the entry is small and bounded by the processed-subject count.
 
 ### Provenance and ownership contract
 
@@ -695,13 +725,12 @@ source consistency, the exact source observation used for the render is supplied
 to the publisher's new-session capture, so the retained provenance baseline and
 the derived artifact describe the same bounded observation; the publisher's
 before-mutation revalidation is unchanged, so a source that changes after that
-observation still prevents the mutation. The render source is the observed active
-surface. Selecting the retained original artifact as the render source for a
-repeat publication while an ArrTags session is already owned (publication-flow
-step 4) is an explicit boundary of this task: the coordinator observes the
-current surface and does not consult the retained artifact store, and the pipeline
-that selects the retained source and the event/queue wiring that invokes it
-belong to Phase 6.
+observation still prevents the mutation. Selecting the retained original artifact
+as the render source for a repeat publication while an ArrTags session is already
+owned (publication-flow step 4) was an explicit boundary of task 5.8, which
+observed the current surface only; task 6.6 implements the retained-source
+selection in the coordinator (see the publication-flow note above) and the
+Phase 6 pipeline that invokes it.
 
 #### Disable, uninstall, and item removal
 

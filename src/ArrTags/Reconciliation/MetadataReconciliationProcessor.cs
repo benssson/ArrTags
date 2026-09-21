@@ -77,6 +77,22 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     /// <inheritdoc />
     public async Task<WorkProcessingResult> ProcessAsync(LibraryWorkItem item, CancellationToken cancellationToken)
     {
+        var reconciliation = await ReconcileAsync(item, cancellationToken).ConfigureAwait(false);
+        return reconciliation.ProcessingResult;
+    }
+
+    /// <summary>
+    /// Reconciles one queued item and returns the worker classification plus the
+    /// live canonical context when metadata state was published. The Phase 6
+    /// artwork stage consumes that context directly from the same work item, so
+    /// the metadata publication semantics are unchanged and no persisted snapshot
+    /// has to be reconstructed to render.
+    /// </summary>
+    /// <param name="item">The queued work item.</param>
+    /// <param name="cancellationToken">The cancellation signal.</param>
+    /// <returns>The bounded reconciliation result.</returns>
+    public async Task<MetadataReconciliationResult> ReconcileAsync(LibraryWorkItem item, CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
 
         var snapshot = _configuration.Current;
@@ -116,7 +132,8 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
 
         if (!_readers.TryGetValue(kind.Value, out var reader))
         {
-            return WorkProcessingResult.Terminal("No reconciliation reader is registered for the provider.");
+            return MetadataReconciliationResult.Processed(
+                WorkProcessingResult.Terminal("No reconciliation reader is registered for the provider."));
         }
 
         ArrMetadataReadResult read;
@@ -131,14 +148,16 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             // An unclassified reader failure is terminal and never publishes.
-            return WorkProcessingResult.Terminal("The provider read failed.");
+            return MetadataReconciliationResult.Processed(
+                WorkProcessingResult.Terminal("The provider read failed."));
         }
 
         if (!read.IsSuccess || read.Match is null)
         {
             if (read.Error is null)
             {
-                return WorkProcessingResult.Terminal("The provider read returned no outcome.");
+                return MetadataReconciliationResult.Processed(
+                    WorkProcessingResult.Terminal("The provider read returned no outcome."));
             }
 
             if (read.Error.Retryability == ArrErrorRetryability.Later)
@@ -150,7 +169,8 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
                 KeepLastKnownGoodAsStale(item.Key.ItemId, kind.Value);
             }
 
-            return WorkProcessingResult.FromRetryability(read.Error.Retryability, read.Error.Message);
+            return MetadataReconciliationResult.Processed(
+                WorkProcessingResult.FromRetryability(read.Error.Retryability, read.Error.Message));
         }
 
         // Re-read the current item and configuration immediately before
@@ -202,8 +222,13 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
 
         _store.Write(entry);
 
-        return WorkProcessingResult.Completed(FormattableString.Invariant(
-            $"Published metadata state '{entry.State}' for provider '{entry.ProviderKind.ToApiName()}'."));
+        return MetadataReconciliationResult.WithEntry(
+            WorkProcessingResult.Completed(FormattableString.Invariant(
+                $"Published metadata state '{entry.State}' for provider '{entry.ProviderKind.ToApiName()}'.")),
+            entry,
+            publishIdentity,
+            read.Match,
+            read.Metadata);
     }
 
     private static ArrProviderKind? ResolveProviderKind(MediaItemType itemType)
@@ -272,9 +297,9 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         }
     }
 
-    private static WorkProcessingResult Discard(string reason)
+    private static MetadataReconciliationResult Discard(string reason)
     {
-        return WorkProcessingResult.Completed(reason);
+        return MetadataReconciliationResult.Processed(WorkProcessingResult.Completed(reason));
     }
 
     /// <summary>

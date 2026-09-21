@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Rendering;
+using ArrTags.State;
 
 namespace ArrTags.Artwork;
 
@@ -21,20 +22,27 @@ namespace ArrTags.Artwork;
 /// The source observed for the render is the exact observation supplied to the
 /// publisher's new-session capture, so the retained provenance baseline and the
 /// derived artifact describe the same source; the publisher still revalidates the
-/// before identity immediately before any mutation. The render source is the
-/// observed active surface: selecting the retained original artifact for a repeat
-/// publication while an ArrTags session is already owned is an explicit boundary
-/// of this task and belongs to the Phase 6 pipeline. Missing metadata and an
-/// ineligible match rely on the renderer's existing pass-through conventions and
-/// produce no badge and no mutation. Cancellation is honored and no exception
-/// escapes into a Jellyfin operation. No event, queue, or library-scan wiring is
-/// added here: Phase 6 drives this entry point.
+/// before identity immediately before any mutation. When an ArrTags
+/// <see cref="ArtworkPublicationState.Published"/> (or captured
+/// <see cref="ArtworkPublicationState.NotPublished"/>) session already exists, the
+/// render source is the retained original source artifact, never the current
+/// active surface, so a repeat publication cannot stack a badge onto a previous
+/// ArrTags output. The retained artifact is integrity-validated before use, and a
+/// missing, corrupt, or dimension-less baseline fails closed instead of
+/// re-capturing the derived image. When no usable session exists the coordinator
+/// observes the active surface, which is then the retained baseline. Missing
+/// metadata and an ineligible match rely on the renderer's existing pass-through
+/// conventions and produce no badge and no mutation. Cancellation is honored and
+/// no exception escapes into a Jellyfin operation. No event, queue, or
+/// library-scan wiring is added here: Phase 6 drives this entry point.
 /// </remarks>
 public sealed class ArtworkGenerationCoordinator
 {
     private readonly IArtworkSourceReader _reader;
     private readonly IRenderer _renderer;
     private readonly ArtworkPublisher _publisher;
+    private readonly PublishedArtworkStateStore _states;
+    private readonly SourceArtifactStore _artifacts;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArtworkGenerationCoordinator"/> class.
@@ -42,15 +50,21 @@ public sealed class ArtworkGenerationCoordinator
     /// <param name="reader">The host-neutral source adapter.</param>
     /// <param name="renderer">The provider-neutral renderer.</param>
     /// <param name="publisher">The durable single-subject publisher.</param>
+    /// <param name="states">The authoritative published-artwork state store used for retained-source selection.</param>
+    /// <param name="artifacts">The authoritative retained source-artifact store used for retained-source selection.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public ArtworkGenerationCoordinator(
         IArtworkSourceReader reader,
         IRenderer renderer,
-        ArtworkPublisher publisher)
+        ArtworkPublisher publisher,
+        PublishedArtworkStateStore states,
+        SourceArtifactStore artifacts)
     {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
+        _states = states ?? throw new ArgumentNullException(nameof(states));
+        _artifacts = artifacts ?? throw new ArgumentNullException(nameof(artifacts));
     }
 
     /// <summary>
@@ -162,6 +176,16 @@ public sealed class ArtworkGenerationCoordinator
     {
         try
         {
+            // A repeat publication renders from the retained original source
+            // artifact, never from the current active surface (which, for an owned
+            // session, is a previous ArrTags output). A retained-session failure
+            // fails closed rather than falling back to the active surface.
+            var retained = ReadRetainedSource(request);
+            if (retained.HasSession)
+            {
+                return retained.Read!;
+            }
+
             var read = await _reader
                 .ReadAsync(request.JellyfinItemId, request.ImageSurface, cancellationToken)
                 .ConfigureAwait(false);
@@ -181,6 +205,66 @@ public sealed class ArtworkGenerationCoordinator
                 ArtworkSourceReadFailureReason.Unreadable,
                 "The active source image could not be read.");
         }
+    }
+
+    /// <summary>
+    /// Resolves the render source for a subject. A usable owned session returns
+    /// the integrity-validated retained original source artifact; a present
+    /// session whose baseline is incomplete or corrupt returns a fail-closed
+    /// failure; every other state reports that no session applies so the caller
+    /// observes the active surface.
+    /// </summary>
+    private RetainedSourceResolution ReadRetainedSource(ArtworkGenerationRequest request)
+    {
+        var stateRead = _states.Read(request.JellyfinItemId, request.ImageSurface);
+        if (stateRead.Status is StateReadStatus.InvalidQuarantined or StateReadStatus.InvalidDiscarded)
+        {
+            return RetainedSourceResolution.Failed(ArtworkSourceReadResult.Failed(
+                request.ImageSurface,
+                ArtworkSourceReadFailureReason.Unreadable,
+                "The published artwork state failed integrity validation."));
+        }
+
+        var state = stateRead.Value;
+        if (state is null
+            || state.State is not (ArtworkPublicationState.Published or ArtworkPublicationState.NotPublished))
+        {
+            return RetainedSourceResolution.NoSession();
+        }
+
+        if (state.SourcePresence == ArtworkImagePresence.Absent)
+        {
+            return RetainedSourceResolution.Failed(ArtworkSourceReadResult.Absent(request.ImageSurface));
+        }
+
+        var capture = state.SourceCaptureIdentity;
+        if (state.SourceArtifactId is null
+            || capture is not { Width: > 0, Height: > 0 })
+        {
+            return RetainedSourceResolution.Failed(ArtworkSourceReadResult.Failed(
+                request.ImageSurface,
+                ArtworkSourceReadFailureReason.Unreadable,
+                "The retained source baseline is incomplete."));
+        }
+
+        var artifact = _artifacts.Read(state.SourceArtifactId);
+        if (artifact.Status != SourceArtifactReadStatus.Found || artifact.Info is null)
+        {
+            return RetainedSourceResolution.Failed(ArtworkSourceReadResult.Failed(
+                request.ImageSurface,
+                ArtworkSourceReadFailureReason.Unreadable,
+                "The retained source artifact is missing or failed integrity validation."));
+        }
+
+        return RetainedSourceResolution.Found(ArtworkSourceReadResult.Present(
+            request.ImageSurface,
+            artifact.Info.ContentType,
+            artifact.Bytes,
+            artifact.Info.Sha256,
+            capture.Width!.Value,
+            capture.Height!.Value,
+            capture.DateModifiedUtc,
+            capture.JellyfinImageTag));
     }
 
     private async Task<RenderResult> RenderAsync(
@@ -296,5 +380,38 @@ public sealed class ArtworkGenerationCoordinator
 
         reason = string.Empty;
         return true;
+    }
+
+    /// <summary>
+    /// The bounded result of resolving the render source: a usable owned session
+    /// supplies the read (which may be a fail-closed failure), while no session
+    /// means the caller observes the active surface.
+    /// </summary>
+    private readonly struct RetainedSourceResolution
+    {
+        private RetainedSourceResolution(bool hasSession, ArtworkSourceReadResult? read)
+        {
+            HasSession = hasSession;
+            Read = read;
+        }
+
+        public bool HasSession { get; }
+
+        public ArtworkSourceReadResult? Read { get; }
+
+        public static RetainedSourceResolution NoSession()
+        {
+            return new RetainedSourceResolution(false, null);
+        }
+
+        public static RetainedSourceResolution Found(ArtworkSourceReadResult read)
+        {
+            return new RetainedSourceResolution(true, read);
+        }
+
+        public static RetainedSourceResolution Failed(ArtworkSourceReadResult read)
+        {
+            return new RetainedSourceResolution(true, read);
+        }
     }
 }

@@ -42,6 +42,13 @@ public class LifecycleFoundationTests
         // artwork stack. The gate boundary is supplied here as a foundation stub.
         services.AddSingleton<IArtworkRecoveryGate>(new StubArtworkRecoveryGate());
 
+        // Task 6.6: the work pipeline now drives artwork generation after metadata
+        // publication, so the source and image-mutation host boundaries are
+        // supplied here as foundation stubs (the real implementations require the
+        // Jellyfin host that this foundation test does not provide).
+        services.AddSingleton<IArtworkSourceReader>(new StubArtworkSourceReader());
+        services.AddSingleton<IArtworkImageWriter>(new StubArtworkImageWriter());
+
         new ArrTagsServiceRegistrator().RegisterServices(services, null!);
 
         using var provider = services.BuildServiceProvider();
@@ -396,6 +403,56 @@ public class LifecycleFoundationTests
             return Task.FromResult(ArtworkRemovalResult.Create(
                 ArtworkRemovalOutcome.NotConfirmed,
                 "Not confirmed."));
+        }
+    }
+
+    /// <summary>
+    /// A foundation stub for the task 6.6 artwork source boundary so the work
+    /// pipeline and the generation coordinator resolve without the real Jellyfin
+    /// host. It is never called by this DI-resolution test.
+    /// </summary>
+    private sealed class StubArtworkSourceReader : IArtworkSourceReader
+    {
+        public Task<ArtworkSourceReadResult> ReadAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ArtworkSourceReadResult.Absent(surface));
+        }
+    }
+
+    /// <summary>
+    /// A foundation stub for the task 6.6 image-mutation boundary so the durable
+    /// publisher resolves without the real Jellyfin host. It is never called by
+    /// this DI-resolution test.
+    /// </summary>
+    private sealed class StubArtworkImageWriter : IArtworkImageWriter
+    {
+        public Task<ArtworkImageMutationResult> SaveImageAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            ReadOnlyMemory<byte> content,
+            string contentType,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ArtworkImageMutationResult.Success());
+        }
+
+        public Task<ArtworkImageMutationResult> PersistItemUpdateAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ArtworkImageMutationResult.Success());
+        }
+
+        public Task<ArtworkImageMutationResult> RemoveImageAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ArtworkImageMutationResult.Success());
         }
     }
 

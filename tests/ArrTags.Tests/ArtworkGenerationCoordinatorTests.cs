@@ -47,7 +47,7 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
         _states = new PublishedArtworkStateStore(_repository);
         _operations = new ArtworkOperationStore(_repository);
         _publisher = new ArtworkPublisher(_host, _host, _artifacts, _states, _operations, new OperationalLimits());
-        _coordinator = new ArtworkGenerationCoordinator(_host, _renderer, _publisher);
+        _coordinator = new ArtworkGenerationCoordinator(_host, _renderer, _publisher, _states, _artifacts);
     }
 
     // ---- Published path ---------------------------------------------------------
@@ -144,7 +144,7 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
         // through without decoding or producing an artifact. It touches no native
         // dependency on this path, so the case runs unguarded.
         _host.CurrentBytes = Png(1);
-        var coordinator = new ArtworkGenerationCoordinator(_host, new SkiaBadgeRenderer(), _publisher);
+        var coordinator = new ArtworkGenerationCoordinator(_host, new SkiaBadgeRenderer(), _publisher, _states, _artifacts);
         var identity = RenderTestFixtures.BuildMovieIdentity();
         var request = new ArtworkGenerationRequest(
             Item,
@@ -168,7 +168,7 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
     public async Task IneligibleMatchPassesThroughByTheRendererConvention()
     {
         var identity = RenderTestFixtures.BuildMovieIdentity();
-        var coordinator = new ArtworkGenerationCoordinator(_host, new SkiaBadgeRenderer(), _publisher);
+        var coordinator = new ArtworkGenerationCoordinator(_host, new SkiaBadgeRenderer(), _publisher, _states, _artifacts);
         _host.CurrentBytes = Png(1);
 
         var result = await coordinator.GenerateAsync(
@@ -351,6 +351,52 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
 
         // The renderer was given the exact observed source bytes.
         Assert.Equal(ArtworkHashes.ComputeSha256(source), _renderer.LastRequest!.SourceImage!.SourceSha256);
+    }
+
+    // ---- Retained-source repeat publication -------------------------------------
+
+    [Fact]
+    public async Task RepeatPublicationRendersFromTheRetainedOriginalSource()
+    {
+        var original = Png(1);
+        _host.CurrentBytes = original;
+        _renderer.Result = Rendered(Png(2));
+        await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+
+        // The active surface is now the first ArrTags output.
+        var derived1 = _host.CurrentBytes!;
+        Assert.NotEqual(ArtworkHashes.ComputeSha256(original), ArtworkHashes.ComputeSha256(derived1));
+
+        _renderer.Result = Rendered(Png(3));
+        var result = await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(ArtworkGenerationOutcome.Published, result.Outcome);
+        Assert.Equal(2, _renderer.Calls);
+
+        // The renderer received the retained original artifact, never the derived
+        // surface, so a repeat publication cannot stack a badge onto the previous
+        // ArrTags output.
+        Assert.Equal(ArtworkHashes.ComputeSha256(original), _renderer.LastRequest!.SourceImage!.SourceSha256);
+        Assert.NotEqual(ArtworkHashes.ComputeSha256(derived1), _renderer.LastRequest.SourceImage.SourceSha256);
+    }
+
+    [Fact]
+    public async Task CorruptRetainedSourceFailsClosedWithoutRecapturingTheDerivedImage()
+    {
+        _host.CurrentBytes = Png(1);
+        _renderer.Result = Rendered(Png(2));
+        await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+
+        var state = _states.Read(Item, Surface).Value!;
+        Assert.True(_artifacts.Delete(state.SourceArtifactId!));
+
+        _renderer.Result = Rendered(Png(3));
+        var result = await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(ArtworkGenerationOutcome.SourceUnavailable, result.Outcome);
+        Assert.True(result.Preserved);
+        Assert.Equal(1, _renderer.Calls);
+        Assert.Equal(1, _host.SaveCalls);
     }
 
     // ---- State and boundary hygiene ---------------------------------------------

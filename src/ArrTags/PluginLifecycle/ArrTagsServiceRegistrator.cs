@@ -54,6 +54,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateArtworkRecoveryGate);
         serviceCollection.TryAddSingleton<IArtworkRecoveryGate>(
             static serviceProvider => serviceProvider.GetRequiredService<ArtworkRecoveryGate>());
+        serviceCollection.TryAddSingleton(CreateArtworkPublishingWorkItemProcessor);
         serviceCollection.TryAddSingleton<IWorkItemProcessor>(CreateArtworkRecoveringWorkItemProcessor);
         serviceCollection.TryAddSingleton<IArtworkImageAccess>(CreateArtworkImageAccess);
         serviceCollection.TryAddSingleton<IArtworkSourceReader>(CreateArtworkSourceReader);
@@ -214,10 +215,19 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>());
     }
 
+    private static ArtworkPublishingWorkItemProcessor CreateArtworkPublishingWorkItemProcessor(IServiceProvider serviceProvider)
+    {
+        return new ArtworkPublishingWorkItemProcessor(
+            serviceProvider.GetRequiredService<MetadataReconciliationProcessor>(),
+            serviceProvider.GetRequiredService<ArtworkGenerationCoordinator>(),
+            serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
+            serviceProvider.GetRequiredService<ConfigurationSnapshotService>());
+    }
+
     private static IWorkItemProcessor CreateArtworkRecoveringWorkItemProcessor(IServiceProvider serviceProvider)
     {
         return new ArtworkRecoveringWorkItemProcessor(
-            serviceProvider.GetRequiredService<MetadataReconciliationProcessor>(),
+            serviceProvider.GetRequiredService<ArtworkPublishingWorkItemProcessor>(),
             serviceProvider.GetRequiredService<IArtworkRecoveryGate>());
     }
 
@@ -248,7 +258,9 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         return new ArtworkGenerationCoordinator(
             serviceProvider.GetRequiredService<IArtworkSourceReader>(),
             serviceProvider.GetRequiredService<IRenderer>(),
-            serviceProvider.GetRequiredService<ArtworkPublisher>());
+            serviceProvider.GetRequiredService<ArtworkPublisher>(),
+            serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
+            serviceProvider.GetRequiredService<SourceArtifactStore>());
     }
 
     private static ArtifactRetention CreateArtifactRetention(IServiceProvider serviceProvider)

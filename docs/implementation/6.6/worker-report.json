@@ -1,0 +1,47 @@
+{
+  "task": "6.6",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Wired artwork generation into the Phase 6 pipeline behind a publication-fingerprint gate and implemented retained-source repeat publication. ArtworkRegenerationPlanner (src/ArrTags/Artwork) is the pure gate: after metadata state is published it computes the logical publication fingerprint with the same RenderFingerprint and BadgeDefinitionResolver the renderer uses (source-artwork identity, canonical metadata fingerprint, resolved badge selection, secret-free renderer configuration fingerprint, renderer/badge-schema versions) and compares it with the persisted PublishedArtworkState.PublishedFingerprint and RendererVersion. It skips with no work when the fingerprint and renderer version are unchanged, when the metadata state is not usable as current under the task 6.5 freshness policy, when the ownership state does not permit publication (OwnershipLost/OwnershipUnknown/RestorePending/RestoreBlocked), or when an absent baseline cannot be re-rendered; otherwise it requires generation, and a subject with no owned session (or a terminal Restored/Removed session) requires a new recoverable source baseline. ArtworkGenerationCoordinator now selects the render source: for an owned Published/NotPublished session it reads and integrity-validates the retained original source artifact and renders from it, never from the current active surface, so a repeat publication cannot stack a badge onto a previous ArrTags output; a missing, corrupt, or dimension-less baseline fails closed rather than re-capturing the derived image. MetadataReconciliationProcessor.ReconcileAsync returns the unchanged worker classification plus the live canonical context (identity, match, metadata, and the published entry); ProcessAsync preserves the existing IWorkItemProcessor behavior and the processor remains artwork-free. ArtworkPublishingWorkItemProcessor (src/ArrTags/Updates) composes reconciliation with the gate and coordinator, re-checks the configuration version to discard a race after metadata publication, and is best-effort after a successful metadata publication so a render/publication failure preserves current artwork without retrying the metadata. DI composes the task 6.4 ArtworkRecoveringWorkItemProcessor over the publishing processor over the metadata processor, so recovery-before-new-work, the publisher's durable fence re-checks, and the durable write-ahead protocol are unchanged. A renderer, schema, or configuration change regenerates from the retained original while preserving the source artifact, ownership token, and any non-terminal operation. The Phase 5 review MEDIUM repeat-publication finding is closed by retained-source selection plus no-double-badge tests; the Phase 5 review MEDIUM config-to-render finding is closed by RendererConfigurationIntegrationTests; the LOW retained-source-integrity finding is addressed by validating the artifact before reuse; the LOW per-subject gate bound is documented as accepted in docs/architecture.md section 9.",
+  "validation": [
+    "./build.sh build => Build succeeded, 0 warnings, 0 errors",
+    "./build.sh test => Passed 1096, Skipped 58, Failed 0, Total 1154 (baseline after 6.5 was 1075/58/0/1133; +21 passed, no new skips, no regressions)",
+    "dotnet test --filter \"FullyQualifiedName~ArtworkPublicationPipelineTests|FullyQualifiedName~ArtworkRegenerationPlannerTests|FullyQualifiedName~RendererConfigurationIntegrationTests|FullyQualifiedName~ArtworkGenerationCoordinatorTests|FullyQualifiedName~MetadataReconciliationProcessorTests|FullyQualifiedName~ArtworkRecoveryGateTests|FullyQualifiedName~LifecycleFoundationTests\" => Passed 92, Failed 0, Skipped 0, Total 92",
+    "New focused tests: ArtworkPublicationPipelineTests (6), ArtworkRegenerationPlannerTests (12), RendererConfigurationIntegrationTests (1), ArtworkGenerationCoordinatorTests retained-source cases (2) = +21, matching the suite delta exactly",
+    "git status and full diff inspection => only task-relevant production, test, and documentation files changed (planner + decision, reconciliation result/refactor, publishing processor, coordinator retained-source selection, DI composition, focused tests/fixtures, PLANS/changelog/architecture updates); no unrelated files and no commits",
+    "Acceptance criteria check: (1) unchanged repeat => UnchangedRepeatPerformsNoRenderAndNoImageMutation and UnchangedFingerprintSkips (0 additional render, 0 save, same state revision); (2) changed inputs => ChangedMetadataFingerprintRegeneratesFromTheRetainedOriginalWithoutDoubleBadging, ChangedConfigurationFingerprintRegeneratesWithoutLosingProvenance, and planner cases for metadata/source/configuration/renderer-version/schema-version; (3) repeat publication from retained original with no double badge => pipeline and coordinator retained-source tests assert the renderer source hash equals the original and the output encodes the original, never the prior derived image; (4) expired/unusable metadata => ExpiredMetadataEntryIsNotUsableAsCurrent, UnusableMetadataIsNotUsedToGenerateOrPublish, UnusableMetadataDoesNotRenderOrPublishAndRetainsCurrentArtwork; (5) renderer/schema/config invalidation preserves provenance and non-terminal operations => planner Generate cases plus ChangedConfigurationFingerprintRegeneratesWithoutLosingProvenance (same SourceArtifactId/OwnershipToken, artifact still Found) and NonTerminalOperationBlocksPublicationAndIsNotDestroyed (operation still Prepared, 0 saves); (6) config-to-render integration => RendererConfigurationIntegrationTests resolves an overridden palette and a disabled selector through PluginConfigurationSnapshot and asserts the renderer request, resolved selection, and published fingerprint reflect the resolved configuration and differ from the default; (7) 6.1-6.5 preserved => full suite 0 failures, the recovery gate remains outermost, and the publisher's durable fence re-checks are untouched"
+  ],
+  "changed_files": [
+    "src/ArrTags/Artwork/ArtworkRegenerationDecision.cs",
+    "src/ArrTags/Artwork/ArtworkRegenerationPlanner.cs",
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs",
+    "src/ArrTags/Reconciliation/MetadataReconciliationResult.cs",
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs",
+    "src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/ArtworkPipelineFixtures.cs",
+    "tests/ArrTags.Tests/ArtworkPublicationPipelineTests.cs",
+    "tests/ArrTags.Tests/ArtworkRegenerationPlannerTests.cs",
+    "tests/ArrTags.Tests/RendererConfigurationIntegrationTests.cs",
+    "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs",
+    "tests/ArrTags.Tests/LifecycleFoundationTests.cs",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/implementation/6.6/worker-report.json"
+  ],
+  "known_limitations": [
+    "The artwork stage is best-effort after a successful metadata publication: a transient render or publication failure preserves the current usable artwork and is not retried inside the same work item (the next library event, schedule, or webhook re-drives it). This is deliberate so an artwork failure cannot turn an already successful metadata publication into a bounded worker retry.",
+    "The pipeline still fetches provider metadata for every work item because the fingerprint comparison happens after the task 6.3 reconciliation; reducing redundant provider fetches was outside the task 6.6 scope boundary (render/publication only) and remains task 6.3/6.7 territory.",
+    "Retained-source selection is limited to the V1 unindexed Primary surface and to Published/NotPublished sessions with a present retained baseline. An absent retained baseline is not rendered from the active surface (which would only recover a prior ArrTags output) and is left unchanged.",
+    "The per-subject serialization gate (ArtworkSubjectGate) remains a process-local lazy dictionary whose entries are retained for the process lifetime; this is documented as accepted in docs/architecture.md section 9 rather than pruned, because safe pruning needs in-flight reference counting.",
+    "Renderer-version and badge-schema-version changes are exercised directly through the parameterized planner (the production versions are compile-time constants), so no test mutates RenderVersion. The production pipeline passes the current constants.",
+    "No live Jellyfin host is available in this environment; the pipeline, retained-source, and configuration-to-render tests use dependency-injected host/renderer doubles and the native Skia renderer tests continue to skip on musl as expected.",
+    "The Phase 5 review LOW 'Configuration / DI lifetime' finding (artwork singletons capture OperationalLimits at first resolution) is unchanged and remains tracked for a later task."
+  ],
+  "ready_for_next_task": true
+}

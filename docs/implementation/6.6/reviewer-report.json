@@ -1,0 +1,51 @@
+{
+  "task": "6.6",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "6.6-F1",
+      "severity": "LOW",
+      "status": "closed",
+      "summary": "Informational: the planner computes the desired publication fingerprint but the pipeline does not consume ArtworkRegenerationDecision.DesiredFingerprint; this is harmless because the renderer is the sole computer of the stored fingerprint from the same inputs.",
+      "detail": "ArtworkRegenerationPlanner.ComputeDesiredFingerprint uses the same RenderFingerprint.ComputeOutputFingerprint, BadgeDefinitionResolver.Resolve, source identity (PublishedArtworkState.SourceFingerprint plus SourceCaptureIdentity dimensions) and configuration/renderer/schema inputs that SkiaBadgeRenderer uses (src/ArrTags/Rendering/SkiaBadgeRenderer.cs:284-302). ArtworkPublishingWorkItemProcessor ignores decision.DesiredFingerprint and the publisher stores the renderer's actual RenderResult.OutputFingerprint (src/ArrTags/Artwork/ArtworkPublisher.cs:290/486). Because the retained-source read resolves the same artifact hash and capture dimensions (ArtworkSourceAuditStore content addressing guarantees artifact.Info.Sha256 == SourceArtifactId == SourceFingerprint), the two values cannot diverge in production. No change required."
+    },
+    {
+      "id": "6.6-F2",
+      "severity": "LOW",
+      "status": "accepted",
+      "summary": "Informational: the artwork stage is best-effort after a successful metadata publication and is not retried inside the same work item; a transient render/publication failure is re-driven by the next event, schedule, or webhook.",
+      "detail": "ArtworkPublishingWorkItemProcessor returns the metadata reconciliation classification even when regeneration is blocked or fails (src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs:100-131), and the coordinator converts render/publication failures into bounded results that preserve the current artwork. The worker documented this deliberate behavior. It does not violate a task acceptance criterion: architecture section 9 step 11 requires a failed render/publication to leave the current usable artwork unchanged, which it does. No change required."
+    },
+    {
+      "id": "6.6-F3",
+      "severity": "LOW",
+      "status": "accepted",
+      "summary": "Informational: no live Jellyfin host is available, so host-guarded and native-Skia facts skip; however the task-owned config-to-render integration test does not skip and exercises the real coordinator/publisher with an injected fingerprinting renderer.",
+      "detail": "RendererConfigurationIntegrationTests.ResolvedConfigurationReachesTheRenderAndChangesTheOutput ran and passed on this Alpine/musl environment (independently reproduced: Passed 1, Skipped 0). It resolves an overridden palette and a disabled Quality selector through PluginConfigurationSnapshot/RendererConfigurationResolver, drives the real ArtworkGenerationCoordinator, and asserts the resolved definitions/policy reached the render request and that the committed PublishedFingerprint differs from the default-configuration fingerprint. The native Skia golden/behavior/determinism tests continue to skip as expected on musl; that is the disclosed environment limitation, not a voided finding. No change required."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build => Build succeeded, 0 Warning(s), 0 Error(s) (independently reproduced)",
+    "./build.sh test => Passed 1096, Skipped 58, Failed 0, Total 1154 (independently reproduced; matches the worker claim and the +21-over-1075/58/1133 task 6.5 baseline)",
+    "dotnet test --filter ArtworkPublicationPipelineTests|ArtworkRegenerationPlannerTests|RendererConfigurationIntegrationTests|ArtworkGenerationCoordinatorTests|MetadataReconciliationProcessorTests|ArtworkRecoveryGateTests|LifecycleFoundationTests => Passed 92, Failed 0, Skipped 0 (independently reproduced)",
+    "dotnet test --filter RendererConfigurationIntegrationTests => Passed 1, Skipped 0 (confirms the config-to-render integration test is NOT skip-guarded on musl)",
+    "Inspected tests/ArrTags.Tests/ArtworkPublicationPipelineTests.cs (6 cases): UnchangedRepeatPerformsNoRenderAndNoImageMutation drives the full ArtworkPublishingWorkItemProcessor twice and asserts renderer.Calls and host.SaveCalls stay at 1 and the state revision is unchanged; ChangedMetadataFingerprintRegeneratesFromTheRetainedOriginalWithoutDoubleBadging asserts the renderer source hash equals the original and the output encodes the original, never the prior derived image; ChangedConfigurationFingerprintRegeneratesWithoutLosingProvenance asserts the palette/config fingerprint changed and provenance/ownership tokens/artifact are preserved; UnusableMetadataDoesNotRenderOrPublishAndRetainsCurrentArtwork; NonTerminalOperationBlocksPublicationAndIsNotDestroyed; RegistratorComposesRecoveryOverTheArtworkPublishingPipeline",
+    "Inspected tests/ArrTags.Tests/ArtworkRegenerationPlannerTests.cs (12 cases): unchanged skip, metadata/config/renderer-version/badge-schema/source changes generate, unusable metadata skip, expired entry not usable as current, blocked ownership skip, no-session new baseline, captured not-published baseline ready, absent baseline not re-rendered",
+    "Inspected tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs new retained-source cases: RepeatPublicationRendersFromTheRetainedOriginalSource asserts the renderer source hash equals the original and differs from the first derived output; CorruptRetainedSourceFailsClosedWithoutRecapturingTheDerivedImage asserts SourceUnavailable/Preserved with no additional render or save",
+    "Inspected tests/ArrTags.Tests/ArtworkPipelineFixtures.cs: FingerprintingRenderer.DerivedBytes encodes source.SourceSha256 and metadata.MetadataFingerprint, so a double-badged repeat publication is observable; PipelineArtworkHost counts reads/saves/updates",
+    "Inspected tests/ArrTags.Tests/LifecycleFoundationTests.cs DI additions (stub IArtworkSourceReader/IArtworkImageWriter) required because the pipeline now resolves the artwork stage"
+  ],
+  "research_checked": [
+    "docs/architecture.md section 8 step 7 and the new paragraph (lines 434-445): artwork stage installed behind the pure planner; unusable metadata never rendered/published; best-effort; recovery gate still runs first; every generation enters the publisher's durable write-ahead protocol",
+    "docs/architecture.md section 9 publication flow steps 3-4 and the new task 6.6 paragraph (lines 519-534): retained-original render source, fail-closed missing/corrupt/dimension-less baseline, per-subject gate bound documented as accepted",
+    "docs/data-model.md section 6 cache keys/fingerprints (line 1120: artwork entry = item/surface, source image fingerprint, metadata fingerprint, configuration fingerprint, renderer version) and section 6 expiration/invalidation (line 1133); section 3.10/3.10.1-3.10.4 PublishedArtworkState fields, transitions, ArtworkOperation phases and recovery table",
+    "docs/decisions.md ADR-001/002/003/009/010/011 (via the phase-5 review cross-check): renderer remains Jellyfin-free, no middleware interception, durable write-ahead publication, Enhanced coexistence",
+    "docs/implementation/phase-5/phase-review.json: MEDIUM 'Cross-task integration (5.8 repeat publication / Phase 6 pipeline)' is closed by the retained-source selection and no-double-badge tests; MEDIUM 'Test coverage carried forward from Phase 4 (configuration to render)' is closed by RendererConfigurationIntegrationTests; LOW 'Memory / scalability' per-subject gate bound is documented as accepted in architecture section 9; LOW 'Robustness / repeat publication' is addressed by the coordinator validating the retained artifact before reuse",
+    "PLANS.md status lines and task 6.6 status block (Phase 6 in progress, 6.6 complete); docs/changelog.md task 6.6 entry",
+    "src/ArrTags/Rendering/RenderFingerprint.cs and RenderFingerprintInput.cs (fingerprint covers renderer/schema versions, source fingerprint and dimensions, metadata fingerprint, configuration fingerprint, resolved selection, output policy palette/format/alpha/font/text/scale; excludes item identity, timestamps, culture-sensitive formatting, and secrets)",
+    "src/ArrTags/Artwork/ArtworkPublisher.cs (unmodified by 6.6): durable-fence re-checks at lines 173-179, 347-357 (pre-mutation), and 475-481 (pre-commit) remain intact; existing Published/NotPublished session path ignores observedSource and re-observes the active image for before-identity validation"
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

@@ -1370,7 +1370,8 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Tasks 6.1, 6.2, 6.3, and 6.4 complete; Gate 6 not yet met.
+**Status:** In progress. Tasks 6.1, 6.2, 6.3, 6.4, 6.5, and 6.6 complete; Gate 6
+not yet met.
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
 
@@ -1741,3 +1742,71 @@ render output so the authoritative quota can be reused on repeated publication,
 while active, owned, and recovery-relevant artifacts are never evicted. The
 Phase 5 review MEDIUM finding that no production caller selects the retained
 source for a repeat publication remains task 6.6.
+
+### Task 6.6 - Fingerprint-driven artwork regeneration and publication invalidation
+
+Task 6.6 wires artwork generation into the Phase 6 pipeline behind a
+publication-fingerprint gate, so unchanged inputs do not render or publish again
+and a changed input regenerates only the affected artwork.
+
+- `src/ArrTags/Artwork/ArtworkRegenerationPlanner.cs` and
+  `ArtworkRegenerationDecision.cs`: the pure fingerprint gate. It computes the
+  logical publication fingerprint with the same `RenderFingerprint` and
+  `BadgeDefinitionResolver` the renderer uses (source-artwork identity, canonical
+  metadata fingerprint, resolved selection, secret-free renderer configuration
+  fingerprint, renderer and badge-schema versions) and compares it with the
+  persisted `PublishedArtworkState.PublishedFingerprint` and `RendererVersion`.
+  It skips with no work when the fingerprint and renderer version are unchanged,
+  when the metadata state is not usable as current under the task 6.5 freshness
+  policy, when the ownership state does not permit publication, or when an absent
+  baseline cannot be re-rendered. A changed metadata, source, configuration,
+  renderer, or schema input requires regeneration; a subject without an owned
+  session requires a new recoverable source baseline.
+- `src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs`: selects the render
+  source. An owned `Published`/`NotPublished` session renders from the
+  integrity-validated retained original source artifact and never from the current
+  active surface, so a repeat publication cannot stack a badge onto a previous
+  ArrTags output; a missing, corrupt, or dimension-less retained baseline fails
+  closed instead of re-capturing the derived image. The constructor now receives
+  the authoritative published state and source artifact stores.
+- `src/ArrTags/Reconciliation/MetadataReconciliationResult.cs` and
+  `MetadataReconciliationProcessor.cs`: `ReconcileAsync` returns the unchanged
+  worker classification plus the live canonical context (identity, match, metadata,
+  and the published metadata state entry) when atomic state was published.
+  `ProcessAsync` preserves the existing `IWorkItemProcessor` behavior and the
+  processor remains artwork-free.
+- `src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs`: runs the unchanged
+  reconciliation first and, only for a published metadata state, evaluates the gate
+  and drives the coordinator for the V1 unindexed Primary surface. A renderer or
+  publication failure preserves the current artwork without retrying the already
+  successful metadata publication, and cancellation is propagated.
+- `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs`: registers the
+  publishing processor and composes the task 6.4 `ArtworkRecoveringWorkItemProcessor`
+  over it over the metadata processor, and passes the published state and source
+  artifact stores to the coordinator. Recovery-before-new-work, the publisher's
+  durable fence re-checks, and the durable write-ahead protocol are unchanged.
+- Tests: `ArtworkPublicationPipelineTests.cs` (6 cases),
+  `ArtworkRegenerationPlannerTests.cs` (12 cases),
+  `RendererConfigurationIntegrationTests.cs` (1 case), `ArtworkPipelineFixtures.cs`,
+  and two retained-source cases in `ArtworkGenerationCoordinatorTests.cs`, plus the
+  extended `LifecycleFoundationTests` DI resolution. They cover the unchanged
+  no-op, regeneration on each changed input (metadata, source, configuration,
+  renderer version, schema version), the retained-source repeat render without
+  double-badging, corrupt baseline fail-closed, unusable and expired metadata
+  no-publish, blocked and absent ownership states, non-terminal-operation
+  preservation, the configuration-to-render integration, and the DI composition.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1096 with 58 environment-guarded skips (1154
+total), exactly +21 over the task 6.5 baseline (1075/58/1133), with no new skips
+and no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed. The Phase 5 review MEDIUM "Cross-task integration
+(5.8 repeat publication / Phase 6 pipeline)" is closed: the coordinator renders a
+repeat publication from the retained original and a test proves no double badge.
+The Phase 5 review MEDIUM "Test coverage carried forward from Phase 4" is closed
+by `RendererConfigurationIntegrationTests`. The Phase 5 review LOW "Robustness /
+repeat publication" is addressed by the retained-artifact validation, and the LOW
+"Memory / scalability" per-subject gate bound is documented as accepted in
+`docs/architecture.md` section 9. The Phase 5 review LOW "Configuration / DI
+lifetime" is unchanged and remains tracked for a later task: the artwork
+singletons still capture `OperationalLimits` at first resolution.
