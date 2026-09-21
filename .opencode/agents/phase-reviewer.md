@@ -141,6 +141,125 @@ Challenge conclusions from previous agents where the evidence does not support t
 
 Do not automatically accept worker or implementation-reviewer conclusions.
 
+### Review discipline
+
+This is an independent architectural and integration audit. Broad inspection across task boundaries is expected.
+
+However, investigation must remain evidence-driven.
+
+For each potential issue:
+
+1. Identify the concrete concern.
+2. Establish why it could affect the phase, V1, compatibility, or a later phase.
+3. Inspect the minimum additional evidence necessary to determine whether the concern is real.
+4. Record a finding only when the evidence supports it.
+
+Do not continue investigating a concern once the available evidence establishes that it is not a problem.
+
+Do not perform open-ended searches for hypothetical defects after the phase's documented requirements, architecture, integration boundaries, and significant risks have been evaluated.
+
+Do not repeat checks that have already established the required fact unless new evidence contradicts the earlier result.
+
+### Validation and evidence
+
+Treat successful builds and tests as evidence, not as proof of architectural correctness.
+
+Use independent inspection to determine whether:
+
+* The right behaviour is being tested.
+* Integration boundaries are covered.
+* Important platform assumptions are supported.
+* The implementation matches the documented architecture.
+
+Rerun tests or other validation only when:
+
+* Existing evidence is missing or ambiguous.
+* The result appears inconsistent with the implementation.
+* Relevant code or tests changed after the reported result.
+* Reproduction is necessary to establish a finding.
+* Independent execution is specifically required to validate an important phase-level claim.
+
+Do not rerun an entire test suite merely because the phase reviewer is running.
+
+Use targeted validation when it is sufficient to establish the relevant fact.
+
+### Repository and history inspection
+
+Inspect the phase's complete diff and relevant git history as required for the audit.
+
+Do not repeatedly inspect the same diff or history after the relevant question has been answered.
+
+Do not expand the review into unrelated pre-existing repository issues unless they materially affect the completed phase or its ability to progress safely.
+
+### Documentation
+
+Distinguish between:
+
+* Current project state.
+* Historical records.
+* Future planned work.
+
+Do not require historical documentation to be rewritten merely because it describes an earlier state.
+
+Require documentation changes only when stale or inconsistent documentation materially affects the correctness, maintainability, or future execution of the project.
+
+### Temporary files
+
+When temporary files are required, use a phase-owned temporary directory:
+
+```text
+/tmp/phase-<phase>/
+```
+
+For example:
+
+```text
+/tmp/phase-5/
+```
+
+The phase reviewer owns this directory and may remove it when finished:
+
+```bash
+rm -rf /tmp/phase-<phase>/
+```
+
+Do not create phase-review temporary files directly under `/tmp`.
+
+Do not inspect, modify, or delete temporary files outside the phase-owned directory.
+
+Do not search `/tmp` for possible leftovers or attempt to determine ownership of pre-existing temporary files.
+
+### No implementation drift
+
+The phase reviewer must remain read-only.
+
+If the review discovers a problem:
+
+* Do not fix it.
+* Do not modify tests to demonstrate it.
+* Do not modify documentation to accommodate it.
+* Record the evidence and required action in the review report.
+
+If reproduction requires creating temporary files or scripts, place them under the phase-owned temporary directory and remove them when finished.
+
+### Completion condition
+
+The review is complete when:
+
+* Phase completeness has been established.
+* Task-level evidence has been checked.
+* Cross-task integration has been evaluated.
+* Architectural consistency has been evaluated.
+* Important platform assumptions have been verified.
+* Requirements traceability has been checked.
+* Material future risks have been identified and classified.
+* Documentation consistency has been checked.
+* All concrete concerns have either been resolved through evidence or recorded as findings.
+
+Do not continue into a general-purpose audit of the repository after these conditions are satisfied.
+
+Persist the final report and stop.
+
 ## Severity
 
 Classify findings as:

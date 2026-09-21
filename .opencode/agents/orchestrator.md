@@ -106,7 +106,195 @@ Provide the worker with:
 
 Tell the worker explicitly that it must stop rather than guess if user input is required.
 
+Do not ask the worker to calculate token usage, cache usage, runtime cost, or other execution statistics. The orchestrator records those independently from runtime/session metadata.
+
 Wait for the worker's result before proceeding.
+
+After the worker session ends, capture its runtime execution metadata before moving to the review stage.
+
+## Subagent Execution Metadata
+
+The orchestrator is responsible for recording runtime metadata for every delegated subagent.
+
+This applies to:
+
+* `implementation-worker`
+* `implementation-reviewer`
+* `phase-reviewer`
+* Any other subagent delegated by the orchestrator.
+
+The metadata must be obtained from the authoritative OpenCode/runtime session information when available.
+
+Do not ask the subagent to calculate or estimate its own usage.
+
+### Required metadata
+
+For every subagent invocation, record:
+
+```json
+{
+  "execution": {
+    "agent": "<agent name>",
+    "model": "<model used>",
+    "variant": "<effort/variant used>",
+    "input_tokens": null,
+    "output_tokens": null,
+    "reasoning_tokens": null,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "total_tokens": null,
+    "cost_usd": null
+  }
+}
+```
+
+Record the actual runtime values when they are exposed.
+
+Use `null` when a value is not available. Never estimate or reconstruct values from message length, context size, or other indirect information.
+
+The model and variant should come from the actual subagent configuration/runtime rather than being inferred from the orchestrator's configuration.
+
+### Runtime accounting is authoritative
+
+When runtime/session metadata provides token or cost information, treat it as authoritative.
+
+In particular, preserve the distinction between:
+
+* Input tokens.
+* Output tokens.
+* Reasoning tokens.
+* Cache-read tokens.
+* Cache-write tokens.
+* Total tokens.
+* Cost.
+
+Do not collapse cache-read tokens into ordinary input tokens when the runtime reports them separately.
+
+Do not calculate cost independently when the runtime provides an authoritative cost.
+
+### Per-subagent accounting
+
+Each delegated subagent invocation must have its own execution metadata.
+
+Do not combine worker and reviewer usage into a single figure.
+
+For example:
+
+```json
+{
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 1200,
+        "output_tokens": 400,
+        "reasoning_tokens": 900,
+        "cache_read_tokens": 180000,
+        "cache_write_tokens": 0,
+        "total_tokens": 182500,
+        "cost_usd": 0.0012
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 900,
+        "output_tokens": 300,
+        "reasoning_tokens": 700,
+        "cache_read_tokens": 175000,
+        "cache_write_tokens": 0,
+        "total_tokens": 176900,
+        "cost_usd": 0.0010
+      }
+    }
+  ]
+}
+```
+
+The exact fields available depend on the runtime. Preserve unavailable fields as `null`.
+
+### Timing
+
+When available, also record:
+
+```json
+{
+  "execution": {
+    "duration_seconds": null
+  }
+}
+```
+
+Use the runtime/session duration where available rather than attempting to infer duration from message timestamps.
+
+### Invocation identity
+
+Where the runtime provides a subagent/session/message identifier, record it:
+
+```json
+{
+  "execution": {
+    "session_id": null
+  }
+}
+```
+
+This allows the implementation-state record to be correlated with the actual OpenCode execution later.
+
+Do not invent identifiers.
+
+### Metadata must not affect completion status
+
+Runtime usage metadata is observational only.
+
+Missing usage information must not cause an otherwise successful task to become `BLOCKED` or `FAILED`.
+
+Similarly, unusually high token usage or cost does not by itself mean that a task failed.
+
+Record the information and continue applying the normal implementation and review gates.
+
+### Preserve metadata when retrying
+
+If a subagent is invoked more than once for the same task, record each invocation separately.
+
+Do not overwrite the previous invocation's usage.
+
+For example, if a reviewer requests a correction and the worker is invoked again:
+
+```json
+{
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "execution": {}
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "execution": {}
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "execution": {}
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "execution": {}
+    }
+  ]
+}
+```
+
+This is important for measuring the cost of review-driven rework rather than hiding it by replacing the original figures.
 
 ## Worker Completion Gate
 
@@ -142,6 +330,11 @@ The reviewer must independently inspect:
 * Documentation/state changes made by the worker.
 
 The reviewer must not assume that the worker's claims are correct.
+
+Do not ask the reviewer to calculate token usage, cache usage, runtime cost, or other execution statistics. The orchestrator records those independently from runtime/session metadata.
+
+After the reviewer session ends, capture its runtime execution metadata before evaluating the review gate.
+
 
 ## Review Gate
 
@@ -261,8 +454,26 @@ If no mechanism exists, create a concise task completion record containing:
 * Relevant research.
 * Review result.
 * Any deferred work.
+* Runtime execution metadata for every subagent invocation.
 
-Do not create redundant state files if the project already has an authoritative mechanism.
+The execution metadata should preserve separate statistics for each subagent invocation, including worker, reviewer, correction/retry workers, and any other subagents used for the task.
+
+Do not replace or aggregate the per-invocation statistics.
+
+If runtime statistics are unavailable, record the relevant fields as `null` rather than estimating them.
+
+The persistent record should make it possible to answer:
+
+* Which model performed the work?
+* Which effort/variant was used?
+* How many tokens were consumed?
+* How many tokens were cache reads?
+* How many tokens were cache writes?
+* How much reasoning/output was generated?
+* What was the reported cost?
+* How long did the subagent run?
+* How many attempts were required?
+* Which subagent consumed the usage?
 
 ## Continuing
 

@@ -42,6 +42,26 @@ Read:
 
 Where necessary, inspect surrounding code and upstream/API documentation.
 
+Review the implementation independently rather than reproducing the worker's entire implementation process.
+
+Use the acceptance criteria and known architectural constraints to determine what requires deeper investigation.
+
+Do not perform broad repository exploration when the relevant implementation, tests, documentation, and diff already provide sufficient evidence.
+
+Do not repeat successful validation solely for reassurance.
+
+If a test, build, or other validation result is already available and there is no reason to doubt it, inspect the relevant evidence rather than rerunning it.
+
+Rerun validation when:
+
+* The existing result is missing or ambiguous.
+* The result appears inconsistent with the implementation.
+* The relevant code or tests changed after the reported validation.
+* Reproduction is necessary to investigate a finding.
+* The task explicitly requires independent execution of the validation.
+
+The reviewer is an independent correctness gate, not a general-purpose code-quality auditor.
+
 ## Verify the Implementation
 
 Check:
@@ -80,6 +100,119 @@ Check:
 * Unrelated changes are not hidden within the task.
 * New dependencies or abstractions are justified.
 * Documentation/state reflects the actual implementation.
+
+## Review Discipline
+
+The purpose of the review is to determine whether the assigned task is correctly implemented and safe to advance.
+
+Prioritize findings that could affect:
+
+* Acceptance criteria.
+* Functional correctness.
+* Data integrity.
+* State consistency.
+* Persistence or recovery.
+* Concurrency or lifecycle correctness.
+* Compatibility.
+* Security.
+* Established architectural constraints.
+* Required validation.
+
+Do not require changes merely because:
+
+* You would have implemented the feature differently.
+* A different abstraction could be used.
+* Code could be stylistically refactored.
+* Additional hypothetical edge cases could be tested.
+* Documentation could be phrased differently without affecting correctness.
+* An implementation could theoretically be made more elegant.
+
+A finding should be tied to a requirement, architectural constraint, concrete correctness issue, inadequate evidence, or other material risk.
+
+### Evidence-based investigation
+
+When reviewing a potentially problematic area:
+
+1. Identify the concrete concern.
+2. Inspect the smallest amount of additional code or documentation needed to establish whether it is real.
+3. If necessary, reproduce the behaviour.
+4. Record the finding only if evidence supports it.
+
+Do not continue investigating after the concern has been resolved unless another independent issue remains.
+
+Do not turn one concern into an open-ended search for hypothetical problems.
+
+### Validation discipline
+
+Treat successful authoritative validation as evidence, but do not treat it as proof that every aspect of the implementation is correct.
+
+Use independent inspection to determine whether the validation actually covers the changed behaviour.
+
+Do not manually reproduce individual test assertions that have already passed unless investigating a specific concern.
+
+Do not rerun the entire test suite when targeted validation is sufficient.
+
+When a finding requires reproduction, run the smallest validation necessary to establish it.
+
+### Scope discipline
+
+Review the complete task diff, but do not expand the review into unrelated pre-existing code.
+
+If unrelated pre-existing defects are discovered:
+
+* Do not fix them.
+* Do not require them to be fixed unless they materially prevent the assigned task from being correct.
+* Mention them only when they materially affect the review outcome.
+
+Do not modify implementation files. The reviewer's role is to identify required changes, not make them.
+
+### Historical documentation
+
+Distinguish current project state from historical records.
+
+Do not require historical documentation to be rewritten merely because its statements describe an earlier project state.
+
+Only require documentation changes when they are necessary for the assigned task, the project's documented workflow, or an accurate current state.
+
+### Temporary files
+
+When temporary files are required, use the task-owned directory:
+
+```text
+/tmp/<task-id>/
+```
+
+For example:
+
+```text
+/tmp/5.11/
+```
+
+The reviewer owns any temporary files it creates in this directory and may remove the directory when finished:
+
+```bash
+rm -rf /tmp/<task-id>/
+```
+
+Do not create task-related temporary files directly under `/tmp`.
+
+Do not inspect, modify, or delete temporary files outside the task-owned directory.
+
+Do not search `/tmp` for possible leftovers or attempt to determine ownership of pre-existing temporary files.
+
+### Stop condition
+
+Stop reviewing when:
+
+* Every acceptance criterion has been evaluated.
+* Material architectural constraints have been checked.
+* Relevant implementation and diff inspection is complete.
+* Relevant tests and validation evidence have been checked.
+* Significant technical claims have sufficient supporting evidence.
+* All identified concerns have either been resolved or recorded as findings.
+
+Do not continue with speculative review after these conditions are satisfied.
+
 
 ## Research Verification
 
