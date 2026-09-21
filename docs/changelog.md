@@ -1370,7 +1370,7 @@ cases, with no regressions.
 
 ## Phase 6 - Caching, updates & performance (Milestone 6)
 
-**Status:** In progress. Tasks 6.1 through 6.8 are complete; Gate 6 is not yet
+**Status:** In progress. Tasks 6.1 through 6.9 are complete; Gate 6 is not yet
 declared met (the Phase 6 review that confirms the gate is separate).
 
 ### Task 6.1 - Short library event handlers and the bounded enqueue boundary
@@ -1972,3 +1972,77 @@ record as absent. The failing read (the recovery gate for the operation record,
 or the publisher/pipeline for the artwork state) is the one that fails closed;
 this matches the task 6.4 documented quarantine semantics and the accepted
 quarantine/recovery model, and task 6.8 asserts that first-read contract.
+
+### Task 6.9 - Scheduled, post-scan, and manual reconciliation; provider and render concurrency enforcement
+
+Task 6.9 was added to Phase 6 after the independent phase review found a HIGH
+deliverable gap and a MEDIUM concurrency-enforcement gap, and it resolves both.
+No webhook, metadata-publication, recovery, freshness, or regeneration semantics
+were changed.
+
+Reconciliation triggers. `src/ArrTags/Reconciliation` gains the provider-neutral
+`LibraryReconciliationService`. It enumerates the candidate movie and episode
+items in pages bounded by `OperationalLimits.ReconciliationBatchSize` through the
+new `IMediaLibraryEnumerator`/`JellyfinMediaLibraryEnumerator` read boundary
+(`src/ArrTags/Media`, backed by the supported `ILibraryManager` query surface),
+filters each page through the existing `MediaIdentityFactory` and
+`MediaEligibility` boundaries against the current configuration snapshot, checks
+cancellation between and inside pages, yields between batches, and enqueues only
+the same bounded `LibraryWorkHint` work as every other trigger through
+`IWorkHintSink`. It never calls a provider, renderer, publisher, or image API, and
+it stops as soon as the durable `ArtworkLifecycleFenceStore` refuses new
+publication work. `LibraryWorkReason` gains the bounded `Reconciliation` reason.
+A new `LibraryReconciliationResult` reports the bounded inspected/eligible/enqueued
+counts and a safe reason.
+
+`ArrTagsReconciliationTask` (`src/ArrTags/PluginLifecycle`) implements the
+Jellyfin 12 `IScheduledTask` contract with a default 12-hour interval trigger and
+manual execution through Jellyfin's scheduled-task surface; it is cancellable,
+progress-reporting, and propagates cancellation so Jellyfin records the task as
+cancelled. `ArrTagsPostScanTask` implements the dedicated Jellyfin 12
+`ILibraryPostScanTask` extension point that `LibraryManager` invokes after a
+media-library scan with the scan's progress and cancellation token; no fallback
+limitation had to be recorded because the supported post-scan hook exists. Both
+are public concrete plugin types discovered by Jellyfin's assembly scanning
+(`ITaskManager.AddTasks(GetExports<IScheduledTask>)` and
+`ILibraryManager.AddParts(GetExports<ILibraryPostScanTask>)`) and are also
+registered in DI with their dependencies; registration and construction perform
+no provider, rendering, or library work.
+
+Concurrency enforcement (ADR-004). `src/ArrTags/Concurrency` adds a bounded,
+cancellation-aware `DynamicConcurrencyLimiter` whose effective limit is resolved
+from the current configuration snapshot on every acquisition, and a
+`ProviderConcurrencyLimiter` that acquires the global then the per-connection
+permit (no lock-order cycle, no unbounded queue). The
+`ConcurrencyLimitedArrMetadataReader<TReader>` decorator
+(`src/ArrTags/Reconciliation`) bounds every provider reconciliation read, and
+`ConcurrencyLimitedRenderer` (`src/ArrTags/Rendering`) bounds every render. The
+DI registration wraps both provider readers and the renderer with these
+decorators while keeping exactly two `IArrMetadataReader` registrations and one
+factory-based `IRenderer` registration.
+
+Tests. `ReconciliationTriggerTests` (18 cases) covers page batching by the
+configured size, scope/eligibility filtering, episodes, no-enabled-provider
+short-circuit, the fence before and during a run, cancellation between pages and
+a pre-cancelled token, bounded progress, integration with the real
+`LibraryWorkQueue`, the periodic trigger and manual surface, cancellation
+propagation, DI registration and assembly-scan discoverability, and the
+no-provider/no-publication dependency boundary. `ConcurrencyLimitTests` (9 cases)
+proves the configured values actually cap concurrency for the dynamic limiter,
+the per-connection and global provider limiters, the reader decorator, and the
+render decorator, and that the limits are re-read from the current snapshot on
+each acquisition.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1197 with 58 environment-guarded skips (1255
+total), exactly +27 over the task 6.8 baseline (1170/58/1228), with no new skips
+and no regressions; the host-guarded and native Skia facts continue to skip as
+expected on this Alpine/musl environment. Gate 6 is not self-declared here; the
+phase re-review is separate.
+
+Deferrals recorded (not implemented, not presented as solved): a bounded
+provider inventory/catalogue cache (provider fetch efficiency), runtime
+configuration replacement wiring (`ConfigurationSnapshotService.TryReplace` is
+not observed until restart), and a safe metrics/diagnostic-status surface. These
+are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
+`docs/implementation-readiness.md`.

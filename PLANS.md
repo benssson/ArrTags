@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1 through 6.8 complete; the Gate 6 review is separate). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1 through 6.9 complete; the Gate 6 review is separate). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -175,7 +175,7 @@ without modifying original media files or external services.
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
-| 6 | Caching, updates & performance | In progress (6.8 complete; Gate 6 review pending) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
+| 6 | Caching, updates & performance | In progress (tasks 6.1 through 6.9 complete; Gate 6 review pending) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
@@ -2037,6 +2037,9 @@ authoritative.
   scope; treat webhooks as hints rather than source of truth.
 - [x] 6.8 Test restart, shutdown, corruption, outage, recovery, duplicate events,
   queue pressure, and cancellation behavior.
+- [x] 6.9 Add scheduled (periodic and manual) and post-scan reconciliation that
+  enqueues the same bounded work hints, and enforce the configured provider and
+  render concurrency limits at their boundaries (Phase 6 review HIGH and MEDIUM).
 
 **Task 6.1 status:** Complete. The library-event entry boundary is implemented in
 `src/ArrTags/PluginLifecycle` and `src/ArrTags/Updates`. `JellyfinLibraryEventSource`
@@ -2342,10 +2345,55 @@ the read that detects it, and a later read of the same subject then observes the
 record as absent (the detecting read is the one that fails closed, matching the
 task 6.4 quarantine semantics).
 
+**Task 6.9 status:** Complete. The Phase 6 review HIGH finding (no scheduled,
+post-scan, or manual/periodic reconciliation producer) and its MEDIUM finding
+(unenforced provider/render concurrency) are resolved. The bounded,
+provider-neutral `LibraryReconciliationService` (`src/ArrTags/Reconciliation`)
+enumerates the candidate movie and episode items in pages bounded by
+`OperationalLimits.ReconciliationBatchSize` through the new
+`IMediaLibraryEnumerator`/`JellyfinMediaLibraryEnumerator` read boundary, filters
+each page through the existing `MediaIdentityFactory` and `MediaEligibility`
+boundaries against the current configuration snapshot, checks cancellation
+between and inside pages, yields between batches, and enqueues only the same
+bounded `LibraryWorkHint` work as every other trigger through `IWorkHintSink`; it
+never calls a provider, renderer, publisher, or image API. It stops as soon as
+the durable `ArtworkLifecycleFenceStore` refuses new publication work, so a
+disable or uninstall fence is never crossed. The Jellyfin 12 scheduled task
+`ArrTagsReconciliationTask` (`IScheduledTask`) exposes a default 12-hour interval
+trigger, appears in Jellyfin's scheduled-task surface, supports manual execution
+through that surface, is cancellable and progress-reporting, and propagates
+cancellation so Jellyfin records the task as cancelled. The post-scan trigger
+`ArrTagsPostScanTask` implements the dedicated Jellyfin 12
+`ILibraryPostScanTask` extension point, which `LibraryManager` invokes after a
+media-library scan with the scan's progress and cancellation token; no limitation
+had to be recorded because the supported post-scan hook exists. Both tasks are
+public concrete plugin types discovered by Jellyfin's assembly scanning
+(`ITaskManager.AddTasks(GetExports<IScheduledTask>)` and
+`ILibraryManager.AddParts(GetExports<ILibraryPostScanTask>)`) and are also
+registered in DI with their dependencies; registration and construction perform
+no provider, rendering, or library work. The ADR-004 concurrency limits are now
+enforced at their boundaries: `ProviderConcurrencyLimiter` acquires the global
+and per-connection permits around each reconciliation read through the
+`ConcurrencyLimitedArrMetadataReader<TReader>` decorator, and
+`ConcurrencyLimitedRenderer` acquires the render permit around each render, both
+resolving the current limit from the configuration snapshot on every acquisition
+via the bounded, cancellation-aware `DynamicConcurrencyLimiter`. Focused tests
+cover the page batching, scope/eligibility filtering, cancellation between pages,
+the fence before and during a run, progress reporting, the real bounded queue
+integration, the periodic trigger and manual surface, cancellation propagation,
+DI registration and assembly-scan discoverability, and the configured provider
+and render concurrency caps (per-connection, global, and render). The task
+6.1-6.8 queue, worker, metadata publication, recovery, freshness, retention,
+regeneration, and webhook behavior is unchanged. The remaining Phase 6 review
+MEDIUM/LOW items (provider catalogue/inventory cache, runtime configuration
+replacement wiring, and a safe metrics/diagnostic-status surface) are recorded
+as Phase 7 tracked deferrals in the Post-V1 Backlog and are not presented as
+solved. Gate 6 is not self-declared here; the phase re-review is separate.
+
 **Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
-6.8. Task IDs are stable references only; this execution order is the canonical
-sequence. The order is derived from the documented dependencies, not from task
-numbering:
+6.8, 6.9. Task IDs are stable references only; this execution order is the
+canonical sequence. The order is derived from the documented dependencies, not
+from task numbering:
 
 - 6.1 has no prerequisites: the event handler and enqueue boundary is the entry
   point for all later queue work.
@@ -2363,6 +2411,10 @@ numbering:
   handler/enqueue boundary.
 - 6.8 depends on 6.1 through 6.7 because it tests the restart, outage, recovery,
   duplicate-event, pressure, and cancellation behavior of the complete phase.
+- 6.9 depends on 6.1 through 6.3 because it produces the same bounded work hints
+  through the existing queue/worker/reconciliation boundaries; it adds the
+  scheduled, post-scan, and manual reconciliation producers and the provider and
+  render concurrency enforcement that the Phase 6 review found missing.
 
 **Acceptance criteria:**
 
@@ -2378,6 +2430,14 @@ numbering:
   output.
 - [ ] Plugin cache and provenance entries are bounded where applicable,
   versioned, recoverable, and free of credentials.
+
+The Phase 6 acceptance criteria remain unchecked pending the Gate 6 review. The
+Phase 6 review's HIGH deliverable gap (scheduled, post-scan, and manual/periodic
+reconciliation) and its MEDIUM concurrency-enforcement gap are addressed by task
+6.9. Acceptance criterion 1 remains only partially met: render and publication
+are fingerprint-gated, but provider metadata is still fetched for every work
+item because a provider inventory/catalogue cache is deferred to Phase 7 and is
+tracked in the Post-V1 Backlog rather than presented as solved.
 
 **Gate 6:** Load, outage, restart, invalidation, and recovery tests meet the
 recorded operational limits without degrading Jellyfin operations.
@@ -2495,6 +2555,30 @@ expand V1 scope by themselves.
 - Reconsider configured, connection-scoped Jellyfin-to-Arr path fallback only
   through a new architecture decision defining its namespaces, normalization,
   ambiguity, and location-safety contract.
+
+**Phase 7 tracked deferrals from the Phase 6 review.** These remain open and are
+not presented as solved; Phase 7 owns verifying and closing them:
+
+- Provider catalogue/inventory cache. Every reconciliation work item still
+  re-reads the whole provider library and then the per-record file resource, so
+  a large library scan performs one full provider-library read per event. The
+  Phase 6 acceptance criterion "unchanged metadata and source state do not
+  repeatedly fetch ... work unnecessarily" is therefore only partially met for
+  provider fetches; render and publication are correctly fingerprint-gated. A
+  bounded, short-TTL provider inventory/catalogue cache and/or a provider
+  revision-token fetch skip is deferred.
+- Runtime configuration replacement wiring. `ConfigurationSnapshotService.TryReplace`
+  is implemented and validated but is not wired to Jellyfin's configuration-update
+  mechanism, so a saved webhook secret, provider enable/disable, badge/selector
+  change, or DG-6 limit change is not observed until the process restarts. The
+  bounded work queue, provider/render concurrency limiters, freshness window,
+  and retention interval all already resolve their values from the current
+  snapshot per operation, so wiring the replacement is the remaining step.
+- Safe metrics/diagnostic-status surface. Queue depth, provider health, matching,
+  cache, rendering, and stale-data counters exist internally but there is no
+  bounded, secret-free user-facing or diagnostic status surface. Architecture
+  section 12 states this as a recommendation, not a hard gate, so it is deferred
+  rather than implemented.
 
 The following remain excluded from this plan unless `GOALS.md` is deliberately
 changed: Jellyfin versions before 12, modifying original media files, writing or

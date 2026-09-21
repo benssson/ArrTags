@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phase 1 complete)
+**Status:** Accepted v1 (frozen for V1; Phases 1-5 complete and Phase 6 implemented through task 6.9; Gate 6 review pending)
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -121,6 +121,7 @@ by an ArrTags response interceptor.
 | Webhook controller | Accept authenticated low-latency Arr hints | Anonymous plugin route; validates the shared secret with a constant-time lease comparison and a bounded payload, then submits to a bounded intake; never trusts payload as source of truth (ADR-012) |
 | Webhook intake | Resolve accepted hints and feed the bounded work queue off the request path | Bounded, coalescing, non-blocking; resolves only already-known provider-record associations and never publishes, mutates artwork, or calls Arr |
 | Scheduled task | Manual and periodic full reconciliation | Cancellable, progress-reporting, retry-safe |
+| Post-scan task | Reconciliation after a Jellyfin media-library scan | Jellyfin `ILibraryPostScanTask`; bounded, cancellable, progress-reporting |
 
 No component accesses Jellyfin database tables, image-cache directories,
 `ImageSaver`, or concrete Jellyfin implementation types when a plugin-facing
@@ -482,6 +483,31 @@ Jellyfin and Arr state and discards a changed or ineligible basis. Duplicate,
 out-of-order, and replayed deliveries coalesce in the short intake window and in
 the work queue; an unmatched event is a bounded no-op that periodic
 reconciliation repairs.
+
+The installed scheduled and post-scan triggers (`src/ArrTags/Reconciliation` and
+`src/ArrTags/PluginLifecycle`) realize the remaining refresh-trigger set. The
+provider-neutral `LibraryReconciliationService` enumerates the candidate movie
+and episode items in pages bounded by `OperationalLimits.ReconciliationBatchSize`
+through the `IMediaLibraryEnumerator` boundary, filters each page through the
+existing `MediaIdentityFactory` and `MediaEligibility` boundaries against the
+current configuration snapshot, checks cancellation between and inside pages,
+yields between batches, and enqueues only the same bounded `LibraryWorkHint` work
+through `IWorkHintSink`; it never calls a provider, renderer, publisher, or image
+API. It stops as soon as the durable lifecycle fence refuses new publication
+work, so a disable or uninstall fence is never crossed. `ArrTagsReconciliationTask`
+is the Jellyfin 12 `IScheduledTask` with a default periodic interval trigger and
+manual execution through Jellyfin's scheduled-task surface;
+`ArrTagsPostScanTask` is the Jellyfin 12 `ILibraryPostScanTask` invoked by
+`LibraryManager` after a media-library scan. Both are public concrete plugin
+types discovered by Jellyfin's assembly scanning and are also registered in DI,
+and neither performs provider, rendering, or library work during registration or
+construction. The ADR-004 provider and render concurrency limits are enforced at
+their boundaries: a `ProviderConcurrencyLimiter` acquires the global and
+per-connection permits around each reconciliation read, and a
+`ConcurrencyLimitedRenderer` acquires the render permit around each render; both
+resolve the current limit from the configuration snapshot on every acquisition
+through the bounded, cancellation-aware `DynamicConcurrencyLimiter`, so a
+replaced snapshot takes effect without rebuilding a singleton.
 
 ## 9. Persisted artwork rendering
 
@@ -1055,7 +1081,19 @@ a live session and the active image are never reclaimed.
 
 Metrics or diagnostic status should distinguish queue depth, API health,
 matching failures, cache hits/misses, render failures, and stale metadata
-without exposing credentials or full external payloads.
+without exposing credentials or full external payloads. A bounded, secret-free
+status/diagnostic surface is not yet implemented and is tracked for Phase 7.
+
+The provider concurrency (per connection and global) and render concurrency
+limits are enforced at their boundaries, not merely validated. Each provider
+reconciliation read acquires the global then the per-connection permit, and each
+render acquires a render permit; both limits are read from the current
+configuration snapshot on every acquisition, so a replaced snapshot takes effect
+without rebuilding a singleton. The bounded, cancellation-aware limiter suspends
+waiters without blocking a thread, is cancelled by the operation's token, and
+does not grow an unbounded queue of its own. Excess provider requests wait rather
+than being dropped silently, and excess render work remains queued under the
+work-queue cap.
 
 ## 13. Testing and validation gates
 
@@ -1078,7 +1116,9 @@ Jellyfin 12.x ABI and supported Arr versions.
 
 ### Integration tests
 
-- Plugin discovery, DI registration, startup, shutdown, and scheduled task.
+- Plugin discovery, DI registration, startup, shutdown, the scheduled
+  reconciliation task (periodic and manual), the post-scan reconciliation hook,
+  and the provider/render concurrency limits.
 - Jellyfin item event delivery without blocking the event publisher.
 - All supported image route variants, indexed images, requested sizes/formats,
   conditional requests, ranges, and non-200 pass-through responses.

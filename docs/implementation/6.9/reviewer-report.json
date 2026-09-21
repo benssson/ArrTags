@@ -1,0 +1,40 @@
+{
+  "task": "6.9",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "6.9-F1",
+      "severity": "LOW",
+      "status": "resolved",
+      "summary": "PLANS.md Milestone 6 status row was inconsistent with the rest of the current-state documentation; the worker corrected it.",
+      "detail": "Previously PLANS.md:178 read 'In progress (6.8, 6.9 complete; Gate 6 review pending)' while PLANS.md line 5 and docs/changelog.md:1373 state that all tasks 6.1 through 6.9 are complete. The row now reads 'In progress (tasks 6.1 through 6.9 complete; Gate 6 review pending)'. I re-verified the current file: PLANS.md line 5, line 178, docs/changelog.md:1373, the task list (6.9 checked) and the authoritative execution order ('6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9') are now mutually consistent. The only remaining textual match for a pre-6.9 count (PLANS.md:2386, '6.1-6.8 queue, worker, ... behavior is unchanged') is an intentional statement that the earlier task behavior was not changed, not a completion-count claim. Phase 6 acceptance-criteria boxes remain unchecked and Gate 6 remains explicitly not self-declared, so no completion is overclaimed. Resolved."
+    },
+    {
+      "id": "6.9-F2",
+      "severity": "LOW",
+      "status": "noted",
+      "summary": "docs/implementation-readiness.md line 5 remains a stale pre-existing status line (Phase 1/Milestone 2/Phase 3/task 4.11 only); it was not updated by this task.",
+      "detail": "This is a pre-existing Phase 6 review LOW documentation item (phase-review finding 6, item (a)). Task 6.9 touched docs/implementation-readiness.md only to append the Phase 7 deferrals, so the stale status line is not introduced or worsened by this task and does not affect the correctness of the task-6.9 deliverables. It remains open for a documentation pass / the Gate 6 re-review and is recorded here only so the orchestrator is aware. Not blocking for task 6.9."
+    }
+  ],
+  "tests_checked": [
+    "Full default suite via '. /config/arrtags-env.sh && ./build.sh test': Failed 0, Passed 1197, Skipped 58, Total 1255, independently reproduced; matches the worker claim and the +27 delta over the task 6.8 baseline (1170/58/1228, also independently reproduced by the phase review). No new skips.",
+    "Focused run 'dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~ReconciliationTriggerTests|FullyQualifiedName~ConcurrencyLimitTests\"': Failed 0, Passed 27, Skipped 0, Total 27 (18 + 9 as the worker reported).",
+    "Build via '. /config/arrtags-env.sh && ./build.sh build': Build succeeded, 0 warnings, 0 errors, against pinned Jellyfin 12.0.0 / net10.0.",
+    "tests/ArrTags.Tests/ConcurrencyLimitTests.cs inspected in full: the concurrency tests drive real concurrent acquisitions and measure a real peak (MeasureConcurrency records the maximum simultaneous inner-operation active count, and the blocking reader/renderer doubles record Interlocked peaks); they cover the dynamic limiter (cap, grow-on-next-acquire, shrink), the per-connection provider cap, the global provider cap, the reader decorator, the render decorator, and the DI descriptors (exactly two IArrMetadataReader, one IRenderer resolved as ConcurrencyLimitedRenderer).",
+    "tests/ArrTags.Tests/ReconciliationTriggerTests.cs inspected in full: page batching requests asserted as (0,2),(2,2),(4,2) at batch size 2; scope/location/surface filtering; episodes; no-enabled-provider short-circuit with no enumeration; fence before a run and raised between pages (only one page requested); cancellation between pages and an already-cancelled token producing a bounded Cancelled result; progress 0..100; the real LibraryWorkQueue receiving the hints; periodic trigger/manual surface; cancellation propagation from both tasks; public-concrete discoverability; and no provider/renderer/publication constructor dependencies.",
+    "Existing Phase 6 suites (Phase6*, LibraryWorkQueueTests, MetadataFreshnessTests, Webhook*/RendererConfigurationIntegrationTests) remain green in the full run; no regressions.",
+    "Re-verification after the F1 correction: 'git status --porcelain' and 'git diff --stat' show the same changed/untracked file set as the original review, with source and test files untouched; the only subsequent edit was the PLANS.md Milestone 6 row (documentation only), so the build/test evidence above remains valid and no re-run was required."
+  ],
+  "research_checked": [
+    "Pinned Jellyfin 12.0.0 assembly XML contracts: MediaBrowser.Model (Jellyfin.Model 12.0.0) confirms IScheduledTask with Name/Key/Description/Category/GetDefaultTriggers/ExecuteAsync(IProgress<double>, CancellationToken), TaskTriggerInfoType contains IntervalTrigger, and TaskTriggerInfo exposes IntervalTicks; MediaBrowser.Controller (Jellyfin.Controller 12.0.0) confirms ILibraryPostScanTask.Run(IProgress<double>, CancellationToken), ITaskManager.AddTasks(IEnumerable<IScheduledTask>), and ILibraryManager.AddParts(..., IEnumerable<ILibraryPostScanTask>).",
+    "Pinned host source revision 6c073e19ddf604b2369c638716164fdab4c952dc, Emby.Server.Implementations/ApplicationHost.cs: GetExports<T> enumerates the exported concrete non-abstract non-generic types discovered from the plugin assemblies (GetComposablePartAssemblies -> PluginManager.LoadAssemblies) and constructs them with ActivatorUtilities.CreateInstance(ServiceProvider, type); RunStartupTasksAsync calls Resolve<ITaskManager>().AddTasks(GetExports<IScheduledTask>(false)); FindParts calls Resolve<ILibraryManager>().AddParts(..., GetExports<ILibraryPostScanTask>()). This confirms both extension points are discovered by real assembly scanning and that constructor dependencies must be DI-registered (they are).",
+    "Pinned host source, Emby.Server.Implementations/ScheduledTasks/ScheduledTaskWorker.cs: GetDefaultTriggers() is invoked for a task with no saved trigger file; GetTrigger handles TaskTriggerInfoType.IntervalTrigger and requires IntervalTicks (a null IntervalTicks would throw); ExecuteInternal awaits ExecuteAsync and classifies OperationCanceledException as Cancelled. The 12-hour interval trigger (IntervalTicks set) and cancellation propagation are correct.",
+    "Pinned host source, Emby.Server.Implementations/Library/LibraryManager.cs: PostScanTasks is populated by AddParts and RunPostScanTasks is invoked from PerformLibraryValidation after RootFolder.ValidateChildren, with the scan progress and cancellation token, so the ILibraryPostScanTask post-scan hook is a genuine supported extension point.",
+    "Provider/render boundary check: all provider HTTP calls flow through IArrMetadataReader (RadarrMetadataReader/SonarrMetadataReader -> IArrReadClientFactory), and all renders flow through IRenderer resolved by ArtworkGenerationCoordinator; no production path constructs SkiaBadgeRenderer or the concrete readers directly, so the DI decorators bound the real boundaries. Provider ProbeAsync is defined but is not called from production code.",
+    "docs/architecture.md section 12 and ADR-004: the documented per-connection/global provider and render concurrency ranges (1-16, 1-32, 1-8) match OperationalLimits validation, and the new section-12 text accurately describes the implemented wait-not-drop behaviour."
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

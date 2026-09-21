@@ -1,0 +1,53 @@
+{
+  "task": "6.9",
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Resolved the Phase 6 review HIGH deliverable gap and its MEDIUM concurrency-enforcement gap. Part A: added the bounded, provider-neutral LibraryReconciliationService that pages the candidate Movie/Episode items through a new IMediaLibraryEnumerator/JellyfinMediaLibraryEnumerator boundary, filters each page through the existing MediaIdentityFactory and MediaEligibility boundaries against the current snapshot, checks cancellation between and inside pages, yields between batches, stops at the durable lifecycle fence, and enqueues only the same bounded LibraryWorkHint work through IWorkHintSink. Added the Jellyfin 12 ArrTagsReconciliationTask (IScheduledTask: default 12-hour interval trigger, manual execution through Jellyfin's scheduled-task surface, cancellable, progress-reporting, cancellation-propagating) and ArrTagsPostScanTask (the dedicated Jellyfin 12 ILibraryPostScanTask post-scan hook invoked by LibraryManager after a library scan). Both are public concrete plugin types discovered by Jellyfin's assembly scanning and are also registered in DI with their dependencies; registration/construction perform no provider, rendering, or library work. Added LibraryWorkReason.Reconciliation and a bounded LibraryReconciliationResult. Part B: enforced ADR-004 ProviderConcurrencyPerConnection, ProviderConcurrencyGlobal, and RenderConcurrency at their boundaries via a bounded cancellation-aware DynamicConcurrencyLimiter, a ProviderConcurrencyLimiter (global then per-connection, no lock-order cycle), a ConcurrencyLimitedArrMetadataReader<TReader> provider-read decorator, and a ConcurrencyLimitedRenderer decorator, all resolving the limit from the current configuration snapshot per operation; DI wraps both provider readers and the renderer while keeping exactly two IArrMetadataReader descriptors and one factory IRenderer descriptor. Part C: recorded the provider catalogue cache, runtime configuration replacement wiring, and metrics/status surface as Phase 7 tracked deferrals (not implemented, not presented as solved). Updated PLANS.md (task 6.9, execution order 6.1-6.9, Milestone 6 row, status paragraph, AC note, Post-V1 Phase 7 deferrals), docs/architecture.md (component table, section 8 installed triggers, section 12 concurrency enforcement, section 13, status line), docs/changelog.md, and docs/implementation-readiness.md. The Phase 6 review HIGH finding is resolved. No webhook, metadata-publication, recovery, freshness, or regeneration semantics changed.",
+  "validation": [
+    "./build.sh build - succeeded with 0 warnings / 0 errors (net10.0, pinned Jellyfin 12.0.0).",
+    "./build.sh test - Failed 0, Passed 1197, Skipped 58, Total 1255, exactly +27 over the task 6.8 baseline (1170/58/1228) with no new skips and no regressions.",
+    "Focused run: ReconciliationTriggerTests - Failed 0, Passed 18, Skipped 0, Total 18.",
+    "Focused run: ConcurrencyLimitTests - Failed 0, Passed 9, Skipped 0, Total 9.",
+    "Concurrency-cap proof: DynamicConcurrencyLimiter, ProviderConcurrencyLimiter (per-connection and global), ConcurrencyLimitedArrMetadataReader<TReader>, and ConcurrencyLimitedRenderer each measured a real concurrent peak equal to and never above the configured value; dynamic tests prove the limit is re-read from the current snapshot on each acquisition (grow and shrink).",
+    "Reconciliation proof: page requests are bounded by ReconciliationBatchSize ((0,2),(2,2),(4,2) for 5 items at size 2), ineligible scope/location/surface items are skipped, episodes are enqueued, no-enabled-provider short-circuits, the fence is honored before and during a run (no page after the fence), cancellation between pages and a pre-cancelled token yield a bounded Cancelled result, progress reports 0..100, and the real LibraryWorkQueue receives the hints.",
+    "DI/discovery proof: the registrator wires LibraryReconciliationService, ArrTagsReconciliationTask, ArrTagsPostScanTask, IMediaLibraryEnumerator, and ProviderConcurrencyLimiter; the built provider resolves exactly two concurrency-limited readers and one concurrency-limited renderer; the tasks are public concrete IScheduledTask/ILibraryPostScanTask implementations discoverable by Jellyfin assembly scanning.",
+    "git status and diff inspected: only task-relevant source, test, and documentation files changed; no unrelated files.",
+    "Research: inspected the pinned Jellyfin 12.0.0 assemblies and the pinned host source revision 6c073e19ddf604b2369c638716164fdab4c952dc to confirm IScheduledTask/ITaskManager.TaskCompleted/TaskTriggerInfoType, the assembly-scan discovery (ApplicationHost.GetExports<T>), and the ILibraryPostScanTask post-scan hook invoked by LibraryManager after PerformLibraryValidation."
+  ],
+  "changed_files": [
+    "src/ArrTags/Concurrency/DynamicConcurrencyLimiter.cs",
+    "src/ArrTags/Concurrency/ProviderConcurrencyLimiter.cs",
+    "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs",
+    "src/ArrTags/Rendering/ConcurrencyLimitedRenderer.cs",
+    "src/ArrTags/Media/IMediaLibraryEnumerator.cs",
+    "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationService.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationResult.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationOutcome.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationSource.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsReconciliationTask.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsPostScanTask.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "src/ArrTags/Updates/LibraryWorkReason.cs",
+    "tests/ArrTags.Tests/ReconciliationTriggerTests.cs",
+    "tests/ArrTags.Tests/ConcurrencyLimitTests.cs",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/implementation-readiness.md",
+    "docs/implementation/6.9/worker-report.json"
+  ],
+  "known_limitations": [
+    "Provider fetch efficiency is not improved: every reconciliation work item still re-reads the whole provider library and then the per-record file resource. A bounded provider inventory/catalogue cache is deferred to Phase 7 and recorded in PLANS.md and docs/implementation-readiness.md; Phase 6 acceptance criterion 1 therefore remains only partially met for provider fetches.",
+    "Runtime configuration replacement is still not wired to Jellyfin's configuration-update mechanism, so a saved webhook secret, provider enable/disable, badge/selector change, or DG-6 limit change is not observed until restart. The limiters and queue already resolve values from the current snapshot per operation, so only the replacement wiring is deferred; recorded for Phase 7.",
+    "No bounded, secret-free user-facing or diagnostic metrics/status surface exists; recorded for Phase 7 and marked accordingly in the architecture and plan.",
+    "A single full reconciliation enumerates the whole configured scope in pages, but the bounded work queue drops overflow hints, so on a library much larger than QueueCapacity a single run may not enqueue every eligible item; the next periodic, manual, or post-scan run re-reads current state. This is the documented bounded-overflow behavior, not an unbounded-work path.",
+    "Manual/administrative reconciliation reuses Jellyfin's scheduled-task surface (the same IScheduledTask.ExecuteAsync), so a manual run and a periodic run are both reported with LibraryReconciliationSource.Scheduled; there is no separate manual-only source.",
+    "No live Jellyfin host and no live Arr instance were exercised. The scheduled-task and post-scan discovery, the ILibraryPostScanTask invocation, and the provider/render concurrency enforcement are validated at the unit/integration-test level and against the pinned 12.0.0 ABI and host source; host-guarded and native Skia facts skip on this Alpine/musl environment as expected."
+  ],
+  "ready_for_next_task": true
+}

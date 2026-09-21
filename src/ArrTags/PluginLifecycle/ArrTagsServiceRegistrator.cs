@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using ArrTags.Artwork;
+using ArrTags.Concurrency;
 using ArrTags.Configuration;
 using ArrTags.Media;
 using ArrTags.Providers;
@@ -45,12 +46,16 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton<IWorkHintSink>(
             static serviceProvider => serviceProvider.GetRequiredService<LibraryWorkQueue>());
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
+        serviceCollection.TryAddSingleton<IMediaLibraryEnumerator, JellyfinMediaLibraryEnumerator>();
         serviceCollection.TryAddSingleton(CreateMetadataStateStore);
         serviceCollection.TryAddSingleton<IArrReadClientFactory, ArrReadClientFactory>();
+        serviceCollection.TryAddSingleton<ProviderConcurrencyLimiter>();
+        serviceCollection.TryAddSingleton<RadarrMetadataReader>();
+        serviceCollection.TryAddSingleton<SonarrMetadataReader>();
         serviceCollection.TryAddEnumerable(
-            ServiceDescriptor.Singleton<IArrMetadataReader, RadarrMetadataReader>());
+            ServiceDescriptor.Singleton<IArrMetadataReader, ConcurrencyLimitedArrMetadataReader<RadarrMetadataReader>>());
         serviceCollection.TryAddEnumerable(
-            ServiceDescriptor.Singleton<IArrMetadataReader, SonarrMetadataReader>());
+            ServiceDescriptor.Singleton<IArrMetadataReader, ConcurrencyLimitedArrMetadataReader<SonarrMetadataReader>>());
         serviceCollection.TryAddSingleton<MetadataReconciliationProcessor>();
         serviceCollection.TryAddSingleton(CreateArtworkRecoveryGate);
         serviceCollection.TryAddSingleton<IArtworkRecoveryGate>(
@@ -70,9 +75,20 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateArtworkLifecycleCoordinator);
         serviceCollection.TryAddSingleton<IArtworkLifecycleCoordinator>(
             static serviceProvider => serviceProvider.GetRequiredService<ArtworkLifecycleCoordinator>());
-        serviceCollection.TryAddSingleton<IRenderer>(static _ => new SkiaBadgeRenderer());
+        serviceCollection.TryAddSingleton<IRenderer>(CreateRenderer);
         serviceCollection.TryAddSingleton(CreateArtworkGenerationCoordinator);
         serviceCollection.TryAddSingleton(CreateArtifactRetention);
+        serviceCollection.TryAddSingleton(CreateLibraryReconciliationService);
+
+        // The scheduled and post-scan reconciliation tasks are concrete public
+        // types that Jellyfin discovers by scanning the plugin assembly
+        // (IScheduledTask via ITaskManager.AddTasks, ILibraryPostScanTask via
+        // ILibraryManager.AddParts). They are also registered here so their
+        // dependency wiring is explicit and directly resolvable; registration
+        // performs no provider, rendering, or library work, and neither task runs
+        // until Jellyfin invokes it.
+        serviceCollection.TryAddSingleton<ArrTagsReconciliationTask>();
+        serviceCollection.TryAddSingleton<ArrTagsPostScanTask>();
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
 
@@ -125,6 +141,28 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
         };
 #pragma warning restore CA5359
+    }
+
+    private static IRenderer CreateRenderer(IServiceProvider serviceProvider)
+    {
+        var configuration = serviceProvider.GetRequiredService<ConfigurationSnapshotService>();
+
+        // The render limit is resolved from the current snapshot on each render,
+        // so a replaced configuration takes effect without rebuilding the
+        // singleton (ADR-004).
+        var limiter = new DynamicConcurrencyLimiter(
+            () => configuration.Current.Limits.RenderConcurrency);
+        return new ConcurrencyLimitedRenderer(new SkiaBadgeRenderer(), limiter);
+    }
+
+    private static LibraryReconciliationService CreateLibraryReconciliationService(IServiceProvider serviceProvider)
+    {
+        return new LibraryReconciliationService(
+            serviceProvider.GetRequiredService<ConfigurationSnapshotService>(),
+            serviceProvider.GetRequiredService<IMediaLibraryResolver>(),
+            serviceProvider.GetRequiredService<IMediaLibraryEnumerator>(),
+            serviceProvider.GetRequiredService<IWorkHintSink>(),
+            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>());
     }
 
     private static ConfigurationSnapshotService CreateConfigurationSnapshotService(IServiceProvider serviceProvider)

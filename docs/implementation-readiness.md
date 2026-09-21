@@ -469,3 +469,18 @@ that introduce them.
 - Extended technical metadata and additional visual primitives.
 - Configured Jellyfin-to-Arr path fallback and path normalization, if later
   evidence justifies the additional namespace and ambiguity contract (ADR-008).
+
+**Tracked from the Phase 6 review (Phase 7 scope; not presented as solved):**
+
+- Provider catalogue/inventory cache: every reconciliation work item still
+  re-reads the whole provider library and the per-record file resource, so the
+  "avoid unnecessary API requests" goal is only partially met for provider
+  fetches. A bounded, short-TTL inventory/catalogue cache and/or a provider
+  revision-token fetch skip is deferred.
+- Runtime configuration replacement wiring: `ConfigurationSnapshotService.TryReplace`
+  is implemented and validated but not wired to Jellyfin's configuration-update
+  mechanism, so a saved webhook secret, provider enable/disable, badge/selector
+  change, or DG-6 limit change is not observed until restart.
+- Safe metrics/diagnostic-status surface: bounded queue, provider-health,
+  matching, cache, render, and stale-data counters exist internally but no
+  bounded, secret-free user-facing or diagnostic status surface exists yet.
