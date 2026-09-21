@@ -1,0 +1,53 @@
+{
+  "task": "6.5",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "6.5-F1",
+      "severity": "HIGH",
+      "status": "resolved",
+      "summary": "RESOLVED by the user-approved half-window policy: the configured MetadataStaleWindowMinutes is the total bounded last-known-good lifetime, split at half (expiresAt = fetchedAt + window/2, staleUntil = fetchedAt + window); total LKG is one configured window, not 2x.",
+      "detail": "RESOLVED. The user resolved the blocker with the authoritative policy that the single configured MetadataStaleWindowMinutes (ADR-004, default 24h) is the TOTAL bounded last-known-good lifetime, split at half. Independently verified in src/ArrTags/Reconciliation/MetadataStateEntry.cs:358-379: ComputeFreshnessWindow now returns (fetchedAt + window/2, fetchedAt + window); a degenerate sub-tick window collapses the freshness half onto the full bound so StaleUntil >= ExpiresAt stays ordered and the total stays positive (only reachable by direct callers; the validated config range is 5-10080 minutes). The XML remarks (lines 21-31) and the ExpiresAt/StaleUntil property docs now describe the half split. Semantics are internally consistent across the boundary consumers: EvaluateFreshness returns Fresh only while State==Fresh and now < expiresAt (strictly before the half boundary), Stale (usable) from the half boundary up to but not including staleUntil, and Expired at/after staleUntil regardless of persisted state; IsUsableAsCurrent is Fresh-or-Stale only; IsExpired is now >= staleUntil; ToStale preserves the snapshot and both timestamps so an outage never extends the window; KeepLastKnownGoodAsStale only converts a Fresh, metadata-bearing, still-usable record; MetadataStateStore.ApplyRetention prunes only IsExpired records; and MetadataReconciliationProcessor publishes the window resolved from the current snapshot (TimeSpan.FromMinutes(MetadataStaleWindowMinutes)) so the persisted boundaries use the half split. Documentation is no longer circular: git diff shows docs/architecture.md section 12 now states 'the configured metadata last-known-good window is the total bound on last-known-good use ... fresh for the first half (expiresAt = fetchedAt + window / 2) ... staleUntil = fetchedAt + window ... consistent with the section-12 safe failure above', docs/data-model.md section 6 states the same total-window half split, and PLANS.md task 6.5 matches. A repository search of docs/, PLANS.md, src/, and tests/ found no remaining 'applied twice', 'one further window', '2x', or 48h statements. Tests/ArrTags.Tests/MetadataFreshnessTests.cs TimestampsAreDerivedFromTheConfiguredWindowAndTotalEqualsThatWindow asserts expiresAt = fetchedAt + Window/2, staleUntil = fetchedAt + Window, total = Window, Fresh strictly before the half boundary, Stale-but-usable at the half boundary and before the full boundary, and Expired at/after the full boundary; DefaultWindowIsTheAdr004Default asserts the same for the ADR-004 default. Build (0 warnings/0 errors) and the full suite (1075/58/0/1133) were independently reproduced."
+    },
+    {
+      "id": "6.5-F2",
+      "severity": "LOW",
+      "status": "resolved",
+      "summary": "RESOLVED: docs/changelog.md now records MetadataFreshnessTests as 10 cases, matching the file (10 [Fact] methods) and the worker report.",
+      "detail": "RESOLVED. git diff of docs/changelog.md shows the task 6.5 entry now reads 'MetadataFreshnessTests.cs (10 cases), ArtifactRetentionTests.cs (11 cases), StateRetentionServiceTests.cs (4 cases)'. Independent count: grep -c '[Fact]' gives MetadataFreshnessTests 10, ArtifactRetentionTests 11, StateRetentionServiceTests 4, and the focused run passes 25 (10+11+4). The changelog totals (1075 passed / 58 skipped / 1133 total, +28 over the 1047/58/1105 task 6.4 baseline) were independently reproduced."
+    },
+    {
+      "id": "6.5-F3",
+      "severity": "LOW",
+      "status": "resolved",
+      "summary": "RESOLVED (bounded): ArtifactRetention now re-checks the authoritative reference records immediately before each delete and rebuilds the protected set when a record changed, materially narrowing the reuse/re-reference race; the residual interval is inherent and documented, with the grace period and next pass as outer safety margin.",
+      "detail": "RESOLVED as a genuine improvement. src/ArrTags/Artwork/ArtifactRetention.cs now captures a reference-generation stamp (CaptureReferenceStamp: last-write time of the authoritative published-artwork-state and artwork-operation kind directories) before collecting the states/operations snapshot (line 107), and immediately before each delete re-captures the stamp and, when it differs, re-collects the authoritative records, rebuilds protectedIds, and skips the artifact if it is now referenced (lines 140-160). Because a write to an operation/state record updates its kind directory's modification time, a publication that idempotently reuses an existing content-addressed artifact and then writes its durable non-terminal operation after the snapshot is now detected: the stamp differs and the artifact is protected before deletion. The generation is captured before the re-read, so a write during the re-read leaves the stamp stale and triggers another re-check on the next iteration, and a failed re-collection breaks the loop (fails closed). The residual window between the final re-check and Delete is not a distributed lock and is explicitly documented in the Apply remarks and the worker's known_limitations; it is bounded by the 1h just-promoted grace period and the next retention pass, and removing a superseded derived render copy never affects the Jellyfin active image or the retained source (both protected from the snapshot). No dedicated regression test was added for the re-check, but the existing GC safety tests (active/source/non-terminal/recovery-blocked protection, fail-closed corrupt state, quota reclamation) all pass, and the mitigation does not weaken any fail-closed path. This is a reasonable bounded mitigation, not a new blocker."
+    },
+    {
+      "id": "6.5-F4",
+      "severity": "LOW",
+      "status": "closed",
+      "summary": "Informational: terminal RestoreBlocked/OwnershipLost/OwnershipUnknown states do not protect the active derived-image content hash from artifact GC; this does not delete the Jellyfin active image or break restoration, so no change is required.",
+      "detail": "Unchanged and still closed. ArtifactRetention protects ActiveImageIdentity.ContentSha256 only for non-terminal Published/RestorePending states (src/ArrTags/Artwork/ArtifactRetention.cs:192-197). RestoreBlocked is terminal even though the ArrTags-derived image may still be the Jellyfin active image, so its derived artifact becomes reclaimable after the grace period while the retained source is protected within the terminal retention window. This is safe for the stated requirement: the Jellyfin active image is not deleted, restoration uses the retained source artifact, and recovery of a blocked operation is protected by the deliberately non-settled RecoveryBlocked operation path. Informational only."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build => Build succeeded, 0 Warning(s), 0 Error(s) (independently reproduced after the half-window policy and F3 mitigation)",
+    "./build.sh test => Passed 1075, Skipped 58, Failed 0, Total 1133 (independently reproduced; matches the worker claim and the +28-over-1047 baseline)",
+    "dotnet test --filter FullyQualifiedName~MetadataFreshnessTests|FullyQualifiedName~ArtifactRetentionTests|FullyQualifiedName~StateRetentionServiceTests|FullyQualifiedName~MetadataReconciliationProcessorTests => Passed 41, Failed 0, Skipped 0 (10 + 11 + 4 + 16, independently reproduced)",
+    "Inspected tests/ArrTags.Tests/MetadataFreshnessTests.cs (10 cases) including TimestampsAreDerivedFromTheConfiguredWindowAndTotalEqualsThatWindow (half/full boundaries, total = configured window, Fresh strictly before half, Stale-usable at half and before full, Expired at/after full) and DefaultWindowIsTheAdr004Default",
+    "Inspected tests/ArrTags.Tests/ArtifactRetentionTests.cs (11 cases: active image + retained source protection, superseded derived reclamation, non-terminal and recovery-blocked operation protection, terminal retention/release, fail-closed corrupt state, orphan bytes+manifest deletion, grace period, quota reclamation, render-cache retention never touching artifacts)",
+    "Inspected tests/ArrTags.Tests/StateRetentionServiceTests.cs (4 cases) and the MetadataReconciliationProcessorTests additions (outage fallback within window keeps stale and bounded timestamps; after window not refreshed as current; no-LKG outage keeps no metadata)",
+    "Inspected src/ArrTags/Artwork/ArtifactRetention.cs Apply pre-delete re-check and CaptureReferenceStamp for the F3 mitigation, including the fail-closed break on an invalid re-collection"
+  ],
+  "research_checked": [
+    "User-approved authoritative policy for 6.5-F1: the single configured MetadataStaleWindowMinutes is the total bounded last-known-good lifetime, split at half (expiresAt = fetchedAt + window/2; staleUntil = fetchedAt + window; Expired at/after staleUntil)",
+    "docs/architecture.md section 12 (limit row safe-failure text plus the rewritten paragraph stating total bound = configured window and the half split) and section 11 (bounded last-known-good period); docs/data-model.md section 3.9 (expiresAt/staleUntil) and section 6 (metadata cache); PLANS.md task 6.5 status",
+    "docs/decisions.md ADR-004 (single MetadataStaleWindowMinutes value; range/priority change requires a new decision) - the user-approved half split keeps the total at the configured value and does not change the range or authoritative-state priority, so no ADR amendment is required",
+    "docs/implementation/phase-5/phase-review.json finding #4 (no artifact GC, quota never reclaimed, ApplyRetention unscheduled) and its recommended_action",
+    "Repository search of docs/, PLANS.md, src/, and tests/ for any remaining 'applied twice' / 'one further window' / '2x' / 48h statement: none found"
+  ],
+  "required_changes": [],
+  "ready_for_next_task": true
+}

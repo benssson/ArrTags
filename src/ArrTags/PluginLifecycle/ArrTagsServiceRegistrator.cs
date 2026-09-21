@@ -70,6 +70,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             static serviceProvider => serviceProvider.GetRequiredService<ArtworkLifecycleCoordinator>());
         serviceCollection.TryAddSingleton<IRenderer>(static _ => new SkiaBadgeRenderer());
         serviceCollection.TryAddSingleton(CreateArtworkGenerationCoordinator);
+        serviceCollection.TryAddSingleton(CreateArtifactRetention);
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
 
@@ -78,6 +79,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         // work worker so it starts first. New work is additionally gated per
         // subject, so a scan that does not cover every record is still safe.
         serviceCollection.AddHostedService<ArtworkStartupRecoveryService>();
+
+        // Bounded retention maintenance (state cache/quota, terminal provenance,
+        // metadata freshness, and authoritative artifact GC) runs on its own
+        // tracked background loop and performs no provider, render, or image work.
+        serviceCollection.AddHostedService<StateRetentionService>();
 
         // Registered after the lifecycle service so a host shutdown stops
         // accepting and cancels queued/in-flight work before the lifecycle drain
@@ -243,6 +249,15 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<IArtworkSourceReader>(),
             serviceProvider.GetRequiredService<IRenderer>(),
             serviceProvider.GetRequiredService<ArtworkPublisher>());
+    }
+
+    private static ArtifactRetention CreateArtifactRetention(IServiceProvider serviceProvider)
+    {
+        return new ArtifactRetention(
+            serviceProvider.GetRequiredService<StateRepository>(),
+            serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
+            serviceProvider.GetRequiredService<ArtworkOperationStore>(),
+            serviceProvider.GetRequiredService<SourceArtifactStore>());
     }
 
     private static Plugin? FindPlugin(IServiceProvider serviceProvider)

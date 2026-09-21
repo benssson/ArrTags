@@ -3,6 +3,7 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using ArrTags.Configuration;
 using ArrTags.Matching;
 using ArrTags.Media;
 using ArrTags.Metadata;
@@ -18,11 +19,19 @@ namespace ArrTags.Reconciliation;
 /// credential, provider DTO, path, or unbounded external payload.
 /// </summary>
 /// <remarks>
-/// The record intentionally omits the freshness policy
-/// (<see cref="ExpiresAt"/>/<see cref="StaleUntil"/> transitions and the
-/// bounded stale-last-known-good window), which is owned by the later Phase 6
-/// freshness task. This task records the fields and publishes current
-/// observations only.
+/// The record carries an explicit freshness state and computed
+/// <see cref="ExpiresAt"/>/<see cref="StaleUntil"/> boundaries. The boundaries
+/// are derived from <see cref="OperationalLimits.MetadataStaleWindowMinutes"/>
+/// (ADR-004): the configured window is the total bounded last-known-good
+/// lifetime. A successful observation is fresh for the first half of the window
+/// (<see cref="ExpiresAt"/>) and may be retained as bounded last-known-good for
+/// the remaining half until the end of the configured window
+/// (<see cref="StaleUntil"/>); at or after <see cref="StaleUntil"/> it is
+/// expired and unusable as current. The explicit state and the derived
+/// boundaries are separated from artwork retention: this record is
+/// non-authoritative last-known-good state whose usability is governed by
+/// freshness, never by the render work-cache or authoritative-provenance
+/// eviction policy.
 /// </remarks>
 public sealed class MetadataStateEntry
 {
@@ -61,8 +70,8 @@ public sealed class MetadataStateEntry
     /// <param name="providerVersion">The observed provider version when available.</param>
     /// <param name="providerVersionToken">The observed provider revision token when available.</param>
     /// <param name="fetchedAt">When the metadata observation was fetched.</param>
-    /// <param name="expiresAt">The freshness boundary recorded for the later freshness task.</param>
-    /// <param name="staleUntil">The bounded last-known-good boundary recorded for the later freshness task.</param>
+    /// <param name="expiresAt">The computed freshness boundary.</param>
+    /// <param name="staleUntil">The computed bounded last-known-good boundary.</param>
     /// <param name="lastError">A bounded, redacted, non-secret error summary.</param>
     public MetadataStateEntry(
         int cacheVersion,
@@ -239,14 +248,16 @@ public sealed class MetadataStateEntry
     public DateTimeOffset? FetchedAt { get; }
 
     /// <summary>
-    /// Gets the freshness boundary. It is recorded for the later freshness task
-    /// and is not computed here.
+    /// Gets the freshness boundary. Before it, a successful observation is
+    /// <see cref="MetadataStateKind.Fresh"/>; at or after it, the record is a
+    /// last-known-good snapshot that is still usable as current until
+    /// <see cref="StaleUntil"/>.
     /// </summary>
     public DateTimeOffset? ExpiresAt { get; }
 
     /// <summary>
-    /// Gets the bounded last-known-good boundary. It is recorded for the later
-    /// freshness task and is not computed here.
+    /// Gets the bounded last-known-good boundary. At or after it, the record is
+    /// expired and must not be treated as current metadata.
     /// </summary>
     public DateTimeOffset? StaleUntil { get; }
 
@@ -262,9 +273,17 @@ public sealed class MetadataStateEntry
     public string? LastError { get; }
 
     /// <summary>
+    /// Gets the default bounded last-known-good window applied when a caller does
+    /// not supply the configured window.
+    /// </summary>
+    public static TimeSpan DefaultStaleWindow { get; } =
+        TimeSpan.FromMinutes(OperationalLimits.DefaultMetadataStaleWindowMinutes);
+
+    /// <summary>
     /// Creates the canonical metadata state record from a validated match and an
     /// optional normalized metadata snapshot. The state is derived from the match
-    /// status and whether metadata was observed.
+    /// status and whether metadata was observed, and the freshness boundaries are
+    /// computed from the supplied bounded last-known-good window.
     /// </summary>
     /// <param name="identity">The current Jellyfin subject identity.</param>
     /// <param name="match">The current match.</param>
@@ -272,6 +291,7 @@ public sealed class MetadataStateEntry
     /// <param name="fetchedAt">When the observation was made.</param>
     /// <param name="providerVersion">The observed provider version when available.</param>
     /// <param name="providerVersionToken">The observed provider revision token when available.</param>
+    /// <param name="staleWindow">The bounded last-known-good window; the ADR-004 default when omitted.</param>
     /// <returns>The canonical metadata state record.</returns>
     /// <exception cref="ArgumentNullException">A required value is <see langword="null"/>.</exception>
     public static MetadataStateEntry From(
@@ -280,7 +300,8 @@ public sealed class MetadataStateEntry
         BadgeMetadata? metadata,
         DateTimeOffset fetchedAt,
         string? providerVersion = null,
-        string? providerVersionToken = null)
+        string? providerVersionToken = null,
+        TimeSpan? staleWindow = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(match);
@@ -295,6 +316,8 @@ public sealed class MetadataStateEntry
         var state = match.Status == MediaMatchStatus.Matched
             ? metadata is null ? MetadataStateKind.Unavailable : MetadataStateKind.Fresh
             : MetadataStateKind.Unmatched;
+
+        var (expiresAt, staleUntil) = ComputeFreshnessWindow(fetchedAt, staleWindow ?? DefaultStaleWindow);
 
         return new MetadataStateEntry(
             CurrentCacheVersion,
@@ -321,7 +344,153 @@ public sealed class MetadataStateEntry
             metadataFingerprint: metadata?.MetadataFingerprint,
             providerVersion: Bound(providerVersion),
             providerVersionToken: Bound(providerVersionToken),
-            fetchedAt: fetchedAt);
+            fetchedAt: fetchedAt,
+            expiresAt: expiresAt,
+            staleUntil: staleUntil);
+    }
+
+    /// <summary>
+    /// Computes the freshness and bounded last-known-good boundaries for an
+    /// observation time and a configured window. The configured window is the
+    /// total bounded last-known-good lifetime: the observation is fresh for the
+    /// first half of the window and may be retained as bounded last-known-good
+    /// for the remaining half, so the total never exceeds the configured window.
+    /// </summary>
+    /// <param name="fetchedAt">When the observation was made.</param>
+    /// <param name="staleWindow">The configured total bounded last-known-good window.</param>
+    /// <returns>The computed freshness and last-known-good boundaries.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The window is not positive.</exception>
+    public static (DateTimeOffset ExpiresAt, DateTimeOffset StaleUntil) ComputeFreshnessWindow(
+        DateTimeOffset fetchedAt,
+        TimeSpan staleWindow)
+    {
+        if (staleWindow <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(staleWindow), staleWindow, "A metadata stale window must be positive.");
+        }
+
+        var freshnessWindow = staleWindow / 2;
+        if (freshnessWindow < TimeSpan.FromTicks(1))
+        {
+            // A degenerate sub-tick window collapses the freshness half onto the
+            // full bound so the total bound stays positive and correctly ordered.
+            freshnessWindow = staleWindow;
+        }
+
+        return (fetchedAt + freshnessWindow, fetchedAt + staleWindow);
+    }
+
+    /// <summary>
+    /// Evaluates the effective freshness of the record at a point in time. A
+    /// record past its stale boundary is <see cref="MetadataFreshness.Expired"/>
+    /// and must not be treated as current, regardless of its persisted state.
+    /// </summary>
+    /// <param name="now">The evaluation time.</param>
+    /// <returns>The effective freshness.</returns>
+    public MetadataFreshness EvaluateFreshness(DateTimeOffset now)
+    {
+        if (State == MetadataStateKind.Invalid)
+        {
+            return MetadataFreshness.Invalid;
+        }
+
+        if (State == MetadataStateKind.Unmatched)
+        {
+            return IsExpired(now) ? MetadataFreshness.Expired : MetadataFreshness.Unmatched;
+        }
+
+        if (State == MetadataStateKind.Unavailable)
+        {
+            return Metadata is not null && !IsExpired(now)
+                ? MetadataFreshness.Stale
+                : MetadataFreshness.Unavailable;
+        }
+
+        if (Metadata is null)
+        {
+            // A valid record of this kind always carries metadata; treat an
+            // impossible shape as unusable rather than current.
+            return MetadataFreshness.Invalid;
+        }
+
+        if (IsExpired(now))
+        {
+            return MetadataFreshness.Expired;
+        }
+
+        if (State == MetadataStateKind.Fresh && ExpiresAt is { } expiresAt && now < expiresAt)
+        {
+            return MetadataFreshness.Fresh;
+        }
+
+        return MetadataFreshness.Stale;
+    }
+
+    /// <summary>
+    /// Determines whether the record may be treated as current metadata at a
+    /// point in time. Only a fresh or bounded stale last-known-good snapshot is
+    /// usable; an expired record never is.
+    /// </summary>
+    /// <param name="now">The evaluation time.</param>
+    /// <returns><see langword="true"/> when the record is usable as current.</returns>
+    public bool IsUsableAsCurrent(DateTimeOffset now)
+    {
+        return EvaluateFreshness(now) is MetadataFreshness.Fresh or MetadataFreshness.Stale;
+    }
+
+    /// <summary>
+    /// Determines whether the bounded last-known-good window has ended. The
+    /// record's bytes are not deleted by this check; the metadata retention
+    /// policy is a separate, explicitly scheduled cleanup.
+    /// </summary>
+    /// <param name="now">The evaluation time.</param>
+    /// <returns><see langword="true"/> when the record is past its stale boundary.</returns>
+    public bool IsExpired(DateTimeOffset now)
+    {
+        return StaleUntil is { } staleUntil && now >= staleUntil;
+    }
+
+    /// <summary>
+    /// Creates a bounded last-known-good copy of this record marked
+    /// <see cref="MetadataStateKind.Stale"/>. The snapshot and the computed
+    /// boundaries are preserved unchanged, so a temporary outage can keep the
+    /// last-known-good snapshot but can never extend the bounded window.
+    /// </summary>
+    /// <returns>The stale record, or this instance when it is already stale.</returns>
+    public MetadataStateEntry ToStale()
+    {
+        if (State == MetadataStateKind.Stale)
+        {
+            return this;
+        }
+
+        return new MetadataStateEntry(
+            CacheVersion,
+            CacheKey,
+            JellyfinItemId,
+            ItemType,
+            MatchStatus,
+            MatchMethod,
+            MatchFingerprint,
+            ProviderKind,
+            ProviderInstanceId,
+            ConnectionId,
+            MetadataStateKind.Stale,
+            LibraryId,
+            ProviderIds,
+            Title,
+            ProductionYear,
+            SourceFingerprint,
+            RecordIdentity,
+            MatchedProviderIds,
+            Metadata,
+            MetadataFingerprint,
+            ProviderVersion,
+            ProviderVersionToken,
+            FetchedAt,
+            ExpiresAt,
+            StaleUntil,
+            LastError);
     }
 
     /// <summary>
@@ -420,9 +589,30 @@ public sealed class MetadataStateEntry
         switch (State)
         {
             case MetadataStateKind.Fresh:
+            case MetadataStateKind.Stale:
                 if (Metadata is null || string.IsNullOrWhiteSpace(MetadataFingerprint))
                 {
-                    reason = "A fresh metadata cache record requires metadata and a fingerprint.";
+                    reason = "A fresh or stale metadata cache record requires metadata and a fingerprint.";
+                    return false;
+                }
+
+                if (ExpiresAt is null || StaleUntil is null)
+                {
+                    reason = "A fresh or stale metadata cache record requires computed freshness boundaries.";
+                    return false;
+                }
+
+                if (StaleUntil < ExpiresAt)
+                {
+                    reason = "The bounded last-known-good boundary cannot precede the freshness boundary.";
+                    return false;
+                }
+
+                break;
+            case MetadataStateKind.Unavailable:
+                if (Metadata is not null && string.IsNullOrWhiteSpace(MetadataFingerprint))
+                {
+                    reason = "A retained last-known-good snapshot requires a metadata fingerprint.";
                     return false;
                 }
 

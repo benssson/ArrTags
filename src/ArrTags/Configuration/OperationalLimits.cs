@@ -22,6 +22,11 @@ public sealed class OperationalLimits
     private const int HoursPerDay = 24;
 
     /// <summary>
+    /// The default metadata last-known-good window in minutes (ADR-004).
+    /// </summary>
+    public const int DefaultMetadataStaleWindowMinutes = 24 * MinutesPerHour;
+
+    /// <summary>
     /// Gets or sets the maximum number of pending update queue entries.
     /// </summary>
     public int QueueCapacity { get; set; } = 512;
@@ -99,7 +104,7 @@ public sealed class OperationalLimits
     /// <summary>
     /// Gets or sets the metadata last-known-good window in minutes.
     /// </summary>
-    public int MetadataStaleWindowMinutes { get; set; } = 24 * MinutesPerHour;
+    public int MetadataStaleWindowMinutes { get; set; } = DefaultMetadataStaleWindowMinutes;
 
     /// <summary>
     /// Gets or sets the render work-cache time-to-live in minutes.

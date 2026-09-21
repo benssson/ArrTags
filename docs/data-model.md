@@ -1094,7 +1094,15 @@ a separately named policy field and should not share the actual-quality label.
 `MetadataCacheEntry` is a last-known-good normalized snapshot. It may outlive a
 temporary Arr outage, but only until its configured `staleUntil`. After that,
 new artwork publication must stop or retain the current usable artwork according
-to policy; it must not claim that stale metadata is current.
+to policy; it must not claim that stale metadata is current. The entry's
+`expiresAt`/`staleUntil` boundaries are derived from the single configured
+last-known-good window, which is the total bounded last-known-good lifetime: an
+observation is `Fresh` for the first half of the window and may be retained as
+bounded `Stale` for the remaining half, so the total never exceeds the
+configured window. A transient outage within the window keeps the snapshot as
+explicit `Stale` without extending the window. The entry's usability and
+retention are governed by freshness, not by the artwork render-cache or
+provenance eviction policy.
 
 ### Artwork cache
 

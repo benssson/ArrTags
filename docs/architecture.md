@@ -252,7 +252,15 @@ authoritative artwork state and operation records are quarantined and retained
 for recovery rather than treated as `NotPublished`. Cache records are bounded by
 age and quota, while authoritative records are never pruned as ordinary cache
 entries; only explicitly terminal provenance records are eligible for retention
-cleanup.
+cleanup. Metadata last-known-good records are governed by freshness rather than
+by the render work-cache TTL/quota and are explicitly exempt from that policy. A
+bounded, scheduled retention pass applies cache/quota retention, terminal
+provenance retention, metadata freshness retention, and authoritative artifact
+garbage collection, so retention is enforced in production and not only in
+tests. Artifact garbage collection deletes an artifact only after proving it is
+not the active image, not the retained source of a live ownership session, and
+not referenced by a non-terminal or recovery-blocked operation, and it fails
+closed when an authoritative record cannot be validated.
 
 Publication and restoration use a durable write-ahead operation journal under
 the same plugin data boundary. `ArtworkOperation` records, operation manifests,
@@ -416,7 +424,12 @@ immediately before publishing, and atomically publishes the metadata state
 through the versioned cache boundary; a changed basis (advanced configuration
 version, disabled or changed connection, removed/changed/ineligible item) or a
 provider read failure discards the work rather than publishing partial or stale
-state.
+state. A published metadata state carries computed freshness boundaries derived
+from the configured last-known-good window. A transient provider outage within
+that window keeps the last-known-good snapshot as explicit stale state without
+extending the bounded window; after the window the snapshot is expired and is
+not usable as current, so new artwork publication must stop or retain the
+current usable artwork.
 
 Refresh triggers are:
 
@@ -957,6 +970,19 @@ aborted, or tombstoned, regardless of cache or quota pressure. The render
 work cache is bounded independently from authoritative provenance. When the
 authoritative storage quota is exhausted, ArrTags rejects new derived work and
 preserves the current artwork instead of evicting recovery state.
+
+The configured metadata last-known-good window is the total bound on
+last-known-good use. A metadata state record is fresh for the first half of the
+window (`expiresAt = fetchedAt + window / 2`) and may be retained as explicit
+bounded stale last-known-good for the remaining half until the end of the
+configured window (`staleUntil = fetchedAt + window`); at or after `staleUntil`
+it is expired and unusable as current, consistent with the section-12 safe
+failure above. A transient provider outage within the window keeps the snapshot
+as explicit stale state; it never extends the bounded window. Bounded artifact
+retention reclaims superseded derived render output (proven non-active,
+non-source, and not referenced by a non-terminal or recovery-blocked operation)
+so the authoritative quota can be reused, while the retained source baseline of
+a live session and the active image are never reclaimed.
 
 Metrics or diagnostic status should distinguish queue depth, API health,
 matching failures, cache hits/misses, render failures, and stale metadata

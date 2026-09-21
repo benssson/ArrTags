@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ArrTags.Configuration;
 using ArrTags.Media;
 using ArrTags.Providers;
+using ArrTags.State;
 using ArrTags.Updates;
 
 namespace ArrTags.Reconciliation;
@@ -135,9 +136,21 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
 
         if (!read.IsSuccess || read.Match is null)
         {
-            return read.Error is null
-                ? WorkProcessingResult.Terminal("The provider read returned no outcome.")
-                : WorkProcessingResult.FromRetryability(read.Error.Retryability, read.Error.Message);
+            if (read.Error is null)
+            {
+                return WorkProcessingResult.Terminal("The provider read returned no outcome.");
+            }
+
+            if (read.Error.Retryability == ArrErrorRetryability.Later)
+            {
+                // A temporary outage within the bounded window keeps the
+                // last-known-good snapshot as explicit stale state so it is
+                // never mistaken for a current observation. The bounded window
+                // is not extended: an expired snapshot stays expired.
+                KeepLastKnownGoodAsStale(item.Key.ItemId, kind.Value);
+            }
+
+            return WorkProcessingResult.FromRetryability(read.Error.Retryability, read.Error.Message);
         }
 
         // Re-read the current item and configuration immediately before
@@ -184,7 +197,8 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             read.Metadata,
             DateTimeOffset.UtcNow,
             read.ProviderVersion,
-            read.ProviderVersionToken);
+            read.ProviderVersionToken,
+            TimeSpan.FromMinutes(publishSnapshot.Limits.MetadataStaleWindowMinutes));
 
         _store.Write(entry);
 
@@ -261,5 +275,40 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     private static WorkProcessingResult Discard(string reason)
     {
         return WorkProcessingResult.Completed(reason);
+    }
+
+    /// <summary>
+    /// Keeps a still-usable last-known-good metadata snapshot as explicit stale
+    /// state after a transient provider outage. The bounded window and snapshot
+    /// are preserved unchanged, and a missing, corrupt, non-matching, or already
+    /// expired entry is left alone. The write is best-effort: a failure to
+    /// record the stale marker must never turn a retryable outage into a
+    /// terminal work failure.
+    /// </summary>
+    private void KeepLastKnownGoodAsStale(Guid jellyfinItemId, ArrProviderKind kind)
+    {
+        try
+        {
+            var read = _store.Read(jellyfinItemId, kind);
+            if (read.Status != StateReadStatus.Found || read.Value is null)
+            {
+                return;
+            }
+
+            var entry = read.Value;
+            if (entry.State != MetadataStateKind.Fresh
+                || entry.Metadata is null
+                || !entry.IsUsableAsCurrent(DateTimeOffset.UtcNow))
+            {
+                return;
+            }
+
+            _store.Write(entry.ToStale());
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Keeping the last-known-good marker is best-effort; the durable
+            // entry remains authoritative for the next reconciliation.
+        }
     }
 }

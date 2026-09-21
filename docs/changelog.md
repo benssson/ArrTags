@@ -1660,3 +1660,84 @@ passing behavior was changed. The Phase 5 review MEDIUM lifecycle-fence finding
 is closed: the publisher enforces the durable fence before the first mutation and
 before the final commit, and the interleaved drain/publication tests demonstrate
 that no untracked publication survives the fence.
+
+### Task 6.5 - Metadata freshness, bounded stale-last-known-good, and artifact retention
+
+Task 6.5 separates metadata freshness and bounded stale-last-known-good behavior
+from artwork retention and eviction, and schedules bounded artifact retention/GC
+(`docs/architecture.md` sections 6, 8, 9, and 12; `docs/data-model.md` sections
+3.9, 3.10, and 6; ADR-004; ADR-002/ADR-003). It does not implement
+fingerprint-driven artwork regeneration/invalidation (6.6), webhooks (6.7), or
+the restart/outage test matrix (6.8).
+
+- `src/ArrTags/Reconciliation/MetadataFreshness.cs`: the effective-freshness
+  vocabulary (`Fresh`, `Stale`, `Expired`, `Unmatched`, `Unavailable`,
+  `Invalid`). Only `Fresh` and `Stale` are usable as current metadata.
+- `src/ArrTags/Reconciliation/MetadataStateEntry.cs`: computes `expiresAt` and
+  `staleUntil` from the ADR-004 `MetadataStaleWindowMinutes` window, which is the
+  total bounded last-known-good lifetime (an observation is fresh for the first
+  half of the window and bounded last-known-good for the remaining half, so
+  `expiresAt = fetchedAt + window / 2` and `staleUntil = fetchedAt + window`),
+  enforces the freshness-boundary invariants on a fresh/stale record, and exposes
+  `EvaluateFreshness`, `IsUsableAsCurrent`, `IsExpired`, and a bounded `ToStale`
+  conversion that preserves the snapshot and timestamps unchanged.
+  `src/ArrTags/Configuration/OperationalLimits.cs` exposes the ADR-004 default
+  window constant.
+- `src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs`: publishes the
+  computed window from the current snapshot and, on a transient
+  (`ProviderUnavailable`) read failure, keeps a still-usable last-known-good
+  snapshot as explicit `Stale` without extending the bounded window; after the
+  window the snapshot is neither kept nor refreshed as current. The processor
+  remains artwork-free.
+- `src/ArrTags/Reconciliation/MetadataStateStore.cs`: `ApplyRetention` prunes
+  only expired metadata records, so metadata usability and retention are governed
+  by freshness rather than the render work-cache policy.
+- `src/ArrTags/State/StateRetention.cs` and `StateRepository.cs`:
+  `ApplyCacheRetention`/`ApplyRetention` accept an exempt-kind set so metadata
+  last-known-good records are never evicted by the render-cache TTL or quota.
+- `src/ArrTags/Artwork/ArtifactRetention.cs`: the bounded authoritative artifact
+  GC. It protects the active image content hash, a live session's retained source
+  artifact, and every artifact referenced by a non-terminal or recovery-blocked
+  operation; it retains a terminal-provenance source baseline only for the
+  terminal retention window; it reclaims superseded derived render output so the
+  authoritative quota can be reused; it applies a bounded just-promoted grace
+  period; it re-checks the authoritative references immediately before each
+  delete so an artifact re-referenced after the reference snapshot cannot be
+  removed; and it fails closed when an authoritative state or operation record
+  cannot be validated. It never mutates an image and never calls Jellyfin.
+- `src/ArrTags/Artwork/SourceArtifactStore.cs`: bounded artifact identifier
+  enumeration, a last-write-time lookup for the just-promoted grace period, and
+  an explicit retention delete of the bytes and manifest.
+- `src/ArrTags/PluginLifecycle/StateRetentionService.cs`: the hosted, bounded,
+  cancellation-aware maintenance loop that schedules `StateRepository.ApplyRetention`,
+  metadata freshness retention, and artifact GC in production. It runs its first
+  pass on a tracked background task, never blocks startup, and cancels and awaits
+  within a bounded timeout on shutdown. `ArrTagsServiceRegistrator` registers the
+  artifact retention policy and the hosted service.
+- Tests: `tests/ArrTags.Tests/MetadataFreshnessTests.cs` (10 cases),
+  `ArtifactRetentionTests.cs` (11 cases), `StateRetentionServiceTests.cs` (4
+  cases), plus extended `MetadataReconciliationProcessorTests` and
+  `MetadataStateStoreTests`. They cover fresh/stale/expired transitions, the
+  computed half/full boundaries, total last-known-good equal to the configured
+  window, the ADR-004 default, stale conversion without window extension,
+  unmatched expiry, invalid fresh-without-boundaries, metadata retention pruning
+  only expired records, repository retention exempting metadata state, outage
+  fallback within and after the window, no-LKG outage,
+  active/source/non-terminal/recovery-blocked artifact protection, terminal
+  provenance retention and release, fail-closed corrupt state, orphan bytes and
+  manifest deletion, the just-promoted grace period, quota reclamation on
+  repeated publication, render-cache retention never touching artifacts, the
+  hosted loop, and an unstarted-stop safety check.
+
+Build and test: `./build.sh build` (0 warnings, 0 errors) and `./build.sh test`
+pass. The default suite passes 1075 with 58 environment-guarded skips (1133
+total), exactly +28 over the task 6.4 baseline (1047/58/1105), with no new skips
+and no regressions. No ADR, `RenderVersion`, renderer behavior, or existing
+passing behavior was changed. The Phase 5 review MEDIUM finding #4 (no artifact
+garbage collection, the authoritative quota is never reclaimed, and
+`ApplyRetention` was invoked only from tests) is addressed: `StateRetentionService`
+schedules retention in production and `ArtifactRetention` reclaims superseded
+render output so the authoritative quota can be reused on repeated publication,
+while active, owned, and recovery-relevant artifacts are never evicted. The
+Phase 5 review MEDIUM finding that no production caller selects the retained
+source for a repeat publication remains task 6.6.

@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, 6.3, and 6.4 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-5 complete; Phase 6 in progress (tasks 6.1, 6.2, 6.3, 6.4, and 6.5 complete). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -175,7 +175,7 @@ without modifying original media files or external services.
 | 3 | Media matching | Complete | Eligible movies, series, and episodes match only with validated identity evidence. |
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
-| 6 | Caching, updates & performance | In progress (6.3 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
+| 6 | Caching, updates & performance | In progress (6.5 complete) | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
@@ -2028,7 +2028,7 @@ authoritative.
 - [x] 6.4 Recover non-terminal artwork operations before accepting new work for
   the same item/image surface, using before/after identity postconditions and
   generation fences.
-- [ ] 6.5 Separate metadata freshness and bounded stale-last-known-good behavior
+- [x] 6.5 Separate metadata freshness and bounded stale-last-known-good behavior
   from artwork retention and eviction.
 - [ ] 6.6 Regenerate and republish only affected artwork when a metadata
   fingerprint changes; invalidate relevant publication/work state on schema,
@@ -2162,6 +2162,52 @@ drain/publication race, no-recapture, artifact non-deletion, corrupt-state
 fail-closed, and the startup scan bound and cancellation. Metadata freshness
 (6.5), fingerprint-driven regeneration (6.6), webhooks (6.7), and the
 restart/outage test matrix (6.8) remain.
+
+**Task 6.5 status:** Complete. Metadata freshness is now explicit and bounded,
+and it is separated from artwork retention and eviction. `MetadataStateEntry`
+computes `expiresAt` and `staleUntil` from
+`OperationalLimits.MetadataStaleWindowMinutes` (ADR-004) and carries the explicit
+`MetadataStateKind`; `MetadataFreshness` plus
+`EvaluateFreshness`/`IsUsableAsCurrent`/`IsExpired` evaluate the effective state
+so stale data is never mistaken for current. The configured window is the total
+bounded last-known-good lifetime: an observation is fresh for the first half of
+the window and may be retained as bounded last-known-good for the remaining half
+(`expiresAt = fetchedAt + window / 2`, `staleUntil = fetchedAt + window`); after
+`staleUntil` it is `Expired` and is not usable as current, and new artwork
+publication must stop or retain the current usable artwork (the artwork pipeline
+that consumes this boundary is task 6.6). A transient (`ProviderUnavailable`)
+read failure within the window keeps the last-known-good snapshot as explicit
+`Stale` without extending the bounded timestamps; after the window the snapshot
+is not kept or refreshed as current. `MetadataReconciliationProcessor` publishes
+the computed window from the current snapshot and performs the outage fallback.
+`MetadataStateStore.ApplyRetention` prunes only expired metadata records, and
+`StateRepository.ApplyRetention`/`StateRetention.ApplyCacheRetention` accept an
+exempt-kind set so metadata last-known-good state is never evicted by the render
+work-cache TTL or quota. `ArtifactRetention` is the bounded authoritative
+artifact GC: it proves an artifact is not the active image, not the retained
+source of a live ownership session, and not referenced by a non-terminal or
+recovery-blocked operation before deleting its bytes and manifest, retains
+terminal-provenance source baselines only for the terminal retention window,
+reclaims superseded derived render output so the authoritative quota can be
+reused, and fails closed when an authoritative record cannot be validated.
+`SourceArtifactStore` gained bounded artifact enumeration, a last-write-time
+lookup for a bounded just-promoted grace period, and an explicit retention
+delete. `StateRetentionService` is the hosted, bounded, cancellation-aware
+maintenance loop that schedules state retention, metadata freshness retention,
+and artifact GC in production (previously `ApplyRetention` was test-invoked
+only). The Phase 5 review MEDIUM finding #4 (no artifact GC; authoritative quota
+never reclaimed; `ApplyRetention` unscheduled) is addressed: terminal provenance
+and superseded render output are pruned and the authoritative quota is reclaimed
+on repeated publication. Focused tests cover fresh/stale/expired transitions,
+computed boundaries, outage fallback within and after the window, stale
+conversion without window extension, metadata retention exempt from render-cache
+eviction, artifact GC proof for active/source/non-terminal/recovery-blocked
+references, fail-closed corrupt state, terminal-provenance retention and release,
+the just-promoted grace period, quota reclamation on repeated publication, and
+the hosted retention schedule. The task 6.1-6.4 queue, worker, metadata
+publication, recovery gate, and fence behavior is unchanged. Fingerprint-driven
+regeneration (6.6), webhooks (6.7), and the restart/outage test matrix (6.8)
+remain.
 
 **Authoritative Phase 6 execution order:** 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7,
 6.8. Task IDs are stable references only; this execution order is the canonical

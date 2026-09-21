@@ -177,17 +177,22 @@ public sealed class StateRepository
 
     /// <summary>
     /// Applies the configured cache retention and terminal-provenance retention
-    /// policies. Non-terminal authoritative state is never pruned.
+    /// policies. Non-terminal authoritative state is never pruned. Record kinds
+    /// governed by a different policy (for example metadata last-known-good
+    /// state, whose usability is bounded by freshness) can be excluded through
+    /// <paramref name="exemptCacheKinds"/>.
     /// </summary>
     /// <param name="now">The current time.</param>
+    /// <param name="exemptCacheKinds">Cache record kinds excluded from render-cache retention.</param>
     /// <returns>The number of removed records.</returns>
-    public int ApplyRetention(DateTimeOffset now)
+    public int ApplyRetention(DateTimeOffset now, IReadOnlyCollection<string>? exemptCacheKinds = null)
     {
         var cacheRemoved = StateRetention.ApplyCacheRetention(
             _paths,
             TimeSpan.FromMinutes(_limits.RenderCacheTtlMinutes),
             _limits.RenderCacheQuotaBytes,
-            now);
+            now,
+            exemptCacheKinds);
 
         var authoritativeRemoved = StateRetention.ApplyAuthoritativeRetention(
             _paths,

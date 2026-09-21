@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using ArrTags.State;
 
@@ -227,6 +228,200 @@ public sealed class SourceArtifactStore
     public bool Exists(string artifactId)
     {
         return Read(artifactId).Status == SourceArtifactReadStatus.Found;
+    }
+
+    /// <summary>
+    /// Enumerates the content-addressed artifact identifiers currently held by
+    /// the store, from the persisted manifests and the artifact bytes. The
+    /// enumeration is bounded and deterministic. It performs no deletion and no
+    /// eviction decision; the artifact retention policy decides what is safe to
+    /// remove.
+    /// </summary>
+    /// <param name="maxRecords">The bounded maximum number of identifiers.</param>
+    /// <returns>The distinct artifact identifiers in a bounded deterministic order.</returns>
+    public IReadOnlyList<string> EnumerateArtifactIds(int maxRecords = StateRepository.MaxEnumerationRecords)
+    {
+        if (maxRecords <= 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var ids = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var artifactDirectory = _paths.GetArtifactDirectory();
+        if (Directory.Exists(artifactDirectory))
+        {
+            try
+            {
+                foreach (var file in new DirectoryInfo(artifactDirectory).EnumerateFiles("*.bin", SearchOption.AllDirectories))
+                {
+                    var id = Path.GetFileNameWithoutExtension(file.Name);
+                    if (SourceArtifactPaths.IsValidArtifactId(id))
+                    {
+                        ids.Add(SourceArtifactPaths.NormalizeArtifactId(id));
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+
+        var manifestDirectory = _repository.Paths.GetKindDirectory(StateAuthority.Authoritative, ManifestKind);
+        if (Directory.Exists(manifestDirectory))
+        {
+            try
+            {
+                foreach (var file in new DirectoryInfo(manifestDirectory).EnumerateFiles("*.json", SearchOption.TopDirectoryOnly))
+                {
+                    var id = Path.GetFileNameWithoutExtension(file.Name);
+                    if (SourceArtifactPaths.IsValidArtifactId(id))
+                    {
+                        ids.Add(SourceArtifactPaths.NormalizeArtifactId(id));
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+
+        var results = new List<string>(Math.Min(ids.Count, maxRecords));
+        foreach (var id in ids)
+        {
+            if (results.Count >= maxRecords)
+            {
+                break;
+            }
+
+            results.Add(id);
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Gets the newest write time of an artifact's bytes or manifest. It is used
+    /// by retention to give a just-promoted artifact a bounded grace period
+    /// before it can be reclaimed, closing the window in which a publication has
+    /// written an artifact but has not yet made a durable reference to it.
+    /// </summary>
+    /// <param name="artifactId">The content-addressed artifact identifier.</param>
+    /// <param name="lastWriteTime">The newest write time when the artifact exists.</param>
+    /// <returns><see langword="true"/> when a byte or manifest file exists.</returns>
+    public bool TryGetArtifactLastWriteTime(string artifactId, out DateTimeOffset lastWriteTime)
+    {
+        lastWriteTime = default;
+        if (!SourceArtifactPaths.IsValidArtifactId(artifactId))
+        {
+            return false;
+        }
+
+        var normalized = SourceArtifactPaths.NormalizeArtifactId(artifactId);
+        var found = false;
+        var newest = DateTimeOffset.MinValue;
+
+        try
+        {
+            var bytes = new FileInfo(_paths.GetArtifactPath(normalized));
+            if (bytes.Exists)
+            {
+                newest = bytes.LastWriteTimeUtc;
+                found = true;
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+
+        try
+        {
+            var manifest = new FileInfo(_repository.Paths.GetRecordPath(StateAuthority.Authoritative, ManifestKind, normalized));
+            if (manifest.Exists)
+            {
+                var modified = new DateTimeOffset(manifest.LastWriteTimeUtc, TimeSpan.Zero);
+                if (!found || modified > newest)
+                {
+                    newest = modified;
+                }
+
+                found = true;
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+
+        if (found)
+        {
+            lastWriteTime = newest;
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// Deletes one artifact's bytes and its authoritative manifest. This is an
+    /// explicit retention action: the caller must have proven the artifact is not
+    /// the active image, not the retained session source, and not referenced by a
+    /// non-terminal operation. A missing file is not an error.
+    /// </summary>
+    /// <param name="artifactId">The content-addressed artifact identifier.</param>
+    /// <returns><see langword="true"/> when a byte or manifest file was removed.</returns>
+    public bool Delete(string artifactId)
+    {
+        if (!SourceArtifactPaths.IsValidArtifactId(artifactId))
+        {
+            return false;
+        }
+
+        var normalized = SourceArtifactPaths.NormalizeArtifactId(artifactId);
+        var deleted = false;
+
+        try
+        {
+            var path = _paths.GetArtifactPath(normalized);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+                deleted = true;
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+
+        try
+        {
+            var manifest = _repository.Paths.GetRecordPath(StateAuthority.Authoritative, ManifestKind, normalized);
+            if (File.Exists(manifest))
+            {
+                File.Delete(manifest);
+                deleted = true;
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+
+        return deleted;
     }
 
     /// <summary>

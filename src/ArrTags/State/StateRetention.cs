@@ -14,14 +14,23 @@ public static class StateRetention
 {
     /// <summary>
     /// Prunes expired cache records and enforces the cache byte quota, evicting
-    /// the oldest records first.
+    /// the oldest records first. Record kinds listed in
+    /// <paramref name="exemptKinds"/> are governed by a different policy and are
+    /// never touched here: metadata last-known-good usability is bounded by
+    /// freshness, not by the render work-cache TTL or quota.
     /// </summary>
     /// <param name="paths">The safe state paths.</param>
     /// <param name="timeToLive">The cache record time-to-live.</param>
     /// <param name="quotaBytes">The maximum total cache bytes.</param>
     /// <param name="now">The current time.</param>
+    /// <param name="exemptKinds">Record kinds excluded from render-cache retention.</param>
     /// <returns>The number of removed records.</returns>
-    public static int ApplyCacheRetention(PluginStatePaths paths, TimeSpan timeToLive, long quotaBytes, DateTimeOffset now)
+    public static int ApplyCacheRetention(
+        PluginStatePaths paths,
+        TimeSpan timeToLive,
+        long quotaBytes,
+        DateTimeOffset now,
+        IReadOnlyCollection<string>? exemptKinds = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
@@ -35,6 +44,11 @@ public static class StateRetention
         var remaining = new List<FileInfo>();
         foreach (var file in new DirectoryInfo(cacheDirectory).EnumerateFiles("*.json", SearchOption.AllDirectories))
         {
+            if (IsExempt(file, exemptKinds))
+            {
+                continue;
+            }
+
             if (file.LastWriteTimeUtc + timeToLive < now.UtcDateTime)
             {
                 if (TryDelete(file))
@@ -111,6 +125,30 @@ public static class StateRetention
         }
 
         return removed;
+    }
+
+    private static bool IsExempt(FileInfo file, IReadOnlyCollection<string>? exemptKinds)
+    {
+        if (exemptKinds is null || exemptKinds.Count == 0)
+        {
+            return false;
+        }
+
+        var kind = file.Directory?.Name;
+        if (string.IsNullOrEmpty(kind))
+        {
+            return false;
+        }
+
+        foreach (var exempt in exemptKinds)
+        {
+            if (string.Equals(kind, exempt, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsTerminalAndExpired(FileInfo file, TimeSpan retention, DateTimeOffset now)

@@ -93,6 +93,66 @@ public sealed class MetadataStateStore
     }
 
     /// <summary>
+    /// Prunes metadata state records whose bounded last-known-good window has
+    /// ended. Metadata usability is governed by freshness, not by the render
+    /// work-cache or authoritative-provenance eviction policy; a fresh or still
+    /// usable stale record is never removed here. The scan is bounded and a
+    /// corrupt record is discarded by <see cref="Read(string)"/> as usual.
+    /// </summary>
+    /// <param name="now">The current time.</param>
+    /// <returns>The number of removed records.</returns>
+    public int ApplyRetention(DateTimeOffset now)
+    {
+        var directory = _repository.Paths.GetKindDirectory(StateAuthority.Cache, RecordKind);
+        if (!System.IO.Directory.Exists(directory))
+        {
+            return 0;
+        }
+
+        string[] files;
+        try
+        {
+            files = System.IO.Directory.GetFiles(directory, "*.json", System.IO.SearchOption.TopDirectoryOnly);
+        }
+        catch (System.IO.IOException)
+        {
+            return 0;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return 0;
+        }
+
+        var removed = 0;
+        foreach (var file in files)
+        {
+            var recordId = System.IO.Path.GetFileNameWithoutExtension(file);
+            if (string.IsNullOrEmpty(recordId))
+            {
+                continue;
+            }
+
+            var read = Read(recordId);
+            if (read.Status != StateReadStatus.Found || read.Value is null)
+            {
+                // An invalid cache record was already discarded by Read; a
+                // missing record has nothing to remove.
+                continue;
+            }
+
+            if (!read.Value.IsExpired(now))
+            {
+                continue;
+            }
+
+            TryDiscard(recordId);
+            removed++;
+        }
+
+        return removed;
+    }
+
+    /// <summary>
     /// Writes a metadata state record atomically as rebuildable cache state.
     /// </summary>
     /// <param name="entry">The record to persist.</param>

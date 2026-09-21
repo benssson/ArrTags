@@ -61,6 +61,11 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         Assert.False(string.IsNullOrEmpty(stored.Value.MetadataFingerprint));
         Assert.Equal("Bluray-1080p", stored.Value.Metadata!.QualityLabel);
         Assert.NotNull(stored.Value.FetchedAt);
+        Assert.NotNull(stored.Value.ExpiresAt);
+        Assert.NotNull(stored.Value.StaleUntil);
+        Assert.True(stored.Value.StaleUntil > stored.Value.ExpiresAt);
+        Assert.True(stored.Value.IsUsableAsCurrent(DateTimeOffset.UtcNow));
+        Assert.Equal(MetadataFreshness.Fresh, stored.Value.EvaluateFreshness(DateTimeOffset.UtcNow));
     }
 
     [Fact]
@@ -205,6 +210,66 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
     }
 
     [Fact]
+    public async Task TransientReaderFailureWithinTheWindowKeepsLastKnownGoodAsStale()
+    {
+        var seeded = SeedLastKnownGood(DateTimeOffset.UtcNow);
+        _reader.Result = ArrMetadataReadResult.Failure(new ArrProviderError(
+            ArrProviderErrorCode.ProviderUnavailable,
+            ArrErrorRetryability.Later,
+            "The provider was unavailable."));
+
+        var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.True(result.IsRetryable);
+        var stored = _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr);
+        Assert.Equal(StateReadStatus.Found, stored.Status);
+        Assert.Equal(MetadataStateKind.Stale, stored.Value!.State);
+        Assert.Equal(seeded.MetadataFingerprint, stored.Value.MetadataFingerprint);
+        Assert.Equal(seeded.ExpiresAt, stored.Value.ExpiresAt);
+        Assert.Equal(seeded.StaleUntil, stored.Value.StaleUntil);
+        Assert.Equal(MetadataFreshness.Stale, stored.Value.EvaluateFreshness(DateTimeOffset.UtcNow));
+        Assert.True(stored.Value.IsUsableAsCurrent(DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public async Task TransientReaderFailureAfterTheWindowDoesNotRefreshStaleMetadata()
+    {
+        // The seeded last-known-good window ended before the outage, so it must
+        // never be kept or refreshed as current metadata.
+        var seeded = SeedLastKnownGood(DateTimeOffset.UtcNow.AddDays(-3));
+        Assert.False(seeded.IsUsableAsCurrent(DateTimeOffset.UtcNow));
+        _reader.Result = ArrMetadataReadResult.Failure(new ArrProviderError(
+            ArrProviderErrorCode.ProviderUnavailable,
+            ArrErrorRetryability.Later,
+            "The provider was unavailable."));
+
+        var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.True(result.IsRetryable);
+        var stored = _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr);
+        Assert.Equal(StateReadStatus.Found, stored.Status);
+        Assert.Equal(seeded.MetadataFingerprint, stored.Value!.MetadataFingerprint);
+        Assert.False(stored.Value.IsUsableAsCurrent(DateTimeOffset.UtcNow));
+        Assert.Equal(MetadataFreshness.Expired, stored.Value.EvaluateFreshness(DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public async Task TransientReaderFailureWithoutLastKnownGoodKeepsNoMetadata()
+    {
+        _reader.Result = ArrMetadataReadResult.Failure(new ArrProviderError(
+            ArrProviderErrorCode.ProviderUnavailable,
+            ArrErrorRetryability.Later,
+            "The provider was unavailable."));
+
+        var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
+
+        Assert.True(result.IsRetryable);
+        Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
+    }
+
+    [Fact]
     public void RegistratorWiresTheRealReconciliationProcessor()
     {
         var services = new ServiceCollection();
@@ -291,6 +356,20 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
             quality: new ArrQualityDescriptor("Bluray-1080p", "bluray", 1080, "Remux", 7),
             videoCodec: "h264");
         return ArrMetadataReadResult.Success(match, metadata);
+    }
+
+    private MetadataStateEntry SeedLastKnownGood(DateTimeOffset fetchedAt)
+    {
+        var identity = ReconciliationFixtures.MovieIdentity();
+        var match = ReconciliationFixtures.MatchedMovieMatch(identity);
+        var entry = MetadataStateEntry.From(
+            identity,
+            match,
+            ReconciliationFixtures.MovieMetadata(identity, match.RecordIdentity),
+            fetchedAt,
+            staleWindow: TimeSpan.FromMinutes(_configuration.Current.Limits.MetadataStaleWindowMinutes));
+        _store.Write(entry);
+        return entry;
     }
 
     private MetadataReconciliationProcessor CreateProcessor()
