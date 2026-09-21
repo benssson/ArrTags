@@ -90,6 +90,22 @@ Before selecting work, verify that:
 
 If the execution order is missing or inconsistent, stop and report a planning error rather than selecting a task.
 
+### Phase Deliverable Coverage Precondition
+
+Before delegating the first task of a phase (and after any execution-order
+change), verify that the phase is actually covered by its tasks:
+
+* Every item in the phase's deliverables and objectives maps to at least one
+  task in the authoritative execution order.
+* Every phase acceptance criterion is owned by a task, or is explicitly recorded
+  as partially met / deferred with a named owner.
+* Every decision gate the phase depends on is either resolved or owned by a task.
+
+If a deliverable, acceptance criterion, or decision gate has no owning task, stop
+and report a planning gap rather than executing the phase and discovering the gap
+at phase review. Do not silently invent a new task; surface the gap so the plan
+can be corrected or the user can decide.
+
 ## Worker Delegation
 
 Delegate the selected task to `implementation-worker`.
@@ -296,6 +312,68 @@ For example, if a reviewer requests a correction and the worker is invoked again
 
 This is important for measuring the cost of review-driven rework rather than hiding it by replacing the original figures.
 
+### Where to persist the metadata
+
+The project's existing implementation-state mechanism does not currently carry
+runtime usage. Persist it explicitly, in a file committed with the task:
+
+```text
+docs/implementation/<task-id>/orchestration.json
+```
+
+Structure:
+
+```json
+{
+  "task": "<task ID>",
+  "subagents": [
+    {
+      "role": "implementation-worker | implementation-reviewer | phase-reviewer",
+      "attempt": 1,
+      "outcome": "COMPLETE | APPROVED | CHANGES_REQUIRED | BLOCKED | FAILED",
+      "execution": {
+        "agent": "<agent name>",
+        "model": "<model>",
+        "variant": "<variant>",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": null
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "<what the reviewer required and why the worker was re-invoked>"
+    }
+  ]
+}
+```
+
+Rules:
+
+* Record one entry per subagent invocation, in invocation order; never collapse
+  worker and reviewer entries.
+* Record an entry even when token/cost fields are unavailable — leave those
+  fields `null`.
+* Append a `rework` entry for every correction round and increment the attempt
+  number of the re-invoked subagent.
+* Create the file for a task even if only the worker and reviewer ran.
+* The artifact is observational: it does not affect any completion gate.
+
+At the phase level, aggregate the task records (or write
+`docs/implementation/phase-<n>/orchestration.json`) so phase cost and rework rate
+are visible. This file is committed with the phase review.
+
+Do not delegate the collection of this metadata to a subagent. It is the
+orchestrator's own accounting.
+
 ## Worker Completion Gate
 
 The worker must provide a structured completion report.
@@ -370,12 +448,14 @@ Before committing, verify:
 
 1. The worker completion report exists.
 2. The reviewer report exists.
-3. The persisted reports are internally consistent with the actual repository state.
-4. The worker report indicates `COMPLETE`.
-5. The reviewer report indicates `APPROVED`.
-6. The reviewer report contains no blockers or required changes.
-7. Required tests and validation have actually passed.
-8. The final git diff contains only changes belonging to the task.
+3. `docs/implementation/<task-id>/orchestration.json` exists and records every
+   subagent invocation and attempt, with a rework entry for each correction round.
+4. The persisted reports are internally consistent with the actual repository state.
+5. The worker report indicates `COMPLETE`.
+6. The reviewer report indicates `APPROVED`.
+7. The reviewer report contains no blockers or required changes.
+8. Required tests and validation have actually passed.
+9. The final git diff contains only changes belonging to the task.
 
 The reviewer report is the authoritative record of independent review. Do not commit based solely on the reviewer's conversational response if the required report was not successfully persisted.
 
@@ -444,6 +524,11 @@ If the commit fails, stop the orchestration workflow and report the failure. Do 
 After a task passes review, ensure that the repository contains an appropriate persistent record of its completion.
 
 Use the project's existing implementation-state mechanism where one exists.
+
+The runtime execution metadata required above is persisted in
+`docs/implementation/<task-id>/orchestration.json` (see "Subagent Execution
+Metadata"). Keep it there; do not duplicate it into the worker/reviewer reports,
+and do not replace the per-invocation figures with an aggregate.
 
 If no mechanism exists, create a concise task completion record containing:
 

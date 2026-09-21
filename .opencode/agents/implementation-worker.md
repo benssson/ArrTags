@@ -63,7 +63,38 @@ Record important research findings in the project's established documentation me
 
 Do not stop merely because additional research is required if the research can be completed autonomously.
 
-Stop and report `NEEDS_USER_INPUT` when the issue requires a product, architectural, behavioural, or other decision that is not established by the project.
+### Decision boundary
+
+Distinguish between ambiguity you may resolve and ambiguity that requires a decision:
+
+**Resolve autonomously** — implementation-level questions where the project already
+establishes the required behaviour, and the choice is about *how* to implement it:
+
+* Internal structure, naming, or file layout.
+* An implementation technique with no user-visible or persisted semantic effect.
+* Details already fixed by an accepted architecture decision, data-model section,
+  research finding, or existing code and tests.
+
+**Stop and report `NEEDS_USER_INPUT`** — questions that change or reinterpret
+project meaning, especially when the project does not already establish the
+answer:
+
+* The meaning of a configured limit, window, threshold, or unit (for example
+  whether a stale/duration window is total or additive).
+* Retention, eviction, ownership, or lifecycle semantics.
+* Security, authentication, or exposure boundaries.
+* Any behaviour that becomes part of persisted authoritative state.
+* A conflict between two authoritative documents.
+
+When an ADR, `docs/architecture.md`, `docs/data-model.md`, `PLANS.md`, or an
+accepted research finding already defines the meaning of a value or behaviour,
+follow it. Do not reinterpret it. If it is genuinely ambiguous or incomplete and
+the answer is not derivable from the project, stop and ask *before* implementing,
+rather than choosing an interpretation and presenting the task as complete.
+
+Do not mark a task `COMPLETE` while carrying a silently chosen policy
+interpretation. A reviewer or the user should never be the first to discover a
+semantic decision you made alone.
 
 Never resolve genuine ambiguity by silently guessing.
 
@@ -195,6 +226,26 @@ Distinguish between:
 * **Historical record** — preserve unless the task explicitly requires rewriting it.
 * **Future task status** — do not modify unless the assigned task changes it.
 
+#### Canonical current-state surfaces
+
+These are the project's current-state status surfaces. When the task changes
+project status or a documented behaviour, update every one that the change makes
+stale:
+
+* `PLANS.md` — the Project Status paragraph, the Milestone Status table row, and
+  the task's own status text/checkbox.
+* `docs/changelog.md` — the task entry.
+* `README.md` — current build/test/structure/next-step statements.
+* `docs/architecture.md` — the status line and any section the change makes
+  inaccurate.
+* `docs/implementation-readiness.md` — its status line and any deferral list.
+
+Do not guess that a surface is unaffected: if the task changes a completion
+count, a phase status, an implemented capability, or a deferred item, verify the
+affected surfaces explicitly. Stale lines in these files are a recurring
+carry-over defect; leaving them is not acceptable merely because the task "did
+not touch that file".
+
 Do not create additional documentation, scripts, reports, or artifacts unless they are required by the task or the project's established workflow.
 
 ### Temporary files and cleanup
@@ -271,6 +322,7 @@ Return a structured completion report using this schema:
 ```json
 {
   "task": "<task ID>",
+  "attempt": 1,
   "status": "COMPLETE | BLOCKED | NEEDS_RESEARCH | NEEDS_USER_INPUT | FAILED",
   "implementation_complete": true,
   "tests_complete": true,
@@ -290,6 +342,48 @@ Return a structured completion report using this schema:
 ```
 
 The fields must reflect reality.
+
+Set `attempt` to the invocation number for this task (start at `1`; increment if
+the orchestrator returns the task for correction). Do not overwrite a previous
+attempt's report; a correction is a new attempt.
+
+### Report accuracy
+
+Before writing the report, verify it against evidence rather than memory:
+
+* Every numeric claim (test counts, file counts, changed-file counts, durations)
+  must match actual command output. Do not write a rounded, remembered, or
+  approximate number.
+* Every capability claim (for example "the harness composes X", "the pipeline
+  calls Y", "the limit is enforced at Z") must be verifiable in the final diff or
+  the command output. Do not describe intended or nearby behaviour as
+  implemented.
+* Every entry in `changed_files` and `validation` must correspond to an actual
+  file change or an actually run command.
+* Test totals must state passed/skipped/failed/total, and any new count must be
+  consistent with the stated baseline.
+
+### Limitation framing
+
+State each limitation as **exact behaviour + precondition + consequence**. Do not
+replace a precise consequence with a reassurance.
+
+* Do not write "the next run repairs it" without stating *how* and under what
+  bound (for example, whether successive runs re-cover the same prefix).
+* Do not describe a bounded-but-incomplete guarantee as complete.
+* Do not attribute deferred work to a specific later task unless the plan
+  (`PLANS.md`) actually assigns it there. If the task is already complete or the
+  plan names no owner, report it as an open follow-up for the orchestrator to
+  record, not as "remains task N".
+
+A reviewer or user should not be able to falsify the report from the diff.
+
+### Deferred work
+
+Report work you deliberately did not do, and research that would reduce a known
+risk, in `known_limitations` rather than in `questions` when it does not block
+completion. Use `research_required` only for investigation needed to consider the
+task complete.
 
 Set:
 
@@ -329,4 +423,5 @@ The report must be written before returning the final result to the orchestrator
 
 The report must accurately reflect the actual implementation, validation, research, questions, blockers, and remaining limitations.
 
-Your reviewer should not have a usage section. That's deliberately the orchestrator's job.
+Your report must not contain a usage/token/cost section. Runtime execution
+metadata is deliberately the orchestrator's responsibility.

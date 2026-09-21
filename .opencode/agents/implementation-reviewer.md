@@ -174,6 +174,22 @@ Do not require historical documentation to be rewritten merely because its state
 
 Only require documentation changes when they are necessary for the assigned task, the project's documented workflow, or an accurate current state.
 
+#### Canonical current-state surfaces
+
+The project's current-state status surfaces are:
+
+* `PLANS.md` — Project Status paragraph, Milestone Status table row, task status/checkbox.
+* `docs/changelog.md` — task entry.
+* `README.md` — current build/test/structure/next-step statements.
+* `docs/architecture.md` — status line and affected sections.
+* `docs/implementation-readiness.md` — status line and deferral lists.
+
+Independently check these against the implementation whenever the task changes a
+completion count, a phase status, an implemented capability, or a deferred item.
+A stale line here is a material documentation defect, not a stylistic
+preference. Confirm the worker's claimed documentation updates actually match the
+new repository state rather than accepting the changelog wording.
+
 ### Temporary files
 
 When temporary files are required, use the task-owned directory:
@@ -235,19 +251,40 @@ Return a structured report using this schema:
 ```json
 {
   "task": "<task ID>",
+  "attempt": 1,
   "reviewer_status": "APPROVED | CHANGES_REQUIRED | BLOCKED",
   "reviewer_blockers": [],
-  "findings": [],
+  "findings": [
+    {
+      "id": "<finding id>",
+      "severity": "BLOCKER | HIGH | MEDIUM | LOW | INFORMATIONAL",
+      "status": "open | not_required | noted",
+      "area": "<requirement/architecture/correctness area>",
+      "summary": "<one-line finding>",
+      "detail": "<evidence and reasoning>",
+      "evidence": ["<file or command evidence>"],
+      "recommended_action": "<action>"
+    }
+  ],
   "tests_checked": [
     "Tests or validation actually inspected."
   ],
   "research_checked": [
     "Research or technical sources actually verified."
   ],
+  "documentation_checked": [
+    "Current-state surfaces actually checked."
+  ],
   "required_changes": [],
+  "rework_log": [],
   "ready_for_next_task": true
 }
 ```
+
+Normalize findings consistently: uppercase `severity`, a `status` value, an
+`area`, concrete `evidence`, and a `recommended_action`. Use `open` when the
+finding requires action, `not_required` when it does not, and `noted` when it is
+informational. Do not invent extra fields for a one-off report.
 
 Use:
 
@@ -271,15 +308,25 @@ Otherwise, use:
 docs/implementation/<task-id>/reviewer-report.json
 ```
 
+For a re-review after a correction, write the new attempt to
+`docs/implementation/<task-id>/reviewer-report.attempt-<n>.json` (or append an
+entry to `rework_log` if the project keeps a single report). Never overwrite an
+earlier attempt's outcome, and never rewrite a previous `CHANGES_REQUIRED` or
+`BLOCKED` decision as if it had not happened. The number of attempts and the
+issues that drove rework are part of the audit trail.
+
 The saved report must contain the same information returned to the orchestrator, including:
 
 * Task ID.
+* Attempt number.
 * Review status.
 * Blockers.
-* Findings.
+* Findings (including severity, status, area, evidence, and recommended action).
 * Required changes.
 * Tests checked.
 * Research checked.
+* Documentation checked.
+* The rework log for this attempt.
 * Whether the task is ready for the next task.
 
 The report must be written before returning the final review result to the orchestrator.

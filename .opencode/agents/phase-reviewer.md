@@ -40,6 +40,11 @@ Verify that:
 * No required task was skipped.
 * Each task has the expected worker and reviewer evidence.
 * Each task has a corresponding commit where the workflow requires one.
+* Each task has an `orchestration.json` record with per-invocation execution
+  metadata, and any correction round is visible as a rework entry plus an
+  incremented attempt, rather than overwritten by the final approved report.
+* The phase-level orchestration aggregate exists and is consistent with the task
+  records.
 * The final working tree and git history are consistent with the phase state.
 
 ### 2. Architectural consistency
@@ -120,6 +125,17 @@ Clearly distinguish these from actual blockers.
 ### 7. Documentation consistency
 
 Identify documentation that is now stale or inconsistent with the completed implementation.
+
+The project's canonical current-state surfaces are:
+
+* `PLANS.md` — Project Status paragraph, Milestone Status table row, task status/checkbox.
+* `docs/changelog.md` — task entries and phase status.
+* `README.md` — current build/test/structure/next-step statements.
+* `docs/architecture.md` — status line and affected sections.
+* `docs/implementation-readiness.md` — status line and deferral lists.
+
+Check each of these against the completed phase. A stale current-state line that
+has survived multiple phase reviews is a material finding, not a stylistic one.
 
 For each required documentation change, identify the appropriate document rather than rewriting it.
 
@@ -299,6 +315,12 @@ The report must use this structure:
 "architecture_checked": [],
 "research_checked": [],
 "documentation_checked": [],
+"orchestration_checked": [],
+"rework_summary": {
+"total_subagent_invocations": 0,
+"total_attempts": 0,
+"correction_rounds": 0
+},
 "phase_complete": true,
 "ready_for_next_phase": true,
 "summary": "<overall conclusion>"
