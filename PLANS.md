@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-6 complete; Phase 7 not started. DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items are tracked for Phase 7 rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, and a safe metrics/diagnostic-status surface; no live Jellyfin host or live Arr instance was exercised. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-6 complete; Phase 7 in progress (task 7.1 complete; tasks 7.2-7.6 pending). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items are tracked for Phase 7 rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, and a safe metrics/diagnostic-status surface; no live Jellyfin host or live Arr instance was exercised. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -176,7 +176,7 @@ without modifying original media files or external services.
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
-| 7 | Testing & release | Not started | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
+| 7 | Testing & release | In progress (task 7.1 complete; tasks 7.2-7.6 pending) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
 
@@ -2470,7 +2470,7 @@ release artifact and operational documentation.
 
 **Tasks:**
 
-- [ ] 7.1 Run all unit and integration tests against the exact declared versions.
+- [x] 7.1 Run all unit and integration tests against the exact declared versions.
 - [ ] 7.2 Verify the plugin installs, upgrades, reloads, and uninstalls safely.
 - [ ] 7.3 Verify all success criteria in `GOALS.md`, including independent
   provider configuration, matching, quality retrieval, poster output, update
@@ -2504,9 +2504,31 @@ sparse/optional-missing payloads), task 7.5 records the supported ranges in the
 release artifact, and task 7.6 documents the ranges and the optional-field
 compatibility policy.
 
+**Task 7.1 status:** Complete. The full unit and integration suite passes from a
+clean rebuild against the exact declared versions (`net10.0` with the SDK pinned
+by `global.json` to `10.0.0`, `Jellyfin.Controller`/`Jellyfin.Model` `12.0.0` with
+manifest `targetAbi: 12.0.0.0`, SkiaSharp `3.119.4` for the `linux-x64` plugin
+RID, xunit `2.9.3`, Microsoft.NET.Test.Sdk `18.10.1`,
+xunit.runner.visualstudio `3.1.5`, and plugin version `0.1.0.0`): after removing
+`src`/`tests` `bin`/`obj`, `./build.sh restore`, `./build.sh build`, and
+`./build.sh test` reported build 0 warnings / 0 errors and Failed 0, Passed 1215,
+Skipped 58, Total 1273 - exactly +18 over the Phase 6 baseline (1197/58/1255)
+with no new skips and no regressions. The ADR-013 provider-contract coverage gap
+was closed by `tests/ArrTags.Tests/ProviderContractFixtureTests.cs` (18 cases
+covering the Sonarr 3.x/4.x and Radarr 3.x/4.x/5.x/6.x probe lines, fail-closed
+missing identity, fully-populated mapping, sparse/optional-missing mapping to
+explicit unknowns, and absent file identity). No production behavior changed, and
+no live Jellyfin host or live Arr instance was exercised (contract-fixture level).
+
 **Acceptance criteria:**
 
-- [ ] The full test suite passes from a clean checkout.
+- [x] The full test suite passes from a clean checkout. Met by task 7.1 from a
+  clean rebuild (bin/obj removed, `./build.sh restore` in locked mode, `./build.sh
+  build`, `./build.sh test`) against the exact declared versions - build 0
+  warnings / 0 errors; full suite Failed 0, Passed 1215, Skipped 58, Total 1273
+  (+18 over the Phase 6 baseline 1197/58/1255), with the new
+  `ProviderContractFixtureTests` adding 18 ADR-013 provider-contract cases; no new
+  skips.
 - [ ] The packaged plugin loads and operates on the declared Jellyfin 12 ABI.
 - [ ] Sonarr and Radarr movie/television scenarios pass with unchanged and
   changed metadata.

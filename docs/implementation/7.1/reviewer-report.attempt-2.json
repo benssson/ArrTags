@@ -1,0 +1,94 @@
+{
+  "task": "7.1",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "LD-1",
+      "severity": "HIGH",
+      "status": "not_required",
+      "area": "documentation/current-state surfaces",
+      "summary": "RESOLVED in attempt 2: PLANS.md is now updated for task 7.1 across every required current-state surface; no overclaiming and Gate 7 is not declared.",
+      "detail": "Attempt 2 applied a documentation-only correction to PLANS.md. Verified against the requirement: (1) Project Status line (PLANS.md:5) now reads 'Phases 1-6 complete; Phase 7 in progress (task 7.1 complete; tasks 7.2-7.6 pending).' with the DG-9/ADR-013 sentence and the remainder of the paragraph preserved verbatim. (2) Milestone Status table row 7 Status cell (PLANS.md:179) changed from 'Not started' to 'In progress (task 7.1 complete; tasks 7.2-7.6 pending)'; the exit-gate text 'Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly.' is unchanged. (3) Task 7.1 checkbox (PLANS.md:2473) is '[x]'; 7.2-7.6 (PLANS.md:2474-2483) remain '[ ]'. (4) The owned Phase 7 acceptance criterion 'The full test suite passes from a clean checkout.' (PLANS.md:2525) is '[x]' with a concise clean-rebuild evidence note (bin/obj removed; ./build.sh restore in locked mode; ./build.sh build 0 warnings/0 errors; ./build.sh test Failed 0, Passed 1215, Skipped 58, Total 1273, +18 over the Phase 6 baseline 1197/58/1255; no new skips). The other four Phase 7 criteria (PLANS.md:2532-2537) remain unchecked. (5) A '**Task 7.1 status:** Complete.' paragraph (PLANS.md:2507-2521) was added in the Phase 7 section after the DG-9 ownership paragraph and before 'Acceptance criteria:', following the prior-phase convention ('Task 6.9 status:' at PLANS.md:2348). Gate 7 (PLANS.md:2539-2540) is only the unchanged definitional statement and is not declared met anywhere in PLANS.md or docs/changelog.md. The correction is confined to PLANS.md; docs/changelog.md was already consistent and was left unchanged. LD-1 is fully resolved.",
+      "evidence": [
+        "PLANS.md:5 (Project Status: Phase 7 in progress; task 7.1 complete; 7.2-7.6 pending; DG-9/ADR-013 sentence preserved)",
+        "PLANS.md:179 (Milestone row 7 Status updated; exit-gate text unchanged)",
+        "PLANS.md:2473 '[x] 7.1'; PLANS.md:2474-2483 7.2-7.6 unchecked",
+        "PLANS.md:2525-2531 owned criterion checked with evidence note; PLANS.md:2532-2537 other four unchecked",
+        "PLANS.md:2507-2521 '**Task 7.1 status:** Complete.' paragraph (convention matches PLANS.md:2348 Task 6.9)",
+        "grep 'Gate 7 is met|Gate 7 met' PLANS.md docs/changelog.md -> none; PLANS.md:2539-2540 unchanged definition",
+        "git diff -- PLANS.md (5 hunks only); git diff --stat: PLANS.md 26/4, docs/changelog.md 28/1 (attempt-1 change)",
+        "mtimes: PLANS.md 20:53:44 (attempt 2); ProviderContractFixtureTests.cs 20:47:12 and docs/changelog.md 20:48:47 (pre-attempt-2)"
+      ],
+      "recommended_action": "None; correction verified and complete."
+    },
+    {
+      "id": "LD-2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "acceptance-criterion evidence / clean checkout",
+      "summary": "Carried forward from attempt 1: 'from a clean checkout' is approximated by a clean rebuild (bin/obj removed) in the existing checkout, disclosed in the worker report and PLANS.md evidence note.",
+      "detail": "Unchanged from attempt 1. The worker and the corrected PLANS.md evidence note truthfully describe the criterion as met by a clean rebuild (src/tests bin/obj removed; locked restore; build; test) rather than a fresh git clone, and the other four Phase 7 criteria remain open pending tasks 7.2-7.6, so this is not overclaimed. Attempt 1 independently reproduced the counts (Failed 0, Passed 1215, Skipped 58, Total 1273). No rework required.",
+      "evidence": [
+        "PLANS.md:2507-2531 (explicit 'clean rebuild' wording)",
+        "docs/implementation/7.1/worker-report.attempt-2.json known_limitations",
+        "Attempt-1 reviewer-report.json LD-2"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "LD-3",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation/current-state surfaces",
+      "summary": "Carried forward from attempt 1: README.md current-state text still names Phase 6 but is a pre-existing phase-level surface refreshed at phase completion, not owned by task 7.1.",
+      "detail": "README.md's current-state lines were not touched by attempt 2 and were already judged out of scope for this task in attempt 1 (README.md is updated at phase-completion records, not per task). Not a task-7.1 requirement. No rework required.",
+      "evidence": [
+        "Attempt-1 reviewer-report.json LD-3",
+        "git status: README.md not modified"
+      ],
+      "recommended_action": "None for 7.1; refresh README.md at Phase 7 completion."
+    },
+    {
+      "id": "LD-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "architecture/ADR-013 fixture coverage",
+      "summary": "Carried forward from attempt 1: the 18 provider-contract fixtures exercise the declared lines behaviourally; the payload-shape facts are provider-level (disclosed as representative), which meets ADR-013 as written.",
+      "detail": "Unchanged from attempt 1 and unaffected by the documentation-only attempt 2. ADR-013's behavioural (no numeric gate) model is satisfied by the 2x6 probe/fail-closed theories plus the six fully-populated/sparse/absent-identity mapping facts. Disclosed representativeness is acceptable.",
+      "evidence": [
+        "Attempt-1 reviewer-report.json LD-4",
+        "tests/ArrTags.Tests/ProviderContractFixtureTests.cs (untouched since 20:47:12)",
+        "docs/decisions.md ADR-013"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "No build or test run was performed in attempt 2 (documentation-only change), per the validation-rerun rule.",
+    "Attempt-1 authoritative evidence inspected and still valid: clean rebuild (./build.sh restore locked; ./build.sh build 0 warnings / 0 errors; ./build.sh test Failed 0, Passed 1215, Skipped 58, Total 1273) and focused ProviderContractFixtureTests 18/18.",
+    "Confirmed the attempt-2 diff is documentation-only: ProviderContractFixtureTests.cs mtime 20:47:12 precedes the attempt-2 PLANS.md edit at 20:53:44, and no source/test file appears in git status beyond the pre-existing untracked fixture file.",
+    "Confirmed PLANS.md and docs/changelog.md evidence notes match the recorded attempt-1 counts and coverage description."
+  ],
+  "research_checked": [
+    "No new research was required for a documentation-only correction; attempt-1 research conclusions (ADR-013 behavioural no-gate model; sonarr-api.md:13-16 and radarr-api.md:45-47 declared ranges) remain valid and are unaffected."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status line (line 5), Milestone Status row 7 (line 179), task 7.1 checkbox (line 2473), Phase 7 acceptance criteria (lines 2525-2537), Task 7.1 status paragraph (lines 2507-2521), and Gate 7 statement (lines 2539-2540) all verified correct; LD-1 resolved.",
+    "docs/changelog.md: Phase 7 status line and Task 7.1 entry consistent with PLANS.md and the recorded validation; left unchanged by attempt 2.",
+    "docs/implementation/7.1/worker-report.json (attempt 1) not overwritten; attempt 2 written to worker-report.attempt-2.json.",
+    "docs/implementation/7.1/reviewer-report.json (attempt 1) not overwritten; this attempt-2 report persisted separately.",
+    "docs/architecture.md and docs/implementation-readiness.md: no capability or deferral change in this task; not required."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 2,
+      "trigger": "Attempt-1 review finding LD-1 (HIGH): PLANS.md was not updated for task 7.1.",
+      "correction": "Documentation-only edit to PLANS.md: Project Status line updated to Phase 7 in progress / task 7.1 complete (DG-9/ADR-013 sentence preserved); Milestone Status row 7 changed to 'In progress (task 7.1 complete; tasks 7.2-7.6 pending)' with exit-gate text unchanged; task 7.1 checkbox checked with 7.2-7.6 unchecked; the owned Phase 7 acceptance criterion marked met with a concise clean-rebuild evidence note while the other four remained unchecked and Gate 7 undeclared; and a '**Task 7.1 status:** Complete.' paragraph added in the Phase 7 section following the Task 6.9 convention.",
+      "resolution": "LD-1 fully resolved and independently verified. No source or test files changed after attempt 1 (mtime check: fixture 20:47:12, changelog 20:48:47, PLANS.md 20:53:44). Attempt-1 approved functional conclusions stand. APPROVED."
+    }
+  ],
+  "ready_for_next_task": true
+}

@@ -2057,7 +2057,7 @@ are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
 
 ## Phase 7 - Testing & release (Milestone 7)
 
-**Status:** In progress. DG-9 resolved by ADR-013; tasks 7.1-7.6 pending.
+**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); tasks 7.2-7.6 pending.
 
 ### Decision - Supported provider release ranges and optional-field compatibility (DG-9)
 
@@ -2075,3 +2075,30 @@ the optional-field policy. The provider inventory/catalogue cache, runtime
 configuration replacement wiring, the reconciliation coverage bound, the ADR-010
 non-canonical runtime comparison, and the metrics/diagnostic-status surface remain
 tracked for this phase and are not presented as solved.
+
+### Task 7.1 - Full unit and integration suite against the declared versions
+
+**Status:** Complete.
+
+The full unit and integration suite runs against the exact declared versions:
+`net10.0` with the SDK pinned by `global.json` to `10.0.0` (rollForward
+`latestMinor`), `Jellyfin.Controller` and `Jellyfin.Model` `12.0.0` with manifest
+`targetAbi: 12.0.0.0`, SkiaSharp `3.119.4` for the `linux-x64` plugin RID,
+xunit `2.9.3`, Microsoft.NET.Test.Sdk `18.10.1`, xunit.runner.visualstudio
+`3.1.5`, and plugin version `0.1.0.0`. The suite was rebuilt from clean sources:
+`src`/`tests` `bin`/`obj` were removed, then `./build.sh restore`,
+`./build.sh build`, and `./build.sh test` were run. The build reported 0 warnings
+and 0 errors, and the suite reported Failed 0, Passed 1215, Skipped 58, Total
+1273 - exactly +18 over the Phase 6 baseline (1197/58/1255) with no new skips and
+no regressions. The 58 skips are the existing host-guarded, native-Skia,
+packaged-plugin, and non-canonical-runtime facts that skip on this Alpine/musl
+environment, unchanged from the baseline.
+
+ADR-013 provider contract fixtures were added in
+`tests/ArrTags.Tests/ProviderContractFixtureTests.cs` (18 cases). They exercise
+every declared line (Sonarr 3.x and 4.x; Radarr 3.x, 4.x, 5.x and 6.x) through the
+probe with the observed version recorded and no numeric gate, cover a fully
+populated payload mapping to canonical badge metadata and a sparse/optional-missing
+payload mapping to explicit unknowns for both providers, and confirm a missing
+required identity field fails closed as `ProviderIncompatible` with `Incompatible`
+health. No production behavior changed.

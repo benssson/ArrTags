@@ -1,0 +1,97 @@
+{
+  "task": "7.1",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "LD-1",
+      "severity": "HIGH",
+      "status": "open",
+      "area": "documentation/current-state surfaces",
+      "summary": "PLANS.md was not updated for task 7.1: status line, milestone row, task checkbox, and the owned Phase 7 acceptance criterion are all stale, and the task has no status paragraph.",
+      "detail": "The project convention is that a completed task updates PLANS.md (task checkbox, task status paragraph, and the phase/milestone status surfaces) alongside docs/changelog.md; prior tasks 5.11 and 6.9 did exactly this (changelog.md:1356 'PLANS.md marks task 5.11 complete, records the task 5.11 status'; PLANS.md:2040 '[x] 6.9' with a 'Task 6.9 status: Complete.' paragraph at PLANS.md:2348). The worker's changed_files does not include PLANS.md, and the file is untouched by the diff. Stale lines: PLANS.md:5 Project Status still reads 'Phases 1-6 complete; Phase 7 not started'; PLANS.md:179 Milestone Status row 7 still reads 'Not started'; PLANS.md:2473 still reads '- [ ] 7.1 Run all unit and integration tests...'; PLANS.md:~2508 still reads '- [ ] The full test suite passes from a clean checkout' (the Phase 7 acceptance criterion owned by 7.1); and there is no 'Task 7.1 status: Complete.' paragraph. This directly contradicts docs/changelog.md, which now records Phase 7 as In progress with task 7.1 complete. This is a material current-state documentation defect, not a stylistic preference.",
+      "evidence": [
+        "PLANS.md:5",
+        "PLANS.md:179",
+        "PLANS.md:2473",
+        "PLANS.md:2508 (Phase 7 acceptance criteria)",
+        "docs/changelog.md Phase 7 status line (task 7.1 complete)",
+        "git status: PLANS.md not modified",
+        "git log: prior task commits updated PLANS.md (6.9 checkbox/status paragraph; changelog.md:1356 for 5.11)"
+      ],
+      "recommended_action": "Update PLANS.md as part of task 7.1: change PLANS.md:5 to record Phase 7 started with task 7.1 complete; change Milestone Status row 7 (PLANS.md:179) from 'Not started' to 'In progress'; check the task 7.1 checkbox (PLANS.md:2473 -> '[x]') and add a 'Task 7.1 status: Complete.' paragraph; and mark the owned Phase 7 acceptance criterion 'The full test suite passes from a clean checkout' as met by 7.1 (leaving the other Phase 7 criteria unchecked)."
+    },
+    {
+      "id": "LD-2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "acceptance-criterion evidence / clean checkout",
+      "summary": "'From a clean checkout' was approximated by deleting src/tests bin/obj and running a locked restore in place rather than a fresh clone; the approximation is disclosed and was independently reproduced.",
+      "detail": "The owned acceptance criterion says the full suite passes 'from a clean checkout (against the exact declared versions)'. The worker removed src/ArrTags/bin, src/ArrTags/obj, tests/ArrTags.Tests/bin, tests/ArrTags.Tests/obj, then ran './build.sh restore' (--locked-mode), './build.sh build', './build.sh test'. I independently reproduced this: build succeeded 0 warnings / 0 errors; full suite Failed 0, Passed 1215, Skipped 58, Total 1273. This is a reasonable approximation because the only untracked input is the intended new test file (plus the docs/implementation report, which is not a build input), packages are locked, and the build is deterministic. A literal git-clone run would not include the untracked new fixture file, so it would not demonstrate the +18 anyway. No rework required; recording the approximation for the audit trail.",
+      "evidence": [
+        "/tmp/7.1/build.log (restore/build, 0 warnings / 0 errors)",
+        "/tmp/7.1/test.log (Failed 0, Passed 1215, Skipped 58, Total 1273)",
+        "git status --porcelain (only new test file + changelog + report changed)"
+      ],
+      "recommended_action": "None. The corpus is clean at build time; note the approximation in the task record if a stricter clean-clone artifact is wanted for task 7.5."
+    },
+    {
+      "id": "LD-3",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation/current-state surfaces",
+      "summary": "README.md current-state text (Current milestone: Phase 6; 'Next tasks: Phase 6 ... task 6.1 is the next task') lags Phase 7 but is a pre-existing phase-level surface not owned by this task.",
+      "detail": "README.md:3 still names Phase 6 as the current milestone and README.md:497-501 still lists 'Phase 6 ... task 6.1 ... is the next task', which is stale even relative to Phase 6 completion. Git history shows README.md is updated at phase-completion records (09596e0 'record phase 6 completion tag'), not per task, and it was not touched by any task 6.x commit. The statement at README.md:3 is not false (Phase 6 is complete), and Phase 7 is not complete. Per review scope discipline this pre-existing phase-level lag is not a requirement of task 7.1; it should be corrected when Phase 7 completes. No rework required for 7.1.",
+      "evidence": [
+        "README.md:3",
+        "README.md:497-501",
+        "git log --oneline -- README.md (last change: phase 6 completion tag)"
+      ],
+      "recommended_action": "None for 7.1; refresh README.md at Phase 7 completion."
+    },
+    {
+      "id": "LD-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "architecture/ADR-013 fixture coverage",
+      "summary": "ADR-013 payload-shape fixtures are provider-level rather than per declared line; the six declared lines are exercised by the probe and fail-closed theories. This meets ADR-013 as written and is disclosed as representative.",
+      "detail": "ADR-013 requires contract fixtures that 'cover both a fully populated and a sparse/optional-missing payload' across the declared lines. ProviderContractFixtureTests.cs provides: a 6-case probe theory over Sonarr 3.0.0/4.0.0 and Radarr 3.0.0/4.0.0/5.0.0/6.4.0 asserting the observed version is recorded with no numeric gate and the v3 contract/path is used; a 6-case fail-closed theory asserting missing appName yields ProviderIncompatible/Incompatible for every declared line; and 6 facts (Radarr/Sonarr x fully-populated / sparse-optional-missing / no-current-file) that read through the real RadarrClient/SonarrClient and map through RadarrMetadataMapper/SonarrMetadataMapper. Assertions are meaningful (canonical quality label/source/resolution/origin, HDR10 classification, Atmos feature, custom badges, explicit nulls/empty for sparse, explicit file-identity absent). The full suite count rose exactly +18. The declared per-minor lines are not each run through the payload-shape facts, which the worker discloses as representative rather than exhaustive; given the behavioural no-gate model this is acceptable. Research docs support the ADR ranges (docs/research/sonarr-api.md:13-16 v3/v4 with a separate v5; docs/research/radarr-api.md:45-47 shared v3 surface across Radarr v3-v6, 6.4.x stable).",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderContractFixtureTests.cs (18 cases: 2 theories x 6 lines + 6 facts)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataMapper.cs",
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataMapper.cs",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:84-92 (appName gate -> ProviderIncompatible/Incompatible)",
+        "docs/decisions.md ADR-013",
+        "docs/research/sonarr-api.md:13-16, docs/research/radarr-api.md:45-47"
+      ],
+      "recommended_action": "None; the disclosed representativeness is consistent with ADR-013's behavioural (non-numeric) compatibility model."
+    }
+  ],
+  "tests_checked": [
+    "Built from clean bin/obj: './build.sh restore' (--locked-mode) then './build.sh build' -> Build succeeded, 0 Warning(s), 0 Error(s) (net10.0, Jellyfin 12.0.0).",
+    "Full suite './build.sh test' -> Failed 0, Passed 1215, Skipped 58, Total 1273; matches the worker's claim and is exactly +18 over the Phase 6 baseline (1197/58/1255).",
+    "Focused run 'dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~ProviderContractFixtureTests' -> Failed 0, Passed 18, Skipped 0, Total 18.",
+    "Skip characterization: 58 skips are all pre-existing host/Skia/render/image guards (SkiaBadgeRendererRenderTests 9, JellyfinImageResponseTests 9, RenderPngContractTests 7, etc.); no ProviderContractFixtureTests case skipped.",
+    "Inspected ProviderContractFixtureTests.cs in full and validated assertions against RadarrMetadataMapper/SonarrMetadataMapper, RadarrClient/SonarrClient probe logic, ArrConnectionHealth, and ArrProviderErrorCode.",
+    "Verified worker coverage-assessment claims: pre-existing probe tests use only Radarr 5.3.0 (RadarrClientTests.cs:32) and Sonarr 4.0.0 (SonarrClientTests.cs:33); ProviderFailureMatrixTests.cs:99-101 uses generic 99.0.0/5.0.0; sparse read-level tests ProviderFailureMatrixTests.cs:304/343."
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-013: behavioural no-numeric-gate model, exact appName identity requirement, explicit-unknown optional fields, fail-closed ProviderIncompatible/Incompatible.",
+    "docs/research/sonarr-api.md 'Scope, versions, and evidence' (lines 13-16): /api/v3 for Sonarr 3 and 4; separate in-development v5 API.",
+    "docs/research/radarr-api.md 'Baseline versions' (lines 45-47): shared /api/v3 surface across Radarr v3-v6; 6.4.x current stable; spec info.version 3.0.0.",
+    "Declared versions inspected in-repo: global.json (sdk 10.0.0 rollForward latestMinor), tests csproj (net10.0, Jellyfin.Controller/Model 12.0.0, xunit 2.9.3, Microsoft.NET.Test.Sdk 18.10.1, xunit.runner.visualstudio 3.1.5), build.yaml (targetAbi 12.0.0.0, framework net10.0), Directory.Build.props (Version 0.1.0.0). Actual SDK resolved to 10.0.401 under latestMinor, consistent with the pin."
+  ],
+  "documentation_checked": [
+    "docs/changelog.md: Phase 7 status line updated to 'In progress ... task 7.1 complete'; new task 7.1 entry added; wording matches the reproduced build/test evidence and the ADR-013 model.",
+    "PLANS.md: STALE. Line 5 Project Status, line 179 Milestone Status row 7, line 2473 task 7.1 checkbox, and the Phase 7 'full test suite passes from a clean checkout' criterion are not updated; no Task 7.1 status paragraph (see LD-1).",
+    "README.md: pre-existing phase-level lag only (LD-3); no task-7.1-specific claim invalidated.",
+    "docs/architecture.md: no architecture or capability change in this task; not required.",
+    "docs/implementation-readiness.md: Phase 7 deferral list (provider inventory/catalogue cache, runtime configuration replacement, reconciliation coverage bound, metrics/status surface) remains accurate and is not closed by task 7.1."
+  ],
+  "required_changes": [
+    "Update PLANS.md to match the completed task and new Phase 7 status: check the task 7.1 checkbox (PLANS.md:2473), add a 'Task 7.1 status: Complete.' paragraph, update the Project Status line (PLANS.md:5) and the Milestone Status row 7 (PLANS.md:179) to reflect Phase 7 started / task 7.1 complete, and mark the Phase 7 acceptance criterion 'The full test suite passes from a clean checkout' as met by 7.1. Keep the other Phase 7 criteria unchecked."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}
