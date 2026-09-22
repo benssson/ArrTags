@@ -1,8 +1,8 @@
 ## Project Status
 
 **Current milestone:** Phase 7 — Testing & release is complete: all five Phase 7
-acceptance criteria are met. Gate 7 is not declared because the phase review is
-separate. Tasks 7.1
+acceptance criteria are met. Gate 7 is met (Phase 7 review approved; tag
+`v0.1.0-phase7`). Tasks 7.1
 (full suite against the declared versions), 7.2 (live install/upgrade/reload/
 uninstall on the pinned host), 7.7 (relocated state root outside `PluginsPath`
 by ADR-014 and re-ran the live install verification, meeting Phase 7 acceptance
