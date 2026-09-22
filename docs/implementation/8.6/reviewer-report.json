@@ -1,0 +1,114 @@
+{
+  "task": "8.6",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "8.6-R1",
+      "severity": "MEDIUM",
+      "status": "noted",
+      "area": "documentation / canonical current-state surfaces (phase status)",
+      "summary": "docs/project-status.md and the docs/changelog.md Phase 8 section still say Phase 8 is 'in progress' with task 8.6 pending, while PLANS.md (edited by this task) now records Phase 8 complete and the milestone row 'Complete (tasks 8.1-8.6 complete... Gate 8 phase review pending)'.",
+      "detail": "This task changed the Phase 8 status, so the canonical surfaces were checked independently. docs/project-status.md:5-6 reads 'Phase 8 - Release distribution is **in progress** (tasks 8.1-8.5 complete; task 8.6 pending)', and docs/project-status.md:561-567 repeats 'Task 8.6 remains ... create the annotated tag `v1.0.1`'. docs/changelog.md:2495-2497 reads '**Status:** In progress. Tasks 8.1-8.5 are complete; task 8.6 ... is pending.' Both are now factually stale (the tag exists and 8.6 is complete). However, the project's documented workflow finalizes a phase's completion status in the separate phase-completion/phase-review step, not in the final task: commit 5bf5a8f 'Complete Phase 7: phase review approved and current-state wording corrections' updated docs/changelog.md, docs/project-status.md (then README), docs/architecture.md, and docs/implementation-readiness.md after task 7.6/7.8 had landed, and commit c88c351 'Record Phase 7 completion tag v0.1.0-phase7' followed. PLANS.md itself marks 'Gate 8 phase review pending', and task 8.6's declared documentation impact is only 'committed manifest.json; the annotated tag'. Not a defect of task 8.6, but the Gate 8/phase-completion step must reconcile docs/project-status.md and docs/changelog.md with the completed phase.",
+      "evidence": [
+        "docs/project-status.md:5-6 -> 'Phase 8 - Release distribution is **in progress** (tasks 8.1-8.5 complete; task 8.6 pending)'",
+        "docs/project-status.md:561-567 -> 'Task 8.6 remains: release-readiness verification, commit the generated `manifest.json`, and create the annotated tag `v1.0.1`'",
+        "docs/changelog.md:2495-2497 -> '**Status:** In progress. Tasks 8.1-8.5 are complete; task 8.6 ... is pending.'",
+        "PLANS.md:204 -> milestone row 8 'Complete (tasks 8.1-8.6 complete; ...; Gate 8 phase review pending)'",
+        "PLANS.md:3288-3291 -> task 8.6 Documentation impact: 'committed `manifest.json`; the annotated tag.'",
+        "git show --stat 5bf5a8f -> 9 files incl. docs/changelog.md, docs/architecture.md, docs/implementation-readiness.md, README.md at Phase 7 completion"
+      ],
+      "recommended_action": "None for task 8.6 (workflow defers phase-status finalization to the phase-completion step). The Gate 8 / Phase 8 completion step must update docs/project-status.md and docs/changelog.md from 'in progress / 8.6 pending' to the completed Phase 8 state."
+    },
+    {
+      "id": "8.6-R2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "worker-report accuracy / documented host-guarded command",
+      "summary": "Worker known_limitation #2 claims the non-functional form `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin . /config/arrtags-env.sh; ./build.sh test` is recorded in docs/release/build-and-release.md; the documented command (line 79) is actually the functional inline form `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test`.",
+      "detail": "The task asked whether the documented host-guarded command on docs/release/build-and-release.md:79 is functional. It is: with the pinned environment sourced, `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test` ran the host-guarded facts (Failed 0, Passed 1244, Skipped 44, Total 1288), and an explicit export gives the identical counts. A repo-wide text search found no occurrence of the `... . /config/arrtags-env.sh; ./build.sh test` form in the release doc (it exists only in the task-7.3/7.4 worker reports and in the 8.6 worker report itself). The worker's underlying bash-semantics observation is correct and was independently reproduced: `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin . /config/arrtags-env.sh; echo ${ARRTAGS_JELLYFIN_HOST_DIR:-UNSET}` prints UNSET in this bash, so an inline assignment before the `.` special builtin does not reach a later command. The error is only the attribution of that form to the release doc; the reported host-guarded counts (exported form) are correct.",
+      "evidence": [
+        "docs/release/build-and-release.md:79 -> 'ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test'",
+        "Independent run (env sourced): inline form -> 'Failed: 0, Passed: 1244, Skipped: 44, Total: 1288'",
+        "Independent run: exported form -> 'Failed: 0, Passed: 1244, Skipped: 44, Total: 1288'",
+        "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin . /config/arrtags-env.sh; echo ${ARRTAGS_JELLYFIN_HOST_DIR:-UNSET} -> 'UNSET'",
+        "grep across docs/, PLANS.md, README.md -> no '... . /config/arrtags-env.sh' host-guarded form"
+      ],
+      "recommended_action": "No implementation change. Correct the worker-report known_limitation wording (the release doc's line-79 inline command is functional); the non-functional form lives only in earlier worker reports and is not a release-doc defect."
+    },
+    {
+      "id": "8.6-R3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation / release doc historical evidence",
+      "summary": "docs/release/build-and-release.md:160-163 carry the older suite baseline 1218/60/1278 (default) and 1234/44/1278 (host-guarded); judgement: clearly-scoped historical task 7.5 / 0.1.0 evidence, not a stale current-state claim.",
+      "detail": "The lines sit inside the 'Clean-checkout release build (procedure and evidence)' section, immediately after the paragraph '**0.1.0 history.** Task 7.5 evidence:' (line 143) and the table labelled 'Run (0.1.0, pre-SEC-1)' (line 153), and immediately before the current 'Release artifact identity' section (line 165). The preceding prose explicitly states the evidence is historical ('This records the `0.1.0.0` artifact before the release security fix SEC-1, so it is historical only'). The current 1.0.1.0 suite counts (1228/60/1288 and 1244/44/1288) are recorded in docs/changelog.md. The present-tense 'The build reported...' is mildly ambiguous, but the surrounding 0.1.0-history context scopes the lines unambiguously enough.",
+      "evidence": [
+        "docs/release/build-and-release.md:143 -> '**0.1.0 history.** Task 7.5 evidence:'",
+        "docs/release/build-and-release.md:153 -> '| Run (0.1.0, pre-SEC-1) | Tree | SHA-256 | Size |'",
+        "docs/release/build-and-release.md:160-163 -> 'default suite ... 1218/60/1278; host-guarded ... 1234/44/1278'",
+        "docs/release/build-and-release.md:165 -> '## Release artifact identity' (current 1.0.1.0 identity)",
+        "docs/changelog.md:2501-2503 -> Phase 8 record 1228/60/1288"
+      ],
+      "recommended_action": "None; the lines are adequate as scoped historical evidence. Optional future clarity: label the sentence as 0.1.0-era."
+    },
+    {
+      "id": "8.6-R4",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation / release doc manifest field table",
+      "summary": "docs/release/build-and-release.md:232 lists versions[0].timestamp `2026-09-22T14:26:40Z`, while the committed manifest.json carries `2026-09-22T14:40:57Z` (regenerated by the 8.6 prepare run).",
+      "detail": "The task's required manifest fields (guid, version, targetAbi, checksum, sourceUrl) all match the committed manifest and build.yaml exactly; the timestamp is not one of them. The doc itself annotates the row '(generated UTC; regenerated on each manifest write)', so a concrete value is inherently ephemeral and not a current-state assertion about a fixed artifact property. No acceptance criterion depends on it.",
+      "evidence": [
+        "manifest.json:15 -> '\"timestamp\": \"2026-09-22T14:40:57Z\"'",
+        "docs/release/build-and-release.md:232 -> '| `versions[0].timestamp` | `2026-09-22T14:26:40Z` (generated UTC; regenerated on each manifest write) |'"
+      ],
+      "recommended_action": "None required. The phase-completion documentation step may refresh the illustrative timestamp if it touches the file."
+    },
+    {
+      "id": "8.6-R5",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "release integrity / tag vs bookkeeping",
+      "summary": "The tagged commit 8cba85b precedes the PLANS.md 8.6 bookkeeping edit (left uncommitted by design); this does not harm the release.",
+      "detail": "The annotated tag v1.0.1 dereferences to 8cba85b ('Publish ArrTags 1.0.1.0 repository manifest'), which changes only manifest.json on top of 7900fc5 (task 8.5 docs). The tagged tree therefore already contains the committed repository manifest, the 1.0.1.0 version/metadata, the Phase 8 changelog section, the release doc, and the project-status current-state updates - everything the release asset and Jellyfin repository install depend on. PLANS.md is internal planning bookkeeping and is intentionally left uncommitted for the orchestrator's per-task commit; a bookkeeping commit after the tag is normal and does not change the release artifact or manifest. Independently reproduced: `git rev-parse v1.0.1^{commit}` = 8cba85b..., `git diff 8cba85b:manifest.json manifest.json` is empty, and `git status --short` shows only ' M PLANS.md' plus the untracked 8.6 report.",
+      "evidence": [
+        "git show --stat 8cba85b -> 'manifest.json | 2 +-', message 'Publish ArrTags 1.0.1.0 repository manifest'",
+        "git rev-parse v1.0.1^{commit} -> 8cba85b2288a201f4e2c7eda58d44c71f9c4f096",
+        "git diff 8cba85b:manifest.json manifest.json -> empty (identical)",
+        "git status --short -> ' M PLANS.md' and '?? docs/implementation/8.6/'",
+        "git show 8cba85b:docs/changelog.md contains the Phase 8 section (line 2493)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "`. /config/arrtags-env.sh && ./build.sh build` -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (independently re-run).",
+    "`. /config/arrtags-env.sh && ./build.sh test` -> 'Passed! - Failed: 0, Passed: 1228, Skipped: 60, Total: 1288' (independently re-run).",
+    "Host-guarded, exported: `. /config/arrtags-env.sh && export ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin && ./build.sh test` -> 'Failed: 0, Passed: 1244, Skipped: 44, Total: 1288' (independently re-run).",
+    "Documented inline form (env sourced): `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test` -> 'Failed: 0, Passed: 1244, Skipped: 44, Total: 1288' (independently re-run).",
+    "Non-functional form check: `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin . /config/arrtags-env.sh` does not propagate the variable (echo printed UNSET).",
+    "`. /config/arrtags-env.sh && ./build.sh package` -> 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.0.1.0.zip (7 entries)' (independently re-run).",
+    "Artifact identity: size 568248 bytes; `sha256sum` = de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c; `md5sum` = 16baa5a7324b8e14fdb113d84b944d09; `unzip -l` lists exactly 7 entries with no SkiaSharp.dll/libSkiaSharp.so (only the two SkiaSharp license/notice text files).",
+    "Manifest checksum `16baa5a7324b8e14fdb113d84b944d09` equals `md5sum artifacts/ArrTags_1.0.1.0.zip`.",
+    "Tag/commit: `git cat-file -t v1.0.1` = tag (annotated, message 'ArrTags 1.0.1.0'); `git rev-parse v1.0.1^{commit}` = 8cba85b2288a201f4e2c7eda58d44c71f9c4f096; commit subject 'Publish ArrTags 1.0.1.0 repository manifest'; `git show --name-only` = manifest.json.",
+    "No-push / no-release: `git ls-remote origin` lists no v1.0.1 ref; `git branch -a --contains 8cba85b` = main only; origin/main = 09596e03145ded315ec35a7f4f33660de4057322 (HEAD ahead by 31); `command -v gh` absent."
+  ],
+  "research_checked": [
+    "build.yaml vs committed manifest.json: guid 40322d52-5680-449f-b33e-e01836ee2f46, version 1.0.1.0, targetAbi 12.0.0.0 match exactly.",
+    "sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip is the tag-derived GitHub release asset URL for the created tag.",
+    "Jellyfin plugin-repository manifest shape (array of plugin objects with a versions array) was accepted as already established by tasks 8.4/8.5; no new integration mechanism introduced by 8.6."
+  ],
+  "documentation_checked": [
+    "PLANS.md: task 8.6 checkbox [x], 'Status: Complete' block, Phase 8 aggregate 'tasks 8.1-8.6 complete', milestone row 8 'Complete (... Gate 8 phase review pending)', Project Status paragraph with tag v1.0.1 / commit 8cba85b; diff limited to these four areas.",
+    "docs/changelog.md: Phase 8 status line still 'In progress ... task 8.6 pending' (stale; finding 8.6-R1).",
+    "docs/project-status.md: lines 5-6 and 561-567 still 'Phase 8 in progress / task 8.6 pending' (stale; finding 8.6-R1).",
+    "docs/architecture.md: status line describes Phases 1-7 and makes no Phase 8 claim (no stale Phase 8 statement).",
+    "docs/implementation-readiness.md: status line describes phases through Phase 7 and makes no Phase 8 claim (no stale Phase 8 statement).",
+    "docs/release/build-and-release.md: current 1.0.1.0 artifact identity, manifest field table, line-79 host-guarded command, and the 0.1.0-history suite counts (findings 8.6-R2/R3/R4)."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

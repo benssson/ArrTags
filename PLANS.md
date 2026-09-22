@@ -2,14 +2,15 @@
 
 ## Project Status
 
-**Status:** Phases 1-7 complete; the release tag `v0.1.0` exists at HEAD
-(`a634d61`) with no GitHub release and no Jellyfin plugin-repository
-`manifest.json` published yet. Phase 8 - Release distribution is **in progress**
-(tasks 8.1-8.5 complete; task 8.6 pending): make ArrTags installable through the standard
-Jellyfin plugin catalog from the public repository `benssson/ArrTags`, present an
-end-user `README.md`, correct stale user-visible metadata, and prepare and ship
-the `v1.0.1` release (plugin version `1.0.1.0`, git tag `v1.0.1`); the actual
-GitHub release and asset upload remain a manual user step with
+**Status:** Phases 1-8 complete; the release tags `v0.1.0` (`a634d61`) and
+`v1.0.1` (`8cba85b`) exist locally, with the repository `manifest.json`
+committed at `v1.0.1` but no GitHub release and no asset upload yet. Phase 8 -
+Release distribution is **complete** (tasks 8.1-8.6 complete): ArrTags is
+installable through the standard Jellyfin plugin catalog from the public
+repository `benssson/ArrTags`, `README.md` is the end-user guide, stale
+user-visible metadata is corrected, and the `v1.0.1` release (plugin version
+`1.0.1.0`, git tag `v1.0.1`, commit `8cba85b`) is prepared; the actual GitHub
+release and asset upload remain a manual user step with
 `scripts/publish-release.sh`. No functional plugin behavior changes in Phase 8
 beyond version/release metadata. Phase 7 record: tasks 7.1, 7.2, 7.3, 7.4, 7.5,
 7.6, 7.7, and 7.8 are complete; all five Phase 7 acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`); the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin had persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treated that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deleted the install folder, and loaded no ArrTags plugin - which task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-running the live install/upgrade/reload/uninstall verification, now passing with the install folder and state preserved, so Phase 7 acceptance criterion 2 is met; the task 7.3 GOALS verification executed live end-to-end on the pinned musl host and met success criteria 1-4 and 9, covering criteria 5-8 only under a diagnostic SkiaSharp-sharing install or at the contract level, and found release blocker 7.3-F1 - the committed package's bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin during the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; task 7.8 resolves the duplicate-SkiaSharp packaging blocker 7.3-F1 by ADR-015 (the plugin compiles against the pinned SkiaSharp but shares the host's runtime instead of bundling it) and re-runs the live end-to-end verification, which now passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 is complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review on the live pinned host found no credential leakage and no unbounded path, a negative result; see the task 7.4 status); task 7.5 is complete - the release package is built from a clean checkout and is now byte-reproducible across clean builds, with the commands, inputs, artifact identity, and supported version ranges recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 is complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md` so nothing unsupported is presented as available; see the task 7.6 status). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items remain open and are consolidated in `docs/limitations.md` rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, a safe metrics/diagnostic-status surface, and the `QueueCapacity`-bounded reconciliation prefix. Phase 7 later performed live end-to-end verification on the pinned Jellyfin `12.0.0` musl host against the committed mock Arr fixture (tasks 7.3 and 7.8). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
@@ -200,7 +201,7 @@ without modifying original media files or external services.
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
-| 8 | Release distribution | In progress (tasks 8.1-8.5 complete; task 8.6 pending) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
+| 8 | Release distribution | Complete (tasks 8.1-8.6 complete; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 phase review pending) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 
 ## Milestones
 
@@ -2963,7 +2964,7 @@ version/release metadata.
 - [x] 8.4 Add the Jellyfin plugin-repository manifest tooling and the release
   script.
 - [x] 8.5 Update `docs/release/build-and-release.md` and `docs/changelog.md`.
-- [ ] 8.6 Release-readiness verification, commit the generated `manifest.json`,
+- [x] 8.6 Release-readiness verification, commit the generated `manifest.json`,
   and create the annotated tag `v1.0.1`.
 
 **Authoritative Phase 8 execution order:** 8.1, 8.2, 8.3, 8.4, 8.5, 8.6. Task
@@ -3248,7 +3249,25 @@ comment.
 
 #### 8.6 Release-readiness verification, manifest commit, and tag v1.0.1
 
-**Status:** Not started.
+**Status:** Complete. The full build/test/package ran at `1.0.1.0`: `./build.sh
+build` reported 0 warnings / 0 errors; the default suite was Failed 0, Passed
+1228, Skipped 60, Total 1288, and the host-guarded suite
+(`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) was Failed 0, Passed 1244,
+Skipped 44, Total 1288; `./build.sh package` reproduced
+`artifacts/ArrTags_1.0.1.0.zip` (568,248 bytes, SHA-256
+`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
+`16baa5a7324b8e14fdb113d84b944d09`, 7 entries, no bundled `SkiaSharp.dll`/
+`libSkiaSharp.so`). `scripts/publish-release.sh --dry-run` computed the same
+checksums and wrote `manifest.json` with no commit, tag, push, or GitHub call,
+and `--prepare-only --no-push --skip-build --skip-tests` regenerated
+`manifest.json` (guid `40322d52-5680-449f-b33e-e01836ee2f46`, version `1.0.1.0`,
+targetAbi `12.0.0.0`, checksum `16baa5a7324b8e14fdb113d84b944d09`, sourceUrl
+`https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip`),
+committed it as `8cba85b` ("Publish ArrTags 1.0.1.0 repository manifest"), and
+created the annotated tag `v1.0.1` (tag `v1.0.1^{commit}` =
+`8cba85b2288a201f4e2c7eda58d44c71f9c4f096`), with no push. The GitHub release and
+asset upload remain the user's manual step with `scripts/publish-release.sh
+--release-only`. Gate 8 is not declared; the Phase 8 review is separate.
 
 **Objective:** Verify the release at `1.0.1.0`, commit the generated manifest,
 and create the annotated tag.
