@@ -1,0 +1,32 @@
+{
+  "task": "8.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Repointed the agent current-state references at docs/project-status.md. In each of the five affected prompts (.opencode/agents/implementation-reviewer.md line 183, documentation-maintainer.md line 42, implementation-worker.md line 238, release-reviewer.md line 196, phase-reviewer.md line 133) the canonical-current-state-surface entry `README.md` - current build/test/structure/next-step statements was replaced with `docs/project-status.md` - current build/test/structure/next-step statements. The general `README.md` entries under each prompt's Required Inputs list were deliberately left unchanged, because the end-user README.md remains a valid project document. In PLANS.md, task 8.2 was marked complete ([x] checkbox plus a `**Status:** Complete.` note in the 8.2 detail block), and the two Phase 8 aggregate status lines were updated to 'tasks 8.1 and 8.2 complete; tasks 8.3-8.6 pending' (top `## Project Status` paragraph and `## Milestone Status` table row 8). No production code, README.md, or other file was changed.",
+  "validation": [
+    "Target-wording check: `grep -rn \"current build/test/structure/next-step statements\" .opencode/agents` returned five matches, all reading `* `docs/project-status.md` — current build/test/structure/next-step statements.` (phase-reviewer.md:133, documentation-maintainer.md:42, release-reviewer.md:196, implementation-worker.md:238, implementation-reviewer.md:183); no `README.md` entry remains for that wording.",
+    "Required-Inputs preservation check: `grep -rn \"README.md\" .opencode/agents` still shows the general entries at phase-reviewer.md:22, orchestrator.md:37, documentation-maintainer.md:26, architecture-reviewer.md:38, release-reviewer.md:41, and implementation-worker.md:23, confirming only the five canonical-current-state-surface entries were changed.",
+    "Scope check: `git status --short` shows only the five modified agent files and PLANS.md as tracked modifications, plus the new untracked docs/implementation/8.2/worker-report.json written by this task; `git diff --stat` reports 6 files changed, 16 insertions(+), 9 deletions(-). README.md and all other files are unchanged.",
+    "Diff review: `git diff` confirms each agent file changed exactly one line, and the PLANS.md diff contains only the two aggregate Phase 8 status lines, the 8.2 checkbox, and the 8.2 status note.",
+    "No build or tests were run because the change is documentation/prompt-only and touches no production code; the task's stated test is the manual grep confirmation performed above."
+  ],
+  "changed_files": [
+    ".opencode/agents/implementation-reviewer.md",
+    ".opencode/agents/documentation-maintainer.md",
+    ".opencode/agents/implementation-worker.md",
+    ".opencode/agents/release-reviewer.md",
+    ".opencode/agents/phase-reviewer.md",
+    "PLANS.md",
+    "docs/implementation/8.2/worker-report.json"
+  ],
+  "known_limitations": [
+    "No automated test guards the agent-prompt references; the check is the manual grep recorded in the validation list.",
+    "The new docs/implementation/8.2/worker-report.json is untracked in the working tree (the pre-report scope check of `git status --short` showed only the five agent files plus PLANS.md); it is intentionally left for the orchestrator to commit."
+  ],
+  "ready_for_next_task": true
+}

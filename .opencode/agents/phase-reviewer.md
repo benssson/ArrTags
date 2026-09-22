@@ -130,7 +130,7 @@ The project's canonical current-state surfaces are:
 
 * `PLANS.md` — Project Status paragraph, Milestone Status table row, task status/checkbox.
 * `docs/changelog.md` — task entries and phase status.
-* `README.md` — current build/test/structure/next-step statements.
+* `docs/project-status.md` — current build/test/structure/next-step statements.
 * `docs/architecture.md` — status line and affected sections.
 * `docs/implementation-readiness.md` — status line and deferral lists.
 

@@ -1,0 +1,52 @@
+{
+  "task": "8.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "8.2-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation evidence",
+      "summary": "The acceptance criterion is verified by a manual grep; no automated test guards the agent-prompt references, which is acceptable for a prompt-only change.",
+      "detail": "Task 8.2's declared test is itself the manual search for the 'current build/test/structure/next-step statements' wording. Independent re-run of `grep -rn \"current build/test/structure/next-step statements\" .opencode/agents` returns exactly five matches, all reading `* `docs/project-status.md` - current build/test/structure/next-step statements.` (phase-reviewer.md:133, documentation-maintainer.md:42, release-reviewer.md:196, implementation-worker.md:238, implementation-reviewer.md:183); no `README.md` entry remains for that wording. No production code or behaviour changed, so no build/suite run was required. The absence of an automated guard is inherent to markdown agent prompts and is not a defect.",
+      "evidence": [
+        "grep -rn \"current build/test/structure/next-step statements\" .opencode/agents -> five matches, all docs/project-status.md",
+        "git diff --numstat -> 1/1 for each of the five agent files"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "8.2-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation currency (out of scope)",
+      "summary": "docs/project-status.md, now the referenced source for current build/test/structure/next-step statements, does not yet mention Phase 8; its Phase 8 currency is a task 8.1/8.5 concern, not a task 8.2 defect.",
+      "detail": "The repointed source file contains the preserved pre-8.1 README body, whose 'Current milestone' is still Phase 7 and which has no Phase 8 status statement. Task 8.2's acceptance criterion concerns only which document the agent prompts reference, and the content of docs/project-status.md was reviewed under task 8.1. Task 8.2 itself changes only the five prompts and PLANS.md; no Phase 8 status line exists in docs/changelog.md, docs/architecture.md, docs/implementation-readiness.md, or docs/project-status.md, so no canonical surface is contradicted by the Phase 8 aggregate update. Phase 8 status updates to those surfaces are scheduled for tasks 8.3-8.5.",
+      "evidence": [
+        "grep -n \"Phase 8\" docs/project-status.md docs/changelog.md docs/architecture.md docs/implementation-readiness.md -> no Phase 8 status statement",
+        "docs/project-status.md:5 -> 'Current milestone: Phase 7 - Testing & release is complete'"
+      ],
+      "recommended_action": "None for task 8.2; revisit when tasks 8.3-8.5 reconcile the remaining current-state surfaces."
+    }
+  ],
+  "tests_checked": [
+    "Manual target-wording check re-run independently: `grep -rn \"current build/test/structure/next-step statements\" .opencode/agents` -> exactly five matches, all `docs/project-status.md`; none reference `README.md`.",
+    "Required-Inputs preservation check re-run independently: `grep -rn \"README.md\" .opencode/agents` -> exactly six general entries (phase-reviewer.md:22, orchestrator.md:37, documentation-maintainer.md:26, architecture-reviewer.md:38, release-reviewer.md:41, implementation-worker.md:23), none using the current-state-source wording.",
+    "No build or automated suite run was required or performed: the change is markdown-only and touches no production code; the task's stated test is the grep confirmation above.",
+    "`git diff --numstat` -> 1/1 per agent file and 11/4 for PLANS.md; `git status --porcelain` -> only the five agent files and PLANS.md modified, plus the untracked docs/implementation/8.2/ directory."
+  ],
+  "research_checked": [
+    "Not applicable: this is a documentation/prompt-reference task with no external API, library, or platform contract to verify."
+  ],
+  "documentation_checked": [
+    "PLANS.md: task 8.2 checkbox is `[x]` and the 8.2 detail block reads `**Status:** Complete.`; the Project Status paragraph (line 8) and Milestone Status row 8 (line 203) both read 'tasks 8.1 and 8.2 complete; tasks 8.3-8.6 pending', consistent with the 8.1/8.2 checkboxes and the still-open 8.3-8.6 checkboxes. No other Phase 8 aggregate status line exists in PLANS.md.",
+    "docs/project-status.md: exists (created by task 8.1) and is the newly referenced source; no Phase 8 status statement to contradict.",
+    "docs/changelog.md, docs/architecture.md, docs/implementation-readiness.md: contain no Phase 8 status statement, so the Phase 8 aggregate change introduces no stale canonical surface.",
+    "README.md: unchanged by this task; its remaining presence in agent prompts is limited to general Required Inputs/initialization lists, which remain valid because README.md is still a project document."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

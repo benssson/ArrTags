@@ -235,7 +235,7 @@ stale:
 * `PLANS.md` — the Project Status paragraph, the Milestone Status table row, and
   the task's own status text/checkbox.
 * `docs/changelog.md` — the task entry.
-* `README.md` — current build/test/structure/next-step statements.
+* `docs/project-status.md` — current build/test/structure/next-step statements.
 * `docs/architecture.md` — the status line and any section the change makes
   inaccurate.
 * `docs/implementation-readiness.md` — its status line and any deferral list.

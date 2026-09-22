@@ -1,0 +1,45 @@
+{
+  "task": "8.2",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f3695c9c1ffeSHpDV0k3hmgdC6"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f369486e0ffe6u7K0XyB9Wy3er"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": "Task 8.2 repointed the five agent prompts' canonical-current-state reference from README.md to docs/project-status.md; the general Required Inputs README.md entries were correctly left unchanged. Reviewer independently confirmed the grep results, diff scope, and PLANS.md consistency."
+}

@@ -193,7 +193,7 @@ reality:
 
 * `PLANS.md` — Project Status paragraph, Milestone Status table, phase/task
   status.
-* `README.md` — current build/test/structure/next-step statements.
+* `docs/project-status.md` — current build/test/structure/next-step statements.
 * `docs/changelog.md` — phase status and entries.
 * `docs/architecture.md` — status line and affected sections.
 * `docs/implementation-readiness.md` — status line and deferral lists.

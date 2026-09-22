@@ -39,7 +39,7 @@ You own the accuracy of exactly these current-state surfaces:
 
 * `PLANS.md` — Project Status paragraph, Milestone Status table, phase and task
   status.
-* `README.md` — current build/test/structure/next-step statements.
+* `docs/project-status.md` — current build/test/structure/next-step statements.
 * `docs/changelog.md` — phase status and completed-work entries.
 * `docs/architecture.md` — status line and affected sections.
 * `docs/implementation-readiness.md` — status line and deferral lists.
