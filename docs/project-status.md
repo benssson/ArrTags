@@ -2,8 +2,15 @@
 
 ## Project Status
 
-**Current milestone:** Phase 7 — Testing & release is complete: all five Phase 7
-acceptance criteria are met. Gate 7 is met (Phase 7 review approved; tag
+**Current milestone:** Phase 8 — Release distribution is **in progress** (tasks
+8.1-8.5 complete; task 8.6 pending): ArrTags is installable through the standard
+Jellyfin plugin catalog from the public repository `benssson/ArrTags`, with an
+end-user `README.md`, corrected `build.yaml` metadata at version `1.0.1.0`, the
+Jellyfin plugin-repository `manifest.json` tooling (task 8.4) and the canonical
+release/build/limitation documentation updated for `1.0.1.0` (task 8.5); the
+GitHub release and asset upload remain a manual user step with
+`scripts/publish-release.sh`. Phase 7 — Testing & release is complete: all five
+Phase 7 acceptance criteria are met. Gate 7 is met (Phase 7 review approved; tag
 `v0.1.0-phase7`). Tasks 7.1
 (full suite against the declared versions), 7.2 (live install/upgrade/reload/
 uninstall on the pinned host), 7.7 (relocated state root outside `PluginsPath`
@@ -532,12 +539,14 @@ The reproducible release build is documented in
 ./build.sh package                # artifacts/ArrTags_<version>.zip
 ```
 
-The package (`artifacts/ArrTags_0.1.0.0.zip`, 568,244 bytes, SHA-256
-`f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd`) is
+The package (`artifacts/ArrTags_1.0.1.0.zip`, 568,248 bytes, SHA-256
+`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
+`16baa5a7324b8e14fdb113d84b944d09`) is
 byte-reproducible: repeated clean builds produce an identical archive, and the
 task 7.5 clean-checkout evidence and the current identity are recorded in
-`docs/release/build-and-release.md`. (The release security fix SEC-1 changed the
-identity; see `docs/changelog.md`.) The MSBuild `PackagePlugin` target stages the
+`docs/release/build-and-release.md`. (Phase 8 task 8.3 bumped the version from
+`0.1.0.0` to `1.0.1.0`, and the release security fix SEC-1 changed the earlier
+`0.1.0.0` identity; see `docs/changelog.md`.) The MSBuild `PackagePlugin` target stages the
 release files and `scripts/pack-release.cs` writes the archive with entries in
 ordinal order and a fixed timestamp; `PathMap`,
 `IncludeSourceRevisionInInformationalVersion=false`, and
@@ -549,6 +558,15 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 
 Next tasks:
 
+- Phase 8 — Release distribution is **in progress**: tasks 8.1 (end-user
+  `README.md` and preserved `docs/project-status.md`), 8.2 (agent current-state
+  reference repoint), 8.3 (`build.yaml` metadata fix and `1.0.1.0` version bump),
+  8.4 (Jellyfin plugin-repository manifest tooling and `scripts/publish-release.sh`),
+  and 8.5 (release and canonical current-state documentation for `1.0.1.0`) are
+  complete. Task 8.6 remains: release-readiness verification, commit the
+  generated `manifest.json`, and create the annotated tag `v1.0.1`. The GitHub
+  release and asset upload remain a manual user step with
+  `scripts/publish-release.sh`.
 - Phase 7 — Testing & release is complete (tasks 7.1-7.8); all five Phase 7
   acceptance criteria are met. No Phase 7 implementation task remains; Gate 7 is
   not declared here and is covered by the separate phase review.

@@ -12,7 +12,7 @@
          tree and a build from a git-less export (for example `git archive`)
          produce different assemblies and therefore a different release-package
          SHA-256. The commit is not part of the plugin's declared identity
-         (build.yaml/Directory.Build.props version 0.1.0.0), so it is omitted to
+         (build.yaml/Directory.Build.props version 1.0.1.0), so it is omitted to
          keep the release artifact byte-reproducible from any checkout. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 

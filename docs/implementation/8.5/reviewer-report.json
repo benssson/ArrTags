@@ -1,0 +1,83 @@
+{
+  "task": "8.5",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "8.5-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / canonical current-state overclaim",
+      "summary": "The present-tense installability statement in docs/project-status.md and docs/release/build-and-release.md is forward-looking: at HEAD 266ad46 origin/main (09596e0) predates manifest.json and no v1.0.1 GitHub release asset exists, so a catalog install cannot yet succeed; the surrounding text marks Phase 8 in progress and the release as a pending manual step, so this is accepted as a by-design sequencing reference (same class as the accepted finding 8.1-R2).",
+      "detail": "docs/project-status.md lines 5-7 read '... ArrTags is installable through the standard Jellyfin plugin catalog from the public repository benssson/ArrTags ...; the GitHub release and asset upload remain a manual user step', and docs/release/build-and-release.md line 207-213 says 'ArrTags is installable ... Jellyfin is pointed at the raw manifest URL'. I verified the repository state: git rev-parse origin/main = 09596e0 ('record phase 6 completion tag'), HEAD = 266ad46 is 29 commits ahead, and `git cat-file -e origin/main:manifest.json` fails, so the raw main manifest URL is not live and the manifest sourceUrl asset (releases/download/v1.0.1/ArrTags_1.0.1.0.zip) does not exist. The statement is therefore not literally true yet. It is not a stale release-identity claim (no current surface presents 0.1.0.0 as current), it matches the PLANS.md Phase 8 goal wording ('make ArrTags installable ...'), and the task 8.1 reviewer accepted the identical sequencing forward reference as 8.1-R2. No action required for task 8.5; a future reconciliation could qualify the tense.",
+      "evidence": [
+        "docs/project-status.md:5-11 -> 'Phase 8 -- Release distribution is in progress (tasks 8.1-8.5 complete; task 8.6 pending): ArrTags is installable ...; the GitHub release and asset upload remain a manual user step'",
+        "docs/release/build-and-release.md:207-213 -> 'ArrTags is installable through the standard Jellyfin plugin catalog ... raw manifest URL'",
+        "git rev-parse origin/main -> 09596e0; git rev-list --count origin/main..HEAD -> 29; git cat-file -e origin/main:manifest.json -> fatal: not in origin/main",
+        "manifest.json versions[0].sourceUrl -> https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip (asset not published; user manual step)",
+        "docs/implementation/8.1/reviewer-report.json finding 8.1-R2 (same forward-reference class, status noted)"
+      ],
+      "recommended_action": "None required for task 8.5. If the paragraph is later edited, qualify the claim (for example 'Phase 8 makes ArrTags installable ... once the pending repository push and GitHub release publication complete')."
+    },
+    {
+      "id": "8.5-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / limitations P1 evidence scope",
+      "summary": "docs/limitations.md P1 says byte-identity of the 1.0.1.0 artifact 'is demonstrated with the pinned toolchain', but the cross-export reproducibility matrix was re-run only for 0.1.0; the 1.0.1.0 evidence is repeated same-tree package stability, which P1's own notes disclose, so it is not an overclaim.",
+      "detail": "P1 (lines 227-250) records the current 1.0.1.0 identity and states 'Byte-identity ... is demonstrated with the pinned toolchain', then explicitly adds 'no automated test guards byte-reproducibility ... reproducibility is verified by re-running ./build.sh package and comparing SHA-256' and 'the current 1.0.1.0 artifact is byte-stable across repeated ./build.sh package runs (the Phase 8 task 8.4 and 8.5 runs produced the identical SHA-256)'. docs/release/build-and-release.md labels the two-clean-export reproducibility matrix as '0.1.0 history' and the worker report known_limitations acknowledges the full matrix was not re-run at 1.0.1.0. I independently rebuilt with `. /config/arrtags-env.sh && ./build.sh package` and reproduced the recorded SHA-256/MD5/size, so the repeated-run stability claim is true. The doc is transparent about what was verified, so no action is required.",
+      "evidence": [
+        "docs/limitations.md:225-250 (P1 identity + verification note)",
+        "docs/release/build-and-release.md:119-163 (clean-export matrix labelled 0.1.0 history)",
+        "docs/implementation/8.5/worker-report.json known_limitations[3]"
+      ],
+      "recommended_action": "None required; a future task could state the 1.0.1.0 reproducibility evidence scope explicitly."
+    },
+    {
+      "id": "8.5-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / other canonical surfaces",
+      "summary": "docs/architecture.md and docs/implementation-readiness.md status lines end at Phase 7 and were not updated for Phase 8; neither contains a stale Phase 8 or 1.0.1.0/0.1.0.0 current-identity claim, and the task explicitly scoped them out.",
+      "detail": "docs/architecture.md line 3 status enumerates 'Phases 1-6 complete; Phase 7 complete ...'; docs/implementation-readiness.md line 5 likewise ends at Phase 7/SEC-1. Neither asserts a Phase 8 status and neither presents the 0.1.0.0 release identity as current. Phase 8 is release distribution with no architectural change and the task's Affected files list deliberately excludes both documents, so their omission of Phase 8 is not a stale claim. docs/implementation-readiness.md still contains the historical Phase 1 task 1.8 'ArrTags_0.1.0.0.zip' / 'Loaded plugin: ArrTags 0.1.0.0' validation record (lines ~327-330), which the reviewer discipline treats as an accurately-labelled historical record.",
+      "evidence": [
+        "docs/architecture.md:3 (status line ends at Phase 7)",
+        "docs/implementation-readiness.md:5 (status line ends at Phase 7/SEC-1)",
+        "docs/implementation-readiness.md:327-330 (historical Phase 1 task 1.8 record)"
+      ],
+      "recommended_action": "None required for task 8.5."
+    }
+  ],
+  "tests_checked": [
+    "Ran `. /config/arrtags-env.sh && ./build.sh package` at HEAD 266ad46 (with the task changes uncommitted): 'Build succeeded. 0 Warning(s) 0 Error(s)' and 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.0.1.0.zip (7 entries)'.",
+    "Artifact identity independently reproduced: `ls -l` = 568,248 bytes; `sha256sum` = de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c; `md5sum` = 16baa5a7324b8e14fdb113d84b944d09; `unzip -l` = 7 entries.",
+    "Per-entry SHA-256 independently recomputed from `unzip -q artifacts/ArrTags_1.0.1.0.zip -d /tmp/8.5/pkg` and `sha256sum` on each entry; all 7 hashes and byte sizes match the docs/release/build-and-release.md identity table exactly (ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt).",
+    "Manifest fields independently compared to manifest.json: category General, guid 40322d52-5680-449f-b33e-e01836ee2f46, name ArrTags, owner arttags, overview, version 1.0.1.0, targetAbi 12.0.0.0, checksum 16baa5a7... (= md5sum), sourceUrl .../v1.0.1/ArrTags_1.0.1.0.zip, timestamp 2026-09-22T14:26:40Z; description/changelog match build.yaml.",
+    "scripts/publish-release.sh mode behavior inspected against the doc: --dry-run writes manifest with no commit/tag/push/GitHub call; --prepare-only commits manifest/tag/push (unless --no-push) with no GitHub call; --release-only verifies the local tag exists, pushes branch/tag unless --no-push, then creates/refreshes the release with post-upload MD5 verification. Doc text matches the script (lines 118-133, 141-233, 235-384).",
+    "scripts/write-manifest.cs claims verified: 2-space indent, UTF-8 without BOM, one trailing newline, same-version upsert, newest-first numeric version sort (lines 184-223, 258-261).",
+    "Stale release-identity grep over the five canonical docs for 0.1.0.0 / ArrTags_0.1.0.0.zip / f6b6a515 / bd10b9b6: every remaining hit is historical (Phase 1-7 changelog entries, the relabelled 0.1.0 history block in build-and-release.md, the P1/V5 historical verification notes in limitations.md, and the explanatory historical parenthetical in project-status.md); no current-state surface presents the old identity as current.",
+    "Scope check: `git status --short` shows only the 7 intended tracked files modified (Directory.Build.props, PLANS.md, docs/changelog.md, docs/limitations.md, docs/project-status.md, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md) plus the untracked docs/implementation/8.5/ report.",
+    "No test suite rerun: the change is documentation-only plus a comment-only Directory.Build.props edit; the task's stated validation is the package build and manual consistency review, and the changelog's Phase 8 suite count (1228/60/1288) matches the recorded post-SEC-1 baseline in docs/implementation/final-review/release-review.json."
+  ],
+  "research_checked": [
+    "scripts/publish-release.sh (full read): mode/flag semantics, tag derivation, sourceUrl/repository URL construction, and --release-only push behavior match the documented release procedure.",
+    "scripts/write-manifest.cs: manifest generation/upsert/sort/serialization claims in the doc match the implementation.",
+    "build.yaml: version 1.0.1.0, targetAbi 12.0.0.0, guid, description, overview, changelog match manifest.json and the documented field table.",
+    "manifest.json (committed at HEAD 266ad46): matches the documented repository manifest fields and MD5 checksum.",
+    "Remote state via `git ls-remote`/`git rev-parse origin/main` (09596e0) to confirm the raw manifest URL is not yet live and no v1.0.1 release asset exists (see finding 8.5-R1)."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status paragraph (line 7-8), Milestone Status row 8 (line 203), task 8.5 checkbox [x] (line 2965), and task 8.5 Status/Affected files/Acceptance criteria block (lines 3186-3247) - accurate; Phase 8 acceptance boxes remain unchecked (phase in progress) and task 8.6 is pending.",
+    "docs/changelog.md: Phase 8 section appended at the end (lines 2493-2599) in chronological order; tasks 8.1-8.5 entries accurately reflect the work; historical Phase 1-7/SEC-1 entries preserved.",
+    "docs/release/build-and-release.md: pinned version, release artifact identity, per-entry table, 0.1.0 history labelling, Jellyfin plugin repository section, publish-release.sh procedure, checklist, and environment notes verified against the build/scripts/manifest.",
+    "docs/limitations.md: P1/P2 updated to the 1.0.1.0 identity (finding 8.5-R2); historical verification notes remain historical.",
+    "docs/project-status.md: current milestone framing, release-build identity, and Next tasks consistent with the new version/identity (finding 8.5-R1 on the forward-looking installability tense).",
+    "docs/testing/jellyfin-12-musl-test-host.md: reproduction step now extracts ArrTags_1.0.1.0.zip into data/plugins/ArrTags_1.0.1.0.",
+    "Directory.Build.props: version comment changed 0.1.0.0 -> 1.0.1.0 (reviewer finding 8.3-R1); `git diff` confirms only the comment line changed and no property value changed.",
+    "docs/architecture.md and docs/implementation-readiness.md: checked as canonical surfaces; no stale Phase 8/1.0.1.0 current claim (finding 8.5-R3)."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

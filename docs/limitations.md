@@ -224,11 +224,12 @@ for package content, `./build.sh package` has been run). The default suite is
 
 ### P1. Byte-reproducibility depends on the pinned toolchain
 
-Byte-identity of `artifacts/ArrTags_0.1.0.0.zip` (568,244 bytes, SHA-256
-`f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd`, the
-post-SEC-1 identity) is demonstrated with the pinned toolchain (`global.json`
-pins SDK `10.0.0` with `latestMinor`; validated with `10.0.401`). A different
-.NET SDK version could in principle change compiler or deflate output.
+Byte-identity of `artifacts/ArrTags_1.0.1.0.zip` (568,248 bytes, SHA-256
+`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
+`16baa5a7324b8e14fdb113d84b944d09`, the current `1.0.1.0` identity) is
+demonstrated with the pinned toolchain (`global.json` pins SDK `10.0.0` with
+`latestMinor`; validated with `10.0.401`). A different .NET SDK version could in
+principle change compiler or deflate output.
 
 - Evidence: task 7.5 worker/reviewer reports and
   `docs/release/build-and-release.md`.
@@ -240,10 +241,13 @@ pins SDK `10.0.0` with `latestMinor`; validated with `10.0.401`). A different
   installed and exercised end-to-end on the pinned Jellyfin `12.0.0` host by the
   Phase 7 review (badge published, 0 `[FTL]`, served bytes matching the persisted
   `ActiveImageIdentity`), which closed the task 7.6 reviewer finding 7.6-R1 for
-  that artifact. The post-fix artifact is stable across repeated
+  that artifact. The post-SEC-1 `0.1.0.0` artifact was stable across repeated
   `./build.sh package` runs and was live-verified on the same host for the SEC-1
   boundary (`docs/changelog.md`); the re-run release review re-verifies the
-  end-to-end publication on the new artifact.
+  end-to-end publication on the new artifact. Phase 8 task 8.3 then bumped the
+  version to `1.0.1.0`, changing only version/release metadata; the current
+  `1.0.1.0` artifact is byte-stable across repeated `./build.sh package` runs
+  (the Phase 8 task 8.4 and 8.5 runs produced the identical SHA-256).
 
 ### P2. The shipped assembly has reduced debug metadata for reproducibility
 
@@ -251,13 +255,13 @@ pins SDK `10.0.0` with `latestMinor`; validated with `10.0.401`). A different
 and `SuppressImplicitGitSourceLink=true`, and `src/ArrTags/ArrTags.csproj` maps
 the source path via `PathMap`, so a build from a git working tree matches a
 `.git`-less clean export. As a result the shipped `ArrTags.dll` has
-`AssemblyInformationalVersion` `0.1.0.0` with no commit suffix and the PDB
+`AssemblyInformationalVersion` `1.0.1.0` with no commit suffix and the PDB
 carries no SourceLink mapping.
 
 - Evidence: task 7.5 worker report (reviewer finding 7.5-F3) and
   `docs/release/build-and-release.md`.
 - Consequence: `AssemblyVersion`/`FileVersion`/`ProductVersion` remain
-  `0.1.0.0` and no runtime behavior depends on the suppressed metadata, but
+  `1.0.1.0` and no runtime behavior depends on the suppressed metadata, but
   source-level debugging of a released assembly is harder. This is a deliberate
   reproducibility trade-off, not an oversight.
 

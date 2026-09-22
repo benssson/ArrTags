@@ -1,0 +1,37 @@
+{
+  "task": "8.5",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation-only release/current-state update for the 1.0.1.0 release. docs/release/build-and-release.md now records plugin version 1.0.1.0, the current artifacts/ArrTags_1.0.1.0.zip identity (568,248 bytes, SHA-256 de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c, MD5 16baa5a7324b8e14fdb113d84b944d09, 7 entries) with a regenerated per-entry SHA-256 table produced by running . /config/arrtags-env.sh && ./build.sh package and hashing the extracted entries, and a new 'Jellyfin plugin repository' section documenting the repository-root manifest.json, the repository URL https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json, the manifest fields and MD5 checksum, and the scripts/publish-release.sh --dry-run/--prepare-only/--release-only procedure. The task 7.5 and SEC-1 evidence in that file is retained and relabelled as 0.1.0 history so the superseded bd10b9b6.../f6b6a515... identities are not presented as current. docs/changelog.md gains a Phase 8 (Release distribution) section recording tasks 8.1-8.5. docs/limitations.md P1/P2, docs/project-status.md (opening Phase 8 framing, release-build artifact identity, Next tasks), docs/testing/jellyfin-12-musl-test-host.md (reproduction step now extracts ArrTags_1.0.1.0.zip into data/plugins/ArrTags_1.0.1.0), and the Directory.Build.props version comment (reviewer finding 8.3-R1) are updated to 1.0.1.0. PLANS.md marks task 8.5 complete with a status note and sets the Phase 8 aggregate to 'tasks 8.1-8.5 complete; task 8.6 pending'. No source, test, packaging, or behavior change; no commit.",
+  "validation": [
+    "`cd /workspace/ArrTags && . /config/arrtags-env.sh && ./build.sh package` succeeded: 'Build succeeded. 0 Warning(s) 0 Error(s)' and 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.0.1.0.zip (7 entries)'.",
+    "Artifact identity confirmed: `sha256sum artifacts/ArrTags_1.0.1.0.zip` = de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c; `md5sum` = 16baa5a7324b8e14fdb113d84b944d09; `ls -l` size = 568248 bytes; `unzip -l` shows 7 entries (ArrTags.deps.json 5899, ArrTags.dll 1146368, THIRD-PARTY-NOTICES.md 1368, build.yaml 892, licenses/DejaVu-Fonts-License.txt 8816, licenses/SkiaSharp-LICENSE.txt 1129, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 139775).",
+    "Per-entry SHA-256 recorded from the extracted archive (`unzip -q artifacts/ArrTags_1.0.1.0.zip -d /tmp/8.5/pkg` then sha256sum each entry): ArrTags.deps.json 62f63fcc72485fcd2f40564443ee846084f8722f37d99c704e1897e740814d35; ArrTags.dll c384eccf7618c9ad111dfb2d9a9ddf719cb28e993d854c0891485f3bf7dc6e6b; THIRD-PARTY-NOTICES.md 3656c9f037624237e0530c8729dbe792791ded877b93c28807034ff55bf181b1; build.yaml 7a33566158620df65267790d1be5d556f0058d522734b8990845a18eca38b769; licenses/DejaVu-Fonts-License.txt 7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93; licenses/SkiaSharp-LICENSE.txt 89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938; licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5.",
+    "Manifest field match confirmed against manifest.json: category General, guid 40322d52-5680-449f-b33e-e01836ee2f46, name ArrTags, owner arttags, overview 'Adds Sonarr and Radarr metadata badges to Jellyfin posters.', versions[0].version 1.0.1.0, targetAbi 12.0.0.0, checksum 16baa5a7324b8e14fdb113d84b944d09 (= md5sum of the artifact), sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip, timestamp 2026-09-22T14:26:40Z; description/changelog match build.yaml.",
+    "Stale-reference grep over the five canonical current-state docs for `0.1.0.0`/`ArrTags_0.1.0.0.zip`/`f6b6a515`/`bd10b9b6`: remaining hits are only (a) the 0.1.0 history block and the explanatory history sentence in docs/release/build-and-release.md, and (b) the historical P1 verification note in docs/limitations.md; docs/project-status.md retains `0.1.0.0` only inside an explanatory historical parenthetical; docs/testing/jellyfin-12-musl-test-host.md has none; docs/changelog.md retains the preserved historical Phase 1-7/SEC-1 entries plus the new Phase 8 history sentence - no current-state surface presents the old identities as current.",
+    "Scope check: `git status --short` shows only the seven intended files modified (Directory.Build.props, PLANS.md, docs/changelog.md, docs/limitations.md, docs/project-status.md, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md); build.yaml, scripts/, tests/, src/, README.md, manifest.json, and docs/implementation/* reports are untouched.",
+    "No test suite was run because the task is documentation-only plus a comment-only Directory.Build.props change and the task's stated validation is the package build and manual consistency review; the package build was run and succeeded."
+  ],
+  "changed_files": [
+    "docs/release/build-and-release.md",
+    "docs/changelog.md",
+    "docs/limitations.md",
+    "docs/project-status.md",
+    "docs/testing/jellyfin-12-musl-test-host.md",
+    "Directory.Build.props",
+    "PLANS.md",
+    "docs/implementation/8.5/worker-report.json"
+  ],
+  "known_limitations": [
+    "docs/implementation-readiness.md still contains the historical Phase 1 task 1.8 compatibility-validation record that installed artifacts/ArrTags_0.1.0.0.zip and reported 'Loaded plugin: ArrTags 0.1.0.0' (lines 327-330). It was left unchanged because the task explicitly restricts changes to the listed files and explicitly excludes docs/implementation/* reports; it is a historical validation record rather than a claim that 0.1.0.0 is current. The orchestrator may decide whether a future task should refresh it.",
+    "The Jellyfin plugin repository section records the committed manifest.json timestamp 2026-09-22T14:26:40Z; that value is regenerated whenever scripts/write-manifest.cs runs (for example during task 8.6's manifest commit), so the doc value will be current only until the manifest is regenerated at release time.",
+    "The GitHub release publication and asset upload (and the post-upload MD5 verification) were not exercised; they are the user's manual step and are documented, not executed. Task 8.6 performs release-readiness verification, commits manifest.json, and creates the annotated tag v1.0.1.",
+    "Byte-reproducibility of the recorded 1.0.1.0 identity was confirmed by rebuilding the artifact to the same SHA-256/MD5, but the full two-clean-export reproducibility matrix was not re-run at 1.0.1.0; the task 7.5 evidence in docs/release/build-and-release.md remains the 0.1.0 history and no automated test guards archive byte-identity (docs/limitations.md P1)."
+  ],
+  "ready_for_next_task": true
+}

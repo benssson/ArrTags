@@ -5,7 +5,7 @@
 **Status:** Phases 1-7 complete; the release tag `v0.1.0` exists at HEAD
 (`a634d61`) with no GitHub release and no Jellyfin plugin-repository
 `manifest.json` published yet. Phase 8 - Release distribution is **in progress**
-(tasks 8.1-8.4 complete; tasks 8.5-8.6 pending): make ArrTags installable through the standard
+(tasks 8.1-8.5 complete; task 8.6 pending): make ArrTags installable through the standard
 Jellyfin plugin catalog from the public repository `benssson/ArrTags`, present an
 end-user `README.md`, correct stale user-visible metadata, and prepare and ship
 the `v1.0.1` release (plugin version `1.0.1.0`, git tag `v1.0.1`); the actual
@@ -200,7 +200,7 @@ without modifying original media files or external services.
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
-| 8 | Release distribution | In progress (tasks 8.1-8.4 complete; tasks 8.5-8.6 pending) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
+| 8 | Release distribution | In progress (tasks 8.1-8.5 complete; task 8.6 pending) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 
 ## Milestones
 
@@ -2962,7 +2962,7 @@ version/release metadata.
   `1.0.1.0`.
 - [x] 8.4 Add the Jellyfin plugin-repository manifest tooling and the release
   script.
-- [ ] 8.5 Update `docs/release/build-and-release.md` and `docs/changelog.md`.
+- [x] 8.5 Update `docs/release/build-and-release.md` and `docs/changelog.md`.
 - [ ] 8.6 Release-readiness verification, commit the generated `manifest.json`,
   and create the annotated tag `v1.0.1`.
 
@@ -3185,14 +3185,34 @@ task 8.5.
 
 #### 8.5 Release and changelog documentation
 
-**Status:** Not started.
+**Status:** Complete. In `docs/release/build-and-release.md` the pinned plugin
+version is `1.0.1.0`; the "Release artifact identity" section now records
+`artifacts/ArrTags_1.0.1.0.zip` (568,248 bytes, SHA-256 `de4c3484…`, MD5
+`16baa5a7…`, 7 entries) with a regenerated per-entry SHA-256 table produced by
+running `. /config/arrtags-env.sh && ./build.sh package` and hashing the
+extracted entries; and a new "Jellyfin plugin repository" section documents the
+root `manifest.json`, the repository URL
+(`https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json`), the
+manifest fields and MD5 checksum, and the `scripts/publish-release.sh`
+`--dry-run`/`--prepare-only`/`--release-only` procedure. The task 7.5/SEC-1
+evidence is retained and relabelled as `0.1.0` history so the superseded
+`bd10b9b6…`/`f6b6a515…` identities are not presented as current.
+`docs/changelog.md` gains the Phase 8 section; `docs/limitations.md` P1/P2,
+`docs/project-status.md`, `docs/testing/jellyfin-12-musl-test-host.md`, and the
+`Directory.Build.props` version comment (reviewer finding 8.3-R1) are updated to
+the `1.0.1.0` identity. `./build.sh package` reproduced the recorded `1.0.1.0`
+identity (7 entries, no SkiaSharp runtime). No source, test, packaging, or
+behavior change.
 
 **Objective:** Record the repository manifest, repository URL, release
 procedure, and recomputed artifact identity, and record Phase 8.
 
 **Dependencies:** 8.3, 8.4.
 
-**Affected files:** `docs/release/build-and-release.md`, `docs/changelog.md`.
+**Affected files:** `docs/release/build-and-release.md`, `docs/changelog.md`,
+`docs/limitations.md`, `docs/project-status.md`,
+`docs/testing/jellyfin-12-musl-test-host.md`, `Directory.Build.props` (version
+comment only).
 
 **Work:** In `docs/release/build-and-release.md`, update the pinned version and
 artifact identity to `1.0.1.0`, and document the Jellyfin repository
@@ -3201,18 +3221,30 @@ artifact identity to `1.0.1.0`, and document the Jellyfin repository
 `scripts/publish-release.sh` procedure (dry run, prepare-only, and release-only
 modes), and the recomputed artifact identity for `artifacts/ArrTags_1.0.1.0.zip`
 (size, SHA-256, MD5, entries). In `docs/changelog.md`, add the Phase 8 section
-recording the release-distribution work.
+recording the release-distribution work. Reconcile the remaining canonical
+current-state surfaces that still carry the `0.1.0.0` release identity:
+`docs/limitations.md` (the P1 byte-reproducibility identity and the P2
+`AssemblyInformationalVersion` note), `docs/project-status.md` (the current
+milestone/status framing and the release-build artifact identity),
+`docs/testing/jellyfin-12-musl-test-host.md` (the reproduction step that extracts
+`artifacts/ArrTags_0.1.0.0.zip`), and the `Directory.Build.props` version comment
+(reviewer finding 8.3-R1). Do not rewrite historical changelog/PLANS entries or
+`docs/implementation/*` reports.
 
 **Tests:** Manual consistency review: the recorded artifact identity matches the
 built `1.0.1.0` package, the manifest fields match `build.yaml` and
-`manifest.json`, and no stale `0.1.0.0` release identity remains in the release
-document.
+`manifest.json`, and no stale `0.1.0.0` release identity remains in a canonical
+current-state surface (only historical entries may retain it).
 
-**Acceptance criteria:** `docs/release/build-and-release.md` and
-`docs/changelog.md` reflect the new state (repository manifest, repository URL,
-release procedure, recomputed artifact identity, and the Phase 8 record).
+**Acceptance criteria:** `docs/release/build-and-release.md`, `docs/changelog.md`,
+`docs/limitations.md`, `docs/project-status.md`, and
+`docs/testing/jellyfin-12-musl-test-host.md` reflect the new state (repository
+manifest, repository URL, release procedure, recomputed artifact identity, and
+the Phase 8 record), and the `Directory.Build.props` version comment matches
+`1.0.1.0`.
 
-**Documentation impact:** the two named documents.
+**Documentation impact:** the named documents and the `Directory.Build.props`
+comment.
 
 #### 8.6 Release-readiness verification, manifest commit, and tag v1.0.1
 

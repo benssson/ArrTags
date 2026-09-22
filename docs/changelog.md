@@ -2489,3 +2489,111 @@ no SkiaSharp runtime), replacing the pre-fix `bd10b9b6…` identity; the release
 and security reviews are re-run against it. ADR-012 records the pre-binding
 authentication and JSON content-type policy; `docs/architecture.md` section 11
 and the webhook boundary section reflect the realized behavior.
+
+## Phase 8 - Release distribution (Milestone 8)
+
+**Status:** In progress. Tasks 8.1-8.5 are complete; task 8.6 (release-readiness
+verification, committing the generated `manifest.json`, and creating the
+annotated tag `v1.0.1`) is pending. Phase 8 makes ArrTags installable through the
+standard Jellyfin plugin catalog from the public repository `benssson/ArrTags`
+and prepares the `v1.0.1` release; the GitHub release and asset upload remain the
+user's manual step with `scripts/publish-release.sh`. No functional plugin
+behavior changed beyond version/release metadata. The default suite is unchanged
+at Failed 0, Passed 1228, Skipped 60, Total 1288 (the phase adds no product
+test).
+
+### Task 8.1 - End-user README and preserved project status
+
+**Status:** Complete (commit `92611af`). The prior `README.md`
+contributor/project-status body was moved byte-for-byte into the new
+`docs/project-status.md` under an added `# ArrTags project status` H1 (both
+streams 39,973 bytes, no differences), and `README.md` was rewritten as the
+end-user installation and usage guide. The new README covers the plugin
+description; requirements (Jellyfin `12.0.0` only with `targetAbi: 12.0.0.0` and
+`net10.0`; Sonarr `3.x`-`4.x` and/or Radarr `3.x`-`6.x` on `/api/v3`;
+host-supplied SkiaSharp per `docs/limitations.md` F5); repository install
+(Dashboard -> Plugins -> Repositories -> the raw `manifest.json` URL -> Catalog
+-> ArrTags -> Install -> restart); a manual install fallback from the
+`ArrTags_1.0.1.0.zip` release asset; configuration via
+`plugins/configurations/ArrTags.xml` plus restart (no web UI in v1, with the F2
+restart requirement and the real field set and a minimal `PluginConfiguration`
+example); the `POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr`
+endpoints authenticated with the `X-ArrTags-Webhook-Secret` header; update;
+uninstall (a completed uninstall restores the original poster and removes the
+`ProgramDataPath/ArrTags` state root, with the incomplete-drain retention
+caveat); and a short known-limitations summary linking `docs/limitations.md`. No
+contributor material (test counts, gates/milestones, `build.sh` instructions, or
+ADR/GOALS/PLANS/task references) remains in `README.md`.
+
+### Task 8.2 - Repoint the agent current-state references
+
+**Status:** Complete (commit `2511118`). In each of the five agent prompts
+(`phase-reviewer.md`, `implementation-reviewer.md`, `documentation-maintainer.md`,
+`implementation-worker.md`, `release-reviewer.md`) the canonical
+current-state-surface entry `README.md` - current
+build/test/structure/next-step statements was replaced with
+`docs/project-status.md` - current build/test/structure/next-step statements. The
+general `README.md` required-input entries were left unchanged because the
+end-user `README.md` remains a valid project document. No other file changed.
+
+### Task 8.3 - Correct plugin metadata and bump to 1.0.1.0
+
+**Status:** Complete (commit `606fee1`). `build.yaml`
+`overview`/`description`/`changelog` now describe the shipped v1 behavior (reads
+metadata from independently configured Sonarr and Radarr instances and publishes
+configurable badges, for example the actual file quality, onto Jellyfin Movie and
+Episode posters through Jellyfin's supported item-image APIs while preserving the
+original poster), replacing the false "performs no provider or artwork I/O"
+foundation text. The version is `1.0.1.0` in `build.yaml` and in
+`Directory.Build.props` (`<Version>`/`<AssemblyVersion>`/`<FileVersion>`);
+`guid`, `targetAbi`, `framework`, `category`, `owner`, and the `artifacts` list
+are unchanged. The hard-coded `0.1.0.0` install-folder, `meta.json`, and
+manifest-version literals in `PluginPackagingTests`, `PluginStateLocationTests`,
+and `PluginDiscoveryHostTests` were updated to `1.0.1.0` so the suite passes at
+the new version. The build, test, and package commands were re-run and produce
+`artifacts/ArrTags_1.0.1.0.zip`. No other file changed.
+
+### Task 8.4 - Jellyfin repository manifest tooling and release script
+
+**Status:** Complete (commit `266ad46`). Added `scripts/write-manifest.cs`, a
+.NET 10 file-based app (not part of the solution, adding no plugin dependency)
+that reads `build.yaml` and upserts the Jellyfin plugin-repository version entry
+in `manifest.json` - plugin
+`category`/`guid`/`name`/`description`/`owner`/`overview` and per-version
+`checksum` (MD5), `changelog`, `targetAbi`, `sourceUrl`, `timestamp`, `version`,
+newest-first - preserving other plugin and version entries and writing stable
+indented JSON; it also supports `--print-changelog` for release notes. Added
+`scripts/publish-release.sh` with `--dry-run`, `--prepare-only`, and
+`--release-only` modes over `./build.sh restore/build/test/package`, SHA-256/MD5
+computation, manifest generation, git commit/tag/push (with `--no-push` and
+`--force`), and a `gh`/GitHub-REST-API release with post-upload MD5
+verification. The dry run generated `manifest.json` (guid
+`40322d52-5680-449f-b33e-e01836ee2f46`, version `1.0.1.0`, targetAbi
+`12.0.0.0`, sourceUrl
+`https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip`,
+MD5 `16baa5a7324b8e14fdb113d84b944d09`) with no commit, tag, push, or GitHub
+call. No other file changed.
+
+### Task 8.5 - Release and changelog documentation
+
+**Status:** Complete. `docs/release/build-and-release.md` now records the pinned
+plugin version `1.0.1.0`; the current `artifacts/ArrTags_1.0.1.0.zip` identity
+(568,248 bytes, SHA-256
+`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
+`16baa5a7324b8e14fdb113d84b944d09`, 7 entries) with per-entry SHA-256 values
+computed from the extracted archive; and a new "Jellyfin plugin repository"
+section documenting the repository-root `manifest.json`, the repository URL
+`https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json`, the
+manifest fields and MD5 checksum, and the `scripts/publish-release.sh` procedure
+(`--dry-run`, `--prepare-only`, and `--release-only`, including that
+`--release-only` pushes the existing branch/tag unless `--no-push` and requires
+the local tag). The task 7.5/SEC-1 evidence is retained and relabelled as
+`0.1.0` history, so the superseded `bd10b9b6…`/`f6b6a515…` identities are not
+presented as current. `docs/changelog.md` gains this Phase 8 section;
+`docs/limitations.md` P1/P2, `docs/project-status.md`,
+`docs/testing/jellyfin-12-musl-test-host.md` (the reproduction step now extracts
+`ArrTags_1.0.1.0.zip` into `data/plugins/ArrTags_1.0.1.0`), and the
+`Directory.Build.props` version comment (reviewer finding 8.3-R1) are updated to
+the `1.0.1.0` identity. `. /config/arrtags-env.sh && ./build.sh package`
+reproduced the recorded `1.0.1.0` identity (7 entries, no SkiaSharp runtime).
+Build 0 warnings / 0 errors. No source, test, packaging, or behavior change.

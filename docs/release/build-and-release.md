@@ -1,10 +1,12 @@
 # ArrTags build and release
 
 This document is the canonical record for the ArrTags release build (Phase 7
-task 7.5). It records the pinned toolchain and inputs, the supported version
-ranges, the exact build/test/package commands, the reproducible clean-checkout
-procedure, the release artifact identity, and the release checklist. It owns
-Phase 7 acceptance criterion 5 ("The release artifact and build process are
+task 7.5; extended by Phase 8 task 8.5 for the `1.0.1.0` release). It records the
+pinned toolchain and inputs, the supported version ranges, the exact
+build/test/package commands, the reproducible clean-checkout procedure, the
+release artifact identity, the Jellyfin plugin-repository `manifest.json` and the
+`scripts/publish-release.sh` release procedure, and the release checklist. It
+owns Phase 7 acceptance criterion 5 ("The release artifact and build process are
 reproducible and documented").
 
 Architecture and accepted decisions stay authoritative in
@@ -15,7 +17,7 @@ documented in `docs/testing/jellyfin-12-musl-test-host.md`.
 
 | Item | Value | Source |
 | --- | --- | --- |
-| Plugin version | `0.1.0.0` | `build.yaml`, `Directory.Build.props` |
+| Plugin version | `1.0.1.0` | `build.yaml`, `Directory.Build.props` |
 | Target framework | `net10.0` | `src/ArrTags/ArrTags.csproj` |
 | Manifest ABI | `targetAbi: 12.0.0.0` | `build.yaml` |
 | .NET SDK | `10.0.x` (validated with `10.0.401`) | `global.json` pins `10.0.0` with `rollForward: latestMinor` |
@@ -135,17 +137,20 @@ Then run the four commands in that directory:
 cd /tmp/release-src
 . /config/arrtags-env.sh
 ./build.sh restore && ./build.sh build && ./build.sh test && ./build.sh package
-sha256sum artifacts/ArrTags_0.1.0.0.zip
+sha256sum artifacts/ArrTags_1.0.1.0.zip
 ```
 
-Task 7.5 evidence: two independent clean exports (each 526 files, no `.git`,
-`bin`, `obj`, or `artifacts`) built from the same sources at different absolute
-paths, plus a third run in the first export after wiping its build outputs, all
-produced the identical archive. This is the task 7.5 evidence for the sources
-before the release security fix SEC-1; that fix changed the artifact identity
-(see "Release artifact identity" below and `docs/changelog.md`).
+**0.1.0 history.** Task 7.5 evidence: two independent clean exports (each 526
+files, no `.git`, `bin`, `obj`, or `artifacts`) built from the same sources at
+different absolute paths, plus a third run in the first export after wiping its
+build outputs, all produced the identical archive. This records the `0.1.0.0`
+artifact before the release security fix SEC-1, so it is historical only. SEC-1
+later changed `ArrTags.dll` (the post-fix `0.1.0.0` identity was `f6b6a515…`),
+and Phase 8 task 8.3 then bumped the plugin version to `1.0.1.0`; neither
+`bd10b9b6…` nor `f6b6a515…` is the current identity. The current identity is in
+"Release artifact identity" below; see `docs/changelog.md`.
 
-| Run | Tree | SHA-256 | Size |
+| Run (0.1.0, pre-SEC-1) | Tree | SHA-256 | Size |
 | --- | --- | --- | --- |
 | 1 | clean export A | `bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51` | 567,856 |
 | 2 | clean export B | `bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51` | 567,856 |
@@ -159,48 +164,123 @@ Skipped 44, Total 1278.
 
 ## Release artifact identity
 
-`artifacts/ArrTags_0.1.0.0.zip`
+`artifacts/ArrTags_1.0.1.0.zip` (the current `1.0.1.0` release artifact)
 
 | Property | Value |
 | --- | --- |
-| Size | 568,244 bytes |
-| SHA-256 | `f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd` |
+| Size | 568,248 bytes |
+| SHA-256 | `de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c` |
+| MD5 | `16baa5a7324b8e14fdb113d84b944d09` |
 | Entries | 7 |
 
-This is the identity after the release security fix SEC-1
-(`docs/changelog.md`), which changed `ArrTags.dll`; the task 7.5 reproducibility
-table above records the pre-fix identity. The current archive is stable across
-repeated `./build.sh package` runs.
+This is the identity after Phase 8 task 8.3 bumped the plugin version to
+`1.0.1.0`; the release security fix SEC-1 and the `0.1.0.0` identity it produced
+are recorded in `docs/changelog.md` and in the `0.1.0` history above. The values
+above were produced by running `. /config/arrtags-env.sh && ./build.sh package`
+in the repository working tree; the archive is stable across repeated
+`./build.sh package` runs. The MD5 is the Jellyfin plugin-repository manifest
+checksum (see "Jellyfin plugin repository" below).
 
 Entry list (ordinal order, all stamped `2000-01-01 00:00`):
 
 | Entry | Size (bytes) | SHA-256 |
 | --- | --- | --- |
-| `ArrTags.deps.json` | 5,899 | `34e49970b08f33202aa2d397b219ca6963f61d372d1f46b9b1862a65e192c70c` |
-| `ArrTags.dll` | 1,146,368 | `f256fd0968c730499e679a8b54af49a02371b77d2e1962154f3bd3bb9b44b217` |
+| `ArrTags.deps.json` | 5,899 | `62f63fcc72485fcd2f40564443ee846084f8722f37d99c704e1897e740814d35` |
+| `ArrTags.dll` | 1,146,368 | `c384eccf7618c9ad111dfb2d9a9ddf719cb28e993d854c0891485f3bf7dc6e6b` |
 | `THIRD-PARTY-NOTICES.md` | 1,368 | `3656c9f037624237e0530c8729dbe792791ded877b93c28807034ff55bf181b1` |
-| `build.yaml` | 695 | `937794740b3f05db7b3059637369167a9d1387c8bf812b10615dfa8874058a0f` |
+| `build.yaml` | 892 | `7a33566158620df65267790d1be5d556f0058d522734b8990845a18eca38b769` |
 | `licenses/DejaVu-Fonts-License.txt` | 8,816 | `7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93` |
 | `licenses/SkiaSharp-LICENSE.txt` | 1,129 | `89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938` |
 | `licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt` | 139,775 | `21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5` |
+
+The per-entry SHA-256 values were produced by extracting the archive
+(`unzip -q artifacts/ArrTags_1.0.1.0.zip -d /tmp/arrtags-pkg`) and running
+`sha256sum` on each extracted entry.
 
 The archive contains no `SkiaSharp.dll` or `libSkiaSharp.so` (ADR-015). The
 `build.yaml` `artifacts` list (`ArrTags.dll`, `ArrTags.deps.json`) is a subset of
 the archive, and `PluginPackagingTests` asserts the package contract, including
 the duplicate-runtime regression.
 
+## Jellyfin plugin repository
+
+ArrTags is installable through the standard Jellyfin plugin catalog from the
+public repository `benssson/ArrTags`. Jellyfin is pointed at the raw manifest
+URL:
+
+```text
+https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json
+```
+
+`manifest.json` is committed at the repository root and is a Jellyfin
+plugin-repository document: a JSON array of plugin objects, each with a
+`versions` array. The ArrTags entry has these fields (values match `build.yaml`
+and the current `1.0.1.0` artifact):
+
+| Field | Value |
+| --- | --- |
+| `category` | `General` |
+| `guid` | `40322d52-5680-449f-b33e-e01836ee2f46` |
+| `name` | `ArrTags` |
+| `description` | `build.yaml` `description` (the shipped v1 behavior text) |
+| `owner` | `arrtags` |
+| `overview` | `Adds Sonarr and Radarr metadata badges to Jellyfin posters.` |
+| `versions[0].version` | `1.0.1.0` |
+| `versions[0].targetAbi` | `12.0.0.0` |
+| `versions[0].checksum` | `16baa5a7324b8e14fdb113d84b944d09` (MD5 of `artifacts/ArrTags_1.0.1.0.zip`) |
+| `versions[0].sourceUrl` | `https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip` |
+| `versions[0].timestamp` | `2026-09-22T14:26:40Z` (generated UTC; regenerated on each manifest write) |
+| `versions[0].changelog` | `build.yaml` `changelog` (the release notes) |
+
+The `checksum` must equal `md5sum artifacts/ArrTags_1.0.1.0.zip`; the
+`sourceUrl` is the GitHub release asset URL for the tag derived from the version
+(`v1.0.1`). Versions are written newest-first.
+
+`scripts/write-manifest.cs` is the .NET 10 file-based app that generates the
+manifest. It reads the plugin metadata from `build.yaml`, upserts the entry for
+the current version (replacing an existing same-version entry), preserves any
+other plugin and version entries, and writes stable indented JSON (2-space
+indent, UTF-8 without BOM, one trailing newline), so identical inputs produce
+byte-identical output. It also supports `--print-changelog` to print the
+`build.yaml` `changelog` value for the GitHub release notes. It is not part of
+the solution and adds no plugin dependency.
+
+`scripts/publish-release.sh` is the release orchestrator over
+`./build.sh restore/build/test/package`, SHA-256/MD5 computation, manifest
+generation, git commit/tag/push, and a `gh`/GitHub-REST-API release with
+post-upload MD5 verification. It has three modes:
+
+- `--dry-run` builds, tests, and packages, computes the checksums, writes
+  `manifest.json`, and prints the intended actions, but performs no commit, tag,
+  push, or GitHub call.
+- `--prepare-only` generates and commits `manifest.json`, creates the annotated
+  tag `v1.0.1`, and pushes the branch and tag (unless `--no-push`), with no
+  GitHub call.
+- `--release-only` pushes the existing branch and tag (unless `--no-push`),
+  then creates/refreshes the GitHub release and uploads the asset with a
+  post-upload MD5 verification. It performs no build, manifest, commit, or tag;
+  the local tag must already exist (created by `--prepare-only`), and the script
+  fails if it does not.
+
+The default mode (no mode flag) prepares the manifest/tag and publishes the
+GitHub release in one run. Other flags are `--skip-build`, `--skip-tests`,
+`--no-push`, `--force` (move an existing tag to HEAD), `--tag <tag>` (override
+the derived tag), and `--repo <owner/name>` (default `benssson/ArrTags`). The
+GitHub release and asset upload remain the user's manual step; task 8.6 only
+commits `manifest.json` and creates the annotated tag.
+
 ## Verification steps
 
 ```bash
 # 1. Reproducibility: package twice from clean state and compare.
-./build.sh package && sha256sum artifacts/ArrTags_0.1.0.0.zip
+./build.sh package && sha256sum artifacts/ArrTags_1.0.1.0.zip
 rm -rf src/ArrTags/bin src/ArrTags/obj tests/ArrTags.Tests/bin tests/ArrTags.Tests/obj artifacts
 ./build.sh restore && ./build.sh build && ./build.sh package
-sha256sum artifacts/ArrTags_0.1.0.0.zip     # must equal the first hash
+sha256sum artifacts/ArrTags_1.0.1.0.zip     # must equal the first hash
 
 # 2. Contents and entry identity.
-unzip -l artifacts/ArrTags_0.1.0.0.zip
-unzip -q artifacts/ArrTags_0.1.0.0.zip -d /tmp/arrtags-pkg && \
+unzip -l artifacts/ArrTags_1.0.1.0.zip
+unzip -q artifacts/ArrTags_1.0.1.0.zip -d /tmp/arrtags-pkg && \
   find /tmp/arrtags-pkg -type f | sort | xargs sha256sum
 
 # 3. Required entries present and non-empty.
@@ -211,9 +291,10 @@ unzip -q artifacts/ArrTags_0.1.0.0.zip -d /tmp/arrtags-pkg && \
 
 ## Release checklist
 
-The task 7.5 clean-build run satisfied every item below; the checklist is
-retained as the reusable release procedure (the boxes are intentionally
-unchecked in this runbook).
+The checklist is the reusable release procedure (the boxes are intentionally
+unchecked in this runbook). The 0.1.0 run satisfied every item; Phase 8 task 8.5
+re-verified the `1.0.1.0` package identity and contents, and task 8.6 performs
+the final release-readiness verification.
 
 - [ ] `./build.sh restore` succeeds in locked mode.
 - [ ] `./build.sh build` reports 0 warnings / 0 errors.
@@ -252,7 +333,7 @@ unchecked in this runbook).
   or the build properties would not fail the suite.
 - The debug-metadata suppression described under "Deterministic
   (byte-reproducible) packaging" is a deliberate trade-off: the shipped
-  `ArrTags.dll` has `AssemblyInformationalVersion` `0.1.0.0` with no commit
+  `ArrTags.dll` has `AssemblyInformationalVersion` `1.0.1.0` with no commit
   suffix and its PDB carries no SourceLink mapping, so source-level debugging of
   a released assembly is harder.
 - `dotnet build src/ArrTags/ArrTags.csproj -p:PackagePlugin=true` alone stages

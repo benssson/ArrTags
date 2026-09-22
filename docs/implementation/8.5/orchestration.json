@@ -1,0 +1,45 @@
+{
+  "task": "8.5",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f367b9468ffeYY66KmGXOPW5IS"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f367652a4ffePcYQrjyl1c3bh8"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": "Task 8.5 updated the canonical release/current-state docs to the 1.0.1.0 identity (artifacts/ArrTags_1.0.1.0.zip, 568,248 bytes, SHA-256 de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c, MD5 16baa5a7324b8e14fdb113d84b944d09), documented the plugin repository manifest/repository URL/publish-release.sh procedure, appended the Phase 8 changelog section, and fixed the Directory.Build.props version comment (finding 8.3-R1). Reviewer independently reproduced the artifact identity and per-entry hashes and confirmed no stale current-state release identity remains. Informational 8.5-R1 notes the installability statements are forward-looking until the user publishes the v1.0.1 release asset."
+}
