@@ -228,6 +228,11 @@ principle change compiler or deflate output.
   asserts package contents (required entries, no duplicate SkiaSharp runtime),
   not archive byte-identity; reproducibility is verified by re-running
   `./build.sh package` and comparing SHA-256.
+- Verification note: the current 567,856-byte artifact (`bd10b9b6…`) was itself
+  installed and exercised end-to-end on the pinned Jellyfin `12.0.0` host by the
+  Phase 7 review (badge published, 0 `[FTL]`, served bytes matching the persisted
+  `ActiveImageIdentity`), which closes the task 7.6 reviewer finding 7.6-R1 for
+  the final artifact.
 
 ### P2. The shipped assembly has reduced debug metadata for reproducibility
 

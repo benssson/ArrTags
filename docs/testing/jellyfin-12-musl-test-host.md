@@ -151,9 +151,12 @@ the ArrTags test suite.
   versioned install folder `data/plugins/ArrTags_<version>/` and that data folder
   are treated by `PluginManager` as two versions of the same-named plugin, and
   the older/other folder is deleted on the next host restart. Do not leave
-  ArrTags state under `data/plugins/ArrTags` while using the versioned layout;
-  the release blocker is recorded in `PLANS.md` and
-  `docs/implementation/7.2/worker-report.json`.
+  ArrTags state under `data/plugins/ArrTags` while using the versioned layout.
+  Task 7.7 resolved the plugin side of this by relocating the plugin state root
+  to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014), so the plugin no
+  longer creates `data/plugins/ArrTags`; an unreleased developer install that
+  already created that folder must delete it once. The original blocker is
+  recorded in `PLANS.md` and `docs/implementation/7.2/worker-report.json`.
 
 ## Mock Arr fixture and end-to-end verification (task 7.3)
 

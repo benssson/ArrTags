@@ -1,0 +1,182 @@
+{
+  "phase": "7 - Testing & release (Milestone 7)",
+  "reviewer_status": "APPROVED",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "area": "documentation consistency / requirements traceability (GOALS criterion 6)",
+      "description": "Several canonical current-state surfaces state without qualification that 'GOALS.md criteria 5, 6, and 8 are met as shipped', which overclaims criterion 6. The project's own limitations record says criterion 6 is only partial: docs/limitations.md line 32 ('Met for render/publication; partial for provider fetches', item F1) and PLANS.md task 7.6 status (line 2843) and README.md line 562 ('criterion 6 is met for render and publication but only partial for provider fetches'). The unqualified claim survives in README.md:24, PLANS.md:5, PLANS.md:179 (Milestone 7 row), docs/architecture.md:3, docs/implementation-readiness.md:5, and docs/changelog.md:2060/2267. This is an internal contradiction between canonical surfaces, not a stylistic gap. It does not block the phase because the accurate status is recorded and the Phase 7 acceptance criterion 3 (changed/unchanged metadata scenarios) is genuinely met, but a reader of the top-level status can incorrectly conclude that the 'avoid unnecessary API requests' goal is fully satisfied.",
+      "evidence": [
+        "README.md:24 unqualified 'criteria 5, 6, and 8 are therefore met as shipped' vs README.md:562 qualified criterion 6",
+        "PLANS.md:5 and PLANS.md:179 unqualified vs PLANS.md:2843 'criterion 6 is met for render and publication but only partial for provider fetches'",
+        "docs/limitations.md:32 status 'Met for render/publication; partial for provider fetches' with item F1",
+        "docs/architecture.md:3, docs/implementation-readiness.md:5, docs/changelog.md:2060/2267"
+      ],
+      "recommended_action": "Qualify the criterion-6 statements on the current-state surfaces (README project status, PLANS.md Project Status + Milestone 7 row, architecture status line, implementation-readiness status line, changelog Phase 7 status) with the same 'render/publication met, provider fetches partial (F1)' wording already used in docs/limitations.md. No code change required."
+    },
+    {
+      "severity": "LOW",
+      "area": "documentation consistency / test-fixture doc",
+      "description": "docs/testing/jellyfin-12-musl-test-host.md (lines 149-156) still frames the versioned-install/data-folder collision as an open release blocker ('the release blocker is recorded in PLANS.md') and does not mention the ADR-014 relocation, so it can lead a reader to recreate the old PluginsPath/ArrTags hazard. The generic derivation statement (BasePlugin<T> derives PluginsPath/<assembly name>) remains true, but ArrTags now overrides it. This was recorded as task 7.7 reviewer finding 7.7-R1 and was not addressed by task 7.6. It is not a canonical current-state surface and does not affect the release.",
+      "evidence": [
+        "docs/testing/jellyfin-12-musl-test-host.md:149-156",
+        "docs/decisions.md ADR-014 Consequences (orphan guidance)",
+        "git: file last touched by d5c5074 (task 7.8), not by 6bb70b0/9b64f67"
+      ],
+      "recommended_action": "Refresh the caveat to note the ADR-014 relocation and that the blocker is resolved, while keeping the 'do not leave state under PluginsPath/ArrTags' warning for pre-release installs."
+    },
+    {
+      "severity": "LOW",
+      "area": "documentation precision / host RID",
+      "description": "docs/architecture.md:944 still labels the validated host 'linux-x64' while ADR-015 (docs/decisions.md:1925) and docs/limitations.md F5 use the precise 'linux-musl-x64'. Recorded as task 7.6 reviewer finding 7.6-R2. The plugin makes no RID-specific claim so this is precision only.",
+      "evidence": [
+        "docs/architecture.md:944",
+        "docs/decisions.md:1925",
+        "docs/limitations.md F5 line 124"
+      ],
+      "recommended_action": "Align docs/architecture.md:944 with the linux-musl-x64 label used elsewhere."
+    },
+    {
+      "severity": "LOW",
+      "area": "documentation/behaviour gap (ADR-012) / HTTP",
+      "description": "ADR-012 states authentication failures return a bounded 401 'with no body', but live webhook 401 responses carry the ASP.NET Core [ApiController] application/problem+json ProblemDetails body (type/title/status/traceId). No secret or sensitive detail is reflected; the behaviour is accurately recorded in docs/limitations.md D1 (task 7.4 reviewer finding 7.4-R2). The divergence is documented, not silent, but the ADR text is now inaccurate.",
+      "evidence": [
+        "docs/decisions.md ADR-012 'no body' wording",
+        "docs/limitations.md D1",
+        "docs/implementation/7.4/reviewer-report.json finding 7.4-R2",
+        "docs/implementation/7.4/worker-report.json (live 401 application/problem+json)"
+      ],
+      "recommended_action": "Track for a future ADR-012 clarification (or suppress the framework body so the implemented behaviour matches the ADR). Non-blocking for V1: no leakage, documented."
+    },
+    {
+      "severity": "LOW",
+      "area": "technical debt / concurrency hardening",
+      "description": "ArtworkSubjectGate.Gates is a process-local static ConcurrentDictionary<string, SemaphoreSlim> keyed by item id + image surface with no idle eviction or LRU bound; one semaphore is retained per distinct (item, surface) for process lifetime. Growth is bounded in practice by the number of distinct Jellyfin library items and is not attacker-controllable nor a log/state path. Recorded as task 7.4 reviewer finding 7.4-R1 and docs/limitations.md D2.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkSubjectGate.cs",
+        "docs/limitations.md D2",
+        "docs/implementation/7.4/reviewer-report.json finding 7.4-R1"
+      ],
+      "recommended_action": "Optional post-V1 hardening: drop idle entries on the lifecycle drain or add an LRU bound. Not a V1 requirement."
+    },
+    {
+      "severity": "LOW",
+      "area": "release tooling robustness",
+      "description": "scripts/pack-release.cs validates that the staging directory exists and is non-empty but does not validate the expected release file set, so an out-of-band direct invocation can pack an incomplete archive with exit 0 (task 7.5 reviewer finding 7.5-F1). In addition, a failed ./build.sh package leaves artifacts/staging behind because the trailing cleanup is not trapped under set -e (finding 7.5-F2). Neither is reachable through the documented pipeline (MSBuild Copy fails first; artifacts/ is gitignored) and both were explicitly recorded as not-required.",
+      "evidence": [
+        "scripts/pack-release.cs lines 48-79",
+        "build.sh package() body",
+        "docs/implementation/7.5/reviewer-report.json findings 7.5-F1/7.5-F2"
+      ],
+      "recommended_action": "Optional hardening: assert the expected file set in the packer and use trap-based staging cleanup. Not required for V1."
+    },
+    {
+      "severity": "LOW",
+      "area": "documentation completeness / verification record",
+      "description": "docs/limitations.md did not record that the final byte-reproducible 567,856-byte artifact was not itself live-verified end-to-end; task 7.8's live run used the earlier 568,004-byte package (task 7.6 reviewer finding 7.6-R1). This phase review independently closed the substantive gap: it built the current artifact (SHA-256 bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51, 567,856 bytes), installed exactly that archive as /tmp/jf/data/plugins/ArrTags_0.1.0.0 on the pinned host, and verified live end-to-end publication (movie image/png 5,977 B SHA-256 e7db5182... and episode image/png 8,154 B SHA-256 54f937c1..., both equal to the persisted ActiveImageIdentity; 0 [FTL]/InvalidCastException; source posters byte-unchanged). Only the documentation note remains.",
+      "evidence": [
+        "docs/implementation/7.6/reviewer-report.json finding 7.6-R1",
+        "docs/implementation/7.5/worker-report.json known_limitations[6]",
+        "Phase-review live run: artifacts/ArrTags_0.1.0.0.zip (bd10b9b6.../567,856 B) installed on /tmp/jf and published"
+      ],
+      "recommended_action": "Add a one-line verification note to docs/limitations.md recording that the current byte-reproducible artifact was live-verified end-to-end by the Phase 7 review; no code action."
+    },
+    {
+      "severity": "LOW",
+      "area": "documentation precision / citation drift",
+      "description": "docs/limitations.md F3 cites 'docs/architecture.md line 1114' for the missing metrics/diagnostic surface; after task 7.6's own edits the cited sentence sits at approximately line 1116. Cosmetic; the reference still resolves to the correct section (task 7.6 reviewer finding 7.6-R3).",
+      "evidence": [
+        "docs/limitations.md F3",
+        "docs/architecture.md ~1115-1116"
+      ],
+      "recommended_action": "Optional: refresh the line citation or drop the line number."
+    },
+    {
+      "severity": "LOW",
+      "area": "repository cleanliness / orchestration record",
+      "description": "The phase-level aggregate docs/implementation/phase-7/orchestration.json is present and consistent with the eight per-task orchestration records (20 subagent invocations, 10 worker + 10 reviewer, 8 review rounds, 2 rework rounds; every session id matches), but it is untracked, so `git status` shows one untracked path and the working tree is not strictly clean. This is the orchestrator-produced aggregate created after the last task commit and is expected to be committed together with this phase review (the same pattern as the earlier 'execute post phase N review' commits). All other phase artifacts (per-task worker/reviewer/orchestration reports for 7.1-7.8) are committed with their tasks.",
+      "evidence": [
+        "git status --porcelain: '?? docs/implementation/phase-7/orchestration.json'",
+        "jq comparison of each docs/implementation/7.x/orchestration.json against the phase-7 aggregate (all session ids and counts match)",
+        "git log --oneline origin/main..HEAD: 9b64f67 (7.6) is the last task commit"
+      ],
+      "recommended_action": "Commit docs/implementation/phase-7/orchestration.json together with docs/implementation/phase-7/phase-review.json."
+    }
+  ],
+  "tasks_checked": [
+    "7.1 - full suite on declared versions + ADR-013 provider contract fixtures (commit 05210be; worker attempt 1+2, reviewer attempt 1 CHANGES_REQUIRED + attempt 2 APPROVED; attempt-1 reports preserved and attempt-2 reports present)",
+    "7.2 - live install/upgrade/reload/uninstall verification; found release blocker 7.2-F1 (commit 712838f; worker + reviewer committed with the task; reviewer APPROVED, ready_for_next_task=false)",
+    "7.7 - relocate plugin state root outside PluginsPath, ADR-014; resolved 7.2-F1 (commit 6bb70b0; worker + reviewer APPROVED with independent old-behaviour test reproduction)",
+    "7.3 - live GOALS end-to-end with mock Arr; found release blocker 7.3-F1 (commit 6fc5a84; worker + reviewer committed with the task; reviewer APPROVED, ready_for_next_task=false)",
+    "7.8 - share host SkiaSharp, stop bundling duplicate, ADR-015; resolved 7.3-F1 (commit d5c5074; worker attempt 1+2, reviewer attempt 1 CHANGES_REQUIRED + attempt 2 APPROVED; attempt-1 reports preserved and attempt-2 reports present)",
+    "7.4 - secret-leakage/unbounded-data review, negative result (commit 5a7372b; worker + reviewer APPROVED)",
+    "7.5 - byte-reproducible release package + release docs (commit 733db9b; worker + reviewer APPROVED)",
+    "7.6 - consolidated limitations/deferred decisions docs/limitations.md (commit 9b64f67; worker + reviewer APPROVED)"
+  ],
+  "commits_checked": [
+    "577abb7 Resolve DG-9 with ADR-013 (support commit)",
+    "05210be Execute task 7.1",
+    "632954c Add pinned Jellyfin 12.0.0 musl test-host provisioning script and documentation (support commit)",
+    "712838f Record task 7.2 live install blocker and add Phase 7 task 7.7",
+    "6bb70b0 Execute task 7.7 (ADR-014)",
+    "6fc5a84 Record task 7.3 GOALS verification blocker and add Phase 7 task 7.8",
+    "d5c5074 Execute task 7.8 (ADR-015)",
+    "5a7372b Execute task 7.4",
+    "733db9b Execute task 7.5",
+    "9b64f67 Execute task 7.6"
+  ],
+  "requirements_checked": [
+    "GOALS.md criterion 1 (installs/loads on Jellyfin 12): MET - live load reproduced by this review ('Loaded plugin: ArrTags 0.1.0.0', Startup complete, 0 [ERR]/[FTL]) and pinned by task 7.7/7.8.",
+    "GOALS.md criterion 2 (independent Sonarr/Radarr configuration): MET - task 7.3 live provider-isolation run; mock request log in this review confirms only enabled providers queried.",
+    "GOALS.md criterion 3 (movie/TV matching): MET - task 7.3 live match by TMDb 990001 / TVDB 990004; this review reproduced items with those provider ids matched by the real pipeline.",
+    "GOALS.md criterion 4 (quality metadata retrieval): MET - task 7.3 persisted Bluray-1080p / WEBDL-1080p with media-info fields.",
+    "GOALS.md criterion 5 (badge rendered on poster): MET as shipped, subject to the host supplying a compatible SkiaSharp (documented limitation F5). This review independently published badges through the real host IProviderManager.SaveImage and served them via GET /Items/{id}/Images/Primary with SHA-256 equal to the persisted ActiveImageIdentity, source posters byte-unchanged.",
+    "GOALS.md criterion 6 (updates without unnecessary repeated processing): PARTIALLY met - render/publication are fingerprint-gated and changed/unchanged behaviour was verified (tasks 7.8 and this review), but provider metadata is still fetched per work item (no catalogue cache; docs/limitations.md F1). The 'met as shipped' wording on several surfaces overclaims this (see MEDIUM finding).",
+    "GOALS.md criterion 7 (Jellyfin Enhanced coexistence): MET only at the contract level (EnhancedCoexistenceTests 7/7; Enhanced not installed on the pinned host) - accurately recorded in docs/limitations.md V3; no overclaim.",
+    "GOALS.md criterion 8 (failures do not adversely affect Jellyfin): MET as shipped - task 7.8 outage run and this review's live run left the host up with no [FTL].",
+    "GOALS.md criterion 9 (reproducibly built/tested): MET - clean rebuild 0 warnings/0 errors; default suite 1218/60/1278; host-guarded 1234/44/1278; two clean ./build.sh package runs produced the identical SHA-256 bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51 (567,856 bytes, 7 entries).",
+    "Phase 7 acceptance criterion 1 (full suite from a clean checkout): MET - clean rebuild reproduced by this review.",
+    "Phase 7 acceptance criterion 2 (packaged plugin loads/operates on declared ABI): MET - this review independently reproduced the ADR-014 relocation live (state written to /tmp/jf/data/ArrTags, versioned install folder ArrTags_0.1.0.0 preserved across restart, exactly one load, 0 [ERR]/[FTL]) and also exercised the live authenticated uninstall (DELETE /Plugins/<guid>/0.1.0.0 -> 204, install folder removed, relocated state root removed by the completed-drain cleanup).",
+    "Phase 7 acceptance criterion 3 (movie/TV scenarios with unchanged + changed metadata): MET - task 7.8 live run; unchanged re-run left fingerprints/tags/bytes identical and changed metadata produced new values.",
+    "Phase 7 acceptance criterion 4 (provider/matching/rendering/artwork/cache/lifecycle failures do not adversely affect Jellyfin): MET - no host crash on publication; providers-disabled and outage controls and clean uninstall verified.",
+    "Phase 7 acceptance criterion 5 (reproducible + documented release artifact): MET - reproduced byte-identical package twice and verified docs/release/build-and-release.md pins inputs, ranges, identity, and checklist.",
+    "Gate 7 (all V1 success criteria checked, release blockers resolved, artifact approved for release): SATISFIED - the two release blockers are independently confirmed fixed and the artifact is validated; non-blocking limitations are recorded in docs/limitations.md."
+  ],
+  "architecture_checked": [
+    "ADR-014 (state root ProgramDataPath/ArrTags, public BasePlugin.SetAttributes): coherent with ADR-002/ADR-003 (provenance retention and uninstall drain) and with docs/architecture.md sections 4/5/6/8 and docs/data-model.md; the prior Phase 5 assumption that the host deletes DataFolderPath is explicitly corrected rather than silently contradicted. Live behaviour matches the ADR (state outside PluginsPath; completed-drain state-root deletion).",
+    "ADR-015 (host-provided SkiaSharp): coherent; ADR-010 status line and inline note record partial supersession and the research doc section 3 carries an explicit superseded marker. The runtime type-identity fix matches the live evidence; no prior ADR is silently contradicted.",
+    "docs/architecture.md sections 8/9 updated for both decisions; docs/data-model.md contains no persisted-state-root path that would now be stale.",
+    "ADR-001/002/003/005/009/011 unchanged and not contradicted by the two new ADRs.",
+    "Acceptance criterion 3 internal consistency: the authoritative order 7.1, 7.2, 7.7, 7.3, 7.8, 7.4, 7.5, 7.6 actually matches the documented dependencies (7.7 after 7.2; 7.3 after 7.7; 7.8 after 7.3; 7.4 after 7.8; 7.5 after 7.4; 7.6 after 7.5); commit timestamps match that order; the two added tasks (7.7, 7.8) are documented in PLANS.md with their dependency positions and are legitimate BLOCKER resolutions, not scope invention."
+  ],
+  "research_checked": [
+    "docs/research/skia-host-compatibility.md: F2 correction (musl host native libSkiaSharp.so = NuGet 3.119.4 linux-musl-x64 asset, differing from the linux-x64 asset) present and section 3 marked superseded by ADR-015; managed SkiaSharp.dll byte-identity claim unchanged.",
+    "docs/decisions.md ADR-013 supported provider ranges (Sonarr 3.x-4.x, Radarr 3.x-6.x on /api/v3, no version gate, absent optionals -> explicit unknown, malformed required -> ProviderIncompatible) present and consistent with the release doc and ProviderContractFixtureTests.",
+    "Pinned-host assumptions checked against live behaviour rather than build success: BasePlugin.SetAttributes contract, PluginManager discovery/cleanup, ProgramDataPath vs PluginsPath, default-load-context SkiaSharp sharing, and the real IProviderManager.SaveImage publication path.",
+    "docs/testing/jellyfin-12-musl-test-host.md procedure independently followed for the live reproduction."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status (line 5), Milestone 7 row (line 179), Phase 7 section (tasks, execution order, per-task status, acceptance criteria, Gate 7 definition) - accurate except the unqualified criterion-6 wording.",
+    "docs/changelog.md: Phase 7 status and Task 7.1/7.2/7.7/7.3/7.8/7.4/7.5/7.6 entries present and consistent.",
+    "README.md: Project Status reflects Phase 7 complete and the 7.8 resolution; internally inconsistent on criterion 6 (line 24 vs line 562).",
+    "docs/architecture.md: status line and sections 4/5/6/8/9/11/12 updated for ADR-014/ADR-015; host RID label precision nit at line 944.",
+    "docs/implementation-readiness.md: status line and resolved-blocker item updated; deferrals consolidated to docs/limitations.md.",
+    "docs/limitations.md: canonical limitations record complete and accurate; does not note the final-artifact live-verification status (7.6-R1) and has cosmetic citation drift (7.6-R3).",
+    "docs/release/build-and-release.md: pinned toolchain, supported ranges, artifact identity and per-entry hashes, verification steps, and release checklist independently reproduced.",
+    "docs/testing/jellyfin-12-musl-test-host.md: stale open-blocker caveat (7.7-R1)."
+  ],
+  "orchestration_checked": [
+    "docs/implementation/phase-7/orchestration.json present; authoritative order and task list match the eight committed tasks; totals (20 invocations, 10 worker/10 reviewer, 8 review rounds, 2 rework rounds) match the sum of the per-task orchestration.json files; every aggregate session id equals the per-task record (jq comparison).",
+    "Per-task orchestration.json present for 7.1-7.8; correction rounds are preserved as rework entries plus incremented attempts (7.1 attempt-2 files and 7.8 attempt-2 files coexist with the attempt-1 reports; neither was overwritten).",
+    "Token/cost fields are null with an explanatory note; no figures were estimated in this review.",
+    "Only inconsistency: the phase-7 aggregate is untracked (LOW finding)."
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 20,
+    "total_attempts": 20,
+    "correction_rounds": 2
+  },
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 7 (Testing & release, Milestone 7) is complete and Gate 7 is satisfied. All eight tasks in the authoritative order 7.1, 7.2, 7.7, 7.3, 7.8, 7.4, 7.5, 7.6 are complete, committed in dependency order, and each carries committed worker and reviewer reports plus an orchestration record; the two tasks added mid-phase (7.7, 7.8) are documented in PLANS.md with their dependency positions and are legitimate resolutions of confirmed BLOCKER findings, not scope invention. The two release blockers were independently reproduced as genuinely fixed: (7.2-F1) installing the current release archive as /tmp/jf/data/plugins/ArrTags_0.1.0.0, letting the plugin write state, and restarting preserves the versioned install folder and loads exactly one plugin with state at /tmp/jf/data/ArrTags and no PluginsPath/ArrTags folder (plus a live authenticated DELETE /Plugins/<guid>/0.1.0.0 -> 204 that drained and removed the relocated state root); (7.3-F1) the package contains no SkiaSharp.dll/libSkiaSharp.so, and the same archive published movie and episode badges through the real host IProviderManager.SaveImage with 0 [FTL]/InvalidCastException, served by GET /Items/{id}/Images/Primary as image/png whose SHA-256 equals the persisted ActiveImageIdentity (e7db5182.../54f937c1...), with source posters byte-unchanged. Build/test/artifact independently reproduced: clean rebuild 0 warnings/0 errors; default suite Failed 0/Passed 1218/Skipped 60/Total 1278; host-guarded suite 1234/44/1278; two clean ./build.sh package runs produced the identical SHA-256 bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51 (567,856 bytes, 7 entries, no duplicate renderer runtime). ADR-014 and ADR-015 are coherent with the prior ADRs, ADR-010's partial supersession is recorded, and no ADR is silently contradicted. All GOALS.md success criteria and all five Phase 7 acceptance criteria are either genuinely met with evidence or accurately recorded as partial/contract-level/verification-limited in docs/limitations.md; the only substantive documentation defect is an overclaim of GOALS criterion 6 ('met as shipped') on several current-state surfaces that contradicts the project's own 'partial for provider fetches' record (MEDIUM). Remaining open items (7.4-R1/R2, 7.5-F1/F2, 7.6-R1/R2/R3) are non-blocking and are tracked in docs/limitations.md or PLANS.md; none prevents V1 release. All findings are documentation/precision/technical-debt items and none is a BLOCKER or HIGH."
+}

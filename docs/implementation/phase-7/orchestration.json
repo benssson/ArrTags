@@ -1,0 +1,100 @@
+{
+  "phase": "Phase 7 - Testing & release (Milestone 7)",
+  "authoritative_execution_order": ["7.1", "7.2", "7.7", "7.3", "7.8", "7.4", "7.5", "7.6"],
+  "tasks": [
+    {
+      "task": "7.1",
+      "outcome": "COMPLETE",
+      "commit": "05210be",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3a4a9cc8ffefX7I4KwRZJAlPo"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "CHANGES_REQUIRED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3a444653ffe00zY62KIytNy3S"},
+        {"role": "implementation-worker", "attempt": 2, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3a415351ffeYg2vy5C9QNqIc6"},
+        {"role": "implementation-reviewer", "attempt": 2, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3a40956effeUI35xs0q85lmIX"}
+      ],
+      "rework": ["Attempt 2 corrected missing PLANS.md current-state updates (finding LD-1, HIGH)."]
+    },
+    {
+      "task": "7.2",
+      "outcome": "BLOCKED (verification complete; release blocker 7.2-F1 found)",
+      "commit": "712838f",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3a29fc42ffeEOSOzmkx7JuKM5"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3a167930ffeo2T1Nv4FaAmrfP"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "7.7",
+      "outcome": "COMPLETE (resolved 7.2-F1)",
+      "commit": "6bb70b0",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3a0d04a0fferC282HVJlMsEXm"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f39f9c189ffeg8sjvEVXimdwTh"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "7.3",
+      "outcome": "BLOCKED (verification complete; release blocker 7.3-F1 found)",
+      "commit": "6fc5a84",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f39c853d3ffefxkmbp2kAsoCxX"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f39b0ef38ffebLVG4Ue9crYwSi"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "7.8",
+      "outcome": "COMPLETE (resolved 7.3-F1)",
+      "commit": "d5c5074",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f382994e7ffeGf6w1EZOD8Iowl"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "CHANGES_REQUIRED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f37fc14dbffed3Msc08KOq1FRo"},
+        {"role": "implementation-worker", "attempt": 2, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f37e9bb9affeFHkRYqbrrwuqOL"},
+        {"role": "implementation-reviewer", "attempt": 2, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f37e80fc5ffeYYQPI3oyjWu66D"}
+      ],
+      "rework": ["Attempt 2 corrected two documentation findings (7.8-R1 F2 native byte-identity, 7.8-R2 changelog size)."]
+    },
+    {
+      "task": "7.4",
+      "outcome": "COMPLETE",
+      "commit": "5a7372b",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f37e516bdffeFoCglvJSRHbQhH"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f37d6529effeQlofpYIjZfeyqV"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "7.5",
+      "outcome": "COMPLETE",
+      "commit": "733db9b",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f37beaa9dffeE81jy2v87ql82s"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f379f3b0fffeMVmOxc1j32dP5O"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "7.6",
+      "outcome": "COMPLETE",
+      "commit": "9b64f67",
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3795398affe1TPoyu1KLhb9bP"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f378ffb2cffe7W4jS2XGE91pQL"}
+      ],
+      "rework": []
+    }
+  ],
+  "totals": {
+    "subagent_invocations": 20,
+    "worker_invocations": 10,
+    "reviewer_invocations": 10,
+    "review_rounds": 8,
+    "rework_rounds": 2,
+    "tokens": null,
+    "cost_usd": null
+  },
+  "notes": "All 20 subagent invocations ran on opencode-go/deepseek-v4.1-flash variant high. Runtime token/cost fields are unavailable in this environment and are recorded as null; no per-invocation figures were estimated. Two non-task support commits were made by the orchestrator: 577abb7 (DG-9/ADR-013 decision record) and 632954c (pinned Jellyfin 12.0.0 musl test-host provisioning)."
+}

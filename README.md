@@ -21,7 +21,9 @@ the published bytes are served by `GET /Items/{id}/Images/Primary` and match the
 persisted `ActiveImageIdentity`, the original source posters are byte-unchanged,
 changed metadata republishes and unchanged metadata does not, and a provider
 outage leaves the host up with the current artwork unchanged. `GOALS.md`
-criteria 5, 6, and 8 are therefore met as shipped. Enhanced compatibility is
+criteria 5 and 8 are therefore met as shipped, with criterion 6 met for render
+and publication but only partial for provider fetches (`docs/limitations.md` F1).
+Enhanced compatibility is
 covered at the contract-test level (`EnhancedCoexistenceTests` 7/7; Jellyfin
 Enhanced is not installed live).
 
