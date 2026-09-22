@@ -171,6 +171,25 @@
         "duration_seconds": null,
         "session_id": "ses_f36d31651ffeuQ83J2Nhmc9eLs"
       }
+    },
+    {
+      "role": "release-reviewer",
+      "attempt": 4,
+      "outcome": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
+      "execution": {
+        "agent": "release-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f36c135fdffexnT5L2D0oykhmU"
+      }
     }
   ],
   "rework": [
