@@ -1,0 +1,93 @@
+{
+  "task": "7.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [
+    "7.3-F1 (confirmed): the committed package's bundled SkiaSharp.dll + libSkiaSharp.so collide fatally with the host's own SkiaSharp, so the first ArrTags badge publication aborts the whole Jellyfin 12.0.0 process with System.InvalidCastException. GOALS.md criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 cannot be checked. Independently reproduced twice on the pinned host. Fixing this needs an architecture/packaging decision (new ADR) plus csproj/build.yaml/PluginPackagingTests changes and re-verification, so advancement to release is blocked."
+  ],
+  "findings": [
+    {
+      "id": "7.3-F1",
+      "severity": "BLOCKER",
+      "status": "open",
+      "area": "correctness / packaging (release blocker; GOALS.md criteria 5, 6, 8)",
+      "summary": "Independently reproduced: the committed package's bundled duplicate SkiaSharp kills Jellyfin on the first badge publication; the finding is real, deterministic, and correctly attributed to the bundled copy, not to plugin logic.",
+      "detail": "Installed the unmodified artifacts/ArrTags_0.1.0.0.zip into /tmp/jf/data/plugins/ArrTags_0.1.0.0, pointed both providers at the committed mock fixture, created real Jellyfin Movie/Episode items with sidecar posters, and triggered a library refresh. The host exited with '[FTL] [20] Main: Unhandled Exception System.InvalidCastException: [A]SkiaSharp.UserDataDelegate cannot be cast to [B]SkiaSharp.UserDataDelegate', where A is the plugin-context copy at /tmp/jf/data/plugins/ArrTags_0.1.0.0/SkiaSharp.dll (Emby.Server.Implementations.Plugins.PluginLoadContext #1) and B is the host default-context copy at /tmp/jf/jellyfin/SkiaSharp.dll; the stack is SkiaSharp.DelegateProxies.SKManagedStreamPeekProxyImplementation. It occurred ~1.9 s after the ArrTags post-scan task completed and left non-terminal artwork-operation records (MayHaveStartedMutation=true) for both items. A second fresh-state run reproduced the identical failure. Controls: removing only SkiaSharp.dll and libSkiaSharp.so from the installed plugin folder made the full pipeline work with 0 [FTL] (badges published and served, source sidecars byte-unchanged); with the full committed package but both providers disabled (so no publication occurs) the plugin still loaded the bundled SkiaSharp yet the refresh produced 0 [FTL]/InvalidCast and the host stayed up; with the plugin uninstalled the host serves items normally. The plugin-context load is explicit in the console: 'Loaded assembly SkiaSharp, Version=3.119.0.0 ... from /tmp/jf/data/plugins/ArrTags_0.1.0.0/SkiaSharp.dll'. The host and plugin managed SkiaSharp.dll are byte-identical (sha256 aaaaa18c...), so this is a load-context type-identity conflict caused solely by shipping the duplicate, exactly as the worker reported.",
+      "evidence": [
+        "Run 1 (both providers enabled, committed package): host process exited; /tmp/jf/console.log line 152 '[FTL] [20] Main: Unhandled Exception' + line 153 InvalidCastException [A] PluginLoadContext #1 /tmp/jf/data/plugins/ArrTags_0.1.0.0/SkiaSharp.dll vs [B] Default /tmp/jf/jellyfin/SkiaSharp.dll; subsequent GET /System/Info/Public -> connection refused.",
+        "Run 2 (fresh state, both providers enabled, committed package): identical fatal InvalidCastException; host process gone.",
+        "Plugin-context load evidence: /tmp/jf/console.log 'Loaded assembly SkiaSharp, Version=3.119.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756 from /tmp/jf/data/plugins/ArrTags_0.1.0.0/SkiaSharp.dll' followed by 'Loaded plugin: ArrTags 0.1.0.0'.",
+        "Diagnostic control (only the two files removed from the installed plugin folder): POST /Library/Refresh -> 0 [FTL], host HTTP 200; GET /Items/792e65fe.../Images/Primary -> 200 image/png 14,845 B sha256 b23606a9... (== persisted artwork-state ActiveImageIdentity.ContentSha256); GET /Items/e26fb220.../Images/Primary -> 200 image/png 15,391 B sha256 fcba59c9... (== persisted ActiveImageIdentity).",
+        "Providers-disabled control (full committed package, both providers disabled): plugin loaded with the bundled SkiaSharp, refresh produced 0 [FTL]/InvalidCast, no provider requests, no artwork work, host up.",
+        "Uninstalled/normal-operation control: host scanned and served the items with no ArrTags installed; final clean restart reports 0 'Loaded plugin: ArrTags' and 0 [ERR]/[FTL].",
+        "Duplicate confirmed in the package: unzip -l artifacts/ArrTags_0.1.0.0.zip lists SkiaSharp.dll (489,824 B) and libSkiaSharp.so (11,170,296 B) at the plugin root."
+      ],
+      "recommended_action": "Do not release V1 from this package. Keep GOALS.md criteria 5, 6, 8 and Phase 7 acceptance criteria 3/4 unchecked and Gate 7 undeclared, and open a follow-up task with a new ADR to stop bundling the managed SkiaSharp.dll and native libSkiaSharp.so (share the host's SkiaSharp via the default load context), then update src/ArrTags/ArrTags.csproj (PackagePlugin target + SkiaSharp PackageReference assets), build.yaml artifacts, and the PluginPackagingTests that assert the bundled assets, and re-run this live verification against the committed package."
+    },
+    {
+      "id": "F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "research / architecture evidence (ADR-010, task 4.8 spike)",
+      "summary": "The task 4.8 research claim that the host's native libSkiaSharp.so is byte-for-byte identical to the NuGet asset does not hold on the pinned musl host (the managed SkiaSharp.dll is identical).",
+      "detail": "docs/research/skia-host-compatibility.md section 2 records the spike host's libSkiaSharp.so as 11,170,296 bytes / sha256 66c856... and byte-identical to the NuGet SkiaSharp.NativeAssets.Linux 3.119.4 asset, measured against the glibc host at /tmp/opencode/jf. The pinned musl host /tmp/jf/jellyfin/libSkiaSharp.so is 18,453,464 bytes / sha256 59039b..., i.e. not the NuGet copy. The managed assembly is byte-identical (sha256 aaaaa18c...), so the blocker is still purely a duplicate-management problem, but the follow-up fix must be verified against the host's own native library rather than assumed byte-identical.",
+      "evidence": [
+        "sha256sum /tmp/jf/jellyfin/SkiaSharp.dll = aaaaa18c68ba1f3a3408b00dff28b11d5705198e17ba9d3aa59222bfd35407c8 (same as the zip entry); AssemblyName version 3.119.0.0.",
+        "sha256sum /tmp/jf/jellyfin/libSkiaSharp.so = 59039b2548e3a3f563fa247f582c62d280c2015df78316fcab62e383d7ae9d4f (18,453,464 B) vs zip libSkiaSharp.so = 66c856eaf1a47a00b23204c30c6ee407987bf5086ecc0a1a6b4fd67526b0cd02 (11,170,296 B).",
+        "docs/research/skia-host-compatibility.md section 2 records the spike host native asset as 11,170,296 B / 66c856..."
+      ],
+      "recommended_action": "In the follow-up ADR/fix, re-verify host-SkiaSharp sharing against the pinned musl host's native library and correct the research/ADR record. No action for task 7.3."
+    },
+    {
+      "id": "F3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness / criterion 6 interaction (observed in the diagnostic install)",
+      "summary": "A full Jellyfin library metadata refresh re-imported the local sidecar poster and reverted a published badge while the plugin's persisted ActiveImageIdentity still recorded the badge as active.",
+      "detail": "In the first diagnostic run (committed-package duplicate removed) the plugin published badges: item ImageTags.Primary moved from ac2b726c/b7c66a45 to 680837a4/7c4ff71d and artwork-state recorded ActiveImageIdentity ContentSha256 B23606A9.../FCBA59C9.... A later POST /Library/Refresh restored the original sidecar images (item tags back to ac2b726c/b7c66a45; served bytes f380b2f9.../4b2e0f38...) while artwork-state still recorded the badge as active. This may be expected Jellyfin behavior when a local sidecar image exists and the plugin publishes into the metadata store; it could not be tested against the shipped package because that package crashes. The worker's criterion-6 run used the plugin's own reconcile task and did not show this.",
+      "evidence": [
+        "Item ImageTags.Primary movie ac2b726c -> 680837a4 (after publication) -> ac2b726c (after POST /Library/Refresh); episode b7c66a45 -> 7c4ff71d -> b7c66a45.",
+        "artwork-state ActiveImageIdentity.ContentSha256 stayed B23606A9.../FCBA59C9... across the refresh while item ImageTags reverted to the sidecar tags."
+      ],
+      "recommended_action": "Worth confirming during follow-up fix verification whether a Jellyfin library refresh can silently revert a published badge while plugin state claims otherwise. No change required for task 7.3."
+    },
+    {
+      "id": "F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope / cleanliness / fixture accuracy",
+      "summary": "Scope is clean and the mock fixture is accurate; no product code, tests, version bump, or extra artifact is present, and no secret appears in the logs.",
+      "detail": "git status shows only the six documentation files modified plus new scripts/mock-arr-fixture.cs, scripts/mock-arr-fixtures/ and docs/implementation/7.3/. src/, tests/, build.yaml and Directory.Build.props are unchanged (no version bump). artifacts/ contains only ArrTags_0.1.0.0.zip (5,475,666 B). The fixture serves exactly the endpoints the plugin clients call (Radarr system/status, movie, moviefile?movieId=; Sonarr system/status, series, episode?seriesId=&includeEpisodeFile=true, episodeFile?seriesId=), enforces X-Api-Key (401 on missing/invalid), reads payloads from disk, has failure markers, includes sparse optional-field records per ADR-013, is not in ArrTags.slnx, and logs only key presence/validity, never the value. The worker left the host clean (no install/state/config/libraries, wizard completed) and it was restored to that state after this review.",
+      "evidence": [
+        "git status --short: only PLANS.md, README.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/testing/jellyfin-12-musl-test-host.md modified; scripts/mock-arr-fixture.cs, scripts/mock-arr-fixtures/, docs/implementation/7.3/ untracked.",
+        "ArrTags.slnx lists only src/ArrTags/ArrTags.csproj and tests/ArrTags.Tests/ArrTags.Tests.csproj.",
+        "grep of the mock log and the Jellyfin console for the configured keys returned 0 matches; the mock logs apiKey=valid/missing/invalid only.",
+        "Documentation diff states criteria 5/6/8 are not met as shipped, Phase 7 acceptance criteria 3/4 remain unchecked, and Gate 7 is not met."
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "Independent live end-to-end reproduction on the pinned Jellyfin 12.0.0 musl host (not the product suites): committed package install, mock Sonarr/Radarr, real Jellyfin Movie/Series/Episode with sidecar posters - crash x2, diagnostic SkiaSharp-sharing control, providers-disabled control, Sonarr-only and Radarr-only provider isolation, changed/unchanged metadata, and a simulated provider outage.",
+    "Criteria 1-4 spot checks: 'Loaded plugin: ArrTags 0.1.0.0'; Sonarr-only run called only Sonarr endpoints, Radarr-only only Radarr, both-enabled called both (mock request log); persisted metadata-state recorded MatchStatus=0 (Matched) / MatchMethod=1 (ProviderId) with MatchedProviderIds Tmdb=990001 (movie, movie 1/file 11) and Tvdb=990004 (episode, series 1/episode 101/file 201); quality fields QualityLabel=Bluray-1080p/bluray/1080 and WEBDL-1080p/webdl/1080 with media-info resolution, dynamic range, codecs, channels, custom formats, upgrade-pending.",
+    "Criteria 5/6/8 spot checks under the diagnostic install: served image bytes equal to persisted ActiveImageIdentity (sha256 b23606a9.../fcba59c9...); source poster and thumbnail sidecars byte-unchanged (f380b2f9.../4b2e0f38...); a changed mock quality (1080p -> 2160p/HDR10) produced new metadata and publication fingerprints, a new image tag, and new served bytes; a true unchanged re-run left fingerprint/tag/bytes identical; a simulated outage left the host up (10/10 HTTP 200), the artwork unchanged, and metadata State=1 (stale) with no LastError.",
+    "Did not rerun the product test suites: src/ and tests/ are unchanged from the committed task 7.7 baseline, so the worker's reported counts cannot differ; they match the 7.7 baseline exactly (default Failed 0/Passed 1219/Skipped 60/Total 1279; host-guarded Failed 0/Passed 1235/Skipped 44/Total 1279).",
+    "Artifact check: artifacts/ArrTags_0.1.0.0.zip exists at the reported 5,475,666 bytes and contains ArrTags.dll, SkiaSharp.dll, libSkiaSharp.so, ArrTags.deps.json, build.yaml, notices and licenses."
+  ],
+  "research_checked": [
+    "docs/research/skia-host-compatibility.md sections 2-3 (native asset facts, PluginLoadContext resolution): the load-context claim was verified live (the plugin folder SkiaSharp.dll is loaded into PluginLoadContext; the image processor runs against the host copy). The native byte-identity claim was found not to hold on the pinned musl host (finding F2).",
+    "docs/decisions.md ADR-010 and src/ArrTags/ArrTags.csproj: confirmed the ADR mandates bundling the managed SkiaSharp.dll + native libSkiaSharp.so at the plugin root, that the PackagePlugin target fails the build if those assets are missing, and that build.yaml + PluginPackagingTests pin them - so the follow-up fix needs an ADR plus csproj/build.yaml/test changes.",
+    "src/ArrTags/Providers/Radarr/RadarrClient.cs and Sonarr/SonarrClient.cs: confirmed the mock fixture serves exactly the endpoints and query shapes the clients request."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status, Milestone 7 row, task 7.3 checkbox/status, and the Phase 7 acceptance criteria list - criteria 'Sonarr and Radarr movie/television scenarios pass with unchanged and changed metadata' and 'Provider, matching, rendering, artwork, cache, and lifecycle failures do not adversely affect Jellyfin' remain unchecked; Gate 7 is not declared.",
+    "docs/changelog.md task 7.3 entry (met criteria 1-4/9, criterion 7 contract-level, criteria 5/6/8 not met as shipped).",
+    "README.md current milestone and release-blocker statement.",
+    "docs/architecture.md status line and section 11 bundled-asset blocker note.",
+    "docs/implementation-readiness.md status line.",
+    "docs/testing/jellyfin-12-musl-test-host.md mock-fixture/reproduction/finding sections."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

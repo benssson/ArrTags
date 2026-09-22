@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Status:** Phases 1-6 complete; Phase 7 in progress (tasks 7.1, 7.2, and 7.7 are complete; the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin had persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treated that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deleted the install folder, and loaded no ArrTags plugin - which task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-running the live install/upgrade/reload/uninstall verification, now passing with the install folder and state preserved, so Phase 7 acceptance criterion 2 is met; tasks 7.3-7.6 remain pending). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items are tracked for Phase 7 rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, and a safe metrics/diagnostic-status surface; no live Jellyfin host or live Arr instance was exercised. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-6 complete; Phase 7 in progress (tasks 7.1, 7.2, 7.3, and 7.7 are complete; the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin had persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treated that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deleted the install folder, and loaded no ArrTags plugin - which task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-running the live install/upgrade/reload/uninstall verification, now passing with the install folder and state preserved, so Phase 7 acceptance criterion 2 is met; the task 7.3 GOALS verification executed live end-to-end on the pinned musl host and met success criteria 1-4 and 9, covering criteria 5-8 only under a diagnostic SkiaSharp-sharing install or at the contract level, and found release blocker 7.3-F1 - the committed package's bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin during the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; task 7.8 resolves the duplicate-SkiaSharp packaging blocker 7.3-F1 and re-runs the live verification, and tasks 7.4-7.6 remain pending). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items are tracked for Phase 7 rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, and a safe metrics/diagnostic-status surface; no live Jellyfin host or live Arr instance was exercised. Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Current position:** The goals, V1 architecture, and canonical data model are
 drafted and the architectural blockers are resolved. Tasks 1.1 (documentation
@@ -176,7 +176,7 @@ without modifying original media files or external services.
 | 4 | Badge rendering | Complete | Canonical metadata renders deterministically within configured limits, with safe pass-through on failure. |
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
-| 7 | Testing & release | In progress (tasks 7.1, 7.2, and 7.7 complete; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; tasks 7.3-7.6 pending) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
+| 7 | Testing & release | In progress (tasks 7.1, 7.2, 7.3, and 7.7 complete; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; the task 7.3 live GOALS verification met criteria 1-4 and 9 but found release blocker 7.3-F1, so criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; task 7.8 resolves blocker 7.3-F1 and re-runs the live verification; tasks 7.4-7.6 pending) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 
 ## Milestones
 
@@ -2472,9 +2472,12 @@ release artifact and operational documentation.
 
 - [x] 7.1 Run all unit and integration tests against the exact declared versions.
 - [x] 7.2 Verify the plugin installs, upgrades, reloads, and uninstalls safely.
-- [ ] 7.3 Verify all success criteria in `GOALS.md`, including independent
+- [x] 7.3 Verify all success criteria in `GOALS.md`, including independent
   provider configuration, matching, quality retrieval, poster output, update
   behavior, Enhanced compatibility, graceful failure, and reproducible builds.
+  (Verification executed; a release blocker was found that makes `GOALS.md`
+  criteria 5, 6, and 8 fail as shipped, so Phase 7 acceptance criteria 3 and 4
+  remain unchecked. See the task 7.3 status and release blocker 7.3-F1.)
 - [ ] 7.4 Review logs, diagnostics, HTTP behavior, and persisted state for secret
   leakage or unbounded data.
 - [ ] 7.5 Build the release package from a clean checkout and record the
@@ -2487,10 +2490,18 @@ release artifact and operational documentation.
   a regression test for the versioned-install-plus-state case, and re-run the
   live install, upgrade, reload, and uninstall verification (task 7.2 finding
   7.2-F1; the Phase 5 versioned-install-folder provenance carry-forward).
+- [ ] 7.8 Stop shipping the duplicate managed `SkiaSharp.dll` and native
+  `libSkiaSharp.so` in the plugin package and share the host's SkiaSharp; update
+  the packaging contract (`ArrTags.csproj` `PackagePlugin` target and
+  `PackageReference` assets, `build.yaml` artifacts, and `PluginPackagingTests`),
+  record the decision in a new ADR (superseding the bundling parts of ADR-010),
+  and re-run the task 7.3 live end-to-end verification against the committed
+  package (task 7.3 finding 7.3-F1).
 
-**Authoritative Phase 7 execution order:** 7.1, 7.2, 7.7, 7.3, 7.4, 7.5, 7.6. Task
-IDs are stable references only; this execution order is the canonical sequence.
-The order is derived from the documented dependencies, not from task numbering:
+**Authoritative Phase 7 execution order:** 7.1, 7.2, 7.7, 7.3, 7.8, 7.4, 7.5, 7.6.
+Task IDs are stable references only; this execution order is the canonical
+sequence. The order is derived from the documented dependencies, not from task
+numbering:
 
 - 7.1 has no prerequisites and runs the full suite against the exact declared
   versions.
@@ -2500,12 +2511,15 @@ The order is derived from the documented dependencies, not from task numbering:
   re-runs the live install, upgrade, reload, and uninstall verification.
 - 7.3 depends on 7.1, 7.2, and 7.7 because the `GOALS.md` success criteria span
   provider, matching, rendering, artwork, update, and lifecycle behavior.
-- 7.4 depends on 7.1, 7.2, and 7.7 and reviews logs, diagnostics, HTTP behavior,
-  and persisted state produced by the test and install runs.
-- 7.5 depends on 7.1 through 7.4 and 7.7 because the release package may be built
-  only after the tests and checks pass.
-- 7.6 depends on 7.1, 7.3, 7.5, and 7.7 so the documented limitations and deferred
-  decisions match the verified behavior and the release artifact.
+- 7.8 depends on 7.3 because it resolves the release-blocking duplicate-SkiaSharp
+  packaging defect that task 7.3 confirmed live (7.3-F1) and then re-runs the
+  live end-to-end `GOALS.md` verification.
+- 7.4 depends on 7.1, 7.2, 7.3, 7.7, and 7.8 and reviews logs, diagnostics, HTTP
+  behavior, and persisted state produced by the test and install runs.
+- 7.5 depends on 7.1 through 7.4 and 7.7 and 7.8 because the release package may
+  be built only after the tests and checks pass.
+- 7.6 depends on 7.1, 7.3, 7.5, 7.7, and 7.8 so the documented limitations and
+  deferred decisions match the verified behavior and the release artifact.
 
 **DG-9 ownership:** DG-9 is resolved by ADR-013. Task 7.1 exercises the declared
 provider lines with provider contract fixtures (fully populated and
@@ -2589,6 +2603,80 @@ reverted), and removing the plugin folder produced zero loads and a clean
 `Startup complete`. Build 0 warnings / 0 errors; default suite Failed 0, Passed
 1219, Skipped 60, Total 1279; host-guarded suite (`ARRTAGS_JELLYFIN_HOST_DIR=
 /tmp/jf/jellyfin`) Failed 0, Passed 1235, Skipped 44, Total 1279.
+
+**Task 7.3 status:** Complete (verification executed; `GOALS.md` criteria 5, 6,
+and 8 are **not met as shipped** because of release blocker 7.3-F1, so Phase 7
+acceptance criteria 3 and 4 remain unchecked). The `GOALS.md` success criteria
+were exercised end-to-end on the pinned Jellyfin `12.0.0` musl host against
+committed test-support fixtures: a new single-file mock Sonarr/Radarr `/api/v3`
+server (`scripts/mock-arr-fixture.cs`, run with `dotnet run`, plus
+`scripts/mock-arr-fixtures/`) that enforces `X-Api-Key`, logs every request, and
+serves payloads from disk so a changed observation is reproducible; a real
+Jellyfin movie and series/episode with local `.nfo` provider ids and real poster
+images; and the committed `artifacts/ArrTags_0.1.0.0.zip` package installed as
+`ArrTags_0.1.0.0`. Criteria **1** (loads on Jellyfin 12), **2** (independent
+provider configuration: a Sonarr-only run called only Sonarr, a Radarr-only run
+called only Radarr, and both-enabled called both, all with a valid `X-Api-Key`
+and no call to the disabled provider), **3** (a Jellyfin movie matched Radarr
+movie `1`/file `11` by TMDb `990001`, and a Jellyfin episode matched Sonarr
+series `1`/episode `101`/file `201` by TVDB `990004`; the persisted metadata
+state records `Matched`/`ProviderId`), and **4** (actual file quality retrieved:
+`Bluray-1080p`/`bluray`/1080 and `WEBDL-1080p`/`webdl`/1080, plus media-info
+resolution, dynamic range, codecs, channels, custom formats, and upgrade-pending,
+all distinct from the quality profile) are met. Criterion **9** is met by the
+reproducible build/package (build 0 warnings / 0 errors; default suite Failed 0,
+Passed 1219, Skipped 60, Total 1279; host-guarded suite Failed 0, Passed 1235,
+Skipped 44, Total 1279, both equal to the task 7.7 baseline because the task adds
+no product tests). Criterion **7** is covered only at the contract level:
+`EnhancedCoexistenceTests` passes 7/7 and confirms no Enhanced reference, no
+spoiler/hidden/suppression branch, and badge output varying only with ArrTags
+configuration, but Jellyfin Enhanced is not installed on the host, so no live
+coexistence was exercised. Criterion **5** (badge rendered and published through
+the standard image route with the original source preserved), criterion **6**
+(changed metadata republishes and unchanged metadata does not), and criterion
+**8** (provider outage leaves the current artwork unchanged and does not affect
+Jellyfin) were all verified **only after removing the duplicate SkiaSharp from
+the installed plugin folder**, because as shipped criterion 5 and criterion 8
+fail: publishing the first badge through Jellyfin's supported
+`IProviderManager.SaveImage` path aborts the host with a fatal
+`InvalidCastException` (release blocker 7.3-F1). Under that diagnostic install
+the movie and episode badges were served anonymously by
+`GET /Items/{id}/Images/Primary` (`image/png`, 30,752 and 32,400 bytes) with the
+served SHA-256 matching the persisted `PublishedArtworkState.ActiveImageIdentity`,
+the original `poster.jpg`/`S01E01.jpg` files were byte-unchanged on disk, the
+retained `SourceArtifactId` matched the original poster SHA-256, a changed mock
+quality (`1080p` -> `2160p`/HDR10) produced a new metadata fingerprint, a new
+publication fingerprint, a new image tag, and new served bytes, an unchanged
+re-run left the tag, fingerprint, and bytes identical, and stopping the mock left
+the host up with the current artwork unchanged and the last-known-good metadata
+marked stale. No `ImageSaver`/`IProviderManager` double was used: the live
+Jellyfin host owned the publication and the standard route served the result.
+**No production code or package content was changed by this verification task;**
+the SkiaSharp removal was applied only to the temporary installed folder for the
+diagnostic and the committed package still contains the duplicate assets.
+
+**Task 7.3 release blocker 7.3-F1 (Phase 7 acceptance criteria 3 and 4 not
+met).** The committed package ships `SkiaSharp.dll` and `libSkiaSharp.so` at the
+plugin folder root (the task 4.8/5.4 packaging decision). On the pinned Jellyfin
+`12.0.0` musl host, the host also loads its own `SkiaSharp` in the default load
+context (`/tmp/jf/jellyfin/SkiaSharp.dll`, native `/tmp/jf/jellyfin/libSkiaSharp.so`).
+When ArrTags publishes its first badge, Jellyfin's image processing inside
+`ProviderManager.SaveImage` aborts the process with
+`System.InvalidCastException: [A]SkiaSharp.UserDataDelegate cannot be cast to
+[B]SkiaSharp.UserDataDelegate`, where A is the host's default-context
+`SkiaSharp.dll` and B is the plugin-context
+`/tmp/jf/data/plugins/ArrTags_0.1.0.0/SkiaSharp.dll`. The crash is deterministic:
+it occurred on two independent runs, it occurs about 8 ms after the
+`artwork-operation` record is written (the movie bytes are replaced and the host
+dies), and it does not occur with both providers disabled or with the plugin
+uninstalled. Removing the bundled `SkiaSharp.dll` and `libSkiaSharp.so` from the
+installed plugin folder (so the plugin shares the host's SkiaSharp) made the full
+pipeline work, so the conflict is the bundled duplicate, not the plugin's
+render/publication logic. This needs a production/packaging decision and a new
+ADR before V1 can be released; task 7.3 did not implement it. The release
+artifact and the `PluginPackagingTests` that currently assert the bundled
+`SkiaSharp.dll`/`libSkiaSharp.so` artifacts therefore still describe the broken
+state.
 
 **Acceptance criteria:**
 
@@ -2704,6 +2792,20 @@ the plugin state root is relocated to `ProgramDataPath/ArrTags` outside
 `PluginsPath`, so it can never be enumerated as a same-named plugin folder, and
 the re-run live install/upgrade/reload/uninstall verification passes with state
 present and the install folder preserved.
+
+**Task 7.3 release blocker (Phase 7 acceptance criteria 3 and 4).** The
+committed package's bundled `SkiaSharp.dll`/`libSkiaSharp.so` (task 4.8/5.4)
+conflict fatally with the pinned host's own SkiaSharp: the first badge
+publication calls Jellyfin's `ProviderManager.SaveImage`, whose image processing
+aborts the process with `InvalidCastException` between the host default-context
+`SkiaSharp.UserDataDelegate` and the plugin-context one, killing Jellyfin (task
+7.3 finding 7.3-F1). Removing the bundled assets from the installed plugin folder
+so the plugin shares the host's SkiaSharp made the full pipeline work, so the
+conflict is the duplicate, not the render/publication logic. This requires a
+packaging/architecture decision (new ADR), an update to `build.yaml`, and a
+change to the `PluginPackagingTests` that assert the bundled SkiaSharp artifacts;
+it was not implemented by the verification task. `GOALS.md` criteria 5, 6, and 8
+are therefore not met as shipped.
 
 The following remain excluded from this plan unless `GOALS.md` is deliberately
 changed: Jellyfin versions before 12, modifying original media files, writing or

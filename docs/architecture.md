@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.)
+**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) The task 7.3 live end-to-end verification on the pinned Jellyfin `12.0.0` musl host found release blocker 7.3-F1: the bundled `SkiaSharp.dll`/`libSkiaSharp.so` conflict fatally with the host's own SkiaSharp, so the first badge publication aborts Jellyfin; the renderer implementation contract's bundled-asset packaging is therefore known-broken as shipped and needs a new ADR plus a `build.yaml`/test change (`GOALS.md` criteria 5, 6, and 8 are not met as shipped).
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -941,6 +941,18 @@ loaded into the plugin load context by Jellyfin's folder scan and the native
 asset is resolved from the same directory. V1 claims only `linux-x64`: the
 package carries that single RID's native asset and does not load an arbitrary
 system Skia library. Multi-RID packaging is not part of V1.
+
+> **Release blocker 7.3-F1 (task 7.3, live-verified).** This bundled-asset
+> packaging is known-broken on the pinned Jellyfin `12.0.0` musl host. When the
+> plugin publishes a badge, Jellyfin's own `ProviderManager.SaveImage` image
+> processing aborts the process with
+> `System.InvalidCastException: [A]SkiaSharp.UserDataDelegate cannot be cast to
+> [B]SkiaSharp.UserDataDelegate`, where A is the host default-context
+> `SkiaSharp.dll` and B is the plugin-context copy. Removing the bundled
+> `SkiaSharp.dll` and `libSkiaSharp.so` from the installed plugin folder (so the
+> plugin shares the host's SkiaSharp) made the full pipeline work. A new ADR is
+> required to decide the replacement packaging before V1 release; this section
+> describes the state that is still shipped and is not a claim that it works.
 
 The host boundary supplies a bounded, read-only `SourceImageInput` containing
 the exact source bytes or artifact handle, content type, dimensions, and source

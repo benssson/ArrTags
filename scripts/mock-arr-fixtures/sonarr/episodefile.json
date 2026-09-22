@@ -1,0 +1,49 @@
+[
+  {
+    "id": 201,
+    "seriesId": 1,
+    "relativePath": "Season 01/ArrTags Test Show - S01E01.mp4",
+    "path": "/tv/ArrTags Test Show/Season 01/ArrTags Test Show - S01E01.mp4",
+    "size": 234567890,
+    "releaseGroup": "TESTGRP",
+    "sceneName": "ArrTags.Test.Show.S01E01.1080p.WEB-DL.AAC2.0.H.264-TESTGRP",
+    "releaseType": "singleEpisode",
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "webdl",
+        "resolution": 1080,
+        "modifier": "none"
+      },
+      "revision": {
+        "version": 1,
+        "isRepack": false
+      }
+    },
+    "customFormats": [
+      {
+        "id": 2,
+        "name": "WEB-DL"
+      }
+    ],
+    "customFormatScore": 50,
+    "qualityCutoffNotMet": true,
+    "mediaInfo": {
+      "audioChannels": 2.0,
+      "audioCodec": "AAC",
+      "videoCodec": "h264",
+      "videoDynamicRange": "SDR",
+      "resolution": "1920x1080",
+      "width": 1920,
+      "height": 1080,
+      "runTime": "0:45:00"
+    },
+    "languages": [
+      {
+        "id": 1,
+        "name": "English"
+      }
+    ]
+  }
+]

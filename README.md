@@ -1,31 +1,36 @@
 ## Project Status
 
-**Current milestone:** Phase 6 — Caching, updates & performance is complete
-(tasks 6.1 through 6.9; Gate 6 met at the integration-test level, tag
-`v0.1.0-phase6`). Library-event, authenticated webhook, scheduled/periodic,
-post-scan, and manual reconciliation feed a bounded, coalescing, single-flight
-work queue; metadata state is published atomically after current
-item/configuration re-validation, with an explicit freshness and bounded
-stale-last-known-good policy separated from artwork retention and bounded
-artifact GC; non-terminal artwork operations are recovered before new work for
-the same item/image surface; artwork is regenerated only when a publication
-fingerprint changes, and repeat publication renders from the retained original
-source rather than the previous ArrTags output; and the authenticated, bounded
-webhook boundary is pinned by ADR-012. The provider and render concurrency limits
-from ADR-004 are enforced at their boundaries. No live Jellyfin host or live Arr
-instance was exercised, so host-guarded and native-Skia facts skip in this
-environment. The provider inventory/catalogue cache, runtime configuration
-replacement wiring, and a safe metrics/diagnostic-status surface remain tracked
-for Phase 7.
+**Current milestone:** Phase 7 — Testing & release is in progress. Tasks 7.1
+(full suite against the declared versions), 7.2 (live install/upgrade/reload/
+uninstall on the pinned host), 7.7 (relocated state root outside `PluginsPath`
+by ADR-014 and re-ran the live install verification, meeting Phase 7 acceptance
+criterion 2), and 7.3 (live `GOALS.md` success-criteria verification) are
+complete; tasks 7.4-7.6 remain. The task 7.3 verification exercised the full
+pipeline live against a committed mock Sonarr/Radarr fixture and confirmed
+criteria 1-4 and 9 (independent provider configuration, movie/episode matching,
+actual quality retrieval, and reproducible build/test), and covered Enhanced
+compatibility at the contract-test level (`EnhancedCoexistenceTests` 7/7;
+Jellyfin Enhanced is not installed live).
+
+**Release blocker 7.3-F1 (task 7.3):** `GOALS.md` criteria 5, 6, and 8 are **not
+met as shipped**. The package's bundled `SkiaSharp.dll`/`libSkiaSharp.so`
+collide fatally with the pinned host's own SkiaSharp, so the first badge
+publication aborts Jellyfin with `InvalidCastException`. Removing the bundled
+assets from the installed plugin folder (sharing the host's SkiaSharp) made the
+whole pipeline work, so this needs a packaging/architecture decision (new ADR,
+`build.yaml`, and `PluginPackagingTests`) before V1 can be released. Phase 7
+acceptance criteria 3 and 4 remain unchecked and Gate 7 is not met. See
+`PLANS.md` task 7.3 and `docs/changelog.md`.
 
 Phase 5 — Jellyfin artwork integration is complete (tasks 5.1 through 5.11; Gate
-5 met for the pinned 12.0.0 ABI at the integration-test level). Phase 5 derived
-poster artwork is published through Jellyfin's supported item-image APIs with
-retained-source provenance and guarded restoration; the standard image response
-path is validated in-process against the real pinned host `ImageController` plus
-the real ArrTags publication boundary, and a live HTTP round-trip was not
-performed. Phase 7 wires the Phase 6 pipeline to that publication path on a
-host.
+5 met for the pinned 12.0.0 ABI at the integration-test level). Phase 6 — Caching,
+updates & performance is complete (tasks 6.1 through 6.9; Gate 6 met at the
+integration-test level, tag `v0.1.0-phase6`): library-event, authenticated
+webhook, scheduled/periodic, post-scan, and manual reconciliation feed a bounded,
+coalescing, single-flight work queue with fingerprint-gated artwork regeneration
+and retained-source repeat publication. Task 7.3 is the first live end-to-end
+run of that pipeline; its mock-provider and Jellyfin-library procedure is recorded
+in `docs/testing/jellyfin-12-musl-test-host.md`.
 Phase 4 — Badge rendering is complete (tasks 4.1 through 4.11; all Milestone 4
 acceptance criteria satisfied and Gate 4 met). The renderer is provider-neutral
 and deterministic within the configured limits with safe pass-through on

@@ -2057,7 +2057,7 @@ are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
 
 ## Phase 7 - Testing & release (Milestone 7)
 
-**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); tasks 7.3-7.6 pending.
+**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); task 7.3 complete (the live GOALS success-criteria verification met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 - the bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked); tasks 7.4-7.6 pending.
 
 ### Decision - Supported provider release ranges and optional-field compatibility (DG-9)
 
@@ -2200,3 +2200,62 @@ plugin folder produced zero ArrTags loads and a clean `Startup complete`. Build
 0 warnings / 0 errors; default suite Failed 0, Passed 1219, Skipped 60, Total
 1279; host-guarded suite (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) Failed 0,
 Passed 1235, Skipped 44, Total 1279.
+
+### Task 7.3 - GOALS success-criteria verification on the pinned host
+
+**Status:** Complete (verification executed; `GOALS.md` criteria 5, 6, and 8 are
+not met as shipped because of release blocker 7.3-F1; Phase 7 acceptance
+criteria 3 and 4 remain unchecked).
+
+The `GOALS.md` success criteria were exercised end-to-end on the pinned Jellyfin
+`12.0.0` musl host without a live Sonarr/Radarr instance, using new committed
+test-support fixtures: `scripts/mock-arr-fixture.cs` (a .NET 10 file-based app,
+not part of the solution) and `scripts/mock-arr-fixtures/`, a mock Sonarr/Radarr
+`/api/v3` server that enforces `X-Api-Key`, logs every request, and serves
+payloads from disk so a changed observation is reproducible; a real Jellyfin
+Movie and Series/Episode with local `.nfo` provider ids and real poster images
+under `/tmp/7.3/media`; and the committed `artifacts/ArrTags_0.1.0.0.zip`
+installed as `data/plugins/ArrTags_0.1.0.0`. Because runtime configuration
+replacement is a documented Phase 7 deferral, the plugin was configured by
+writing `data/plugins/configurations/ArrTags.xml` and restarting the host.
+
+Met criteria. Criterion 1: the package loaded and remained `Active` with no load
+errors. Criterion 2: independent enablement was exercised live - a Sonarr-only
+run made only Sonarr calls, a Radarr-only run made only Radarr calls, and both
+enabled made both, each with a valid `X-Api-Key` and no request to the disabled
+provider. Criterion 3: the movie matched Radarr movie `1`/file `11` by TMDb
+`990001` and the episode matched Sonarr series `1`/episode `101`/file `201` by
+TVDB `990004`; the persisted metadata state records `Matched`/`ProviderId`.
+Criterion 4: actual file quality was retrieved (`Bluray-1080p`/`bluray`/1080 and
+`WEBDL-1080p`/`webdl`/1080) together with media-info resolution, dynamic range,
+video/audio codecs, channels, custom formats, and upgrade-pending. Criterion 9:
+reproducible package and unchanged suite counts (build 0 warnings / 0 errors;
+default 1219 passed / 60 skipped / 1279 total; host-guarded 1235/44/1279).
+
+Contract-level only. Criterion 7: `EnhancedCoexistenceTests` passes 7/7, but
+Jellyfin Enhanced is not installed on the host, so no live coexistence was
+exercised.
+
+Not met as shipped (release blocker 7.3-F1). Criteria 5, 6, and 8 were verified
+only after removing the bundled `SkiaSharp.dll` and `libSkiaSharp.so` from the
+installed plugin folder. With the committed package, publishing the first badge
+through Jellyfin's supported `IProviderManager.SaveImage` path aborts the host
+with a fatal `InvalidCastException` between the host default-context
+`SkiaSharp.UserDataDelegate` and the plugin-context one
+(`/tmp/jf/jellyfin/SkiaSharp.dll` vs
+`/tmp/jf/data/plugins/ArrTags_0.1.0.0/SkiaSharp.dll`). The crash is deterministic
+(two runs; ~8 ms after the `artwork-operation` record is written), does not occur
+with both providers disabled, and does not occur with the plugin uninstalled.
+Under the diagnostic SkiaSharp-sharing install the rest of the pipeline is
+correct: both badges were served anonymously by `GET /Items/{id}/Images/Primary`
+(`image/png`, 30,752 and 32,400 bytes) with the served SHA-256 equal to the
+persisted `PublishedArtworkState.ActiveImageIdentity`; the original
+`poster.jpg`/`S01E01.jpg` files were byte-unchanged; the retained
+`SourceArtifactId` equalled the original poster SHA-256; a changed mock quality
+(1080p -> 2160p/HDR10) produced new metadata and publication fingerprints, a new
+image tag, and new served bytes; an unchanged re-run left the tag, fingerprint,
+and bytes identical; and stopping the mock left the host up with the current
+artwork unchanged and the last-known-good metadata marked stale. No production
+code or package content was changed by this verification task, and an ADR plus a
+`build.yaml`/`PluginPackagingTests` change are required before V1 can be
+released.

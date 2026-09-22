@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "title": "ArrTags Test Movie",
+    "originalTitle": "ArrTags Test Movie",
+    "year": 2020,
+    "status": "released",
+    "tmdbId": 990001,
+    "imdbId": "tt9900001",
+    "qualityProfileId": 1,
+    "hasFile": true,
+    "movieFileId": 11
+  },
+  {
+    "id": 2,
+    "title": "ArrTags Sparse Movie",
+    "year": 2019,
+    "tmdbId": 990099,
+    "hasFile": false,
+    "movieFileId": 0
+  }
+]

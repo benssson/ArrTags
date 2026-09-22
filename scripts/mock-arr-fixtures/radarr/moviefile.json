@@ -1,0 +1,47 @@
+[
+  {
+    "id": 11,
+    "movieId": 1,
+    "relativePath": "ArrTags Test Movie (2020).mp4",
+    "path": "/media/movies/ArrTags Test Movie (2020)/ArrTags Test Movie (2020).mp4",
+    "size": 123456789,
+    "releaseGroup": "TESTGRP",
+    "sceneName": "ArrTags.Test.Movie.2020.1080p.BluRay.x264-TESTGRP",
+    "quality": {
+      "quality": {
+        "id": 7,
+        "name": "Bluray-1080p",
+        "source": "bluray",
+        "resolution": 1080,
+        "modifier": "none"
+      },
+      "revision": {
+        "version": 1,
+        "isRepack": false
+      }
+    },
+    "customFormats": [
+      {
+        "id": 1,
+        "name": "x264"
+      }
+    ],
+    "customFormatScore": 100,
+    "qualityCutoffNotMet": false,
+    "mediaInfo": {
+      "audioChannels": 5.1,
+      "audioCodec": "DTS-HD MA",
+      "audioLanguages": "en",
+      "videoBitDepth": 8,
+      "videoCodec": "h264",
+      "videoFps": 23.976,
+      "videoDynamicRange": "SDR",
+      "resolution": "1920x1080",
+      "width": 1920,
+      "height": 1080,
+      "scanType": "Progressive",
+      "subtitles": "en",
+      "runTime": "1:32:00"
+    }
+  }
+]

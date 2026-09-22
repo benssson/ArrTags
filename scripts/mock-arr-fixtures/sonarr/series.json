@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "title": "ArrTags Test Show",
+    "originalTitle": "ArrTags Test Show",
+    "year": 2021,
+    "status": "ended",
+    "path": "/tv/ArrTags Test Show",
+    "tvdbId": 990002,
+    "tmdbId": 990003,
+    "tvMazeId": 99000,
+    "imdbId": "tt9900002",
+    "qualityProfileId": 1,
+    "profileName": "HD-1080p",
+    "monitored": true
+  },
+  {
+    "id": 2,
+    "title": "ArrTags Sparse Show",
+    "year": 2018,
+    "tvdbId": 990098,
+    "monitored": true
+  }
+]
