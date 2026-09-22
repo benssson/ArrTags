@@ -1,0 +1,170 @@
+{
+  "subject": "ArrTags release candidate 0.1.0, re-audited after the SEC-1 fix (release code at commit c980b1f 'Fix SEC-1: authenticate webhook before request body binding'; repository HEAD ccb17f4, whose only later commits touch docs/implementation/final-review/; installed artifact artifacts/ArrTags_0.1.0.0.zip, 568,244 bytes, SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd, 7 entries)",
+  "reviewer_status": "APPROVED",
+  "findings": [
+    {
+      "id": "SEC-1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "webhook HTTP boundary / input handling (authenticate-before-body and payload bound)",
+      "description": "FIXED and independently verified. The pre-fix defect was that the anonymous webhook actions caused MVC model binding to materialize the composite value provider, which read/parsed form and multipart request bodies before the action's shared-secret check, so unauthenticated form/multipart requests returned a framework 400 and the body could be read up to Kestrel's 30,000,000-byte cap instead of the configured OperationalLimits.WebhookMaxPayloadBytes (default 262,144 B). Commit c980b1f adds WebhookAuthenticationFilter, an IAsyncAuthorizationFilter applied with [TypeFilter(typeof(WebhookAuthenticationFilter))] on ArrTagsWebhookController. MVC runs authorization filters before model binding, so the filter now authenticates the X-ArrTags-Webhook-Secret header through the same bounded (1024-char) constant-time WebhookAuthentication/SecretLease path and fails closed with the uniform 401 before any body read for every content type, then rejects a declared non-JSON content type with a bounded 400 before the read. Independently reproduced on the pinned Jellyfin 12.0.0 musl host with the artifact installed: every unauthenticated request returned 401 for JSON (small and 300,000 B), x-www-form-urlencoded (small and 300,000 B), multipart/form-data (300,000 B and 36,700,000 B), text/plain, application/octet-stream, and absent content type, and for missing, wrong, and 2000-char candidates; the 36,700,000-byte unauthenticated multipart request returned 401 in 0.4276 ms (X-Response-Time-ms), which is only possible if the body was never read. Authenticated behavior is bounded by the configured limit: 300,000-byte JSON (declared, chunked, and absent content type) returned 413, and 300,000-byte form/multipart returned the pre-read bounded 400. JSON behavior is otherwise unchanged (valid 202, malformed 400, oversized 413, unauth 401, charset/+json accepted). No secret or body was reflected in any response. The action retains its own authentication and byte bound as defence in depth.",
+      "evidence": [
+        "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:30-77 (IAsyncAuthorizationFilter authenticates first with WebhookAuthentication.Authenticate and fails closed with UnauthorizedResult before any body read, then rejects non-JSON with BadRequestResult before binding)",
+        "src/ArrTags/Webhooks/ArrTagsWebhookController.cs:35 ([TypeFilter(typeof(WebhookAuthenticationFilter))]); :110-135 (action re-authenticates and applies WebhookBodyReader bound)",
+        "live pinned host (artifact installed at /tmp/jf/data/plugins/ArrTags_0.1.0.0, 1 clean plugin load, 0 [FTL]/[ERR]): /tmp/final-review/security/results/summary.txt - u01..u12 all status=401 (json small/300k, form small/300k, multipart 300k/36.7MB, text/plain, no content type, octet-stream, Radarr route, wrong secret, 2000-char secret); a01 json Test 202; a02 Radarr 202; a03 charset 202; a04 malformed 400; a05 300k json 413; a06/a07 form 400; a08 multipart 400; a09 text/plain 400; a10 octet 400",
+        "live u06-multipart-36m.headers: HTTP/1.1 401 Unauthorized with X-Response-Time-ms: 0.4276 (pre-fix this path returned framework 400 'max request body size is 30000000 bytes'); u02 json300k 401 with X-Response-Time-ms: 1.899",
+        "live f01..f05: authenticated absent content type small valid JSON 202, absent content type 300k 413, unauth absent content type 300k 401, authenticated chunked JSON 300k 413, unauth chunked JSON 300k 401",
+        "live reflection scan of every captured response body for webhooksecret789 and the wrong candidate: no match (results/*.body)",
+        "tests: WebhookBindingBoundaryTests + WebhookBoundaryTests -> Failed 0, Passed 44, Total 44 (in-process real MVC pipeline; the boundary tests assert RequestBody.ReadCalls == 0 and Intake.Count == 0 for unauthenticated form/multipart/oversized bodies)",
+        "build/artifact: dotnet build src/ArrTags/ArrTags.csproj -c Release -> 0 warnings, 0 errors; built ArrTags.dll SHA-256 f256fd0968c730499e679a8b54af49a02371b77d2e1962154f3bd3bb9b44b217 equals the artifact's ArrTags.dll entry and docs/release/build-and-release.md",
+        "git diff --stat 0ab5f23..HEAD -- src tests: only ArrTagsWebhookController.cs (+8), WebhookAuthenticationFilter.cs (new), WebhookBindingBoundaryTests.cs (new) changed; all other plugin code is byte-identical to the attempt-1 audit"
+      ],
+      "recommended_action": "None; the fix is verified. Keep the regression tests and the documented behavior."
+    },
+    {
+      "id": "SEC-2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "state integrity / state-root resolution",
+      "description": "Unchanged and still present (the SEC-1 fix touched only the webhook boundary). When IPluginManager is unavailable or the loaded plugin instance cannot be found, CreateStateRepository roots the entire authoritative plugin state at Path.Combine(Path.GetTempPath(), \"ArrTags\") - a predictable, shared location where another local user could pre-create or observe a same-named directory. It is not triggered on the pinned host (the plugin is found and DataFolderPath is ProgramDataPath/ArrTags; live check: /tmp/jf/data/ArrTags does not exist) and is not remotely reachable. Not a release blocker.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:178-180 (string.IsNullOrEmpty(plugin?.DataFolderPath) ? Path.Combine(Path.GetTempPath(), \"ArrTags\") : plugin!.DataFolderPath)",
+        "live: ls /tmp/jf/data/ArrTags -> No such file or directory after the full webhook matrix"
+      ],
+      "recommended_action": "Fail closed (do not register state-dependent services) or use a host-private directory when the plugin data folder cannot be resolved, instead of a shared temp path."
+    },
+    {
+      "id": "SEC-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "state integrity / envelope integrity scope",
+      "description": "Unchanged. The versioned state envelope's SHA-256 (PayloadSha256) covers only PayloadJson; envelope metadata (SchemaVersion, Kind, RecordId, Authority, Terminal, UpdatedUtc) is not covered. Retention trusts the unauthenticated Terminal and UpdatedUtc fields. This is not an escalation: local write access to the state root is already the administrative boundary and such a writer could delete files directly, so the guarantee is corruption detection rather than tamper authentication. No code in this area changed in the fix.",
+      "evidence": [
+        "src/ArrTags/State/StateEnvelopeCodec.cs:83-113 (hash compared only against parsed.PayloadJson)",
+        "src/ArrTags/State/StateRetention.cs:154-165 (retention reads envelope.Terminal/UpdatedUtc)"
+      ],
+      "recommended_action": "None required for the release; optionally cover the envelope metadata in the integrity hash or document StateEnvelopeCodec as a corruption detector rather than a tamper MAC."
+    },
+    {
+      "id": "SEC-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "webhook HTTP boundary / error responses",
+      "description": "Re-adjudicated after the fix. The fix removed the pre-auth framework form-limit detail that the attempt-1 audit observed ('Form key length limit 2048 exceeded', 'Request body too large. The max request body size is 30000000 bytes') because non-JSON bodies are now rejected before any parse. The remaining behavior is the already-documented limitation D1: every webhook failure returns an ASP.NET Core [ApiController] application/problem+json ProblemDetails body with only type, title, status, and traceId (401 Unauthorized, 400 Bad Request, 413 Content Too Large), while ADR-012 still says authentication failures return 'no body'. Independently observed: all unauthenticated failures are a uniform 165-byte body and all authenticated bounded rejections a uniform 164/171-byte body; no secret, header, candidate, body, route, plugin, or item-existence detail is reflected. This is the same class as D1, extended to the authenticated non-JSON 400.",
+      "evidence": [
+        "live results: u01/u03/u06 401 bodies = {\"type\":\".../rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":...} (uniform, 165 bytes); a04/a06 400 and a05 413 bodies likewise generic",
+        "docs/limitations.md D1 (lines 302-314) documents the 401 body versus ADR-012 wording gap",
+        "docs/decisions.md ADR-012 still states every authentication failure returns the same bounded 401 'with no body'"
+      ],
+      "recommended_action": "None required; optionally normalise error responses to a minimal body and correct the ADR-012 'no body' wording (already tracked as D1)."
+    },
+    {
+      "id": "SEC-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "secrets at rest",
+      "description": "Unchanged. The Sonarr/Radarr API keys and the inbound webhook shared secret are persisted only in Jellyfin's plugin configuration XML and returned by Jellyfin's authenticated, elevation-gated plugin-configuration API to administrators (accepted ADR-005 single-source-of-truth design). Independent re-check: no configured key or secret appears in the host log, the state root, or the release artifact; the only host file containing them is data/plugins/configurations/ArrTags.xml. The plugin still has zero ILogger/Console/log call sites, so no plugin log path can leak a secret.",
+      "evidence": [
+        "live: grep -rIl -F sonarrkey456|radarrkey123|webhooksecret789 over /tmp/jf/log and /tmp/jf/data/plugins -> only configurations/ArrTags.xml",
+        "artifact (unzipped, 7 entries): no key/secret/token/private-key pattern",
+        "grep src/ArrTags for ILogger/Console./Debug.Write/Trace.Write -> no call sites",
+        "src/ArrTags/Secrets/SecretLease.cs (value never exposed; ToString omits value; Dispose clears _value; Matches uses CryptographicOperations.FixedTimeEquals; ApplyTo adds X-Api-Key header only)"
+      ],
+      "recommended_action": "None (accepted ADR-005 design)."
+    },
+    {
+      "id": "SEC-6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "input handling / unbounded in-memory collection",
+      "description": "Unchanged. Accepted limitation D2: ArtworkSubjectGate.Gates is a process-lifetime static ConcurrentDictionary<string, SemaphoreSlim> with no eviction, keyed by (Jellyfin item id, image surface), which is not attacker-controllable and is bounded in practice by the host's distinct library items. No attacker-influenced unbounded collection was found elsewhere; the fix added no new collection. Webhook intake/coalescing, the work queue, reconciliation batches, provider response reads, artifact reads/writes, decoded dimensions, JSON depth, and episode entries all remain explicitly bounded.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkSubjectGate.cs:17",
+        "src/ArrTags/Webhooks/WebhookIntake.cs, WebhookCoalescingWindow.cs, WebhookEventParser.cs (bounds unchanged; only the pre-binding filter was added)",
+        "docs/limitations.md D2"
+      ],
+      "recommended_action": "None for V1 (accepted D2); optional post-V1 idle eviction/LRU bound."
+    },
+    {
+      "id": "SEC-7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "webhook HTTP boundary / behavior change introduced by the fix",
+      "description": "Tracked behavior change from the SEC-1 fix, as required. After authentication, a declared non-JSON content type is now rejected with a bounded 400 before any read (pre-fix, form/multipart were framework-parsed and text/plain/octet-stream bodies were read and parsed by the action). Concretely, a syntactically valid JSON payload sent with a non-JSON content type such as text/plain now returns 400 instead of 202. A missing content type is still tolerated and treated as JSON (202/400/413 as appropriate), and application/json, text/json, and +json structured suffixes are accepted. Sonarr and Radarr send application/json, so no real delivery is affected. The choice of 400 rather than 415 is deliberate (matches the existing ADR-012 payload-rejection status) and is recorded in the worker known_limitations.",
+      "evidence": [
+        "live: authenticated text/plain small -> 400 (a09); authenticated application/octet-stream small -> 400 (a10); authenticated absent content type small valid JSON -> 202 (f01); authenticated Application/JSON -> 202 (e05); application/vnd.api+json -> 202 (e06)",
+        "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:66-98 (non-JSON rejection and IsJsonContentType acceptance set)",
+        "docs/implementation/release-0.1.0-sec1/worker-report.json known_limitations"
+      ],
+      "recommended_action": "None required; documented. If a future provider sends a non-JSON content type, revisit whether 415 is preferable."
+    },
+    {
+      "id": "SEC-8",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "webhook authentication boundary / optional hardening",
+      "description": "Observation, not a defect. The anonymous webhook route applies no ArrTags-level per-client throttling to authentication attempts (the ADR-012 'rate limiting' is bounded intake/coalescing of accepted deliveries, not auth throttling). The exposure is mitigated by the high-entropy administrator-configured shared secret, the 1024-character candidate bound, the constant-time compare, and the uniform fail-closed 401 that reveals nothing; the only shared-state cost per attempt is two short ConfigurationSnapshotService lock acquisitions (Current and TryAcquire) with no unbounded allocation. This property is unchanged by the fix (the filter adds one more bounded compare/lock pair per request) and was accepted in the attempt-1 audit. No action required for V1.",
+      "evidence": [
+        "src/ArrTags/Webhooks/WebhookAuthentication.cs:61-92 (bounded candidate, constant-time compare, uniform outcome)",
+        "src/ArrTags/Configuration/ConfigurationSnapshotService.cs:54-63,94-110 (short lock-guarded snapshot read and lease acquisition)",
+        "docs/decisions.md ADR-012 'Rate limiting and coalescing' (bounded intake/coalescing, not per-client auth throttling)"
+      ],
+      "recommended_action": "None required; optional post-V1 per-source throttling or reverse-proxy rate limiting."
+    }
+  ],
+  "secret_paths_checked": [
+    "src/ArrTags/Secrets/SecretLease.cs (value never exposed; ToString omits value; Dispose clears _value; Matches uses CryptographicOperations.FixedTimeEquals; ApplyTo adds X-Api-Key header only)",
+    "src/ArrTags/Secrets/SecretReference.cs, IPluginSecretResolver.cs, SecretPurpose.cs (typed, purpose-separated, secret-free references)",
+    "src/ArrTags/Configuration/ConfigurationSnapshotService.cs (version-matched TryAcquire; private in-memory secret map; invalid replacement leaves active secrets unchanged; short lock-guarded critical sections)",
+    "src/ArrTags/Configuration/PluginConfigurationSnapshot.cs, PluginConfiguration.cs, ArrConnectionConfiguration.cs, PluginConfigurationValidator.cs (snapshot carries only HasApiKey booleans; validator messages contain no secret value)",
+    "src/ArrTags/Providers/ArrConnection.cs, ArrConnectionCatalog.cs, ArrHttpClientFactory.cs, ArrProviderError.cs (connection identity excludes the API key; secret-free transport; bounded error message)",
+    "src/ArrTags/Providers/Sonarr/SonarrClient.cs:204, Providers/Radarr/RadarrClient.cs:179 (HttpMethod.Get only; key applied as X-Api-Key header via SecretLease.ApplyTo, never in a URL/query)",
+    "src/ArrTags/Webhooks/WebhookAuthentication.cs, WebhookAuthenticationFilter.cs, ArrTagsWebhookController.cs (bounded 1024-char candidate; uniform fail-closed 401; no secret/body reflection)",
+    "grep src/ArrTags: zero ILogger/Console/Debug.Write/Trace.Write call sites (no plugin logging path)",
+    "live: grep -rIl -F sonarrkey456|radarrkey123|webhooksecret789 over /tmp/jf/log and /tmp/jf/data/plugins -> only configurations/ArrTags.xml; artifact (7 entries) contains no key/secret/private-key pattern"
+  ],
+  "auth_paths_checked": [
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs (new pre-model-binding IAsyncAuthorizationFilter; authenticates first, fails closed with uniform 401, then rejects declared non-JSON with a bounded 400 before any read)",
+    "src/ArrTags/Webhooks/ArrTagsWebhookController.cs ([TypeFilter(typeof(WebhookAuthenticationFilter))]; action re-authenticates as defence in depth, then bounds and parses)",
+    "src/ArrTags/Webhooks/WebhookAuthentication.cs (WebhookConfigured gate; MaxCandidateLength=1024; version-matched lease; constant-time compare; uniform outcome)",
+    "src/ArrTags/Webhooks/WebhookBodyReader.cs (declared and streamed byte bound; WebhookMaxPayloadBytes effective for authenticated JSON including chunked)",
+    "src/ArrTags/Webhooks/WebhookEventParser.cs (MaxJsonDepth=16; MaxEpisodeEntries=32; bounded tolerant parse; raw payload not retained)",
+    "src/ArrTags/Artwork/JellyfinArtworkImageAccess.cs and docs/research/jellyfin-12-architecture.md section 4.4 (read route is anonymous and explicitly NOT treated as an authorization boundary; the plugin adds no image route)",
+    "tests/ArrTags.Tests/JellyfinImageRouteTests.cs (host-guarded, re-run this audit with ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin -> Failed 0, Passed 5, Skipped 0)",
+    "live matrix: no/wrong/2000-char secret -> 401 for every content type; valid JSON -> 202; malformed -> 400; 300k JSON (declared/chunked/absent content type) -> 413; authenticated non-JSON -> bounded 400; GET -> 405; unknown route -> 404; no secret echoed"
+  ],
+  "state_paths_checked": [
+    "src/ArrTags/State/AtomicFileWriter.cs (flushed temp file + File.Move overwrite, temp cleaned on failure)",
+    "src/ArrTags/State/PluginStatePaths.cs (single-segment validation; rejects '..', rooted paths, invalid filename chars, >200 chars)",
+    "src/ArrTags/State/StateRepository.cs (4 MiB record cap on write; cache invalid -> discard; authoritative invalid -> quarantine, never absent; bounded enumeration)",
+    "src/ArrTags/State/StateEnvelopeCodec.cs, StateEnvelope.cs, StateQuarantine.cs (schema version + SHA-256 over payload; quarantine preserves bytes and never deletes)",
+    "src/ArrTags/State/StateRetention.cs (cache/quota, terminal-provenance, metadata-freshness; authoritative non-terminal never pruned)",
+    "src/ArrTags/Artwork/SourceArtifactPaths.cs (64-char SHA-256 hex artifact id; sharded path), SourceArtifactStore.cs (size/format/hash validated before atomic promotion)",
+    "src/ArrTags/Artwork/ArtworkOperationStore.cs, ArtworkLifecycleFenceStore.cs, PublishedArtworkStateStore.cs (generation/phase fencing; corruption quarantined; fence invalid=fail-closed)",
+    "src/ArrTags/Artwork/ArtworkPublisher.cs (fence re-read at entry, before SaveImage, and before final commit; durable Prepared journal; readback must match candidate)",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (state-root resolution; SEC-2 fallback noted)",
+    "live: no /tmp/jf/data/ArrTags state root was created by the full webhook matrix (no plugin work on unauthenticated or irrelevant deliveries)"
+  ],
+  "input_paths_checked": [
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs, WebhookBodyReader.cs, WebhookEventParser.cs (new pre-binding gate; configured byte bound; depth/entry bounds)",
+    "src/ArrTags/Configuration/OperationalLimits.cs (explicit validated ranges for every bound; WebhookMaxPayloadBytes default 262,144)",
+    "src/ArrTags/Metadata/BadgeMetadata.cs (custom badges bounded; control chars stripped)",
+    "src/ArrTags/Providers/Sonarr/SonarrMetadataMapper.cs, Providers/Radarr/RadarrMetadataMapper.cs (provider DTOs bounded at the boundary)",
+    "src/ArrTags/Rendering/BadgeTextNormalizer.cs, SourceColorProfile.cs, RenderLimitGuard.cs, SkiaBadgeRenderer.cs (decompression-bomb-safe; dimension/byte checks before decode/allocate)",
+    "src/ArrTags/Artwork/ArtworkSourceReader.cs, SourceImageDescriptor.cs, ArtworkSourceContentType.cs (PNG/JPEG confinement; header-only dimension read)",
+    "src/ArrTags/Updates/LibraryWorkQueue.cs, Concurrency/DynamicConcurrencyLimiter.cs, ProviderConcurrencyLimiter.cs (bounded capacity; non-blocking enqueue; no permit leak)",
+    "grep src/ArrTags for HttpMethod: provider integration issues GET only"
+  ],
+  "reproductions": [
+    "Built the source at HEAD with the pinned SDK (dotnet 10.0.401): dotnet build src/ArrTags/ArrTags.csproj -c Release -> Build succeeded, 0 Warning(s), 0 Error(s); built ArrTags.dll SHA-256 f256fd0968c730499e679a8b54af49a02371b77d2e1962154f3bd3bb9b44b217.",
+    "Verified artifact identity: artifacts/ArrTags_0.1.0.0.zip = 568,244 bytes, SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd, 7 entries; the archive's ArrTags.dll hashes to f256fd09... and equals the Release build output; the DLL contains the ArrTags.Webhooks.WebhookAuthenticationFilter type.",
+    "Installed the artifact into /tmp/jf/data/plugins/ArrTags_0.1.0.0 on the pinned Jellyfin 12.0.0 musl host and restarted it: exactly one 'Loaded plugin: \"ArrTags\" \"0.1.0.0\"' after the restart, 0 [FTL]/0 [ERR] in the restart window, GET /System/Info/Public = 12.0.0.",
+    "SEC-1 live reproduction (decisive): every unauthenticated request returned the uniform 401 problem+json for application/json (small and 300,000 B), application/x-www-form-urlencoded (small and 300,000 B), multipart/form-data (300,000 B and 36,700,000 B), text/plain, application/octet-stream, and absent content type, and for missing, wrong, and 2000-char secret candidates (results/summary.txt u01-u12). The 36,700,000-byte multipart request returned 401 in X-Response-Time-ms 0.4276, proving no pre-auth body read (the pre-fix attempt-1 audit reproduced a framework 400 at Kestrel's 30 MB cap on this same route/host).",
+    "SEC-1 authenticated bound reproduction: 300,000-byte JSON returned 413 for declared, chunked, and absent content types; 300,000-byte form/multipart returned the pre-read bounded 400; small valid JSON returned 202 (json, charset, Application/JSON, and vnd.api+json); malformed JSON returned 400; absent content type small valid JSON returned 202. No response body contained the configured secret or the wrong candidate.",
+    "Regression tests (independent re-run): WebhookBindingBoundaryTests + WebhookBoundaryTests -> Failed 0, Passed 44, Total 44 (the 10 new tests exercise the real in-process MVC pipeline and assert RequestBody.ReadCalls == 0 and Intake.Count == 0 for unauthenticated form/multipart/oversized bodies). Focused boundary suites (SecretBoundaryTests, WebhookBoundaryTests, StateBoundaryTests, ProviderFailureMatrixTests, ArtifactRetentionTests) -> Failed 0, Passed 142. Host-guarded JellyfinImageRouteTests -> Failed 0, Passed 5.",
+    "Secret hygiene (live): grep -rIl -F for sonarrkey456, radarrkey123, webhooksecret789 over /tmp/jf/log and /tmp/jf/data/plugins -> only data/plugins/configurations/ArrTags.xml (accepted ADR-005 source of truth); no state root was created.",
+    "Scope confirmation: git diff --stat 0ab5f23..HEAD -- src tests shows only ArrTagsWebhookController.cs, WebhookAuthenticationFilter.cs, and WebhookBindingBoundaryTests.cs; all state/input/provider code is byte-identical to the attempt-1 audit. c980b1f..HEAD touches only docs/implementation/final-review/ audit reports.",
+    "Cleanup: host stopped (port 8096 free) and the installed plugin folder removed, restoring the pinned fixture to its pre-review state; no /tmp/jf/data/ArrTags state root exists."
+  ],
+  "summary": "Independent adversarial re-audit of ArrTags 0.1.0 after the SEC-1 fix (release code c980b1f, HEAD ccb17f4; artifact 568,244 bytes / SHA-256 f6b6a515...) found no open BLOCKER or HIGH and no open MEDIUM. SEC-1 is genuinely fixed and was reproduced on the actual pinned Jellyfin 12.0.0 musl runtime path: the new pre-model-binding WebhookAuthenticationFilter authenticates before any body read, so every unauthenticated request - JSON, form-urlencoded, multipart, text/plain, octet-stream, or absent content type - now returns the uniform 401 (the 36.7 MB unauthenticated multipart case answered in 0.43 ms with no read), and the configured WebhookMaxPayloadBytes (256 KiB) is the effective bound for authenticated payloads (300,000-byte JSON -> 413 for declared, chunked, and absent content types). JSON behavior is unchanged (401/400/413/202), the filter uses the existing bounded 1024-char constant-time authentication and fails closed, and no plugin work or state occurs before authentication (no state root created; in-process tests assert zero body reads and zero intake). No secret or body is reflected. The fix introduced no new weakness; the only behavior change (authenticated declared non-JSON is now a bounded pre-read 400, so valid JSON with a non-JSON content type is rejected) is documented and tracked (SEC-7). The previously verified protections still hold: secrets are contained (zero logging call sites; only Jellyfin's config XML holds the values; artifact clean), state integrity is unchanged and byte-identical to the attempt-1 audit, input bounds are unchanged, and the provider integration remains GET-only. SEC-2 remains open LOW (shared-temp state-root fallback, unreachable in practice); SEC-3, SEC-4, SEC-5, and SEC-6 remain INFORMATIONAL (noted), with SEC-4 narrowed because the pre-auth framework form-limit detail is gone while the documented D1 problem+json body remains. reviewer_status APPROVED: no open BLOCKER, HIGH, or MEDIUM."
+}
