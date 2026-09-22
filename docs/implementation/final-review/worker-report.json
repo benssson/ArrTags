@@ -1,0 +1,37 @@
+{
+  "task": "release-0.1.0",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation-only release-gate correction for release 0.1.0, attempt 2. Attempt 1 made four edits (limitations.md accepted-limitations section for RR-1/RR-15 and refreshed V5; implementation-readiness.md linux-x64 -> linux-musl-x64; PLANS.md task-level criterion-6 qualifications; changelog task 7.3 status deliberately left as historical). The reviewer returned CHANGES_REQUIRED for two items, both now corrected in this attempt. (1) PLANS.md lines 3030-3031 (Post-V1 Backlog task-7.3/7.8 resolved-blocker narrative) still carried the present-tense unqualified claim '`GOALS.md` criteria 5, 6, and 8 are met as shipped', which overclaims the partial criterion 6; it now reads '`GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1).' with the surrounding narrative preserved. (2) docs/limitations.md RR-1 parenthetical conflated the per-task report-persistence workflow with phase-review.json; it now reads 'The per-task report-persistence workflow starts at `docs/implementation/4.6`, and the per-phase `phase-review.json` records start at `docs/implementation/phase-4/`; ...' so both facts are correct, with the rest of the RR-1 entry unchanged. No code, tests, build files, build.yaml, Directory.Build.props, global.json, or the release artifact were modified; no rebuild/repack, commit, or tag was performed.",
+  "validation": [
+    "grep -rn -E 'criteria 5, 6, and *$' PLANS.md docs/ -> No matches (the line-break-split unqualified 'criteria 5, 6, and\\n8 are met as shipped' variant is eliminated).",
+    "grep -rn -E 'criteria 5, 6, *$' PLANS.md docs/ -> No matches (no remaining 'criteria 5, 6,' line break).",
+    "grep -rn 'criteria 5, 6, and' PLANS.md docs/ -> remaining PLANS.md occurrences are historical/qualified only: line 5 (historical negative 'are not met as shipped' narrative, followed in the same sentence by the qualified 'criteria 5 and 8 are met as shipped, with criterion 6 ... only partial'), line 2481 ('criteria 5, 6, and 8 fail as shipped. Resolved by task 7.8/ADR-015 ...'), line 2621 ('criteria 5, 6, and 8 were **not met as shipped** ...'). Remaining docs/changelog.md occurrences: line 2060 (Phase 7 status, already qualified) and line 2207 (historical task 7.3 status, 'are not met as shipped'). Remaining docs/implementation/** matches are historical worker/reviewer/phase-review JSON records. No present-tense 'met as shipped' criterion-6 overclaim remains.",
+    "grep -rn -E 'criteria 5, ?6 ?(,|and) ?8' PLANS.md docs/ -> only historical blocker narratives in docs/implementation/7.3/reviewer-report.json (not canonical current-state docs).",
+    "grep -n 'met as shipped' PLANS.md docs/ -> PLANS.md lines 5, 179, 2482, 2624, 2701, 2847, 3031 and docs/changelog.md 2060/2419/2420 all qualify criterion 6 (or are historical negatives); line 3031 now reads 'are met as shipped, with criterion 6 met for render and publication but only partial'.",
+    "Read PLANS.md lines 3028-3032 -> confirmed the corrected sentence reads: 'leaves the host up with current artwork unchanged). `GOALS.md` criteria 5 and 8 / are met as shipped, with criterion 6 met for render and publication but only / partial for provider fetches (`docs/limitations.md` F1).'",
+    "Read docs/limitations.md lines 334-343 -> RR-1 now reads 'The per-task report-persistence workflow starts at `docs/implementation/4.6`, / and the per-phase `phase-review.json` records start at / `docs/implementation/phase-4/`; ...' and the rest of the entry is unchanged.",
+    "git status --porcelain -> ' M PLANS.md', ' M docs/implementation-readiness.md', ' M docs/limitations.md', '?? docs/implementation/final-review/' only (the untracked final-review directory is expected).",
+    "git diff --stat -> PLANS.md 26 ++++------; docs/implementation-readiness.md 2 +-; docs/limitations.md 74 ++++++++-------; 3 files changed, 78 insertions(+), 24 deletions(-).",
+    "sha256sum artifacts/ArrTags_0.1.0.0.zip -> bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51 (unchanged, matches the required identity).",
+    "git diff inspected once: contains only the intended documentation wording changes; no accidental or unrelated modifications.",
+    "No build/test run performed: this is a documentation-only task and the constraints forbid rebuilding/repackaging; the code, tests, and artifact are untouched, so no code validation is applicable."
+  ],
+  "changed_files": [
+    "PLANS.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/implementation/final-review/worker-report.json"
+  ],
+  "known_limitations": [
+    "docs/changelog.md line ~2207 was intentionally not modified. Exact behaviour: the task 7.3 changelog status still reads 'GOALS.md criteria 5, 6, and 8 are not met as shipped because of release blocker 7.3-F1'. Precondition: a reader interprets a per-task changelog entry as a current claim. Consequence: it could be read as a present-tense negative about criterion 6, but it does not overclaim criterion 6 as met and the release audit classifies it as historical/acceptable; the task instruction conditioned this edit on the line reading as a current claim, which it does not.",
+    "RR-2's substance (criterion-6 overclaim) is resolved on all current-claim surfaces in PLANS.md; the remaining 'criteria 5, 6, and 8' occurrences in PLANS.md and docs/changelog.md are historical blocker/outcome narratives that are accurate for their point in time and were preserved per the 'do not rewrite history' instruction.",
+    "The RR-1 recording is a documentary reconciliation only; no retrospective phase-1..3 phase-review artifacts were created (the task is documentation-only and forbids inventing decisions)."
+  ],
+  "ready_for_next_task": true
+}

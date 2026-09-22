@@ -186,19 +186,27 @@ in the suite.
   persisted `PublishedArtworkState.ActiveImageIdentity`. The remaining gap is
   that this manual confirmation is not covered by an automated live test.
 
-### V5. Live `Plugin.OnUninstalling` drain is not exercised
+### V5. Live `Plugin.OnUninstalling` drain is not covered by an automated live test
 
-Exercising the uninstall hook live requires an authenticated admin uninstall,
-but `PluginsController` is `[Authorize(Policy = Policies.RequiresElevation)]`
-and the pinned host's startup wizard is incomplete, so `DELETE
-/Plugins/<guid>/<version>` returns HTTP `401`. The live uninstall verification
-removed the plugin folder manually, which does not invoke `OnUninstalling`.
+Exercising the uninstall hook live requires an authenticated admin uninstall.
+The task 7.2/7.7 live runs could not perform one because the pinned host's
+startup wizard was incomplete, so `DELETE /Plugins/<guid>/<version>` returned
+HTTP `401` and the live verification removed the plugin folder manually, which
+does not invoke `OnUninstalling`. The `0.1.0` release audit did exercise the
+hook: with the wizard complete, an authenticated `DELETE
+/Plugins/40322d52-5680-449f-b33e-e01836ee2f46/0.1.0.0` returned `204`, the
+versioned install folder was removed, the relocated state root was removed by
+the completed-drain cleanup, and the served movie image was restored to the
+original source poster.
 
-- Evidence: tasks 7.2 and 7.7 worker reports.
-- Coverage: the drain and its state-root cleanup are covered in-process by
-  `LifecycleFoundationTests`, `ArtworkLifecycleTests`, and
-  `PluginStateLocationTests` (completed-drain removal and incomplete-drain
-  retention).
+- Evidence: tasks 7.2 and 7.7 worker reports; release-review finding RR-14
+  (`docs/implementation/final-review/release-review.json`); the release audit's
+  authenticated live uninstall.
+- Coverage: the drain and its state-root cleanup remain the responsibility of
+  the automated in-process tests `LifecycleFoundationTests`,
+  `ArtworkLifecycleTests`, and `PluginStateLocationTests` (completed-drain
+  removal and incomplete-drain retention). The live uninstall is manual
+  evidence, not an automated live test.
 
 ### V6. Host-guarded facts are skipped without the pinned host
 
@@ -315,6 +323,46 @@ per distinct `(item, surface)` ever processed for the process lifetime.
   bounded in practice by the number of distinct Jellyfin library items (which
   Jellyfin itself holds in memory), and is not a log, diagnostics, or
   persisted-state path, so it does not change the task 7.4 negative result.
+
+## Release-review accepted limitations
+
+The `0.1.0` release audit
+(`docs/implementation/final-review/release-review.json`) returned
+`SHIP_WITH_ACCEPTED_LIMITATIONS`. The following accepted items are recorded here
+so that they sit alongside the other V1 limitations.
+
+### RR-1. Phases 1-3 have no independent phase-review records
+
+The per-task report-persistence workflow starts at `docs/implementation/4.6`,
+and the per-phase `phase-review.json` records start at
+`docs/implementation/phase-4/`; `docs/implementation/phase-1/`, `phase-2/`, and
+`phase-3/` do not exist and contain no phase-review record, and there are no
+per-task worker/reviewer reports for phases 1-3. Their Gate 1-3 claims therefore
+rest on the `docs/changelog.md` phase sections, the `PLANS.md`
+acceptance-criteria checkboxes, the tags `v0.1.0-phase1`..`3`, and the
+accumulated suite counts, none of which was independently audited at the time.
+
+- Evidence: release-review finding RR-1
+  (`docs/implementation/final-review/release-review.json`); absence of
+  `docs/implementation/phase-1..3/` review files; the release audit's
+  independent clean-export suite and live end-to-end run.
+- Consequence: a process/evidence gap, not a demonstrated correctness defect.
+  The integrated behaviour those phases produce (plugin load, configuration
+  boundary, provider reads, matching, state boundary) is exercised by the later
+  phases, the full test suite, and the release audit's independent live run.
+
+### RR-15. Mock fixture API keys appear in tracked documentation
+
+The mock fixture API keys `radarrkey123`/`sonarrkey456` (and the documentation
+webhook example) appear in tracked files, including
+`docs/testing/jellyfin-12-musl-test-host.md`.
+
+- Evidence: release-review finding RR-15
+  (`docs/implementation/final-review/release-review.json`);
+  `docs/testing/jellyfin-12-musl-test-host.md`; `scripts/mock-arr-fixture.cs`
+  logs only whether a key is present/valid.
+- Consequence: none. These are deliberate local mock-server test values, never
+  production credentials, and the mock fixture never logs key values.
 
 ## Deliberate V1 scope exclusions
 

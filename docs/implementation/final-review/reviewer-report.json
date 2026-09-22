@@ -1,0 +1,119 @@
+{
+  "task": "release-0.1.0",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Re-review (attempt 2) of the documentation-only release-gate correction for release 0.1.0. Both attempt-1 required changes are correct. (1) The PLANS.md Post-V1 Backlog task-7.3/7.8 resolved-blocker narrative (lines 3030-3032) now reads `GOALS.md criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (docs/limitations.md F1)`, matching the canonical wording. (2) The docs/limitations.md RR-1 parenthetical now correctly separates the per-task report-persistence workflow (starts at docs/implementation/4.6) from the per-phase phase-review.json records (start at docs/implementation/phase-4/). A repo-wide sweep of the six canonical current-state surfaces finds no remaining unqualified present-tense criterion-6 overclaim: every `met as shipped` statement that touches criterion 6 is qualified, and the only unqualified `criteria 5, 6, and 8` statements are historical negatives explicitly scoped to task 7.3 (PLANS.md 2621; docs/changelog.md 2207-2208, 2240). Attempt-1 changes remain intact (RR-1/RR-15 recorded in docs/limitations.md, V5 refreshed, docs/implementation-readiness.md RID label corrected to linux-musl-x64, PLANS.md task-status qualifications). The release artifact is byte-unchanged (SHA-256 bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51), only the three intended documentation files are modified, no code/test/build file changed, and the untracked docs/implementation/final-review/ directory is the expected audit location. The release-gate condition-5 gap is fully closed for the four in-scope items: RR-1 and RR-15 are recorded as accepted limitations, and RR-2 and RR-3 are fixed and therefore no longer shipped limitations. The task is safe to advance.",
+  "findings": [
+    {
+      "id": "RR0-1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "documentation consistency / GOALS criterion 6 (RR-2 residual overclaim)",
+      "summary": "Resolved: the residual unqualified criterion-6 overclaim at PLANS.md lines 3030-3031 is now qualified with the canonical wording.",
+      "detail": "Attempt 1 required qualifying the present-tense claim `GOALS.md criteria 5, 6, and 8 are met as shipped` in the Post-V1 Backlog task-7.3/7.8 resolved-blocker narrative. Current content (PLANS.md 3030-3032) reads: `GOALS.md criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (docs/limitations.md F1).` The resolved-blocker narrative is preserved and the phrase no longer overclaims criterion 6. Independently confirmed by direct file read and by a repo-wide grep showing no unqualified `criteria 5, 6, and 8 are met` variant anywhere.",
+      "evidence": [
+        "PLANS.md:3030-3032 current content qualified",
+        "git diff PLANS.md shows the qualification replacing the pre-task `criteria 5, 6, and 8 are met as shipped`",
+        "repo-wide grep -rE 'criteria 5, 6, and 8 are (now )?met' -> no matches"
+      ],
+      "recommended_action": "None; required change satisfied."
+    },
+    {
+      "id": "RR0-2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation precision / RR-1 evidence wording",
+      "summary": "Resolved: the RR-1 parenthetical now distinguishes the per-task report workflow from the phase-review.json records.",
+      "detail": "docs/limitations.md:336-338 now reads `The per-task report-persistence workflow starts at docs/implementation/4.6, and the per-phase phase-review.json records start at docs/implementation/phase-4/; ...`. Independently verified: docs/implementation/4.6/ contains worker-report.json and reviewer-report.json (no phase-review.json); phase-review.json exists only under docs/implementation/phase-4/ through phase-7/; and no docs/implementation/phase-1..3/ directories exist, so the substantive RR-1 claim holds.",
+      "evidence": [
+        "docs/limitations.md:336-338",
+        "ls docs/implementation/4.6/ -> reviewer-report.json, worker-report.json",
+        "find docs/implementation -name phase-review.json -> phase-4..7 only",
+        "ls -d docs/implementation/phase-* -> phase-4..7 only"
+      ],
+      "recommended_action": "None; precision nit satisfied."
+    },
+    {
+      "id": "RR0-3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "historical documentation accuracy / changelog",
+      "summary": "docs/changelog.md:2207-2209 (task 7.3 status) remains an unqualified historical negative and correctly reads as historical, not current.",
+      "detail": "The task conditioned the changelog edit on the line reading as a current claim. docs/changelog.md:2205-2262 is a self-contained per-task entry headed `Task 7.3 - GOALS success-criteria verification on the pinned host`, whose status records that criteria 5, 6, and 8 `are not met as shipped because of release blocker 7.3-F1` at task-7.3 time, with the immediately following `Task 7.8` entry (2264-2270) carrying the qualified current wording. It does not read as a present-tense current claim about the shipped release. Leaving it unchanged preserves historical accuracy, consistent with release-review.json's classification (`historical task 7.3 status retains the pre-7.8 blocker record (historical, acceptable)`).",
+      "evidence": [
+        "docs/changelog.md:2205-2209 (task 7.3 historical status)",
+        "docs/changelog.md:2264-2270 (task 7.8 qualified status)",
+        "docs/implementation/final-review/release-review.json documentation_checked"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "RR0-4",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "release-gate condition 5 (accepted limitations recorded)",
+      "summary": "Condition 5 is closed for the four in-scope items: RR-1/RR-15 recorded; RR-2/RR-3 fixed so they are no longer shipped limitations.",
+      "detail": "release-review.json lists RR-1, RR-2, RR-3, and RR-15 under limitations_accepted, and the release-reviewer gate requires accepted limitations to be recorded in docs/limitations.md. RR-1 and RR-15 are now recorded in the new `Release-review accepted limitations` section with evidence and consequence. RR-2 (residual criterion-6 wording) and RR-3 (stale linux-x64 RID label) are documentation defects that were fixed rather than recorded: all canonical surfaces now qualify criterion 6 and docs/implementation-readiness.md:362 reads linux-musl-x64, so they are no longer limitations. This is a coherent reading of condition 5 and is independently verified.",
+      "evidence": [
+        "docs/limitations.md:327-365 (RR-1, RR-15 recorded)",
+        "docs/implementation-readiness.md:362 -> linux-musl-x64",
+        "PLANS.md canonical surfaces qualified; repo-wide sweep for unqualified criterion-6 overclaim -> no matches",
+        "docs/implementation/final-review/release-review.json limitations_accepted"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "files_verified": [
+    "PLANS.md (full git diff; line 5 Project Status; line 179 Milestone 7 row; lines 2481-2485, 2621-2626, 2699-2703, 2844-2849 task statuses; lines 3030-3032 Post-V1 Backlog resolved-blocker narrative)",
+    "docs/limitations.md (full git diff; criterion-status table line 32; V5 refresh lines 189-209; new Release-review accepted limitations section lines 327-365)",
+    "docs/implementation-readiness.md (diff; line 362 RID label linux-musl-x64; status line 5)",
+    "README.md (lines 18-30 status, 560-568 known limitations; unchanged, qualified)",
+    "docs/architecture.md (status line 3; unchanged, qualified)",
+    "docs/changelog.md (lines 2060 Phase 7 status; 2205-2262 task 7.3 historical; 2264-2270 task 7.8 qualified; 2415-2424 status summary)",
+    "docs/implementation/final-review/release-review.json (authoritative findings RR-1/RR-2/RR-3/RR-14/RR-15 and limitations_accepted)",
+    "docs/implementation/final-review/worker-report.json (attempt 2)",
+    "docs/implementation/final-review/orchestration.json (attempt-2 rework reason)",
+    "build.yaml (plugin guid 40322d52-5680-449f-b33e-e01836ee2f46 matches V5)",
+    "docs/testing/jellyfin-12-musl-test-host.md (radarrkey123/sonarrkey456 fixture keys)",
+    "scripts/mock-arr-fixture.cs (logs apiKey state only, never the value)",
+    "artifacts/ArrTags_0.1.0.0.zip (SHA-256 bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51, 567856 bytes)"
+  ],
+  "tests_checked": [
+    "No build/test run performed: this is a documentation-only task and the constraints forbid rebuilding/repackaging. No code, test, build.yaml, Directory.Build.props, global.json, or the release artifact changed (git diff --name-only -> PLANS.md, docs/implementation-readiness.md, docs/limitations.md only).",
+    "Validation evidence inspected: worker-report.json attempt-2 validation bullets independently re-derived with grep/find/ls/sha256sum."
+  ],
+  "research_checked": [
+    "release-review.json findings RR-1, RR-2, RR-3, RR-14, RR-15 and limitations_accepted cross-checked against the actual repository state.",
+    "RR-1 factual verification: docs/implementation/phase-1..3 do not exist; phase-review.json present only at phase-4..7; per-task reports begin at docs/implementation/4.6 (worker-report.json + reviewer-report.json).",
+    "RR-15 factual verification: radarrkey123/sonarrkey456 present in docs/testing/jellyfin-12-musl-test-host.md; scripts/mock-arr-fixture.cs logs only key present/valid state (line 214 apiKey={keyState}).",
+    "V5 factual verification: plugin guid 40322d52-5680-449f-b33e-e01836ee2f46 matches build.yaml:3.",
+    "Artifact identity re-verified: sha256sum artifacts/ArrTags_0.1.0.0.zip equals the required bd10b9b6... value."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status (line 5), Milestone 7 row (line 179), task 7.3 checkbox (2481-2485), task 7.3 superseded note (2621-2626), task 7.8 status (2699-2703), criteria summary (2844-2849), Post-V1 Backlog resolved-blocker narrative (3030-3032) - all qualify criterion 6.",
+    "README.md status (24) and known limitations (563-564) - qualified.",
+    "docs/architecture.md status line 3 - qualified.",
+    "docs/changelog.md Phase 7 status (2060) and task 7.8 status (2266-2270) - qualified; task 7.3 status (2207-2209) - historical negative, reads as historical.",
+    "docs/implementation-readiness.md status line 5 - qualified; RID label (362) corrected.",
+    "docs/limitations.md criterion-status table (32) qualified; V5 refreshed; RR-1/RR-15 recorded.",
+    "Repo-wide sweep for unqualified present-tense criterion-6 overclaim on the six canonical surfaces -> none remaining."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "reviewer_status": "CHANGES_REQUIRED",
+      "required_changes": [
+        "Qualify the residual unqualified current-claim overclaim at PLANS.md lines 3030-3031 (`GOALS.md criteria 5, 6, and 8 are met as shipped`) using the canonical wording: criteria 5 and 8 met as shipped, criterion 6 met for render and publication but only partial for provider fetches (docs/limitations.md F1)."
+      ],
+      "notes": "Also raised a LOW precision nit that the docs/limitations.md RR-1 parenthetical conflated the per-task report workflow (starts at docs/implementation/4.6) with the phase-review.json records (start at docs/implementation/phase-4/)."
+    },
+    {
+      "attempt": 2,
+      "reviewer_status": "APPROVED",
+      "notes": "Both attempt-1 items corrected. PLANS.md 3030-3032 now qualified; docs/limitations.md 336-338 now correctly separates the two workflows. Attempt-1 changes intact; artifact byte-unchanged; no unintended file changed; condition-5 gap closed for RR-1/RR-2/RR-3/RR-15."
+    }
+  ],
+  "ready_for_next_task": true
+}

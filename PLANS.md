@@ -2479,9 +2479,10 @@ release artifact and operational documentation.
   behavior, Enhanced compatibility, graceful failure, and reproducible builds.
   (Verification executed; a release blocker was found that made `GOALS.md`
   criteria 5, 6, and 8 fail as shipped. Resolved by task 7.8/ADR-015 and the
-  re-run live verification, so criteria 5, 6, and 8 are now met as shipped and
-  Phase 7 acceptance criteria 3 and 4 are met. See the task 7.3 status and
-  release blocker 7.3-F1.)
+  re-run live verification, so criteria 5 and 8 are now met as shipped, with
+  criterion 6 met for render and publication but only partial for provider
+  fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4
+  are met. See the task 7.3 status and release blocker 7.3-F1.)
 - [x] 7.4 Review logs, diagnostics, HTTP behavior, and persisted state for secret
   leakage or unbounded data. (Review executed live on the pinned Jellyfin
   `12.0.0` musl host; negative result - no credential leakage and no unbounded
@@ -2620,9 +2621,11 @@ reverted), and removing the plugin folder produced zero loads and a clean
 criteria 5, 6, and 8 were **not met as shipped** because of release blocker
 7.3-F1, so Phase 7 acceptance criteria 3 and 4 were left unchecked. **Superseded
 by task 7.8:** ADR-015 removed the duplicate SkiaSharp runtime and the re-run
-live verification passes, so criteria 5, 6, and 8 are now met as shipped and
-acceptance criteria 3 and 4 are met). The `GOALS.md` success criteria
-were exercised end-to-end on the pinned Jellyfin `12.0.0` musl host against
+live verification passes, so criteria 5 and 8 are now met as shipped, with
+criterion 6 met for render and publication but only partial for provider fetches
+(`docs/limitations.md` F1), and acceptance criteria 3 and 4 are met). The
+`GOALS.md` success criteria were exercised end-to-end on the pinned Jellyfin
+`12.0.0` musl host against
 committed test-support fixtures: a new single-file mock Sonarr/Radarr `/api/v3`
 server (`scripts/mock-arr-fixture.cs`, run with `dotnet run`, plus
 `scripts/mock-arr-fixtures/`) that enforces `X-Api-Key`, logs every request, and
@@ -2694,8 +2697,10 @@ artifact and the `PluginPackagingTests` that currently assert the bundled
 state.
 
 **Task 7.8 status:** Complete. Resolves task 7.3 release blocker 7.3-F1 and
-re-runs the live end-to-end verification, so `GOALS.md` criteria 5, 6, and 8 are
-now met as shipped and Phase 7 acceptance criteria 3 and 4 are met. The decision
+re-runs the live end-to-end verification, so `GOALS.md` criteria 5 and 8 are now
+met as shipped, with criterion 6 met for render and publication but only partial
+for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria
+3 and 4 are met. The decision
 is recorded in `docs/decisions.md` ADR-015, which supersedes the renderer-bundling
 parts of ADR-010. `src/ArrTags/ArrTags.csproj` keeps exact `SkiaSharp` /
 `SkiaSharp.NativeAssets.Linux` `3.119.4` references with
@@ -3022,8 +3027,9 @@ SkiaSharp but ships no renderer runtime, `ArrTags.csproj`/`build.yaml` and the
 end-to-end re-verification on the pinned host passes (no crash, published bytes
 served and matching the persisted `ActiveImageIdentity`, source posters
 preserved, changed/unchanged metadata behavior correct, and a provider outage
-leaves the host up with current artwork unchanged). `GOALS.md` criteria 5, 6, and
-8 are met as shipped.
+leaves the host up with current artwork unchanged). `GOALS.md` criteria 5 and 8
+are met as shipped, with criterion 6 met for render and publication but only
+partial for provider fetches (`docs/limitations.md` F1).
 
 The following remain excluded from this plan unless `GOALS.md` is deliberately
 changed: Jellyfin versions before 12, modifying original media files, writing or

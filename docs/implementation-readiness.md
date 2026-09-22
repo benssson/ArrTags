@@ -359,7 +359,7 @@ that introduce them.
   packaging: the plugin compiles against the pinned packages with runtime assets
   excluded and takes the managed assembly and native library from the host,
   superseding the ADR-010 bundling requirement. V1 remains validated on the
-  pinned `linux-x64` host only.
+  pinned `linux-musl-x64` host only.
 - Validate that the bundled DejaVu Sans Bold 2.37 font renders ADR-009's
   typography metrics, record its SHA-256, and confirm where the font and Skia
   license notices are packaged. The font choice is resolved by ADR-010.
