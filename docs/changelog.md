@@ -2057,7 +2057,7 @@ are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
 
 ## Phase 7 - Testing & release (Milestone 7)
 
-**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); task 7.3 complete (the live GOALS success-criteria verification met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 - the bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked); task 7.8 complete (the duplicate SkiaSharp runtime is no longer shipped and the plugin shares the host's SkiaSharp by ADR-015, with regression coverage and a re-run live end-to-end verification that passes, so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met); tasks 7.4-7.6 pending.
+**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); task 7.3 complete (the live GOALS success-criteria verification met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 - the bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked); task 7.8 complete (the duplicate SkiaSharp runtime is no longer shipped and the plugin shares the host's SkiaSharp by ADR-015, with regression coverage and a re-run live end-to-end verification that passes, so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met); task 7.4 complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review executed live on the pinned host returned a negative result - no credential leakage and no unbounded path); tasks 7.5-7.6 pending.
 
 ### Decision - Supported provider release ranges and optional-field compatibility (DG-9)
 
@@ -2303,3 +2303,35 @@ suite (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) Failed 0, Passed 1234,
 Skipped 44, Total 1278 (the -1 total is the net `PluginPackagingTests` change:
 two removed renderer-bundling facts and one added duplicate-asset regression
 fact).
+
+### Task 7.4 - Secret-leakage and unbounded-data review (logs, diagnostics, HTTP behavior, persisted state)
+
+**Status:** Complete. Negative result - the review found no credential leakage and
+no unbounded path, so no production fix was required and no product code changed.
+
+Real provider and webhook traffic was generated on the pinned Jellyfin `12.0.0`
+musl host with distinctive sentinel secrets
+(`SONARR-SENTINEL-KEY-1b8d4f6a-DO-NOT-LEAK`,
+`RADARR-SENTINEL-KEY-7f3a9c2e-DO-NOT-LEAK`,
+`WEBHOOK-SENTINEL-SECRET-9e2c7a5d-DO-NOT-LEAK`, and a wrong
+`WRONG-SONARR-SENTINEL-KEY-aaaa1111-DO-NOT-LEAK`) across the successful and
+failing paths (provider success, `401` authentication failure, malformed
+response, oversized response, request timeout, and webhook success,
+missing-secret, wrong-secret, oversized, and malformed deliveries). No sentinel
+appeared in `/tmp/jf/console.log`, `/tmp/jf/log`, the plugin state under
+`/tmp/jf/data/ArrTags`, the installed plugin folder, or the mock request log. The
+only host file that contained a sentinel was Jellyfin's persisted plugin
+configuration `data/plugins/configurations/ArrTags.xml`, which ADR-005 designates
+as the single source of truth. The plugin source contains no logging call, and
+`SecretLease`, `ArrProviderError`, and `ArtworkOperationErrors` bound and redact
+diagnostic text. Persisted state records are versioned and SHA-256
+integrity-tagged with traversal-safe identifiers and contained only hashes,
+identifiers, fingerprints, and timestamps. The anonymous webhook routes returned
+uniform `401`/`413`/`400`/`202` outcomes through the constant-time versioned
+lease with no secret or sensitive detail reflected; the standard image route
+authorization remains Jellyfin's and the plugin exposes only the two webhook
+`POST` routes. Every operational bound has an explicit ADR-004/ADR-012 value
+enforced at its boundary. Build 0 warnings / 0 errors; default suite Failed 0,
+Passed 1218, Skipped 60, Total 1278; host-guarded suite Failed 0, Passed 1234,
+Skipped 44, Total 1278; 145 focused boundary/redaction/retention tests pass. Gate
+7 is not declared.

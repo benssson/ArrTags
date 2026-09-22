@@ -6,7 +6,9 @@ uninstall on the pinned host), 7.7 (relocated state root outside `PluginsPath`
 by ADR-014 and re-ran the live install verification, meeting Phase 7 acceptance
 criterion 2), 7.3 (live `GOALS.md` success-criteria verification), and 7.8
 (resolved the duplicate-SkiaSharp release blocker 7.3-F1 by ADR-015 and re-ran
-the live end-to-end verification) are complete; tasks 7.4-7.6 remain. The task
+the live end-to-end verification), and 7.4 (the live review of logs, diagnostics,
+HTTP behavior, and persisted state found no credential leakage and no unbounded
+path - a negative result) are complete; tasks 7.5-7.6 remain. The task
 7.8 re-verification on the pinned Jellyfin `12.0.0` musl host passes for the
 committed package: it loads with no error, a badge publishes with no host crash,
 the published bytes are served by `GET /Items/{id}/Images/Primary` and match the
