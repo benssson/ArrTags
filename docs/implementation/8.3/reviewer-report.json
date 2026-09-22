@@ -1,0 +1,61 @@
+{
+  "task": "8.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "8.3-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / build metadata comment",
+      "summary": "Directory.Build.props still contains a comment that names the plugin version as 0.1.0.0 (now bumped to 1.0.1.0).",
+      "detail": "Directory.Build.props:15 (inside the IncludeSourceRevisionInInformationalVersion rationale comment) reads '... build.yaml/Directory.Build.props version 0.1.0.0 ...'. The task changed only the three version properties (<Version>/<AssemblyVersion>/<FileVersion>) as instructed, and the acceptance criterion concerns build.yaml metadata plus the version values, so this stale comment does not violate the acceptance criteria and has no functional effect (it is not read by MSBuild). It is nonetheless an inaccurate statement inside an in-scope file.",
+      "evidence": [
+        "Directory.Build.props:15 -> 'build.yaml/Directory.Build.props version 0.1.0.0'",
+        "git diff Directory.Build.props -> only the three version property lines changed"
+      ],
+      "recommended_action": "Correct the comment string to 1.0.1.0 the next time Directory.Build.props is edited (for example task 8.5/8.6); no change required for task 8.3."
+    },
+    {
+      "id": "8.3-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / canonical current-state surface ownership",
+      "summary": "docs/project-status.md still records the pre-bump package identity and Phase 7 as the current milestone; neither task 8.3 nor task 8.5's declared affected files cover it.",
+      "detail": "docs/project-status.md:513-536 states the default suite counts and describes the package as artifacts/ArrTags_0.1.0.0.zip (568,244 bytes, SHA-256 f6b6a515...) with 'Current milestone: Phase 7'. After this task the shipped package is ArrTags_1.0.1.0.zip (568,248 bytes, SHA-256 de4c3484...). The task 8.3 work instructions explicitly scope this task to build.yaml and Directory.Build.props and defer release-doc identity to task 8.5, whose declared affected files are only docs/release/build-and-release.md and docs/changelog.md. The stale identity in docs/project-status.md is therefore outside 8.3's assigned scope and does not affect its acceptance criteria, but it is not assigned to any Phase 8 task either, so it risks remaining stale after the phase.",
+      "evidence": [
+        "docs/project-status.md:513 -> 'Passes 1,288 automated tests. The default ./build.sh test run passes 1,228'",
+        "docs/project-status.md:535 -> 'The package (artifacts/ArrTags_0.1.0.0.zip, 568,244 bytes, SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd)'",
+        "PLANS.md:3146-3152 -> task 8.5 'Affected files: docs/release/build-and-release.md, docs/changelog.md'",
+        "git status --short -> docs/project-status.md not modified"
+      ],
+      "recommended_action": "Have task 8.5 or the Phase 8 review reconcile docs/project-status.md with the 1.0.1.0 identity; not required for task 8.3."
+    }
+  ],
+  "tests_checked": [
+    "`. /config/arrtags-env.sh && ./build.sh build` re-run independently -> 'Build succeeded. 0 Warning(s) 0 Error(s)'.",
+    "`. /config/arrtags-env.sh && ./build.sh test` re-run independently -> 'Passed! - Failed: 0, Passed: 1228, Skipped: 60, Total: 1288, Duration: 16 s - ArrTags.Tests.dll (net10.0)'; exactly matches the worker's counts. Consistent with the repository's current baseline (docs/project-status.md:513-517 records 1,228 passed / 60 skipped / 1,288 total default and 1,244/44 host-guarded).",
+    "`. /config/arrtags-env.sh && ./build.sh package` re-run independently after deleting the archive -> 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.0.1.0.zip (7 entries)'; Build succeeded 0 warnings / 0 errors.",
+    "Reproduced artifact identity: 568,248 bytes; SHA-256 de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c; MD5 16baa5a7324b8e14fdb113d84b944d09; exactly the worker's values.",
+    "unzip -l on the reproduced archive -> 7 entries (ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt); no SkiaSharp.dll or libSkiaSharp.so entry (only SkiaSharp license text files).",
+    "unzip -p ... build.yaml -> packaged manifest carries version \"1.0.1.0\" and the rewritten description/changelog; no 0.1.0.0 literal.",
+    "Literal check: ripgrep for '0.1.0.0' under src/ and tests/ (bin/obj excluded) -> no matches, so the three test literal updates (PluginPackagingTests.cs:28, PluginStateLocationTests.cs:56, PluginDiscoveryHostTests.cs:86,103) are complete.",
+    "ArrTags.dll (Release) contains the string 1.0.1.0."
+  ],
+  "research_checked": [
+    "build.yaml description/changelog claims checked against shipped source: src/ArrTags/Media/MediaItemType.cs:5-6 ('V1 badge-bearing surfaces are Movie and Episode posters'), src/ArrTags/Media/MediaEligibility.cs:52-69 (Movie/Episode poster eligibility), src/ArrTags/Rendering/BadgeDefinition.cs:131-137 (BadgeSelector.Quality enabled by default, with {value} templates), src/ArrTags/Rendering/BadgeSelectorResolver.cs:102-103 (quality label resolves to the actual file quality), src/ArrTags/Artwork/ArtworkPublisher.cs:375 and ArtworkGenerationCoordinator.cs (SaveImage through the item-image API, rendering from the retained original source artifact; no media-file modification). The rewritten description/changelog accurately describe the shipped v1 behavior with no 'foundation / no provider or artwork I/O' text and no overclaim.",
+    "Version/ABI pins checked: build.yaml targetAbi 12.0.0.0 and framework net10.0 match the pinned Jellyfin 12.0.0 / net10.0 target in Directory.Build.props and the test csproj."
+  ],
+  "documentation_checked": [
+    "build.yaml: guid (40322d52-5680-449f-b33e-e01836ee2f46), targetAbi, framework, overview, category ('General'), owner ('arrtags'), and the artifacts list are byte-identical to git show 2511118:build.yaml; only version, description, and changelog changed.",
+    "Directory.Build.props: <Version>/<AssemblyVersion>/<FileVersion> = 1.0.1.0; no other property changed versus 2511118.",
+    "PLANS.md: Project Status paragraph (tasks 8.1-8.3 complete; tasks 8.4-8.6 pending), Milestone Status row 8 (same wording), task 8.3 checkbox [x], and the 8.3 'Status: Complete' block are mutually consistent with the implemented change.",
+    "docs/changelog.md, docs/architecture.md, docs/implementation-readiness.md: no claim contradicting the new version or Phase 8 status; their Phase 8/release-identity updates are deferred to task 8.5 as planned.",
+    "docs/release/build-and-release.md, docs/limitations.md, README.md, docs/project-status.md: unchanged by this task, as required (task 8.5 owns the release-doc identity); see finding 8.3-R2 for the docs/project-status.md ownership gap.",
+    "git status --short: only build.yaml, Directory.Build.props, PLANS.md, the three test files, and the new docs/implementation/8.3/ directory; no unrelated files and no release docs touched."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

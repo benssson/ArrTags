@@ -1,0 +1,36 @@
+{
+  "task": "8.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Corrected the stale user-visible build.yaml metadata and bumped the plugin version to 1.0.1.0. In build.yaml, `overview` is unchanged (\"Adds Sonarr and Radarr metadata badges to Jellyfin posters.\"); `description` now reads that ArrTags reads metadata from independently configured Sonarr and Radarr instances and publishes configurable badges (for example the actual file quality) onto Jellyfin Movie and Episode posters through Jellyfin's supported item-image APIs, preserving the original poster; the false \"performs no provider or artwork I/O\" foundation text is removed. `changelog` is rewritten as a release-appropriate note (\"Initial release. ...\") describing the shipped v1 behavior. `version` is set to \"1.0.1.0\" in build.yaml and `<Version>`/`<AssemblyVersion>`/`<FileVersion>` to 1.0.1.0 in Directory.Build.props; `guid`, `targetAbi`, `framework`, `category`, `owner`, and the `artifacts` list are unchanged. Updated the hard-coded 0.1.0.0 literals in PluginPackagingTests (manifest version assertion), PluginStateLocationTests (ArrTags_<version> install folder), and PluginDiscoveryHostTests (ArrTags_<version> install folder and meta.json version). A grep confirmed no other hard-coded 0.1.0.0 remains in src/ or tests/ (excluding obj/bin build outputs). PLANS.md task 8.3 was marked complete with a status note and the Phase 8 aggregate status in the Project Status paragraph and Milestone Status row 8 was updated to \"tasks 8.1-8.3 complete; tasks 8.4-8.6 pending\". No other file was changed; no commit was created.",
+  "validation": [
+    "`. /config/arrtags-env.sh && ./build.sh build` -> `Build succeeded. 0 Warning(s) 0 Error(s)` (ArrTags.dll and ArrTags.Tests.dll built for net10.0 Release).",
+    "`. /config/arrtags-env.sh && ./build.sh test` -> `Passed! - Failed: 0, Passed: 1228, Skipped: 60, Total: 1288, Duration: 16 s - ArrTags.Tests.dll (net10.0)`. The 60 skips are the documented environment-guarded native SkiaSharp facts in the default (non-host-guarded) run.",
+    "`. /config/arrtags-env.sh && ./build.sh package` -> `Build succeeded. 0 Warning(s) 0 Error(s)` and `Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.0.1.0.zip (7 entries)`.",
+    "Artifact identity of artifacts/ArrTags_1.0.1.0.zip: size 568248 bytes; SHA-256 `de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`; MD5 `16baa5a7324b8e14fdb113d84b944d09`.",
+    "Removed the stale `artifacts/ArrTags_0.1.0.0.zip`; `ls -la artifacts/` now shows only `ArrTags_1.0.1.0.zip` (568248 bytes).",
+    "Pin check: `grep -E '^(version|targetAbi|framework):' build.yaml` -> `version: \"1.0.1.0\"`, `targetAbi: \"12.0.0.0\"`, `framework: \"net10.0\"`; `grep -E '<(Version|AssemblyVersion|FileVersion)>' Directory.Build.props` -> all three `1.0.1.0`.",
+    "Residual-literal check: `grep -rn \"0\\.1\\.0\\.0\" src tests --include='*.cs' --include='*.json' --include='*.props' --include='*.csproj' --include='*.yaml' --include='*.md'` excluding `/obj/` and `/bin/` returned no matches (exit 1), so no other hard-coded 0.1.0.0 in src/ or tests/ was broken by the bump.",
+    "Diff inspection: `git status --short` shows only ` M Directory.Build.props`, ` M PLANS.md`, ` M build.yaml`, ` M tests/ArrTags.Tests/PluginDiscoveryHostTests.cs`, ` M tests/ArrTags.Tests/PluginPackagingTests.cs`, ` M tests/ArrTags.Tests/PluginStateLocationTests.cs`; `git diff` contains only the intended version/metadata edits and the test literals, with no unrelated changes."
+  ],
+  "changed_files": [
+    "build.yaml",
+    "Directory.Build.props",
+    "tests/ArrTags.Tests/PluginPackagingTests.cs",
+    "tests/ArrTags.Tests/PluginStateLocationTests.cs",
+    "tests/ArrTags.Tests/PluginDiscoveryHostTests.cs",
+    "PLANS.md",
+    "docs/implementation/8.3/worker-report.json"
+  ],
+  "known_limitations": [
+    "The test total observed here (Failed 0, Passed 1228, Skipped 60, Total 1288) is higher than the baseline recorded in docs/release/build-and-release.md (Failed 0, Passed 1218, Skipped 60, Total 1278); that recorded baseline predates later test additions and is out of scope for this task. Task 8.5 owns recomputing the release-document identity and counts.",
+    "docs/release/build-and-release.md, docs/changelog.md, docs/limitations.md, README.md, and docs/project-status.md still reference the 0.1.0.0 artifact identity and are intentionally not updated by this task; task 8.5 owns the release-doc identity update.",
+    "The package artifact was not installed and exercised on the pinned Jellyfin 12.0.0 host in this task; the on-host re-verification is owned by task 8.6."
+  ],
+  "ready_for_next_task": true
+}

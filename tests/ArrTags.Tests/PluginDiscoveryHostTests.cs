@@ -83,7 +83,7 @@ public class PluginDiscoveryHostTests
 
     private static string SeedVersionedInstall(string pluginsPath)
     {
-        var installFolder = Path.Combine(pluginsPath, "ArrTags_0.1.0.0");
+        var installFolder = Path.Combine(pluginsPath, "ArrTags_1.0.1.0");
         Directory.CreateDirectory(installFolder);
 
         // A valid plugin assembly is required for the host to keep the folder
@@ -99,7 +99,7 @@ public class PluginDiscoveryHostTests
               "guid": "40322d52-5680-449f-b33e-e01836ee2f46",
               "name": "ArrTags",
               "targetAbi": "12.0.0.0",
-              "version": "0.1.0.0",
+              "version": "1.0.1.0",
               "status": "Active"
             }
             """);
