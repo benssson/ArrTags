@@ -157,10 +157,12 @@ and Phase 8 task 8.3 then bumped the plugin version to `1.0.1.0`; neither
 | 3 | clean export A (build outputs wiped) | `bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51` | 567,856 |
 | 4 | repository working tree (with `.git`) | `bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51` | 567,856 |
 
-The build reported 0 warnings / 0 errors in every tree. The default suite was
-Failed 0, Passed 1218, Skipped 60, Total 1278; the host-guarded suite
-(`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) was Failed 0, Passed 1234,
-Skipped 44, Total 1278.
+For those `0.1.0` task 7.5 builds, the build reported 0 warnings / 0 errors in
+every tree. The default suite was Failed 0, Passed 1218, Skipped 60, Total 1278;
+the host-guarded suite (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) was
+Failed 0, Passed 1234, Skipped 44, Total 1278. These are historical `0.1.0`
+counts; the current `1.0.1.0` counts (default 1228/60/1288 and host-guarded
+1244/44/1288) are recorded in `docs/changelog.md`.
 
 ## Release artifact identity
 
@@ -204,9 +206,12 @@ the duplicate-runtime regression.
 
 ## Jellyfin plugin repository
 
-ArrTags is installable through the standard Jellyfin plugin catalog from the
-public repository `benssson/ArrTags`. Jellyfin is pointed at the raw manifest
-URL:
+ArrTags is prepared to be installable through the standard Jellyfin plugin
+catalog from the public repository `benssson/ArrTags` once the user pushes the
+committed manifest and publishes the GitHub release. The manifest commit
+(`8cba85b`) and the annotated tag `v1.0.1` currently exist only in the local
+repository (no push), so catalog installation does not work yet. Jellyfin is
+pointed at the raw manifest URL:
 
 ```text
 https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json
@@ -229,7 +234,7 @@ and the current `1.0.1.0` artifact):
 | `versions[0].targetAbi` | `12.0.0.0` |
 | `versions[0].checksum` | `16baa5a7324b8e14fdb113d84b944d09` (MD5 of `artifacts/ArrTags_1.0.1.0.zip`) |
 | `versions[0].sourceUrl` | `https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip` |
-| `versions[0].timestamp` | `2026-09-22T14:26:40Z` (generated UTC; regenerated on each manifest write) |
+| `versions[0].timestamp` | `2026-09-22T14:40:57Z` (generated UTC; regenerated on each manifest write) |
 | `versions[0].changelog` | `build.yaml` `changelog` (the release notes) |
 
 The `checksum` must equal `md5sum artifacts/ArrTags_1.0.1.0.zip`; the

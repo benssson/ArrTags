@@ -301,6 +301,24 @@ so it must be deleted once. A normal V1 install writes state to
   must remove it or a reinstall must reconcile it. The completed-drain path
   removes it.
 
+### P6. The `v1.0.1` release publication, manifest push, and asset upload are pending
+
+Phase 8 tasks 8.1-8.6 complete the `1.0.1.0` release preparation, but the release
+is not yet published: the annotated tag `v1.0.1` and the `manifest.json` commit
+`8cba85b` exist only in the local repository and have not been pushed, no GitHub
+release exists, and the `ArrTags_1.0.1.0.zip` asset has not been uploaded. The
+public repository `benssson/ArrTags` therefore does not yet serve a manifest that
+lists `1.0.1.0`, so the standard Jellyfin plugin-catalog install cannot resolve
+ArrTags until the user runs the publish step.
+
+- Evidence: task 8.6 worker/reviewer reports (`docs/implementation/8.6/`);
+  `git rev-parse origin/main` = `09596e0` while the local `v1.0.1` tag
+  dereferences to `8cba85b`.
+- Consequence: the release is prepared but deliberately left unpublished; the
+  user must run `scripts/publish-release.sh` (push the prepared commit/tag and
+  create the GitHub release with the asset upload) or the equivalent steps.
+  Until then no catalog-install or download-from-Releases claim holds.
+
 ## Decision-record notes
 
 ### D1. Webhook `401` response body versus ADR-012 wording

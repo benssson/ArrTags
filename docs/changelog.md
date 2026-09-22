@@ -2492,15 +2492,22 @@ and the webhook boundary section reflect the realized behavior.
 
 ## Phase 8 - Release distribution (Milestone 8)
 
-**Status:** In progress. Tasks 8.1-8.5 are complete; task 8.6 (release-readiness
-verification, committing the generated `manifest.json`, and creating the
-annotated tag `v1.0.1`) is pending. Phase 8 makes ArrTags installable through the
-standard Jellyfin plugin catalog from the public repository `benssson/ArrTags`
-and prepares the `v1.0.1` release; the GitHub release and asset upload remain the
-user's manual step with `scripts/publish-release.sh`. No functional plugin
-behavior changed beyond version/release metadata. The default suite is unchanged
-at Failed 0, Passed 1228, Skipped 60, Total 1288 (the phase adds no product
-test).
+**Status:** Complete. Tasks 8.1-8.6 are complete. Phase 8 makes ArrTags
+installable through the standard Jellyfin plugin catalog from the public
+repository `benssson/ArrTags` once the user publishes the repository manifest and
+the GitHub release; task 8.6 re-ran the release-readiness verification at
+`1.0.1.0`, committed the generated `manifest.json` (`8cba85b`), and created the
+annotated tag `v1.0.1` (`v1.0.1^{commit}` =
+`8cba85b2288a201f4e2c7eda58d44c71f9c4f096`), all locally and unpushed. The GitHub
+release, asset upload, and manifest push remain the user's manual step with
+`scripts/publish-release.sh`, so catalog installation is prepared but not yet
+live. No functional plugin behavior changed beyond version/release metadata. The
+default suite is Failed 0, Passed 1228, Skipped 60, Total 1288, and the
+host-guarded suite is Failed 0, Passed 1244, Skipped 44, Total 1288 (the phase
+adds no product test). The release artifact is `artifacts/ArrTags_1.0.1.0.zip`
+(568,248 bytes, SHA-256
+`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
+`16baa5a7324b8e14fdb113d84b944d09`).
 
 ### Task 8.1 - End-user README and preserved project status
 
@@ -2597,3 +2604,27 @@ presented as current. `docs/changelog.md` gains this Phase 8 section;
 the `1.0.1.0` identity. `. /config/arrtags-env.sh && ./build.sh package`
 reproduced the recorded `1.0.1.0` identity (7 entries, no SkiaSharp runtime).
 Build 0 warnings / 0 errors. No source, test, packaging, or behavior change.
+
+### Task 8.6 - Release-readiness verification, manifest commit, and tag v1.0.1
+
+**Status:** Complete (manifest commit `8cba85b`; task record `2b1e769`). The full
+build/test/package ran at `1.0.1.0`: `./build.sh build` reported 0 warnings /
+0 errors; the default suite was Failed 0, Passed 1228, Skipped 60, Total 1288,
+and the host-guarded suite (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) was
+Failed 0, Passed 1244, Skipped 44, Total 1288; `./build.sh package` reproduced
+`artifacts/ArrTags_1.0.1.0.zip` (568,248 bytes, SHA-256
+`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
+`16baa5a7324b8e14fdb113d84b944d09`, 7 entries, no bundled `SkiaSharp.dll`/
+`libSkiaSharp.so`). `scripts/publish-release.sh --dry-run` computed the same
+checksums and wrote `manifest.json` with no commit, tag, push, or GitHub call,
+and `--prepare-only --no-push --skip-build --skip-tests` regenerated
+`manifest.json` (guid `40322d52-5680-449f-b33e-e01836ee2f46`, version `1.0.1.0`,
+targetAbi `12.0.0.0`, checksum `16baa5a7324b8e14fdb113d84b944d09`, sourceUrl
+`https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip`),
+committed it as `8cba85b` ("Publish ArrTags 1.0.1.0 repository manifest"), and
+created the annotated tag `v1.0.1` (tag `v1.0.1^{commit}` =
+`8cba85b2288a201f4e2c7eda58d44c71f9c4f096`), with no push. The commit, tag, and
+manifest are local only; the GitHub release, the asset upload, and the manifest
+push remain the user's manual step with `scripts/publish-release.sh
+--release-only`, so catalog installation is prepared but not yet live. Gate 8 is
+not declared; the Phase 8 review is separate.

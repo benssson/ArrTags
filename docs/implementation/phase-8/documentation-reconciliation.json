@@ -1,0 +1,81 @@
+{
+  "phase": "Phase 8 - Release distribution (tasks 8.1-8.6 complete; v1.0.1 prepared, unpublished)",
+  "changed_files": [
+    "PLANS.md",
+    "docs/project-status.md",
+    "docs/changelog.md",
+    "docs/architecture.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/release/build-and-release.md"
+  ],
+  "reconciliations": [
+    {
+      "file": "docs/project-status.md",
+      "change": "Project Status opening (lines 5-22): replaced 'Phase 8 - Release distribution is in progress (tasks 8.1-8.5 complete; task 8.6 pending) ... ArrTags is installable through the standard Jellyfin plugin catalog' with 'Phase 8 - Release distribution is complete (tasks 8.1-8.6 complete)', recording the prepared 1.0.1.0 release, the annotated tag v1.0.1 at 8cba85b, the committed repository manifest.json, the end-user README, the task 8.6 verification (build 0/0; default 1228/60/1288; host-guarded 1244/44/1288; artifact 568,248 bytes, SHA-256 de4c3484..., MD5 16baa5a7...), and that the GitHub release publication, asset upload, and manifest push remain the user's manual step, so catalog install is not yet live."
+    },
+    {
+      "file": "docs/project-status.md",
+      "change": "'Next tasks' Phase 8 bullet (lines 572-583): 'in progress ... Task 8.6 remains' replaced with 'complete (tasks 8.1-8.6)', listing 8.6 as complete, stating no Phase 8 implementation task remains, that the commit/tag/manifest are local and unpushed, that the publish step is the user's manual action, and that Gate 8 is covered by the separate phase review."
+    },
+    {
+      "file": "docs/project-status.md",
+      "change": "'Known limitations' summary (lines 605-610): added that the prepared v1.0.1 release is unpublished (local manifest commit and tag only), so no catalog-install or download-from-Releases claim holds until the user publishes (docs/limitations.md P6)."
+    },
+    {
+      "file": "docs/changelog.md",
+      "change": "Phase 8 'Status' (lines 2495-2509): 'In progress. Tasks 8.1-8.5 are complete; task 8.6 ... is pending' replaced with 'Complete. Tasks 8.1-8.6 are complete', recording the task 8.6 verification, the manifest commit 8cba85b, the annotated tag v1.0.1 (8cba85b2288a201f4e2c7eda58d44c71f9c4f096), both suite counts (default 1228/60/1288; host-guarded 1244/44/1288), the artifact identity (568,248 bytes; SHA-256 de4c3484...; MD5 16baa5a7...), and that the release/manifest push is the remaining manual step so catalog installation is prepared but not yet live."
+    },
+    {
+      "file": "docs/changelog.md",
+      "change": "Added '### Task 8.6 - Release-readiness verification, manifest commit, and tag v1.0.1' section (after task 8.5) recording the full build/test/package at 1.0.1.0, both suite counts, the reproduced artifact identity, the publish-release.sh dry run and prepare-only mode, the manifest fields, the manifest commit 8cba85b, the annotated tag v1.0.1, the absence of any push, and that Gate 8 is not declared."
+    },
+    {
+      "file": "docs/architecture.md",
+      "change": "Status line: 'Phases 1-6 complete' corrected to 'Phases 1-8 complete', and appended 'Phase 8 release distribution is complete (tasks 8.1-8.6): the 1.0.1.0 release is prepared with plugin version 1.0.1.0, the annotated tag v1.0.1 at 8cba85b, and the committed repository manifest.json; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with scripts/publish-release.sh, so the plugin-catalog install is prepared but not yet live.'"
+    },
+    {
+      "file": "docs/implementation-readiness.md",
+      "change": "Status line: appended 'Phase 8 release distribution is complete (tasks 8.1-8.6): the 1.0.1.0 release is prepared with the annotated tag v1.0.1 at 8cba85b and the committed repository manifest.json; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with scripts/publish-release.sh, so the plugin-catalog install is prepared but not yet live.'"
+    },
+    {
+      "file": "docs/limitations.md",
+      "change": "Added '### P6. The v1.0.1 release publication, manifest push, and asset upload are pending' under Packaging and release limitations, recording that the annotated tag v1.0.1 and manifest commit 8cba85b are local-only, the public repository does not yet serve a manifest listing 1.0.1.0, and therefore the standard plugin-catalog install cannot resolve ArrTags until the user runs scripts/publish-release.sh; evidence and consequence included."
+    },
+    {
+      "file": "docs/release/build-and-release.md",
+      "change": "'Jellyfin plugin repository' section (lines 208-213): 'ArrTags is installable through the standard Jellyfin plugin catalog' replaced with 'prepared to be installable ... once the user pushes the committed manifest and publishes the GitHub release. The manifest commit (8cba85b) and the annotated tag v1.0.1 currently exist only in the local repository (no push), so catalog installation does not work yet.'"
+    },
+    {
+      "file": "docs/release/build-and-release.md",
+      "change": "0.1.0 history suite counts (lines 160-166): labelled the pre-Phase-8 counts as 'For those 0.1.0 task 7.5 builds' and added 'These are historical 0.1.0 counts; the current 1.0.1.0 counts (default 1228/60/1288 and host-guarded 1244/44/1288) are recorded in docs/changelog.md.'"
+    },
+    {
+      "file": "docs/release/build-and-release.md",
+      "change": "Manifest field table: versions[0].timestamp refreshed from 2026-09-22T14:26:40Z to the committed manifest.json value 2026-09-22T14:40:57Z."
+    },
+    {
+      "file": "PLANS.md",
+      "change": "Project Status paragraph: 'no GitHub release and no asset upload yet' extended to 'no push yet'; 'ArrTags is installable through the standard Jellyfin plugin catalog' corrected to 'prepared to be installable ... once the user pushes the manifest and publishes the GitHub release'; clarified that the commit, tag, and manifest are local only and the GitHub release/asset upload/manifest push remain the user's manual step."
+    }
+  ],
+  "unresolved": [
+    {
+      "claim": "Phase 8 acceptance-criteria checkboxes in PLANS.md (lines 3295-3309) remain unchecked while the milestone row and Project Status mark the phase complete.",
+      "recommended_action": "Not treated as stale: the task 8.6 worker/reviewer record states the checkboxes are intentionally left unchecked until the separate Gate 8 phase review runs, and the milestone row already scopes Gate 8 as 'phase review pending'. Check them only when the phase-review step declares Gate 8 met."
+    },
+    {
+      "claim": "README.md presents the repository/catalog install and the v1.0.1 manual-install download as available without noting the release is unpublished.",
+      "recommended_action": "Not edited: README.md is the end-user guide produced by task 8.1 and describes post-publication use (its canonical current-state counterpart is docs/project-status.md). If a pre-publication warning is desired, that is a product/branch decision; the current-state surfaces now state the release and manifest are prepared but pending the user's publish."
+    },
+    {
+      "claim": "Task 8.6 worker-report known_limitation #2 attributes a non-functional host-guarded command form to docs/release/build-and-release.md; reviewer finding 8.6-R2 shows the release doc documents the functional inline form and the non-functional form appears only in historical implementation reports.",
+      "recommended_action": "No change: historical docs/implementation/* reports are not rewritten, and the release doc's documented command is functional."
+    },
+    {
+      "claim": "No divergence was found between docs/decisions.md ADRs and actual behavior that would require recording a new finding.",
+      "recommended_action": "None; docs/decisions.md was not modified."
+    }
+  ],
+  "summary": "Reconciled the canonical current-state surfaces for Phase 8 completion. docs/project-status.md and docs/changelog.md now state Phase 8 (tasks 8.1-8.6) is complete and record the 1.0.1.0 release, the v1.0.1 annotated tag (8cba85b), the committed manifest.json, both suite counts, and the artifact identity, while stating explicitly that the GitHub release publication, asset upload, and manifest push are pending the user's manual step so catalog install is prepared but not yet live. docs/architecture.md and docs/implementation-readiness.md status lines and PLANS.md now reflect Phases 1-8 complete with the prepared-but-unpublished release; docs/limitations.md gains P6 recording the pending publication; docs/release/build-and-release.md corrects the catalog-install overclaim, scopes the 0.1.0 task 7.5 suite counts as historical, and refreshes the manifest timestamp. No historical changelog/implementation records or ADRs were rewritten."
+}
