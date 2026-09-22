@@ -2,7 +2,17 @@
 
 ## Project Status
 
-**Status:** Phases 1-6 complete; Phase 7 complete (tasks 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, and 7.8 are complete; all five Phase 7 acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`); the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin had persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treated that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deleted the install folder, and loaded no ArrTags plugin - which task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-running the live install/upgrade/reload/uninstall verification, now passing with the install folder and state preserved, so Phase 7 acceptance criterion 2 is met; the task 7.3 GOALS verification executed live end-to-end on the pinned musl host and met success criteria 1-4 and 9, covering criteria 5-8 only under a diagnostic SkiaSharp-sharing install or at the contract level, and found release blocker 7.3-F1 - the committed package's bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin during the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; task 7.8 resolves the duplicate-SkiaSharp packaging blocker 7.3-F1 by ADR-015 (the plugin compiles against the pinned SkiaSharp but shares the host's runtime instead of bundling it) and re-runs the live end-to-end verification, which now passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 is complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review on the live pinned host found no credential leakage and no unbounded path, a negative result; see the task 7.4 status); task 7.5 is complete - the release package is built from a clean checkout and is now byte-reproducible across clean builds, with the commands, inputs, artifact identity, and supported version ranges recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 is complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md` so nothing unsupported is presented as available; see the task 7.6 status). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items remain open and are consolidated in `docs/limitations.md` rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, a safe metrics/diagnostic-status surface, and the `QueueCapacity`-bounded reconciliation prefix. Phase 7 later performed live end-to-end verification on the pinned Jellyfin `12.0.0` musl host against the committed mock Arr fixture (tasks 7.3 and 7.8). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+**Status:** Phases 1-7 complete; the release tag `v0.1.0` exists at HEAD
+(`a634d61`) with no GitHub release and no Jellyfin plugin-repository
+`manifest.json` published yet. Phase 8 - Release distribution is **not started**
+(tasks 8.1-8.6 are all open): make ArrTags installable through the standard
+Jellyfin plugin catalog from the public repository `benssson/ArrTags`, present an
+end-user `README.md`, correct stale user-visible metadata, and prepare and ship
+the `v1.0.1` release (plugin version `1.0.1.0`, git tag `v1.0.1`); the actual
+GitHub release and asset upload remain a manual user step with
+`scripts/publish-release.sh`. No functional plugin behavior changes in Phase 8
+beyond version/release metadata. Phase 7 record: tasks 7.1, 7.2, 7.3, 7.4, 7.5,
+7.6, 7.7, and 7.8 are complete; all five Phase 7 acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`); the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin had persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treated that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deleted the install folder, and loaded no ArrTags plugin - which task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-running the live install/upgrade/reload/uninstall verification, now passing with the install folder and state preserved, so Phase 7 acceptance criterion 2 is met; the task 7.3 GOALS verification executed live end-to-end on the pinned musl host and met success criteria 1-4 and 9, covering criteria 5-8 only under a diagnostic SkiaSharp-sharing install or at the contract level, and found release blocker 7.3-F1 - the committed package's bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin during the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; task 7.8 resolves the duplicate-SkiaSharp packaging blocker 7.3-F1 by ADR-015 (the plugin compiles against the pinned SkiaSharp but shares the host's runtime instead of bundling it) and re-runs the live end-to-end verification, which now passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 is complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review on the live pinned host found no credential leakage and no unbounded path, a negative result; see the task 7.4 status); task 7.5 is complete - the release package is built from a clean checkout and is now byte-reproducible across clean builds, with the commands, inputs, artifact identity, and supported version ranges recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 is complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md` so nothing unsupported is presented as available; see the task 7.6 status). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items remain open and are consolidated in `docs/limitations.md` rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, a safe metrics/diagnostic-status surface, and the `QueueCapacity`-bounded reconciliation prefix. Phase 7 later performed live end-to-end verification on the pinned Jellyfin `12.0.0` musl host against the committed mock Arr fixture (tasks 7.3 and 7.8). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
 
 **Release security fix (SEC-1):** The 0.1.0 release security review found that
 MVC model binding read form/multipart request bodies before the anonymous
@@ -190,6 +200,7 @@ without modifying original media files or external services.
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
+| 8 | Release distribution | Not started (tasks 8.1-8.6 all open) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 
 ## Milestones
 
@@ -2914,6 +2925,295 @@ Total 1278. Gate 7 is not declared; the Phase 7 review is separate.
 
 **Gate 7:** All V1 success criteria are checked, release blockers are resolved,
 and the artifact is approved for release.
+
+### 8. Release distribution
+
+**Objective:** Make ArrTags installable through the standard Jellyfin plugin
+catalog from the public repository, present a user-facing `README.md`, fix stale
+user-visible metadata, and prepare/ship the `v1.0.1` release.
+
+**Prerequisites:** Phase 7 complete and Gate 7 met; the release tag `v0.1.0`
+exists at HEAD (`a634d61`); the plugin version is `0.1.0.0` in `build.yaml` and
+`Directory.Build.props`; the public repository is `benssson/ArrTags` with default
+branch `main`. No functional plugin behavior changes in this phase beyond
+version/release metadata.
+
+**Deliverables:**
+
+- `README.md` as the end-user guide, with the current contributor/project-status
+  content preserved in `docs/project-status.md`.
+- `.opencode/agents/*.md` current-state references pointing at
+  `docs/project-status.md`.
+- Accurate `build.yaml` metadata and plugin version `1.0.1.0` in `build.yaml`
+  and `Directory.Build.props`.
+- Jellyfin plugin-repository manifest tooling (`scripts/write-manifest.cs`, a
+  .NET 10 file-based app consistent with `scripts/pack-release.cs`;
+  `scripts/publish-release.sh`) and the committed `manifest.json`.
+- Updated `docs/release/build-and-release.md` and `docs/changelog.md`.
+- The annotated tag `v1.0.1`; the GitHub release and asset upload remain a
+  manual user step.
+
+**Tasks:**
+
+- [ ] 8.1 Split `README.md` into an end-user guide and a preserved
+  `docs/project-status.md`.
+- [ ] 8.2 Repoint the agent current-state references at `docs/project-status.md`.
+- [ ] 8.3 Correct the stale `build.yaml` metadata and bump the version to
+  `1.0.1.0`.
+- [ ] 8.4 Add the Jellyfin plugin-repository manifest tooling and the release
+  script.
+- [ ] 8.5 Update `docs/release/build-and-release.md` and `docs/changelog.md`.
+- [ ] 8.6 Release-readiness verification, commit the generated `manifest.json`,
+  and create the annotated tag `v1.0.1`.
+
+**Authoritative Phase 8 execution order:** 8.1, 8.2, 8.3, 8.4, 8.5, 8.6. Task
+IDs are stable references only; this execution order is the canonical sequence.
+The order is derived from the documented dependencies, not from task numbering:
+
+- 8.1 has no prerequisites: it creates `docs/project-status.md` (the current
+  contributor/project-status content preserved with an H1) and rewrites
+  `README.md` as the end-user guide.
+- 8.2 depends on 8.1 because the agent current-state references must point at
+  the file 8.1 creates.
+- 8.3 is independent of 8.1 and 8.2 and may run alongside them: it corrects the
+  user-visible `build.yaml` metadata and bumps the version to `1.0.1.0` in
+  `build.yaml` and `Directory.Build.props`.
+- 8.4 depends on 8.3 because `scripts/write-manifest.cs` reads `build.yaml`
+  (version, guid, ABI, changelog) and upserts the version entry in
+  `manifest.json`, and `scripts/publish-release.sh` packages the
+  `1.0.1.0` artifact.
+- 8.5 depends on 8.3 and 8.4: it documents the final version/metadata, the
+  repository URL and manifest, the `scripts/publish-release.sh` procedure, and
+  the recomputed artifact identity produced by a `1.0.1.0` package build.
+- 8.6 depends on 8.3, 8.4, and 8.5. The publish/tag capability comes from 8.3
+  (version and metadata) and 8.4 (manifest tooling and release script), and 8.5
+  must be final so the tagged commit carries the updated documentation. 8.6
+  re-runs the full build/test/package at `1.0.1.0`, runs the publish script's
+  dry run and prepare-only mode, confirms the manifest fields, commits
+  `manifest.json`, and creates the annotated tag `v1.0.1`. The GitHub release
+  and asset upload are explicitly left to the user.
+
+#### 8.1 End-user README and preserved project status
+
+**Status:** Not started.
+
+**Objective:** Make `README.md` an end-user installation and usage guide and
+preserve the current contributor/project-status content in
+`docs/project-status.md`.
+
+**Dependencies:** None.
+
+**Affected files:** `README.md`, `docs/project-status.md` (new).
+
+**Work:** Move the current `README.md` contributor/project-status content into
+`docs/project-status.md` unchanged (add an H1 such as `# ArrTags project
+status`), then rewrite `README.md` as the end-user guide covering: the plugin
+description; requirements (Jellyfin `12.0.0` only; Sonarr `3.x`-`4.x` and/or
+Radarr `3.x`-`6.x` on `/api/v3`; the host supplies SkiaSharp); repository
+install (Dashboard -> Plugins -> Repositories -> add
+`https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json` ->
+Catalog -> ArrTags -> Install); a manual install fallback from the release zip;
+configuration via `plugins/configurations/ArrTags.xml` plus restart (no web
+configuration UI; state the `docs/limitations.md` F2 restart requirement; the
+webhook routes `/ArrTags/Webhook/Sonarr` and `/ArrTags/Webhook/Radarr` with the
+`X-ArrTags-Webhook-Secret` header); update; uninstall (restores the original
+poster and removes `ProgramDataPath/ArrTags`); and a short known-limitations
+summary linking `docs/limitations.md`. Link to `docs/project-status.md`.
+
+**Tests:** Manual review that no contributor/status prose remains in
+`README.md` and that every claimed install, configuration, update, and uninstall
+path matches the shipped behavior and `docs/limitations.md`.
+
+**Acceptance criteria:** `README.md` is end-user-facing and covers requirements,
+repository install, manual install, configuration, update, and uninstall; no
+contributor/status prose remains in it; the contributor/status content is
+preserved in `docs/project-status.md` and linked from `README.md`.
+
+**Documentation impact:** `README.md` (rewritten), `docs/project-status.md`
+(new).
+
+#### 8.2 Repoint the agent current-state references
+
+**Status:** Not started.
+
+**Objective:** Point the agent prompts at `docs/project-status.md` instead of
+`README.md` for current build/test/structure/next-step statements.
+
+**Dependencies:** 8.1 (the target file must exist).
+
+**Affected files:** `.opencode/agents/phase-reviewer.md`,
+`.opencode/agents/implementation-reviewer.md`,
+`.opencode/agents/documentation-maintainer.md`,
+`.opencode/agents/implementation-worker.md`,
+`.opencode/agents/release-reviewer.md`.
+
+**Work:** In each file, replace the canonical-current-state-surface entry
+`README.md` - current build/test/structure/next-step statements with
+`docs/project-status.md` - current build/test/structure/next-step statements.
+The general `README.md` entries under each prompt's "Required Inputs" list are
+unchanged, because the end-user `README.md` remains a valid project document.
+
+**Tests:** Search `.opencode/agents/` for the "current
+build/test/structure/next-step statements" wording and confirm no `README.md`
+entry remains for it and that `docs/project-status.md` is referenced.
+
+**Acceptance criteria:** No agent prompt claims `README.md` is the source of
+current build/test/structure/next-step statements; `docs/project-status.md` is
+the referenced source.
+
+**Documentation impact:** `.opencode/agents/*.md` only.
+
+#### 8.3 Correct plugin metadata and bump to 1.0.1.0
+
+**Status:** Not started.
+
+**Objective:** Fix the stale user-visible `build.yaml` metadata and set the
+release version to `1.0.1.0`.
+
+**Dependencies:** None.
+
+**Affected files:** `build.yaml`, `Directory.Build.props`.
+
+**Work:** Rewrite `build.yaml` `overview`/`description`/`changelog` so they
+describe the shipped v1 behavior (reads independently configured Sonarr and
+Radarr metadata, matches eligible Jellyfin Movie and Episode posters, and renders
+and publishes configurable badges through Jellyfin's supported item-image APIs)
+and remove the stale "performs no provider or artwork I/O" foundation text. Set
+`version: "1.0.1.0"` in `build.yaml` and `<Version>`/`<AssemblyVersion>`/
+`<FileVersion>` to `1.0.1.0` in `Directory.Build.props`. Do not change `guid`,
+`targetAbi`, `framework`, `category`, `owner`, or the `artifacts` list.
+
+**Tests:** Build at `1.0.1.0`; assert the produced package is
+`artifacts/ArrTags_1.0.1.0.zip` and that `build.yaml` version, ABI, and
+framework match the declared pins. `PluginPackagingTests` continues to assert the
+package contract.
+
+**Acceptance criteria:** `build.yaml` metadata accurately describes the shipped
+v1 behavior and the version is `1.0.1.0` in both `build.yaml` and
+`Directory.Build.props`.
+
+**Documentation impact:** `build.yaml`, `Directory.Build.props`.
+
+#### 8.4 Jellyfin repository manifest tooling and release script
+
+**Status:** Not started.
+
+**Objective:** Add the tooling that generates the Jellyfin plugin-repository
+`manifest.json` and the script that performs the release.
+
+**Dependencies:** 8.3 (the version and metadata the tooling reads).
+
+**Affected files:** `scripts/write-manifest.cs` (new),
+`scripts/publish-release.sh` (new), generated `manifest.json` (new).
+
+**Work:**
+
+- `scripts/write-manifest.cs`: a .NET 10 file-based app consistent with
+  `scripts/pack-release.cs` (not part of the solution, adding no plugin
+  dependency) that reads `build.yaml` and any existing `manifest.json`, and
+  upserts the version entry with the correct `guid`, `version`, `targetAbi`,
+  `timestamp`, `changelog`, MD5 `checksum`, and `sourceUrl`
+  (`https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip`),
+  writing stable indented JSON.
+- `scripts/publish-release.sh`: build/test/package, compute SHA-256 and MD5,
+  regenerate the manifest, commit it, create the annotated `v1.0.1` tag if
+  absent, push, then create the GitHub release and upload the asset using `gh`
+  or a `GITHUB_TOKEN`. It must support a dry run (compute and report with no
+  GitHub write, commit, or tag), a prepare-only mode (generate and commit the
+  manifest and create the tag without a token) so the agent can prepare the
+  release, and a release-only mode for the user's manual publish.
+
+**Tests:** Run the dry run and confirm it computes the checksum and writes
+`manifest.json` with the correct guid, version, targetAbi, checksum, and
+sourceUrl and performs no GitHub write, commit, or tag. Confirm the checksum
+equals `md5sum artifacts/ArrTags_1.0.1.0.zip` and that the manifest parses as
+the expected Jellyfin repository shape. Run `bash -n`/shellcheck on the script.
+
+**Acceptance criteria:** `scripts/write-manifest.cs` and
+`scripts/publish-release.sh` generate a valid Jellyfin repository manifest
+(correct guid, version, targetAbi, MD5 checksum, and sourceUrl) with no GitHub
+write during a dry run.
+
+**Documentation impact:** recorded in `docs/release/build-and-release.md` by
+task 8.5.
+
+#### 8.5 Release and changelog documentation
+
+**Status:** Not started.
+
+**Objective:** Record the repository manifest, repository URL, release
+procedure, and recomputed artifact identity, and record Phase 8.
+
+**Dependencies:** 8.3, 8.4.
+
+**Affected files:** `docs/release/build-and-release.md`, `docs/changelog.md`.
+
+**Work:** In `docs/release/build-and-release.md`, update the pinned version and
+artifact identity to `1.0.1.0`, and document the Jellyfin repository
+`manifest.json`, the repository URL
+(`https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json`), the
+`scripts/publish-release.sh` procedure (dry run, prepare-only, and release-only
+modes), and the recomputed artifact identity for `artifacts/ArrTags_1.0.1.0.zip`
+(size, SHA-256, MD5, entries). In `docs/changelog.md`, add the Phase 8 section
+recording the release-distribution work.
+
+**Tests:** Manual consistency review: the recorded artifact identity matches the
+built `1.0.1.0` package, the manifest fields match `build.yaml` and
+`manifest.json`, and no stale `0.1.0.0` release identity remains in the release
+document.
+
+**Acceptance criteria:** `docs/release/build-and-release.md` and
+`docs/changelog.md` reflect the new state (repository manifest, repository URL,
+release procedure, recomputed artifact identity, and the Phase 8 record).
+
+**Documentation impact:** the two named documents.
+
+#### 8.6 Release-readiness verification, manifest commit, and tag v1.0.1
+
+**Status:** Not started.
+
+**Objective:** Verify the release at `1.0.1.0`, commit the generated manifest,
+and create the annotated tag.
+
+**Dependencies:** 8.3, 8.4, 8.5.
+
+**Work:** Full build/test/package at `1.0.1.0`; run the publish script's dry run
+and prepare-only mode; confirm the manifest `guid`, `version`, `targetAbi`,
+`checksum`, and `sourceUrl` are correct and match the built artifact; commit the
+generated `manifest.json`; create the annotated tag `v1.0.1`. Do not create the
+GitHub release or upload the asset - that remains the user's manual step with
+`scripts/publish-release.sh`.
+
+**Tests:** Default and host-guarded test suites pass; `PluginPackagingTests`
+passes; `unzip -l` shows the expected entries; the manifest checksum equals
+`md5sum artifacts/ArrTags_1.0.1.0.zip`; the dry run performs no GitHub write.
+
+**Acceptance criteria:** `manifest.json` is committed and the annotated tag
+`v1.0.1` exists; the GitHub release and asset upload remain a manual user step.
+
+**Documentation impact:** committed `manifest.json`; the annotated tag.
+
+**Phase 8 acceptance criteria:**
+
+- [ ] `README.md` is end-user-facing and covers requirements, repository
+  install, manual install, configuration, update, and uninstall; no
+  contributor/status prose remains in it.
+- [ ] The contributor/status content is preserved in `docs/project-status.md`
+  and linked from `README.md`.
+- [ ] `build.yaml` metadata accurately describes the shipped v1 behavior and the
+  version is `1.0.1.0` in both `build.yaml` and `Directory.Build.props`.
+- [ ] `scripts/write-manifest.cs` and `scripts/publish-release.sh` generate a
+  valid Jellyfin repository manifest (correct guid, version, targetAbi, MD5
+  checksum, and sourceUrl) with no GitHub write during a dry run.
+- [ ] `manifest.json` is committed and the annotated tag `v1.0.1` exists; the
+  GitHub release/asset upload remains a manual user step.
+- [ ] Canonical docs (`docs/release/build-and-release.md`, `docs/changelog.md`)
+  and the agent prompt references reflect the new state.
+- [ ] No functional plugin behavior changed beyond version/release metadata.
+
+**Gate 8:** All seven Phase 8 acceptance criteria are met, the phase review
+passes, and the annotated tag `v1.0.1` is created. The GitHub release
+publication is explicitly left to the user.
 
 ## Decision Gates
 
