@@ -114,6 +114,25 @@
         "duration_seconds": null,
         "session_id": "ses_f372d1dc1ffe6EaE3A6H3m9yv2"
       }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f371fddbcffeUy7eBmSzqkTzMt"
+      }
     }
   ],
   "rework": [
