@@ -2052,12 +2052,12 @@ Deferrals recorded (not implemented, not presented as solved): a bounded
 provider inventory/catalogue cache (provider fetch efficiency), runtime
 configuration replacement wiring (`ConfigurationSnapshotService.TryReplace` is
 not observed until restart), and a safe metrics/diagnostic-status surface. These
-are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
-`docs/implementation-readiness.md`.
+are tracked in the `PLANS.md` Post-V1 Backlog open-items list, in
+`docs/implementation-readiness.md`, and (consolidated) in `docs/limitations.md`.
 
 ## Phase 7 - Testing & release (Milestone 7)
 
-**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); task 7.3 complete (the live GOALS success-criteria verification met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 - the bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked); task 7.8 complete (the duplicate SkiaSharp runtime is no longer shipped and the plugin shares the host's SkiaSharp by ADR-015, with regression coverage and a re-run live end-to-end verification that passes, so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met); task 7.4 complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review executed live on the pinned host returned a negative result - no credential leakage and no unbounded path); tasks 7.5-7.6 pending.
+**Status:** Complete. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); task 7.3 complete (the live GOALS success-criteria verification met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 - the bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked); task 7.8 complete (the duplicate SkiaSharp runtime is no longer shipped and the plugin shares the host's SkiaSharp by ADR-015, with regression coverage and a re-run live end-to-end verification that passes, so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met); task 7.4 complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review executed live on the pinned host returned a negative result - no credential leakage and no unbounded path); task 7.5 complete (the release package builds byte-reproducibly from a clean checkout and the build/release process, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, meeting Phase 7 acceptance criterion 5); task 7.6 complete (the known limitations and deferred decisions are consolidated in `docs/limitations.md` so nothing unsupported is presented as available). All five Phase 7 acceptance criteria are met; Gate 7 is not declared because the phase review is separate.
 
 ### Decision - Supported provider release ranges and optional-field compatibility (DG-9)
 
@@ -2074,7 +2074,8 @@ records the ranges in the release artifact, and task 7.6 documents the ranges an
 the optional-field policy. The provider inventory/catalogue cache, runtime
 configuration replacement wiring, the reconciliation coverage bound, the ADR-010
 non-canonical runtime comparison, and the metrics/diagnostic-status surface remain
-tracked for this phase and are not presented as solved.
+open and are not presented as solved; they are consolidated in
+`docs/limitations.md` by task 7.6.
 
 ### Task 7.1 - Full unit and integration suite against the declared versions
 
@@ -2387,3 +2388,45 @@ ranges (Jellyfin `12.0.0`/`targetAbi: 12.0.0.0`, `net10.0`, Sonarr 3.x-4.x,
 Radarr 3.x-6.x on `/api/v3`), artifact identity and per-entry hashes,
 verification steps, and the release checklist are recorded in
 `docs/release/build-and-release.md`. No product behavior changed.
+
+### Task 7.6 - Known limitations and deferred decisions
+
+**Status:** Complete. Documentation-only. The project's known limitations and
+deferred decisions are consolidated into one canonical current-state document,
+`docs/limitations.md`, so no deferred or unverified capability is presented as
+available. It records the open functional/operational deferrals (no provider
+inventory/catalogue cache, so Phase 6 acceptance criterion 1 remains partially
+met; runtime configuration replacement not wired to Jellyfin's configuration
+save path; no bounded secret-free metrics/diagnostic-status surface; the
+`QueueCapacity`-bounded reconciliation prefix; the host-supplied-SkiaSharp
+dependency with no bundled fallback), the verification-coverage gaps (no live
+Sonarr/Radarr instance; the unselected/unrun ADR-010 non-canonical cross-runtime
+comparison; contract-level-only Jellyfin Enhanced coexistence; the manual-only
+live `IProviderManager.SaveImage` read-back; the unexercised live
+`Plugin.OnUninstalling` drain; the host-guarded skips in the default suite), the
+packaging/release limitations (pinned-toolchain-dependent byte-reproducibility
+and no byte-identity test; reduced debug metadata from the task 7.5
+reproducibility trade-off; the `PackagePlugin=true` stage-only behavior; the
+retained SkiaSharp license notices; pre-release orphaned-state and
+uninstall-drain retention), and two decision-record notes (the webhook `401`
+framework ProblemDetails body versus ADR-012's "no body" text, recorded as a
+minor gap for a future ADR-012 clarification - task 7.4 finding 7.4-R2; and the
+optional `ArtworkSubjectGate` idle-eviction hardening - finding 7.4-R1).
+
+The criteria status is stated explicitly: all five Phase 7 acceptance criteria
+are met; `GOALS.md` criteria 1-4, 8, and 9 are met as shipped; criterion 5 is
+met as shipped but requires the host's SkiaSharp; criterion 6 is met for render
+and publication but only partial for provider fetches; and criterion 7 is met
+only at the contract level. Carried documentation nits were also fixed
+where they affected accuracy: the `PLANS.md` Project Status paragraph and
+Milestone 7 row now list every completed Phase 7 task (finding 7.5-F5), and
+ADR-015 now labels the pinned host `linux-musl-x64` (finding 7.8-R6) and states
+that `ExcludeAssets=runtime` still leaves the `SkiaSharp.NativeAssets.Linux`
+`runtimeTargets` in `ArrTags.deps.json` even though the native files are not
+staged into the package (finding 7.8-R3). `README.md`,
+`docs/implementation-readiness.md`, `docs/architecture.md`, and
+`docs/release/build-and-release.md` point to the consolidated record. No source,
+test, packaging, or behavior change. Build 0 warnings / 0 errors; default suite
+Failed 0, Passed 1218, Skipped 60, Total 1278; host-guarded suite
+(`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) Failed 0, Passed 1234, Skipped 44,
+Total 1278. Gate 7 is not declared.

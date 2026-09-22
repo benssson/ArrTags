@@ -236,3 +236,26 @@ unchecked in this runbook).
 - The artifact identity above is stable from the committed sources regardless of
   checkout path or `.git` presence; it is not a function of the commit id,
   because the SDK's git-derived inputs are suppressed for reproducibility.
+- Byte-reproducibility depends on the pinned toolchain: it is demonstrated with
+  the pinned SDK (`global.json` pins `10.0.0` with `latestMinor`, validated with
+  `10.0.401`), and a different .NET SDK could in principle change compiler or
+  deflate output. No automated test guards byte-identity; `PluginPackagingTests`
+  asserts the package contents (required entries, no duplicate SkiaSharp
+  runtime) but not the archive bytes, so a regression in `scripts/pack-release.cs`
+  or the build properties would not fail the suite.
+- The debug-metadata suppression described under "Deterministic
+  (byte-reproducible) packaging" is a deliberate trade-off: the shipped
+  `ArrTags.dll` has `AssemblyInformationalVersion` `0.1.0.0` with no commit
+  suffix and its PDB carries no SourceLink mapping, so source-level debugging of
+  a released assembly is harder.
+- `dotnet build src/ArrTags/ArrTags.csproj -p:PackagePlugin=true` alone stages
+  the release files into `artifacts/staging` and does not write the archive;
+  `./build.sh package` is the entry point that writes
+  `artifacts/ArrTags_<version>.zip`.
+- The package retains `licenses/SkiaSharp-LICENSE.txt` and
+  `licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt` even though it ships no SkiaSharp
+  runtime (deliberate, ADR-015).
+
+The complete consolidated limitations and deferred-decision record, including
+which `GOALS.md` success criteria and Phase 7 acceptance criteria are met, is in
+`docs/limitations.md`.

@@ -1,0 +1,39 @@
+{
+  "task": "7.6",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation-only consolidation of the project's known limitations and deferred decisions so that no unsupported or unverified capability is presented as available. Created docs/limitations.md as the single canonical current-state record and linked it from README.md, PLANS.md, docs/implementation-readiness.md, docs/architecture.md, and docs/release/build-and-release.md. It records the open functional/operational deferrals (no provider inventory/catalogue cache, so Phase 6 acceptance criterion 1 remains partially met; runtime configuration replacement not wired to Jellyfin's save path; no bounded secret-free metrics/diagnostic-status surface; the QueueCapacity-bounded reconciliation prefix; the host-supplied-SkiaSharp dependency with no bundled fallback), the verification-coverage gaps (no live Sonarr/Radarr instance; the unselected/unrun ADR-010 non-canonical cross-runtime comparison; contract-level-only Jellyfin Enhanced coexistence; the manual-only live IProviderManager.SaveImage read-back; the unexercised live Plugin.OnUninstalling drain; the host-guarded skips in the default suite), the packaging/release limitations (pinned-toolchain-dependent byte-reproducibility with no byte-identity test; reduced debug metadata from the task 7.5 reproducibility trade-off; the PackagePlugin=true stage-only behavior; the retained SkiaSharp license notices; pre-release orphaned state and uninstall-drain retention), and two decision-record notes (the webhook 401 framework ProblemDetails body versus ADR-012's 'no body' text, recorded as a minor gap for a future ADR-012 clarification - task 7.4 finding 7.4-R2; and the optional ArtworkSubjectGate idle-eviction hardening - finding 7.4-R1). The document states explicitly that all five Phase 7 acceptance criteria are met and that GOALS.md criteria 1-4, 8, and 9 are met as shipped, criterion 5 is met as shipped but requires the host's SkiaSharp, criterion 6 is met for render/publication but only partial for provider fetches, and criterion 7 is met only at the contract level. Fixed the carried reviewer nits: the PLANS.md Project Status paragraph and Milestone 7 row now list every completed Phase 7 task (finding 7.5-F5); ADR-015 now labels the pinned host linux-musl-x64 (finding 7.8-R6) and states the ExcludeAssets=runtime/deps.json runtimeTargets precision (finding 7.8-R3); and stale 'tracked for Phase 7' statements in PLANS.md, docs/architecture.md, docs/implementation-readiness.md, and ADR-012 were corrected to point at the consolidated record. Marked task 7.6 complete across PLANS.md (checkbox, task status, Project Status, Milestone 7 row), docs/changelog.md, README.md, docs/implementation-readiness.md, and docs/architecture.md. No Gate 7 declaration. No source, test, packaging, or behavior change.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (net10.0, pinned Jellyfin 12.0.0).",
+    "Default suite: . /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1218, Skipped 60, Total 1278, matching the documented baseline.",
+    "Host-guarded suite: ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin . /config/arrtags-env.sh; ./build.sh test -> Failed 0, Passed 1234, Skipped 44, Total 1278, matching the documented baseline.",
+    "git status --short after completion: only PLANS.md, README.md, docs/architecture.md, docs/changelog.md, docs/decisions.md, docs/implementation-readiness.md, docs/release/build-and-release.md, the new docs/limitations.md, and this report; no src/tests/packaging file changed.",
+    "Cross-check that every required limitation item appears in docs/limitations.md (provider catalogue cache; runtime configuration replacement; metrics/diagnostic-status surface; QueueCapacity-bounded reconciliation prefix; ADR-010 non-canonical comparison; no live Sonarr/Radarr; contract-level-only Enhanced coexistence; manual-only live SaveImage read-back; unexercised live uninstall drain; pre-release orphaned state; pinned-toolchain reproducibility and reduced debug metadata; PackagePlugin=true stage-only; retained SkiaSharp notices; host-supplied SkiaSharp dependency; webhook 401 ProblemDetails gap; ArtworkSubjectGate idle-eviction hardening).",
+    "Cross-check that no current-state document still presents these as solved or still says 'tracked for Phase 7'/'Phase 7 in progress'/'task 7.6 pending': grep across the repository returned only the historical docs/changelog.md Phase 6 entry, which is intentionally preserved as a historical record.",
+    "Verified the criteria-status language in docs/limitations.md, README.md, PLANS.md task 7.6 status, docs/implementation-readiness.md, and docs/changelog.md is consistent and does not claim the phase review or Gate 7."
+  ],
+  "changed_files": [
+    "docs/limitations.md",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/decisions.md",
+    "docs/implementation-readiness.md",
+    "docs/release/build-and-release.md",
+    "docs/implementation/7.6/worker-report.json"
+  ],
+  "known_limitations": [
+    "This task documents deferred and partial capabilities; it does not implement any of them. Every open item in docs/limitations.md remains open, including the provider inventory/catalogue cache, runtime configuration replacement wiring, the metrics/diagnostic-status surface, and the QueueCapacity-bounded reconciliation prefix.",
+    "The ADR-012 '401 with no body' wording gap (task 7.4 finding 7.4-R2) is documented but the ADR-012 decision text was intentionally left unchanged; a future ADR-012 clarification is the follow-up owner, and no task currently in PLANS.md owns it.",
+    "No automated test asserts the documentation contents; the limitation inventory and the corrected nits were verified by diff and grep inspection, not by a test.",
+    "The webhook ProblemDetails and other live-verification facts restated in docs/limitations.md are taken from the task 7.2/7.3/7.4/7.7/7.8 worker and reviewer reports; no live host or provider traffic was re-run by this documentation-only task.",
+    "Gate 7 and the Phase 7 phase review are not performed or declared by this task; the phase-level review remains separate."
+  ],
+  "ready_for_next_task": true
+}

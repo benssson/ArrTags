@@ -1,0 +1,82 @@
+{
+  "task": "7.6",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "7.6-R1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "verification coverage / completeness",
+      "summary": "docs/limitations.md does not record that the byte-reproducible final artifact (567,856 B) was never itself live host-verified; the task 7.8 live end-to-end run covered the earlier 568,004 B package.",
+      "detail": "Task 7.5 rewrote the release assembly/package for byte-reproducibility (PathMap, suppressed InformationalVersion/SourceLink, deterministic packer), producing the current 567,856-byte artifact (sha256 bd10b9b6..., verified on the on-disk artifact). The 7.5 worker explicitly recorded as a known limitation that it did not re-run the live host end-to-end install/load/render verification and that the 7.8 live run was against the 568,004-byte package. The consolidated record documents P1 (no byte-identity test), P2 (reduced debug metadata), and V6 (host-guarded skips), but not this residual: the current shipped artifact has not itself been exercised live end-to-end. The gap is low risk because no product code changed (debug metadata and zip layout only), the host-guarded suite exercises the pinned host in-process on the final artifact (1234/44/1278), and the 7.8 live run demonstrated the pipeline on a functionally equivalent package. It is not an overclaim of a capability, but as the canonical limitations record it would be more complete with a verification-coverage note.",
+      "evidence": [
+        "stat artifacts/ArrTags_0.1.0.0.zip -> 567856; sha256sum -> bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51 (matches docs/limitations.md P1)",
+        "docs/changelog.md:2287 -> live 7.8 run used the 568,004-byte package",
+        "docs/implementation/7.5/worker-report.json known_limitations[6]: 'This task did not re-run the live host end-to-end install/load/render verification ... The current package (567,856 bytes) differs from the 7.8-verified package only in assembly debug metadata ... and zip layout'",
+        "docs/limitations.md V1-V6 and P1-P5 contain no statement that the final artifact was not live-verified"
+      ],
+      "recommended_action": "Optional completeness improvement: add a verification-coverage note in docs/limitations.md that the byte-reproducible 567,856-byte artifact has not itself been live host-verified end-to-end, and that the task 7.8 live run covered the functionally equivalent 568,004-byte package (debug metadata/zip layout delta only). Not required to approve task 7.6."
+    },
+    {
+      "id": "7.6-R2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation precision / host RID label",
+      "summary": "docs/architecture.md section 9 still labels the validated host 'linux-x64' while ADR-015 and docs/limitations.md now use the precise 'linux-musl-x64' (finding 7.8-R6); a minor internal-precision inconsistency in a canonical surface.",
+      "detail": "Task 7.6 correctly applied the 7.8-R6 fix to ADR-015 (docs/decisions.md now reads 'linux-musl-x64' with the jellyfin.deps.json runtimeTarget rationale) and docs/limitations.md F5 uses 'linux-musl-x64'. docs/architecture.md:944 was also edited by this task (status line, section 8/12 references) but still reads 'V1 is validated on the pinned Jellyfin 12.0.0 linux-x64 host'. This does not present unsupported capability (the plugin explicitly makes no RID-specific claim and the pinned host is x86-64), so it is a precision nit, not a correctness defect. README/PLANS 'linux-x64' occurrences are historical task-record bullets (e.g. task 5.4) already superseded by an explicit ADR-015 note and are correctly left as history.",
+      "evidence": [
+        "docs/architecture.md:944 'linux-x64 host'",
+        "docs/decisions.md ADR-015 'linux-musl-x64' (post-fix)",
+        "docs/limitations.md F5 'linux-musl-x64 host'",
+        "task 7.8 reviewer finding 7.8-R6 (labelled optional, not required for 7.8)"
+      ],
+      "recommended_action": "Optional: align docs/architecture.md:944 with the linux-musl-x64 label already used in ADR-015/limitations.md. Not required for task 7.6."
+    },
+    {
+      "id": "7.6-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation precision / citation",
+      "summary": "The F3 evidence cites 'docs/architecture.md line 1114', which moved to ~line 1116 after this task's own architecture.md edits; the citation still resolves to the correct section.",
+      "detail": "docs/limitations.md F3 cites docs/architecture.md line 1114 for the missing metrics/diagnostic surface. After the task's edit the sentence now sits at approximately line 1116 ('A bounded, secret-free status/diagnostic surface is not yet implemented...'). This is cosmetic citation drift within the intended section and has no effect on the documented limitation.",
+      "evidence": [
+        "docs/limitations.md F3 'Evidence: docs/architecture.md line 1114'",
+        "docs/architecture.md ~1115-1116 contains the cited sentence after the task edit"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "tests_checked": [
+    "Justified reliance on the recorded validation for this documentation-only task: git status/diff confirm zero changes to src/, tests/, build.yaml, Directory.Build.props, scripts/, or packages.lock.json (only PLANS.md, README.md, docs/architecture.md, docs/changelog.md, docs/decisions.md, docs/implementation-readiness.md, docs/release/build-and-release.md, plus new docs/limitations.md and docs/implementation/7.6/). The code under test is identical to the task 7.5/7.8 baseline.",
+    "Baseline independently confirmed by earlier reviewers rather than re-run: task 7.4 reviewer reproduced default Failed 0/Passed 1218/Skipped 60/Total 1278 and host-guarded Failed 0/Passed 1234/Skipped 44/Total 1278; task 7.5 reviewer reproduced the same counts in clean exports. These match the task 7.6 worker report exactly.",
+    "Artifact inspection: artifacts/ArrTags_0.1.0.0.zip is 567,856 bytes, SHA-256 bd10b9b6... (matches docs/limitations.md P1 and PLANS.md AC5); 7 entries, no SkiaSharp.dll/libSkiaSharp.so, licenses/SkiaSharp-*.txt present (P3/P4 accurate).",
+    "ArrTags.deps.json (jq): SkiaSharp.NativeAssets.Linux/3.119.4 retains runtimeTargets for all Linux RIDs while the managed SkiaSharp/3.119.4 node has only dependencies - matching the corrected ADR-015 ExcludeAssets=runtime wording (7.8-R3).",
+    "Test surface verified by inspection: EnhancedCoexistenceTests contains 7 [Fact] methods (matches V3 '7/7'); JellyfinImageResponseTests uses DispatchProxy doubles for ILibraryManager/IProviderManager/IImageProcessor (matches V4); PluginPackagingTests has 7 content facts and no byte-identity assertion (matches P1); LifecycleFoundationTests and PluginStateLocationTests contain the completed-drain removal and incomplete-drain retention facts (matches V5); NonCanonicalRuntimeFactAttribute skips unless ARRTAGS_NONCANONICAL_GOLDENS=1 and Goldens/non-canonical is absent (matches V2)."
+  ],
+  "research_checked": [
+    "docs/implementation/7.2/worker-report.json + reviewer-report.json: install-layout collision, live OnUninstalling 401 (Policies.RequiresElevation), live ImageSaver read-back gap - all reflected faithfully in V4/V5/P5.",
+    "docs/implementation/7.3/worker-report.json + reviewer-report.json: criteria 5/6/8 not met as shipped pre-7.8, criterion 7 contract-level only, no live Arr, runtime config replacement, host SkiaSharp conflict - reflected in V1/V3/F2/F5.",
+    "docs/implementation/7.4/worker-report.json + reviewer-report.json: findings 7.4-R1 (ArtworkSubjectGate idle eviction) and 7.4-R2 (webhook 401 ProblemDetails) - reflected in D2 and D1 with the correct evidence and dispositions.",
+    "docs/implementation/7.5/worker-report.json + reviewer-report.json: byte-reproducibility hash/mechanism, PackagePlugin stage-only, suppressed debug metadata, no byte-identity test - reflected in P1/P2/P3.",
+    "docs/implementation/7.7/worker-report.json + reviewer-report.json: ProgramDataPath/ArrTags state root and the ADR-014 pre-release orphaned folder - reflected in P5; code confirmed at src/ArrTags/Plugin.cs:69-73.",
+    "docs/implementation/7.8/worker-report*.json + reviewer-report*.json: ADR-015 host-supplied SkiaSharp, linux-musl-x64 label (7.8-R6), retained notices, native byte-identity - reflected in F5/P4 and the ADR/limitations wording.",
+    "Code cross-checks: OperationalLimits.QueueCapacity default 512 (F1/F4); ConfigurationSnapshotService.TryReplace defined but only called from tests (F2 accurate); csproj ExcludeAssets=runtime and the stage-only PackagePlugin target (P3/ADR-015); global.json SDK 10.0.0 latestMinor and Directory.Build.props/PathMap suppression (P1/P2); docs/architecture.md lines 472-478 and ~1116 support F4/F3."
+  ],
+  "documentation_checked": [
+    "docs/limitations.md (new canonical record): all 16 required items present and each mapped to evidence - F1 provider cache, F2 runtime config replacement, F3 metrics surface, F4 reconciliation bound, V2 ADR-010 non-canonical, V1 no live Arr, V3 Enhanced contract-level, V4 SaveImage read-back, V5 OnUninstalling drain, P5 pre-release orphan, P1/P2 reproducibility+debug metadata, P3 PackagePlugin stage-only, P4 SkiaSharp notices, F5 host-supplied SkiaSharp, D1 webhook 401, D2 ArtworkSubjectGate.",
+    "docs/limitations.md V1 success-criteria table cross-checked: criteria 1-4/8/9 'Met', 5 'Met as shipped' (host SkiaSharp), 6 'render/publication met, provider fetches partial', 7 'contract level only' - consistent with the 7.3/7.8 reports and not overclaiming. Phase 7 AC1-5 mapped to tasks 7.1/7.7/7.8/7.5, matching PLANS.md's checked AC list.",
+    "PLANS.md: Project Status line 5 now enumerates 7.1-7.8 complete (7.5-F5 fixed); Milestone 7 row 179 says Phase 7 Complete and lists every task; task 7.6 checkbox [x] with status; task 7.6 status section; Post-V1 Backlog open-items list; Phase 7 AC list all [x]; Gate 7 not declared (line 2897 is the definition only).",
+    "README.md: Current milestone now Phase 7 complete/BZ Gate 7 undeclared; task 7.6 complete; Next tasks point to docs/limitations.md; new 'Known limitations' section accurate (567,856-byte artifact identity matches).",
+    "docs/architecture.md: status line Phase 7 complete with task 7.6 note; section 8/12 'tracked for Phase 7' replaced with open-limitation references to docs/limitations.md.",
+    "docs/changelog.md: Phase 7 status Complete; task 7.6 entry added; earlier Phase 6 deferral paragraph now points at docs/limitations.md; no stale 'tracked for Phase 7'/'7.6 pending' text remains outside preserved history (only docs/changelog.md:1379 Phase 6 historical entry).",
+    "docs/decisions.md: ADR-015 now labels the host linux-musl-x64 (7.8-R6) and precisely describes ExcludeAssets=runtime vs deps.json runtimeTargets (7.8-R3), verified against the produced deps.json; ADR-012 section 8/12 references point at docs/limitations.md.",
+    "docs/implementation-readiness.md: status line Phase 7 complete/task 7.6 complete with explicit criteria status; Phase 6 deferrals and the new reconciliation-bound/verification limitations list consolidated to docs/limitations.md.",
+    "docs/release/build-and-release.md: new pinned-toolchain, debug-metadata, PackagePlugin stage-only, retained-notice, and pointer-to-limitations notes are accurate.",
+    "Scope/state: git diff confirms no source/test/packaging/behavior change; task 7.6 marked complete on all canonical surfaces; Gate 7 not declared and the Phase 7 phase review left to a separate review."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

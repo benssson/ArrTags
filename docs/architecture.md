@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5, 6, and 8 are now met as shipped.
+**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 complete (all five acceptance criteria are met; Gate 7 is not declared because the phase review is separate). Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5, 6, and 8 are now met as shipped. Task 7.6 consolidates the known limitations and deferred decisions in `docs/limitations.md`; all five Phase 7 acceptance criteria are met and no deferred or unverified capability is presented as available.
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -474,8 +474,9 @@ and post-scan scopes are enumerated from the start of a deterministic order and
 the queue drops overflow, so a single run over a scope larger than
 `QueueCapacity` covers a bounded prefix; successive runs overlap rather than
 advancing. Making successive runs cover the whole scope (a persisted enumeration
-cursor, stale/unknown-only enqueue, or direct pipeline drive) is tracked for
-Phase 7 rather than presented as solved.
+cursor, stale/unknown-only enqueue, or direct pipeline drive) is not implemented
+and is documented as an open limitation in `docs/limitations.md` rather than
+presented as solved.
 
 The installed webhook boundary (`src/ArrTags/Webhooks`, ADR-012) realizes this
 contract. `ArrTagsWebhookController` is an anonymous plugin route
@@ -1111,7 +1112,8 @@ a live session and the active image are never reclaimed.
 Metrics or diagnostic status should distinguish queue depth, API health,
 matching failures, cache hits/misses, render failures, and stale metadata
 without exposing credentials or full external payloads. A bounded, secret-free
-status/diagnostic surface is not yet implemented and is tracked for Phase 7.
+status/diagnostic surface is not yet implemented and is documented as an open
+limitation in `docs/limitations.md`.
 
 The provider concurrency (per connection and global) and render concurrency
 limits are enforced at their boundaries, not merely validated. Each provider

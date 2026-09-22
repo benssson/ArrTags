@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011; Phase 5 Jellyfin artwork integration complete (tasks 5.1 through 5.11, Gate 5 met at the integration-test level); Phase 6 caching, updates, and performance complete (tasks 6.1 through 6.9, Gate 6 met at the integration-test level, tag `v0.1.0-phase6`; the provider inventory/catalogue cache, runtime configuration replacement, the reconciliation coverage bound, and a metrics/status surface are tracked for Phase 7); Phase 7 in progress - tasks 7.1, 7.2, and 7.7 complete; task 7.2's live verification found a release-blocking versioned-install/data-folder collision that task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) with regression tests and a re-run live install/upgrade/reload/uninstall verification that passes, so Phase 7 acceptance criterion 2 is met; task 7.3 complete - the live GOALS success-criteria verification on the pinned host met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 (the bundled `SkiaSharp.dll`/`libSkiaSharp.so` conflict fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication); task 7.8 complete - the plugin no longer bundles the duplicate renderer runtime and shares the host's SkiaSharp through the default load context (ADR-015, superseding the bundling parts of ADR-010), with the packaged-runtime contract updated in `ArrTags.csproj`, `build.yaml`, and `PluginPackagingTests`, and a re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host that passes (the package loads with no error, a badge publishes with no host crash, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed mock metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with the current artwork unchanged), so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete - the live review of logs, diagnostics, HTTP behavior, and persisted state found no credential leakage and no unbounded path (negative result), so no production fix was required; task 7.5 complete - the release package now builds byte-reproducibly from a clean checkout (deterministic packer, `PathMap`, and suppressed git-derived SDK inputs) and the commands, pinned inputs, artifact identity, supported version ranges, and release checklist are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 remains pending
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011; Phase 5 Jellyfin artwork integration complete (tasks 5.1 through 5.11, Gate 5 met at the integration-test level); Phase 6 caching, updates, and performance complete (tasks 6.1 through 6.9, Gate 6 met at the integration-test level, tag `v0.1.0-phase6`; the provider inventory/catalogue cache, runtime configuration replacement, the reconciliation coverage bound, and a metrics/status surface remain open and are consolidated in `docs/limitations.md`); Phase 7 complete - tasks 7.1-7.8 complete and all five Phase 7 acceptance criteria are met; task 7.2's live verification found a release-blocking versioned-install/data-folder collision that task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) with regression tests and a re-run live install/upgrade/reload/uninstall verification that passes, so Phase 7 acceptance criterion 2 is met; task 7.3 complete - the live GOALS success-criteria verification on the pinned host met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 (the bundled `SkiaSharp.dll`/`libSkiaSharp.so` conflict fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication); task 7.8 complete - the plugin no longer bundles the duplicate renderer runtime and shares the host's SkiaSharp through the default load context (ADR-015, superseding the bundling parts of ADR-010), with the packaged-runtime contract updated in `ArrTags.csproj`, `build.yaml`, and `PluginPackagingTests`, and a re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host that passes (the package loads with no error, a badge publishes with no host crash, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed mock metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with the current artwork unchanged), so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete - the live review of logs, diagnostics, HTTP behavior, and persisted state found no credential leakage and no unbounded path (negative result), so no production fix was required; task 7.5 complete - the release package now builds byte-reproducibly from a clean checkout (deterministic packer, `PathMap`, and suppressed git-derived SDK inputs) and the commands, pinned inputs, artifact identity, supported version ranges, and release checklist are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`, which states explicitly that all five Phase 7 acceptance criteria are met; `GOALS.md` criteria 1-4, 8, and 9 are met as shipped; criterion 5 is met as shipped but requires the host to supply a compatible SkiaSharp; criterion 6 is met for render and publication but only partial for provider fetches; and criterion 7 is met only at the contract level, so no deferred or unverified capability is presented as available. All Phase 7 tasks are complete; Gate 7 is not declared because the phase review is separate
 
 **Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, ADR-010, and ADR-011; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -410,8 +410,9 @@ that introduce them.
   initial supported provider-version matrix is resolved by ADR-013: Sonarr
   3.x-4.x and Radarr 3.x-6.x on `/api/v3`, with absent optional fields mapped to
   explicit unknowns and a malformed required field failing closed as
-  `ProviderIncompatible`. The provider catalogue/inventory cache and
-  cross-provider normalization strategy remain tracked for Phase 7.
+  `ProviderIncompatible`. The provider catalogue/inventory cache remains an open
+  item consolidated in `docs/limitations.md`, and the cross-provider
+  normalization strategy remains a post-V1 consideration.
 - Decide whether stale metadata retains the active derived artwork, restores the
   source, or publishes an unbadged source image.
 - Define webhook authentication, replay protection, rate limits, payload bounds,
@@ -489,7 +490,8 @@ that introduce them.
 - Configured Jellyfin-to-Arr path fallback and path normalization, if later
   evidence justifies the additional namespace and ambiguity contract (ADR-008).
 
-**Tracked from the Phase 6 review (Phase 7 scope; not presented as solved):**
+**Open items carried out of Phase 7 (from the Phase 6 review and the Phase 7
+reviews; consolidated in `docs/limitations.md` and not presented as solved):**
 
 - Provider catalogue/inventory cache: every reconciliation work item still
   re-reads the whole provider library and the per-record file resource, so the
@@ -503,6 +505,19 @@ that introduce them.
 - Safe metrics/diagnostic-status surface: bounded queue, provider-health,
   matching, cache, render, and stale-data counters exist internally but no
   bounded, secret-free user-facing or diagnostic status surface exists yet.
+- Reconciliation coverage bound: successive scheduled/post-scan runs re-cover the
+  same bounded `QueueCapacity` prefix when the scope is larger, so full coverage
+  is not guaranteed by a single run (`docs/architecture.md` lines 472-478).
+- Verification-coverage gaps and packaging/release limitations (no live
+  Sonarr/Radarr instance; unselected/unrun ADR-010 non-canonical comparison;
+  contract-level-only Enhanced coexistence; manual-only live `SaveImage`
+  read-back; unexercised live uninstall drain; pinned-toolchain-dependent
+  byte-reproducibility; reduced debug metadata; stage-only `PackagePlugin=true`;
+  retained SkiaSharp license notices; pre-release orphaned state) are itemized in
+  `docs/limitations.md`.
+- Optional hardening: `ArtworkSubjectGate` has no idle eviction (task 7.4
+  finding 7.4-R1); the webhook `401` framework ProblemDetails body is a minor
+  wording gap for a future ADR-012 clarification (task 7.4 finding 7.4-R2).
 
 **Resolved by task 7.7 (Phase 7 release blocker from task 7.2):**
 

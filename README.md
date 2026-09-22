@@ -1,6 +1,8 @@
 ## Project Status
 
-**Current milestone:** Phase 7 — Testing & release is in progress. Tasks 7.1
+**Current milestone:** Phase 7 — Testing & release is complete: all five Phase 7
+acceptance criteria are met. Gate 7 is not declared because the phase review is
+separate. Tasks 7.1
 (full suite against the declared versions), 7.2 (live install/upgrade/reload/
 uninstall on the pinned host), 7.7 (relocated state root outside `PluginsPath`
 by ADR-014 and re-ran the live install verification, meeting Phase 7 acceptance
@@ -10,8 +12,9 @@ the live end-to-end verification), 7.4 (the live review of logs, diagnostics,
 HTTP behavior, and persisted state found no credential leakage and no unbounded
 path - a negative result), and 7.5 (the release package now builds from a clean
 checkout byte-reproducibly, with the commands, inputs, artifact identity, and
-supported version ranges recorded in `docs/release/build-and-release.md`) are
-complete; task 7.6 remains. The task
+supported version ranges recorded in `docs/release/build-and-release.md`), and
+7.6 (the known limitations and deferred decisions are consolidated in
+`docs/limitations.md`) are complete. The task
 7.8 re-verification on the pinned Jellyfin `12.0.0` musl host passes for the
 committed package: it loads with no error, a badge publishes with no host crash,
 the published bytes are served by `GET /Items/{id}/Images/Primary` and match the
@@ -539,10 +542,28 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 
 Next tasks:
 
-- Phase 7 — Testing & release. Tasks 7.1-7.5, 7.7, and 7.8 are complete; task
-  7.6 (document known limitations and deferred decisions) is the next task in
-  the authoritative execution order.
-- Deferred to the testing/release milestone: select and record the second
-  explicitly supported non-canonical Linux runtime, produce its golden set under
-  `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant
-  cross-runtime comparison.
+- Phase 7 — Testing & release is complete (tasks 7.1-7.8); all five Phase 7
+  acceptance criteria are met. No Phase 7 implementation task remains; Gate 7 is
+  not declared here and is covered by the separate phase review.
+- Open follow-ups are consolidated in `docs/limitations.md`: the provider
+  inventory/catalogue cache, runtime configuration replacement wiring, the
+  metrics/diagnostic-status surface, the `QueueCapacity`-bounded reconciliation
+  prefix, and the verification-coverage and packaging/release limitations. The
+  ADR-010 non-canonical cross-runtime comparison remains unselected/unrun: select
+  and record the second explicitly supported non-canonical Linux runtime, produce
+  its golden set under `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the
+  tolerant comparison.
+
+## Known limitations
+
+The consolidated current-state record of known limitations and deferred
+decisions is `docs/limitations.md`. In summary: `GOALS.md` success criteria 1-4,
+8, and 9 are met as shipped; criterion 5 is met as shipped but requires the host
+to supply a compatible SkiaSharp; criterion 6 is met for render and publication
+but only partial for provider fetches; and criterion 7 is met only at the
+contract level. The main open items are the missing provider
+inventory/catalogue cache, the unwired runtime configuration replacement, the
+absent bounded metrics/diagnostic-status surface, the `QueueCapacity`-bounded
+reconciliation prefix, and the limited live-verification coverage (no real
+Sonarr/Radarr instance, no live Jellyfin Enhanced install, manual-only live
+image read-back, and the unexercised live uninstall drain).

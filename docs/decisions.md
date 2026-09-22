@@ -1553,8 +1553,8 @@ that supported mechanism and does not replace or intercept any host route.
   coalescing queue, and a run over a scope larger than `QueueCapacity` drops the
   tail and re-enumerates from the start of a deterministic order on the next run.
   Successive runs therefore overlap rather than advancing across a larger scope;
-  making successive runs cover the whole scope is tracked for Phase 7 (see
-  `docs/architecture.md` section 8).
+  making successive runs cover the whole scope remains an open limitation
+  documented in `docs/limitations.md` (see `docs/architecture.md` section 8).
 - The controller registration depends on Jellyfin's documented plugin
   controller discovery; the exact host routing behavior remains an
   implementation-time validation item.
@@ -1904,9 +1904,13 @@ ArrTags stops bundling the renderer runtime and shares the host's SkiaSharp.
   only, both with `<ExcludeAssets>runtime</ExcludeAssets>`, matching the existing
   `Jellyfin.Controller`/`Jellyfin.Model` pattern. The plugin compiles against the
   same managed SkiaSharp the Jellyfin `12.0.0` host uses, and
-  `SkiaSharp.NativeAssets.Linux` remains a compile-time-only pin so the expected
-  native ABI is recorded in the dependency graph without shipping a native
-  library.
+  `SkiaSharp.NativeAssets.Linux` pins the expected native ABI in the dependency
+  graph without shipping a native library. Precisely, `ExcludeAssets=runtime`
+  keeps the runtime assets out of the build output and the package, but it does
+  not remove the `SkiaSharp.NativeAssets.Linux` `runtimeTargets` entries for the
+  Linux RIDs that remain in `ArrTags.deps.json`; those native files are not
+  staged into the package, and at runtime the plugin uses the host's own native
+  library (task 7.8 reviewer finding 7.8-R3).
 - The plugin package no longer carries `SkiaSharp.dll` or `libSkiaSharp.so`.
   The `PackagePlugin` target ships only `ArrTags.dll`, `ArrTags.deps.json`,
   `build.yaml`, `THIRD-PARTY-NOTICES.md`, and the `licenses/` notices, no longer
@@ -1918,10 +1922,12 @@ ArrTags stops bundling the renderer runtime and shares the host's SkiaSharp.
   folder) resolves nothing from the folder, so the runtime falls back to the
   host's `jellyfin.deps.json` assembly. The host's native `libSkiaSharp.so` and
   its `libfontconfig.so.1` dependency are the ones used.
-- V1 remains validated only on the pinned Jellyfin `12.0.0` `linux-x64` host
-  (musl and glibc are not separately distinguished by the plugin). The plugin
-  makes no RID-specific runtime claim; the host it runs on must provide SkiaSharp
-  and its native dependencies.
+- V1 remains validated only on the pinned Jellyfin `12.0.0` `linux-musl-x64`
+  host (the plugin does not separately distinguish musl from glibc; the pinned
+  host's `jellyfin.deps.json` runtime target is
+  `.NETCoreApp,Version=v10.0/linux-musl-x64` - task 7.8 reviewer finding
+  7.8-R6). The plugin makes no RID-specific runtime claim; the host it runs on
+  must provide SkiaSharp and its native dependencies.
 - The test project (`tests/ArrTags.Tests/ArrTags.Tests.csproj`) references
   `SkiaSharp` and `SkiaSharp.NativeAssets.Linux` `3.119.4` directly so the
   golden, native, and load-context tests still exercise the real pinned renderer
