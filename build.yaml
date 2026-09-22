@@ -15,8 +15,6 @@ category: "General"
 owner: "arrtags"
 artifacts:
   - "ArrTags.dll"
-  - "SkiaSharp.dll"
-  - "libSkiaSharp.so"
   - "ArrTags.deps.json"
 changelog: >
   Initial plugin foundation.

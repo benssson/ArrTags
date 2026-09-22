@@ -4,23 +4,26 @@
 (full suite against the declared versions), 7.2 (live install/upgrade/reload/
 uninstall on the pinned host), 7.7 (relocated state root outside `PluginsPath`
 by ADR-014 and re-ran the live install verification, meeting Phase 7 acceptance
-criterion 2), and 7.3 (live `GOALS.md` success-criteria verification) are
-complete; tasks 7.4-7.6 remain. The task 7.3 verification exercised the full
-pipeline live against a committed mock Sonarr/Radarr fixture and confirmed
-criteria 1-4 and 9 (independent provider configuration, movie/episode matching,
-actual quality retrieval, and reproducible build/test), and covered Enhanced
-compatibility at the contract-test level (`EnhancedCoexistenceTests` 7/7;
-Jellyfin Enhanced is not installed live).
+criterion 2), 7.3 (live `GOALS.md` success-criteria verification), and 7.8
+(resolved the duplicate-SkiaSharp release blocker 7.3-F1 by ADR-015 and re-ran
+the live end-to-end verification) are complete; tasks 7.4-7.6 remain. The task
+7.8 re-verification on the pinned Jellyfin `12.0.0` musl host passes for the
+committed package: it loads with no error, a badge publishes with no host crash,
+the published bytes are served by `GET /Items/{id}/Images/Primary` and match the
+persisted `ActiveImageIdentity`, the original source posters are byte-unchanged,
+changed metadata republishes and unchanged metadata does not, and a provider
+outage leaves the host up with the current artwork unchanged. `GOALS.md`
+criteria 5, 6, and 8 are therefore met as shipped. Enhanced compatibility is
+covered at the contract-test level (`EnhancedCoexistenceTests` 7/7; Jellyfin
+Enhanced is not installed live).
 
-**Release blocker 7.3-F1 (task 7.3):** `GOALS.md` criteria 5, 6, and 8 are **not
-met as shipped**. The package's bundled `SkiaSharp.dll`/`libSkiaSharp.so`
-collide fatally with the pinned host's own SkiaSharp, so the first badge
-publication aborts Jellyfin with `InvalidCastException`. Removing the bundled
-assets from the installed plugin folder (sharing the host's SkiaSharp) made the
-whole pipeline work, so this needs a packaging/architecture decision (new ADR,
-`build.yaml`, and `PluginPackagingTests`) before V1 can be released. Phase 7
-acceptance criteria 3 and 4 remain unchecked and Gate 7 is not met. See
-`PLANS.md` task 7.3 and `docs/changelog.md`.
+**Resolved release blocker 7.3-F1 (task 7.3, resolved by task 7.8):** the
+previously bundled `SkiaSharp.dll`/`libSkiaSharp.so` collided fatally with the
+pinned host's own SkiaSharp, aborting Jellyfin on the first badge publication.
+ADR-015 stops shipping the renderer runtime and shares the host's SkiaSharp
+through the default load context; the plugin package now contains only
+`ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`, and the notices. See
+`PLANS.md` task 7.8, `docs/decisions.md` ADR-015, and `docs/changelog.md`.
 
 Phase 5 — Jellyfin artwork integration is complete (tasks 5.1 through 5.11; Gate
 5 met for the pinned 12.0.0 ABI at the integration-test level). Phase 6 — Caching,
@@ -114,6 +117,8 @@ Completed in Phase 4 (Badge rendering):
   font asset changes the fingerprint. `THIRD-PARTY-NOTICES.md` and the
   `licenses/` files (`DejaVu-Fonts-License.txt`, `SkiaSharp-LICENSE.txt`, and
   `SkiaSharp-THIRD-PARTY-NOTICES.txt`) are copied into the plugin package.
+  (Task 7.8/ADR-015 later stopped shipping the renderer runtime; the notices
+  remain in the package.)
 - 4.8 SkiaSharp host-compatibility spike: the pinned Jellyfin 12.0.0 host stack
   (`SkiaSharp` / `SkiaSharp.HarfBuzz` / `SkiaSharp.NativeAssets.Linux` `3.119.4`
   and `HarfBuzzSharp` / `HarfBuzzSharp.NativeAssets.Linux` `8.3.1.5`, native
@@ -122,7 +127,9 @@ Completed in Phase 4 (Badge rendering):
   using the pinned `3.119.4` native library and the embedded DejaVu Sans Bold
   font is an environment-guarded test. The Phase 5 packaging constraint is to
   place the managed and root-level native SkiaSharp assets in the plugin folder.
-  `HarfBuzzSharp` is confirmed unnecessary for ADR-009's labels. Evidence is in
+  (Task 7.3 then found that constraint fatal and task 7.8/ADR-015 supersedes it:
+  the plugin shares the host's SkiaSharp instead of bundling it.) `HarfBuzzSharp`
+  is confirmed unnecessary for ADR-009's labels. Evidence is in
   `docs/research/skia-host-compatibility.md`.
 - 4.9 Provider-neutral renderer service and drawing engine (ADR-009/ADR-010):
   `SourceImageInput`, the minimal `BadgeDefinition` snapshot with its code-owned
@@ -278,6 +285,9 @@ Completed in Phase 5 (Jellyfin artwork integration):
   Jellyfin `PluginLoadContext` over the exact package mapped the plugin-local
   `libSkiaSharp.so` next to `SkiaSharp.dll`. A full image render is not wired
   until tasks 5.5/5.11. New packaging tests live in `PluginPackagingTests`.
+  (Task 7.8/ADR-015 supersedes the bundling: the package now ships only
+  `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`, and the notices, and
+  `PluginPackagingTests` asserts the duplicate SkiaSharp runtime is absent.)
 - 5.6 Implemented the durable `ArtworkOperation` write-ahead record and its
   authoritative store in `src/ArrTags/Artwork` (ADR-003; data-model sections
   3.10.3 and 3.10.4; architecture section 9). `ArtworkOperation` carries the

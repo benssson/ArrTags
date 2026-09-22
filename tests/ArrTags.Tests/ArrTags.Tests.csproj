@@ -16,6 +16,13 @@
   <ItemGroup>
     <PackageReference Include="Jellyfin.Controller" Version="12.0.0" />
     <PackageReference Include="Jellyfin.Model" Version="12.0.0" />
+    <!-- ADR-015: the plugin package no longer ships SkiaSharp. The test project
+         still pins the exact renderer runtime so the golden, native, and
+         load-context tests exercise the real pinned SkiaSharp 3.119.4 stack in
+         the test environment; this reference is never part of the plugin
+         package. -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">

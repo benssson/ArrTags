@@ -73,11 +73,26 @@ Embedded SONAMEs: `libSkiaSharp.so.119.0.0` and
 
 The host's `libSkiaSharp.so` is byte-for-byte identical to the local NuGet
 `skiaSharp.nativeassets.linux/3.119.4` `runtimes/linux-x64/native/libSkiaSharp.so`
-(same SHA-256). The host's `SkiaSharp.dll` is byte-for-byte identical to the
-local NuGet `skiaSharp/3.119.4` `lib/net10.0/SkiaSharp.dll` (SHA-256
+(same SHA-256) **on this glibc spike host**. The host's `SkiaSharp.dll` is
+byte-for-byte identical to the local NuGet `skiaSharp/3.119.4`
+`lib/net10.0/SkiaSharp.dll` (SHA-256
 `aaaaa18c68ba1f3a3408b00dff28b11d5705198e17ba9d3aa59222bfd35407c8`). The host's
 `SkiaSharp.HarfBuzz.dll` is SHA-256
 `a3395e68c225d9fbe950312117e50ba475240a4b6b1deb8feb3c27dfcf6a767a`.
+
+**Correction (task 7.3 reviewer finding F2).** The native byte-identity claim
+holds only for the matching RID, not across RIDs. On the pinned Jellyfin `12.0.0`
+musl host, `/tmp/jf/jellyfin/libSkiaSharp.so` is 18,453,464 bytes / SHA-256
+`59039b2548e3a3f563fa247f582c62d280c2015df78316fcab62e383d7ae9d4f`, which is
+byte-identical to the NuGet `3.119.4` **linux-musl-x64** asset
+(`runtimes/linux-musl-x64/native/libSkiaSharp.so`) and to the file shipped inside
+the pinned `/tmp/jf/jellyfin.tar.gz`. It differs from the NuGet `3.119.4`
+**linux-x64** asset (11,170,296 bytes / SHA-256
+`66c856eaf1a47a00b23204c30c6ee407987bf5086ecc0a1a6b4fd67526b0cd02`) that the
+glibc spike host matched. The managed `SkiaSharp.dll` **is** byte-identical on
+both hosts. The ADR-015 fix therefore shares the host's own native library; the
+native library is RID-specific even within the same NuGet version, so only the
+managed byte-identity is host-independent.
 
 Native dependency facts (Confirmed): `libSkiaSharp.so` links
 `libfontconfig.so.1` (and references `libGL.so.1`). The pinned sysroot at
@@ -172,6 +187,18 @@ Conclusions (Confirmed by the executed scenarios):
 
 ### 3.4 Resulting Phase 5 packaging constraint
 
+> **Superseded by [ADR-015](../decisions.md) (task 7.8).** The packaging
+> constraint below was the basis for the original bundling decision. Task 7.3
+> then found live (finding 7.3-F1) that shipping the managed `SkiaSharp.dll` and
+> native `libSkiaSharp.so` in the plugin package is fatal: the host and the
+> plugin end up with two managed SkiaSharp assemblies in different load
+> contexts, and Jellyfin aborts on `InvalidCastException` on the first badge
+> publication. ADR-015 supersedes this constraint: the plugin compiles against
+> the pinned SkiaSharp but ships none of its runtime assets and shares the
+> host's managed assembly and native library through the default load context.
+> The load-context measurements in sections 3.1-3.3 remain valid evidence; the
+> packaging conclusion does not.
+
 ADR-010 requires the plugin package to carry the native assets for every Linux
 architecture it claims and forbids silently loading an arbitrary system Skia
 library. The measured constraint for the Phase 5 packaging task is:
@@ -193,6 +220,11 @@ library. The measured constraint for the Phase 5 packaging task is:
   acceptable because the renderer treats SkiaSharp as a private implementation
   detail. Renderer code must not pass SkiaSharp types across the plugin
   load-context boundary (for example into host services or canonical models).
+  **Correction (task 7.3 finding 7.3-F1, superseded by ADR-015):** this is not
+  acceptable in practice. Jellyfin's own SkiaSharp image processor and the
+  plugin's second managed copy have incompatible type identities, and the host
+  aborts with `InvalidCastException` on the first badge publication, so the
+  plugin must not ship the duplicate.
 - The plugin's own `.deps.json` is not what makes managed resolution work; it is
   still worth shipping for completeness, but the effective mechanism is
   Jellyfin's folder DLL scan plus same-directory native probing.
@@ -304,9 +336,9 @@ them stands.
   version pin, native asset (`libHarfBuzzSharp.so`), notice, and fingerprint
   participation. It is out of V1.
 
-Consequently, the plugin keeps only `SkiaSharp` and
-`SkiaSharp.NativeAssets.Linux` at `3.119.4`, and the Phase 5 package must carry
-`SkiaSharp.dll` + `libSkiaSharp.so`.
+Consequently, the plugin keeps `SkiaSharp` and `SkiaSharp.NativeAssets.Linux` at
+`3.119.4` as compile-time-only references (ADR-015) and ships neither the managed
+nor the native renderer asset in the plugin package.
 
 ## 6. Limitations and not-yet-verified items
 
@@ -317,10 +349,11 @@ Consequently, the plugin keeps only `SkiaSharp` and
 - Only the `linux-x64` RID and the Ubuntu 24.04 sysroot were exercised.
 - The round-trip proof is not part of the default `./build.sh test` execution;
   it runs only with `ARRTAGS_SKIA_COMPAT=1` and the sysroot on the loader path.
-- The plugin is now packaged with the managed and root-level native SkiaSharp
-  assets (task 5.4). The live-host run and the replicated load-context run in
-  section 3.5 confirm the layout; a full image render through Jellyfin remains
-  task 5.5/5.11.
+- The plugin originally shipped the managed and root-level native SkiaSharp
+  assets (task 5.4). Task 7.3 found that packaging fatal live (finding 7.3-F1),
+  and ADR-015 supersedes it: the plugin now ships neither asset and shares the
+  host's SkiaSharp. The task 7.8 live re-verification covers the full render and
+  publication path through Jellyfin.
 
 ## 7. References
 

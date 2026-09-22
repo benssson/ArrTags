@@ -2057,7 +2057,7 @@ are tracked in the PLANS.md Post-V1 Backlog Phase 7 list and in
 
 ## Phase 7 - Testing & release (Milestone 7)
 
-**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); task 7.3 complete (the live GOALS success-criteria verification met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 - the bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked); tasks 7.4-7.6 pending.
+**Status:** In progress. DG-9 resolved by ADR-013; task 7.1 complete (the full suite passes from a clean rebuild against the declared versions); task 7.2 complete (the live install/upgrade/reload/uninstall verification found the release-blocking versioned-install/data-folder collision); task 7.7 complete (the state root is relocated outside `PluginsPath` by ADR-014, with regression tests and a re-run live verification that now passes, so Phase 7 acceptance criterion 2 is met); task 7.3 complete (the live GOALS success-criteria verification met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 - the bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked); task 7.8 complete (the duplicate SkiaSharp runtime is no longer shipped and the plugin shares the host's SkiaSharp by ADR-015, with regression coverage and a re-run live end-to-end verification that passes, so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met); tasks 7.4-7.6 pending.
 
 ### Decision - Supported provider release ranges and optional-field compatibility (DG-9)
 
@@ -2259,3 +2259,47 @@ artwork unchanged and the last-known-good metadata marked stale. No production
 code or package content was changed by this verification task, and an ADR plus a
 `build.yaml`/`PluginPackagingTests` change are required before V1 can be
 released.
+
+### Task 7.8 - Host-provided SkiaSharp and live end-to-end re-verification (ADR-015)
+
+**Status:** Complete. Resolves the task 7.3 release blocker 7.3-F1 and re-runs
+the live end-to-end verification, so `GOALS.md` criteria 5, 6, and 8 are met as
+shipped and Phase 7 acceptance criteria 3 and 4 are met.
+
+The decision is recorded in `docs/decisions.md` ADR-015, which supersedes the
+renderer-bundling parts of ADR-010 and the task 4.8 section-3 packaging
+constraint, and corrects the native `libSkiaSharp.so` byte-identity claim that
+was measured only on the glibc spike host (task 7.3 reviewer finding F2). The
+plugin now compiles against the pinned `SkiaSharp` /
+`SkiaSharp.NativeAssets.Linux` `3.119.4` packages with
+`<ExcludeAssets>runtime</ExcludeAssets>` and no longer ships, copies, or fails on
+the renderer runtime. `build.yaml` `artifacts` lists only `ArrTags.dll` and
+`ArrTags.deps.json`, and the `PackagePlugin` target stages only the plugin
+assembly, dependency manifest, plugin manifest, notices, and licenses. The
+package contains no `SkiaSharp.dll` or `libSkiaSharp.so`. `PluginPackagingTests`
+asserts the new contract, including a regression that the archive contains
+neither duplicate, and the test project references the pinned SkiaSharp runtime
+directly so the golden/native renderer tests keep exercising the real stack (the
+forced native round trip passes 2/2).
+
+Live re-verification on the pinned Jellyfin `12.0.0` musl host with
+`artifacts/ArrTags_0.1.0.0.zip` (568,004 bytes): installed as
+`data/plugins/ArrTags_0.1.0.0`, it loaded with `Loaded plugin: ArrTags 0.1.0.0`
+and no plugin-folder SkiaSharp assembly load, and no `[ERR]`/`[FTL]`. After the
+prior plugin image state was cleared and the items were reset to their original
+sidecar posters, the ArrTags scheduled reconciliation published both badges with
+0 `[FTL]`/`InvalidCastException`; `GET /Items/{id}/Images/Primary` served
+`image/png` 6,112 and 8,315 bytes whose SHA-256 equalled the persisted
+`PublishedArtworkState.ActiveImageIdentity` (and the metadata-store `poster.png`);
+the original `poster.jpg`/`S01E01.jpg` files were byte-unchanged; the persisted
+`SourceArtifactId` equalled the original poster SHA-256; changed mock metadata
+(1080p -> 2160p/HDR10) produced new metadata/publication fingerprints, new image
+tags, and new served bytes while an unchanged re-run left them identical; a
+simulated provider outage (503) left the host up (10/10 HTTP 200) with the
+artwork unchanged and both metadata states marked stale; and removing the plugin
+folder produced zero loads and a clean `Startup complete`. Build 0 warnings / 0
+errors; default suite Failed 0, Passed 1218, Skipped 60, Total 1278; host-guarded
+suite (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) Failed 0, Passed 1234,
+Skipped 44, Total 1278 (the -1 total is the net `PluginPackagingTests` change:
+two removed renderer-bundling facts and one added duplicate-asset regression
+fact).

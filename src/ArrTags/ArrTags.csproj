@@ -30,12 +30,21 @@
     <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
   </ItemGroup>
 
-  <!-- ADR-010: pin the renderer stack to the exact SkiaSharp managed and Linux
-       native asset versions used by the Jellyfin 12.0.0 host. HarfBuzzSharp is
-       deliberately not referenced until task 4.8 decides whether it is needed. -->
+  <!-- ADR-015 supersedes the bundling parts of ADR-010: pin the renderer stack
+       to the exact SkiaSharp managed and native versions the Jellyfin 12.0.0
+       host uses, but compile against them only and never ship or copy them. The
+       plugin resolves the host's SkiaSharp managed assembly and native library
+       through the default load context; shipping a second copy causes a fatal
+       type-identity conflict (task 7.3 finding 7.3-F1). SkiaSharp.NativeAssets.Linux
+       stays compile-time-only so the expected native ABI remains pinned without
+       shipping a native library. HarfBuzzSharp is deliberately not referenced. -->
   <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="3.119.4" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <!-- ADR-010: the bundled DejaVu Sans Bold 2.37 font is loaded from this
@@ -46,43 +55,30 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <!-- ADR-010 / task 5.4: V1 claims only linux-x64. The pinned host and the
-       measured plugin load-context behavior (docs/research/skia-host-compatibility.md
-       section 3) validate this single RID; other Linux RIDs are not claimed and
-       no arbitrary system Skia library is loaded. -->
-  <PropertyGroup>
-    <PluginRuntimeIdentifier Condition="'$(PluginRuntimeIdentifier)' == ''">linux-x64</PluginRuntimeIdentifier>
-  </PropertyGroup>
-
   <Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(PackagePlugin)' == 'true'">
     <PropertyGroup>
       <PluginStagingDirectory>$(MSBuildThisFileDirectory)../../artifacts/staging</PluginStagingDirectory>
       <PluginPackageFile>$(MSBuildThisFileDirectory)../../artifacts/ArrTags_$(Version).zip</PluginPackageFile>
     </PropertyGroup>
 
-    <!-- ADR-010 / task 5.4: the renderer's managed binding and the matching
-         Linux native asset are taken from the project's resolved runtime assets,
-         not from a hard-coded cache path. The measured host plugin load context
-         probes only the plugin folder root (not x64/ or runtimes/<rid>/native/),
-         so both files are staged next to ArrTags.dll. -->
+    <!-- ADR-015 (supersedes the bundling parts of ADR-010): the package carries
+         only the plugin assembly, its dependency manifest, the plugin manifest,
+         and the font/Skia notices. The renderer's managed and native SkiaSharp
+         assets are deliberately not staged; the plugin shares the host's
+         SkiaSharp through the default load context. V1 is validated on the
+         linux-x64 pinned host, whose own native libSkiaSharp.so is used. -->
     <ItemGroup>
-      <_ArrTagsManagedRendererAsset Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.Filename)%(RuntimeCopyLocalItems.Extension)' == 'SkiaSharp.dll'" />
-      <_ArrTagsNativeRendererAsset Include="@(RuntimeTargetsCopyLocalItems)" Condition="'%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' == '$(PluginRuntimeIdentifier)' and '%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native' and '%(RuntimeTargetsCopyLocalItems.Filename)%(RuntimeTargetsCopyLocalItems.Extension)' == 'libSkiaSharp.so'" />
       <_ArrTagsLicenseFile Include="$(MSBuildThisFileDirectory)../../licenses/*" />
     </ItemGroup>
-
-    <Error Condition="'@(_ArrTagsManagedRendererAsset)' == ''" Text="PackagePlugin: the managed renderer asset SkiaSharp.dll was not resolved from the project's pinned references." />
-    <Error Condition="'@(_ArrTagsNativeRendererAsset)' == ''" Text="PackagePlugin: the Linux native renderer asset libSkiaSharp.so was not resolved for RID '$(PluginRuntimeIdentifier)'." />
 
     <RemoveDir Directories="$(PluginStagingDirectory)" />
     <MakeDir Directories="$(PluginStagingDirectory)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginStagingDirectory)" />
-    <Copy SourceFiles="@(_ArrTagsManagedRendererAsset)" DestinationFolder="$(PluginStagingDirectory)" />
-    <Copy SourceFiles="@(_ArrTagsNativeRendererAsset)" DestinationFolder="$(PluginStagingDirectory)" />
     <Copy SourceFiles="$(TargetDir)$(TargetName).deps.json" DestinationFolder="$(PluginStagingDirectory)" />
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../../build.yaml" DestinationFolder="$(PluginStagingDirectory)" />
 
-    <!-- ADR-010: the font and Skia license notices ship with the plugin package. -->
+    <!-- The bundled font's license notice and the compile-time Skia notices ship
+         with the plugin package. -->
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../../THIRD-PARTY-NOTICES.md" DestinationFolder="$(PluginStagingDirectory)" />
     <Copy SourceFiles="@(_ArrTagsLicenseFile)" DestinationFolder="$(PluginStagingDirectory)/licenses" />
 

@@ -1,27 +1,23 @@
 using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Security.Cryptography;
 using Xunit;
 
 namespace ArrTags.Tests;
 
 /// <summary>
-/// Phase 5 task 5.4 packaging-contract tests. The unguarded facts pin the
-/// shipped <c>build.yaml</c> artifact list and the <c>PackagePlugin</c> MSBuild
-/// contract so a package that omits the renderer's managed/native assets or the
-/// dependency manifest cannot pass the default suite. The
-/// <see cref="PackagedPluginFactAttribute"/> facts additionally verify the real
-/// archive produced by <c>./build.sh package</c> when it is present.
+/// Phase 5 task 5.4 packaging-contract tests, updated by task 7.8 (ADR-015). The
+/// unguarded facts pin the shipped <c>build.yaml</c> artifact list and the
+/// <c>PackagePlugin</c> MSBuild contract so a package that omits the dependency
+/// manifest or reintroduces the duplicate SkiaSharp runtime cannot pass the
+/// default suite. The <see cref="PackagedPluginFactAttribute"/> facts
+/// additionally verify the real archive produced by <c>./build.sh package</c>
+/// when it is present.
 /// </summary>
 public class PluginPackagingTests
 {
-    private const string PinnedManagedSkiaSha256 = "aaaaa18c68ba1f3a3408b00dff28b11d5705198e17ba9d3aa59222bfd35407c8";
-    private const string PinnedNativeSkiaSha256 = "66c856eaf1a47a00b23204c30c6ee407987bf5086ecc0a1a6b4fd67526b0cd02";
-
     [Fact]
     public void BuildManifestKeepsPinnedIdentityAndAbi()
     {
@@ -35,38 +31,36 @@ public class PluginPackagingTests
     }
 
     [Fact]
-    public void BuildManifestArtifactsListTheRendererRuntimeFiles()
+    public void BuildManifestArtifactsListThePluginAssemblyAndManifest()
     {
         var artifacts = ReadBuildManifestArtifacts();
 
         Assert.Contains("ArrTags.dll", artifacts);
-        Assert.Contains("SkiaSharp.dll", artifacts);
-        Assert.Contains("libSkiaSharp.so", artifacts);
         Assert.Contains("ArrTags.deps.json", artifacts);
+        Assert.DoesNotContain("SkiaSharp.dll", artifacts);
+        Assert.DoesNotContain("libSkiaSharp.so", artifacts);
     }
 
     [Fact]
-    public void PackageTargetResolvesRendererAssetsFromPinnedReferences()
+    public void PackageTargetDoesNotShipTheRendererRuntime()
     {
         var project = ReadPluginProject();
 
         Assert.Contains("Name=\"PackagePlugin\"", project, StringComparison.Ordinal);
-        Assert.Contains("RuntimeCopyLocalItems", project, StringComparison.Ordinal);
-        Assert.Contains("RuntimeTargetsCopyLocalItems", project, StringComparison.Ordinal);
-        Assert.Contains("libSkiaSharp.so", project, StringComparison.Ordinal);
-        Assert.Contains("SkiaSharp.dll", project, StringComparison.Ordinal);
         Assert.Contains("$(TargetName).deps.json", project, StringComparison.Ordinal);
         Assert.Contains("THIRD-PARTY-NOTICES.md", project, StringComparison.Ordinal);
         Assert.Contains("licenses", project, StringComparison.Ordinal);
-    }
 
-    [Fact]
-    public void V1ClaimsOnlyThePinnedLinuxX64Runtime()
-    {
-        var project = ReadPluginProject();
-
-        Assert.Contains("<PluginRuntimeIdentifier Condition=\"'$(PluginRuntimeIdentifier)' == ''\">linux-x64</PluginRuntimeIdentifier>", project, StringComparison.Ordinal);
-        Assert.Contains("'%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' == '$(PluginRuntimeIdentifier)'", project, StringComparison.Ordinal);
+        // ADR-015: the plugin compiles against the pinned SkiaSharp managed and
+        // native packages but excludes their runtime assets, and it no longer
+        // stages either renderer file.
+        Assert.Contains("<PackageReference Include=\"SkiaSharp\" Version=\"3.119.4\">", project, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"SkiaSharp.NativeAssets.Linux\" Version=\"3.119.4\">", project, StringComparison.Ordinal);
+        Assert.Equal(4, CountOccurrences(project, "<ExcludeAssets>runtime</ExcludeAssets>"));
+        Assert.DoesNotContain("_ArrTagsManagedRendererAsset", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("_ArrTagsNativeRendererAsset", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("RuntimeCopyLocalItems", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("RuntimeTargetsCopyLocalItems", project, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -89,8 +83,6 @@ public class PluginPackagingTests
         foreach (var name in new[]
         {
             "ArrTags.dll",
-            "SkiaSharp.dll",
-            "libSkiaSharp.so",
             "ArrTags.deps.json",
             "build.yaml",
             "THIRD-PARTY-NOTICES.md",
@@ -117,26 +109,33 @@ public class PluginPackagingTests
     }
 
     [PackagedPluginFact]
-    public void PackagedRendererAssetsAreThePinnedLinuxX64Files()
+    public void PackageDoesNotContainTheDuplicateSkiaSharpRuntime()
     {
         using var archive = ZipFile.OpenRead(RequirePackageArchive());
 
-        var managed = ReadEntryBytes(archive, "SkiaSharp.dll");
-        var native = ReadEntryBytes(archive, "libSkiaSharp.so");
-
-        Assert.Equal(PinnedManagedSkiaSha256, Convert.ToHexString(SHA256.HashData(managed)).ToLowerInvariant());
-        Assert.Equal(PinnedNativeSkiaSha256, Convert.ToHexString(SHA256.HashData(native)).ToLowerInvariant());
-
-        // The V1 claim is linux-x64: a 64-bit little-endian ELF with e_machine EM_X86_64 (0x3e).
-        Assert.Equal(new byte[] { 0x7f, (byte)'E', (byte)'L', (byte)'F' }, native[..4]);
-        Assert.Equal(2, native[4]);
-        Assert.Equal(1, native[5]);
-        Assert.Equal(0x3e, (int)BinaryPrimitives.ReadUInt16LittleEndian(native.AsSpan(18, 2)));
+        // ADR-015 regression: shipping either file recreates the task 7.3-F1
+        // host/plugin SkiaSharp type-identity conflict.
+        Assert.Null(archive.GetEntry("SkiaSharp.dll"));
+        Assert.Null(archive.GetEntry("libSkiaSharp.so"));
     }
 
     private static string ReadBuildManifest()
     {
         return File.ReadAllText(Path.Combine(RequireRepositoryRoot().FullName, "build.yaml"));
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        var index = 0;
+
+        while ((index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += value.Length;
+        }
+
+        return count;
     }
 
     private static string ReadPluginProject()
@@ -177,17 +176,6 @@ public class PluginPackagingTests
         }
 
         return artifacts;
-    }
-
-    private static byte[] ReadEntryBytes(ZipArchive archive, string name)
-    {
-        var entry = archive.GetEntry(name);
-        Assert.NotNull(entry);
-
-        using var stream = entry!.Open();
-        using var buffer = new MemoryStream();
-        stream.CopyTo(buffer);
-        return buffer.ToArray();
     }
 
     private static DirectoryInfo RequireRepositoryRoot()

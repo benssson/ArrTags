@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) The task 7.3 live end-to-end verification on the pinned Jellyfin `12.0.0` musl host found release blocker 7.3-F1: the bundled `SkiaSharp.dll`/`libSkiaSharp.so` conflict fatally with the host's own SkiaSharp, so the first badge publication aborts Jellyfin; the renderer implementation contract's bundled-asset packaging is therefore known-broken as shipped and needs a new ADR plus a `build.yaml`/test change (`GOALS.md` criteria 5, 6, and 8 are not met as shipped).
+**Status:** Accepted v1 (frozen for V1; Phases 1-6 complete; Phase 7 in progress. Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5, 6, and 8 are now met as shipped.
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -927,32 +927,32 @@ separate concerns and are not redefined by this rendering contract.
 
 ### Renderer implementation contract
 
-ADR-010 is authoritative for the V1 renderer implementation. The renderer is a
-plugin-owned direct SkiaSharp service with exact managed/native package pins and
-no use of Jellyfin's global image services. It loads the bundled DejaVu Sans
-Bold 2.37 font by resource bytes and has no host-font fallback.
+ADR-010 is authoritative for the V1 renderer implementation except where ADR-015
+supersedes it. The renderer is a plugin-owned direct SkiaSharp service with an
+exact compile-time SkiaSharp pin and no use of Jellyfin's global image services.
+It loads the bundled DejaVu Sans Bold 2.37 font by resource bytes and has no
+host-font fallback.
 
-The plugin package carries the renderer's managed binding, its matching Linux
-native asset, the plugin dependency manifest, the plugin manifest (`build.yaml`),
-and the Skia/font license notices. The measured Jellyfin 12 plugin load context probes only the
-plugin folder root, not `x64/` or `runtimes/<rid>/native/`, so `SkiaSharp.dll`
-and `libSkiaSharp.so` are staged next to `ArrTags.dll`; the managed asset is
-loaded into the plugin load context by Jellyfin's folder scan and the native
-asset is resolved from the same directory. V1 claims only `linux-x64`: the
-package carries that single RID's native asset and does not load an arbitrary
-system Skia library. Multi-RID packaging is not part of V1.
+ADR-015 fixes the renderer runtime packaging. The plugin compiles against the
+pinned `SkiaSharp` and `SkiaSharp.NativeAssets.Linux` `3.119.4` references with
+their runtime assets excluded, so the package carries only `ArrTags.dll`,
+`ArrTags.deps.json`, `build.yaml`, `THIRD-PARTY-NOTICES.md`, and the font/Skia
+license notices. At runtime the plugin resolves the host's managed SkiaSharp
+through the default load context and uses the host's own native `libSkiaSharp.so`
+and its `libfontconfig.so.1` dependency. V1 is validated on the pinned Jellyfin
+`12.0.0` `linux-x64` host. Shipping a second managed or native SkiaSharp copy
+causes a fatal host/plugin type-identity conflict (task 7.3 finding 7.3-F1),
+which is why the renderer runtime is no longer bundled.
 
-> **Release blocker 7.3-F1 (task 7.3, live-verified).** This bundled-asset
-> packaging is known-broken on the pinned Jellyfin `12.0.0` musl host. When the
-> plugin publishes a badge, Jellyfin's own `ProviderManager.SaveImage` image
-> processing aborts the process with
+> **Resolved by ADR-015 (task 7.8, live-verified).** Task 7.3 found the
+> previously bundled `SkiaSharp.dll`/`libSkiaSharp.so` fatal: Jellyfin's own
+> `ProviderManager.SaveImage` image processing aborted the process with
 > `System.InvalidCastException: [A]SkiaSharp.UserDataDelegate cannot be cast to
-> [B]SkiaSharp.UserDataDelegate`, where A is the host default-context
-> `SkiaSharp.dll` and B is the plugin-context copy. Removing the bundled
-> `SkiaSharp.dll` and `libSkiaSharp.so` from the installed plugin folder (so the
-> plugin shares the host's SkiaSharp) made the full pipeline work. A new ADR is
-> required to decide the replacement packaging before V1 release; this section
-> describes the state that is still shipped and is not a claim that it works.
+> [B]SkiaSharp.UserDataDelegate` because the host and the plugin loaded two
+> managed SkiaSharp assemblies. ADR-015 removes the duplicate, and the task 7.8
+> live re-verification on the pinned musl host confirms the package loads, a
+> badge publishes and is served by `GET /Items/{id}/Images/Primary`, the source
+> posters are preserved, and a provider outage does not affect Jellyfin.
 
 The host boundary supplies a bounded, read-only `SourceImageInput` containing
 the exact source bytes or artifact handle, content type, dimensions, and source

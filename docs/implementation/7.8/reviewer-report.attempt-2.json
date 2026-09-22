@@ -1,0 +1,134 @@
+{
+  "task": "7.8",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "7.8-R1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "documentation / ADR evidence (task 4.8 / F2 native byte-identity correction)",
+      "summary": "RESOLVED: ADR-015, docs/research/skia-host-compatibility.md, docs/implementation-readiness.md, and the attempt-1 worker report now correctly state the pinned musl host's native libSkiaSharp.so is byte-identical to the NuGet 3.119.4 linux-musl-x64 asset and differs from the linux-x64 asset the plugin previously bundled, with the matching-RID qualification.",
+      "detail": "Verified the corrected wording in all four required surfaces. docs/decisions.md:1885-1896 states the host native is 18,453,464 B / SHA-256 59039b25..., byte-identical to the NuGet SkiaSharp.NativeAssets.Linux 3.119.4 runtimes/linux-musl-x64/native/ asset (and to the file inside the pinned Jellyfin distribution), differing from the runtimes/linux-x64/native/ asset (11,170,296 B / 66c856ea...) the glibc spike host matched, and explicitly says 'Native byte-identity therefore holds for the matching RID, not across RIDs.' docs/research/skia-host-compatibility.md:83-95 adds the F2 correction with the same RID qualification; docs/implementation-readiness.md:176-182 states byte-identity holds for the matching RID, the glibc spike matched linux-x64, and the pinned musl host's native is byte-identical to the linux-musl-x64 asset; docs/implementation/7.8/worker-report.json known_limitations[3] carries the same corrected statement. Independently re-verified against the actual artifacts: sha256sum of /tmp/jf/jellyfin/libSkiaSharp.so = 59039b2548e3a3f563fa247f582c62d280c2015df78316fcab62e383d7ae9d4f (18,453,464 B); the NuGet linux-musl-x64 asset = the same hash/size; the NuGet linux-x64 asset = 66c856eaf1a47a00b23204c30c6ee407987bf5086ecc0a1a6b4fd67526b0cd02 (11,170,296 B); extracting jellyfin/libSkiaSharp.so from /tmp/jf/jellyfin.tar.gz also yields 59039b25.../18,453,464 B. The pinned host's own jellyfin.deps.json runtimeTarget is '.NETCoreApp,Version=v10.0/linux-musl-x64', confirming the host is musl. The managed SkiaSharp.dll is aaaaa18c... on both the host and NuGet 3.119.4 lib/net10.0, so the managed byte-identity claim is host-independent and unchanged. No remaining 'not the NuGet' framing exists in any current-state or decision document.",
+      "evidence": [
+        "docs/decisions.md:1885-1896 (ADR-015 F2 correction with matching-RID qualification)",
+        "docs/research/skia-host-compatibility.md:83-95 (F2 correction)",
+        "docs/implementation-readiness.md:176-182 (task 4.8 native byte-identity correction)",
+        "docs/implementation/7.8/worker-report.json known_limitations[3]",
+        "sha256sum /tmp/jf/jellyfin/libSkiaSharp.so -> 59039b25... (18,453,464 B)",
+        "sha256sum /config/.nuget/packages/skiasharp.nativeassets.linux/3.119.4/runtimes/linux-musl-x64/native/libSkiaSharp.so -> 59039b25...",
+        "sha256sum /config/.nuget/packages/skiasharp.nativeassets.linux/3.119.4/runtimes/linux-x64/native/libSkiaSharp.so -> 66c856ea... (11,170,296 B)",
+        "tar -xzf /tmp/jf/jellyfin.tar.gz jellyfin/libSkiaSharp.so -> 59039b25... (18,453,464 B)",
+        "jellyfin.deps.json runtimeTarget -> '.NETCoreApp,Version=v10.0/linux-musl-x64'",
+        "sha256sum host/NuGet net10.0 SkiaSharp.dll -> aaaaa18c68ba1f3a3408b00dff28b11d5705198e17ba9d3aa59222bfd35407c8 (both)"
+      ],
+      "recommended_action": "None. Correction is accurate and verified; no further action required."
+    },
+    {
+      "id": "7.8-R2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation (canonical current-state surface: docs/changelog.md)",
+      "summary": "RESOLVED: the task 7.8 changelog entry now states the produced package is 568,004 bytes; no current-state or decision document contains the erroneous 5,680,004 figure.",
+      "detail": "docs/changelog.md:2286 now reads 'artifacts/ArrTags_0.1.0.0.zip (568,004 bytes)'. A repository-wide grep for '5,680,004' returned zero matches, including in PLANS.md, README.md, docs/architecture.md, docs/decisions.md, docs/implementation-readiness.md, docs/research/skia-host-compatibility.md, and docs/testing/jellyfin-12-musl-test-host.md. The attempt-2 worker report validation confirms the value against the produced artifact (stat -> 568004).",
+      "evidence": [
+        "docs/changelog.md:2286 -> '(568,004 bytes)'",
+        "grep -rn '5,680,004' . -> no matches",
+        "docs/implementation/7.8/worker-report.attempt-2.json validation[1] -> stat 568004"
+      ],
+      "recommended_action": "None. Correction is accurate and verified; no further action required."
+    },
+    {
+      "id": "7.8-R3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "packaging contract / ADR wording (carried forward from attempt 1, not part of the required changes)",
+      "summary": "The 'compile-time-only' characterization of the native package in ADR-015 is loose because ExcludeAssets=runtime does not exclude native runtimeTargets from ArrTags.deps.json; resolution still works and the package ships neither native file.",
+      "detail": "Unchanged by attempt 2. Attempt 1 recorded this as an optional ADR wording refinement; it does not affect correctness and the live run confirmed runtime resolution and publication. Not required for task 7.8.",
+      "evidence": [
+        "src/ArrTags/ArrTags.csproj <ExcludeAssets>runtime</ExcludeAssets>",
+        "ArrTags.deps.json still lists SkiaSharp.NativeAssets.Linux/3.119.4 runtimeTargets for Linux RIDs",
+        "Attempt-1 live reproduction: renderer and publication succeeded using the host SkiaSharp"
+      ],
+      "recommended_action": "Optional only; not required for this task."
+    },
+    {
+      "id": "7.8-R4",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "evidence quality / reproducibility (carried forward from attempt 1)",
+      "summary": "The worker-report package SHA-256 is not a stable identifier and the zip is not byte-reproducible; Phase 7 acceptance criterion 5 (reproducible artifact) remains unchecked.",
+      "detail": "Carried forward from attempt 1 and unaffected by the documentation-only attempt 2. Package byte-reproducibility is a Phase 7 criterion explicitly still unchecked, so this is a known gap rather than a regression.",
+      "evidence": [
+        "Attempt-1: pre-existing artifact b3369b1e..., two rebuilds c334ebf1.../8d2cf54d..., identical extracted contents",
+        "PLANS.md Phase 7 acceptance criterion 5 remains unchecked"
+      ],
+      "recommended_action": "None for this task; do not treat the package SHA as stable evidence."
+    },
+    {
+      "id": "7.8-R5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation precision (carried forward from attempt 1)",
+      "summary": "The '-1 total' test-count explanation remains slightly imprecise (four facts removed, three added, net -1); the net figure is correct.",
+      "detail": "Unchanged by attempt 2 and explicitly optional in attempt 1. Not a material defect.",
+      "evidence": [
+        "tests/ArrTags.Tests/PluginPackagingTests.cs diff (4 removed, 3 added)",
+        "Default suite 1218 passed / 60 skipped / 1278 total"
+      ],
+      "recommended_action": "Optional wording clarification only."
+    },
+    {
+      "id": "7.8-R6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation precision / ADR-015 host RID label",
+      "summary": "ADR-015 line 1921 still labels the pinned host 'linux-x64' although the host's runtimeTarget is linux-musl-x64; the surrounding parenthetical notes the plugin does not distinguish musl from glibc.",
+      "detail": "This is pre-existing attempt-1 ADR content, not introduced by the attempt-2 corrections, and it is not part of either required change. The F2 correction establishes the host is musl (jellyfin.deps.json runtimeTarget '.NETCoreApp,Version=v10.0/linux-musl-x64'). The line's intent (the plugin makes no RID-specific runtime claim) is not affected, so this does not materially affect the task outcome; recorded for transparency only.",
+      "evidence": [
+        "docs/decisions.md:1921 'V1 remains validated only on the pinned Jellyfin 12.0.0 linux-x64 host (musl and glibc are not separately distinguished by the plugin)'",
+        "jellyfin.deps.json runtimeTarget '.NETCoreApp,Version=v10.0/linux-musl-x64'"
+      ],
+      "recommended_action": "None required for task 7.8; optional future wording refinement."
+    }
+  ],
+  "tests_checked": [
+    "No validation rerun: attempt 2 changed only documentation. Confirmed via mtimes that src/ArrTags/ArrTags.csproj (06:48), tests/ArrTags.Tests/ArrTags.Tests.csproj (06:44), PluginPackagingTests.cs (06:49), packages.lock.json (06:49), and build.yaml (06:43) are unchanged after the attempt-1 review (reviewer-report.json written 07:47), while only docs/decisions.md, docs/research/skia-host-compatibility.md, docs/changelog.md, docs/implementation-readiness.md (07:48:39) and worker-report.json (07:48:42) changed. The attempt-1 build/package/test evidence therefore stands (build 0 errors; default suite 1218/60/1278; host-guarded 1234/44/1278; filtered PluginPackagingTests 7/7; forced native round trip 2/2; package 568,004 bytes with 7 entries and no SkiaSharp.dll/libSkiaSharp.so).",
+    "Attempt-2 artifact-size cross-check: stat artifacts/ArrTags_0.1.0.0.zip -> 568004 bytes, matching the corrected changelog value.",
+    "JSON validity of the preserved attempt-1 report and the new attempt-2 report (jq: attempt==1 and attempt==2 respectively)."
+  ],
+  "research_checked": [
+    "Re-verified F2 byte-identity independently: host native /tmp/jf/jellyfin/libSkiaSharp.so = 59039b25.../18,453,464 B; NuGet 3.119.4 linux-musl-x64 asset identical; NuGet 3.119.4 linux-x64 asset = 66c856ea.../11,170,296 B; tarball jellyfin/libSkiaSharp.so identical to the host/musl asset.",
+    "Host RID confirmed as linux-musl-x64 from its own jellyfin.deps.json runtimeTarget.",
+    "Managed SkiaSharp.dll byte-identity (aaaaa18c...) confirmed between the pinned host and NuGet 3.119.4 lib/net10.0.",
+    "ADR-015 (docs/decisions.md) F2 correction, supersession of the renderer-bundling parts of ADR-010, and rejected alternatives re-read for consistency."
+  ],
+  "documentation_checked": [
+    "docs/decisions.md: ADR-015 F2 paragraph (1885-1896) and Decision section.",
+    "docs/research/skia-host-compatibility.md: section 2 F2 correction (83-95) and unchanged historical table.",
+    "docs/implementation-readiness.md: task 4.8 native byte-identity correction (176-182) and status line.",
+    "docs/changelog.md: task 7.8 entry package size (2286) and F2-correction framing (2269-2272).",
+    "docs/implementation/7.8/worker-report.json: attempt=1 preserved, evidence intact, only known_limitations[3] wording corrected.",
+    "docs/implementation/7.8/worker-report.attempt-2.json: attempt=2, valid JSON, changed_files limited to the five documentation files.",
+    "PLANS.md, README.md, docs/architecture.md, docs/testing/jellyfin-12-musl-test-host.md: no stale 'not the NuGet' or '5,680,004' current-state text (historical task 4.8 entries in PLANS.md:1103 and docs/changelog.md:392/867 legitimately describe the earlier glibc spike-host state and were correctly left unchanged)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "reviewer_status": "CHANGES_REQUIRED",
+      "required_changes": [
+        "7.8-R1: Correct the F2 native byte-identity statement in ADR-015, docs/research/skia-host-compatibility.md, docs/implementation-readiness.md, and the worker report limitation.",
+        "7.8-R2: Fix the task 7.8 changelog package size from 5,680,004 bytes to 568,004 bytes."
+      ]
+    },
+    {
+      "attempt": 2,
+      "corrections_applied": "Documentation-only. docs/decisions.md, docs/research/skia-host-compatibility.md, docs/implementation-readiness.md, docs/changelog.md, and docs/implementation/7.8/worker-report.json were edited; no source, test, packaging, or lock file changed.",
+      "resolution": "7.8-R1 and 7.8-R2 fully resolved and independently re-verified (checksums, tarball, host RID, package size). No overclaiming or new inconsistency introduced; attempt-1 worker report retains attempt 1 with its original evidence (only the F2 limitation wording changed). Attempt-1 engineering conclusions stand.",
+      "reviewer_status": "APPROVED"
+    }
+  ],
+  "ready_for_next_task": true
+}

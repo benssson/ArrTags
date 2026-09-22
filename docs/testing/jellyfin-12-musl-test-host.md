@@ -209,13 +209,22 @@ record with optional fields absent (ADR-013).
    `PREFIX/data/ArrTags`, and the standard image route
    `GET /Items/{id}/Images/Primary` (anonymous).
 
-### Task 7.3 finding
+### Task 7.3 finding and task 7.8 resolution
 
-The run is blocked as shipped by **release blocker 7.3-F1**: the package's
-bundled `SkiaSharp.dll`/`libSkiaSharp.so` conflict fatally with this host's own
+Task 7.3 found **release blocker 7.3-F1**: the then-packaged bundled
+`SkiaSharp.dll`/`libSkiaSharp.so` conflicted fatally with this host's own
 SkiaSharp, so the first badge publication through `ProviderManager.SaveImage`
-aborts the process with `InvalidCastException` (types A/B are the host
+aborted the process with `InvalidCastException` (types A/B are the host
 default-context and plugin-context `SkiaSharp.dll`). Removing the two bundled
 files from the installed plugin folder (leaving the plugin to share the host's
-SkiaSharp) makes the whole pipeline work. See `PLANS.md` task 7.3 and
-`docs/implementation/7.3/worker-report.json`.
+SkiaSharp) made the whole pipeline work.
+
+Task 7.8 resolves this by ADR-015: the plugin no longer ships the renderer
+runtime and shares the host's SkiaSharp through the default load context. The
+re-run reproduction on this host with the committed package passes end to end:
+the package loads with no error, a badge publishes with no host crash, the
+standard image route serves the published bytes matching the persisted
+`ActiveImageIdentity`, the original source posters are preserved, changed mock
+metadata republishes and unchanged metadata does not, and a provider outage
+leaves the host up with the current artwork unchanged. See `PLANS.md` task 7.8,
+`docs/decisions.md` ADR-015, and `docs/implementation/7.8/worker-report.json`.

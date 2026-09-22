@@ -1,0 +1,38 @@
+{
+  "task": "7.8",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Attempt 2 applies the two documentation corrections from the independent task 7.8 review; no source, test, or packaging change was made and no build/test was rerun, so the attempt-1 implementation and live validation evidence stand unchanged. Correction 1 (reviewer finding 7.8-R1, MEDIUM): the F2 native byte-identity wording in ADR-015 (docs/decisions.md), docs/research/skia-host-compatibility.md, and docs/implementation-readiness.md, plus worker-report.json known_limitations[3], previously said the pinned musl host's native libSkiaSharp.so (18,453,464 bytes / SHA-256 59039b25...) is 'not the NuGet 3.119.4 asset'; the 11,170,296-byte / 66c856ea... asset is only the linux-x64 (glibc) variant. Those four surfaces now state that the host's native is byte-identical to the NuGet SkiaSharp.NativeAssets.Linux 3.119.4 runtimes/linux-musl-x64/native/libSkiaSharp.so asset and to the file inside the pinned Jellyfin distribution, and differs from the linux-x64 asset the plugin previously bundled, so native byte-identity holds for the matching RID, not across RIDs. The engineering conclusion (share the host's own native library) is unchanged. Correction 2 (reviewer finding 7.8-R2, LOW): the task 7.8 changelog entry package size changed from 5,680,004 bytes to 568,004 bytes, matching the actual artifacts/ArrTags_0.1.0.0.zip size (confirmed by stat: 568004 bytes).",
+  "validation": [
+    "Documentation-only change; per the correction instructions the attempt-1 build/test evidence was not rerun and stands (see docs/implementation/7.8/worker-report.json validation).",
+    "Confirmed the corrected package size against the produced artifact: `stat -c '%s' artifacts/ArrTags_0.1.0.0.zip` -> 568004 bytes (matching the new changelog value 568,004 bytes).",
+    "Confirmed docs/implementation/7.8/worker-report.json remains valid JSON after the known_limitations[3] edit: `jq empty docs/implementation/7.8/worker-report.json` -> exit 0.",
+    "`grep` for the removed phrasing ('not the NuGet', '5,680,004') across docs/ -> no remaining occurrences in current-state or decision documents; the only remaining matches are the preserved historical reviewer reports docs/implementation/7.3/reviewer-report.json and docs/implementation/7.8/reviewer-report.json (the findings themselves), which were intentionally left unmodified.",
+    "`git diff -- docs/` inspected: the attempt-2 edits are confined to docs/decisions.md, docs/research/skia-host-compatibility.md, docs/implementation-readiness.md, docs/changelog.md, and docs/implementation/7.8/worker-report.json; no src/, tests/, build.yaml, or lock file change was introduced by attempt 2."
+  ],
+  "changed_files": [
+    "docs/decisions.md",
+    "docs/research/skia-host-compatibility.md",
+    "docs/implementation-readiness.md",
+    "docs/changelog.md",
+    "docs/implementation/7.8/worker-report.json"
+  ],
+  "known_limitations": [
+    "GOALS.md criterion 7 (Jellyfin Enhanced compatibility) remains verified only at the contract level by EnhancedCoexistenceTests (7/7); Jellyfin Enhanced is not installed on the pinned host, so no live coexistence was exercised in this task either. This is an approved scope gap carried forward from task 7.3, not a regression.",
+    "No live Sonarr or Radarr instance is available in this environment; the live run used the committed mock fixture (scripts/mock-arr-fixture.cs + scripts/mock-arr-fixtures/), so real-release payload-shape variance beyond the fixtures is untested (covered separately by the ADR-013 provider contract fixtures).",
+    "V1 now depends on the host providing a compatible SkiaSharp managed assembly and native library (ADR-015). The plugin pins the exact 3.119.4 version it compiles against, and the host/plugin managed assembly was verified to load from the default context, but a host shipping an incompatible SkiaSharp would be a bounded renderer failure rather than a bundled fallback. This host-version dependency is new and is documented in ADR-015 and docs/architecture.md section 9.",
+    "The live re-verification was performed on the pinned Jellyfin 12.0.0 musl host only. The native libSkiaSharp.so on this host is 18,453,464 bytes / SHA-256 59039b25..., byte-identical to the NuGet SkiaSharp.NativeAssets.Linux 3.119.4 linux-musl-x64 asset (runtimes/linux-musl-x64/native/libSkiaSharp.so) and to the file inside the pinned Jellyfin distribution; it differs from the NuGet 3.119.4 linux-x64 asset (11,170,296 bytes / 66c856ea...) that the plugin previously bundled. Native byte-identity thus holds for the matching RID, not across RIDs, so the fix was validated against the host's own native library; a separate glibc host was not exercised in this task.",
+    "The plugin was configured by writing /tmp/jf/data/plugins/configurations/ArrTags.xml and restarting the host, because runtime configuration replacement is a documented Phase 7 deferral; live runtime replacement of the configuration was not exercised.",
+    "To restore the original (sidecar) source images for the formal run, the items' Jellyfin Primary images were deleted and refreshed after the plugin state was cleared. This was necessary because task 7.3 and its review left published badge images in Jellyfin's metadata store; it is test-environment setup, not a product behavior.",
+    "Because task 7.3's admin password was not recorded, the existing arrtagsadmin account's password was reset directly in the pinned host's SQLite database (PBKDF2-SHA512, 210000 iterations, matching Jellyfin's DefaultPasswordHashProvider) to the throwaway test value 'arrtagsverify1' so authenticated API calls could be made. This is a local test-host credential change only; it is documented here for reproducibility and is not part of the repository or plugin.",
+    "The pinned host's pre-existing orphaned library item rows from task 7.3 remain in the Jellyfin database (the virtual-folder definitions are absent and GET /Library/VirtualFolders returns []); the test media, plugin install, plugin state, and plugin config were removed. This matches the host state the previous verification left.",
+    "Adding a direct SkiaSharp reference to tests/ArrTags.Tests causes .NET 10 NuGet package pruning of framework-provided Microsoft.Extensions.* entries from the test project's packages.lock.json (they resolve from the Microsoft.AspNetCore.App FrameworkReference). The default and host-guarded suites pass with the pruned lock, and the plugin package's own dependency manifest is unaffected.",
+    "The package still ships licenses/SkiaSharp-LICENSE.txt and licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt even though the plugin no longer redistributes SkiaSharp binaries. This is deliberate (the compile-time SkiaSharp reference and bundled DejaVu font notices are retained) and is recorded in ADR-015."
+  ],
+  "ready_for_next_task": true
+}

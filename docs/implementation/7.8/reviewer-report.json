@@ -1,0 +1,109 @@
+{
+  "task": "7.8",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "7.8-R1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "documentation / ADR evidence (task 4.8 / F2 native byte-identity correction)",
+      "summary": "ADR-015, docs/research/skia-host-compatibility.md, and docs/implementation-readiness.md state the pinned host's native libSkiaSharp.so is 'not the NuGet 3.119.4 asset'; it is in fact byte-identical to the NuGet SkiaSharp.NativeAssets.Linux 3.119.4 linux-musl-x64 asset, and the pinned Jellyfin musl tarball ships that same file.",
+      "detail": "The corrected F2 wording asserts the musl host's /tmp/jf/jellyfin/libSkiaSharp.so (18,453,464 B / 59039b25...) is 'not the NuGet 3.119.4 asset (11,170,296 B / 66c856ea...)'. The 11,170,296 B asset is only the linux-x64 (glibc) variant. The NuGet package ships one native per RID, and the host's file is byte-identical to runtimes/linux-musl-x64/native/libSkiaSharp.so (same size and SHA-256). Extracting libSkiaSharp.so from the pinned /tmp/jf/jellyfin.tar.gz also yields 59039b25..., so the host native is Jellyfin's own musl-x64 NuGet asset, not a divergent build. The accurate statement is: the host's native is the NuGet 3.119.4 linux-musl-x64 asset, which differs from the linux-x64 asset the plugin previously bundled (and the spike host used). The engineering conclusion (share the host's own native library) is unaffected, but the decision record and the current-state docs currently state a fact contradicted by the repository's own evidence, and the task explicitly required verifying this corrected claim.",
+      "evidence": [
+        "sha256sum /tmp/jf/jellyfin/libSkiaSharp.so -> 59039b2548e3a3f563fa247f582c62d280c2015df78316fcab62e383d7ae9d4f (18,453,464 B)",
+        "sha256sum /config/.nuget/packages/skiasharp.nativeassets.linux/3.119.4/runtimes/linux-musl-x64/native/libSkiaSharp.so -> 59039b2548e3a3f563fa247f582c62d280c2015df78316fcab62e383d7ae9d4f",
+        "sha256sum /config/.nuget/packages/skiasharp.nativeassets.linux/3.119.4/runtimes/linux-x64/native/libSkiaSharp.so -> 66c856eaf1a47a00b23204c30c6ee407987bf5086ecc0a1a6b4fd67526b0cd02 (11,170,296 B)",
+        "tar -xzf /tmp/jf/jellyfin.tar.gz jellyfin/libSkiaSharp.so && sha256sum -> 59039b25... (the pinned Jellyfin musl distribution ships the NuGet musl-x64 asset)",
+        "docs/decisions.md ADR-015 ('not the NuGet ... 3.119.4 asset'), docs/research/skia-host-compatibility.md correction, docs/implementation-readiness.md, and worker-report known_limitations[3] all repeat the inaccurate framing"
+      ],
+      "recommended_action": "Correct ADR-015, docs/research/skia-host-compatibility.md, docs/implementation-readiness.md, and the worker report limitation to state that the pinned host's native libSkiaSharp.so is byte-identical to the NuGet SkiaSharp.NativeAssets.Linux 3.119.4 linux-musl-x64 asset and differs from the linux-x64 asset the plugin previously bundled (i.e. byte-identity holds for the matching RID, not across RIDs)."
+    },
+    {
+      "id": "7.8-R2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation (canonical current-state surface: docs/changelog.md)",
+      "summary": "The task 7.8 changelog entry states the produced package is 5,680,004 bytes; the actual package is 568,004 bytes.",
+      "detail": "docs/changelog.md line 2286 says 'artifacts/ArrTags_0.1.0.0.zip (5,680,004 bytes)'. The worker-report and the produced artifact both give 568,004 bytes (10x smaller). This is a factual error in a canonical current-state surface (the changelog task entry).",
+      "evidence": [
+        "docs/changelog.md:2286 -> '(5,680,004 bytes)'",
+        "stat -c%s artifacts/ArrTags_0.1.0.0.zip -> 568004",
+        "docs/implementation/7.8/worker-report.json -> '568,004 bytes'"
+      ],
+      "recommended_action": "Change 5,680,004 to 568,004 in the task 7.8 changelog entry."
+    },
+    {
+      "id": "7.8-R3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "packaging contract / ADR wording",
+      "summary": "ExcludeAssets=runtime on SkiaSharp.NativeAssets.Linux does not exclude its native assets; ArrTags.deps.json still lists native runtimeTargets for every RID, so the ADR/comment 'compile-time-only' characterization is loose (though runtime resolution works).",
+      "detail": "The produced ArrTags.deps.json still contains runtimeTargets for SkiaSharp.NativeAssets.Linux (all Linux RIDs), because NuGet classifies those as 'native' assets, which ExcludeAssets=runtime does not exclude. The managed SkiaSharp/3.119.4 node correctly has no runtime section, and the PackagePlugin target no longer copies/stages the native, so the package ships neither file. The live run confirms the plugin resolves the host managed assembly and native library and renders/publishes correctly, so resolution is not broken. The residual runtimeTargets are benign, but the ADR statement that the package is 'compile-time-only' for the native package slightly misdescribes the mechanism.",
+      "evidence": [
+        "src/ArrTags/ArrTags.csproj: <ExcludeAssets>runtime</ExcludeAssets> on both SkiaSharp packages",
+        "ArrTags.deps.json -> SkiaSharp.NativeAssets.Linux/3.119.4 runtimeTargets for linux-x64, linux-musl-x64, etc.",
+        "Live reproduction: plugin rendered and published badges with the host's SkiaSharp; GET /Items/{id}/Images/Primary returned the persisted ActiveImageIdentity bytes"
+      ],
+      "recommended_action": "Optional: state in ADR-015 that the native assets remain in the dependency graph (runtimeTargets) but are never staged, or use ExcludeAssets 'runtime;native' if a fully scrubbed manifest is desired. Not required for correctness."
+    },
+    {
+      "id": "7.8-R4",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "evidence quality / reproducibility",
+      "summary": "The worker-report package SHA-256 does not match the on-disk artifact and the package is not byte-reproducible across runs.",
+      "detail": "The worker report cites SHA-256 f84d0624... for ArrTags_0.1.0.0.zip. The artifact present before any reviewer rebuild was b3369b1e..., and two consecutive ./build.sh package runs produced c334ebf1... and 8d2cf54d... (same 568,004-byte size and identical extracted file contents, differing only in zip entry order/timestamps). Package byte-reproducibility is Phase 7 acceptance criterion 5, which remains explicitly unchecked, so this is a known gap rather than a regression; the reported hash is simply not stable identifying evidence.",
+      "evidence": [
+        "sha256sum pre-existing artifact -> b3369b1e276d9fad11499aada38203ff97b0faa84d1bf0e5b4e91cd1d604dce5",
+        "two consecutive ./build.sh package runs -> c334ebf1... then 8d2cf54d...; diff -r of unzipped outputs identical",
+        "PLANS.md Phase 7 acceptance criterion 'The release artifact and build process are reproducible and documented' remains unchecked"
+      ],
+      "recommended_action": "None required for this task; keep criterion 5 unchecked and do not rely on the package SHA as stable evidence."
+    },
+    {
+      "id": "7.8-R5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation precision",
+      "summary": "The '-1 total' explanation for the test-count change is imprecise: the diff removes four facts and adds three (two renames plus one removal and one new fact), netting -1.",
+      "detail": "PLANS.md and docs/changelog.md describe the net -1 as 'two removed renderer-bundling facts and one added duplicate-asset regression fact'. The actual PluginPackagingTests change removes BuildManifestArtifactsListTheRendererRuntimeFiles, PackageTargetResolvesRendererAssetsFromPinnedReferences, V1ClaimsOnlyThePinnedLinuxX64Runtime, and PackagedRendererAssetsAreThePinnedLinuxX64Files (4) and adds BuildManifestArtifactsListThePluginAssemblyAndManifest, PackageTargetDoesNotShipTheRendererRuntime, and PackageDoesNotContainTheDuplicateSkiaSharpRuntime (3), i.e. 8 -> 7 = net -1. The net figure is correct; the description is incomplete.",
+      "evidence": [
+        "tests/ArrTags.Tests/PluginPackagingTests.cs diff",
+        "Default suite reproduced: Failed 0, Passed 1218, Skipped 60, Total 1278"
+      ],
+      "recommended_action": "Optional wording clarification only."
+    }
+  ],
+  "tests_checked": [
+    "`. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s) (net10.0, pinned Jellyfin 12.0.0).",
+    "Default suite `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1218, Skipped 60, Total 1278 (matches the worker report).",
+    "Host-guarded suite `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test` -> Failed 0, Passed 1234, Skipped 44, Total 1278 (matches).",
+    "Filtered PluginPackagingTests -> Failed 0, Passed 7, Skipped 0 (the package-content regression PackageDoesNotContainTheDuplicateSkiaSharpRuntime ran against the real archive, not skipped).",
+    "Forced native round trip `LD_LIBRARY_PATH=/tmp/jf/sysroot/root/usr/lib ARRTAGS_SKIA_COMPAT=1 dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~SkiaHostCompatibilityTests` -> Failed 0, Passed 2, Skipped 0.",
+    "`./build.sh restore` (locked mode) succeeds with the updated tests/ArrTags.Tests/packages.lock.json; src/ArrTags/packages.lock.json unchanged.",
+    "Package rebuild `./build.sh package` -> ArrTags_0.1.0.0.zip, 568,004 bytes; unzip -l 7 entries; no SkiaSharp.dll, no libSkiaSharp.so; plugin Release output has no SkiaSharp asset; ArrTags.deps.json SkiaSharp/3.119.4 node has no runtime section."
+  ],
+  "research_checked": [
+    "ADR-015 (docs/decisions.md): decision, supersession of ADR-010 bundling parts, rejected alternatives.",
+    "docs/research/skia-host-compatibility.md sections 2, 3.4, 5, 6 (superseded markers and F2 correction).",
+    "Pinned host facts: Jellyfin 12.0.0 musl; host managed SkiaSharp.dll = aaaaa18c... (equals NuGet 3.119.4 net10.0); host native libSkiaSharp.so = 59039b25... 18,453,464 B, byte-identical to NuGet 3.119.4 linux-musl-x64 asset and to the file inside /tmp/jf/jellyfin.tar.gz.",
+    "Jellyfin 12 PluginLoadContext default-context fallback behavior confirmed live: no plugin-context SkiaSharp assembly load, renderer and publication succeeded using the host stack."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status paragraph, Milestone Status row 7, task 7.8 checkbox, task 7.8 status, Phase 7 acceptance criteria 3/4, Gate 7 remains undeclared.",
+    "docs/changelog.md: Phase 7 status and task 7.8 entry (one size error noted).",
+    "README.md: task list, blocker resolution paragraph, Phase 4/5 supersession notes.",
+    "docs/architecture.md: status line and renderer implementation contract (section 9).",
+    "docs/implementation-readiness.md: status line, task 4.8 native byte-identity correction, renderer pin bullet.",
+    "docs/testing/jellyfin-12-musl-test-host.md: task 7.3 finding and task 7.8 resolution.",
+    "docs/decisions.md: ADR-010 partial-supersession markers and ADR-015."
+  ],
+  "required_changes": [
+    "7.8-R1: Correct the F2 native byte-identity statement in ADR-015, docs/research/skia-host-compatibility.md, docs/implementation-readiness.md, and the worker report limitation to state the host native is the NuGet 3.119.4 linux-musl-x64 asset (differs from the linux-x64 asset the plugin previously bundled).",
+    "7.8-R2: Fix the task 7.8 changelog package size from 5,680,004 bytes to 568,004 bytes."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

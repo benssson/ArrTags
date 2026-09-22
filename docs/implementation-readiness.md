@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011; Phase 5 Jellyfin artwork integration complete (tasks 5.1 through 5.11, Gate 5 met at the integration-test level); Phase 6 caching, updates, and performance complete (tasks 6.1 through 6.9, Gate 6 met at the integration-test level, tag `v0.1.0-phase6`; the provider inventory/catalogue cache, runtime configuration replacement, the reconciliation coverage bound, and a metrics/status surface are tracked for Phase 7); Phase 7 in progress - tasks 7.1, 7.2, and 7.7 complete; task 7.2's live verification found a release-blocking versioned-install/data-folder collision that task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) with regression tests and a re-run live install/upgrade/reload/uninstall verification that passes, so Phase 7 acceptance criterion 2 is met; task 7.3 complete - the live GOALS success-criteria verification on the pinned host met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 (the bundled `SkiaSharp.dll`/`libSkiaSharp.so` conflict fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication), so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; tasks 7.4-7.6 remain pending
+**Status:** Phase 1 complete; Milestone 2 complete (Gate 2 met); Phase 3 media matching complete (tasks 3.1 through 3.8, Milestone 3 acceptance criteria satisfied and Gate 3 met); DG-3 accepted by ADR-009; renderer implementation contract accepted by ADR-010; SkiaSharp/HarfBuzzSharp host compatibility confirmed by the task 4.8 spike; task 4.11's ADR-010 test oracle complete, including the F2 color-profile fail-closed change and the EXIF orientation correctness fix (renderer version 2); DG-8 Jellyfin Enhanced coexistence resolved by ADR-011; Phase 5 Jellyfin artwork integration complete (tasks 5.1 through 5.11, Gate 5 met at the integration-test level); Phase 6 caching, updates, and performance complete (tasks 6.1 through 6.9, Gate 6 met at the integration-test level, tag `v0.1.0-phase6`; the provider inventory/catalogue cache, runtime configuration replacement, the reconciliation coverage bound, and a metrics/status surface are tracked for Phase 7); Phase 7 in progress - tasks 7.1, 7.2, and 7.7 complete; task 7.2's live verification found a release-blocking versioned-install/data-folder collision that task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) with regression tests and a re-run live install/upgrade/reload/uninstall verification that passes, so Phase 7 acceptance criterion 2 is met; task 7.3 complete - the live GOALS success-criteria verification on the pinned host met criteria 1-4 and 9, covered criterion 7 at the contract level, and found release blocker 7.3-F1 (the bundled `SkiaSharp.dll`/`libSkiaSharp.so` conflict fatally with the host's own SkiaSharp and abort Jellyfin on the first badge publication); task 7.8 complete - the plugin no longer bundles the duplicate renderer runtime and shares the host's SkiaSharp through the default load context (ADR-015, superseding the bundling parts of ADR-010), with the packaged-runtime contract updated in `ArrTags.csproj`, `build.yaml`, and `PluginPackagingTests`, and a re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host that passes (the package loads with no error, a badge publishes with no host crash, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed mock metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with the current artwork unchanged), so `GOALS.md` criteria 5, 6, and 8 are met as shipped and Phase 7 acceptance criteria 3 and 4 are met; tasks 7.4-7.6 remain pending
 
 **Basis:** ADR-002, ADR-003, ADR-004, ADR-005, ADR-008, ADR-009, ADR-010, and ADR-011; findings in
 `docs/reviews/pre-implementation-review-02.md` are resolved for the two
@@ -172,8 +172,14 @@ Task 4.8 confirmed the pinned Jellyfin `12.0.0` host versions from its
 `jellyfin.deps.json` and native files: `SkiaSharp` / `SkiaSharp.HarfBuzz` /
 `SkiaSharp.NativeAssets.Linux` `3.119.4`, and `HarfBuzzSharp` /
 `HarfBuzzSharp.NativeAssets.Linux` `8.3.1.5`, with native ELF64 x86-64
-`libSkiaSharp.so` and `libHarfBuzzSharp.so`. The host's SkiaSharp managed and
-native files are byte-identical to the local NuGet `3.119.4` assets.
+`libSkiaSharp.so` and `libHarfBuzzSharp.so`. The host's managed `SkiaSharp.dll`
+is byte-identical to the local NuGet `3.119.4` asset. The native
+`libSkiaSharp.so` byte-identity holds for the matching RID, not across RIDs: the
+task 4.8 glibc spike host matched the NuGet linux-x64 asset, while the pinned musl
+host's native library is 18,453,464 bytes / SHA-256 `59039b25...`, byte-identical
+to the NuGet `3.119.4` linux-musl-x64 asset (and to the file inside the pinned
+Jellyfin distribution) rather than the linux-x64 `11,170,296` / `66c856ea...`
+asset (task 7.3 reviewer finding F2).
 
 The plugin load behavior was measured, not assumed. Jellyfin 12 constructs
 `PluginLoadContext(pluginFolder)`, whose `AssemblyDependencyResolver` does not
@@ -187,10 +193,13 @@ Bold font from embedded bytes, and encoded a non-interlaced 8-bit PNG on the
 pinned runtime. `HarfBuzzSharp` is not needed for ADR-009's single-line bounded
 labels, so the 4.7 decision to omit it stands.
 
-The evidence, exact commands, and the Phase 5 packaging constraint (ship the
-managed and root-level native SkiaSharp assets in the plugin folder) are recorded
-in `docs/research/skia-host-compatibility.md`. Phase 5 must still validate the
-packaged assets on the live host.
+The evidence and exact commands are recorded in
+`docs/research/skia-host-compatibility.md`. The task 4.8 "ship the managed and
+root-level native SkiaSharp assets in the plugin folder" packaging constraint is
+superseded by ADR-015 (task 7.8): shipping the duplicate managed SkiaSharp was
+found fatal live (task 7.3 finding 7.3-F1), and the plugin now shares the host's
+SkiaSharp through the default load context. Task 7.8 re-validated the full
+render/publication path on the live host.
 
 ## Compatibility Target
 
@@ -343,11 +352,14 @@ that introduce them.
   read-back, and standard-route delivery.
 - Pin and validate the exact SkiaSharp managed package, Linux native asset
   package, and supported Linux RIDs against the declared Jellyfin 12 /
-  `net10.0` target. The renderer library (SkiaSharp) is resolved by ADR-010, and
-  the pinned `3.119.4` host version, native library names, plugin load-context
-  resolution, and one decode/draw/encode round trip were confirmed by task 4.8
-  (see `docs/research/skia-host-compatibility.md`). Multi-RID packaging and the
-  live-host behavior of the packaged assets remain Phase 5 validation.
+  `net10.0` target. The renderer library (SkiaSharp) is resolved by ADR-010; task
+  4.8 confirmed the pinned `3.119.4` host version, native library names, plugin
+  load-context resolution, and one decode/draw/encode round trip (see
+  `docs/research/skia-host-compatibility.md`). Task 7.8/ADR-015 resolves the
+  packaging: the plugin compiles against the pinned packages with runtime assets
+  excluded and takes the managed assembly and native library from the host,
+  superseding the ADR-010 bundling requirement. V1 remains validated on the
+  pinned `linux-x64` host only.
 - Validate that the bundled DejaVu Sans Bold 2.37 font renders ADR-009's
   typography metrics, record its SHA-256, and confirm where the font and Skia
   license notices are packaged. The font choice is resolved by ADR-010.
@@ -455,9 +467,11 @@ that introduce them.
 - [x] DG-3 badge fields, provider-neutral selectors, layout, typography,
   contrast, text bounds, PNG output, scaling, and pass-through behavior are
   defined by ADR-009.
-- [x] The V1 renderer implementation contract is defined by ADR-010: SkiaSharp
-  with pinned native assets, the bundled DejaVu Sans Bold 2.37 font, the
-  bounded `SourceImageInput`/`RenderAsync`/`RenderResult` boundary, sRGB PNG and
+- [x] The V1 renderer implementation contract is defined by ADR-010 (its
+  renderer-bundling parts superseded by ADR-015): SkiaSharp compiled against an
+  exact pin with the host providing the managed assembly and native library at
+  runtime, the bundled DejaVu Sans Bold 2.37 font, the bounded
+  `SourceImageInput`/`RenderAsync`/`RenderResult` boundary, sRGB PNG and
   alpha/metadata policy, renderer configuration persistence, and the
   golden/determinism test strategy.
 
