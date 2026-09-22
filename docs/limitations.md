@@ -367,6 +367,119 @@ webhook example) appear in tracked files, including
 - Consequence: none. These are deliberate local mock-server test values, never
   production credentials, and the mock fixture never logs key values.
 
+## Security-review accepted limitations
+
+The `0.1.0` security audit
+(`docs/implementation/final-review/security-review.json`; attempt 1 preserved at
+`security-review.attempt-1.json`) returned `APPROVED` with no open BLOCKER, HIGH,
+or MEDIUM. SEC-1 (MEDIUM) is **not** an accepted limitation: it was fixed by task
+`release-0.1.0-sec1` and independently reproduced live (uniform `401` for every
+content type before any body read; the configured payload bound effective for
+authenticated JSON). The residual findings below are accepted and recorded here
+alongside the other V1 limitations.
+
+### SEC-2. State-root resolution falls back to a shared temp path (LOW, open)
+
+When `IPluginManager` is unavailable or the loaded plugin instance cannot be
+found, `CreateStateRepository` roots the entire authoritative plugin state at
+`Path.Combine(Path.GetTempPath(), "ArrTags")` — a predictable, shared location
+where another local user could pre-create or observe a same-named directory. It
+is not triggered on the pinned host (the plugin is found and `DataFolderPath` is
+`ProgramDataPath/ArrTags`) and is not remotely reachable.
+
+- Evidence: security-review finding SEC-2
+  (`docs/implementation/final-review/security-review.json`);
+  `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:178-180`.
+- Consequence: if the fallback ever engaged, authoritative state would live under
+  a shared temp path. Accepted for V1; optional post-V1 hardening is to fail
+  closed or use a host-private directory instead.
+
+### SEC-3. The state-envelope integrity hash does not cover envelope metadata (INFORMATIONAL, noted)
+
+The versioned state envelope's SHA-256 (`PayloadSha256`) covers only
+`PayloadJson`; `SchemaVersion`, `Kind`, `RecordId`, `Authority`, `Terminal`, and
+`UpdatedUtc` are not covered, so retention trusts the unauthenticated
+`Terminal`/`UpdatedUtc` fields.
+
+- Evidence: security-review finding SEC-3;
+  `src/ArrTags/State/StateEnvelopeCodec.cs:83-113`; `StateRetention.cs:154-165`.
+- Consequence: the hash detects only `PayloadJson` corruption. The envelope reader
+  separately validates only `SchemaVersion`; `Kind`, `RecordId`, and `Authority`
+  are not validated by the envelope, and `Terminal`/`UpdatedUtc` are trusted by
+  retention (`StateRetention.IsTerminalAndExpired`). Metadata tampering is
+  therefore not detected by the hash, which bounds `StateEnvelopeCodec` to a
+  corruption detector rather than a tamper MAC. This is not an escalation because
+  local write access to the state root is already the administrative boundary.
+  Optional post-V1 hardening is to cover the metadata in the hash.
+
+### SEC-4. Authentication error bodies carry framework `application/problem+json` detail (INFORMATIONAL, noted)
+
+Every webhook failure returns an ASP.NET Core `[ApiController]`
+`application/problem+json` ProblemDetails body (`type`, `title`, `status`,
+`traceId`), which is the already-recorded `D1` gap versus ADR-012's "no body"
+wording; the SEC-1 fix narrowed it by removing the pre-auth framework form-limit
+detail. No secret, header, candidate, body, route, plugin, or item-existence
+detail is reflected.
+
+- Evidence: security-review finding SEC-4; this file's `D1` entry.
+- Consequence: the pre-auth framework detail is gone, but the residual generic
+  ProblemDetails body remains the already-recorded `D1` body-versus-ADR-012
+  wording gap. Accepted for V1; optional post-V1 hardening is to normalise it.
+
+### SEC-5. Secrets are stored at rest only in Jellyfin's plugin configuration XML (INFORMATIONAL, noted)
+
+The Sonarr/Radarr API keys and the inbound webhook shared secret are persisted
+only in Jellyfin's plugin configuration XML and returned by Jellyfin's
+authenticated, elevation-gated plugin-configuration API to administrators. This
+is the accepted ADR-005 single-source-of-truth design; the plugin has no logging
+call sites, so no plugin log path can leak a secret.
+
+- Evidence: security-review finding SEC-5; `docs/decisions.md` ADR-005.
+- Consequence: none. This is the accepted ADR-005 design, and the plugin has no
+  log path that could leak a secret.
+
+### SEC-6. The `ArtworkSubjectGate` process-lifetime bound (INFORMATIONAL, noted)
+
+`ArtworkSubjectGate.Gates` retains one `SemaphoreSlim` per distinct
+`(item, surface)` ever processed for the process lifetime, with no idle
+eviction. This is the already-recorded `D2` item: not attacker-controllable and
+bounded in practice by the host's distinct library items.
+
+- Evidence: security-review finding SEC-6; this file's `D2` entry.
+- Consequence: process-lifetime growth bounded in practice by the host's distinct
+  library items and not attacker-controllable; accepted as the `D2` item, with
+  optional post-V1 idle eviction as hardening.
+
+### SEC-7. A declared non-JSON content type is now rejected with a bounded 400 (INFORMATIONAL, noted)
+
+Post-SEC-1 behaviour change: after authentication, a request that declares a
+non-JSON content type is rejected with a bounded `400` before any body read, so a
+syntactically valid JSON body sent with an unrelated content type (for example
+`text/plain`) is likewise rejected. An absent content type is still tolerated as
+JSON (`202`/`400`/`413` as appropriate), and `application/json`, `text/json`, and
+`+json` structured suffixes are accepted. Sonarr and Radarr send
+`application/json`, so no real delivery is affected; the choice of `400` over
+`415` is deliberate (matching the existing ADR-012 payload-rejection status).
+
+- Evidence: security-review finding SEC-7;
+  `src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs`;
+  `docs/implementation/release-0.1.0-sec1/worker-report.json`.
+- Consequence: an authenticated request declaring a non-JSON content type is
+  rejected with a bounded `400`; Sonarr and Radarr send `application/json`, so no
+  real delivery is affected. Accepted for V1.
+
+### SEC-8. No per-client authentication throttling on the anonymous webhook route (INFORMATIONAL, noted)
+
+The anonymous webhook route applies no ArrTags-level per-client throttling to
+authentication attempts (ADR-012's "rate limiting" is bounded intake/coalescing
+of accepted deliveries, not auth throttling). The exposure is mitigated by the
+high-entropy administrator-configured shared secret, the 1024-character
+candidate bound, the constant-time compare, and the uniform fail-closed `401`.
+
+- Evidence: security-review finding SEC-8; `docs/decisions.md` ADR-012.
+- Consequence: optional post-V1 hardening only (for example per-source throttling
+  or reverse-proxy rate limiting).
+
 ## Deliberate V1 scope exclusions
 
 These are recorded in `GOALS.md` (Initially out of scope), ADR-006, ADR-008, and

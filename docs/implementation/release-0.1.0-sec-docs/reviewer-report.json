@@ -1,0 +1,77 @@
+{
+  "task": "release-0.1.0-sec-docs",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "files_verified": [
+    "docs/limitations.md (new 'Security-review accepted limitations' section, lines 370-467; D1 at 302-314; D2 at 316-328)",
+    "docs/implementation/final-review/security-review.json (SEC-1..SEC-8 source of record)",
+    "docs/implementation/final-review/security-review.attempt-1.json (referenced by the intro; present)",
+    "docs/implementation/final-review/release-review.attempt-3.json (RR-20 requirement)",
+    "docs/implementation/release-0.1.0-sec-docs/worker-report.json",
+    "docs/implementation/release-0.1.0-sec1/worker-report.json (referenced by SEC-7; present)",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:174-183 (SEC-2 fallback)",
+    "src/ArrTags/State/StateEnvelopeCodec.cs:83-113,144-149 (SEC-3 hash/version check)",
+    "src/ArrTags/State/StateRetention.cs:154-165 (SEC-3 retention trust)",
+    "src/ArrTags/State/StateRepository.cs:58-83 (envelope metadata not validated)",
+    "src/ArrTags/State/StateEnvelope.cs (metadata fields)",
+    "artifacts/ArrTags_0.1.0.0.zip (SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd)"
+  ],
+  "findings": [
+    {
+      "id": "SEC-3-CONSEQUENCE-OVERCLAIM",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "requirements / documentation accuracy (SEC-3 consequence wording)",
+      "summary": "The SEC-3 consequence overclaims that envelope-metadata tampering is detected, contradicting the security-review source of record.",
+      "detail": "The new SEC-3 entry states: 'metadata tampering is detected by the version/authority handling, not by the hash.' The source of record (docs/implementation/final-review/security-review.json, finding SEC-3) makes the opposite point: the envelope metadata is NOT covered by the hash and 'Retention trusts the unauthenticated Terminal and UpdatedUtc fields'; it never claims metadata tampering is detected, and its stated guarantee is 'corruption detection rather than tamper authentication'. Code inspection confirms the overclaim: StateEnvelopeCodec.TryReadEnvelope rejects only a mismatched SchemaVersion (lines 144-149); the Kind, RecordId, and Authority fields are never validated (StateRepository.Read discards the parsed envelope and derives paths from caller arguments, StateRepository.cs:58-83), and Terminal/UpdatedUtc are read and trusted by StateRetention.IsTerminalAndExpired (StateRetention.cs:164). So the sentence is false for five of the six metadata fields and, by implying metadata tampering is caught, understates the very limitation SEC-3 records. This violates the task's explicit requirement of accurate consequence wording with no overclaim.",
+      "evidence": [
+        "docs/limitations.md:406-410 (SEC-3 consequence)",
+        "docs/implementation/final-review/security-review.json finding SEC-3",
+        "src/ArrTags/State/StateEnvelopeCodec.cs:88-92,144-149",
+        "src/ArrTags/State/StateRetention.cs:154-165",
+        "src/ArrTags/State/StateRepository.cs:77-82"
+      ],
+      "recommended_action": "Reword the first sentence of the SEC-3 '- Consequence:' bullet to mirror security-review.json SEC-3: the SHA-256 covers only PayloadJson; SchemaVersion is the only separately validated metadata field; Terminal/UpdatedUtc are trusted by retention; therefore StateEnvelopeCodec is a corruption detector, not a tamper MAC."
+    },
+    {
+      "id": "SEC-CONSEQUENCE-BULLET-STYLE",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "consistency with the file's established entry style",
+      "summary": "SEC-4, SEC-5, SEC-6, and SEC-7 omit an explicit '- Consequence:' bullet although the worker report claims each entry follows the heading + consequence + Evidence style.",
+      "detail": "The existing entries in this file use '- Evidence:' and '- Consequence:' bullets (see RR-1/RR-15 and the new SEC-2/SEC-3/SEC-8). SEC-4, SEC-5, SEC-6, and SEC-7 carry only '- Evidence:' lines. The acceptance rationale for each is present inline in the prose (e.g. SEC-5 'accepted ADR-005 single-source-of-truth design', SEC-6 'not attacker-controllable'), so this is a minor consistency gap, not a correctness defect. Noted because it makes the worker's 'each in the ... heading + consequence + Evidence style' claim slightly inaccurate.",
+      "evidence": [
+        "docs/limitations.md:412-440 (SEC-4/SEC-5/SEC-6 evidence-only bullets)",
+        "docs/limitations.md:302-328 (D1/D2 use Evidence + Disposition)",
+        "docs/implementation/release-0.1.0-sec-docs/worker-report.json summary"
+      ],
+      "recommended_action": "Optional: add an explicit '- Consequence:' bullet to SEC-4 through SEC-7 for consistency. Not required to close RR-20."
+    }
+  ],
+  "tests_checked": [
+    "No build or test run performed: the task is documentation-only and changes no code, test, build file, or artifact; the worker's statement that no build/test was required is correct.",
+    "git status --porcelain --untracked-files=all -> only ' M docs/limitations.md' plus the untracked docs/implementation/release-0.1.0-sec-docs/ task report directory.",
+    "git diff --stat -> docs/limitations.md | 99 insertions; 1 file changed.",
+    "git diff --name-only -> docs/limitations.md only.",
+    "sha256sum artifacts/ArrTags_0.1.0.0.zip -> f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd (matches the required frozen value; unchanged)."
+  ],
+  "research_checked": [
+    "docs/implementation/final-review/security-review.json: severities/statuses of SEC-1..SEC-8 cross-checked against the new entries (SEC-1 MEDIUM/not_required-fixed; SEC-2 LOW/open; SEC-3..SEC-8 INFORMATIONAL/noted). All labels in docs/limitations.md match.",
+    "SEC-7 post-fix behavior change verified against security-review.json SEC-7 (declared non-JSON now bounded 400 before read; absent content type tolerated as JSON; application/json, text/json, +json accepted; 400-over-415 deliberate). The limitation.md wording matches.",
+    "Source-code verification of the SEC-2 fallback (ArrTagsServiceRegistrator.cs:178-180) and SEC-3 integrity/retention behavior (StateEnvelopeCodec, StateRetention, StateRepository).",
+    "ADR-005 and ADR-012 exist in docs/decisions.md (lines 367 and 1383) as referenced."
+  ],
+  "documentation_checked": [
+    "docs/limitations.md: new section heading, intro (SEC-1 fixed, attempt-1 preserved), SEC-2..SEC-8 headings and labels, Evidence cross-references to security-review.json and D1/D2/ADR-005/ADR-012; D1 and D2 entries; overall internal consistency with the existing 'Release-review accepted limitations' section style.",
+    "docs/implementation/final-review/security-review.attempt-1.json: exists (referenced by the intro).",
+    "docs/decisions.md: ADR-005 and ADR-012 present.",
+    "PLANS.md and docs/changelog.md: no stale references to RR-20, SEC-2/SEC-3, or release-gate condition 5; no completion-count/phase-status change is introduced by this task, so no other canonical surface required updating.",
+    "docs/implementation/release-0.1.0-sec1/worker-report.json: exists (referenced by SEC-7)."
+  ],
+  "required_changes": [
+    "Correct the SEC-3 '- Consequence:' wording in docs/limitations.md (lines 406-410): remove the unsupported claim that 'metadata tampering is detected by the version/authority handling'. State instead that the hash authenticates only PayloadJson, that only SchemaVersion is separately validated, that Terminal/UpdatedUtc are trusted by retention, and that StateEnvelopeCodec is therefore a corruption detector rather than a tamper MAC - mirroring docs/implementation/final-review/security-review.json finding SEC-3."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

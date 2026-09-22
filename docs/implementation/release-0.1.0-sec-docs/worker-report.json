@@ -1,0 +1,32 @@
+{
+  "task": "release-0.1.0-sec-docs",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "ready_for_next_task": true,
+  "summary": "Documentation-only corrective attempt for task release-0.1.0-sec-docs, resolving reviewer finding SEC-3-CONSEQUENCE-OVERCLAIM (MEDIUM). Reworded the SEC-3 '- Consequence:' bullet in docs/limitations.md so it no longer claims metadata tampering is detected: it now states the hash covers only PayloadJson, the envelope reader separately validates only SchemaVersion, Kind/RecordId/Authority are not validated by the envelope, and Terminal/UpdatedUtc are trusted by retention (StateRetention.IsTerminalAndExpired); hence the envelope hash is a corruption detector rather than a tamper MAC, which is not an escalation because local write access to the state root is already the administrative boundary, with optional post-V1 hardening to cover the metadata in the hash. This mirrors the source of record (docs/implementation/final-review/security-review.json SEC-3) and the code (StateEnvelopeCodec.cs:83-113, 144-149; StateRetention.cs:154-165). Also applied the reviewer's optional non-blocking consistency fix: added one-to-two-line '- Consequence:' bullets to SEC-4, SEC-5, SEC-6, and SEC-7 so they match SEC-2/SEC-3/SEC-8 while retaining their inline acceptance rationale. The SEC-3 heading, description, and Evidence bullet were not changed. No code, tests, build files, other docs, or the release artifact were changed.",
+  "validation": [
+    "grep -n 'metadata tampering is detected' docs/limitations.md -> no match (overclaim phrase removed).",
+    "sed -n '381,485p' docs/limitations.md -> SEC-3 consequence now reads: hash detects only PayloadJson corruption; envelope reader separately validates only SchemaVersion; Kind/RecordId/Authority unvalidated; Terminal/UpdatedUtc trusted by retention (StateRetention.IsTerminalAndExpired); corruption detector not tamper MAC; not an escalation (local write access to state root is the administrative boundary); optional post-V1 hardening to cover metadata in the hash.",
+    "Cross-checked source of record: docs/implementation/final-review/security-review.json SEC-3 description/evidence matches the reworded consequence.",
+    "Cross-checked code: src/ArrTags/State/StateEnvelopeCodec.cs:88 hashes parsed.PayloadJson only; lines 144-149 validate only SchemaVersion; src/ArrTags/State/StateRetention.cs:164 reads envelope.Terminal/UpdatedUtc.",
+    "grep -n '^- Consequence:' docs/limitations.md -> SEC-2, SEC-3, SEC-4, SEC-5, SEC-6, SEC-7, SEC-8 each now have a Consequence bullet.",
+    "git status --porcelain -> only ' M docs/limitations.md' plus the untracked docs/implementation/release-0.1.0-sec-docs/ directory.",
+    "git diff --stat -> docs/limitations.md | 113 insertions; 1 file changed.",
+    "sha256sum artifacts/ArrTags_0.1.0.0.zip -> f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd (unchanged).",
+    "No build or test run performed: documentation-only change per task constraints (no code/build/artifact change); no rebuild/repackaging performed."
+  ],
+  "changed_files": [
+    "docs/limitations.md",
+    "docs/implementation/release-0.1.0-sec-docs/worker-report.json",
+    "docs/implementation/release-0.1.0-sec-docs/worker-report.attempt-1.json"
+  ],
+  "known_limitations": [
+    "Documentation-only: the accepted SEC findings are recorded as prose/evidence and were not independently re-verified by this task; the source of record is docs/implementation/final-review/security-review.json (APPROVED).",
+    "The optional consistency fix (Consequence bullets for SEC-4..SEC-7) was applied; those consequences restate the same accepted rationale already inline in each entry and introduce no new findings or policy interpretation."
+  ]
+}

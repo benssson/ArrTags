@@ -1,0 +1,101 @@
+{
+  "task": "release-0.1.0-sec-docs",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "files_verified": [
+    "docs/limitations.md (new 'Security-review accepted limitations' section, lines 370-481: intro, SEC-2 at 381, SEC-3 at 397, SEC-4 at 415, SEC-5 at 429, SEC-6 at 441, SEC-7 at 453, SEC-8 at 471; D1 at 302-314; D2 at 316-328)",
+    "docs/implementation/final-review/security-review.json (SEC-1..SEC-8 source of record; APPROVED)",
+    "docs/implementation/final-review/security-review.attempt-1.json (referenced by the intro; present)",
+    "docs/implementation/final-review/release-review.attempt-3.json (RR-20 requirement, condition 5)",
+    "docs/implementation/release-0.1.0-sec-docs/worker-report.attempt-1.json (attempt 1 claim)",
+    "docs/implementation/release-0.1.0-sec-docs/worker-report.json (attempt 2 claim)",
+    "docs/implementation/release-0.1.0-sec1/worker-report.json (referenced by SEC-7; present)",
+    "docs/decisions.md (ADR-005, ADR-012 referenced by SEC-5/SEC-8)",
+    "src/ArrTags/State/StateEnvelopeCodec.cs (hash over PayloadJson only, :88; SchemaVersion-only check, :144-149)",
+    "src/ArrTags/State/StateRetention.cs:154-165 (IsTerminalAndExpired trusts envelope.Terminal/UpdatedUtc)",
+    "src/ArrTags/State/StateRepository.cs:58-83 (Read discards parsed envelope; Kind/RecordId/Authority not validated)",
+    "src/ArrTags/State/StateEnvelope.cs (metadata fields)",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:178-180 (SEC-2 fallback)",
+    "artifacts/ArrTags_0.1.0.0.zip (568,244 bytes; SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd)"
+  ],
+  "findings": [
+    {
+      "id": "SEC-3-CONSEQUENCE-OVERCLAIM",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "requirements / documentation accuracy (SEC-3 consequence wording)",
+      "summary": "RESOLVED (attempt 1 item). The SEC-3 consequence no longer claims envelope-metadata tampering is detected and now matches the source of record and the code.",
+      "detail": "The overclaim sentence ('metadata tampering is detected by the version/authority handling, not by the hash') is gone. The reworded '- Consequence:' bullet (docs/limitations.md:406-413) now states: the hash detects only PayloadJson corruption; the envelope reader separately validates only SchemaVersion; Kind, RecordId, and Authority are not validated by the envelope; Terminal/UpdatedUtc are trusted by retention (StateRetention.IsTerminalAndExpired); metadata tampering is therefore not detected by the hash, which bounds StateEnvelopeCodec to a corruption detector rather than a tamper MAC; not an escalation because local write access to the state root is already the administrative boundary; optional post-V1 hardening to cover the metadata in the hash. Independent code verification: StateEnvelopeCodec.TryDeserialize compares the SHA-256 against parsed.PayloadJson only (StateEnvelopeCodec.cs:88); TryReadEnvelope rejects only a mismatched SchemaVersion (lines 144-149); StateRepository.Read discards the parsed envelope (out _) and derives paths from caller arguments, so Kind/RecordId/Authority are never validated (StateRepository.cs:58-83); StateRetention.IsTerminalAndExpired reads envelope.Terminal and envelope.UpdatedUtc (StateRetention.cs:164). The wording also matches security-review.json finding SEC-3 ('Retention trusts the unauthenticated Terminal and UpdatedUtc fields', 'corruption detection rather than tamper authentication') and release-review.attempt-3.json RR-20/RR-22. grep for 'is detected'/'tamper' shows only the corrected, negated statements. No overclaim remains.",
+      "evidence": [
+        "docs/limitations.md:406-413 (corrected SEC-3 consequence)",
+        "docs/implementation/final-review/security-review.json finding SEC-3",
+        "docs/implementation/final-review/release-review.attempt-3.json RR-20 / RR-22",
+        "src/ArrTags/State/StateEnvelopeCodec.cs:88,144-149",
+        "src/ArrTags/State/StateRetention.cs:154-165",
+        "src/ArrTags/State/StateRepository.cs:77-82"
+      ],
+      "recommended_action": "None; the required change was made and is accurate."
+    },
+    {
+      "id": "SEC-CONSEQUENCE-BULLET-STYLE",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "consistency with the file's established entry style",
+      "summary": "RESOLVED (attempt 1 optional item). SEC-4 through SEC-7 now carry explicit '- Consequence:' bullets.",
+      "detail": "Every SEC entry from SEC-2 through SEC-8 now has an explicit '- Consequence:' bullet: SEC-4 (425-427), SEC-5 (438-439), SEC-6 (449-451), SEC-7 (466-469). Each added consequence is accurate against security-review.json (SEC-4: pre-auth framework detail gone but the generic ProblemDetails/D1 gap remains; SEC-5: none, accepted ADR-005 design with no log path; SEC-6: process-lifetime growth bounded by distinct library items, accepted D2; SEC-7: authenticated non-JSON rejected with a bounded 400, no real Sonarr/Radarr delivery affected).",
+      "evidence": [
+        "docs/limitations.md:425-427 (SEC-4 consequence)",
+        "docs/limitations.md:438-439 (SEC-5 consequence)",
+        "docs/limitations.md:449-451 (SEC-6 consequence)",
+        "docs/limitations.md:466-469 (SEC-7 consequence)",
+        "docs/implementation/final-review/security-review.json findings SEC-4..SEC-7"
+      ],
+      "recommended_action": "None; optional consistency improvement applied and accurate."
+    },
+    {
+      "id": "SEC-ENTRY-ACCURACY",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "requirements / label and cross-reference accuracy",
+      "summary": "SEC-2..SEC-8 labels, statuses, and evidence cross-references all match the security-review source of record; SEC-1 is recorded as fixed and not an accepted limitation.",
+      "detail": "Headings match security-review.json exactly: SEC-2 (LOW, open) at :381; SEC-3, SEC-4, SEC-5, SEC-6, SEC-7, SEC-8 all (INFORMATIONAL, noted) at :397/:415/:429/:441/:453/:471. The section intro (:372-379) records the audit as APPROVED with no open BLOCKER/HIGH/MEDIUM and states SEC-1 (MEDIUM) is NOT an accepted limitation but was fixed by task release-0.1.0-sec1 and independently reproduced live. Evidence cross-references point to security-review.json, D1/D2, ADR-005/ADR-012, StateEnvelopeCodec/StateRetention, ArrTagsServiceRegistrator.cs:178-180, WebhookAuthenticationFilter.cs, and release-0.1.0-sec1/worker-report.json; all referenced files exist.",
+      "evidence": [
+        "docs/limitations.md:370-481 (new section)",
+        "docs/implementation/final-review/security-review.json findings SEC-1..SEC-8",
+        "docs/implementation/release-0.1.0-sec1/worker-report.json (present)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "No build or test run performed: documentation-only change; no code, test, build file, or artifact changed, so no build/test was required (confirmed correct).",
+    "git status --porcelain --untracked-files=all -> only ' M docs/limitations.md' plus the untracked docs/implementation/release-0.1.0-sec-docs/ task report directory; no code/tests/build/artifact change.",
+    "git diff --name-only -> docs/limitations.md only; git diff --stat -> 113 insertions, 1 file changed.",
+    "git diff --stat -- src tests build.sh *.csproj Directory.Build.props build.yaml -> empty (no code/test/build change).",
+    "sha256sum artifacts/ArrTags_0.1.0.0.zip -> f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd (matches the required frozen value; 568,244 bytes; unchanged)."
+  ],
+  "research_checked": [
+    "docs/implementation/final-review/security-review.json: severities/statuses of SEC-1..SEC-8 cross-checked against every new entry (SEC-1 MEDIUM/not_required-fixed; SEC-2 LOW/open; SEC-3..SEC-8 INFORMATIONAL/noted). All labels and descriptions match.",
+    "release-review.attempt-3.json RR-20/RR-21/RR-22: the condition-5 gap and required SEC-2/SEC-3 recording match what docs/limitations.md now records, including the exact corruption-detector (not tamper MAC) phrasing.",
+    "Code verification of the SEC-3 claims: StateEnvelopeCodec.cs:88 (hash over PayloadJson only), :144-149 (only SchemaVersion validated), StateRepository.cs:58-83 (envelope metadata not validated on read), StateRetention.cs:154-165 (Terminal/UpdatedUtc trusted).",
+    "Code verification of the SEC-2 fallback (ArrTagsServiceRegistrator.cs:178-180) and the presence of ADR-005/ADR-012 in docs/decisions.md."
+  ],
+  "documentation_checked": [
+    "docs/limitations.md: new section heading, intro (SEC-1 fixed, attempt-1 preserved), SEC-2..SEC-8 headings/labels, all '- Evidence:' and '- Consequence:' bullets, and cross-references to security-review.json/D1/D2/ADR-005/ADR-012.",
+    "docs/implementation/final-review/security-review.json and security-review.attempt-1.json (present).",
+    "docs/implementation/final-review/release-review.attempt-3.json (RR-20 condition-5 requirement).",
+    "PLANS.md and docs/changelog.md: no stale RR-20/SEC references and no completion-count/phase-status change is introduced by this documentation task, so no other canonical current-state surface required updating.",
+    "docs/decisions.md (ADR-005, ADR-012 referenced)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 2,
+      "reason": "Resolve implementation-reviewer attempt-1 finding SEC-3-CONSEQUENCE-OVERCLAIM (MEDIUM): the SEC-3 consequence claimed envelope-metadata tampering 'is detected', contradicting security-review.json SEC-3 and the code. Reworded to state the hash covers only PayloadJson, only SchemaVersion is separately validated, Kind/RecordId/Authority are not validated by the envelope, Terminal/UpdatedUtc are trusted by retention, and StateEnvelopeCodec is a corruption detector rather than a tamper MAC. Also applied the optional SEC-4..SEC-7 '- Consequence:' bullets.",
+      "outcome": "Verified corrected; attempt 2 APPROVED."
+    }
+  ],
+  "ready_for_next_task": true,
+  "notes": "Attempt 2 written to reviewer-report.attempt-2.json to preserve the attempt-1 CHANGES_REQUIRED report at reviewer-report.json, matching the project convention (e.g. tasks 7.1 and 7.8)."
+}

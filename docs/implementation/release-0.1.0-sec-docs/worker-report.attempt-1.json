@@ -1,0 +1,27 @@
+{
+  "task": "release-0.1.0-sec-docs",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "ready_for_next_task": true,
+  "summary": "Documentation-only corrective task closing release-review finding RR-20 (release-gate condition 5). Added a new 'Security-review accepted limitations' section to docs/limitations.md that records the accepted residual findings from the 0.1.0 security audit: SEC-2 (LOW, open: shared-temp state-root fallback), SEC-3, SEC-4, SEC-5, SEC-6, SEC-7, and SEC-8 (all INFORMATIONAL, noted), each in the file's established heading + consequence + '- Evidence:' style with cross-references to the existing D1/D2 entries and ADR-005/ADR-012. The section intro also records that SEC-1 (MEDIUM) was fixed by task release-0.1.0-sec1 and verified live, so it is not an accepted limitation. No code, tests, build files, build.yaml, other docs, or the release artifact were changed.",
+  "validation": [
+    "grep -n '^### SEC-' docs/limitations.md -> headings present for SEC-2 (line 381), SEC-3 (397), SEC-4 (412), SEC-5 (423), SEC-6 (433), SEC-7 (442), SEC-8 (457).",
+    "grep -n 'SEC-1' docs/limitations.md -> section intro line 375 records SEC-1 (MEDIUM) fixed by task release-0.1.0-sec1 and verified live; not an accepted limitation.",
+    "git status --porcelain -> only ' M docs/limitations.md' plus the untracked docs/implementation/release-0.1.0-sec-docs/ directory.",
+    "git diff --stat -> docs/limitations.md | 99 insertions; 1 file changed.",
+    "sha256sum artifacts/ArrTags_0.1.0.0.zip -> f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd (unchanged).",
+    "No build or test run performed: documentation-only change per task constraints (no code/build/artifact change)."
+  ],
+  "changed_files": [
+    "docs/limitations.md",
+    "docs/implementation/release-0.1.0-sec-docs/worker-report.json"
+  ],
+  "known_limitations": [
+    "Documentation-only: the accepted SEC findings are recorded as prose/evidence and were not independently re-verified by this task; the source of record is docs/implementation/final-review/security-review.json (APPROVED)."
+  ]
+}
