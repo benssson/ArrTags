@@ -1,0 +1,107 @@
+{
+  "task": "8.4",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "8.4-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "security / GitHub token handling",
+      "summary": "The GitHub token is read only from the environment and is never echoed, logged, or written to disk; it is passed to curl in an Authorization header (and to gh via the environment), which exposes it in the local process argument list.",
+      "detail": "scripts/publish-release.sh reads the token only as `token=\"${GITHUB_TOKEN:-${GH_TOKEN:-}}\"` inside the REST fallback and uses it solely in curl `-H \"Authorization: Bearer ${token}\"` headers. There is no `set -x`, no echo/printf of the token, no redirect to a file, and no diagnostic that prints headers on failure (`curl -fsSL` reports the error without echoing request headers). The script sources /config/arrtags-env.sh if present but never writes it. The only residual exposure is that curl receives the bearer token as a command-line argument, so a local user with process-inspection rights could read it from the process list; this is standard for shell-based GitHub publishing and is not a task requirement to change. Confirmed no token is logged or persisted.",
+      "evidence": [
+        "scripts/publish-release.sh:275-276 -> token sourced only from GITHUB_TOKEN/GH_TOKEN",
+        "scripts/publish-release.sh:288-299 -> token used only in curl Authorization headers",
+        "grep for echo/printf/set -x of token -> none",
+        "`bash scripts/publish-release.sh --release-only` with tokens unset printed no token and exited 1"
+      ],
+      "recommended_action": "None required for this task. Optional hardening for a future change: pass the header via a curl config file/stdin to avoid argv exposure."
+    },
+    {
+      "id": "8.4-R2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "correctness / release-only checksum extraction fallback",
+      "summary": "When jq is absent, extract_checksum() falls back to a sed match that returns the first \"checksum\" in the manifest rather than the entry for the target guid/version.",
+      "detail": "scripts/publish-release.sh:239-247 uses jq to select the checksum for the exact guid+version when jq is available (it is present here: /usr/bin/jq). Without jq it uses `sed -n 's/.*\"checksum\":.../\\1/p' | head -n1`, which is only correct if the target version is the first version entry. Because write-manifest.cs sorts versions newest-first and the release always publishes the newest version, the first checksum is the target version for the normal single-plugin release flow, so the post-upload verification still compares the right value in practice. The REST API fallback additionally hard-requires jq (errors clearly if absent), and the gh path is the primary path. This is a documented robustness limitation, not a defect against the acceptance criteria.",
+      "evidence": [
+        "scripts/publish-release.sh:239-247",
+        "scripts/write-manifest.cs:215-224 -> newest-first sort",
+        "docs/implementation/8.4/worker-report.json known_limitations[4]"
+      ],
+      "recommended_action": "None required; the jq path (present in this environment) is exact. Optionally tighten the sed fallback in a future task."
+    },
+    {
+      "id": "8.4-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "release script robustness",
+      "summary": "The prepare path runs `git commit -m ...` without a pathspec after `git add manifest.json`, so any other pre-staged changes in the working tree would be included in the release commit.",
+      "detail": "scripts/publish-release.sh:182-188 stages only manifest.json but commits the whole index. The commit is guarded by `git diff --cached --quiet`, so when manifest.json is unchanged nothing is committed. In the intended clean-tree release workflow (the script is run from a release checkout) this is harmless. It is a minor robustness note, not a task requirement, and the task's documented release flow does not stage unrelated files.",
+      "evidence": [
+        "scripts/publish-release.sh:182-188"
+      ],
+      "recommended_action": "None required for this task; optionally use `git commit -m ... -- manifest.json` in a future change."
+    },
+    {
+      "id": "8.4-R4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "release script behavior / release-only ordering",
+      "summary": "In --release-only mode the branch/tag push now runs before the gh/token availability check, so a run with an existing local tag but no gh CLI and no token pushes the branch and tag and then exits 1 with the manual-step message.",
+      "detail": "scripts/publish-release.sh:266-280 performs the local-tag existence check and the branch/tag push inside the do_release block, before the `command -v gh` / token branch at lines 282-296. This is the intended order per the orchestrator requirement (push the prepared tag before creating the release). The only consequence is that when neither gh nor a token is available, the push has already happened before the clear manual-step error; this is harmless because the prepared branch/tag are meant to be public, and --no-push suppresses it. Not a defect against the acceptance criteria or the rework requirement.",
+      "evidence": [
+        "scripts/publish-release.sh:266-280 -> tag check + push",
+        "scripts/publish-release.sh:282,296 -> gh/token availability checks follow the push"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "tests_checked": [
+    "`bash scripts/publish-release.sh --dry-run` executed by the reviewer: exited 0; ran ./build.sh restore/build/test/package; tests 'Passed! - Failed: 0, Passed: 1228, Skipped: 60, Total: 1288'; produced artifacts/ArrTags_1.0.1.0.zip (568248 bytes); wrote manifest.json; printed the dry-run summary (no commit/tag/push/GitHub call).",
+    "Artifact identity: `md5sum artifacts/ArrTags_1.0.1.0.zip` = 16baa5a7324b8e14fdb113d84b944d09 and `sha256sum` = de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c, matching the report and the manifest checksum.",
+    "Checksum equality: `jq -r '.[0].versions[0].checksum' manifest.json` == `md5sum artifacts/ArrTags_1.0.1.0.zip` -> CHECKSUM MATCHES.",
+    "Manifest shape: `jq -e 'type==\"array\" and length==1' manifest.json` -> SHAPE OK; plugin keys are category, guid, name, description, owner, overview, versions and the version keys are checksum, changelog, targetAbi, sourceUrl, timestamp, version, matching the reference Jellyfin repository manifest (vosmiic/jellyfin-ani-sync master manifest.json) fetched by the reviewer.",
+    "Manifest values vs build.yaml/artifact: guid 40322d52-5680-449f-b33e-e01836ee2f46, version 1.0.1.0, targetAbi 12.0.0.0, sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip, checksum 16baa5a7324b8e14fdb113d84b944d09 all confirmed.",
+    "No git/GitHub side effects: after the dry run, `git tag` was unchanged (still v0.1.0-phase1..7, no v1.0.1), `git log --oneline -1` remained 606fee1, and `git status --short` showed only the expected entries (M PLANS.md; ?? docs/implementation/8.4/, manifest.json, scripts/publish-release.sh, scripts/write-manifest.cs). gh is not installed and GITHUB_TOKEN/GH_TOKEN are unset.",
+    "Regenerating manifest.json during the reviewer dry run changed only the timestamp field (14:16:19Z -> 14:19:58Z) versus the worker's committed copy; all metadata and the checksum were identical.",
+    "`bash -n scripts/publish-release.sh` -> syntax OK. shellcheck is not installed in this environment.",
+    "`dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml` -> exit 0, printed exactly the folded build.yaml changelog text.",
+    "Usage errors: missing --checksum/--source-url/--timestamp printed the usage line and exited 2; `--bogus` printed 'Unknown or incomplete argument: --bogus' and exited 2.",
+    "write-manifest.cs upsert/determinism (reviewer seed test): a seeded manifest with another plugin plus ArrTags versions 1.0.0.0/1.0.1.0/1.0.0 was upserted; the other plugin was preserved, the 1.0.1.0 entry was replaced with the supplied checksum/sourceUrl, and versions were re-sorted newest-first (1.0.1.0, 1.0.0.0, 1.0.0). Two identical runs produced byte-identical output (diff empty).",
+    "Script mode conflicts: `--dry-run --prepare-only` -> exit 2 with a clear message; `--bogus` -> exit 2.",
+    "`--release-only` with no gh and no token -> exit 1 with a clear manual-step message naming tag v1.0.1, repo benssson/ArrTags, artifact, and asset name; no git state changed.",
+    "`./build.sh build` ran successfully during the dry run ('Build succeeded. 0 Warning(s) 0 Error(s)'), confirming the new scripts are not compiled into the solution and do not affect the build.",
+    "`grep -rn 'write-manifest\\|publish-release' ArrTags.slnx` -> no matches; scripts/ contains no obj/bin build output.",
+    "Re-review (attempt 2): `bash -n scripts/publish-release.sh` -> syntax OK; script remains executable (-rwxr-xr-x).",
+    "Re-review (attempt 2): `bash scripts/publish-release.sh --dry-run` exited 0, ran restore/build/test/package, wrote manifest.json, and printed the dry-run summary (no commit/tag/push/GitHub call).",
+    "Re-review (attempt 2): manifest checksum `16baa5a7324b8e14fdb113d84b944d09` equals `md5sum artifacts/ArrTags_1.0.1.0.zip`; the regenerated manifest differs from the prior copy only in the runtime timestamp.",
+    "Re-review (attempt 2): `bash scripts/publish-release.sh --release-only` with no local v1.0.1 tag -> exit 1 with \"ERROR: tag v1.0.1 does not exist locally...\" and no push, tag, or GitHub call; `git tag`/`git log`/`git status` unchanged.",
+    "Re-review (attempt 2): path-scoped commit confirmed in code (`git diff --cached --quiet -- manifest.json` and `git commit -m ... -- manifest.json`); not executed because it would mutate repository state, and the prior approved acceptance criteria depend only on the dry run.",
+    "Re-review (attempt 2): `git status --short` still shows only M PLANS.md and ?? docs/implementation/8.4/, manifest.json, scripts/publish-release.sh, scripts/write-manifest.cs; PLANS.md diff stat unchanged (20 insertions, 4 deletions); scripts/write-manifest.cs mtime unchanged (14:13) so it was not touched by the rework."
+  ],
+  "research_checked": [
+    "Fetched the reference third-party Jellyfin repository manifest https://raw.githubusercontent.com/vosmiic/jellyfin-ani-sync/master/manifest.json and compared its structure: an array of plugin objects with category, guid, name, description, owner, overview, versions[], each version having checksum, changelog, targetAbi, sourceUrl, timestamp, version. The generated manifest.json matches this shape exactly.",
+    "build.yaml (name/guid/version/targetAbi/overview/description/category/owner/changelog) is the authoritative metadata source and matches the generated manifest.",
+    "scripts/pack-release.cs inspected for consistency: the new write-manifest.cs follows the same file-based-app / exit-code-2 usage-error style; build.sh package derives the same artifact name ArrTags_<version>.zip.",
+    "Jellyfin plugin-repository manifest requirements (guid/version/targetAbi/checksum/sourceUrl per version) are satisfied; no unsupported integration mechanism introduced."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status paragraph now reads 'tasks 8.1-8.4 complete; tasks 8.5-8.6 pending'; Milestone Status row 8 reads 'In progress (tasks 8.1-8.4 complete; tasks 8.5-8.6 pending)'; task 8.4 checkbox is [x] and the 8.4 detail block reads '**Status:** Complete.' with an accurate summary. The PLANS.md diff contains only these changes (20 insertions, 4 deletions).",
+    "docs/project-status.md, docs/implementation-readiness.md, docs/changelog.md, docs/architecture.md: no stale Phase 8 aggregate/status statement exists on these surfaces; their Phase 8 updates are deferred to tasks 8.3-8.5 by the plan, and task 8.4's documented documentation impact is docs/release/build-and-release.md by task 8.5.",
+    "docs/implementation/8.4/worker-report.json: claims independently reproduced (dry run, checksum, shape, no side effects, usage exit codes, determinism/upsert); known limitations are honestly recorded."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 2,
+      "trigger": "Orchestrator release-flow requirement: --release-only must (a) error when the tag is absent locally and (b) unless --no-push, push the current branch and the existing tag before creating the GitHub release; the prepare-mode manifest commit must be path-scoped; help/header text updated.",
+      "change": "scripts/publish-release.sh now has a release-only block (lines 263-280) that verifies `refs/tags/${tag}` exists locally (else exit 1 with a clear message) and, unless --no-push, pushes the current branch and the existing tag before the gh/REST release path; the prepare-mode commit is path-scoped (`git diff --cached --quiet -- manifest.json`, `git commit -m ... -- manifest.json`); the header comment and usage() text describe the new --release-only push/tag-existence semantics. write-manifest.cs, manifest.json, PLANS.md, and the worker report were not touched by the rework (write-manifest.cs mtime 14:13 unchanged).",
+      "verification": "Independent re-review: `bash -n` passes; `--release-only` with no local tag errors at the new gate before any push or GitHub call (exit 1) with git state unchanged; `--dry-run` still exits 0 with the correct checksum and no commit/tag/push/GitHub call; the regenerated manifest matches `md5sum artifacts/ArrTags_1.0.1.0.zip`; `git status --short`/`git log`/`git tag` show no unintended changes; the changed-file set is unchanged and PLANS.md diff stat is identical to attempt 1.",
+      "result": "verified"
+    }
+  ],
+  "ready_for_next_task": true
+}

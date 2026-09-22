@@ -1,0 +1,39 @@
+{
+  "task": "8.4",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "rework": "Attempt 2 addresses the orchestrator's script-only rework request. (1) `scripts/publish-release.sh` now pushes the existing branch and tag before publishing the GitHub release when run in `--release-only` mode (and only there): it first verifies the derived `--tag` exists locally and exits 1 with a clear message if not, then, unless `--no-push` was passed, runs `git push origin \"$branch\"` and `git push origin \"$tag\"` before creating/refreshing the release; the header comment and `usage` help text document this. (2) The prepare-mode manifest commit is now path-scoped: `git commit -m \"Publish ArrTags ${version} repository manifest\" -- manifest.json`, and its pre-check was made consistent as `git diff --cached --quiet -- manifest.json` so a pre-staged unrelated change can neither be committed nor cause a spurious 'nothing to commit' failure. All other behaviour is unchanged.",
+  "summary": "Rework (attempt 2): release-only mode now pushes the existing local branch/tag (unless --no-push) after confirming the tag exists locally, so the GitHub release created by the user's `scripts/publish-release.sh --release-only` points at the orchestrator's locally tagged commit; and the prepare-mode manifest commit is path-scoped to manifest.json. Original attempt 1: added scripts/write-manifest.cs (.NET 10 file-based app, RestorePackagesWithLockFile=false, not in ArrTags.slnx, no plugin dependency) that parses build.yaml and upserts the Jellyfin repository manifest keyed by guid/version, preserving other entries, sorting versions newest-first, with --print-changelog; and scripts/publish-release.sh (executable, set -euo pipefail) with --dry-run/--prepare-only/--release-only, --skip-build/--skip-tests/--no-push/--force/--tag/--repo, build/test/package, sha256sum+md5sum, manifest generation, commit/tag/push, and a gh-or-REST GitHub release with post-upload MD5 verification. The dry run produced a correct manifest.json with no commit, tag, push, or GitHub call.",
+  "validation": [
+    "Rework re-run `bash -n scripts/publish-release.sh` passed (SYNTAX OK).",
+    "Rework re-run `bash scripts/publish-release.sh --dry-run` exited 0: build 0 warnings/0 errors, tests 'Failed: 0, Passed: 1228, Skipped: 60, Total: 1288', package 7 entries, sha256 de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c, md5 16baa5a7324b8e14fdb113d84b944d09, and 'Wrote Jellyfin repository manifest: /workspace/ArrTags/manifest.json (1 plugin(s))'.",
+    "Rework re-run no-side-effect check: `git status --short` before and after the dry run was identical (' M PLANS.md', '?? docs/implementation/8.4/', '?? manifest.json', '?? scripts/publish-release.sh', '?? scripts/write-manifest.cs'); `git tag` still ended v0.1.0-phase5/6/7 (no v1.0.1); `git log --oneline -1` remained 606fee1.",
+    "Rework re-run manifest check: `jq -e 'type==\"array\" and length==1 and .[0].guid==\"40322d52-5680-449f-b33e-e01836ee2f46\" and .[0].versions[0].version==\"1.0.1.0\" and .[0].versions[0].targetAbi==\"12.0.0.0\" and .[0].versions[0].sourceUrl==\"https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip\" and .[0].versions[0].checksum==\"16baa5a7324b8e14fdb113d84b944d09\"' manifest.json` succeeded (MANIFEST SHAPE OK) and the checksum equals `md5sum artifacts/ArrTags_1.0.1.0.zip` (CHECKSUM MATCHES).",
+    "Rework release-only tag gate: `bash scripts/publish-release.sh --release-only --no-push` (derived tag v1.0.1 absent locally) exited 1 with 'ERROR: tag v1.0.1 does not exist locally; create it (for example with --prepare-only) before --release-only.' and made no push or GitHub call.",
+    "Rework release-only --no-push path: `bash scripts/publish-release.sh --release-only --no-push --tag v0.1.0-phase7` printed '==> --no-push: skipping push of the existing branch/tag before the release' and then exited 1 at the absent-gh/absent-token guard ('the GitHub release and asset upload are your manual step'), confirming no push and no GitHub call.",
+    "Rework changed-section re-read confirmed the exact new code: the path-scoped commit 'git commit -m \"Publish ArrTags ${version} repository manifest\" -- manifest.json' guarded by 'git diff --cached --quiet -- manifest.json', and the release-only block that checks 'refs/tags/${tag}' then pushes branch and tag unless NO_PUSH=1.",
+    "Attempt 1 validation (unchanged): --print-changelog printed the exact build.yaml changelog; write-manifest.cs missing-args and unknown-arg both exit 2 with a usage/error message; --output defaults to --manifest; repeated identical-input runs were byte-identical; an upsert test preserved another plugin and other versions and re-sorted newest-first; `./build.sh build` succeeded with 0 warnings/0 errors."
+  ],
+  "changed_files": [
+    "scripts/write-manifest.cs",
+    "scripts/publish-release.sh",
+    "manifest.json",
+    "PLANS.md",
+    "docs/implementation/8.4/worker-report.json"
+  ],
+  "known_limitations": [
+    "The release-only push itself (`git push origin <branch>` / `git push origin <tag>`) was not executed because the task forbids pushing; only the tag-existence gate and the `--no-push` skip branch were exercised, plus code inspection. The actual remote push and the subsequent gh/REST release create/upload/verify paths remain unexercised end-to-end.",
+    "The --prepare-only and --release-only modes were not fully executed because the task forbids committing, tagging, pushing, and calling GitHub; they are validated by `bash -n`, by the dry run exercising the shared metadata/checksum/manifest code path, by the two release-only gate tests above, and by code inspection.",
+    "The environment has neither the gh CLI nor GITHUB_TOKEN/GH_TOKEN, so a real GitHub release was neither performed nor possible here; the release path exits 1 with the manual-step message.",
+    "manifest.json's `timestamp` is generated from the current UTC time at run time, so repeated release runs (different timestamps) intentionally differ; byte-identical output is guaranteed only for identical inputs, which was verified with a fixed timestamp. The committed manifest.json carries the re-run dry-run timestamp and will be regenerated/committed by task 8.6.",
+    "The build.yaml parser intentionally supports only the documented shape (quoted `key: \"value\"` scalars and folded `>` blocks for description/changelog); it does not implement general YAML.",
+    "The GitHub REST fallback requires `jq` (checked and errored clearly if absent); the gh branch and the manifest checksum extraction do not require jq (the latter falls back to sed).",
+    "The script derives the tag by stripping one trailing `.0` from the build.yaml version, per the task; versions not ending in `.0` keep their full dotted form with a `v` prefix."
+  ],
+  "ready_for_next_task": true
+}

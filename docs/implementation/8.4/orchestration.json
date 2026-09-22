@@ -1,0 +1,88 @@
+{
+  "task": "8.4",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f368bafc2ffe5bdrABu5fMi8sm"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f36841777ffeOnV90eIfA3r9Zi"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f368bafc2ffe5bdrABu5fMi8sm"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f36841777ffeOnV90eIfA3r9Zi"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Orchestrator release-flow correction: the agent commits and tags locally but does not push, so the user's manual --release-only run must push the existing branch/tag before creating the GitHub release (otherwise the release would point at a commit the remote lacks); also hardened the prepare-mode manifest commit to be path-scoped. Script-only rework; re-reviewed and approved."
+    }
+  ],
+  "notes": "Task 8.4 added scripts/write-manifest.cs and scripts/publish-release.sh and generated manifest.json (guid 40322d52-5680-449f-b33e-e01836ee2f46, version 1.0.1.0, targetAbi 12.0.0.0, MD5 checksum 16baa5a7324b8e14fdb113d84b944d09, sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip). The dry run produced a valid Jellyfin repository manifest with no commit/tag/push/GitHub call. Informational findings on token handling (argv exposure in the curl fallback), the jq-absent sed fallback, and release-only push ordering are non-blocking."
+}

@@ -5,7 +5,7 @@
 **Status:** Phases 1-7 complete; the release tag `v0.1.0` exists at HEAD
 (`a634d61`) with no GitHub release and no Jellyfin plugin-repository
 `manifest.json` published yet. Phase 8 - Release distribution is **in progress**
-(tasks 8.1-8.3 complete; tasks 8.4-8.6 pending): make ArrTags installable through the standard
+(tasks 8.1-8.4 complete; tasks 8.5-8.6 pending): make ArrTags installable through the standard
 Jellyfin plugin catalog from the public repository `benssson/ArrTags`, present an
 end-user `README.md`, correct stale user-visible metadata, and prepare and ship
 the `v1.0.1` release (plugin version `1.0.1.0`, git tag `v1.0.1`); the actual
@@ -200,7 +200,7 @@ without modifying original media files or external services.
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
-| 8 | Release distribution | In progress (tasks 8.1-8.3 complete; tasks 8.4-8.6 pending) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
+| 8 | Release distribution | In progress (tasks 8.1-8.4 complete; tasks 8.5-8.6 pending) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 
 ## Milestones
 
@@ -2960,7 +2960,7 @@ version/release metadata.
 - [x] 8.2 Repoint the agent current-state references at `docs/project-status.md`.
 - [x] 8.3 Correct the stale `build.yaml` metadata and bump the version to
   `1.0.1.0`.
-- [ ] 8.4 Add the Jellyfin plugin-repository manifest tooling and the release
+- [x] 8.4 Add the Jellyfin plugin-repository manifest tooling and the release
   script.
 - [ ] 8.5 Update `docs/release/build-and-release.md` and `docs/changelog.md`.
 - [ ] 8.6 Release-readiness verification, commit the generated `manifest.json`,
@@ -3126,7 +3126,23 @@ v1 behavior and the version is `1.0.1.0` in both `build.yaml` and
 
 #### 8.4 Jellyfin repository manifest tooling and release script
 
-**Status:** Not started.
+**Status:** Complete. Added `scripts/write-manifest.cs`, a .NET 10 file-based app
+(not part of the solution, no plugin dependency) that reads `build.yaml` and
+upserts the Jellyfin plugin-repository version entry in `manifest.json` - plugin
+`category`/`guid`/`name`/`description`/`owner`/`overview` and per-version
+`checksum` (MD5), `changelog`, `targetAbi`, `sourceUrl`, `timestamp`, `version`,
+newest-first - preserving other plugin and version entries and writing stable
+indented JSON; it also supports `--print-changelog` for release notes. Added
+`scripts/publish-release.sh` with `--dry-run`, `--prepare-only`, and
+`--release-only` modes over `./build.sh restore/build/test/package`, SHA-256 and
+MD5 computation, manifest generation, git commit/tag/push (with `--no-push` and
+`--force`), and a `gh`/GitHub-REST-API release with post-upload MD5 verification.
+The dry run generated `manifest.json` (guid
+`40322d52-5680-449f-b33e-e01836ee2f46`, version `1.0.1.0`, targetAbi
+`12.0.0.0`, sourceUrl
+`https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip`,
+MD5 `16baa5a7324b8e14fdb113d84b944d09`) with no commit, tag, push, or GitHub
+call. No other file changed.
 
 **Objective:** Add the tooling that generates the Jellyfin plugin-repository
 `manifest.json` and the script that performs the release.
