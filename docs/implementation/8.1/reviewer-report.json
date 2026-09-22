@@ -1,0 +1,73 @@
+{
+  "task": "8.1",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "8.1-R1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "documentation / PLANS.md canonical current-state surface",
+      "summary": "Resolved in attempt 2. PLANS.md now records Phase 8 as in progress with task 8.1 complete and tasks 8.2-8.6 pending, consistent with the [x] 8.1 checkbox and the 8.1 'Status: Complete' block.",
+      "detail": "The attempted-1 finding was that PLANS.md still claimed Phase 8 was 'not started (tasks 8.1-8.6 all open)' after task 8.1 was marked complete. The rework updates both locations: the Project Status paragraph now reads 'Phase 8 - Release distribution is **in progress** (task 8.1 complete; tasks 8.2-8.6 pending)', and the Milestone Status row 8 now reads 'In progress (task 8.1 complete; tasks 8.2-8.6 pending)'. Independent inspection of the PLANS.md diff confirms exactly these two textual changes plus the original task-8.1 checkbox/status changes; no new contradiction was introduced, and no other canonical surface states a Phase 8 status.",
+      "evidence": [
+        "PLANS.md:7-8 -> 'Phase 8 - Release distribution is **in progress** (task 8.1 complete; tasks 8.2-8.6 pending)'",
+        "PLANS.md:203 -> '| 8 | Release distribution | In progress (task 8.1 complete; tasks 8.2-8.6 pending) | ...'",
+        "PLANS.md:2958 -> '- [x] 8.1 Split README.md ...'",
+        "PLANS.md:2998 -> '**Status:** Complete. ...'",
+        "git diff PLANS.md -> only the Project Status paragraph, Milestone row 8, the 8.1 checkbox, and the 8.1 status block changed"
+      ],
+      "recommended_action": "None; correction verified."
+    },
+    {
+      "id": "8.1-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation sequencing (Phase 8 artifacts not yet produced)",
+      "summary": "README.md instructs end users to install from the repository manifest.json and to download ArrTags_1.0.1.0.zip / the v1.0.1 release, none of which exist at this task's HEAD; this is by design per the Phase 8 plan and the task's explicit instructions.",
+      "detail": "README.md:28-36 reference https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json (created by task 8.4) and the `v1.0.1` release package ArrTags_1.0.1.0.zip (tasks 8.3/8.6). The current build.yaml/Directory.Build.props version is 0.1.0.0 and no manifest.json is committed. The task 8.1 work instructions explicitly specified this repository URL and the 1.0.1.0 manual-install path, and the Phase 8 deliverables and execution order (8.1, 8.2, 8.3, 8.4, 8.5, 8.6) make 8.1 a prerequisite for those artifacts. The worker report records this as a known limitation. Not a defect of task 8.1; the README becomes user-accurate once tasks 8.3, 8.4, and 8.6 land.",
+      "evidence": [
+        "README.md:35 -> 'Download the release package `ArrTags_1.0.1.0.zip` from the GitHub Releases page for `v1.0.1`'",
+        "README.md:29 -> raw manifest.json URL",
+        "build.yaml:4 -> version: \"0.1.0.0\"",
+        "PLANS.md:2966 -> 8.6 commits the generated manifest.json and the v1.0.1 tag",
+        "docs/implementation/8.1/worker-report.json known_limitations[0]"
+      ],
+      "recommended_action": "None for this task; re-verify the README install paths after tasks 8.3, 8.4, and 8.6 complete."
+    }
+  ],
+  "tests_checked": [
+    "Documentation-only task: no production code changed, so no suite run was required; per instruction the authoritative validation is the preservation diff and content review.",
+    "Preservation diff re-run after the rework: `diff <(git show 38d994e:README.md) <(tail -n +3 docs/project-status.md)` -> exit 0 ('PRESERVATION OK'); the prior README body remains byte-for-byte identical under the two added lines.",
+    "Contributor-prose check re-run after the rework: `grep -nEi \"phase [0-9]|gate [0-9]|milestone|build\\.sh|worker report|acceptance criteria|GOALS\\.md|PLANS\\.md|ADR-0|task [0-9]|tests? pass\" README.md` -> NONE.",
+    "README.md:162 still links docs/project-status.md.",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs:375 RendererConfigurationRoundTripsThroughXmlSerializer inspected in attempt 1; it supports the README's claim that the ArrTags.xml example is a valid BasePluginConfiguration shape."
+  ],
+  "research_checked": [
+    "src/ArrTags/Configuration/PluginConfiguration.cs, ArrConnectionConfiguration.cs, BadgeSelectorConfiguration.cs, RendererConfiguration.cs, OperationalLimits.cs: every README configuration field name, default, and semantic matches the source (verified attempt 1).",
+    "src/ArrTags/Rendering/BadgeSelector.cs and BadgeDefinition.ValuePlaceholder='{value}': the README selector list is complete and exact (verified attempt 1).",
+    "src/ArrTags/Webhooks/ArrTagsWebhookController.cs and src/ArrTags/Secrets/SecretLease.cs: webhook routes/status codes and the 'X-Api-Key' header match the README (verified attempt 1).",
+    "src/ArrTags/Plugin.cs: StateFolderName='ArrTags', ResolveStateRootDirectory=ProgramDataPath/ArrTags, completed-drain TryDeleteStateRoot; matches the README uninstall section (verified attempt 1).",
+    "docs/limitations.md F1/F2/F5/V1/V3/V4/V5 and V5/P5: the README known-limitations summary and incomplete-drain caveat match with no overclaim (verified attempt 1).",
+    "docs/release/build-and-release.md and docs/decisions.md ADR-014/ADR-015: README requirements, versioned install layout, and host-supplied SkiaSharp match (verified attempt 1).",
+    "Host-written /tmp/jf/data/plugins/configurations/ArrTags.xml: confirms the README example's BasePluginConfiguration element shape (verified attempt 1)."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status paragraph (now accurate: Phase 8 in progress, task 8.1 complete, tasks 8.2-8.6 pending), Milestone Status row 8 (now accurate), task 8.1 checkbox [x] and 8.1 'Status: Complete' block.",
+    "README.md: unchanged since attempt 1; repository-install, manual-install, configuration, update, uninstall, and known-limitations sections remain consistent with source and docs.",
+    "docs/project-status.md: unchanged byte-for-byte preservation of the prior README body, still linked from README.md.",
+    "docs/changelog.md, docs/architecture.md, docs/implementation-readiness.md: no stale Phase 8 status statement (their Phase 8 updates are deferred to tasks 8.3-8.5)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 2,
+      "trigger": "Attempt-1 finding 8.1-R1 (MEDIUM): PLANS.md's Project Status paragraph and Milestone Status row 8 still claimed Phase 8 was 'not started (tasks 8.1-8.6 all open)' after task 8.1 was marked complete.",
+      "change": "PLANS.md Project Status paragraph now reads 'Phase 8 - Release distribution is **in progress** (task 8.1 complete; tasks 8.2-8.6 pending)', and Milestone Status row 8 now reads 'In progress (task 8.1 complete; tasks 8.2-8.6 pending)'.",
+      "verification": "Independently inspected git diff PLANS.md: exactly the two intended aggregate-status corrections plus the original task-8.1 checkbox/status changes; no new contradiction. git status --short shows only PLANS.md, README.md, docs/project-status.md, and docs/implementation/8.1/{worker,reviewer}-report.json. README preservation and contributor-prose checks re-run and still pass.",
+      "result": "resolved"
+    }
+  ],
+  "ready_for_next_task": true
+}
