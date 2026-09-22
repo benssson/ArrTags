@@ -508,13 +508,14 @@ The plugin:
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 1,278 automated tests. The default `./build.sh test` run passes 1,218
+- Passes 1,288 automated tests. The default `./build.sh test` run passes 1,228
   with 60 environment-guarded skips (the native Skia round trip and render
   cases, the host route/response and plugin-discovery cases, the package-content
   cases, and the ADR-010 non-canonical-runtime placeholder); the host-guarded
-  run with `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,234
+  run with `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244
   with 44 skips, and running `./build.sh package` first unskips the
-  package-content cases. All counts are from the task 7.5 clean build.
+  package-content cases. The counts reflect the current suite after the SEC-1
+  webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
 
 ## Release build
 
@@ -529,10 +530,12 @@ The reproducible release build is documented in
 ./build.sh package                # artifacts/ArrTags_<version>.zip
 ```
 
-The package (`artifacts/ArrTags_0.1.0.0.zip`, 567,856 bytes, SHA-256
-`bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51`) is
-byte-reproducible: repeated clean builds and clean checkouts at different paths
-produce an identical archive. The MSBuild `PackagePlugin` target stages the
+The package (`artifacts/ArrTags_0.1.0.0.zip`, 568,244 bytes, SHA-256
+`f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd`) is
+byte-reproducible: repeated clean builds produce an identical archive, and the
+task 7.5 clean-checkout evidence and the current identity are recorded in
+`docs/release/build-and-release.md`. (The release security fix SEC-1 changed the
+identity; see `docs/changelog.md`.) The MSBuild `PackagePlugin` target stages the
 release files and `scripts/pack-release.cs` writes the archive with entries in
 ordinal order and a fixed timestamp; `PathMap`,
 `IncludeSourceRevisionInInformationalVersion=false`, and

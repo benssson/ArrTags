@@ -22,9 +22,17 @@ namespace ArrTags.Webhooks;
 /// the secret, headers, or body, never publishes metadata or artwork, and never
 /// calls an Arr endpoint (ADR-012).
 /// </summary>
+/// <remarks>
+/// MVC model binding reads and parses form bodies before the action runs, so the
+/// pre-binding <see cref="WebhookAuthenticationFilter"/> authenticates the
+/// request and rejects a non-JSON body before any body read. The action repeats
+/// the authentication as a defence in depth and applies the configured byte
+/// bound.
+/// </remarks>
 [ApiController]
 [AllowAnonymous]
 [Route(ArrTagsWebhookController.RoutePrefix)]
+[TypeFilter(typeof(WebhookAuthenticationFilter))]
 public sealed class ArrTagsWebhookController : ControllerBase
 {
     /// <summary>

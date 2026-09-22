@@ -141,7 +141,9 @@ sha256sum artifacts/ArrTags_0.1.0.0.zip
 Task 7.5 evidence: two independent clean exports (each 526 files, no `.git`,
 `bin`, `obj`, or `artifacts`) built from the same sources at different absolute
 paths, plus a third run in the first export after wiping its build outputs, all
-produced the identical archive:
+produced the identical archive. This is the task 7.5 evidence for the sources
+before the release security fix SEC-1; that fix changed the artifact identity
+(see "Release artifact identity" below and `docs/changelog.md`).
 
 | Run | Tree | SHA-256 | Size |
 | --- | --- | --- | --- |
@@ -161,16 +163,21 @@ Skipped 44, Total 1278.
 
 | Property | Value |
 | --- | --- |
-| Size | 567,856 bytes |
-| SHA-256 | `bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51` |
+| Size | 568,244 bytes |
+| SHA-256 | `f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd` |
 | Entries | 7 |
+
+This is the identity after the release security fix SEC-1
+(`docs/changelog.md`), which changed `ArrTags.dll`; the task 7.5 reproducibility
+table above records the pre-fix identity. The current archive is stable across
+repeated `./build.sh package` runs.
 
 Entry list (ordinal order, all stamped `2000-01-01 00:00`):
 
 | Entry | Size (bytes) | SHA-256 |
 | --- | --- | --- |
 | `ArrTags.deps.json` | 5,899 | `34e49970b08f33202aa2d397b219ca6963f61d372d1f46b9b1862a65e192c70c` |
-| `ArrTags.dll` | 1,145,344 | `1e03b0659cd05e932ec879141443791ee43da726082ec1342529a14f23174584` |
+| `ArrTags.dll` | 1,146,368 | `f256fd0968c730499e679a8b54af49a02371b77d2e1962154f3bd3bb9b44b217` |
 | `THIRD-PARTY-NOTICES.md` | 1,368 | `3656c9f037624237e0530c8729dbe792791ded877b93c28807034ff55bf181b1` |
 | `build.yaml` | 695 | `937794740b3f05db7b3059637369167a9d1387c8bf812b10615dfa8874058a0f` |
 | `licenses/DejaVu-Fonts-License.txt` | 8,816 | `7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93` |

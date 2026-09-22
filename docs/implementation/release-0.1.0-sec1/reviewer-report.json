@@ -1,0 +1,102 @@
+{
+  "task": "release-0.1.0-sec1",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "SEC1-DOC-1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "documentation / canonical current-state surfaces",
+      "summary": "Attempt-1 README test-count defect is corrected; README now matches docs/limitations.md and docs/changelog.md.",
+      "detail": "Attempt 1 required README.md:511-517 to state post-SEC-1 counts. README.md now reads 'Passes 1,288 automated tests. The default ./build.sh test run passes 1,228 with 60 environment-guarded skips ... the host-guarded run ... passes 1,244 with 44 skips', and the attribution sentence now reads 'The counts reflect the current suite after the SEC-1 webhook-boundary fix, which added the 10 WebhookBindingBoundaryTests' (replacing the stale 'All counts are from the task 7.5 clean build'). These totals agree with docs/limitations.md:216-217 (1,228/60/1,288 default; 1,244/44/1,288 host-guarded) and the docs/changelog.md SEC-1 entry (Failed 0, Passed 1228, Skipped 60, Total 1288; host-guarded 1244/44/1288; +10 over the 1218/60/1278 baseline). No stale pre-SEC-1 count remains in README.md. The change is documentation-only and introduces no new code/test/build edits.",
+      "evidence": [
+        "README.md:511-517 (now 1,288 / 1,228 / 1,244 and post-SEC-1 attribution)",
+        "git diff -- README.md (only count lines and attribution sentence changed by attempt 2)",
+        "docs/limitations.md:216-217 (1,228 passed / 60 skipped / 1,288 total; 1,244 passed / 44 skipped / 1,288 total)",
+        "docs/changelog.md SEC-1 entry (Failed 0, Passed 1228, Skipped 60, Total 1288; host-guarded 1244/44/1288; +10 over baseline)",
+        "grep of README.md for 1,278|1,218|1,234 -> no matches"
+      ],
+      "recommended_action": "None; attempt-1 required change is satisfied."
+    },
+    {
+      "id": "SEC1-DOC-2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation consistency",
+      "summary": "docs/architecture.md top Status line still does not mention the SEC-1 fix; the affected architecture sections are correct, so this is not a false claim.",
+      "detail": "Re-confirmed in attempt 2: docs/architecture.md line 3 still ends at the Phase 7/tag state with no SEC-1 sentence, while the two affected webhook sections (the installed webhook boundary section and section 11) were updated accurately by this task and PLANS.md and docs/implementation-readiness.md received SEC-1 sentences. The status line does not assert that SEC-1 is unfixed, so it is a consistency gap, not a misleading or false claim. Remains non-blocking and does not gate the task.",
+      "evidence": [
+        "docs/architecture.md:3 (Status line unchanged; no SEC-1 mention)",
+        "docs/architecture.md diff (webhook boundary section and section 11 accurately describe the pre-binding filter)",
+        "PLANS.md:13-17 (SEC-1 paragraph added)",
+        "docs/implementation-readiness.md:5 (SEC-1 sentence appended)"
+      ],
+      "recommended_action": "Optional only: add a SEC-1 sentence to the docs/architecture.md status line for cross-surface consistency; not required for correctness and intentionally not required by this review."
+    },
+    {
+      "id": "SEC1-EVID-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation evidence",
+      "summary": "Attempt-1 live pinned-host verification was not independently reproduced because the plugin is no longer installed on the pinned host; the claim is supported by independent in-process and artifact-identity evidence.",
+      "detail": "Carried forward from attempt 1 for audit transparency. The pinned host is running, but /tmp/jf/data/plugins contains only 'configurations' and no ArrTags install folder, so replaying the live 401/202/413 matrix would require reinstalling the artifact and restarting the host. The worker's claim remains supported by the independently rerun in-process MVC-pipeline tests (10/10 pass post-fix; 5/10 fail pre-fix with form/multipart returning framework 400 and ReadCalls > 0) and by byte-identity of the packaged ArrTags.dll with the current Release build output. Attempt 2 changed no code or tests, so this evidence is unchanged and remains valid.",
+      "evidence": [
+        "Attempt-1 independent rerun: WebhookBindingBoundaryTests -> Failed 0, Passed 10, Total 10",
+        "Attempt-1 pre-fix reproduction: Failed 5, Passed 5 (ReadCalls 3/2/76/5; oversized form returned 400 instead of 401)",
+        "Attempt-1 artifact identity check: packaged ArrTags.dll byte-identical to current Release build output"
+      ],
+      "recommended_action": "None required; recorded for audit transparency."
+    }
+  ],
+  "tests_checked": [
+    "Attempt-1 independent reruns reused (no code/test/build change in attempt 2): ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "Attempt-1 independent rerun reused: dotnet test --filter FullyQualifiedName~WebhookBindingBoundaryTests -> Failed 0, Passed 10, Skipped 0, Total 10",
+    "Attempt-1 pre-fix reproduction reused: worktree at HEAD + new tests -> Failed 5, Passed 5 (form/multipart 400/ReadCalls > 0)",
+    "Attempt-1 independent rerun reused: ./build.sh test -> Failed 0, Passed 1228, Skipped 60, Total 1288",
+    "Attempt-1 independent rerun reused: ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test -> Failed 0, Passed 1244, Skipped 44, Total 1288",
+    "Attempt-2: no rebuild or test rerun performed, since this attempt changed only README.md (mtime 12:20:47 postdates the 12:19:43 attempt-1 review) and no code, test, or build file"
+  ],
+  "research_checked": [
+    "Attempt-1 verified research reused: ASP.NET Core MVC authorization filters run before model binding, confirmed empirically by the pre-fix vs post-fix ReadCalls contrast",
+    "Attempt-1 verified research reused: ADR-012 webhook contract and ADR-005 versioned secret lease (constant-time SecretLease.Matches, 1024-char candidate bound) as reused by WebhookAuthenticationFilter"
+  ],
+  "documentation_checked": [
+    "README.md (attempt-2 change: test counts corrected to 1,288/1,228/1,244 with post-SEC-1 attribution; artifact identity already post-SEC-1)",
+    "docs/limitations.md (1,228/60/1,288 default and 1,244/44/1,288 host-guarded agree with README and changelog)",
+    "docs/changelog.md (SEC-1 entry counts and f6b6a515 artifact identity agree with README, limitations, and the on-disk artifact)",
+    "PLANS.md (SEC-1 status paragraph accurate; remaining bd10b9b6 references are clearly-labelled historical task 7.5 records)",
+    "docs/implementation-readiness.md (SEC-1 sentence appended; accurate)",
+    "docs/architecture.md (webhook boundary section and section 11 accurate; top Status line not updated -> SEC1-DOC-2 noted non-blocking)",
+    "docs/decisions.md (ADR-012 pre-binding-auth and JSON content-type bullets accurate)",
+    "docs/release/build-and-release.md (post-fix identity and per-entry hashes accurate; task 7.5 table correctly labelled pre-fix)"
+  ],
+  "files_verified": [
+    "README.md (counts 1,288/1,228/1,244; identity 568,244 / f6b6a515...; only count/attribution lines changed by attempt 2)",
+    "docs/limitations.md:216-217 (counts agree)",
+    "docs/changelog.md (SEC-1 entry counts and identity agree)",
+    "PLANS.md, docs/architecture.md, docs/implementation-readiness.md, docs/decisions.md, docs/release/build-and-release.md (attempt-1 documentation state intact; no new stale identity or overclaim)",
+    "src/ArrTags/Webhooks/ArrTagsWebhookController.cs (unchanged in attempt 2; [TypeFilter(typeof(WebhookAuthenticationFilter))] present)",
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs (unchanged in attempt 2; IAsyncAuthorizationFilter authenticates before any body read and rejects non-JSON with bounded 400)",
+    "tests/ArrTags.Tests/WebhookBindingBoundaryTests.cs (unchanged in attempt 2)",
+    "artifacts/ArrTags_0.1.0.0.zip (568,244 bytes; SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd; unchanged)"
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "reviewer_status": "CHANGES_REQUIRED",
+      "required_changes": [
+        "Update README.md lines 511-517 to the post-SEC-1 test totals (1,288 total; default 1,228 passed / 60 skipped; host-guarded 1,244 passed / 44 skipped) or explicitly relabel the block as the pre-SEC-1 task 7.5 baseline, so README does not contradict docs/limitations.md and docs/changelog.md."
+      ],
+      "notes": "The security fix itself (WebhookAuthenticationFilter, controller [TypeFilter], WebhookBindingBoundaryTests) and artifact identity were verified correct; only one documentation defect (SEC1-DOC-1, MEDIUM) was returned. SEC1-DOC-2 (architecture status line, LOW) was noted non-blocking."
+    },
+    {
+      "attempt": 2,
+      "reviewer_status": "APPROVED",
+      "resolution": "SEC1-DOC-1 satisfied. README.md now states 1,288 automated tests, 1,228 default passed / 60 skipped, and 1,244 host-guarded passed / 44 skipped, with an attribution sentence stating the counts reflect the current suite after the SEC-1 webhook-boundary fix that added the 10 WebhookBindingBoundaryTests. Counts agree with docs/limitations.md and docs/changelog.md. Attempt 2 was documentation-only: no source, test, build, or artifact file changed (verified by git status/diff and file mtimes), and the artifact identity is unchanged at 568,244 bytes / SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd. SEC1-DOC-2 remains an accurate, non-blocking LOW consistency note."
+    }
+  ],
+  "ready_for_next_task": true
+}

@@ -213,8 +213,8 @@ original source poster.
 The host route/response, plugin-discovery, native-Skia, and package-content
 facts skip unless `ARRTAGS_JELLYFIN_HOST_DIR` points at the pinned host (and,
 for package content, `./build.sh package` has been run). The default suite is
-1,218 passed / 60 skipped / 1,278 total; the host-guarded suite is 1,234 passed
-/ 44 skipped / 1,278 total.
+1,228 passed / 60 skipped / 1,288 total; the host-guarded suite is 1,244 passed
+/ 44 skipped / 1,288 total.
 
 - Evidence: tasks 7.5/7.8 worker reports; `docs/release/build-and-release.md`.
 - Consequence: the default `./build.sh test` run does not exercise the real host
@@ -224,11 +224,11 @@ for package content, `./build.sh package` has been run). The default suite is
 
 ### P1. Byte-reproducibility depends on the pinned toolchain
 
-Byte-identity of `artifacts/ArrTags_0.1.0.0.zip` (567,856 bytes, SHA-256
-`bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51`) is
-demonstrated with the pinned toolchain (`global.json` pins SDK `10.0.0` with
-`latestMinor`; validated with `10.0.401`). A different .NET SDK version could in
-principle change compiler or deflate output.
+Byte-identity of `artifacts/ArrTags_0.1.0.0.zip` (568,244 bytes, SHA-256
+`f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd`, the
+post-SEC-1 identity) is demonstrated with the pinned toolchain (`global.json`
+pins SDK `10.0.0` with `latestMinor`; validated with `10.0.401`). A different
+.NET SDK version could in principle change compiler or deflate output.
 
 - Evidence: task 7.5 worker/reviewer reports and
   `docs/release/build-and-release.md`.
@@ -236,11 +236,14 @@ principle change compiler or deflate output.
   asserts package contents (required entries, no duplicate SkiaSharp runtime),
   not archive byte-identity; reproducibility is verified by re-running
   `./build.sh package` and comparing SHA-256.
-- Verification note: the current 567,856-byte artifact (`bd10b9b6…`) was itself
+- Verification note: the pre-fix 567,856-byte artifact (`bd10b9b6…`) was itself
   installed and exercised end-to-end on the pinned Jellyfin `12.0.0` host by the
   Phase 7 review (badge published, 0 `[FTL]`, served bytes matching the persisted
-  `ActiveImageIdentity`), which closes the task 7.6 reviewer finding 7.6-R1 for
-  the final artifact.
+  `ActiveImageIdentity`), which closed the task 7.6 reviewer finding 7.6-R1 for
+  that artifact. The post-fix artifact is stable across repeated
+  `./build.sh package` runs and was live-verified on the same host for the SEC-1
+  boundary (`docs/changelog.md`); the re-run release review re-verifies the
+  end-to-end publication on the new artifact.
 
 ### P2. The shipped assembly has reduced debug metadata for reproducibility
 

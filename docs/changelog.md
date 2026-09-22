@@ -2432,3 +2432,60 @@ test, packaging, or behavior change. Build 0 warnings / 0 errors; default suite
 Failed 0, Passed 1218, Skipped 60, Total 1278; host-guarded suite
 (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) Failed 0, Passed 1234, Skipped 44,
 Total 1278. Gate 7 is not declared.
+
+## Release 0.1.0 security fix (SEC-1)
+
+**Status:** Complete. Source, tests, and package changed; no provider, state,
+artwork, or configuration behavior changed. The release and security reviews are
+re-run against the new candidate.
+
+The 0.1.0 release security review
+(`docs/implementation/final-review/security-review.json`, finding SEC-1, MEDIUM)
+reproduced on the pinned Jellyfin `12.0.0` musl host that the anonymous webhook
+boundary processed the request body before authenticating for form content
+types. MVC model binding materializes the form value providers before the action
+runs, so `application/x-www-form-urlencoded` and `multipart/form-data` bodies
+were read and parsed up to the framework's limits before the action's
+shared-secret check, returning a framework `400` instead of the uniform `401`
+and leaving `OperationalLimits.WebhookMaxPayloadBytes` (default 256 KiB) not the
+effective bound on that path. There was no credential exposure, no plugin work
+before authentication, and no integrity loss.
+
+The fix adds `WebhookAuthenticationFilter`
+(`src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs`), an
+`IAsyncAuthorizationFilter` applied to `ArrTagsWebhookController` with
+`[TypeFilter]`. Authorization filters run before MVC model binding, so the
+filter authenticates the `X-ArrTags-Webhook-Secret` header through the ADR-005
+versioned lease with the same bounded constant-time comparison and fails closed
+with the uniform `401` before any body read for every content type. After
+authentication it rejects a non-JSON content type with a bounded `400` before
+the read, so the configured payload bound governs the authenticated path and the
+framework form limits are never reached. The action still re-authenticates and
+applies the byte bound and tolerant parse, so the public `ReceiveAsync` entry
+point and the JSON behavior (`401` no secret, `400` malformed, `413` oversize,
+`202` accepted) are unchanged. No secret, header, or body is reflected.
+
+`tests/ArrTags.Tests/WebhookBindingBoundaryTests.cs` exercises the real
+ASP.NET Core MVC pipeline in-process (controller discovery, filters, model
+binding, and result execution) and proves that an unauthenticated request never
+reads the body for JSON, form, or multipart content types, that an authenticated
+non-JSON body is rejected with a bounded `400` without a read, and that the JSON
+contract is unchanged. Live verification on the pinned host with the rebuilt
+package: no secret + 300,000-byte `application/json` -> `401`; no secret +
+300,000-byte `application/x-www-form-urlencoded` -> `401` (was `400`); no secret
++ 36,700,062-byte `multipart/form-data` -> `401` (was the framework `400` "max
+request body size is 30000000 bytes"); valid secret + JSON -> `202`; valid
+secret + malformed JSON -> `400`; valid secret + 300,000-byte JSON -> `413`;
+valid secret + form/multipart -> bounded `400`; no secret in any response body;
+plugin loaded once with 0 `[FTL]`/`[ERR]`.
+
+Build 0 warnings / 0 errors. Default suite Failed 0, Passed 1228, Skipped 60,
+Total 1288 (+10 over the task 7.5/7.8 baseline 1218/60/1278, all new); the
+host-guarded suite (`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) is Failed 0,
+Passed 1244, Skipped 44, Total 1288. The rebuilt
+`artifacts/ArrTags_0.1.0.0.zip` is 568,244 bytes, SHA-256
+`f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd` (7 entries,
+no SkiaSharp runtime), replacing the pre-fix `bd10b9b6…` identity; the release
+and security reviews are re-run against it. ADR-012 records the pre-binding
+authentication and JSON content-type policy; `docs/architecture.md` section 11
+and the webhook boundary section reflect the realized behavior.

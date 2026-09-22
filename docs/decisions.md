@@ -1447,6 +1447,10 @@ that supported mechanism and does not replace or intercept any host route.
 - Every authentication failure returns the same bounded `401 Unauthorized` with
   no body. The response never reveals whether a secret is configured, whether
   the slot resolved, or why the candidate was rejected.
+- Authentication runs before MVC model binding. A pre-binding authorization
+  filter authenticates the request and fails closed before any request body is
+  read or parsed, so the uniform `401` holds for every content type and no
+  request body is processed before the shared secret is verified.
 
 #### Payload bounds and tolerant parsing
 
@@ -1454,6 +1458,12 @@ that supported mechanism and does not replace or intercept any host route.
   (default 256 KiB, validation range 4 KiB to 4 MiB), resolved from the current
   snapshot per request. A declared or streamed body above the bound is rejected
   with `413 Payload Too Large` before the whole body is buffered.
+- The route accepts a JSON body: `application/json`, `text/json`, or a `+json`
+  structured syntax suffix, with an absent content type tolerated for
+  compatibility. A non-JSON content type is rejected with `400 Bad Request`
+  before the body is read, so the configured bound remains the effective bound
+  for every content type and the framework form/model-binding limits never
+  govern the route.
 - JSON parsing is tolerant of unknown fields and property-name casing and
   bounded by a maximum nesting depth and a maximum number of episode entries.
   Only the event type, the upgrade flag, and the provider-local record/file

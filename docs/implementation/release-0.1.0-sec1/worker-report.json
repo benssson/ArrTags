@@ -1,0 +1,89 @@
+{
+  "task": "release-0.1.0-sec1",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "ready_for_next_task": true,
+  "summary": "Fixed release security finding SEC-1 (MEDIUM): the anonymous webhook boundary processed form/multipart request bodies before authenticating because ASP.NET Core MVC model binding materializes the form value providers before the action runs. Added WebhookAuthenticationFilter, an IAsyncAuthorizationFilter applied to ArrTagsWebhookController with [TypeFilter]. Authorization filters run before model binding, so the filter authenticates the X-ArrTags-Webhook-Secret header through the existing ADR-005 versioned lease with the same bounded (1024-char) constant-time comparison and fails closed with the uniform 401 before any body read for every content type; after authenticating it rejects a non-JSON content type with a bounded 400 before the read, so OperationalLimits.WebhookMaxPayloadBytes (default 256 KiB) is the effective bound and the framework form limits are never reached. The action still re-authenticates and applies the byte bound and tolerant parse, so the public ReceiveAsync entry point and the JSON contract are unchanged. No provider, state, artwork, or configuration behavior changed. Attempt 2 corrects the one documentation defect the independent reviewer returned (SEC1-DOC-1, MEDIUM): README.md lines 511-517 still stated the pre-SEC-1 test counts; they are now the post-SEC-1 totals (1,288 total / 1,228 default / 1,244 host-guarded) consistent with docs/limitations.md and docs/changelog.md, and the trailing attribution sentence now records that the counts reflect the current post-SEC-1 suite rather than the task 7.5 clean build.",
+  "mechanism": "Pre-model-binding IAsyncAuthorizationFilter ([TypeFilter(typeof(WebhookAuthenticationFilter))] on the controller). Authorization filters run before ControllerActionInvoker.ActionBegin, which unconditionally calls CompositeValueProvider.CreateAsync and therefore invokes the form value providers that read and parse form bodies. Short-circuiting in the authorization filter prevents the read. Chosen over removing [ApiController] (does not stop the composite value provider) and over [Consumes] alone (a resource filter runs after authorization, so an unauthenticated non-JSON request would not return the uniform 401). The filter reads only the secret header and the current public configuration snapshot and performs no plugin work before authenticating; the action's own authentication is retained as defence in depth so the public/testable ReceiveAsync behavior is preserved.",
+  "files_changed": [
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs (new)",
+    "src/ArrTags/Webhooks/ArrTagsWebhookController.cs",
+    "tests/ArrTags.Tests/WebhookBindingBoundaryTests.cs (new)",
+    "docs/decisions.md (ADR-012 clarification)",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/limitations.md",
+    "docs/implementation-readiness.md",
+    "docs/release/build-and-release.md",
+    "README.md (attempt 2: test-count sentence updated from 1,278/1,218/1,234 to 1,288/1,228/1,244 and attribution sentence corrected)",
+    "PLANS.md",
+    "docs/implementation/release-0.1.0-sec1/worker-report.json (this report)"
+  ],
+  "validation": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "./build.sh test -> Failed 0, Passed 1228, Skipped 60, Total 1288 (baseline before the fix: Failed 0, Passed 1218, Skipped 60, Total 1278; +10 new tests, no new failures/skips)",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test -> Failed 0, Passed 1244, Skipped 44, Total 1288 (recorded baseline 1234/44/1278; +10 new tests, no new failures/skips)",
+    "dotnet test --filter FullyQualifiedName~WebhookBindingBoundaryTests -> Failed 0, Passed 10, Skipped 0, Total 10 (after the fix)",
+    "dotnet test --filter WebhookBindingBoundaryTests|WebhookBoundaryTests -> Failed 0, Passed 44, Skipped 0, Total 44 (final test-only rerun after the last assertion change)",
+    "Pre-fix reproduction of the same 10 in-process MVC-pipeline tests -> Failed 5, Passed 5: the 5 JSON tests passed; the 5 form/multipart tests failed with unauthenticated form/multipart returning the framework 400 instead of 401 and the request body being read (ReadCalls 3/2/76/5 > 0), matching the SEC-1 live reproduction",
+    "./build.sh package -> deterministic package with 7 entries; repeated run produced the identical SHA-256",
+    "Live pinned-host verification (installed artifacts/ArrTags_0.1.0.0.zip into /tmp/jf/data/plugins/ArrTags_0.1.0.0, restarted the Jellyfin 12.0.0 musl host, 1 clean plugin load, 0 [FTL]/[ERR]): no secret + 300,000-byte application/json -> 401; no secret + 300,000-byte application/x-www-form-urlencoded -> 401 (pre-fix: framework 400 'Form key length limit 2048 exceeded'); no secret + 36,700,062-byte multipart/form-data -> 401 (pre-fix: framework 400 'max request body size is 30000000 bytes'); no secret + small JSON -> 401; valid secret + JSON {\"eventType\":\"Test\"} -> 202; valid secret + malformed JSON -> 400; valid secret + 300,000-byte JSON -> 413; valid secret + form/multipart (small and 300 KB) -> bounded 400; grep of all captured response bodies for the configured secret webhooksecret789 -> no match",
+    "git diff inspection: only the webhook boundary source, the new/updated tests, the canonical current-state docs, and this report changed; build.yaml and the plugin/provider/state/artwork/configuration code are untouched",
+    "Attempt 2 validation (documentation-only change, no rebuild): grep for 1,288|1,228|1,244|1,278|1,218|1,234 -> README.md now states 1,288/1,228/1,244; the only remaining pre-SEC-1 counts are historical records (docs/implementation/7.5/reviewer-report.json and the two release-0.1.0-sec1 reviewer/orchestration reports that quote the pre-fix README)",
+    "Attempt 2 validation: README.md, docs/limitations.md (lines 216-217) and docs/changelog.md SEC-1 entry agree on 1,288 total / 1,228 default passed / 1,244 host-guarded passed",
+    "Attempt 2 validation: git status --porcelain -> M PLANS.md, M README.md, M docs/architecture.md, M docs/changelog.md, M docs/decisions.md, M docs/implementation-readiness.md, M docs/limitations.md, M docs/release/build-and-release.md, M src/ArrTags/Webhooks/ArrTagsWebhookController.cs, ?? docs/implementation/release-0.1.0-sec1/, ?? src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs, ?? tests/ArrTags.Tests/WebhookBindingBoundaryTests.cs (only intended files)",
+    "Attempt 2 validation: sha256sum artifacts/ArrTags_0.1.0.0.zip -> f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd, 568244 bytes (unchanged)"
+  ],
+  "test_results": {
+    "default_suite": {
+      "failed": 0,
+      "passed": 1228,
+      "skipped": 60,
+      "total": 1288,
+      "baseline_passed": 1218,
+      "baseline_skipped": 60,
+      "baseline_total": 1278
+    },
+    "host_guarded_suite": {
+      "environment": "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin",
+      "failed": 0,
+      "passed": 1244,
+      "skipped": 44,
+      "total": 1288,
+      "recorded_baseline_passed": 1234,
+      "recorded_baseline_skipped": 44,
+      "recorded_baseline_total": 1278
+    },
+    "new_tests": {
+      "class": "ArrTags.Tests.WebhookBindingBoundaryTests",
+      "count": 10,
+      "failed": 0,
+      "passed": 10,
+      "host_guarded": false,
+      "exercises": "real ASP.NET Core MVC pipeline in-process (controller discovery, filter pipeline, model binding, result execution) with a request-body stream that counts reads"
+    }
+  },
+  "artifact": {
+    "path": "artifacts/ArrTags_0.1.0.0.zip",
+    "size_bytes": 568244,
+    "sha256": "f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd",
+    "entries": 7,
+    "pre_fix_size_bytes": 567856,
+    "pre_fix_sha256": "bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51",
+    "stability": "identical SHA-256 across two ./build.sh package runs from the same working tree; only ArrTags.dll changed (1,145,344 -> 1,146,368 bytes)",
+    "attempt_2_status": "unchanged at 568,244 bytes / SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd; attempt 2 was documentation-only and performed no rebuild or repackage"
+  },
+  "known_limitations": [
+    "The filter and the action both authenticate the request (two bounded constant-time comparisons and lease acquisitions per authenticated request). This is deliberate defence in depth that preserves the public/testable ReceiveAsync entry point; it has no behavioral effect.",
+    "An authenticated non-JSON body is rejected with 400 Bad Request rather than 415 Unsupported Media Type. The task explicitly accepted a bounded 400/413; 400 was chosen to match the existing ADR-012 payload-rejection status and avoid adding a new documented status. An unauthenticated non-JSON body still returns the uniform 401.",
+    "The route now treats a body with no declared content type as JSON (compatibility) and accepts application/json, text/json, and any +json structured suffix; a JSON body sent with an unrelated content type (for example text/plain) is rejected with 400. Sonarr and Radarr send application/json, so no real delivery is affected.",
+    "The new automated regression test is an in-process MVC-pipeline test, not a Kestrel/HTTP host test. The decisive live HTTP verification was performed manually on the pinned Jellyfin 12.0.0 musl host and is recorded here and in docs/changelog.md, but it is not an automated host-guarded fact in the default suite.",
+    "docs/release/build-and-release.md and docs/limitations.md now record the post-fix artifact identity; the task 7.5 clean-checkout reproducibility evidence they contain remains the pre-fix evidence and is labelled as such. The re-run release review re-verifies end-to-end publication on the new artifact.",
+    "The pre-SEC-1 counts (1,278 / 1,218 / 1,234) remain in historical records (docs/implementation/7.5/reviewer-report.json and the release-0.1.0-sec1 reviewer/orchestration reports that quote the pre-fix README text); these are historical records and were intentionally left unchanged."
+  ]
+}

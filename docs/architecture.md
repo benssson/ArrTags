@@ -481,9 +481,13 @@ presented as solved.
 The installed webhook boundary (`src/ArrTags/Webhooks`, ADR-012) realizes this
 contract. `ArrTagsWebhookController` is an anonymous plugin route
 (`POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr`) discovered
-by Jellyfin's plugin controller registration. It authenticates the
-`X-ArrTags-Webhook-Secret` header through the ADR-005 webhook lease with a
-constant-time comparison, enforces the configured bounded payload size, parses
+by Jellyfin's plugin controller registration. A pre-binding authorization filter
+authenticates the `X-ArrTags-Webhook-Secret` header through the ADR-005 webhook
+lease with a constant-time comparison before MVC model binding can read the
+request body, so the uniform fail-closed `401` holds for every content type; the
+filter also rejects a non-JSON content type with a bounded `400` before the read,
+so the configured payload bound rather than the framework form limits governs
+the route. The action then enforces the configured bounded payload size, parses
 only the event type, upgrade flag, and provider record/file hints with a bounded
 tolerant parser, and performs a non-blocking submit; it returns only bounded
 safe status codes and never logs, returns, or retains the secret or body. A
@@ -1041,14 +1045,16 @@ size and payload shape, and rate-limit or coalesce requests. They must not
 accept arbitrary item IDs as permission to perform unbounded work. ADR-012 fixes
 the V1 contract: an anonymous plugin route authenticated by the
 `X-ArrTags-Webhook-Secret` header through the versioned webhook lease and a
-constant-time comparison; a bounded request payload rejected with a safe status
-before allocation; a bounded tolerant parser that rejects malformed,
-wrong-shaped, or oversized payloads; a bounded intake that coalesces duplicate,
-out-of-order, and replayed deliveries and drops overflow without blocking; and a
-bounded provider-record-to-Jellyfin resolution that enqueues only the same
-deduplicated work hints as every other trigger. A webhook never publishes
-metadata, mutates artwork, calls an Arr endpoint, or widens work beyond items
-ArrTags already tracks.
+constant-time comparison before MVC model binding can read the request body (so
+no body is read before the secret is verified for any content type, and a
+non-JSON content type is rejected with a bounded `400`); a bounded request
+payload rejected with a safe status before allocation; a bounded tolerant parser
+that rejects malformed, wrong-shaped, or oversized payloads; a bounded intake
+that coalesces duplicate, out-of-order, and replayed deliveries and drops
+overflow without blocking; and a bounded provider-record-to-Jellyfin resolution
+that enqueues only the same deduplicated work hints as every other trigger. A
+webhook never publishes metadata, mutates artwork, calls an Arr endpoint, or
+widens work beyond items ArrTags already tracks.
 
 API-key and webhook-secret values are available only through the versioned
 private secret boundary described in section 6 and ADR-005. Authentication
