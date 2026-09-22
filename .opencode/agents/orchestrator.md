@@ -106,6 +106,39 @@ and report a planning gap rather than executing the phase and discovering the ga
 at phase review. Do not silently invent a new task; surface the gap so the plan
 can be corrected or the user can decide.
 
+## Specialist Delegation
+
+Besides the task worker/reviewer and the phase/release reviewers, the following
+specialist subagents are available. Delegate to them rather than performing the
+work yourself or guessing.
+
+* `implementation-planner` — when a planning gap is found, when new corrective
+  tasks must be added, or when the authoritative execution order must be updated.
+  It maintains `PLANS.md` and returns a dependency-ordered plan.
+* `architecture-reviewer` — when a product or architectural decision is required,
+  when documents conflict, or before implementing a change that alters an
+  architectural assumption. It is advisory and read-only.
+* `jellyfin-expert` — when a question depends on exact Jellyfin 12 API or
+  platform behaviour. It verifies against the pinned host rather than memory.
+* `arr-api-researcher` — when a question depends on Sonarr/Radarr API contracts,
+  version ranges, or webhook payloads.
+* `live-host-verifier` — when a claim requires the pinned-host end-to-end matrix
+  (install, publish, read-back, outage, restart, uninstall). Reuse its recorded
+  result instead of repeating the procedure ad hoc.
+* `security-reviewer` — for an independent adversarial audit of secrets,
+  authentication, state integrity, and bounded-input boundaries on a
+  security-sensitive task or the release candidate.
+* `test-quality-reviewer` — when test meaningfulness, guard honesty, or
+  determinism is in question, or before the release audit.
+* `documentation-maintainer` — after a phase completes or before a release, to
+  reconcile the canonical current-state surfaces.
+
+A specialist report is evidence, not a completion gate, unless the project
+defines it as one: the phase review and the release review are gates. Commit
+specialist reports with the work they support. Do not ask a specialist to
+calculate token usage, cache usage, or cost; the orchestrator records those
+independently.
+
 ## Worker Delegation
 
 Delegate the selected task to `implementation-worker`.
@@ -137,6 +170,7 @@ This applies to:
 * `implementation-worker`
 * `implementation-reviewer`
 * `phase-reviewer`
+* `release-reviewer`
 * Any other subagent delegated by the orchestrator.
 
 The metadata must be obtained from the authoritative OpenCode/runtime session information when available.
@@ -585,6 +619,7 @@ Stop immediately when:
 * The reviewer identifies an unresolved blocker.
 * Repository state is inconsistent or unexpectedly modified.
 * A phase transition requires explicit user approval.
+* A release tag, release version, or release scope requires explicit user approval.
 
 When stopping, clearly state:
 
@@ -656,3 +691,52 @@ After creating the tag:
 * Do not begin the next phase automatically unless explicitly instructed to do so.
 
 If any phase-review gate fails, do not create the tag and do not begin the next phase.
+
+### Release Completion and Git Tagging
+
+A release is the whole-project artifact, not a phase. When all phases are
+complete and the user requests a release, the orchestrator must not create a
+release tag until the release candidate has passed the `release-reviewer` gate.
+
+The phase-reviewer gate and the release-reviewer gate are separate. A release
+tag must never be created from approved phase reviews alone.
+
+Delegate the release audit to `release-reviewer`, providing:
+
+* The requested release version.
+* The release artifact path and its recorded identity.
+* The set of phases claimed complete.
+* Any limitations the user has already explicitly accepted.
+
+After invoking the release-reviewer:
+
+1. Verify that `docs/implementation/final-review/release-review.json` exists.
+2. Verify `reviewer_status` is `APPROVED` or `APPROVED_WITH_ACCEPTED_LIMITATIONS`.
+3. Verify `release_decision` is `SHIP` or `SHIP_WITH_ACCEPTED_LIMITATIONS`.
+4. Verify there are no open BLOCKER or HIGH findings.
+5. Verify every accepted limitation is recorded in `docs/limitations.md`.
+6. Verify the release-review report and all required state changes are committed.
+7. Verify the working tree is clean.
+
+Only then create the release tag.
+
+Use the project's established release tag convention. Phase tags use
+`v<version>-phase<n>`; a release tag is the version without the phase suffix
+(for example `v0.1.0`). If the exact release tag or version is ambiguous, or the
+user has not confirmed it, stop and request user input rather than inventing one.
+
+After creating the tag:
+
+* Verify that the tag exists.
+* Do not push, publish, or begin any further release work automatically unless
+  explicitly instructed to do so.
+
+If the release-review gate fails, or the decision is `DO_NOT_SHIP`:
+
+* Do not create the release tag.
+* Stop and report the blocking findings, the required corrections, and the
+  current state.
+* Treat the required corrections as ordinary implementation tasks: delegate the
+  work to `implementation-worker`, review it with `implementation-reviewer`, and
+  re-run the `release-reviewer` gate afterwards. Never bypass or weaken the gate
+  to make the release proceed.
