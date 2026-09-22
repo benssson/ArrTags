@@ -1,334 +1,377 @@
 {
-  "release": "0.1.0",
-  "artifact": "artifacts/ArrTags_0.1.0.0.zip",
-  "artifact_sha256": "f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd",
+  "release": "1.0.1.0",
+  "artifact": "artifacts/ArrTags_1.0.1.0.zip",
+  "artifact_sha256": "de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c",
+  "artifact_identity": {
+    "path": "artifacts/ArrTags_1.0.1.0.zip",
+    "size_bytes": 568248,
+    "sha256": "de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c",
+    "md5": "16baa5a7324b8e14fdb113d84b944d09",
+    "entries": 7,
+    "entry_list": [
+      {
+        "name": "ArrTags.deps.json",
+        "size": 5899,
+        "sha256": "62f63fcc72485fcd2f40564443ee846084f8722f37d99c704e1897e740814d35"
+      },
+      {
+        "name": "ArrTags.dll",
+        "size": 1146368,
+        "sha256": "c384eccf7618c9ad111dfb2d9a9ddf719cb28e993d854c0891485f3bf7dc6e6b"
+      },
+      {
+        "name": "THIRD-PARTY-NOTICES.md",
+        "size": 1368,
+        "sha256": "3656c9f037624237e0530c8729dbe792791ded877b93c28807034ff55bf181b1"
+      },
+      {
+        "name": "build.yaml",
+        "size": 892,
+        "sha256": "7a33566158620df65267790d1be5d556f0058d522734b8990845a18eca38b769"
+      },
+      {
+        "name": "licenses/DejaVu-Fonts-License.txt",
+        "size": 8816,
+        "sha256": "7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93"
+      },
+      {
+        "name": "licenses/SkiaSharp-LICENSE.txt",
+        "size": 1129,
+        "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938"
+      },
+      {
+        "name": "licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt",
+        "size": 139775,
+        "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5"
+      }
+    ],
+    "matches_recorded_identity": true,
+    "recorded_in": "docs/release/build-and-release.md lines 169-200",
+    "manifest_abi": {
+      "version": "1.0.1.0",
+      "targetAbi": "12.0.0.0",
+      "framework": "net10.0"
+    },
+    "contains_renderer_runtime": false,
+    "contains_secrets": false
+  },
+  "tag": "v1.0.1",
+  "tag_commit": "8cba85b2288a201f4e2c7eda58d44c71f9c4f096",
+  "tag_object": "b5b270622f0f182a34d0ecc9a7605d5e70130438",
+  "tag_annotated": true,
+  "reviewed_head": "24945972043c77881fa853445eff2c063579c273",
+  "working_tree_clean": true,
+  "origin_main": "09596e03145ded315ec35a7f4f33660de4057322",
+  "pushed": false,
   "reviewer_status": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
   "release_decision": "SHIP_WITH_ACCEPTED_LIMITATIONS",
   "findings": [
     {
-      "id": "RR-20",
-      "severity": "HIGH",
-      "status": "resolved",
-      "area": "release-gate condition 5 / accepted-limitation recording",
-      "description": "RESOLVED. Attempt 3 blocked the release because the accepted security findings SEC-2 (LOW, open) and SEC-3 (INFORMATIONAL, noted) were not recorded in the canonical limitations record docs/limitations.md. Documentation-only task release-0.1.0-sec-docs (worker attempt 2 COMPLETE, reviewer attempt 2 APPROVED) committed as 9724185 adds a 'Security-review accepted limitations' section recording SEC-2 through SEC-8 (SEC-1 noted as fixed and not an accepted limitation). Release-gate condition 5 is now satisfied.",
-      "evidence": [
-        "docs/limitations.md:370-481 ('Security-review accepted limitations': intro + SEC-2..SEC-8 headings at lines 381, 397, 415, 429, 441, 453, 471)",
-        "grep -n '^### ' docs/limitations.md -> F1-F5, V1-V6, P1-P5, D1-D2, RR-1, RR-15, SEC-2..SEC-8 all present",
-        "git show --name-status 9724185 -> docs/limitations.md plus docs/implementation/release-0.1.0-sec-docs/ reports only; git diff --name-only 75c03ab..HEAD -- src tests build.sh build.yaml Directory.Build.props global.json scripts ArrTags.slnx -> empty",
-        "docs/implementation/release-0.1.0-sec-docs/reviewer-report.attempt-2.json reviewer_status APPROVED; reviewer-report.json (attempt 1) CHANGES_REQUIRED preserved",
-        ".opencode/agents/orchestrator.md:717 'Verify every accepted limitation is recorded in docs/limitations.md.'"
-      ],
-      "recommended_action": "None; the gate condition is now met. Proceed to tag/release."
-    },
-    {
-      "id": "RR-23",
+      "id": "RR101-1",
       "severity": "LOW",
-      "status": "open",
-      "area": "documentation consistency / architecture status line",
-      "description": "Carried-forward SEC1-DOC-2. docs/architecture.md line 3 (Status) still ends at the Phase 7/tag state and does not mention the SEC-1 webhook-boundary fix, while PLANS.md (lines 13-17), docs/implementation-readiness.md (line 5) and docs/changelog.md all received accurate SEC-1 sentences and the two affected architecture sections (webhook boundary section and section 11) were updated accurately. The status line does not assert SEC-1 is unfixed, so this is a consistency gap, not a false or overclaiming statement. Non-blocking.",
+      "area": "documentation honesty / end-user README (pre-publication)",
+      "description": "README.md presents 'Install from the Jellyfin plugin repository' and the 'Manual install (fallback)' download of ArrTags_1.0.1.0.zip as currently available, with no caveat that the v1.0.1 manifest/tag/release are still local-only and unpublished. A reader following README.md before the user runs the publish step would fail at both install paths. This is the carried-forward Phase 8 LOW finding (8.1-R2 / phase-8 review finding 2); the canonical current-state surfaces (docs/limitations.md P6, docs/project-status.md, docs/release/build-and-release.md) are correct and conditioned, so this is a README-honesty gap, not a project-state overclaim. It becomes accurate as soon as the user publishes.",
       "evidence": [
-        "docs/architecture.md:3 (no SEC-1 mention)",
-        "docs/architecture.md webhook boundary section and section 11 (accurate pre-binding-auth description)",
-        "docs/implementation/release-0.1.0-sec1/reviewer-report.json SEC1-DOC-2"
+        "README.md:25-31 - repository install steps with no pre-publication note",
+        "README.md:33-40 - manual install download of ArrTags_1.0.1.0.zip from the v1.0.1 Releases page",
+        "docs/limitations.md P6 (lines 304-320) - manifest commit and tag are local only; no GitHub release/asset exists; catalog install cannot resolve ArrTags yet",
+        "docs/implementation/phase-8/phase-review.json finding 2 (LOW) - same item"
       ],
-      "recommended_action": "Optional post-release: add a SEC-1 sentence to the docs/architecture.md status line for cross-surface consistency. Not required to ship."
+      "recommended_action": "Add a one-line note before the install section of README.md that the v1.0.1 manifest and release must be published before the catalog or Releases download works. Non-blocking; the user publishes immediately after this review, after which the README is accurate."
     },
     {
-      "id": "RR-24",
-      "severity": "INFORMATIONAL",
-      "status": "resolved",
-      "area": "release-candidate provenance",
-      "description": "Attempt-3 noted a stale task-stated HEAD (c980b1f vs actual 75c03ab). This attempt's task states HEAD 9724185, which matches the repository HEAD exactly; the working tree is clean and the only commits since attempt 3 are documentation/report commits. No provenance ambiguity remains.",
-      "evidence": [
-        "git rev-parse HEAD -> 97241853c241154ae40f8cc5acdd9b2cad081ce4; git branch --show-current -> main; git status --porcelain -> empty",
-        "git diff --name-status 75c03ab..HEAD -> docs/implementation/** and docs/limitations.md only",
-        "git tag -l -> v0.1.0-phase1..v0.1.0-phase7; no v0.1.0 tag"
-      ],
-      "recommended_action": "None."
-    },
-    {
-      "id": "RR-25",
-      "severity": "INFORMATIONAL",
-      "status": "noted",
-      "area": "release-candidate provenance / report persistence",
-      "description": "At the freeze the canonical report path docs/implementation/final-review/release-review.json did not exist and was not tracked: the attempt-2 report had been renamed to release-review.attempt-2.json (75c03ab) and the attempt-3 report was preserved as release-review.attempt-3.json (ccb17f4). This is the project's established preserve-then-rewrite workflow (the orchestrator preserves the prior report, then the release-reviewer writes the canonical path); this review restores the canonical file. Gate condition 1 will be satisfied once this report is committed.",
-      "evidence": [
-        "git ls-files docs/implementation/final-review/ -> release-review.attempt-1/2/3.json but no release-review.json",
-        "git show --name-status 75c03ab -> R100 release-review.json => release-review.attempt-2.json",
-        "git show --name-status ccb17f4 -> A release-review.attempt-3.json"
-      ],
-      "recommended_action": "Commit this report at the canonical path (orchestrator gate condition 6) before creating the release tag."
-    },
-    {
-      "id": "SEC-1",
-      "severity": "MEDIUM",
-      "status": "resolved",
-      "area": "webhook HTTP boundary / input handling",
-      "description": "Fixed by commit c980b1f and independently re-verified live by the release 0.1.0 security re-review (security-review.json reviewer_status APPROVED; SEC-1 not_required). WebhookAuthenticationFilter (IAsyncAuthorizationFilter, [TypeFilter] on ArrTagsWebhookController) authenticates before MVC model binding, fails closed with the uniform 401 for every content type, then rejects a non-JSON content type with a bounded 400 before any body read, so WebhookMaxPayloadBytes is the effective bound. Not an accepted limitation.",
-      "evidence": [
-        "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs (present, and the type is present in the shipped ArrTags.dll)",
-        "src/ArrTags/Webhooks/ArrTagsWebhookController.cs:35 [TypeFilter(typeof(WebhookAuthenticationFilter))]",
-        "docs/implementation/final-review/security-review.json SEC-1 (MEDIUM, not_required)",
-        "targeted filter re-run this audit: WebhookBindingBoundaryTests|WebhookBoundaryTests -> Failed 0, Passed 44, Skipped 0, Total 44"
-      ],
-      "recommended_action": "None; resolved."
-    },
-    {
-      "id": "SEC-2",
+      "id": "RR101-2",
       "severity": "LOW",
-      "status": "accepted_recorded",
-      "area": "security / state-root resolution",
-      "description": "SEC-2 accepted for V1 and now recorded in docs/limitations.md (RR-20 closed). When IPluginManager is unavailable or the loaded plugin instance cannot be found, CreateStateRepository roots authoritative state at Path.Combine(Path.GetTempPath(), \"ArrTags\"), a predictable shared location. Not triggered on the pinned host and not remotely reachable. Code re-verified this audit.",
+      "area": "release tooling robustness (manual publish step)",
+      "description": "scripts/publish-release.sh --release-only checks that manifest.json and the local tag exist but does not verify that the local release artifact exists nor that its MD5 equals the manifest checksum before uploading; a stale/regenerated artifact would be uploaded first and only rejected by the post-upload verification. The jq-less checksum fallback also selects the first manifest checksum rather than the target guid/version. Reachable only through the user's manual publish step; jq is present here and the documented artifact/checksum are correct. Carried-forward Phase 8 LOW (8.4-R2/R3 / phase-8 review finding 5).",
       "evidence": [
-        "docs/limitations.md:381-395 (SEC-2 heading + consequence + evidence)",
-        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:178-180 (verified)",
-        "docs/implementation/final-review/security-review.json SEC-2 (LOW, open)"
+        "scripts/publish-release.sh - release path pre-checks manifest.json and the tag only",
+        "docs/implementation/phase-8/phase-review.json finding 5 (LOW)",
+        "docs/implementation/8.4/reviewer-report.json findings 8.4-R2/R3"
       ],
-      "recommended_action": "Accepted for V1; optional post-V1 hardening to fail closed or use a host-private directory."
+      "recommended_action": "Optional post-V1 hardening: fail fast when the local artifact is missing and compare its MD5 to the manifest checksum before upload, and tighten the jq-less fallback. Not required for V1."
     },
     {
-      "id": "SEC-3",
+      "id": "RR101-3",
       "severity": "INFORMATIONAL",
-      "status": "accepted_recorded",
-      "area": "security / state envelope integrity scope",
-      "description": "SEC-3 accepted for V1 and now recorded in docs/limitations.md, with the reviewer-required wording correction applied. The versioned envelope SHA-256 (PayloadSha256) covers only PayloadJson; SchemaVersion is the only separately validated metadata field; Kind/RecordId/Authority are not validated by the envelope; Terminal/UpdatedUtc are trusted by retention. StateEnvelopeCodec is therefore a corruption detector, not a tamper MAC. Independently re-verified against the code this audit; the earlier overclaim phrase is absent.",
+      "area": "test matrix reporting / precondition",
+      "description": "The recorded default suite count (Failed 0, Passed 1228, Skipped 60, Total 1288) assumes artifacts/ArrTags_1.0.1.0.zip has already been produced: in a clean export run before ./build.sh package, the three PluginPackagingTests skip and the default suite is Failed 0, Passed 1225, Skipped 63, Total 1288. After packaging, the same tree yields the recorded 1228/60/1288 and PluginPackagingTests 7/7 pass. This is consistent with docs/limitations.md V6 ('for package content, ./build.sh package has been run') and docs/release/build-and-release.md, which sequences test before package in the clean-checkout procedure; it is a reporting nuance, not a test-integrity defect.",
       "evidence": [
-        "docs/limitations.md:397-413 (corrected SEC-3 consequence); grep 'metadata tampering is detected' -> absent",
-        "src/ArrTags/State/StateEnvelopeCodec.cs:88 (hash compared against parsed.PayloadJson only), :144-149 (only SchemaVersion validated), :156-160 (SHA-256 over payloadJson only)",
-        "src/ArrTags/State/StateRepository.cs:77-82 (Read discards the parsed envelope, derives paths from caller arguments; Kind/RecordId/Authority not validated)",
-        "src/ArrTags/State/StateRetention.cs:154-165 (IsTerminalAndExpired trusts envelope.Terminal/UpdatedUtc)",
-        "docs/implementation/release-0.1.0-sec-docs/reviewer-report.attempt-2.json SEC-3-CONSEQUENCE-OVERCLAIM (not_required/resolved)"
+        "Clean export before package: 'Passed! - Failed: 0, Passed: 1225, Skipped: 63, Total: 1288' with the 3 PluginPackagingTests marked [SKIP]",
+        "Same tree after ./build.sh package: 'Passed! - Failed: 0, Passed: 1228, Skipped: 60, Total: 1288'",
+        "Filtered PluginPackagingTests: 'Failed: 0, Passed: 7, Skipped: 0, Total: 7'",
+        "docs/limitations.md V6; docs/release/build-and-release.md:119-141"
       ],
-      "recommended_action": "Accepted for V1; optional post-V1 hardening to cover envelope metadata in the integrity hash."
+      "recommended_action": "None required. Optionally state in docs/release/build-and-release.md that the default 1228/60/1288 baseline assumes the package has been produced."
     },
     {
-      "id": "SEC-4",
+      "id": "RR101-4",
       "severity": "INFORMATIONAL",
-      "status": "accepted_recorded",
-      "area": "webhook HTTP boundary / error responses",
-      "description": "SEC-4 accepted and recorded; it is the already-recorded D1 gap (generic framework application/problem+json ProblemDetails body versus ADR-012's 'no body' wording). The SEC-1 fix removed the pre-auth framework form-limit detail; no secret/header/body/route/item detail is reflected.",
+      "area": "release-candidate provenance / tag placement",
+      "description": "The annotated tag v1.0.1 points at 8cba85b ('Publish ArrTags 1.0.1.0 repository manifest'), which precedes the later Phase 8 bookkeeping/documentation commits 2b1e769, 799a581, 2494597 and this review's commit. The tagged tree therefore contains the pre-completion wording of the planning/limitations docs (for example it lacks docs/limitations.md P6 and the Phase 8 'Complete' reconciliation), but it contains every release input: manifest.json (byte-identical to HEAD; `git diff v1.0.1..HEAD -- manifest.json` empty), build.yaml and Directory.Build.props at 1.0.1.0, the unchanged src/tests, and scripts/pack-release.cs. This review independently built from the tag tree and reproduced the recorded artifact identity exactly, so the tag is a valid release commit. docs/limitations.md P6 records the tag/manifest as local-only.",
       "evidence": [
-        "docs/limitations.md:415-427 (SEC-4, cross-references D1)",
-        "docs/limitations.md:302-314 (D1)",
-        "docs/implementation/final-review/security-review.json SEC-4"
+        "git cat-file -t v1.0.1 -> tag (annotated; tag object b5b2706..., tagger Chu Hoang, message 'ArrTags 1.0.1.0')",
+        "git rev-parse v1.0.1^{commit} -> 8cba85b2288a201f4e2c7eda58d44c71f9c4f096",
+        "git diff v1.0.1..HEAD -- manifest.json -> empty",
+        "git diff --name-status v1.0.1..HEAD -> only PLANS.md and docs/** bookkeeping files; no src/tests/build.yaml/Directory.Build.props/scripts change",
+        "Independent build from `git archive v1.0.1` reproduced SHA-256 de4c3484... / MD5 16baa5a7... / 568,248 bytes"
       ],
-      "recommended_action": "Accepted for V1; optional post-V1 normalisation of error bodies / ADR-012 wording."
+      "recommended_action": "Keep the tag at 8cba85b. Moving it to HEAD would invalidate the recorded 'tag commit 8cba85b' references across the canonical docs and the committed manifest, without changing the artifact. The push of main at HEAD plus the tag is what makes the published source tree show the reconciled docs."
     },
     {
-      "id": "SEC-5",
+      "id": "RR101-5",
       "severity": "INFORMATIONAL",
-      "status": "accepted_recorded",
-      "area": "secrets at rest",
-      "description": "SEC-5 accepted and recorded: API keys and the webhook secret persist only in Jellyfin's plugin configuration XML and are returned only by Jellyfin's authenticated, elevation-gated API (ADR-005 design). The plugin has no logging call sites. Independently re-checked this audit.",
+      "area": "documentation wording / gate declaration convention",
+      "description": "docs/project-status.md:582 states 'Gate 8 is not declared here; it is covered by the separate phase review' while PLANS.md now records 'Gate 8 met' and the Phase 8 review is approved. The wording is the same deliberate division-of-labour convention used for Gate 7 (docs/project-status.md:585-586), is accurate in that the phase review is where the gate is declared, and overclaims nothing. Not a contradiction.",
       "evidence": [
-        "docs/limitations.md:429-439 (SEC-5)",
-        "grep -rnE 'ILogger|Console\\.|Debug\\.Write|Trace\\.Write' src/ArrTags -> none",
-        "reproduced artifact scan: grep -ral for sonarrkey456|radarrkey123|webhooksecret789 -> no match",
-        "docs/implementation/final-review/security-review.json SEC-5"
+        "docs/project-status.md:582-586 - Gate 8/Gate 7 'not declared here' wording",
+        "PLANS.md:9 and PLANS.md:3315-3320 - 'Gate 8 met ... Phase 8 review approved'",
+        "docs/implementation/phase-8/phase-review.json - reviewer_status APPROVED, phase_complete true"
       ],
-      "recommended_action": "None (accepted ADR-005 design)."
+      "recommended_action": "None. Optionally note in project-status that the gate declaration lives in PLANS.md/phase-review.json."
     },
     {
-      "id": "SEC-6",
+      "id": "RR101-6",
       "severity": "INFORMATIONAL",
-      "status": "accepted_recorded",
-      "area": "input handling / unbounded in-memory collection",
-      "description": "SEC-6 accepted and recorded: it is the already-recorded D2 item (ArtworkSubjectGate.Gates has no idle eviction; not attacker-controllable and bounded in practice by distinct library items). No attacker-influenced unbounded collection was found.",
+      "area": "live host note (not an ArrTags defect)",
+      "description": "During the live library refresh the pinned host logged three Jellyfin-side '[ERR] MediaBrowser.Providers.Folders.CollectionFolderMetadataService: Error in Dynamic Image Provider' entries (the pinned-sysroot SkiaSharp.HarfBuzz SKShaper/font collage issue), unrelated to ArrTags; ArrTags rendered and published successfully in the same run. The only other [ERR] lines were two HTTP 400 responses from this reviewer's own probe authentication attempts. There were zero [FTL] lines and zero ArrTags-related errors or InvalidCastException across install, publish, republish, outage, restart, and uninstall.",
       "evidence": [
-        "docs/limitations.md:441-451 (SEC-6, cross-references D2)",
-        "docs/limitations.md:316-328 (D2)",
-        "docs/implementation/final-review/security-review.json SEC-6"
+        "grep -nE '\\[FTL\\]|\\[ERR\\]' /tmp/jf/console.log -> 2x POST /Users/AuthenticateByName 400 (reviewer probes) + 3x CollectionFolderMetadataService Dynamic Image Provider",
+        "grep -cE '\\[FTL\\]|InvalidCast' /tmp/jf/console.log -> 0",
+        "docs/implementation/final-review/release-review.attempt-3.json - same host-side note carried forward"
       ],
-      "recommended_action": "Accepted for V1; optional post-V1 idle eviction/LRU bound."
-    },
-    {
-      "id": "SEC-7",
-      "severity": "INFORMATIONAL",
-      "status": "accepted_recorded",
-      "area": "webhook HTTP boundary / behavior change introduced by the SEC-1 fix",
-      "description": "SEC-7 accepted and recorded: after authentication a declared non-JSON content type is rejected with a bounded 400 before any read, so valid JSON sent with an unrelated content type is rejected. Absent content type is still treated as JSON; application/json, text/json, and +json are accepted. Sonarr/Radarr send application/json, so no real delivery is affected.",
-      "evidence": [
-        "docs/limitations.md:453-469 (SEC-7)",
-        "docs/implementation/final-review/security-review.json SEC-7",
-        "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs"
-      ],
-      "recommended_action": "Accepted for V1; documented behavior change."
-    },
-    {
-      "id": "SEC-8",
-      "severity": "INFORMATIONAL",
-      "status": "accepted_recorded",
-      "area": "webhook authentication boundary / optional hardening",
-      "description": "SEC-8 accepted and recorded: no ArrTags-level per-client auth throttling on the anonymous webhook route; mitigated by the high-entropy shared secret, the 1024-character candidate bound, constant-time compare, and uniform fail-closed 401. Optional post-V1 hardening only.",
-      "evidence": [
-        "docs/limitations.md:471-481 (SEC-8)",
-        "docs/implementation/final-review/security-review.json SEC-8",
-        "docs/decisions.md ADR-012"
-      ],
-      "recommended_action": "Accepted for V1; optional post-V1 per-source throttling or reverse-proxy rate limiting."
+      "recommended_action": "None. Do not count against the plugin."
     }
   ],
   "criteria_checked": [
-    "GOALS.md criterion 1 (installs/loads on Jellyfin 12): MET - attempt-3 independently installed the byte-identical reproduced archive into the pinned host and observed exactly one 'Loaded plugin: \"ArrTags\" \"0.1.0.0\"', manifest version 0.1.0.0 / targetAbi 12.0.0.0 / framework net10.0. This audit re-confirmed the artifact is byte-identical to the one live-verified (cmp BYTE-IDENTICAL).",
-    "GOALS.md criterion 2 (Sonarr and Radarr configured independently): MET - ConfigurationSnapshotService enables each connection independently; attempt-3 live mock log showed only enabled providers queried with valid keys.",
-    "GOALS.md criterion 3 (movie/TV item matched to its Arr item): MET - attempt-3 live movie matched by TMDb 990001 (radarr movie:1/file:11) and episode/series by TVDB 990004/990002 (sonarr series:1/episode:101/file:201).",
-    "GOALS.md criterion 4 (quality metadata retrieved through the API): MET - attempt-3 live persisted quality from radarr/moviefile.json and sonarr/episodefile.json with mediaInfo dimensions and dynamic range.",
-    "GOALS.md criterion 5 (metadata rendered as a badge on the poster): MET as shipped - attempt-3 live publication through the real host IProviderManager.SaveImage path; GET /Items/{id}/Images/Primary served bytes whose SHA-256 equalled the persisted ActiveImageIdentity; source posters byte-unchanged; subject to the host supplying a compatible SkiaSharp (limitation F5, accepted).",
-    "GOALS.md criterion 6 (updates occur reliably without unnecessary repeated processing): PARTIAL (accurately recorded on every canonical surface) - render and publication are fingerprint-gated (attempt-3 live: unchanged metadata re-run left the served bytes identical and issued no new artwork operation; changed metadata republished with a new fingerprint and new bytes), but provider metadata is fetched per work item (no catalogue cache, F1/RR-7). README, PLANS.md, docs/architecture.md, docs/implementation-readiness.md, docs/changelog.md and docs/limitations.md all carry this qualification.",
-    "GOALS.md criterion 7 (operates alongside Jellyfin Enhanced): MET AT CONTRACT LEVEL ONLY - EnhancedCoexistenceTests pass; Enhanced is not installed on the pinned host (V3/RR-12).",
-    "GOALS.md criterion 8 (failures do not adversely affect Jellyfin): MET as shipped - attempt-3 live provider outage (mock 503) left the host up with current artwork unchanged and 0 [FTL].",
-    "GOALS.md criterion 9 (buildable/testable reproducibly): MET - this audit's independent clean git-archive export built with 0 warnings/0 errors and produced the exact recorded archive (568,244 bytes, f6b6a515..., 7 entries, per-entry hashes matched, byte-identical to the frozen artifact).",
-    "Phase 7 acceptance criterion 1 (full suite from a clean checkout): MET - this audit's independent clean-export build and three-suite test run.",
-    "Phase 7 acceptance criterion 2 (packaged plugin loads/operates on declared ABI): MET - attempt-3 live install, load, restart, and authenticated uninstall (204) with the reproduced artifact.",
-    "Phase 7 acceptance criterion 3 (movie/TV scenarios with unchanged and changed metadata): MET - attempt-3 live unchanged re-run identical; changed fixture republished with new fingerprints/tags/bytes.",
-    "Phase 7 acceptance criterion 4 (provider/matching/rendering/artwork/cache/lifecycle failures do not adversely affect Jellyfin): MET - attempt-3 live outage left the host up with usable artwork and 0 [FTL]; uninstall drain restored the source.",
-    "Phase 7 acceptance criterion 5 (reproducible and documented release artifact): MET - byte-identical archive independently reproduced this audit; docs/release/build-and-release.md pins toolchain, ranges, identity, entry hashes, and checklist."
+    "GOALS.md 1 'Installs and loads correctly on Jellyfin 12' - MET. Independently re-verified on the pinned Jellyfin 12.0.0 musl host: 'Loaded assembly ArrTags, Version=1.0.1.0 ... from /tmp/jf/data/plugins/ArrTags_1.0.1.0/ArrTags.dll' and exactly one 'Loaded plugin: ArrTags 1.0.1.0'; 0 [FTL]/[ERR].",
+    "GOALS.md 2 'Sonarr and Radarr configured independently' - MET (unchanged from 0.1.0; config enables each provider independently; live run read both providers with valid keys).",
+    "GOALS.md 3 'movie/TV item matched to its Arr item' - MET. Live run matched movie 44981a77... (Tmdb 990001/Imdb tt9900001) to Radarr id 1 and episode 8f8ae89a... (Tvdb 990004) to Sonarr episode id 101; both published.",
+    "GOALS.md 4 'metadata retrieved through the API' - MET. Mock request log shows /api/v3/movie, /api/v3/moviefile, /api/v3/series, /api/v3/episode, /api/v3/episodeFile all 200 with valid keys.",
+    "GOALS.md 5 'metadata rendered as a badge on the poster' - MET AS SHIPPED, subject to the host supplying a compatible SkiaSharp (docs/limitations.md F5). Live run published a 320x480 PNG badge per item through the real host IProviderManager.SaveImage; the served Primary image SHA-256 equalled the persisted ActiveImageIdentity (movie 85F12ABB..., episode 3E267FFD...).",
+    "GOALS.md 6 'updates without unnecessary repeated processing' - MET for render/publication; PARTIAL for provider fetches (docs/limitations.md F1). Live: an unchanged-metadata re-run left PublishedFingerprint, image tag, and served bytes identical; changed metadata produced new fingerprints and new served bytes.",
+    "GOALS.md 7 'operates alongside Jellyfin Enhanced' - MET AT THE CONTRACT LEVEL ONLY (docs/limitations.md V3; EnhancedCoexistenceTests 7/7; Jellyfin Enhanced is not installed on the pinned host).",
+    "GOALS.md 8 'failures do not adversely affect Jellyfin' - MET AS SHIPPED. Live provider outage (mock 503 for both providers) left the host up (5/5 HTTP 200 polls), served artwork unchanged, metadata-state State=1 (stale) with no LastError, 0 [FTL].",
+    "GOALS.md 9 'built and tested reproducibly' - MET for the pinned toolchain (docs/limitations.md P1). Independent clean-export build of the tag tree reproduced the recorded artifact byte-for-byte."
   ],
   "gates_checked": [
-    "Gate 1 (plugin ABI + configuration/lifecycle): MET - docs/changelog.md Phase 1 plus the full suite; no independent phase review (RR-1, recorded in docs/limitations.md).",
-    "Gate 2 (both integrations probed/queried read-only and mapped to canonical observations): MET - changelog Phase 2, ProviderContractFixtureTests, ProviderFailureMatrixTests; no independent phase review (RR-1, recorded).",
-    "Gate 3 (representative matching cases with no guessed matches): MET - changelog Phase 3, matching tests; no independent phase review (RR-1, recorded).",
-    "Gate 4 (deterministic bounded rendering with safe pass-through; forced-native run): MET - docs/implementation/phase-4/phase-review.json APPROVED; this audit's forced-native run 1301 passed/17 skipped/1318 total, 0 failed.",
-    "Gate 5 (publication through supported image APIs without modifying media): MET at the integration-test level and live - docs/implementation/phase-5/phase-review.json APPROVED; attempt-3 live publication/serve/restore run.",
-    "Gate 6 (bounded reconciliation/invalidation/persistence; accepted criterion-1 partial): MET - docs/implementation/phase-6/phase-review.json APPROVED with the coverage bound tracked.",
-    "Gate 7 (all V1 success criteria checked, blockers resolved, artifact approved): MET - docs/implementation/phase-7/phase-review.json APPROVED; both historical release blockers confirmed fixed; artifact re-confirmed byte-identical this audit.",
-    "DG-1 exact Jellyfin 12.0.0/net10.0/targetAbi pins: resolved.",
-    "DG-2 item/image scope: resolved by ADR-006.",
-    "DG-3 badge rendering contract: resolved by ADR-009.",
-    "DG-4 episode numbering: resolved by ADR-007.",
-    "DG-5 path fallback: resolved by ADR-008 (deferred out of V1).",
-    "DG-6 operational limits: resolved by ADR-004.",
-    "DG-7 webhook boundary: resolved by ADR-012; the SEC-1 pre-binding-authentication clarification was independently live-re-verified by the security re-review.",
-    "DG-8 Enhanced coexistence: resolved by ADR-011.",
-    "DG-9 provider release ranges/optional fields: resolved by ADR-013.",
-    "Release-gate condition 1 (report exists at canonical path): NOW MET on commit of this report - it was absent at the freeze (RR-25, expected preserve-then-rewrite workflow).",
-    "Release-gate condition 2 (reviewer_status APPROVED or APPROVED_WITH_ACCEPTED_LIMITATIONS): MET - APPROVED_WITH_ACCEPTED_LIMITATIONS.",
-    "Release-gate condition 3 (release_decision SHIP or SHIP_WITH_ACCEPTED_LIMITATIONS): MET - SHIP_WITH_ACCEPTED_LIMITATIONS.",
-    "Release-gate condition 4 (no open BLOCKER or HIGH): MET - RR-20 (HIGH) resolved by 9724185; no BLOCKER/HIGH open.",
-    "Release-gate condition 5 (every accepted limitation recorded in docs/limitations.md): MET - SEC-2..SEC-8 now recorded in the new 'Security-review accepted limitations' section; F1-F5, V1-V6, P1-P5, D1-D2, RR-1, RR-15 remain present. SEC-1 is recorded as fixed/not accepted.",
-    "Release-gate condition 6 (report and required state changes committed): PENDING orchestrator - this report is written to the canonical path but not committed by the reviewer (read-only constraint).",
-    "Release-gate condition 7 (working tree clean): MET at freeze; this review adds only the untracked canonical report (expected deliverable)."
+    "Gate 1 (plugin foundation) - phase-1 review record does not exist (docs/limitations.md RR-1); accepted process gap, not a correctness defect.",
+    "Gate 2 (Sonarr & Radarr integration) - phase-2 review record does not exist (RR-1); accepted.",
+    "Gate 3 (media matching) - phase-3 review record does not exist (RR-1); accepted.",
+    "Gate 4 (badge rendering) - docs/implementation/phase-4/phase-review.json APPROVED, phase_complete true, no HIGH/BLOCKER.",
+    "Gate 5 (artwork integration) - docs/implementation/phase-5/phase-review.json APPROVED, phase_complete true, no HIGH/BLOCKER.",
+    "Gate 6 (caching/updates/performance) - docs/implementation/phase-6/phase-review.json APPROVED, phase_complete true, one open MEDIUM (reconciliation coverage, accepted as docs/limitations.md F4).",
+    "Gate 7 (testing & release) - docs/implementation/phase-7/phase-review.json APPROVED, phase_complete true, one MEDIUM (GOALS overclaim wording, since corrected in docs/limitations.md).",
+    "Gate 8 (release distribution) - docs/implementation/phase-8/phase-review.json APPROVED, phase_complete true, seven LOW findings (two carried as RR101-1/RR101-2); PLANS.md declares Gate 8 met."
   ],
   "artifact_checked": [
-    "Freeze: HEAD 97241853c241154ae40f8cc5acdd9b2cad081ce4 on branch main; working tree clean (git status --porcelain empty); no v0.1.0 tag; phase tags v0.1.0-phase1..v0.1.0-phase7.",
-    "Delta since attempt-3 (75c03ab): git diff --name-status 75c03ab..HEAD -> docs/implementation/** reports, docs/limitations.md, docs/implementation/final-review/security-review.json only. git diff 75c03ab..HEAD -- src tests build.sh build.yaml Directory.Build.props global.json scripts ArrTags.slnx -> empty (no code/test/build change).",
-    "Baseline identity: artifacts/ArrTags_0.1.0.0.zip on disk sha256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd, 568,244 bytes, matching docs/release/build-and-release.md exactly.",
-    "Independent clean export: git archive HEAD | tar -x -C /tmp/final-review/release-src; 561 files, no .git/bin/obj/artifacts; scripts/pack-release.cs and both packages.lock.json present.",
-    "Commands: . /config/arrtags-env.sh (SDK 10.0.401); ./build.sh restore (locked-mode; both projects restored); ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s); ./build.sh package -> Created deterministic package (7 entries).",
-    "Reproduced archive: sha256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd, 568,244 bytes, 7 entries; cmp against /workspace/ArrTags/artifacts/ArrTags_0.1.0.0.zip -> BYTE-IDENTICAL.",
-    "Entry list and per-entry SHA-256 (all matched the recorded table): ArrTags.deps.json 5,899 / 34e49970b08f33202aa2d397b219ca6963f61d372d1f46b9b1862a65e192c70c; ArrTags.dll 1,146,368 / f256fd0968c730499e679a8b54af49a02371b77d2e1962154f3bd3bb9b44b217; THIRD-PARTY-NOTICES.md 1,368 / 3656c9f037624237e0530c8729dbe792791ded877b93c28807034ff55bf181b1; build.yaml 695 / 937794740b3f05db7b3059637369167a9d1387c8bf812b10615dfa8874058a0f; licenses/DejaVu-Fonts-License.txt 8,816 / 7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93; licenses/SkiaSharp-LICENSE.txt 1,129 / 89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938; licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 139,775 / 21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5.",
-    "Manifest ABI parsed from the archive build.yaml: name ArrTags, guid 40322d52-5680-449f-b33e-e01836ee2f46, version 0.1.0.0, targetAbi 12.0.0.0, framework net10.0, artifacts [ArrTags.dll, ArrTags.deps.json] (subset of archive).",
-    "No duplicate renderer/host runtime: find pkg -iname '*skia*' -o -iname '*harfbuzz*' -> only the two license text files (ADR-015); the archive contains no SkiaSharp.dll or libSkiaSharp.so.",
-    "SEC-1 fix present in the shipped binary: grep 'WebhookAuthenticationFilter' ArrTags.dll -> present; ArrTags.dll sha256 f256fd09... equals the recorded artifact entry hash."
+    "Export: `git archive v1.0.1 | tar -x -C /tmp/final-review/release-src` -> 581 files, no .git, no bin/obj/artifacts (clean committed sources).",
+    "Commands: `. /config/arrtags-env.sh && ./build.sh restore && ./build.sh build && ./build.sh test && ./build.sh package` (SDK 10.0.401 per global.json).",
+    "Build: 'Build succeeded. 0 Warning(s) 0 Error(s)'.",
+    "Package: 'Created deterministic package: /tmp/final-review/release-src/artifacts/ArrTags_1.0.1.0.zip (7 entries)'.",
+    "Observed identity: size 568,248 bytes; `sha256sum` de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c; `md5sum` 16baa5a7324b8e14fdb113d84b944d09 - EXACT MATCH to the identity recorded in docs/release/build-and-release.md.",
+    "Entry list and per-entry SHA-256 verified by `unzip -q ... -d /tmp/final-review/pkg && find ... | xargs sha256sum`; all 7 entries match the recorded per-entry hashes exactly.",
+    "Archive `build.yaml` is byte-identical to the repository `build.yaml` (`unzip -p artifacts/ArrTags_1.0.1.0.zip build.yaml | diff - build.yaml` empty).",
+    "No renderer/host runtime: `find /tmp/final-review/pkg -iname '*skia*'` returns only the two license/notice text files; no SkiaSharp.dll or libSkiaSharp.so; no Jellyfin assemblies. (ArrTags.deps.json retains the SkiaSharp.NativeAssets runtimeTargets graph entries, which ADR-015 explicitly documents; no native file is staged.)",
+    "Manifest ABI: version 1.0.1.0, targetAbi 12.0.0.0 (build.yaml), framework net10.0 (src/ArrTags/ArrTags.csproj TargetFramework).",
+    "Secret scan: `strings ArrTags.dll` and `grep -ra 'radarrkey123|sonarrkey456'` on the extracted package found no configured key/secret values (only type/field names such as ApiKeyReference, WebhookSecret).",
+    "The repository artifact artifacts/ArrTags_1.0.1.0.zip is byte-identical to the reproduced one and to the recorded identity; `git status` is clean (no tracked file changed by this review)."
   ],
   "live_checks": [
-    "REUSED FROM ATTEMPT-3 (justified): the only change since attempt-3 is documentation (git diff 75c03ab..HEAD -- src tests ... -> empty), and this audit independently reproduced the artifact byte-identically (cmp BYTE-IDENTICAL), so the runtime path exercised by attempt-3 is the same binary under review. The pinned host fixture /tmp/jf was inspected read-only and found stopped (port 8096 free) with no installed plugin folder and no state root - i.e. left clean; this review did not mutate it.",
-    "REUSED (attempt-3, artifact byte-identical): install/load -> exactly one 'Loaded plugin: \"ArrTags\" \"0.1.0.0\"'; no plugin-context SkiaSharp load; 0 [FTL]; GET /System/Info/Public -> Version 12.0.0.",
-    "REUSED (attempt-3, artifact byte-identical): SEC-1 boundary - unauthenticated JSON/form(300,000 B)/multipart(36,700,062 B) all returned the uniform 401 with no pre-auth body read (form was 400 pre-fix; multipart was framework 400 pre-fix); authenticated JSON 202/400/413; authenticated non-JSON bounded 400; no secret reflected.",
-    "REUSED (attempt-3, artifact byte-identical): full publication pipeline through the real host IProviderManager.SaveImage; GET /Items/{id}/Images/Primary 200 image/png whose SHA-256 equalled the persisted ActiveImageIdentity (movie 85f12abb..., episode 3e267ffd..., then movie 5134efb1... after a changed fixture).",
-    "REUSED (attempt-3): source artwork byte-unchanged (poster.jpg 93237bc3..., S01E01.jpg fd6ef7e5... before and after publication).",
-    "REUSED (attempt-3): unchanged metadata did not republish (no new artwork operation; served bytes identical); changed metadata republished (new fingerprint DF7ECDF5..., new served bytes 5134efb1...).",
-    "REUSED (attempt-3): provider outage (mock 503) left the host up with artwork unchanged and 0 [FTL].",
-    "REUSED (attempt-3): restart preserved the install and all 16 state records, served artwork unchanged, 0 [FTL].",
-    "REUSED (attempt-3): authenticated uninstall DELETE /Plugins/40322d52-5680-449f-b33e-e01836ee2f46/0.1.0.0 -> 204; versioned install folder removed; relocated state root removed by the completed-drain cleanup; GET /Items/.../Images/Primary restored to the original source poster.",
-    "REUSED (attempt-3): secret hygiene - 0 occurrences of the configured keys/secret in host log, launcher output, mock request logs, webhook response bodies, or the state root; only Jellyfin's plugin configuration XML holds them.",
-    "HOST-SIDE NOTE (carried): the library scan produced a host-side Jellyfin [ERR] 'Error in Dynamic Image Provider ... CollectionFolderMetadataService' with a SkiaSharp.HarfBuzz SKShaper ArgumentNullException - a pinned-sysroot font/collage availability issue unrelated to ArrTags (the plugin uses embedded DejaVu bytes and rendered/published successfully); not counted against the plugin."
+    "Host: pinned Jellyfin 12.0.0 amd64-musl at /tmp/jf, started with `scripts/provision-jellyfin-test-host.sh /tmp/jf`; `GET /System/Info/Public` -> Version 12.0.0, StartupWizardCompleted true.",
+    "Install/load (RE-VERIFIED for the 1.0.1.0 package): extracted artifacts/ArrTags_1.0.1.0.zip into /tmp/jf/data/plugins/ArrTags_1.0.1.0; console shows 'Loaded assembly ArrTags, Version=1.0.1.0 ... from /tmp/jf/data/plugins/ArrTags_1.0.1.0/ArrTags.dll' and exactly one 'Loaded plugin: ArrTags 1.0.1.0'; install-folder meta.json reports version 1.0.1.0, targetAbi 12.0.0.0, status Active; 0 [FTL]/[ERR].",
+    "Publication (RE-VERIFIED): authenticated as arrtagsadmin; mock Arr fixture (scripts/mock-arr-fixture.cs copy) at 127.0.0.1:7878/8989 with X-Api-Key enforcement; library refresh + `POST /ScheduledTasks/Running/0e96fc3004bcd22db45dd641e63e2666` -> 204; task logged 'ArrTags: reconcile badge metadata Completed'; state root /tmp/jf/data/ArrTags created with artwork-state + artwork-operation records for both items.",
+    "Published bytes (RE-VERIFIED): `GET /Items/44981a77cbb83c70ba091797839212aa/Images/Primary` -> 200 image/png 5,971 bytes SHA-256 85f12abb8db0f26618e45401d2481196be0f62bd4686ea2a668f53338772c5db, equal to the persisted ActiveImageIdentity.ContentSha256; `GET /Items/8f8ae89a49eb9e335037855282396bb9/Images/Primary` -> 200 image/png 8,271 bytes SHA-256 3e267ffdddc260c4c0b983a5741463b070a472be11df3b2c78c84a066603cc6b, equal to that item's ActiveImageIdentity.",
+    "Source artwork unchanged (RE-VERIFIED): media sidecars poster.jpg 93237bc3446150da0ce7d6c26aaa5b03da9c4f757e1babbabf6f2b08bbdf138a and ArrTagsTestShow.S01E01.jpg fd6ef7e550c962c66f951c69083ded58a4ee4701acc7b5076ca29dfcd0b44f5d byte-identical before and after publication, and equal to the persisted SourceArtifactId for each item.",
+    "Unchanged metadata (RE-VERIFIED): a second identical reconciliation left PublishedFingerprint (movie AFA76A9C..., episode 7A8413BD...), JellyfinImageTag, and served bytes identical - no republish.",
+    "Changed metadata (RE-VERIFIED): editing radarr/moviefile.json (Bluray-1080p/bluray/1080/SDR -> Remux-2160p/remux/2160/HDR10) and sonarr/episodefile.json (WEBDL-1080p -> WEBDL-2160p, SDR -> HDR10) then re-running produced new values: movie PublishedFingerprint 2377844B..., image tag 6f733cf8..., served SHA-256 229a92d5...; episode PublishedFingerprint 815127AF..., image tag add7ff78..., served SHA-256 cff9c440...; 0 [FTL]. Fixtures restored to committed bytes afterward.",
+    "Provider outage (RE-VERIFIED): creating radarr/failure and sonarr/failure (mock answers 503) then running the task left the host up (5/5 HTTP 200 polls), served artwork unchanged (229a92d5... / cff9c440...), both metadata-state records State=1 (stale) with no LastError, 0 [FTL].",
+    "Restart (RE-VERIFIED): restarting the pinned host preserved the install (exactly one 'Loaded plugin: ArrTags 1.0.1.0'), preserved both artwork-state records, served artwork unchanged, and produced 0 [FTL]/[ERR].",
+    "Uninstall drain (RE-VERIFIED live, closing the gap V5 notes for earlier 0.1.0 runs): authenticated `DELETE /Plugins/40322d52-5680-449f-b33e-e01836ee2f46/1.0.1.0` -> HTTP 204; the versioned install folder was removed; the relocated state root /tmp/jf/data/ArrTags was removed by the completed-drain cleanup; `GET /Items/{id}/Images/Primary` was restored to the original source posters (93237bc3... / fd6ef7e5...); 0 [FTL].",
+    "Reused from the 0.1.0 live-verified evidence (NOT re-run here, justified): the webhook/SEC-1 authentication boundary (uniform 401 before body read for every content type; authenticated JSON 202/400/413; authenticated non-JSON bounded 400) and the deeper state-corruption/atomicity and bounded-input unit coverage. Justification: `git diff a634d61..HEAD -- src` is empty, so the shipped plugin source is identical to the live-verified 0.1.0 source; the only difference is version metadata. Everything else in the live matrix above was independently re-run for 1.0.1.0.",
+    "Not performed (gap, accepted): a live Jellyfin 12 plugin-catalog fetch/install, because the manifest/tag/release are deliberately unpublished (docs/limitations.md P6). No GitHub call was made per the review instruction, so GitHub release existence was not queried; `git ls-remote origin` shows no v1.0.1 ref and origin/main is 09596e0."
   ],
   "test_matrix": [
-    "Build (clean git-archive export at HEAD 9724185, Release, pinned SDK 10.0.401): Build succeeded, 0 Warning(s), 0 Error(s) - independently re-run this audit.",
-    "Default suite (./build.sh test, with the package present): Failed 0, Passed 1228, Skipped 60, Total 1288 - independently re-run this audit; matches the recorded post-SEC-1 baseline.",
-    "Host-guarded suite (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test, with the package present): Failed 0, Passed 1244, Skipped 44, Total 1288 - independently re-run this audit; matches the recorded baseline.",
-    "Forced-native suite (LD_LIBRARY_PATH=/tmp/jf/sysroot/root/usr/lib FONTCONFIG_PATH=/tmp/jf/sysroot/root/etc/fonts XDG_DATA_DIRS=/tmp/jf/sysroot/root/usr/share ARRTAGS_SKIA_COMPAT=1 ./build.sh test): Failed 0, Passed 1301, Skipped 17, Total 1318 - independently re-run this audit; matches the recorded baseline.",
-    "SEC-1 regression filter (dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~WebhookBindingBoundaryTests|FullyQualifiedName~WebhookBoundaryTests): Failed 0, Passed 44, Skipped 0, Total 44 - independently re-run this audit; the new boundary tests are not skipped in the shipped configuration.",
-    "No behavior claimed as verified in the shipped configuration is silently skipped: the default run's 60 skips are documented environment-guarded facts (native Skia, host route/response, plugin discovery, package content, non-canonical comparison), and the host-guarded/forced-native runs unskip the corresponding facts."
+    {
+      "suite": "clean-export default (before ./build.sh package)",
+      "command": ". /config/arrtags-env.sh && ./build.sh test",
+      "result": "Failed 0, Passed 1225, Skipped 63, Total 1288",
+      "note": "3 PluginPackagingTests skipped because artifacts/ArrTags_1.0.1.0.zip was not yet produced"
+    },
+    {
+      "suite": "default (package present)",
+      "command": ". /config/arrtags-env.sh && ./build.sh test",
+      "result": "Failed 0, Passed 1228, Skipped 60, Total 1288",
+      "note": "matches the recorded 1.0.1.0 baseline"
+    },
+    {
+      "suite": "host-guarded",
+      "command": "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test",
+      "result": "Failed 0, Passed 1244, Skipped 44, Total 1288",
+      "note": "matches the recorded 1.0.1.0 host-guarded baseline"
+    },
+    {
+      "suite": "PluginPackagingTests (filtered)",
+      "command": "dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~PluginPackagingTests\"",
+      "result": "Failed 0, Passed 7, Skipped 0, Total 7",
+      "note": "package contract incl. duplicate-runtime regression"
+    },
+    {
+      "suite": "forced-native runtime (ADR-010 renderer round-trip)",
+      "command": "LD_LIBRARY_PATH=/tmp/jf/sysroot/root/usr/lib ARRTAGS_SKIA_COMPAT=1 dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~SkiaHostCompatibilityTests\"",
+      "result": "Failed 0, Passed 2, Skipped 0, Total 2",
+      "note": "documented forced-native suite passes"
+    },
+    {
+      "suite": "build",
+      "command": ". /config/arrtags-env.sh && ./build.sh build",
+      "result": "Build succeeded. 0 Warning(s) 0 Error(s)",
+      "note": "clean export"
+    }
   ],
   "security_checked": [
-    "SEC-1 (MEDIUM): FIXED - pre-binding IAsyncAuthorizationFilter authenticates before MVC model binding, fails closed with the uniform 401 for every content type, then rejects a non-JSON content type with a bounded 400 before any body read. Type present in the shipped ArrTags.dll; the 44-test boundary filter passes with 0 skips.",
-    "SEC-2 (LOW): accepted for V1 and now recorded in docs/limitations.md. Code re-verified: ArrTagsServiceRegistrator.cs:178-180.",
-    "SEC-3 (INFORMATIONAL): accepted for V1 and now recorded; wording corrected and independently re-verified against StateEnvelopeCodec.cs:88,144-149,156-160, StateRepository.cs:77-82, StateRetention.cs:154-165.",
-    "SEC-4 (INFORMATIONAL): same class as the recorded D1; no secret/header/body/item detail reflected.",
-    "SEC-5 (INFORMATIONAL): accepted ADR-005 design; the reproduced artifact contains no fixture key/secret value; the plugin has zero logging call sites.",
-    "SEC-6 (INFORMATIONAL): accepted D2 bound; queues, retries, response sizes, artifact sizes, decoded dimensions, JSON depth, and concurrency remain explicitly bounded.",
-    "SEC-7/SEC-8 (INFORMATIONAL): accepted and recorded (declared non-JSON now bounded 400; no per-client auth throttling, mitigated by the high-entropy secret, 1024-char candidate bound, constant-time compare, uniform fail-closed 401).",
-    "Secrets never leak: independent scan of the reproduced package found no configured key/secret value; grep of src/ArrTags for ILogger/Console/Debug.Write/Trace.Write -> none.",
-    "Provider integration remains read-only: grep of src/ArrTags/Providers -> only HttpMethod.Get (RadarrClient.cs:179, SonarrClient.cs:204).",
-    "Authoritative state is never evicted as cache; invalid authoritative state is quarantined rather than replayed or deleted (StateRepository.cs:214-215 StateQuarantine; unchanged code path).",
-    "State writes are atomic (AtomicFileWriter.cs:50 Flush(flushToDisk:true), :53 File.Move overwrite) with a schema version and SHA-256 payload integrity.",
-    "Lifecycle fence + write-ahead publication ordering preserved: ArtworkPublisher.cs re-reads the durable fence at entry (:170-178), before the image mutation (:343-355), and before the final commit (:470-479).",
-    "HTTP boundary authenticated and bounded: single anonymous plugin route, shared-secret authenticated, constant-time (1024-char bounded candidate), fail-closed, no sensitive detail reflected. ADR-012 wording ('no body') still differs from the framework ProblemDetails body, recorded as D1."
+    "Artifact secret scan: no configured key/secret values in ArrTags.dll or the package (only identifier names). No production credential is embedded.",
+    "Live secret hygiene: 0 occurrences of radarrkey123 / sonarrkey456 / webhooksecret789 in the host console logs or the mock request log during the live run; the mock logs only API-key validity.",
+    "Secrets at rest: accepted ADR-005 design - keys/secret persist only in Jellyfin's plugin configuration XML (docs/limitations.md SEC-5); the plugin has no logging call sites.",
+    "Webhook/auth boundary: reused from the 0.1.0 security review (docs/implementation/final-review/security-review.json, APPROVED; SEC-1 fixed) - authenticate-before-body for every content type, bounded 401/400/413, payload bound, no secret reflection; plugin source unchanged (src diff empty). Residual SEC-2 (LOW, open) and SEC-3..SEC-8 (INFORMATIONAL) are accepted and recorded in docs/limitations.md.",
+    "Authoritative state not evicted as cache / invalid state quarantined / atomic writes / lifecycle fence and write-ahead publication ordering: covered by the unchanged unit/integration suites (all green) and the live run (artwork-operation write-ahead record present before artwork-state; served bytes match persisted ActiveImageIdentity; unchanged metadata does not republish; provider outage leaves stale state with no LastError); reused from the 0.1.0 audit where deeper corruption/interruption cases were exercised, justified by the empty src diff.",
+    "Provider integration read-only: mock request log contains only GET /api/v3/* reads; no write verbs.",
+    "Bounded queues/retries/response sizes/artifacts/concurrency: configured limits present in ArrTags.xml (QueueCapacity 512, ProviderResponseLimitBytes 8 MiB, WebhookMaxPayloadBytes 256 KiB, artifact limits); covered by the unchanged test suite.",
+    "Failures do not affect Jellyfin: live provider outage kept the host up with 0 [FTL]; renderer/artwork failures are covered by the unchanged suite."
   ],
   "architecture_checked": [
-    "ADR-001..ADR-013 unchanged and not contradicted; ADR-012 received the SEC-1 clarification (authentication runs before MVC model binding; JSON content-type policy) which matches the implemented WebhookAuthenticationFilter.",
-    "ADR-010 honestly marked 'Accepted (partially superseded by ADR-015 ...)' (docs/decisions.md:1857); ADR-015 supersedes the renderer-bundling parts of ADR-010; no architectural drift introduced by the documentation commit.",
-    "ADR-014 (state root ProgramDataPath/ArrTags via public BasePlugin.SetAttributes) coherent with ADR-002/003.",
-    "ADR-015 coherent with the package: no managed/native SkiaSharp shipped; the plugin shares the host's SkiaSharp; live publication succeeded with no InvalidCastException/[FTL].",
-    "Data-model conformance: docs/data-model.md unchanged; the renderer remains provider-neutral; only standard Jellyfin item-image APIs mutate artwork; no direct writes to media folders.",
-    "Integration correctness of the SEC-1 fix: [TypeFilter] resolves the filter through request services; authorization filters run before model binding; the action retains its own authentication and byte bound as defence in depth; live behavior matches the design.",
-    "Changed-file scope since attempt-3: documentation only (git diff --name-only 75c03ab..HEAD -- src tests ... -> empty); no provider/state/artwork/configuration/renderer code changed."
+    "No architectural drift: `git diff a634d61..HEAD -- src` is empty; docs/decisions.md and docs/data-model.md are untouched in the release range. The only non-doc changes since the 0.1.0 release audit are version metadata (build.yaml, Directory.Build.props, three test version literals) plus new release-tooling scripts (scripts/write-manifest.cs, scripts/publish-release.sh) that are file-based apps outside ArrTags.slnx and add no plugin dependency.",
+    "ADR-015 conformance (host-provided SkiaSharp): the package ships no SkiaSharp.dll/libSkiaSharp.so and no Jellyfin runtime; PluginPackagingTests.PackageDoesNotContainTheDuplicateSkiaSharpRuntime passes; the live host loads the plugin with no plugin-context SkiaSharp load and no InvalidCastException.",
+    "ADR-014 conformance (state root outside PluginsPath): live state was written under /tmp/jf/data/ArrTags (ProgramDataPath), not data/plugins/ArrTags; the versioned install folder survived restart.",
+    "Publication ordering / lifecycle fence: live artwork-operation and artwork-state records show write-ahead publication, postcondition verification (LastOwnershipObservation Status 0), and completed-drain removal of the state root on uninstall.",
+    "No duplicated/conflicting mechanism: one deterministic archive writer (scripts/pack-release.cs), one manifest generator (scripts/write-manifest.cs), one publish orchestrator, one repository manifest.json.",
+    "Superseded decisions honestly marked: ADR-015 is recorded as superseding the renderer-bundling parts of ADR-010, and ADR-010's status line is annotated accordingly."
   ],
   "documentation_checked": [
-    "docs/limitations.md: the new 'Security-review accepted limitations' section records SEC-2..SEC-8 with heading labels matching security-review.json (SEC-2 LOW/open; SEC-3..SEC-8 INFORMATIONAL/noted), the SEC-1-fixed/not-accepted note, and accurate Evidence/Consequence bullets; the SEC-3 consequence is corrected and matches the code; all prior F1-F5, V1-V6, P1-P5, D1-D2, RR-1, RR-15 remain present.",
-    "README.md: test counts (1,288 automated; default 1,228/60; host-guarded 1,244/44) and artifact identity (568,244 / f6b6a515...) match the independently reproduced artifact and measured suites.",
-    "docs/release/build-and-release.md: current identity (568,244 / f6b6a515..., 7 entries) and per-entry hashes match the reproduced archive exactly; the task 7.5 pre-fix identity/counts are correctly labelled as pre-SEC-1 historical evidence.",
-    "docs/changelog.md: the Release 0.1.0 security fix (SEC-1) entry records the mechanism, tests, live matrix, counts, and the f6b6a515 identity consistently.",
-    "PLANS.md: Project Status and the SEC-1 block record the fix and the new identity; criterion 6 is qualified as partial for provider fetches; historical task 7.5 records retain the pre-fix identity (correct for a historical record).",
-    "docs/architecture.md: the webhook boundary section and section 11 accurately describe pre-binding authentication; the top Status line does not mention SEC-1 (RR-23, LOW, non-blocking).",
-    "docs/implementation-readiness.md: the Status line appends an accurate SEC-1 sentence; the linux-musl-x64 RID label correction is retained and current-state RID statements are consistent.",
-    "docs/testing/jellyfin-12-musl-test-host.md: provisioning, mock fixture, and task 7.3/7.8 procedures are accurate; the documented admin credential and mock fixture usage are reproducible.",
-    "docs/implementation/release-0.1.0-sec-docs/: worker-report.json (attempt 2 COMPLETE), worker-report.attempt-1.json, reviewer-report.attempt-2.json (APPROVED), reviewer-report.json (attempt 1 CHANGES_REQUIRED, preserved), and orchestration.json are present and consistent with the committed change.",
-    "docs/implementation/final-review/: security-review.json (APPROVED; SEC-1..SEC-8), security-review.attempt-1.json, release-review.attempt-1/2/3.json are present; this report restores the canonical release-review.json (RR-25)."
+    "PLANS.md - Project Status (line 8) and Milestone Status row 8 (line 207) state Phase 8 complete and Gate 8 met; all Phase 8 acceptance-criteria boxes are checked (0 unchecked boxes remain project-wide); honest about the unpublished release. CURRENT.",
+    "docs/project-status.md - states the release is prepared and that the catalog cannot be installed until the user publishes; known-limitations summary matches docs/limitations.md. CURRENT (minor gate-wording convention noted as RR101-5).",
+    "docs/changelog.md - Phase 8 section 'Complete' with accurate counts and 1.0.1.0 identity; historical 0.1.0/SEC-1 entries clearly scoped as history. CURRENT.",
+    "docs/architecture.md - status line says Phases 1-8 complete and the release is prepared but not yet live; no architectural section contradicts the implementation. CURRENT.",
+    "docs/implementation-readiness.md - status line records Phase 8 complete and the pending publish; historical Phase 1 records labelled as history. CURRENT.",
+    "docs/limitations.md - canonical limitations record: P6 accurately states the tag/manifest are local-only and the catalog cannot resolve ArrTags until the user publishes; P1/P2 carry the current 1.0.1.0 identity; GOALS criteria status is honest (criterion 5 host-Skia dependency, criterion 6 partial, criterion 7 contract-level). CURRENT.",
+    "docs/release/build-and-release.md - pinned version and artifact identity are 1.0.1.0; repository section correctly conditioned ('prepared to be installable ... does not work yet'); manifest field table matches manifest.json; 0.1.0 counts scoped as history. CURRENT.",
+    "README.md - accurate end-user guide once published; lacks a pre-publication caveat (RR101-1).",
+    "No current-state surface overclaims: every 'met as shipped' for GOALS criterion 5/8 is paired with the host-SkiaSharp dependency (F5), criterion 6 with the partial provider-fetch caveat (F1), and criterion 7 with the contract-level-only caveat (V3)."
   ],
   "findings_reconciliation": [
-    "RR-1 (MEDIUM, phases 1-3 lack independent phase reviews): RECORDED in docs/limitations.md 'Release-review accepted limitations'; evidence retained.",
-    "RR-2 (criterion-6 wording) and RR-3 (readiness RID label): RESOLVED; both fixes remain present on the canonical surfaces.",
-    "RR-4..RR-13 and RR-16..RR-18 (byte-identity guard, webhook 401 body/D1, ArtworkSubjectGate/D2, provider cache/F1, config restart/F2, metrics/F3, coverage bound/F4, non-canonical runtime/V2, Enhanced contract/V3, live SaveImage read-back/V4, debug metadata/P2, SkiaSharp licenses/P4, pre-release orphan/P5): all still recorded in docs/limitations.md and still valid.",
-    "RR-14 (V5 live uninstall drain refreshed): V5 retains the release-audit uninstall evidence.",
-    "RR-15 (mock fixture keys in tracked docs): RECORDED in docs/limitations.md; live/artifact scan found no key value in logs, state, or the package.",
-    "RR-19 (condition-5 closure for RR-1/RR-15): still holds.",
-    "RR-20 (HIGH, condition 5): RESOLVED by 9724185 - SEC-2..SEC-8 recorded in docs/limitations.md.",
-    "RR-21 (LOW, SEC-2 accepted pending recording): RESOLVED - SEC-2 now recorded (docs/limitations.md:381-395).",
-    "RR-22 (LOW, SEC-3 accepted pending recording): RESOLVED - SEC-3 now recorded with corrected wording (docs/limitations.md:397-413).",
-    "RR-23 (LOW, architecture status line): STILL OPEN (non-blocking documentation nit); docs/architecture.md:3 still omits the SEC-1 sentence.",
-    "RR-24 (INFORMATIONAL, stale task-stated HEAD): RESOLVED - the task-stated HEAD 9724185 matches the repository HEAD.",
-    "SEC-1 (MEDIUM): RESOLVED by commit c980b1f; independently re-verified in code, tests, and live.",
-    "SEC-2 (LOW, open): accepted for V1 and RECORDED in docs/limitations.md.",
-    "SEC-3 (INFORMATIONAL, noted): accepted and RECORDED; reviewer-required wording correction applied and re-verified against the code.",
-    "SEC-4 (INFORMATIONAL): equivalent to the recorded D1; recorded as SEC-4 cross-referencing D1.",
-    "SEC-5 (INFORMATIONAL): accepted ADR-005 design; recorded.",
-    "SEC-6 (INFORMATIONAL): equivalent to the recorded D2; recorded as SEC-6 cross-referencing D2.",
-    "SEC-7 (INFORMATIONAL): post-SEC-1 behavior change; recorded.",
-    "SEC-8 (INFORMATIONAL): optional hardening observation; recorded.",
-    "release-0.1.0-sec-docs corrective task: worker attempt 2 COMPLETE and reviewer attempt 2 APPROVED; its reviewer finding SEC-3-CONSEQUENCE-OVERCLAIM (MEDIUM) is resolved and SEC-CONSEQUENCE-BULLET-STYLE (INFORMATIONAL) applied."
+    "Phase 4-8 phase reviews: all APPROVED, phase_complete true, no open BLOCKER/HIGH. Phase 6 has one open MEDIUM (reconciliation coverage) accepted as docs/limitations.md F4; Phase 7 had one MEDIUM (GOALS overclaim wording) since corrected in docs/limitations.md; Phase 8 has seven LOW findings, two carried as RR101-1/RR101-2 and the rest non-blocking (orchestration aggregate, attempt-file preservation, dual reconciliation record, manifest-format live-verification gap) - none is a BLOCKER/HIGH.",
+    "Historical task-level BLOCKER/HIGH: 7.3-F1 (duplicate bundled SkiaSharp killed Jellyfin) resolved by task 7.8/ADR-015 and re-verified live; 7.2-F1 (versioned-install/data-folder collision) resolved by task 7.7/ADR-014 and re-verified live; 6.5-F1 (HIGH) resolved; 7.1 LD-1 (HIGH, PLANS.md not updated) resolved in the attempt-2 review. None remains open.",
+    "0.1.0 release-review findings (RR-1..RR-25): all resolved or accepted and recorded in docs/limitations.md (RR-1 phases 1-3 review gap; RR-15 mock fixture keys; RR-20 SEC-2/SEC-3 recording). The 0.1.0 security findings SEC-1 (fixed) and SEC-2..SEC-8 (accepted) are recorded in docs/limitations.md.",
+    "Carried-forward phase-8 LOW findings: README pre-publication caveat (RR101-1) and publish-release.sh --release-only pre-check gap (RR101-2) remain recorded as LOW, non-blocking.",
+    "No BLOCKER or HIGH finding remains open for this release."
   ],
   "limitations_accepted": [
-    "F1 / RR-7 - No provider inventory/catalogue cache; provider metadata is fetched per work item. Consequence: a large library performs one provider-library read per work item, so GOALS criterion 6 is only partially met for provider fetches. Evidence: docs/limitations.md F1.",
-    "F2 / RR-8 - Runtime configuration replacement is not wired to Jellyfin's save path. Consequence: secret/provider/badge/limit changes require a process restart. Evidence: docs/limitations.md F2.",
-    "F3 / RR-9 - No bounded metrics/diagnostic-status surface. Consequence: no supported in-product view of queue depth/provider health. Evidence: docs/limitations.md F3.",
-    "F4 / RR-10 - Reconciliation coverage is bounded by QueueCapacity (default 512). Consequence: a scope larger than 512 covers only a bounded prefix per run; event/webhook/per-item triggers unaffected. Evidence: docs/limitations.md F4.",
-    "F5 - Renderer depends on a host-supplied SkiaSharp with no bundled fallback. Consequence: a host without a compatible SkiaSharp fails closed; validated only on the pinned linux-musl-x64 Jellyfin 12.0.0 host. Evidence: docs/limitations.md F5; ADR-015.",
-    "V1 - No live Sonarr/Radarr instance. Consequence: provider payload-shape variance beyond the committed fixtures is untested. Evidence: docs/limitations.md V1.",
-    "V2 / RR-11 - ADR-010 non-canonical cross-runtime comparison unselected/unrun. Evidence: docs/limitations.md V2.",
-    "V3 / RR-12 - Jellyfin Enhanced coexistence is contract-level only. Evidence: docs/limitations.md V3.",
-    "V4 / RR-13 - Automated live SaveImage read-back absent; the live round trip is manual. Evidence: docs/limitations.md V4.",
-    "V5 / RR-14 - Live uninstall drain: the release audit exercised it (204, install+state removed, artwork restored); automated coverage remains in-process. Evidence: docs/limitations.md V5.",
-    "V6 - Host-guarded facts are skipped without the pinned host. Evidence: docs/limitations.md V6.",
-    "P1 / RR-4 - Byte-reproducibility depends on the pinned toolchain and has no automated byte-identity guard. Evidence: docs/limitations.md P1.",
-    "P2 / RR-16 - Reduced debug metadata for reproducibility. Evidence: docs/limitations.md P2.",
+    "F1 - No provider inventory/catalogue cache; one provider-library read per work item. Consequence: GOALS criterion 6 only partially met for provider fetches; render/publication unaffected. Evidence: docs/limitations.md F1.",
+    "F2 - Runtime configuration replacement is not wired to Jellyfin's save path; saved config changes are observed only after a restart. Evidence: docs/limitations.md F2.",
+    "F3 - No bounded, secret-free metrics/diagnostic-status surface. Evidence: docs/limitations.md F3.",
+    "F4 - Reconciliation coverage is bounded by QueueCapacity (default 512); successive runs may not advance past a prefix. Evidence: docs/limitations.md F4.",
+    "F5 - The renderer depends on a host-supplied SkiaSharp with no bundled fallback; a host without a compatible SkiaSharp fails closed. Evidence: docs/limitations.md F5 / ADR-015.",
+    "V1 - No live Sonarr or Radarr release instance; provider behavior exercised against committed fixtures. Evidence: docs/limitations.md V1.",
+    "V2 - ADR-010 non-canonical cross-runtime comparison unselected and unrun. Evidence: docs/limitations.md V2.",
+    "V3 - Jellyfin Enhanced coexistence verified at the contract level only (not installed on the pinned host). Evidence: docs/limitations.md V3.",
+    "V4 - Live IProviderManager.SaveImage read-back is manual, not an automated live test. Evidence: docs/limitations.md V4.",
+    "V5 - Live Plugin.OnUninstalling drain was historically manual-only; this review independently re-ran the authenticated live uninstall drain for 1.0.1.0 (204; install folder and state root removed; artwork restored), so the live gap is closed for this release while the automated-live-test gap remains. Evidence: docs/limitations.md V5 and this report's live_checks.",
+    "V6 - Host-guarded facts skip without the pinned host; default suite is 1228/60/1288 and host-guarded is 1244/44/1288. Evidence: docs/limitations.md V6.",
+    "P1 - Byte-reproducibility depends on the pinned toolchain (SDK 10.0.x); no automated test guards archive byte-identity. Evidence: docs/limitations.md P1.",
+    "P2 - Reduced debug metadata (no commit suffix, no SourceLink) for reproducibility. Evidence: docs/limitations.md P2.",
     "P3 - PackagePlugin=true stages but does not write the archive; ./build.sh package is the entry point. Evidence: docs/limitations.md P3.",
-    "P4 / RR-17 - SkiaSharp license notices ship although SkiaSharp is not redistributed. Evidence: docs/limitations.md P4.",
-    "P5 / RR-18 - Pre-release orphaned state/uninstall-drain retention. Evidence: docs/limitations.md P5.",
-    "D1 / RR-5 - Webhook 401 body differs from ADR-012's 'no body' text (generic ProblemDetails type/title/status/traceId). Evidence: docs/limitations.md D1.",
-    "D2 / RR-6 - ArtworkSubjectGate has no idle eviction. Evidence: docs/limitations.md D2.",
-    "RR-1 - Phases 1-3 lack independent phase-review records. Evidence: docs/limitations.md 'Release-review accepted limitations'.",
-    "RR-15 - Documented mock fixture API keys in tracked docs. Evidence: docs/limitations.md release-review section.",
-    "SEC-2 - State-root resolution falls back to a shared temp path when the plugin data folder cannot be resolved. Consequence: if the fallback engaged, authoritative state would live under /tmp/ArrTags; not triggered on the pinned host and not remotely reachable. Evidence: docs/limitations.md SEC-2; src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:178-180.",
-    "SEC-3 - The state-envelope integrity hash covers only PayloadJson, so StateEnvelopeCodec detects corruption but does not authenticate a malicious writer; retention trusts unauthenticated Terminal/UpdatedUtc. Consequence: none beyond the existing administrative boundary. Evidence: docs/limitations.md SEC-3; StateEnvelopeCodec.cs:83-113.",
-    "SEC-4 - Authentication error bodies carry framework application/problem+json detail (the recorded D1 gap). Consequence: a generic ProblemDetails body remains versus ADR-012's wording; no sensitive detail reflected. Evidence: docs/limitations.md SEC-4; D1.",
-    "SEC-5 - Secrets are stored at rest only in Jellyfin's plugin configuration XML. Consequence: none; accepted ADR-005 design with no plugin logging path. Evidence: docs/limitations.md SEC-5.",
-    "SEC-6 - The ArtworkSubjectGate process-lifetime bound (the recorded D2). Consequence: process-lifetime growth bounded by distinct library items and not attacker-controllable. Evidence: docs/limitations.md SEC-6; D2.",
-    "SEC-7 - A declared non-JSON content type is rejected with a bounded 400 after authentication. Consequence: valid JSON sent with an unrelated content type is rejected; Sonarr/Radarr send application/json, so no real delivery is affected. Evidence: docs/limitations.md SEC-7.",
-    "SEC-8 - No per-client authentication throttling on the anonymous webhook route. Consequence: optional post-V1 hardening only; mitigated by the high-entropy secret, candidate bound, constant-time compare, and uniform 401. Evidence: docs/limitations.md SEC-8; ADR-012."
+    "P4 - SkiaSharp license notices ship although SkiaSharp is not redistributed. Evidence: docs/limitations.md P4.",
+    "P5 - Pre-release orphaned PluginsPath/ArrTags data folder and incomplete-drain state-root retention require manual handling. Evidence: docs/limitations.md P5.",
+    "P6 - The v1.0.1 tag, manifest commit 8cba85b, and the artifact are local only: no push, no GitHub release, no asset upload; the public repository does not yet serve a 1.0.1.0 manifest, so catalog install cannot resolve ArrTags until the user runs scripts/publish-release.sh. Evidence: docs/limitations.md P6; git ls-remote origin has no v1.0.1 ref and origin/main = 09596e0.",
+    "D1 - Webhook 401 carries a framework application/problem+json ProblemDetails body versus ADR-012's 'no body' wording (bounded, no sensitive detail). Evidence: docs/limitations.md D1.",
+    "D2 / SEC-6 - ArtworkSubjectGate.Gates has no idle eviction (bounded by distinct library items; not attacker-controllable). Evidence: docs/limitations.md D2/SEC-6.",
+    "RR-1 - Phases 1-3 have no independent phase-review records (process/evidence gap, not a demonstrated defect). Evidence: docs/limitations.md RR-1.",
+    "RR-15 - Mock fixture API keys appear in tracked documentation (deliberate local mock values, never production). Evidence: docs/limitations.md RR-15.",
+    "SEC-2 (LOW, open) - State-root resolution falls back to a shared temp path when IPluginManager is unavailable; not triggered on the pinned host and not remotely reachable. Evidence: docs/limitations.md SEC-2.",
+    "SEC-3 (INFORMATIONAL) - State-envelope integrity hash covers only PayloadJson, not envelope metadata; local write access is already the administrative boundary. Evidence: docs/limitations.md SEC-3.",
+    "SEC-4 (INFORMATIONAL) - Authentication error bodies carry generic framework ProblemDetails detail (the D1 gap). Evidence: docs/limitations.md SEC-4.",
+    "SEC-5 (INFORMATIONAL) - Secrets stored at rest only in Jellyfin's plugin configuration XML (accepted ADR-005 design). Evidence: docs/limitations.md SEC-5.",
+    "SEC-7 (INFORMATIONAL) - A declared non-JSON content type after authentication is rejected with a bounded 400; Sonarr/Radarr send application/json. Evidence: docs/limitations.md SEC-7.",
+    "SEC-8 (INFORMATIONAL) - No per-client authentication throttling on the anonymous webhook route; mitigated by the high-entropy secret and bounded intake. Evidence: docs/limitations.md SEC-8."
   ],
-  "release_recommendation": "Create the release. Sequence: (1) commit this report at docs/implementation/final-review/release-review.json (release-gate condition 6); (2) confirm the working tree is clean; (3) create the annotated tag v0.1.0 on that commit (the commit that contains the corrected final-review report and the recorded limitations) - do not tag any earlier commit and do not move the existing phase tags v0.1.0-phase1..7; (4) publish release notes that state the supported matrix (Jellyfin 12.0.0 only, targetAbi 12.0.0.0, framework net10.0; Sonarr 3.x-4.x, Radarr 3.x-6.x on /api/v3), the pinned-host SkiaSharp dependency, the fixed SEC-1 webhook boundary, and the accepted limitations F1, F2, F5, V3, V6, D1, D2, SEC-2, and SEC-3 (plus the remaining recorded items); (5) attach artifacts/ArrTags_0.1.0.0.zip (568,244 bytes, SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd) with its entry-hash table; (6) push branch main and the tags to origin without moving the existing phase tags.",
-  "summary": "ArrTags 0.1.0 at HEAD 9724185 (branch main, clean tree) is release-ready. The only change since attempt-3 (75c03ab) is documentation - the release-gate condition-5 correction plus audit/report files - confirmed by git diff 75c03ab..HEAD -- src tests build.yaml Directory.Build.props global.json scripts ArrTags.slnx being empty. I independently reproduced the release artifact from a clean git-archive export of HEAD: locked restore, Release build 0 warnings/0 errors, ./build.sh package produced 568,244 bytes, SHA-256 f6b6a515c76b93926e940cebd48918f864935893b2ae7d03f59b17e38e0f9ffd, 7 entries, every per-entry hash matching the recorded table, cmp BYTE-IDENTICAL to the frozen artifacts/ArrTags_0.1.0.0.zip; the manifest is 0.1.0.0 / targetAbi 12.0.0.0 / net10.0 and no SkiaSharp/HarfBuzz runtime is shipped. I independently re-ran the full test matrix: default 1228 passed / 60 skipped / 1288 total, host-guarded 1244 / 44 / 1288, forced-native 1301 / 17 / 1318, and the SEC-1 boundary filter 44 / 0 / 44, all with 0 failed and matching the recorded post-SEC-1 baselines; the shipped ArrTags.dll contains WebhookAuthenticationFilter. Release-gate condition 5 is now satisfied: the new 'Security-review accepted limitations' section of docs/limitations.md records SEC-2 (LOW, open) and SEC-3..SEC-8 (INFORMATIONAL, noted), SEC-1 is recorded as fixed and not an accepted limitation, and all prior F1-F5, V1-V6, P1-P5, D1-D2, RR-1, and RR-15 entries remain. I verified the SEC-3 wording is accurate: the earlier overclaim is gone and the consequence now matches the security-review source of record and the code (StateEnvelopeCodec.cs:88 hashes only PayloadJson, :144-149 validates only SchemaVersion, StateRepository.cs:77-82 discards the parsed envelope, StateRetention.cs:164 trusts Terminal/UpdatedUtc), so StateEnvelopeCodec is a corruption detector rather than a tamper MAC. The live end-to-end evidence was reused from attempt-3 because the artifact is byte-identical and no code changed (attempt-3 exercised install/load, the SEC-1 boundary matrix, real SaveImage publication with served-bytes == persisted ActiveImageIdentity, byte-unchanged source artwork, unchanged/changed metadata gating, provider-outage survival, restart state preservation, and authenticated uninstall/drain restore on the pinned Jellyfin 12.0.0 musl host; the /tmp/jf fixture was found stopped and clean and was not mutated by this read-only review). Adversarial checks re-confirmed: no fixture secret value in the reproduced package, zero plugin logging call sites, provider integration GET-only, atomic state writes, authoritative-state quarantine, and the lifecycle fence re-read at entry/before mutation/before commit. All prior findings are reconciled: RR-20 (the sole open HIGH) is resolved, RR-21/RR-22 are resolved by recording SEC-2/SEC-3, RR-24 is resolved, SEC-1 is fixed, and only RR-23 (LOW, architecture status line omits the SEC-1 sentence) remains open and non-blocking. Remaining open findings are LOW/INFORMATIONAL and all shipped limitations are recorded in docs/limitations.md. Decision: SHIP_WITH_ACCEPTED_LIMITATIONS (reviewer_status APPROVED_WITH_ACCEPTED_LIMITATIONS). Recommended action: commit this report, then create the annotated tag v0.1.0 on that commit and publish the release notes."
+  "accepted_limitations": [
+    "F1 provider inventory/catalogue cache missing (criterion 6 partial).",
+    "F2 runtime configuration replacement not wired (restart required).",
+    "F3 no metrics/diagnostic-status surface.",
+    "F4 QueueCapacity-bounded reconciliation coverage.",
+    "F5 host-supplied SkiaSharp required (no bundled fallback).",
+    "V1 no live Sonarr/Radarr instance.",
+    "V2 non-canonical cross-runtime comparison unrun.",
+    "V3 Jellyfin Enhanced coexistence contract-level only.",
+    "V4 live image read-back manual-only (automated live test absent).",
+    "V5 live uninstall drain automated-live-test gap (independently re-run live for 1.0.1.0).",
+    "V6 host-guarded facts skip without the pinned host.",
+    "P1 byte-reproducibility pinned-toolchain dependent; no byte-identity test.",
+    "P2 reduced debug metadata.",
+    "P3 PackagePlugin stages but does not archive.",
+    "P4 SkiaSharp notices retained without runtime.",
+    "P5 pre-release orphan folder / incomplete-drain retention manual handling.",
+    "P6 v1.0.1 publication (push, GitHub release, asset upload) pending - pre-publication condition.",
+    "D1 webhook 401 ProblemDetails body vs ADR-012 wording.",
+    "D2/SEC-6 ArtworkSubjectGate process-lifetime growth.",
+    "RR-1 phases 1-3 review-record gap.",
+    "RR-15 mock fixture keys in tracked docs.",
+    "SEC-2 state-root temp fallback (LOW, open).",
+    "SEC-3 envelope hash scope.",
+    "SEC-4 generic auth error body.",
+    "SEC-5 secrets at rest in plugin config XML.",
+    "SEC-7 non-JSON content type bounded 400.",
+    "SEC-8 no per-client auth throttling."
+  ],
+  "release_recommendation": "SHIP the prepared 1.0.1.0 release with accepted limitations. Keep the annotated tag v1.0.1 at 8cba85b (do not move it). Recommended release actions for the user: (1) run `scripts/publish-release.sh --release-only` to push the branch at HEAD (which carries the reconciled canonical docs) and the tag, create/refresh the GitHub release for v1.0.1, and upload artifacts/ArrTags_1.0.1.0.zip with the post-upload MD5 verification; (2) publish the release notes from `scripts/write-manifest.cs --print-changelog` / build.yaml changelog; (3) optionally add the one-line README pre-publication caveat (RR101-1) before or alongside publication; (4) after publication, confirm a live Jellyfin 12 catalog fetch resolves and installs ArrTags 1.0.1.0 and record the result (closes the phase-8 manifest-format verification gap). No tag move, no code change, and no re-package are required.",
+  "evidence": {
+    "reproduction": {
+      "export": "git archive v1.0.1 | tar -x -C /tmp/final-review/release-src",
+      "commands": ". /config/arrtags-env.sh && ./build.sh restore && ./build.sh build && ./build.sh test && ./build.sh package",
+      "observed_sha256": "de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c",
+      "observed_md5": "16baa5a7324b8e14fdb113d84b944d09",
+      "observed_size": 568248,
+      "result": "byte-identical to the recorded identity"
+    },
+    "manifest": {
+      "path": "manifest.json",
+      "valid_json": true,
+      "guid": "40322d52-5680-449f-b33e-e01836ee2f46",
+      "version": "1.0.1.0",
+      "targetAbi": "12.0.0.0",
+      "checksum_md5": "16baa5a7324b8e14fdb113d84b944d09",
+      "sourceUrl": "https://github.com/benssson/ArrTags/releases/download/v1.0.1/ArrTags_1.0.1.0.zip",
+      "repository_url": "https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json",
+      "fields_match_build_yaml": true,
+      "checksum_matches_artifact_md5": true,
+      "install_path_coherent_but_unpublished": true
+    },
+    "tag": {
+      "name": "v1.0.1",
+      "type": "annotated",
+      "tag_object": "b5b270622f0f182a34d0ecc9a7605d5e70130438",
+      "tag_commit": "8cba85b2288a201f4e2c7eda58d44c71f9c4f096",
+      "tagged_tree_contains_manifest": true,
+      "tagged_tree_version": "1.0.1.0",
+      "pushed": false,
+      "github_release_queried": false
+    },
+    "live_host": {
+      "host": "Jellyfin 12.0.0 amd64-musl",
+      "prefix": "/tmp/jf",
+      "install_version_loaded": "1.0.1.0",
+      "ftl_count": 0,
+      "arrtags_error_count": 0,
+      "movie_active_image_sha256": "85f12abb8db0f26618e45401d2481196be0f62bd4686ea2a668f53338772c5db",
+      "episode_active_image_sha256": "3e267ffdddc260c4c0b983a5741463b070a472be11df3b2c78c84a066603cc6b",
+      "changed_movie_active_image_sha256": "229a92d5ed857a1060d1c045e6976c11cb04ad9e1ddb06f21f7e63bbf6528568",
+      "changed_episode_active_image_sha256": "cff9c440d93d7847470017357635008aa1ff7340083ef1f6760452dd0e70e51f",
+      "source_artwork_unchanged": true,
+      "uninstall_delete_status": 204,
+      "state_root_removed_on_uninstall": true,
+      "artwork_restored_on_uninstall": true
+    }
+  },
+  "summary": "The ArrTags 1.0.1.0 release candidate is safe to ship. Provenance is unambiguous: working tree clean at HEAD 2494597 (34 commits ahead of origin/main 09596e0), annotated tag v1.0.1 (object b5b2706...) at commit 8cba85b, and the repository manifest.json identical at tag and HEAD. This audit independently reproduced the release artifact from a clean `git archive v1.0.1` export and obtained a byte-exact match to the recorded identity - 568,248 bytes, SHA-256 de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c, MD5 16baa5a7324b8e14fdb113d84b944d09, 7 entries with matching per-entry hashes, no bundled SkiaSharp/Jellyfin runtime, and no embedded secrets. Build was 0 warnings / 0 errors; the test matrix passed (default 1228/60/1288, host-guarded 1244/44/1288, PluginPackagingTests 7/7, forced-native SkiaHostCompatibilityTests 2/2). The full live end-to-end path was independently re-run for the 1.0.1.0 package on the pinned Jellyfin 12.0.0 musl host: install/load with 0 [FTL]/[ERR], badge publication through the real host IProviderManager.SaveImage with served bytes equal to the persisted ActiveImageIdentity, original source artwork byte-unchanged, unchanged metadata not republished and changed metadata republished, provider outage leaving the host up with current artwork, restart preserving install and state, and an authenticated uninstall drain (204) removing the install folder and state root and restoring the original posters. The plugin source is unchanged from the live-verified 0.1.0 release (`git diff a634d61..HEAD -- src` empty), so the webhook/SEC-1 boundary and deeper corruption/atomicity coverage are justifiably reused, and the 0.1.0 security review (APPROVED) plus the recorded accepted findings (SEC-2..SEC-8) remain valid. All phase reviews are APPROVED with no open BLOCKER/HIGH; historical blockers 7.2-F1 and 7.3-F1 were resolved by ADR-014/ADR-015 and re-verified live. The canonical docs are honest: every surface conditions catalog availability on the user's pending publish, and docs/limitations.md P6 accurately records that the tag/manifest/release are local-only. No BLOCKER or HIGH finding remains open; the remaining items are LOW (README pre-publication caveat, publish-script pre-check) and INFORMATIONAL, all accepted and recorded. Decision: SHIP_WITH_ACCEPTED_LIMITATIONS, keeping tag v1.0.1 at 8cba85b; the user should run scripts/publish-release.sh --release-only to push the branch/tag, create the GitHub release, and upload the asset.",
+  "prior_0.1.0_report_note": "This file previously held the 0.1.0 final release audit (SHIP_WITH_ACCEPTED_LIMITATIONS). That report is preserved at docs/implementation/final-review/release-review.0.1.0.json (extracted from the commit that recorded the 0.1.0 audit, a634d61); the earlier 0.1.0 review passes remain at release-review.attempt-1.json/attempt-2.json/attempt-3.json and reviewer-report.json. docs/limitations.md entries citing 'release-review finding RR-*' refer to that 0.1.0 audit."
 }

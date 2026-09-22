@@ -1,0 +1,38 @@
+{
+  "release": "1.0.1.0",
+  "tag": "v1.0.1",
+  "tag_commit": "8cba85b2288a201f4e2c7eda58d44c71f9c4f096",
+  "phases_claimed_complete": [1, 2, 3, 4, 5, 6, 7, 8],
+  "subagents": [
+    {
+      "role": "release-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
+      "release_decision": "SHIP_WITH_ACCEPTED_LIMITATIONS",
+      "execution": {
+        "agent": "release-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f3661450effeVgcN5umo72XPn8"
+      }
+    }
+  ],
+  "artifact": {
+    "path": "artifacts/ArrTags_1.0.1.0.zip",
+    "size": 568248,
+    "sha256": "de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c",
+    "md5": "16baa5a7324b8e14fdb113d84b944d09",
+    "entries": 7
+  },
+  "accepted_limitations_record": "docs/limitations.md",
+  "publication": "Manual user step: scripts/publish-release.sh --release-only (pushes branch + tag, creates the GitHub release, uploads the asset, verifies the MD5). Not performed by the orchestrator.",
+  "notes": "Release review independently reproduced the artifact byte-identically from a clean export of v1.0.1 and re-ran the live end-to-end verification of the 1.0.1.0 package on the pinned Jellyfin 12.0.0 musl host. No open BLOCKER or HIGH finding. The 0.1.0 final audit is preserved at docs/implementation/final-review/release-review.0.1.0.json. Runtime token/cost metadata was unavailable and is recorded as null."
+}
