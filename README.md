@@ -6,9 +6,12 @@ uninstall on the pinned host), 7.7 (relocated state root outside `PluginsPath`
 by ADR-014 and re-ran the live install verification, meeting Phase 7 acceptance
 criterion 2), 7.3 (live `GOALS.md` success-criteria verification), and 7.8
 (resolved the duplicate-SkiaSharp release blocker 7.3-F1 by ADR-015 and re-ran
-the live end-to-end verification), and 7.4 (the live review of logs, diagnostics,
+the live end-to-end verification), 7.4 (the live review of logs, diagnostics,
 HTTP behavior, and persisted state found no credential leakage and no unbounded
-path - a negative result) are complete; tasks 7.5-7.6 remain. The task
+path - a negative result), and 7.5 (the release package now builds from a clean
+checkout byte-reproducibly, with the commands, inputs, artifact identity, and
+supported version ranges recorded in `docs/release/build-and-release.md`) are
+complete; task 7.6 remains. The task
 7.8 re-verification on the pinned Jellyfin `12.0.0` musl host passes for the
 committed package: it loads with no error, a badge publishes with no host crash,
 the published bytes are served by `GET /Items/{id}/Images/Primary` and match the
@@ -500,23 +503,45 @@ The plugin:
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes 973 automated tests; 58 additional environment-guarded tests (the task
-  4.8 round trip, the task 4.6/4.9 render cases, the task 4.11 golden,
-  PNG-contract, cross-runtime, determinism, orientation, and profile cases
-  including the non-canonical-golden placeholder, the task 5.1/5.11 host route
-  cases, the task 5.3 native source-decode cases, and the task 5.4
-  package-content cases) are skipped unless their environment guard is provided.
-  With `ARRTAGS_SKIA_COMPAT=1` and the pinned native runtime the full suite
-  additionally passes the guarded render cases; adding `ARRTAGS_JELLYFIN_HOST_DIR`
-  pointing at the pinned host unskips the fourteen image route/response cases
-  (987 passed, 44 skipped, 1031 total), and running `./build.sh package` first
-  also unskips the three task 5.4 package-content cases.
+- Passes 1,278 automated tests. The default `./build.sh test` run passes 1,218
+  with 60 environment-guarded skips (the native Skia round trip and render
+  cases, the host route/response and plugin-discovery cases, the package-content
+  cases, and the ADR-010 non-canonical-runtime placeholder); the host-guarded
+  run with `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,234
+  with 44 skips, and running `./build.sh package` first unskips the
+  package-content cases. All counts are from the task 7.5 clean build.
+
+## Release build
+
+The reproducible release build is documented in
+`docs/release/build-and-release.md`. From the repository root:
+
+```bash
+. /config/arrtags-env.sh
+./build.sh restore                # locked-mode restore
+./build.sh build                  # Release, 0 warnings / 0 errors
+./build.sh test                   # default suite (add ARRTAGS_JELLYFIN_HOST_DIR for the host-guarded facts)
+./build.sh package                # artifacts/ArrTags_<version>.zip
+```
+
+The package (`artifacts/ArrTags_0.1.0.0.zip`, 567,856 bytes, SHA-256
+`bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51`) is
+byte-reproducible: repeated clean builds and clean checkouts at different paths
+produce an identical archive. The MSBuild `PackagePlugin` target stages the
+release files and `scripts/pack-release.cs` writes the archive with entries in
+ordinal order and a fixed timestamp; `PathMap`,
+`IncludeSourceRevisionInInformationalVersion=false`, and
+`SuppressImplicitGitSourceLink=true` keep the git-derived SDK inputs out of the
+assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
+`THIRD-PARTY-NOTICES.md`, and `licenses/`, and ships no SkiaSharp runtime
+(ADR-015). Supported versions: Jellyfin `12.0.0` (`targetAbi: 12.0.0.0`,
+`net10.0`), Sonarr `3.x`-`4.x`, and Radarr `3.x`-`6.x` on `/api/v3` (ADR-013).
 
 Next tasks:
 
-- Phase 6 — Caching, updates & performance (Milestone 6). Phase 5 is complete;
-  Phase 6 task 6.1 (keep library event handlers short) is the next task in the
-  authoritative execution order.
+- Phase 7 — Testing & release. Tasks 7.1-7.5, 7.7, and 7.8 are complete; task
+  7.6 (document known limitations and deferred decisions) is the next task in
+  the authoritative execution order.
 - Deferred to the testing/release milestone: select and record the second
   explicitly supported non-canonical Linux runtime, produce its golden set under
   `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the ADR-010 tolerant

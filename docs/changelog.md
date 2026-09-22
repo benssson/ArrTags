@@ -2335,3 +2335,55 @@ enforced at its boundary. Build 0 warnings / 0 errors; default suite Failed 0,
 Passed 1218, Skipped 60, Total 1278; host-guarded suite Failed 0, Passed 1234,
 Skipped 44, Total 1278; 145 focused boundary/redaction/retention tests pass. Gate
 7 is not declared.
+
+### Task 7.5 - Reproducible release package from a clean checkout
+
+**Status:** Complete. Phase 7 acceptance criterion 5 is met: the release
+artifact is byte-reproducible and the build process is documented.
+
+The task 7.8 reviewer found the produced `artifacts/ArrTags_0.1.0.0.zip` was not
+byte-reproducible: MSBuild's `ZipDirectory` task enumerated the staging
+directory in filesystem order and stamped each entry with the source file's
+modification time, so consecutive `./build.sh package` runs produced the same
+size and identical extracted contents but different SHA-256. The `PackagePlugin`
+target now only stages the exact release files (`ArrTags.dll`,
+`ArrTags.deps.json`, `build.yaml`, `THIRD-PARTY-NOTICES.md`, and `licenses/`)
+into `artifacts/staging`, and `./build.sh package` invokes a new deterministic
+packer, `scripts/pack-release.cs` (a .NET 10 file-based app; not part of
+`ArrTags.slnx` and adding no plugin dependency). The packer writes entries in
+ordinal order of their forward-slash relative path and stamps every entry with
+one fixed ZIP timestamp (`2000-01-01 00:00:00`), using the pinned SDK's
+deterministic deflate implementation, so identical staged bytes always produce
+an identical archive.
+
+Two SDK git-derived inputs that also changed the assembly between checkouts were
+suppressed so a build from a git working tree matches a `.git`-less clean
+export. `src/ArrTags/ArrTags.csproj` sets `PathMap` to map the project directory
+to the fixed root `/_/ArrTags` (the absolute PDB path was otherwise embedded in
+the debug directory, shifting the whole assembly). `Directory.Build.props` sets
+`IncludeSourceRevisionInInformationalVersion=false` (the SDK otherwise appends
+the checkout's git commit id to `AssemblyInformationalVersion`) and
+`SuppressImplicitGitSourceLink=true` (the SDK otherwise generates a git-derived
+`*.sourcelink.json` with the repository URL and commit and feeds it to the
+compiler).
+
+Clean-checkout evidence: two independent clean exports (526 files each, no
+`.git`, `bin`, `obj`, or `artifacts`, at different absolute paths) were restored
+in locked mode, built, tested, and packaged; a third run in the first export
+after wiping its build outputs was also packaged. All produced the identical
+`artifacts/ArrTags_0.1.0.0.zip`: 567,856 bytes, SHA-256
+`bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51`, 7 entries
+(`ArrTags.deps.json` 5,899 B, `ArrTags.dll` 1,145,344 B,
+`THIRD-PARTY-NOTICES.md` 1,368 B, `build.yaml` 695 B,
+`licenses/DejaVu-Fonts-License.txt` 8,816 B, `licenses/SkiaSharp-LICENSE.txt`
+1,129 B, `licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt` 139,775 B), with no
+`SkiaSharp.dll`/`libSkiaSharp.so`. The repository working tree (with `.git`)
+produced the same hash. Build 0 warnings / 0 errors in every tree; default suite
+Failed 0, Passed 1218, Skipped 60, Total 1278; host-guarded suite
+(`ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin`) Failed 0, Passed 1234, Skipped 44,
+Total 1278 - both equal to the task 7.8/7.4 baseline because the task adds no
+product test. The commands, pinned toolchain/inputs, ADR-013 supported version
+ranges (Jellyfin `12.0.0`/`targetAbi: 12.0.0.0`, `net10.0`, Sonarr 3.x-4.x,
+Radarr 3.x-6.x on `/api/v3`), artifact identity and per-entry hashes,
+verification steps, and the release checklist are recorded in
+`docs/release/build-and-release.md`. No product behavior changed.

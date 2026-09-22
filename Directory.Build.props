@@ -6,6 +6,24 @@
     <FileVersion>0.1.0.0</FileVersion>
     <Deterministic>true</Deterministic>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <!-- Phase 7 task 7.5: the .NET SDK appends the checkout's git commit id to
+         AssemblyInformationalVersion by default, so a build in a git working
+         tree and a build from a git-less export (for example `git archive`)
+         produce different assemblies and therefore a different release-package
+         SHA-256. The commit is not part of the plugin's declared identity
+         (build.yaml/Directory.Build.props version 0.1.0.0), so it is omitted to
+         keep the release artifact byte-reproducible from any checkout. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+
+    <!-- The SDK also enables an implicit git SourceLink provider, which writes a
+         `*.sourcelink.json` containing the checkout's repository URL and commit
+         id and feeds it to the compiler. That git-derived input changes the
+         assembly and PDB, so a build inside a git working tree differs from a
+         build of the same sources exported without `.git` (for example `git
+         archive`). Suppressing the implicit git SourceLink makes the release
+         package byte-reproducible from any checkout. -->
+    <SuppressImplicitGitSourceLink>true</SuppressImplicitGitSourceLink>
   </PropertyGroup>
 
 </Project>

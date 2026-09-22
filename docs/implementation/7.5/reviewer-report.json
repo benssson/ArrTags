@@ -1,0 +1,115 @@
+{
+  "task": "7.5",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "7.5-F0",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirements / reproducibility",
+      "summary": "Byte-reproducibility claim independently reproduced across clean exports, repeated clean builds, and the git working tree.",
+      "detail": "Built two independent clean exports (526 files each, no .git/bin/obj/artifacts, different absolute paths) and re-ran the first export after wiping its outputs. All produced artifacts/ArrTags_0.1.0.0.zip = 567,856 bytes, SHA-256 bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51, byte-identical (cmp) to each other and to the repository working-tree artifact (git present). Back-to-back incremental packaging and packaging after setting old mtimes on a source, build.yaml, notices, and licenses all reproduced the same hash, so neither filesystem order nor source mtimes leak. This matches the worker's reported identity exactly.",
+      "evidence": [
+        "/tmp/7.5/cleanA and /tmp/7.5/cleanB: ./build.sh restore && build && package -> sha256sum = bd10b9b6... ; cmp A B and cmp A repo -> identical",
+        "unzip -v: 7 entries, all 01-01-2000 00:00, ordinal order (ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/...)"
+      ],
+      "recommended_action": "None; central claim verified."
+    },
+    {
+      "id": "7.5-F1",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "packer robustness",
+      "summary": "scripts/pack-release.cs validates that the staging directory exists and is non-empty but does not validate a specific expected-file set.",
+      "detail": "A non-empty staging directory missing ArrTags.dll is packed with exit 0 (verified with a directory containing only build.yaml). This is not reachable through the documented pipeline: the MSBuild PackagePlugin target's Copy tasks fail the build (MSB3030) if any expected source is missing, so build.sh package never invokes the packer with incomplete staging; missing directory, empty directory, and missing arguments all exit 2 with a clear message. The residual gap is only for an out-of-band direct invocation of the packer.",
+      "evidence": [
+        "dotnet run scripts/pack-release.cs -- --source <partial-dir> -> 'Created deterministic package ... (1 entries)', exit=0",
+        "./build.sh package with THIRD-PARTY-NOTICES.md removed -> error MSB3030, exit=1, no archive written",
+        "missing/empty/no-arg invocations -> exit=2 with usage/not-found/no-files messages"
+      ],
+      "recommended_action": "Optional future hardening: assert the expected release file set in the packer and exit non-zero otherwise. Not required for task 7.5."
+    },
+    {
+      "id": "7.5-F2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "cleanliness / lifecycle",
+      "summary": "A failed `./build.sh package` leaves artifacts/staging behind because the cleanup `rm -rf` runs only after the packer succeeds.",
+      "detail": "With `set -euo pipefail`, if the MSBuild staging fails (or the packer exits non-zero), the trailing `rm -rf \"$package_staging\"` is not reached and partial staging files remain under artifacts/staging. This is harmless for correctness (artifacts/ is gitignored, the tests look for ArrTags_*.zip not staging, and the next `package` run removes staging first), and successful runs do remove staging as claimed. Only an observation.",
+      "evidence": [
+        "build.sh package() body: rm -rf staging at start, MSBuild build, packer run, rm -rf staging at end",
+        "Failed build left /tmp/7.5/cleanB/artifacts/staging with 3 files; successful runs left artifacts/ containing only ArrTags_0.1.0.0.zip"
+      ],
+      "recommended_action": "None required; a trap-based cleanup would be a minor future improvement."
+    },
+    {
+      "id": "7.5-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / trade-off",
+      "summary": "The SourceLink and commit-informational-version suppression is explained in the release doc and recorded as a limitation in the worker report, but the release doc does not explicitly frame the loss of SourceLink/debug metadata as a limitation.",
+      "detail": "docs/release/build-and-release.md explains why IncludeSourceRevisionInInformationalVersion=false and SuppressImplicitGitSourceLink=true are needed and that the packer adds no plugin dependency; the worker report's known_limitations explicitly states the shipped DLL has InformationalVersion 0.1.0.0 without the commit and the PDB carries no SourceLink mapping. Task 7.6 owns documenting known limitations, so this is not a task 7.5 acceptance gap.",
+      "evidence": [
+        "docs/release/build-and-release.md lines 99-115 (mechanism) and 225-238 (environment notes)",
+        "docs/implementation/7.5/worker-report.json known_limitations[3]"
+      ],
+      "recommended_action": "Task 7.6 should carry the SourceLink/debug-metadata loss into the known-limitations record."
+    },
+    {
+      "id": "7.5-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / reproducibility scope",
+      "summary": "The release doc pins the SDK but does not restate that byte-identity is guaranteed only for the pinned SDK's compiler/deflate output, a caveat the worker report records.",
+      "detail": "The doc's toolchain table pins .NET SDK 10.0.x and the mechanism section says the packer uses 'the pinned SDK's deterministic deflate implementation', but the explicit caveat that a different SDK version could in principle change bytes appears only in the worker report. This is an honest and correct limitation, and the pin is documented.",
+      "evidence": [
+        "docs/release/build-and-release.md lines 21, 97, 236-238",
+        "docs/implementation/7.5/worker-report.json known_limitations[1]"
+      ],
+      "recommended_action": "Optional: add the cross-SDK caveat to the release doc in task 7.6."
+    },
+    {
+      "id": "7.5-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / pre-existing",
+      "summary": "PLANS.md Project Status opening enumeration omits tasks 7.4/7.8 from the parenthetical task list although both are discussed as complete later in the same sentence.",
+      "detail": "The opening phrase reads '(tasks 7.1, 7.2, 7.3, and 7.7 are complete; ...)' and then later states tasks 7.4, 7.5, and 7.8 are complete and 7.6 remains. This phrasing predates and was not introduced by task 7.5 (the task 7.4 edit added 7.4 discussion without updating the opening list). The task-7.5-specific statements (task 7.5 complete, 7.6 pending) are accurate, and the Milestone 7 row lists 7.8 correctly.",
+      "evidence": [
+        "PLANS.md line 5 (opening list) vs the same paragraph's task 7.4/7.8/7.5 statements",
+        "PLANS.md line 179 milestone row lists 7.8"
+      ],
+      "recommended_action": "Not required for task 7.5; could be tidied in a later documentation task."
+    }
+  ],
+  "tests_checked": [
+    "Clean-export build: ./build.sh restore (locked mode), ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) in both /tmp/7.5/cleanA and /tmp/7.5/cleanB.",
+    "Reproducibility: cleanA, cleanB, cleanA after wiping src/tests bin/obj/artifacts, incremental re-package, and mtime-touched package all -> SHA-256 bd10b9b6bf5d31049082d27625b18ba127eb6e2860a454fe2d3c35ccebaaee51 / 567,856 bytes; cmp byte-identical A vs B and A vs repository working tree.",
+    "Default suite in cleanA: Failed 0, Passed 1218, Skipped 60, Total 1278 (matches worker baseline).",
+    "Host-guarded suite in cleanA with ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin: Failed 0, Passed 1234, Skipped 44, Total 1278 (matches worker baseline).",
+    "PluginPackagingTests against the new packer output: 7 passed, 0 skipped (includes the three PackagedPluginFact archive-content facts).",
+    "Archive inspection: unzip -v shows 7 entries in ordinal order, all 2000-01-01 00:00; per-entry SHA-256 computed from extraction matches the documented table; no SkiaSharp.dll/libSkiaSharp.so; grep of raw archive bytes for /workspace, /tmp/, pack-release, staging, ArrTags.csproj -> 0 occurrences.",
+    "Packer behavior: missing source dir -> exit 2; empty dir -> exit 2; no args -> exit 2; TZ=UTC/America_New_York/Pacific_Kiritimati/Asia_Kolkata all produce identical packer output bytes (fixed timestamp is timezone-independent).",
+    "MSBuild staging failure test: removing THIRD-PARTY-NOTICES.md makes ./build.sh package fail with MSB3030 (exit 1) and write no archive."
+  ],
+  "research_checked": [
+    "ADR-013 (docs/decisions.md): supported ranges Sonarr 3.x-4.x and Radarr 3.x-6.x on /api/v3, no version gate, malformed required field fails closed as ProviderIncompatible - matches the release doc.",
+    "build.yaml pinned identity: version 0.1.0.0, targetAbi 12.0.0.0, framework net10.0 - matches the release doc and PluginPackagingTests.",
+    "Assembly identity of the shipped ArrTags.dll (extracted via System.Reflection.Metadata/Assembly): AssemblyVersion stays 0.1.0.0, FileVersion 0.1.0.0, ProductVersion 0.1.0.0, AssemblyInformationalVersion 0.1.0.0 (no commit suffix), CodeView path /_/ArrTags/obj/Release/net10.0/ArrTags.pdb, no sourcelink entry, no git commit id or absolute path anywhere in the DLL.",
+    "No source/test code reads AssemblyInformationalVersion, SourceLink, AssemblyVersion, or GetName().Version (grep of src/ and tests/ excluding bin/obj returned nothing), so the suppressed debug metadata has no runtime behavior dependency.",
+    "scripts/pack-release.cs is not part of ArrTags.slnx and is referenced by no project (grep excluding bin/obj found no reference), so the packer adds no plugin or test dependency."
+  ],
+  "documentation_checked": [
+    "PLANS.md: task 7.5 checkbox checked with status note; Project Status and Milestone 7 row updated; Phase 7 acceptance criterion 5 checked; 'Gate 7 is not declared' unchanged.",
+    "docs/changelog.md: task 7.5 entry present and consistent with the implementation and evidence.",
+    "README.md: test counts (1,218/60, 1,234/44), new Release build section, artifact identity, and next-task pointer to 7.6 are accurate.",
+    "docs/implementation-readiness.md: status line marks task 7.5 complete and 7.6 pending.",
+    "docs/release/build-and-release.md: pinned toolchain/inputs, ADR-013 supported ranges, exact commands, clean-checkout procedure, artifact identity with per-entry hashes (independently reproduced), verification steps, and release checklist all present and accurate.",
+    "docs/architecture.md: high-level Phase 7 status line remains accurate; it does not enumerate every completed task (no task 7.5 mention), which is consistent with its existing style."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

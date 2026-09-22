@@ -9,6 +9,13 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+
+    <!-- Phase 7 task 7.5: normalize the compiler's source and PDB paths to a
+         fixed root so the deterministic plugin assembly (and therefore the
+         release package) is byte-identical regardless of where the source tree
+         is checked out. Without this the absolute PDB path is embedded in the
+         debug directory and changes the release artifact's SHA-256. -->
+    <PathMap>$(MSBuildProjectDirectory)=/_/ArrTags</PathMap>
   </PropertyGroup>
 
   <ItemGroup>
@@ -55,10 +62,16 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- Phase 7 task 7.5: this target stages the exact release files; the
+       deterministic archive is then produced by `scripts/pack-release.cs`
+       (invoked from `build.sh package`). The previous `ZipDirectory` task
+       enumerated the staging directory in filesystem order and stamped entries
+       with source modification times, so repeated clean package runs produced
+       the same contents with different bytes and SHA-256. Staging stays in
+       MSBuild because it owns the resolved output paths. -->
   <Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(PackagePlugin)' == 'true'">
     <PropertyGroup>
       <PluginStagingDirectory>$(MSBuildThisFileDirectory)../../artifacts/staging</PluginStagingDirectory>
-      <PluginPackageFile>$(MSBuildThisFileDirectory)../../artifacts/ArrTags_$(Version).zip</PluginPackageFile>
     </PropertyGroup>
 
     <!-- ADR-015 (supersedes the bundling parts of ADR-010): the package carries
@@ -82,11 +95,7 @@
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../../THIRD-PARTY-NOTICES.md" DestinationFolder="$(PluginStagingDirectory)" />
     <Copy SourceFiles="@(_ArrTagsLicenseFile)" DestinationFolder="$(PluginStagingDirectory)/licenses" />
 
-    <Delete Files="$(PluginPackageFile)" />
-    <ZipDirectory SourceDirectory="$(PluginStagingDirectory)" DestinationFile="$(PluginPackageFile)" />
-    <RemoveDir Directories="$(PluginStagingDirectory)" />
-
-    <Message Importance="high" Text="Created plugin package: $(PluginPackageFile)" />
+    <Message Importance="high" Text="Staged plugin package files: $(PluginStagingDirectory)" />
   </Target>
 
 </Project>
