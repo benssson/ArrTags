@@ -5,7 +5,9 @@
 **Status:** Phases 1-8 complete; the release tags `v0.1.0` (`a634d61`) and
 `v1.0.1` (`8cba85b`) exist locally, with the repository `manifest.json`
 committed at `v1.0.1` but no GitHub release, no asset upload, and no push yet.
-Phase 8 - Release distribution is **complete** (tasks 8.1-8.6 complete): ArrTags
+Phase 8 - Release distribution is **complete** (tasks 8.1-8.6 complete, all seven
+Phase 8 acceptance criteria met, Gate 8 met - Phase 8 review approved in
+`docs/implementation/phase-8/phase-review.json`): ArrTags
 is prepared to be installable through the standard Jellyfin plugin catalog from
 the public repository `benssson/ArrTags` once the user pushes the manifest and
 publishes the GitHub release; `README.md` is the end-user guide, stale
@@ -202,7 +204,7 @@ without modifying original media files or external services.
 | 5 | Jellyfin artwork integration | Complete | Derived poster artwork is published through Jellyfin's supported image APIs without modifying media files or bypassing normal image delivery. |
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
-| 8 | Release distribution | Complete (tasks 8.1-8.6 complete; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 phase review pending) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
+| 8 | Release distribution | Complete (tasks 8.1-8.6 complete; all seven Phase 8 acceptance criteria are met; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 is met - Phase 8 review approved in `docs/implementation/phase-8/phase-review.json`) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 
 ## Milestones
 
@@ -3268,7 +3270,8 @@ committed it as `8cba85b` ("Publish ArrTags 1.0.1.0 repository manifest"), and
 created the annotated tag `v1.0.1` (tag `v1.0.1^{commit}` =
 `8cba85b2288a201f4e2c7eda58d44c71f9c4f096`), with no push. The GitHub release and
 asset upload remain the user's manual step with `scripts/publish-release.sh
---release-only`. Gate 8 is not declared; the Phase 8 review is separate.
+--release-only`. Gate 8 is met (the Phase 8 review approved in
+`docs/implementation/phase-8/phase-review.json`).
 
 **Objective:** Verify the release at `1.0.1.0`, commit the generated manifest,
 and create the annotated tag.
@@ -3293,25 +3296,28 @@ passes; `unzip -l` shows the expected entries; the manifest checksum equals
 
 **Phase 8 acceptance criteria:**
 
-- [ ] `README.md` is end-user-facing and covers requirements, repository
+- [x] `README.md` is end-user-facing and covers requirements, repository
   install, manual install, configuration, update, and uninstall; no
   contributor/status prose remains in it.
-- [ ] The contributor/status content is preserved in `docs/project-status.md`
+- [x] The contributor/status content is preserved in `docs/project-status.md`
   and linked from `README.md`.
-- [ ] `build.yaml` metadata accurately describes the shipped v1 behavior and the
+- [x] `build.yaml` metadata accurately describes the shipped v1 behavior and the
   version is `1.0.1.0` in both `build.yaml` and `Directory.Build.props`.
-- [ ] `scripts/write-manifest.cs` and `scripts/publish-release.sh` generate a
+- [x] `scripts/write-manifest.cs` and `scripts/publish-release.sh` generate a
   valid Jellyfin repository manifest (correct guid, version, targetAbi, MD5
   checksum, and sourceUrl) with no GitHub write during a dry run.
-- [ ] `manifest.json` is committed and the annotated tag `v1.0.1` exists; the
+- [x] `manifest.json` is committed and the annotated tag `v1.0.1` exists; the
   GitHub release/asset upload remains a manual user step.
-- [ ] Canonical docs (`docs/release/build-and-release.md`, `docs/changelog.md`)
+- [x] Canonical docs (`docs/release/build-and-release.md`, `docs/changelog.md`)
   and the agent prompt references reflect the new state.
-- [ ] No functional plugin behavior changed beyond version/release metadata.
+- [x] No functional plugin behavior changed beyond version/release metadata.
 
-**Gate 8:** All seven Phase 8 acceptance criteria are met, the phase review
-passes, and the annotated tag `v1.0.1` is created. The GitHub release
-publication is explicitly left to the user.
+**Gate 8:** Met. All seven Phase 8 acceptance criteria are met and the Phase 8
+review is approved (`docs/implementation/phase-8/phase-review.json`,
+`reviewer_status: APPROVED`, `phase_complete: true`); the annotated tag `v1.0.1`
+is created. The GitHub release publication (which pushes the branch/tag and
+uploads the asset) is explicitly left to the user via
+`scripts/publish-release.sh --release-only`.
 
 ## Decision Gates
 

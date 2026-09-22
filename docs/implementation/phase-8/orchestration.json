@@ -1,0 +1,97 @@
+{
+  "phase": "Phase 8 - Release distribution",
+  "authoritative_execution_order": ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6"],
+  "tasks": [
+    {
+      "task": "8.1",
+      "title": "End-user README and preserved project status",
+      "outcome": "COMPLETE",
+      "commit": ["92611af"],
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f369f2669ffeLIvFd3skE1sodR"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "CHANGES_REQUIRED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f369ae502ffejo7WvMcFFdhGbB"},
+        {"role": "implementation-worker", "attempt": 2, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f369f2669ffeLIvFd3skE1sodR"},
+        {"role": "implementation-reviewer", "attempt": 2, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f369ae502ffejo7WvMcFFdhGbB"}
+      ],
+      "rework": ["Finding 8.1-R1 (MEDIUM): PLANS.md top Project Status paragraph and Milestone Status row 8 still said Phase 8 was 'not started'; corrected to 'in progress (task 8.1 complete; tasks 8.2-8.6 pending)'."]
+    },
+    {
+      "task": "8.2",
+      "title": "Repoint the agent current-state references",
+      "outcome": "COMPLETE",
+      "commit": ["2511118"],
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3695c9c1ffeSHpDV0k3hmgdC6"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f369486e0ffe6u7K0XyB9Wy3er"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "8.3",
+      "title": "Correct plugin metadata and bump to 1.0.1.0",
+      "outcome": "COMPLETE",
+      "commit": ["606fee1"],
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3692a223ffetHzdeZra6wMjv6"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f368dc7c2ffeKL6xVnIzzjFUSD"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "8.4",
+      "title": "Jellyfin repository manifest tooling and release script",
+      "outcome": "COMPLETE",
+      "commit": ["266ad46"],
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f368bafc2ffe5bdrABu5fMi8sm"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f36841777ffeOnV90eIfA3r9Zi"},
+        {"role": "implementation-worker", "attempt": 2, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f368bafc2ffe5bdrABu5fMi8sm"},
+        {"role": "implementation-reviewer", "attempt": 2, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f36841777ffeOnV90eIfA3r9Zi"}
+      ],
+      "rework": ["Orchestrator release-flow correction: --release-only must push the existing branch/tag before creating the GitHub release (the agent commits/tags locally but does not push); prepare-mode manifest commit hardened to be path-scoped."]
+    },
+    {
+      "task": "8.5",
+      "title": "Release and canonical current-state documentation",
+      "outcome": "COMPLETE",
+      "commit": ["7900fc5"],
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f367b9468ffeYY66KmGXOPW5IS"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f367652a4ffePcYQrjyl1c3bh8"}
+      ],
+      "rework": []
+    },
+    {
+      "task": "8.6",
+      "title": "Release-readiness verification, manifest commit, and tag v1.0.1",
+      "outcome": "COMPLETE",
+      "commit": ["8cba85b", "2b1e769"],
+      "subagents": [
+        {"role": "implementation-worker", "attempt": 1, "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f3672a1b4ffew2JQLJ5KYpblVZ"},
+        {"role": "implementation-reviewer", "attempt": 1, "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f366e3f95ffej16DL80y8sjLs2"}
+      ],
+      "rework": []
+    }
+  ],
+  "phase_level_subagents": [
+    {"role": "documentation-maintainer", "outcome": "COMPLETE", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f366a957fffefjTSsWXd0yzacI", "note": "Phase 8 completion reconciliation across canonical docs (commit 799a581)."},
+    {"role": "phase-reviewer", "outcome": "APPROVED", "model": "opencode-go/deepseek-v4.1-flash", "variant": "high", "session_id": "ses_f36671709ffeP7zHqOGBSusPkc", "note": "Phase 8 review: reviewer_status APPROVED, phase_complete true, Gate 8 met."}
+  ],
+  "totals": {
+    "task_subagent_invocations": 16,
+    "task_attempts": 16,
+    "correction_rounds": 2
+  },
+  "release": {
+    "plugin_version": "1.0.1.0",
+    "tag": "v1.0.1",
+    "tag_commit": "8cba85b2288a201f4e2c7eda58d44c71f9c4f096",
+    "artifact": "artifacts/ArrTags_1.0.1.0.zip",
+    "artifact_size": 568248,
+    "artifact_sha256": "de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c",
+    "artifact_md5": "16baa5a7324b8e14fdb113d84b944d09",
+    "repository_url": "https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json",
+    "github_release": "manual user step (scripts/publish-release.sh --release-only)"
+  },
+  "notes": "Phase 8 made ArrTags preparable for Jellyfin plugin-catalog install from the public repository: end-user README, plugin version 1.0.1.0, corrected build.yaml metadata, Jellyfin repository manifest tooling, and reconciled canonical docs. The v1.0.1 tag, manifest, and commits are local-only; the user publishes the GitHub release. Runtime token/cost metadata was not exposed by the runtime and is recorded as null in each task's orchestration.json."
+}

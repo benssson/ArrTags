@@ -1,0 +1,180 @@
+{
+  "phase": "8 - Release distribution (Milestone 8)",
+  "reviewer_status": "APPROVED",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 8 (release distribution) is complete and Gate 8 is met. All six tasks in the authoritative order 8.1, 8.2, 8.3, 8.4, 8.5, 8.6 are complete and committed (92611af, 2511118, 606fee1, 266ad46, 7900fc5; task 8.6's release-script commit is 8cba85b and its bookkeeping commit is 2b1e769; phase-completion reconciliation is 799a581), each with a committed worker report (COMPLETE), reviewer report (APPROVED), and per-task orchestration.json. The execution order is internally consistent with the documented dependencies (8.2 after 8.1; 8.3 independent; 8.4 after 8.3; 8.5 after 8.3/8.4; 8.6 after 8.3/8.4/8.5). All seven Phase 8 acceptance criteria are independently verified: the README is end-user-facing with no contributor prose (contributor-prose grep returned none) and links docs/project-status.md; the contributor content is preserved in docs/project-status.md (byte-identical modulo the added H1/blank line at 92611af, then legitimately updated by 8.5); build.yaml overview/description/changelog describe the shipped v1 behavior and the version is 1.0.1.0 in build.yaml and Directory.Build.props; scripts/write-manifest.cs and scripts/publish-release.sh generate a schema-correct manifest (guid 40322d52-5680-449f-b33e-e01836ee2f46, version 1.0.1.0, targetAbi 12.0.0.0, MD5 16baa5a7324b8e14fdb113d84b944d09, sourceUrl .../releases/download/v1.0.1/ArrTags_1.0.1.0.zip) and by inspection the --dry-run path exits before any commit/tag/push/GitHub call; manifest.json is committed and the annotated tag v1.0.1 exists (tag object b5b270622f0f182a34d0ecc9a7605d5e70130438 -> commit 8cba85b2288a201f4e2c7eda58d44c71f9c4f096); the canonical docs and the five agent prompt references reflect the new state; and no functional plugin behavior changed (git diff a634d61..HEAD -- src is empty; only build.yaml/Directory.Build.props version+metadata and three test-fixture version literals changed). Release integrity is independently reproduced: the tagged tree's manifest fields match build.yaml; a fresh `./build.sh package` at HEAD reproduced artifacts/ArrTags_1.0.1.0.zip byte-identically (568,248 bytes, SHA-256 de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c, MD5 16baa5a7324b8e14fdb113d84b944d09, 7 entries, no SkiaSharp runtime), matching the manifest checksum and the committed docs. The suite passes at the recorded counts: clean build 0 warnings/0 errors; default `. /config/arrtags-env.sh && ./build.sh test` Failed 0, Passed 1228, Skipped 60, Total 1288; host-guarded Failed 0, Passed 1244, Skipped 44, Total 1288. Nothing was pushed: origin/main remains 09596e0 (33 commits behind HEAD) and there is no remote v1.0.1 ref in the recorded `git ls-remote origin` evidence, so no GitHub release/asset can exist for v1.0.1; the preparation is local-only by design and the user's manual `scripts/publish-release.sh` step is documented. The canonical current-state surfaces are now honest: PLANS.md, docs/project-status.md, docs/changelog.md, docs/architecture.md, docs/implementation-readiness.md, docs/release/build-and-release.md, and docs/limitations.md P6 all state the release is 'prepared to be installable ... once the user pushes the manifest and publishes the GitHub release' and that catalog install does not work yet. No architectural assumption changed, docs/decisions.md was untouched, and no new ADR is required. Remaining items are non-blocking documentation/tooling bookkeeping (PLANS.md acceptance-criteria checkboxes and the 'Gate 8 phase review pending' row now need the Gate 8 declaration; README has no pre-publication caveat; a phase-level orchestration aggregate is absent; 8.1/8.4 attempt-1 reports were not preserved as separate files; publish-release.sh --release-only lacks a pre-upload artifact/checksum pre-check). None is a BLOCKER or HIGH; recommendation on the tag is to keep v1.0.1 at 8cba85b (it already contains every release input and the artifact is byte-identical from HEAD; moving it would invalidate the recorded 'tag commit 8cba85b' references across the canonical docs).",
+  "findings": [
+    {
+      "severity": "LOW",
+      "area": "documentation consistency / Gate 8 record (PLANS.md)",
+      "description": "The seven Phase 8 acceptance-criteria checkboxes (PLANS.md:3296-3310) remain unchecked (`[ ]`) while the Project Status paragraph (PLANS.md:8) says 'Phase 8 - Release distribution is **complete**' and Milestone Status row 8 (PLANS.md:205) says 'Complete (tasks 8.1-8.6 complete; ... Gate 8 phase review pending)'. The mismatch is intentional and scoped ('Gate 8 phase review pending'), but it is now stale: this review declares Gate 8 met, so the Gate 8 record (checkboxes plus the milestone row and Project Status wording) must be reconciled. This is the only remaining phase-completion bookkeeping item; it is a record-consistency gap, not a correctness or integration defect.",
+      "evidence": [
+        "PLANS.md:3296-3310 - the seven Phase 8 acceptance criteria are all '- [ ]'",
+        "PLANS.md:8 - 'Phase 8 - Release distribution is **complete** (tasks 8.1-8.6 complete)'",
+        "PLANS.md:205 - milestone row 8 'Complete (... Gate 8 phase review pending)'",
+        "docs/implementation/8.6/worker-report.json known_limitations[3] - checkboxes deliberately left for the Gate 8/phase review step",
+        "docs/implementation/phase-8/documentation-reconciliation.json unresolved[0] - same claim and recommended action",
+        "Contrast: Phase 1 acceptance criteria are checked (PLANS.md:547-566)"
+      ],
+      "recommended_action": "On declaring Gate 8 met, check the seven Phase 8 acceptance-criteria boxes in PLANS.md, update Milestone Status row 8 to record Gate 8 met (removing 'Gate 8 phase review pending'), and make the Project Status paragraph record the Gate 8 outcome, in the same phase-completion commit that carries this phase review. Documentation-only; no code change."
+    },
+    {
+      "severity": "LOW",
+      "area": "documentation honesty / end-user README",
+      "description": "README.md presents 'Install from the Jellyfin plugin repository' (steps to add the raw manifest URL and install from the catalog) and the 'Manual install (fallback)' download of ArrTags_1.0.1.0.zip from the v1.0.1 Releases page as currently available, with no note that the manifest is unpushed and no GitHub release/asset exists yet. A reader following README.md today would fail at the catalog/manual-install steps. The canonical current-state surfaces correctly condition this ('prepared to be installable ... once the user pushes the manifest and publishes the GitHub release'; docs/limitations.md P6), so this is a README-honesty gap rather than a project-state overclaim. Task 8.1's reviewer recorded the same sequencing forward-reference as informational 8.1-R2, and the phase-completion reconciliation consciously left it unedited.",
+      "evidence": [
+        "README.md:25-31 - repository install steps with no pre-publication caveat",
+        "README.md:33-40 - manual install download of ArrTags_1.0.1.0.zip from the v1.0.1 Releases page",
+        "docs/limitations.md:304-320 (P6) - release/manifest/asset are pending and catalog install cannot resolve ArrTags yet",
+        "docs/project-status.md:15-20 - catalog cannot be installed until the user publishes",
+        "docs/release/build-and-release.md:208-213 - 'prepared to be installable ... does not work yet'",
+        "docs/implementation/phase-8/documentation-reconciliation.json unresolved[1]; docs/implementation/8.1/reviewer-report.json finding 8.1-R2"
+      ],
+      "recommended_action": "Add a one-line note to README.md (for example, before the install section) that the v1.0.1 manifest/release must be published before the catalog or Releases download works, or a short 'not yet published' banner while the repository is prepared-only. Non-blocking; the README becomes accurate once the user publishes."
+    },
+    {
+      "severity": "LOW",
+      "area": "orchestration record / phase completeness",
+      "description": "No phase-level orchestration aggregate exists for Phase 8: docs/implementation/phase-8/ contains only documentation-reconciliation.json. The per-task orchestration.json files for 8.1-8.6 are present and internally consistent (16 subagent invocations, 16 attempts, 2 correction rounds: 8.1 reviewer-driven and 8.4 orchestrator-driven), and the orchestrator instructions require aggregating the task records into docs/implementation/phase-<n>/orchestration.json committed with the phase review. Phase 7 has such an aggregate (docs/implementation/phase-7/orchestration.json, added by 5bf5a8f); phases 4-6 do not. The per-task records are sufficient to reconstruct the totals, so this is an audit-trail completeness gap, not a correctness issue.",
+      "evidence": [
+        "ls docs/implementation/phase-8 -> documentation-reconciliation.json only (no orchestration.json)",
+        "git log --all -- docs/implementation/phase-8/orchestration.json -> no commit",
+        "docs/implementation/8.1..8.6/orchestration.json -> all present; 8.1 and 8.4 carry rework entries",
+        "docs/implementation/phase-7/orchestration.json -> present and tracked (added by 5bf5a8f)",
+        ".opencode/agents/orchestrator.md:404-406 - 'aggregate the task records (or write docs/implementation/phase-<n>/orchestration.json) ... committed with the phase review'"
+      ],
+      "recommended_action": "Have the orchestrator produce docs/implementation/phase-8/orchestration.json (16 invocations, 16 attempts, 2 correction rounds; session ids from the per-task records) and commit it with this phase review, matching the Phase 7 aggregate."
+    },
+    {
+      "severity": "LOW",
+      "area": "audit trail / rework evidence preservation",
+      "description": "The two correction rounds (task 8.1's reviewer CHANGES_REQUIRED -> attempt 2 APPROVED, and task 8.4's orchestrator-requested release-flow rework) were persisted by overwriting the single reviewer-report.json/worker-report.json with attempt 2 rather than by writing separate *.attempt-1.json files. The correction rounds remain visible (orchestration.json `rework` entries, `attempt: 2`, and the rework_log/resolved 8.1-R1 finding), and the implementation-reviewer instructions permit the single-report-plus-rework_log alternative, but the phase-7/final-review convention preserved attempt files (7.1, 7.8, final-review) and the attempt-1 CHANGES_REQUIRED report content is not recoverable for 8.1/8.4. Audit-trail consistency issue only.",
+      "evidence": [
+        "docs/implementation/8.1/ and docs/implementation/8.4/ contain only orchestration.json, reviewer-report.json (attempt: 2), worker-report.json",
+        "docs/implementation/7.1/ and 7.8/ contain reviewer-report.attempt-2.json and worker-report.attempt-2.json alongside the attempt-1 reports",
+        ".opencode/agents/implementation-reviewer.md:311-316 - re-review should write reviewer-report.attempt-<n>.json '(or append an entry to rework_log if the project keeps a single report)'",
+        "docs/implementation/8.1/orchestration.json and 8.4/orchestration.json - rework entries and both attempt outcomes recorded"
+      ],
+      "recommended_action": "For future rework rounds prefer separate *.attempt-<n>.json files (as in Phase 7) so the original CHANGES_REQUIRED report is preserved; no retroactive change required for Phase 8 since the outcome and trigger are recorded."
+    },
+    {
+      "severity": "LOW",
+      "area": "release tooling robustness / release integrity",
+      "description": "scripts/publish-release.sh --release-only checks that manifest.json exists and that the local tag exists, but it does not verify that the local release artifact exists nor that its MD5 equals the manifest checksum before uploading. A missing artifact surfaces only as a gh/token-path error during upload, and a stale/regenerated artifact with a different MD5 is uploaded first and only then rejected by the post-upload verification, leaving a non-matching asset attached to the release until manually corrected. In addition, when jq is absent the checksum used for that verification is extracted by `sed ... | head -n1`, which returns the first checksum in the manifest rather than the entry for the target guid/version (recorded as 8.4-R2); jq is present in this environment and versions are written newest-first, so the normal single-plugin flow is unaffected. Both are release-integrity hardening items, reachable only through the user's manual publish step.",
+      "evidence": [
+        "scripts/publish-release.sh:236-239 - only manifest.json is pre-checked in the release path",
+        "scripts/publish-release.sh:291-292 - gh release upload of $artifact with no local existence/checksum pre-check",
+        "scripts/publish-release.sh:371-375 - MD5 mismatch is detected only after upload",
+        "scripts/publish-release.sh:241-249 - jq-less sed fallback selects the first checksum",
+        "docs/implementation/8.4/reviewer-report.json findings 8.4-R2/R3"
+      ],
+      "recommended_action": "Optional hardening for the manual publish step: fail fast when the local artifact is missing and compare its MD5 to the manifest checksum before uploading (and tighten the jq-less fallback to select the target guid/version). Not required for V1; the documented checksum and artifact are correct."
+    },
+    {
+      "severity": "LOW",
+      "area": "documentation organization / phase-completion records",
+      "description": "The Phase 8 completion reconciliation is recorded twice in near-identical provenance files placed in two different scopes: docs/implementation/phase-8/documentation-reconciliation.json (phase scope) and docs/implementation/final-review/documentation-update.json (the 0.1.0 release-review directory). Both were added by the same commit (799a581) and describe the same eight reconciliations. The final-review directory is the release-audit location for the 0.1.0 release, so a Phase 8 artifact there is easy to miss and blurs the audit trail.",
+      "evidence": [
+        "git show --stat 799a581 - adds both docs/implementation/final-review/documentation-update.json and docs/implementation/phase-8/documentation-reconciliation.json",
+        "docs/implementation/final-review/documentation-update.json and docs/implementation/phase-8/documentation-reconciliation.json - overlapping reconciliations/changes lists"
+      ],
+      "recommended_action": "Keep phase-scoped records under docs/implementation/phase-8/ and reserve docs/implementation/final-review/ for the whole-project release audit; no retroactive move required."
+    },
+    {
+      "severity": "LOW",
+      "area": "platform assumption / verification coverage (Jellyfin plugin catalog)",
+      "description": "The generated manifest's validity is established by value inspection (guid/version/targetAbi/checksum/sourceUrl all match build.yaml and the reproduced artifact), by the Jellyfin documentation's repository model (a raw manifest.json URL added under Dashboard -> Plugins -> Repositories), and by task 8.4's comparison against a real third-party Jellyfin repository manifest of the same array-of-plugins-with-versions shape. It could not be live-verified against a Jellyfin 12 catalog fetch because the manifest and release are deliberately unpublished, so Jellyfin 12's parser tolerance (for example for omitted optional fields) is an implementation assumption rather than confirmed platform behaviour. Low risk; it will be exercised by the user's publish step.",
+      "evidence": [
+        "manifest.json - array of one plugin object with a versions array (guid/name/description/owner/category/overview/versions[checksum,changelog,targetAbi,sourceUrl,timestamp,version])",
+        "build.yaml - guid/version/targetAbi match the manifest and the artifact MD5",
+        "docs/implementation/8.4/reviewer-report.json research_checked - reference manifest https://raw.githubusercontent.com/vosmiic/jellyfin-ani-sync/master/manifest.json compared field-for-field",
+        "https://jellyfin.org/docs/general/server/plugins/ - 3rd-party repositories are raw manifest.json URLs (Ani-Sync, danieladov, LinFor, LizardByte, etc.)",
+        "docs/limitations.md P6 - catalog install cannot resolve ArrTags until the user publishes"
+      ],
+      "recommended_action": "Once the user publishes, confirm a live Jellyfin 12 catalog fetch resolves and installs ArrTags 1.0.1.0, and record the result; if Jellyfin 12 requires or prefers additional manifest fields, update scripts/write-manifest.cs and regenerate manifest.json (which would change the manifest commit/tag and must be re-released)."
+    }
+  ],
+  "tasks_checked": [
+    "8.1 - end-user README and preserved docs/project-status.md (commit 92611af; worker attempt 1+2 COMPLETE, reviewer attempt 1 CHANGES_REQUIRED + attempt 2 APPROVED; attempt-1 finding 8.1-R1 documented and resolved in the single report's rework_log)",
+    "8.2 - repoint the five agent current-state references to docs/project-status.md (commit 2511118; worker + reviewer APPROVED; independent grep confirms five matches with no README.md current-state entry)",
+    "8.3 - correct build.yaml metadata and bump to 1.0.1.0 in build.yaml/Directory.Build.props, update three test literals (commit 606fee1; worker + reviewer APPROVED; findings 8.3-R1/R2 carried into 8.5 and resolved there)",
+    "8.4 - add scripts/write-manifest.cs and scripts/publish-release.sh and generate manifest.json (commit 266ad46; worker attempt 1+2 COMPLETE, reviewer attempt 1 APPROVED + attempt 2 APPROVED after an orchestrator-requested release-flow correction; script-only rework)",
+    "8.5 - update release/current-state docs to the 1.0.1.0 identity (commit 7900fc5; worker + reviewer APPROVED; informational 8.5-R1/R2/R3)",
+    "8.6 - release-readiness verification, manifest commit, annotated tag v1.0.1 (release commit 8cba85b, tag object b5b270622f0f182a34d0ecc9a7605d5e70130438 -> 8cba85b2288a201f4e2c7eda58d44c71f9c4f096; task bookkeeping commit 2b1e769; worker + reviewer APPROVED; MEDIUM 8.6-R1 deferred to, and resolved by, the phase-completion reconciliation 799a581)"
+  ],
+  "commits_checked": [
+    "38d994e Record Phase 8 release-distribution plan (PLANS.md only)",
+    "92611af Implement Phase 8 task 8.1 end-user README (README.md rewritten, docs/project-status.md added, 8.1 reports)",
+    "2511118 Implement Phase 8 task 8.2 repoint current-state prompt references (five agent files, 8.2 reports)",
+    "606fee1 Implement Phase 8 task 8.3 bump to 1.0.1.0 and fix plugin metadata (build.yaml, Directory.Build.props, three test literals, 8.3 reports)",
+    "266ad46 Implement Phase 8 task 8.4 add plugin repository manifest tooling (scripts/write-manifest.cs, scripts/publish-release.sh, manifest.json, 8.4 reports)",
+    "7900fc5 Implement Phase 8 task 8.5 update release and current-state docs (release doc, changelog, limitations, project-status, test-host doc, Directory.Build.props comment, 8.5 reports)",
+    "8cba85b Publish ArrTags 1.0.1.0 repository manifest (manifest.json timestamp refresh; tagged v1.0.1)",
+    "2b1e769 Implement Phase 8 task 8.6 release verification and v1.0.1 manifest commit (PLANS.md bookkeeping, 8.6 reports)",
+    "799a581 Reconcile Phase 8 completion across canonical docs (PLANS.md, architecture, changelog, implementation-readiness, limitations, project-status, release doc, phase-8 reconciliation, final-review documentation-update)"
+  ],
+  "tests_checked": [
+    "Clean build: `. /config/arrtags-env.sh && ./build.sh build` -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (independently re-run by this review).",
+    "Default suite: `. /config/arrtags-env.sh && ./build.sh test` -> 'Passed! - Failed: 0, Passed: 1228, Skipped: 60, Total: 1288, Duration: 17 s' (independently re-run; matches task 8.6 and the changelog).",
+    "Host-guarded suite: `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/jf/jellyfin ./build.sh test` -> 'Failed: 0, Passed: 1244, Skipped: 44, Total: 1288' (independently re-run on the present pinned host at /tmp/jf/jellyfin; matches task 8.6).",
+    "Package reproducibility: removed artifacts/ArrTags_1.0.1.0.zip, ran `. /config/arrtags-env.sh && ./build.sh package` -> 'Created deterministic package: .../artifacts/ArrTags_1.0.1.0.zip (7 entries)'; sha256sum de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c; md5sum 16baa5a7324b8e14fdb113d84b944d09; 568,248 bytes; unzip -l shows 7 entries with no SkiaSharp.dll/libSkiaSharp.so.",
+    "Manifest checksum equality: manifest versions[0].checksum 16baa5a7324b8e14fdb113d84b944d09 == md5sum artifacts/ArrTags_1.0.1.0.zip (verified).",
+    "Not rerun by this review (out of scope / would mutate tracked files): the publish-release.sh --dry-run (it rewrites manifest.json with a new timestamp) and the GitHub release path (no GitHub call permitted); both are covered by the task 8.4/8.6 reviewer runs and by source inspection (the --dry-run branch exits before the commit/tag/push/GitHub block)."
+  ],
+  "research_checked": [
+    "Jellyfin plugin-repository model: the official Jellyfin plugin documentation confirms that 3rd-party repositories are added as raw manifest.json URLs exactly as README.md and docs/release/build-and-release.md describe (https://jellyfin.org/docs/general/server/plugins/).",
+    "Manifest schema: the generated manifest matches the array-of-plugin-objects with a per-version [checksum, changelog, targetAbi, sourceUrl, timestamp, version] shape used by real third-party repositories (task 8.4 reviewer compared https://raw.githubusercontent.com/vosmiic/jellyfin-ani-sync/master/manifest.json field-for-field).",
+    "Version/tag derivation: tag v1.0.1 = `v${version%.0}` from build.yaml 1.0.1.0; sourceUrl is the tag-derived release asset URL; all independently consistent.",
+    "No new Jellyfin 12 API, lifecycle, or ABI assumption was introduced by Phase 8; the pinned ABI (targetAbi 12.0.0.0, net10.0) is unchanged from Phase 7 and no platform behaviour was re-asserted.",
+    "Residual uncertainty recorded as a LOW finding: the manifest has not been exercised by a live Jellyfin 12 catalog fetch because the release is deliberately unpublished."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status (line 8) and Milestone Status row 8 (line 205) state Phase 8 complete and the release prepared-but-unpublished; tasks 8.1-8.6 are checked and their Status blocks are accurate; the seven Phase 8 acceptance-criteria boxes remain unchecked and row 8 still says 'Gate 8 phase review pending' (LOW finding).",
+    "docs/project-status.md: opening status explicitly states the catalog cannot be installed until the user publishes, so the previous forward-looking installability tense is corrected; the Next-tasks and Known-limitations sections match the repository state.",
+    "docs/changelog.md: the Phase 8 section is 'Complete' with accurate suite counts and artifact identity, and the Task 8.6 entry records the manifest commit, tag, and absence of any push; historical Phase 1-7/SEC-1 entries retain the 0.1.0.0 identity as history.",
+    "docs/architecture.md: status line updated to 'Phases 1-8 complete' and states the release is prepared but not yet live; no architectural section changed, consistent with no architectural change in this phase.",
+    "docs/implementation-readiness.md: status line records Phase 8 complete and the pending publish; historical Phase 1 task 1.8 record correctly labelled as history.",
+    "docs/limitations.md: P1/P2 carry the current 1.0.1.0 identity; the new P6 accurately records that the tag/manifest are local only, the public repository does not serve a 1.0.1.0 manifest, and catalog install cannot resolve ArrTags until the user publishes; the 0.1.0 historical verification notes remain clearly labelled.",
+    "docs/release/build-and-release.md: pinned version and artifact identity are 1.0.1.0; the Jellyfin repository section is correctly conditioned ('prepared to be installable ... does not work yet'); the manifest field table matches manifest.json (including the refreshed timestamp 2026-09-22T14:40:57Z); the 0.1.0 suite counts are explicitly scoped as historical.",
+    "README.md: end-user guide with requirements, repository/manual install, configuration (including the real field set and minimal XML example), webhook endpoints, update, uninstall, and known-limitations summary; no contributor prose (grep returned none); links docs/project-status.md and docs/release/build-and-release.md; lacks a pre-publication caveat (LOW finding).",
+    ".opencode/agents/*.md: the five canonical-current-state references now point at docs/project-status.md with no README.md current-state entry remaining; only the intended 1/1 line changed per file; docs/project-status.md is now the referenced source.",
+    "docs/testing/jellyfin-12-musl-test-host.md: reproduction step updated to ArrTags_1.0.1.0; the ADR-014 caveat is present and correct.",
+    "No stale current-state release identity remains: every 0.1.0.0/ArrTags_0.1.0.0.zip/f6b6a515/bd10b9b6 occurrence in a canonical surface is historical (Phase 1-7 changelog/PLANS records, the relabelled 0.1.0-history release-doc block, or limitations verification history)."
+  ],
+  "architecture_checked": [
+    "No architectural assumption changed in Phase 8: git diff a634d61..HEAD -- src is empty and docs/decisions.md is untouched, so no new ADR is required. The phase is release distribution (README, build metadata, manifest tooling, docs) only.",
+    "docs/architecture.md received only a status-line update ('Phases 1-8 complete' + the prepared-but-unpublished release note); no architecture section or decision contradicts the implementation.",
+    "Execution-order consistency: the authoritative order 8.1, 8.2, 8.3, 8.4, 8.5, 8.6 is a valid topological order of the documented dependencies (8.2 after 8.1; 8.3 independent; 8.4 after 8.3; 8.5 after 8.3/8.4; 8.6 after 8.3/8.4/8.5), and the commit timestamps follow it. No dependency conflict was found.",
+    "Integration boundaries: the new scripts are file-based apps outside ArrTags.slnx and add no plugin dependency (no reference in ArrTags.slnx; not compiled into the plugin), so they cannot affect the plugin's runtime boundary; the manifest/publish tooling reads build.yaml and does not modify plugin state, artwork, configuration, or lifecycle behaviour.",
+    "Cross-task consistency: build.yaml/metadata (8.3) is the single source consumed by write-manifest.cs and publish-release.sh (8.4), the docs (8.5), and the release verification (8.6) - guid/version/targetAbi all agree; the 8.3-R1/R2 documentation findings were correctly carried into 8.5's scope and resolved; the 8.6-R1 stale-status finding was resolved by 799a581.",
+    "No duplicated or conflicting mechanism was introduced: one manifest generator, one publish orchestrator, one canonical manifest.json; the packer remains the sole archive writer (P3)."
+  ],
+  "requirements_checked": [
+    "Phase 8 acceptance criterion 1 (README end-user-facing, covering requirements/repository install/manual install/configuration/update/uninstall, no contributor prose): MET - README.md sections verified and the contributor-prose grep returned no matches.",
+    "Phase 8 acceptance criterion 2 (contributor content preserved in docs/project-status.md and linked from README.md): MET - docs/project-status.md was byte-identical to the prior README body at 92611af apart from the added H1/blank line, is linked from README.md:162, and was then legitimately updated for the 1.0.1.0 state by 8.5.",
+    "Phase 8 acceptance criterion 3 (build.yaml metadata accurate; version 1.0.1.0 in build.yaml and Directory.Build.props): MET - verified in both files; the stale 'performs no provider or artwork I/O' text is gone.",
+    "Phase 8 acceptance criterion 4 (scripts generate a valid manifest with correct guid/version/targetAbi/MD5 checksum/sourceUrl and no GitHub write during a dry run): MET - all fields verified against build.yaml and the reproduced artifact; by source inspection the --dry-run path exits before any commit/tag/push/GitHub call, confirmed by the task 8.4/8.6 reviewer runs.",
+    "Phase 8 acceptance criterion 5 (manifest.json committed and annotated tag v1.0.1 exists; GitHub release/asset upload manual): MET - manifest.json committed at 8cba85b (unchanged through HEAD); tag v1.0.1 is annotated (object b5b2706... -> 8cba85b), local-only, and no release exists.",
+    "Phase 8 acceptance criterion 6 (canonical docs and agent prompt references reflect the new state): MET - docs/release/build-and-release.md, docs/changelog.md, PLANS.md, docs/project-status.md, docs/architecture.md, docs/implementation-readiness.md, docs/limitations.md, and the five .opencode/agents prompts all reflect the 1.0.1.0/unpublished-release state.",
+    "Phase 8 acceptance criterion 7 (no functional plugin behavior changed beyond version/release metadata): MET - src diff is empty; only build.yaml/Directory.Build.props version+metadata and three test-fixture version literals changed; the full suite passes.",
+    "Gate 8 (all seven criteria met + phase review passes + annotated tag created): MET - all seven criteria verified above, this review approves the phase, and the annotated tag v1.0.1 exists.",
+    "GOALS.md success criteria are unchanged by this phase: the Phase 7 status remains authoritative (criteria 1-4, 8, 9 met; criterion 5 met as shipped subject to a host-supplied SkiaSharp F5; criterion 6 met for render/publication and partial for provider fetches F1; criterion 7 met at the contract level only V3) and Phase 8 introduces no product-behaviour change that would alter any of them.",
+    "Release-distribution goal from PLANS.md Phase 8 objective (installable via the standard Jellyfin catalog, user-facing README, corrected metadata, prepared v1.0.1): MET for preparation; live catalog install is intentionally pending the user's publish (documented as such on every canonical surface, and low-risk per the manifest-format finding)."
+  ],
+  "orchestration_checked": [
+    "Per-task orchestration.json exists for 8.1-8.6 and records every subagent invocation with role, attempt, outcome, agent/model/variant, and session id; token/cost/duration fields are null with no estimated figures.",
+    "Correction rounds are visible as rework entries plus incremented attempts: 8.1 (reviewer attempt 1 CHANGES_REQUIRED -> worker/reviewer attempt 2 APPROVED with a rework entry and a resolved 8.1-R1 finding) and 8.4 (reviewer attempt 1 APPROVED -> orchestrator-requested release-flow correction with worker/reviewer attempt 2 APPROVED and a rework entry).",
+    "Totals reconstructed from the per-task records: 16 subagent invocations (8 workers + 8 reviewers), 16 attempts, 2 correction rounds. No aggregate phase-level orchestration.json exists for Phase 8 (LOW finding); the Phase 7 aggregate (committed by 5bf5a8f) is the project precedent.",
+    "Each task's committed reports are internally consistent with the repository state (reviewed independently: 8.1 byte-preservation and grep; 8.2 five-file 1/1 diff and grep; 8.3 build/test/package identity; 8.4 dry-run no-side-effect and manifest shape; 8.5 per-entry hashes and manifest fields; 8.6 tag/commit/no-push).",
+    "All 16 rework/review invocations returned APPROVED (final) with no open blockers and ready_for_next_task=true; no unresolved worker question or reviewer required_change remains."
+  ],
+  "total_subagent_invocations": 16,
+  "total_attempts": 16,
+  "correction_rounds": 2,
+  "rework_summary": {
+    "total_subagent_invocations": 16,
+    "total_attempts": 16,
+    "correction_rounds": 2
+  }
+}
