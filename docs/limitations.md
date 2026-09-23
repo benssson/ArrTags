@@ -69,27 +69,38 @@ post-scan, and manual reconciliation enqueues up to `QueueCapacity` work hints
   API requests to Sonarr and Radarr" is only partially met for provider
   fetches. Render and publication are fingerprint-gated and are not affected.
 
-### F2. Runtime configuration replacement is not wired to Jellyfin's save path
+### F2. A saved configuration change is activated at runtime but existing posters are not promptly re-rendered
 
-`ConfigurationSnapshotService.TryReplace` is implemented and validated but is
-not connected to Jellyfin's configuration-update mechanism.
+`ConfigurationSnapshotService.TryReplace` is now wired to Jellyfin's
+configuration-update mechanism (task 9.3), so a saved change is activated
+without a host restart. The remaining gap is that a saved change does not
+promptly re-render existing posters: a work item whose `ConfigurationVersion` is
+older than the current snapshot is skipped, so existing posters update only on
+the next library event, webhook, post-scan, or scheduled run until the bounded,
+non-blocking post-save reconciliation trigger (task 9.4) lands.
 
-- Evidence: task 7.7, 7.3, and 7.8 worker reports; `PLANS.md` Post-V1 Backlog;
-  `docs/implementation-readiness.md`.
-- Consequence: a saved webhook-secret, provider enable/disable, badge/selector,
-  or DG-6 limit change is **not observed until the process restarts**. The live
-  tasks 7.3 and 7.8 configured the plugin by writing
-  `data/plugins/configurations/ArrTags.xml` and restarting. The bounded work
-  queue, provider/render concurrency limiters, freshness window, and retention
-  interval already resolve their values from the current snapshot per
-  operation, so wiring the replacement is the remaining step.
+- Evidence: task 7.7, 7.3, and 7.8 worker reports; `PLANS.md` Phase 9 tasks 9.3
+  and 9.4; `docs/implementation-readiness.md`.
+- Consequence: before task 9.3, a saved webhook-secret, provider enable/disable,
+  badge/selector, or DG-6 limit change was **not observed until the process
+  restarted**, and the live tasks 7.3 and 7.8 configured the plugin by writing
+  `data/plugins/configurations/ArrTags.xml` and restarting. That restart
+  consequence is resolved: the bounded work queue, provider/render concurrency
+  limiters, freshness window, retention interval, badge definitions, and the
+  renderer output policy resolve their values from the current snapshot per
+  operation, so the replaced snapshot is observed by subsequent work. The
+  remaining consequence is re-render promptness only: an already-published
+  poster is not re-rendered by the save itself until task 9.4 adds the trigger.
 - Current state (v1.1): task 9.2 added the dashboard settings page, which reads
   and saves the configuration through Jellyfin's elevation-gated
   `PluginsController` path, so an operator no longer has to edit
-  `ArrTags.xml` by hand. The save persists the XML but runtime activation is not
-  yet wired (`Plugin.UpdateConfiguration` is not overridden), so this
-  limitation's restart consequence is unchanged until task 9.3 (and the
-  post-save reconciliation trigger in task 9.4).
+  `ArrTags.xml` by hand. Task 9.3 overrides `Plugin.UpdateConfiguration` to
+  validate the candidate before the base implementation persists it: a valid
+  candidate is persisted and activated at runtime, while an invalid candidate is
+  rejected before persistence (it is never written to `ArrTags.xml`) and the last
+  valid public snapshot and private secret generation remain active and
+  persisted. The post-save reconciliation trigger (task 9.4) and the final
+  Goal A verification that records F2 as resolved (task 9.5) remain.
 
 ### F3. No bounded, secret-free metrics/diagnostic-status surface
 
@@ -461,11 +472,18 @@ The Sonarr/Radarr API keys and the inbound webhook shared secret are persisted
 only in Jellyfin's plugin configuration XML and returned by Jellyfin's
 authenticated, elevation-gated plugin-configuration API to administrators. This
 is the accepted ADR-005 single-source-of-truth design; the plugin has no logging
-call sites, so no plugin log path can leak a secret.
+call sites, so no plugin log path can leak a secret. As of v1.1 task 9.3 the
+plugin still has no diagnostic log (`ILogger`/Serilog) call sites; the only
+plugin-initiated outbound administrator-visible surface is the bounded,
+secret-free configuration-rejection activity-log entry recorded in SEC-9
+(ADR-021). This is a scoping note only; the full SEC-5 rewrite that reconciles
+SEC-9 is Phase 10 task 10.3.
 
-- Evidence: security-review finding SEC-5; `docs/decisions.md` ADR-005.
+- Evidence: security-review finding SEC-5; `docs/decisions.md` ADR-005 and
+  ADR-021; this file's SEC-9.
 - Consequence: none. This is the accepted ADR-005 design, and the plugin has no
-  log path that could leak a secret.
+  log path that could leak a secret. The SEC-9 activity-log surface is bounded
+  and secret-free.
 
 ### SEC-6. The `ArtworkSubjectGate` process-lifetime bound (INFORMATIONAL, noted)
 
@@ -508,6 +526,50 @@ candidate bound, the constant-time compare, and the uniform fail-closed `401`.
 - Evidence: security-review finding SEC-8; `docs/decisions.md` ADR-012.
 - Consequence: optional post-V1 hardening only (for example per-source throttling
   or reverse-proxy rate limiting).
+
+### SEC-9. Configuration-rejection activity-log surfacing is a new bounded, secret-free administrator-visible surface (INFORMATIONAL, noted)
+
+v1.1 task 9.3 (ADR-021) adds one plugin-initiated outbound
+administrator-visible surface: on a rejected configuration save the plugin
+writes exactly one activity-log entry through the host `IActivityManager`. The
+entry has a fixed name and type (`ArrTagsConfigurationRejected`), an empty user
+id, `Warning` severity, and an overview built only from bounded, secret-free
+validation reasons (at most eight, each and every field truncated to the
+`ActivityLog` column bounds). It contains no API key, base URL, webhook secret,
+color value, numeric candidate value, request body, or header. The write is a
+bounded synchronous wait and is fully contained: it never throws into the host
+and a write failure does not affect the rejection or the retained last-valid
+configuration. The host activity-log read and its websocket are elevation-gated
+to administrators. The coupling to `Jellyfin.Database.Implementations` is
+isolated behind the plugin-owned `IConfigurationRejectionNotifier` boundary. A
+valid save writes no entry.
+
+Volume and spam (SEC-9.3-02): each rejected save writes one entry, so an
+administrator who repeatedly saves an invalid configuration produces repeated
+identical entries; the trigger is administrator-only (the elevation-gated
+`PluginsController` POST), and consecutive-duplicate suppression is deliberately
+not implemented (ADR-021 clause 6). The reason text is sanitized at the boundary
+(control characters stripped, whitespace collapsed, count capped at eight, each
+reason and every field truncated to the `ActivityLog` bounds) so a reason cannot
+inject markup, a line break, or a malformed value (SEC-9.3-03). The only
+production caller is `Plugin.TryNotifyRejected`, which passes the validator's
+secret-free messages; the interface documents that invariant. The rejection is
+atomic with respect to persistence (SEC-9.3-01): the candidate is validated
+before the host base implementation persists anything, an invalid candidate is
+never written, and the save sequence is serialized so concurrent saves cannot
+leave the running snapshot, the in-memory configuration, and the persisted file
+divergent.
+
+- Evidence: `docs/decisions.md` ADR-021;
+  `docs/research/jellyfin-expert/configuration-save-failure-surfacing.json`;
+  `src/ArrTags/Configuration/IConfigurationRejectionNotifier.cs`,
+  `src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs`;
+  `tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs`,
+  `tests/ArrTags.Tests/ConfigurationActivationTests.cs`.
+- Consequence: a new, reviewed, bounded, secret-free outbound surface; the
+  activity-log entry is the only plugin-initiated administrator-visible
+  notification and it carries no candidate value or secret. SEC-5 is scoped by
+  this entry and is reconciled fully by Phase 10 task 10.3.
 
 ## Deliberate V1 scope exclusions
 

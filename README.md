@@ -49,10 +49,15 @@ secret, the Movie/Episode poster flags, the enabled-library scope, the renderer
 selectors/templates and palette overrides, and the operational limits.
 
 The page itself embeds no secret and only shows a secret value that Jellyfin's
-existing administrator configuration API already returns. Runtime activation is
-not yet wired, so a saved change is **not observed until the process restarts**
-(`docs/limitations.md` F2); the XML below remains the persisted shape and can
-still be edited directly at `plugins/configurations/ArrTags.xml` (that is,
+existing administrator configuration API already returns. A saved change is
+validated and applied to the running plugin **without a host restart**; an
+invalid change is rejected, the last valid configuration stays active, and the
+rejection is recorded as a bounded, secret-free entry in the Jellyfin Activity
+log.
+Existing posters re-render with the new settings on the next library event,
+webhook, post-scan, or scheduled run (`docs/limitations.md` F2); the XML below
+remains the persisted shape and can still be edited directly at
+`plugins/configurations/ArrTags.xml` (that is,
 `<data>/plugins/configurations/ArrTags.xml`).
 
 ### Fields
@@ -155,8 +160,10 @@ The canonical record of what ArrTags does not yet do or has not yet verified is
   re-reads the provider library, so the "avoid unnecessary provider requests"
   goal is only partially met for provider fetches; rendering and publication are
   fingerprint-gated (F1).
-- **Configuration changes require a restart.** Runtime configuration
-  replacement is not wired to Jellyfin's save path (F2).
+- **Saved configuration changes are not re-rendered immediately.** A saved
+  change is activated without a restart, but existing posters re-render only on
+  the next library event, webhook, post-scan, or scheduled run until the
+  bounded post-save trigger lands (F2).
 - **Jellyfin Enhanced coexistence is verified at the contract level only**;
   Enhanced is not installed on the pinned host (V3).
 - **Live-verification gaps.** There is no live Sonarr/Radarr instance, the live

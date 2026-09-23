@@ -843,6 +843,28 @@ ADR-008 and are not part of the V1 snapshot. The Jellyfin Enhanced coexistence
 policy (ADR-011) is realized by the existing poster and renderer selector enable
 flags; it adds no snapshot field and no automatic duplicate/overlap suppression.
 
+**Runtime activation (task 9.3).** The persisted `PluginConfiguration` is the
+candidate supplied to `Plugin.UpdateConfiguration`. The override validates the
+candidate before the base implementation persists anything (using the same
+`PluginConfigurationValidator` the snapshot service uses); a valid candidate is
+persisted by the host base implementation and then activated through
+`ConfigurationSnapshotService.TryReplace` (ADR-016 clause 4), so a saved change is
+observed without a host restart. An invalid candidate is rejected before
+persistence: the override does not call the base implementation, so a rejected
+candidate is never written to `plugins/configurations/ArrTags.xml` and neither the
+public snapshot nor the private secret map changes. The whole
+validate/persist/activate sequence is serialized, so concurrent saves cannot leave
+the running snapshot, the in-memory configuration, and the persisted file
+divergent (security finding SEC-9.3-01). The validation messages are bounded and
+secret-free; the validator never includes a secret value. The rejection is
+surfaced to the administrator as exactly one bounded, secret-free activity-log
+entry through the plugin-owned `IConfigurationRejectionNotifier` adapter
+(ADR-021); the entry is not canonical configuration or state and carries no
+secret or candidate value. Services that resolve
+from the current snapshot per operation (work queue capacity and in-flight
+bound, provider/render concurrency, metadata freshness, badge definitions, and
+the renderer output policy) observe the replaced snapshot by subsequent work.
+
 #### 3.12.1 Secret resolution semantics
 
 The provider-neutral credential contract is a versioned resolver equivalent to:

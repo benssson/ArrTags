@@ -1,0 +1,60 @@
+{
+  "subject": "Administrator-visible surfacing of a rejected plugin configuration save on Jellyfin 12.0.0 (ADR-016 clause 4, ADR-021)",
+  "conclusion": "Jellyfin 12.0.0 supports a supported, elevation-gated, administrator-visible notification surface that a plugin can use without throwing into the host: MediaBrowser.Model.Activity.IActivityManager.CreateAsync(Jellyfin.Database.Implementations.Entities.ActivityLog). IActivityManager is resolvable through plugin DI (the host registers Jellyfin.Server.Implementations.Activity.ActivityManager as its implementation). CreateAsync persists the entry to the host database and raises EntryCreated, which the host activity websocket pushes. The entry is read back by the elevation-gated ActivityLogController at GET System/ActivityLog/Entries. ActivityLog bounds are Name/Overview/ShortOverview 512 and Type 256. The IActivityManager and ActivityLog types live in Jellyfin.Database.Implementations, a lower stability tier than the pinned MediaBrowser.Model/MediaBrowser.Common contracts (architecture-reviewer risk AR-05), so ArrTags isolates the coupling behind the plugin-owned IConfigurationRejectionNotifier adapter (Jellyfin-free contract taking bounded reason strings) with a single Jellyfin implementation. This is the mechanism ADR-021 selects for ADR-016 clause 4's surfacing requirement; it adds no custom configuration-save route, no inline page message, and no HTTP error.",
+  "evidence": {
+    "assemblies": [
+      "jellyfin.model 12.0.0.0 MediaBrowser.Model.dll (IActivityManager, ActivityLogEntry)",
+      "jellyfin.database.implementations 12.0.0.0 Jellyfin.Database.Implementations.dll (ActivityLog entity)",
+      "jellyfin.api 12.0.0.0 Jellyfin.Api.dll (ActivityLogController, PluginsController)"
+    ],
+    "source_revision": "6c073e19ddf604b2369c638716164fdab4c952dc (tag v12.0)",
+    "sources": [
+      "MediaBrowser.Model/Activity/IActivityManager.cs",
+      "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/ActivityLog.cs",
+      "Jellyfin.Server.Implementations/Activity/ActivityManager.cs",
+      "Jellyfin.Api/Controllers/ActivityLogController.cs",
+      "Jellyfin.Api/Controllers/PluginsController.cs",
+      "MediaBrowser.Common/Plugins/BasePluginOfT.cs"
+    ],
+    "dependency": "Jellyfin.Database.Implementations 12.0.0 is a transitive dependency of Jellyfin.Model 12.0.0 (Jellyfin.Model -> Jellyfin.Data -> Jellyfin.Database.Implementations) and is available at compile time without an explicit PackageReference; the plugin does not ship it (ExcludeAssets=runtime on Jellyfin.Model/Jellyfin.Controller), matching the ADR-015 host-shared pattern."
+  },
+  "findings": [
+    {
+      "claim": "MediaBrowser.Model.Activity.IActivityManager exposes Task CreateAsync(Jellyfin.Database.Implementations.Entities.ActivityLog entry), event EventHandler<GenericEventArgs<ActivityLogEntry>> EntryCreated, Task<QueryResult<ActivityLogEntry>> GetPagedResultAsync(ActivityLogQuery), and Task CleanAsync(DateTime).",
+      "source": "MediaBrowser.Model/Activity/IActivityManager.cs at the pinned revision; confirmed in MediaBrowser.Model.dll 12.0.0.0.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "Jellyfin.Database.Implementations.Entities.ActivityLog has a public constructor ActivityLog(string name, string type, Guid userId) and settable Overview, ShortOverview, LogSeverity (Microsoft.Extensions.Logging.LogLevel), and DateCreated. Data annotations bound Name/Overview/ShortOverview to 512 characters and Type to 256.",
+      "source": "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/ActivityLog.cs at the pinned revision.",
+      "classification": "Confirmed supported API (entity shape); the assembly is a lower stability tier"
+    },
+    {
+      "claim": "The host ActivityManager.CreateAsync adds the entry to the host DbContext, saves it, then raises EntryCreated with the converted ActivityLogEntry, which the host activity websocket pushes to connected administrator clients.",
+      "source": "Jellyfin.Server.Implementations/Activity/ActivityManager.cs at the pinned revision.",
+      "classification": "Confirmed supported API behavior (implementation detail of the registered IActivityManager)"
+    },
+    {
+      "claim": "Activity log entries are read by ActivityLogController, which is class-level [Authorize(Policy = Policies.RequiresElevation)] at route System/ActivityLog; GET System/ActivityLog/Entries returns a paged QueryResult<ActivityLogEntry>. The activity-log surface is therefore administrator-gated.",
+      "source": "Jellyfin.Api/Controllers/ActivityLogController.cs at the pinned revision.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "IActivityManager is registered in the host service collection (Jellyfin.Server.Implementations.Activity.ActivityManager), so a plugin can resolve it lazily from the IServiceProvider it already receives by constructor injection, exactly like the ConfigurationSnapshotService.",
+      "source": "Jellyfin.Server.Implementations/Activity/ActivityManager.cs; Jellyfin.Server service registration; src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs.",
+      "classification": "Confirmed supported API (plugin DI resolution)"
+    },
+    {
+      "claim": "A non-throwing UpdateConfiguration cannot surface a rejection inline or as an HTTP error: PluginsController POST {pluginId}/Configuration calls the void IHasPluginConfiguration.UpdateConfiguration and unconditionally returns 204 NoContent, and the jellyfin-web Dashboard.processPluginConfigurationUpdateResult reports only the HTTP outcome.",
+      "source": "Jellyfin.Api/Controllers/PluginsController.cs at the pinned revision; docs/research/jellyfin-12-architecture.md section 9.",
+      "classification": "Confirmed supported API constraint"
+    },
+    {
+      "claim": "Rejected alternatives for the surfacing mechanism: an inline page message (would need an HTTP error or a custom data route), a throw/HTTP error (ADR-016 clause 4 forbids throwing into the host), a host ILogger line (Goal F / ADR-020, not an administrator-visible dashboard surface), and a plugin-instance diagnostic property (not administrator-visible; the task 9.3 attempt-1 finding).",
+      "source": "ADR-016 clause 4; ADR-020; docs/implementation/9.3 (attempt 1); the task 9.3 rework decision.",
+      "classification": "Architecture decision (ADR-021)"
+    }
+  ],
+  "phase_10_interaction": "Goal F (Phase 10, ADR-020) adds ILogger<T>/ILoggerFactory call sites and rewrites limitation SEC-5 from a negative result ('no logging call sites') to a positive redaction contract. Task 10.3 must reconcile SEC-9: the configuration-rejection activity-log entry is a separate, already-existing plugin-initiated outbound administrator-visible surface that carries bounded, secret-free validation reasons only. The Phase 10 logging work must not treat SEC-5 as still negative, and the SEC-9 entry must remain bounded and secret-free.",
+  "recommended_action": "Keep the activity-log surfacing isolated behind the plugin-owned IConfigurationRejectionNotifier interface; keep the entry fixed-name/fixed-type, capped (at most eight reasons), truncated to the ActivityLog column bounds, secret-free, Warning severity, and Guid.Empty user id; keep the bounded synchronous wait and full containment; add no custom save route, inline page message, or HTTP error. Record the surface in docs/limitations.md SEC-9 and scope SEC-5 so it is not left overclaiming; task 10.3 performs the full SEC-5 rewrite that reconciles SEC-9."
+}

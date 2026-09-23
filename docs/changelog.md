@@ -2631,8 +2631,8 @@ not declared; the Phase 8 review is separate.
 
 ## Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1)
 
-**Status:** In progress (tasks 9.1 and 9.2 complete; tasks 9.3-9.5 open). The
-phase resolves limitation F2 when complete.
+**Status:** In progress (tasks 9.1, 9.2, and 9.3 complete; tasks 9.4-9.5 open).
+The phase resolves limitation F2 when complete.
 
 ### Task 9.1 - Configuration round-trip spike (blocking prerequisite)
 
@@ -2716,3 +2716,74 @@ change is still only observed after a restart. `./build.sh build` reported 0
 warnings / 0 errors; the default suite was Failed 0, Passed 1240, Skipped 63,
 Total 1303 (baseline Failed 0, Passed 1234, Skipped 61, Total 1295; +6 passed,
 +2 host-guarded skips, +8 total).
+
+### Task 9.3 - Elevation-gated save path and runtime activation
+
+**Status:** Complete. Owns ADR-016 clauses 3, 4, and 5 first bullet; adds ADR-021.
+
+`src/ArrTags/Plugin.cs` now overrides
+`MediaBrowser.Common.Plugins.BasePlugin<T>.UpdateConfiguration` (ADR-016
+clause 4). The override validates the candidate **before** the base
+implementation persists anything, using the same `PluginConfigurationValidator`
+the snapshot service uses. A valid candidate is then persisted by
+`base.UpdateConfiguration(configuration)` and activated by
+`ConfigurationSnapshotService.TryReplace((PluginConfiguration)configuration, out
+errors)`, so a saved change is applied at runtime without a host restart. An
+invalid candidate is rejected before persistence: the override does not call the
+base implementation, so a rejected candidate is never written to
+`plugins/configurations/ArrTags.xml` and the last valid public snapshot and
+private secret map remain active (closing security finding S-9.2-03). The whole
+validate/persist/activate sequence is serialized, so concurrent elevation-gated
+saves cannot leave the running snapshot, `Plugin.Configuration`, and the
+persisted file divergent (security finding SEC-9.3-01). The bounded, secret-free
+validation result is retained on the plugin instance
+(`Plugin.LastConfigurationValidationResult`) for diagnostics; it is never
+persisted and never returned by the configuration API.
+
+The rejection is also surfaced to the administrator (ADR-021). A new
+plugin-owned `IConfigurationRejectionNotifier` boundary with a Jellyfin-free
+contract isolates the host activity-log coupling; the
+`JellyfinConfigurationRejectionNotifier` implementation resolves the pinned
+`MediaBrowser.Model.Activity.IActivityManager` from the host service provider and
+writes exactly one bounded, secret-free `ActivityLog` entry (fixed `Name`, `Type`
+`ArrTagsConfigurationRejected`, `UserId` `Guid.Empty`, `Warning` severity). The
+overview is built only from bounded, secret-free validation reasons (at most
+eight; control characters stripped and whitespace collapsed), each reason and
+every field truncated to the `ActivityLog` column bounds
+(512/256). The write is a bounded synchronous wait and is fully contained; a
+valid save writes no entry. The `IActivityManager` and `ActivityLog` types live
+in `Jellyfin.Database.Implementations`, a lower stability tier
+(architecture-reviewer risk AR-05), which is why the coupling is isolated behind
+the adapter. The override contains service-resolution, validation, and
+notification failures and never throws into the host, and it adds no custom
+configuration-save route (ADR-016 clause 3). Services that resolve from the
+current snapshot per operation (work queue capacity and in-flight bound,
+provider/render concurrency, metadata freshness, badge definitions, and the
+renderer output policy) observe the replaced snapshot without rebuilding the
+singletons (ADR-016 clause 5 first bullet); a pre-existing subset of singletons
+captures the artifact-size/decode and cache/quota/retention limits at
+construction, so those particular values still change only after a restart.
+
+New tests: `tests/ArrTags.Tests/ConfigurationActivationTests.cs` (11 facts) drives
+the real override and the real notifier against a recording `IActivityManager`
+double: a valid save activates the new snapshot without a restart, updates the
+active and persisted configuration, and writes no activity entry; an invalid save
+retains the last valid snapshot and private secrets, does not persist the rejected
+candidate, and writes exactly one bounded secret-free activity entry; a concurrent
+valid+invalid save keeps the running snapshot, `Plugin.Configuration`, and the
+persisted file consistent (the rejected candidate never reaches persistence); the
+override never throws (valid, invalid, snapshot-service-unavailable, and
+notifier-failing paths); no custom configuration-save route is added; and a
+per-operation consumer (`ProviderConcurrencyLimiter`) observes the replaced
+snapshot. `tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs` (9 facts)
+covers the entry's fixed name/type/severity/user id, the absence of candidate
+secret values, the reason cap, the 512/256 truncation, control-character
+stripping, containment when the activity manager fails, is slow, or is
+unavailable, and the host-DI registration. The tests drive the real override with
+a real XML configuration file and a real `IXmlSerializer` over `XmlSerializer`, so
+the host's base persistence is exercised. `./build.sh build` reported 0 warnings /
+0 errors; the default suite was Failed 0, Passed 1260, Skipped 63, Total 1323
+(baseline Failed 0, Passed 1240, Skipped 63, Total 1303; +20 passed, +20 total).
+The bounded post-save reconciliation trigger (task 9.4) is not part of this task;
+limitation F2's restart consequence is gone, and F2 is recorded as resolved by
+task 9.5.

@@ -2081,12 +2081,20 @@ activation.
    already returns.
 3. Configuration is saved only through the supported elevation-gated
    `PluginsController` path. ArrTags adds no custom configuration-save route.
-4. `Plugin` overrides `BasePlugin<T>.UpdateConfiguration`: it calls
-   `base.UpdateConfiguration(configuration)` and then
-   `ConfigurationSnapshotService.TryReplace((PluginConfiguration)configuration,
-   out errors)`. An invalid candidate is rejected, the last valid snapshot and
-   private secrets are retained, and the bounded validation failure is surfaced
-   to the administrator. The override never throws into the host.
+4. `Plugin` overrides `BasePlugin<T>.UpdateConfiguration`. The override validates
+   the candidate **before** the base implementation persists anything, using the
+   same `PluginConfigurationValidator` the snapshot service uses. An invalid
+   candidate is rejected without calling `base.UpdateConfiguration`, so it is
+   never persisted and the last valid snapshot and private secrets remain active;
+   a valid candidate is then persisted by `base.UpdateConfiguration(configuration)`
+   and activated by `ConfigurationSnapshotService.TryReplace(...)`. The whole
+   validate/persist/activate sequence is serialized, so concurrent
+   elevation-gated saves cannot leave the running snapshot, `Plugin.Configuration`,
+   and the persisted file divergent (security finding SEC-9.3-01). The override
+   never throws into the host. Surfacing is
+   defined by ADR-021: a rejected candidate writes a bounded, secret-free
+   administrator-visible activity-log entry. Clause 4 does not require an inline
+   page message or an HTTP error, and adds no custom save route.
 5. Runtime activation has two parts:
    - **Live snapshot replacement.** Services resolve limits, provider/render
      concurrency, freshness, retention, badge definitions, and the renderer
@@ -2151,6 +2159,7 @@ activation.
   `src/ArrTags/Configuration/ConfigurationSnapshotService.cs`
 - `docs/architecture.md`, section 6
 - ADR-004 (operational limits), ADR-005 (secret boundary)
+- ADR-021 (administrator-visible configuration-rejection surfacing)
 
 ## ADR-017: Badge Value Allowlist
 
@@ -2559,4 +2568,126 @@ cover any log path.
 - `docs/limitations.md` SEC-5 and F3
 - `docs/planning/v1.1.md` (Goal F, DG-14)
 - ADR-005 (secret boundary), ADR-016 (settings UI activation)
+
+## ADR-021: Administrator-Visible Configuration-Rejection Surfacing
+
+**Status:** Accepted (v1.1)
+
+**Date:** 2026-09-23
+
+### Context
+
+ADR-016 clause 4 requires `Plugin.UpdateConfiguration` to reject an invalid
+candidate, retain the last valid snapshot and private secrets, surface the
+bounded validation failure to the administrator, and never throw into the host.
+The supported save path is `PluginsController` `POST {pluginId}/Configuration`,
+which calls the void `UpdateConfiguration` and unconditionally returns
+`204 NoContent`; the jellyfin-web client's
+`Dashboard.processPluginConfigurationUpdateResult` reports only the HTTP
+outcome, not plugin validation detail. A non-throwing override therefore cannot
+surface a rejection inline or as an HTTP error.
+
+Task 9.3 attempt 1 only retained the bounded, secret-free validation result on
+the plugin instance (a diagnostic property). That is not administrator-visible
+and does not satisfy clause 4's surfacing requirement.
+
+The pinned Jellyfin `12.0.0` host exposes
+`MediaBrowser.Model.Activity.IActivityManager` (resolvable through plugin DI)
+with `Task CreateAsync(Jellyfin.Database.Implementations.Entities.ActivityLog
+entry)`. Activity entries are visible to administrators in the dashboard
+Activity log (`GET /System/ActivityLog/Entries`, elevation-gated) and pushed
+over the ActivityLog websocket. The `IActivityManager` and `ActivityLog` types
+live in `Jellyfin.Database.Implementations`, a lower stability tier than the
+pinned `MediaBrowser.Model`/`MediaBrowser.Common` contracts (architecture
+review risk AR-05).
+
+### Decision
+
+1. On a rejected configuration save, write **exactly one** administrator-visible
+   activity-log entry through `IActivityManager.CreateAsync`. A valid save writes
+   no entry.
+2. Isolate the coupling to `Jellyfin.Database.Implementations` behind the
+   plugin-owned `IConfigurationRejectionNotifier` interface with a Jellyfin-free
+   contract (`NotifyRejected(IReadOnlyList<string> reasons)`). The only
+   implementation that resolves `IActivityManager` is
+   `JellyfinConfigurationRejectionNotifier`.
+3. The entry is fixed and bounded. `Name` and `Type` are fixed constants
+   (`Type` is `ArrTagsConfigurationRejected`) with no candidate values and no
+   user input. `UserId` is `Guid.Empty` and `LogSeverity` is `Warning`.
+   `Overview`/`ShortOverview` are built only from bounded, secret-free validation
+   reasons; at most eight reasons are surfaced, control characters are stripped
+   and whitespace runs are collapsed, and every reason and every field is
+   truncated to the `ActivityLog` column bounds (`Name`/`Overview`/
+   `ShortOverview` 512, `Type` 256). The interface documents that its only
+   production caller passes the validator's secret-free messages
+   (SEC-9.3-03).
+4. The write is a bounded synchronous wait (consistent with the existing
+   `OnUninstalling` drain) and is fully contained: it never throws into the host,
+   and a notifier failure does not affect the rejection, the retained
+   snapshot/secrets, or the last valid configuration (which remains active and
+   persisted; the rejected candidate is never persisted).
+5. No custom configuration-save route, inline page message, or HTTP error is
+   added. The rejection is enforced before persistence: the override validates the
+   candidate first and does not call the base implementation for an invalid
+   candidate, so a rejected candidate is never persisted and the last valid
+   configuration remains active. The whole validate/persist/activate sequence is
+   serialized so concurrent saves cannot diverge (security finding SEC-9.3-01).
+6. Duplicate consecutive identical entries are not suppressed in v1.1;
+   admin-initiated saves are infrequent. A later refinement may add suppression.
+
+### Consequences
+
+- An administrator sees a bounded, secret-free "ArrTags configuration rejected"
+  entry in the dashboard Activity log after a rejected save. This resolves the
+  ADR-016 clause 4 surfacing requirement without changing the save path's HTTP
+  outcome.
+- The plugin depends on `Jellyfin.Database.Implementations` (transitively via
+  `Jellyfin.Model`, so no extra package reference is required); the dependency is
+  isolated in one adapter implementation, so a future host change is contained.
+- The activity-log entry is a new plugin-initiated outbound administrator-visible
+  surface. It carries no secret or candidate value and is recorded in
+  `docs/limitations.md` SEC-9.
+- The HTTP response of a rejected save remains `204 NoContent` and the dashboard
+  reports success; the rejection is visible in the Activity log and, on reload,
+  because the last valid configuration remains active and persisted (the rejected
+  candidate was never written). An inline page message would require an HTTP
+  error or a custom route, both forbidden by ADR-016 clause 4.
+- The rejection is atomic with respect to persistence: validating before the base
+  implementation means an invalid candidate is never written, so there is no
+  crash window and no restore step for a concurrent valid save to overwrite. The
+  save sequence is serialized, so the running snapshot, `Plugin.Configuration`,
+  and the persisted file cannot diverge (security finding SEC-9.3-01).
+- The write is best-effort: if `IActivityManager` is unavailable or the write
+  fails, the rejection and the last-valid retention still hold and nothing is
+  thrown.
+
+### Rejected alternatives
+
+- **Inline page message.** Rejected. The page's `updatePluginConfiguration`
+  result reports only the HTTP outcome, so an inline message would require
+  changing the HTTP outcome (an error) or adding a custom data route, both
+  forbidden by ADR-016 clause 4.
+- **Throw / HTTP error.** Rejected. ADR-016 clause 4 requires the override to
+  never throw into the host, and a `500` would be an unbounded failure surface.
+- **Host `ILogger`.** Rejected as the primary mechanism. Plugin logging and its
+  redaction contract are Goal F (ADR-020), and a log line is not an
+  administrator-visible dashboard surface; the activity log is the supported,
+  elevation-gated administrator surface.
+- **Property-only diagnostic.** Rejected as insufficient. A plugin-instance
+  property is not administrator-visible and does not satisfy clause 4's
+  surfacing requirement (the attempt-1 finding).
+- **Duplicate-entry suppression in v1.1.** Deferred. Not required, and it adds
+  cross-save state to a bounded best-effort path.
+
+### References
+
+- ADR-016 clause 4 (the `UpdateConfiguration` override and the surfacing
+  requirement)
+- ADR-005 (secret boundary), ADR-020 (logging and the SEC-5 rewrite)
+- `docs/limitations.md` SEC-5 and SEC-9
+- `docs/research/jellyfin-expert/configuration-save-failure-surfacing.json`
+- `docs/research/jellyfin-12-architecture.md`, section 9
+- `src/ArrTags/Configuration/IConfigurationRejectionNotifier.cs`,
+  `src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs`
+
 

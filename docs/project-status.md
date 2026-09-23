@@ -38,15 +38,28 @@ configuration through Jellyfin's existing administrator-gated API; ADR-016
 clause 6's explicit acceptance of the anonymous static page-resource endpoint is
 recorded in `docs/architecture.md` section 6, and the pinned
 `DashboardController` serving and authorization behavior are confirmed by
-host-guarded tests that are skipped without `ARRTAGS_JELLYFIN_HOST_DIR`. Runtime
-activation (task 9.3) and the post-save reconciliation trigger (task 9.4) remain,
-so limitation F2 is not yet resolved. `./build.sh build` reported 0 warnings / 0
-errors and the default suite was Failed 0, Passed 1240, Skipped 63, Total 1303
-(the eight new `DashboardSettingsPageTests` include two host-guarded facts that
-are skipped without `ARRTAGS_JELLYFIN_HOST_DIR`; the 9.1
-`ConfigurationRoundTripTests` add one more). Tasks 9.3-9.5 remain. See `PLANS.md`
-tasks 9.1 and 9.2, `docs/data-model.md` 3.12, and `docs/architecture.md`
-section 6.
+host-guarded tests that are skipped without `ARRTAGS_JELLYFIN_HOST_DIR`. Task 9.3
+overrides `Plugin.UpdateConfiguration` so a save through the elevation-gated path
+validates the candidate before persistence and, for a valid candidate, activates
+it as the running snapshot without a host restart: a valid candidate is persisted
+and applied, an invalid candidate is rejected before persistence with the last
+valid public snapshot and private secret generation retained, the save sequence is
+serialized so concurrent saves cannot diverge, the bounded secret-free validation
+result is retained on the plugin instance, the rejection is surfaced to the
+administrator as exactly one bounded, secret-free activity-log entry through the
+plugin-owned `IConfigurationRejectionNotifier` adapter (ADR-021), the override
+never throws into the host, and no custom save route is added. The post-save
+reconciliation trigger (task 9.4) and the Goal A documentation and integration
+verification (task 9.5) remain, so limitation F2 is not yet fully resolved (its
+restart consequence is gone; existing posters still re-render only on the next
+library event, webhook, post-scan, or scheduled run). `./build.sh build` reported
+0 warnings / 0 errors and the default suite was Failed 0, Passed 1260, Skipped 63,
+Total 1323 (the new `ConfigurationActivationTests` and
+`ConfigurationRejectionNotifierTests` plus the earlier
+`DashboardSettingsPageTests` and `ConfigurationRoundTripTests`; the host-guarded
+facts are skipped without `ARRTAGS_JELLYFIN_HOST_DIR`). Tasks 9.4-9.5 remain. See
+`PLANS.md` tasks 9.1-9.3, `docs/decisions.md` ADR-021,
+`docs/data-model.md` 3.12, and `docs/architecture.md` section 6.
 Phase 7 — Testing & release is complete: all five
 Phase 7 acceptance criteria are met. Gate 7 is met (Phase 7 review approved; tag
 `v0.1.0-phase7`). Tasks 7.1
@@ -597,17 +610,22 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 Next tasks:
 
 - Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is
-  in progress: tasks 9.1 (configuration round-trip spike, blocking prerequisite)
-  and 9.2 (dashboard settings page and embedded page resource) are complete. The
-  get-only `Collection<T>` round-trip was proven to fail with the pinned
+  in progress: tasks 9.1 (configuration round-trip spike, blocking prerequisite),
+  9.2 (dashboard settings page and embedded page resource), and 9.3
+  (elevation-gated save path and runtime activation) are complete. The get-only
+  `Collection<T>` round-trip was proven to fail with the pinned
   `JsonDefaults.Options`, so `PluginConfiguration.EnabledLibraries` and
   `RendererConfiguration.Selectors` are now settable and are populated by the
   supported `PluginsController` POST; `Plugin` now implements `IHasWebPages` with
   one secret-free embedded settings page that reads and writes the user-adjustable
-  configuration through the administrator-gated API. The elevation-gated save path
-  and runtime activation (task 9.3), the bounded post-save reconciliation trigger
-  (task 9.4), and the Goal A documentation and integration verification (task 9.5)
-  remain.
+  configuration through the administrator-gated API; and `Plugin.UpdateConfiguration`
+  now validates a saved candidate before persistence and activates it at runtime
+  without a restart, rejecting an invalid candidate before persistence while
+  retaining the last valid snapshot and private secrets, serializing concurrent
+  saves, and surfacing the rejection as one bounded, secret-free activity-log
+  entry through the plugin-owned `IConfigurationRejectionNotifier` adapter
+  (ADR-021). The bounded post-save reconciliation trigger (task 9.4) and the Goal A
+  documentation and integration verification (task 9.5) remain.
 - Phase 8 — Release distribution is **complete** (tasks 8.1-8.6): 8.1 (end-user
   `README.md` and preserved `docs/project-status.md`), 8.2 (agent current-state
   reference repoint), 8.3 (`build.yaml` metadata fix and `1.0.1.0` version bump),
@@ -624,7 +642,7 @@ Next tasks:
   acceptance criteria are met. No Phase 7 implementation task remains; Gate 7 is
   not declared here and is covered by the separate phase review.
 - Open follow-ups are consolidated in `docs/limitations.md`: the provider
-  inventory/catalogue cache, runtime configuration replacement wiring, the
+  inventory/catalogue cache, the post-save re-render promptness (F2), the
   metrics/diagnostic-status surface, the `QueueCapacity`-bounded reconciliation
   prefix, and the verification-coverage and packaging/release limitations. The
   ADR-010 non-canonical cross-runtime comparison remains unselected/unrun: select
@@ -640,7 +658,7 @@ decisions is `docs/limitations.md`. In summary: `GOALS.md` success criteria 1-4,
 to supply a compatible SkiaSharp; criterion 6 is met for render and publication
 but only partial for provider fetches; and criterion 7 is met only at the
 contract level. The main open items are the missing provider
-inventory/catalogue cache, the unwired runtime configuration replacement, the
+inventory/catalogue cache, the post-save re-render promptness (F2), the
 absent bounded metrics/diagnostic-status surface, the `QueueCapacity`-bounded
 reconciliation prefix, and the limited live-verification coverage (no real
 Sonarr/Radarr instance, no live Jellyfin Enhanced install, manual-only live

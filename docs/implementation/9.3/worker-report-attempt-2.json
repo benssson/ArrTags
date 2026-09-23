@@ -1,0 +1,46 @@
+{
+  "task": "9.3",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Rework of task 9.3 (v1.1 Phase 9, ADR-016 clauses 3, 4, and 5 first bullet) adding the administrator-visible rejection surfacing required by the rework and recorded in the new ADR-021. Attempt 1's correct behaviour is retained: Plugin.UpdateConfiguration overrides BasePlugin<PluginConfiguration>.UpdateConfiguration, calls base, then ConfigurationSnapshotService.TryReplace; a valid candidate activates the running public snapshot and private secret generation atomically without a host restart; an invalid candidate is rejected with the last valid snapshot and private secrets retained, the last valid configuration restored as active and persisted (closing S-9.2-03), the bounded secret-free result retained on Plugin.LastConfigurationValidationResult, service-resolution/validation/notification failures contained, and no custom configuration-save route added. Added: the rejection is now written as exactly one administrator-visible host activity-log entry. The host coupling is isolated behind the plugin-owned IConfigurationRejectionNotifier interface (Jellyfin-free contract: NotifyRejected(IReadOnlyList<string> reasons)); JellyfinConfigurationRejectionNotifier resolves the pinned MediaBrowser.Model.Activity.IActivityManager lazily from the host service provider and writes a Jellyfin.Database.Implementations.Entities.ActivityLog entry with a fixed Name and Type (ArrTagsConfigurationRejected), UserId = Guid.Empty, LogSeverity = Warning, and an Overview/ShortOverview built only from bounded, secret-free validation reasons (at most 8, each reason and every field truncated to the ActivityLog column bounds 512/256). The write is a bounded synchronous wait (WaitAsync 5s + GetAwaiter().GetResult(), consistent with the OnUninstalling drain) and is fully contained; a valid save writes no entry. IConfigurationRejectionNotifier is registered in ArrTagsServiceRegistrator via TryAddSingleton. The pinned Jellyfin.Database.Implementations compile reference flows transitively through Jellyfin.Model (Jellyfin.Model -> Jellyfin.Data -> Jellyfin.Database.Implementations), so no explicit PackageReference was needed; the plugin does not ship it (ExcludeAssets=runtime), matching ADR-015. Research confirmed the exact pinned API and bounds and is recorded in docs/research/jellyfin-expert/configuration-save-failure-surfacing.json. Docs: new ADR-021; ADR-016 clause-4 pointer and References; docs/limitations.md SEC-9 plus a scoping note on SEC-5 (not the full SEC-5 rewrite, which is task 10.3); architecture section 6; data-model 3.12; changelog; PLANS task 9.3 status; project-status; implementation-readiness; README. No post-save reconciliation trigger (task 9.4) was implemented.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~ConfigurationActivationTests|FullyQualifiedName~ConfigurationRejectionNotifierTests\" -> Passed! - Failed: 0, Passed: 17, Skipped: 0, Total: 17.",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1257, Skipped: 63, Total: 1320 (baseline before task 9.3: Failed 0, Passed 1240, Skipped 63, Total 1303; +17 passed, +17 total, 0 new skips).",
+    "Inspected git diff: only the intended source/test files and the canonical documentation surfaces changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Plugin.cs",
+    "src/ArrTags/Configuration/IConfigurationRejectionNotifier.cs",
+    "src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/ConfigurationActivationTests.cs",
+    "tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs",
+    "tests/ArrTags.Tests/ActivityLogTestDoubles.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/decisions.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md",
+    "docs/research/jellyfin-expert/configuration-save-failure-surfacing.json"
+  ],
+  "known_limitations": [
+    "The rejected save's HTTP response is still 204 NoContent and the dashboard reports success. Exact behaviour: the supported PluginsController POST calls the void UpdateConfiguration and unconditionally returns 204, so the rejection is surfaced only as the activity-log entry and, on reload, because the last valid configuration is restored. Precondition: the supported save path. Consequence: the administrator sees the rejection in Dashboard -> Activity (or on the next page load), not inline or as an HTTP error; this is the ADR-021 decision and adds no custom route or HTTP error.",
+    "Duplicate consecutive identical activity entries are not suppressed. Exact behaviour: each rejected save writes one entry even when it repeats the previous rejection. Precondition: repeated invalid saves by the administrator. Consequence: repeated identical entries in the Activity log; ADR-021 clause 6 defers suppression because admin-initiated saves are infrequent and suppression would add cross-save state to a best-effort path.",
+    "The activity-log write is best-effort. Exact behaviour: if IActivityManager cannot be resolved or CreateAsync fails or exceeds the 5-second bounded wait, no entry is written. Precondition: a host activity-manager failure or a slow database. Consequence: the rejection and the last-valid retention still hold and nothing is thrown, but the administrator is not notified of that particular rejection.",
+    "base.UpdateConfiguration is not wrapped. Exact behaviour: exceptions raised by the host's own base implementation (for example an I/O failure in SaveConfiguration) propagate unchanged, as they would without the override. Precondition: a failure inside the host base method. Consequence: the plugin-added activation and notification logic never throws, but the host's pre-existing base behaviour is preserved.",
+    "Some singleton services capture OperationalLimits at construction (StateRepository: render work-cache TTL/quota and terminal-provenance retention; JellyfinArtworkImageAccess/ArtworkSourceReader/ArtworkPublisher: artifact-size/decode limits), so those particular limit values change only after a host restart. This is a pre-existing Phase 1/6 detail outside the 9.3 acceptance criteria; per-operation resolution was verified for queue capacity/in-flight, provider/render concurrency, metadata freshness, badge definitions, and the renderer output policy.",
+    "The bounded post-save reconciliation trigger (task 9.4) is not implemented; existing posters re-render only on the next library event, webhook, post-scan, or scheduled run.",
+    "Host-guarded tests (JellyfinHostFact) remain skipped because ARRTAGS_JELLYFIN_HOST_DIR is unset (63 skips, identical to the pre-task baseline); the live pinned-host activity-log confirmation remains owned by the documented live-verification tasks."
+  ],
+  "ready_for_next_task": true
+}

@@ -38,6 +38,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public const string SettingsPageResourceName = "ArrTags.Configuration.config.html";
 
     private readonly IServiceProvider? _serviceProvider;
+    private readonly object _configurationSaveGate = new object();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
@@ -72,6 +73,15 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override Guid Id => Guid.Parse("40322d52-5680-449f-b33e-e01836ee2f46");
 
     /// <summary>
+    /// Gets the bounded, secret-free result of the most recent configuration
+    /// save activation attempt, or <see langword="null"/> when no candidate has
+    /// been validated or the running snapshot could not be resolved. It is a
+    /// diagnostic value only: it is never persisted, never returned by
+    /// Jellyfin's configuration API, and never contains a secret value.
+    /// </summary>
+    public ConfigurationValidationResult? LastConfigurationValidationResult { get; private set; }
+
+    /// <summary>
     /// Returns the single ArrTags dashboard settings page. The page is served by
     /// the pinned host <c>DashboardController</c> from the embedded resource
     /// named by <see cref="SettingsPageResourceName"/>; the host injects nothing
@@ -86,6 +96,127 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             EmbeddedResourcePath = SettingsPageResourceName,
             EnableInMainMenu = false,
         };
+    }
+
+    /// <summary>
+    /// Applies a configuration change saved through the supported elevation-gated
+    /// <c>PluginsController</c> path. The candidate is validated before the base
+    /// implementation persists anything, so an invalid candidate is never written
+    /// to <c>plugins/configurations/ArrTags.xml</c> and the last valid public
+    /// snapshot and private secret generation remain active (ADR-016 clause 4;
+    /// ADR-021). A valid candidate is persisted by the base implementation and
+    /// then activated as the running configuration snapshot, so a saved change
+    /// takes effect without a host restart. The whole validate/persist/activate
+    /// sequence is serialized, so concurrent saves cannot leave the running
+    /// snapshot, the in-memory configuration, and the persisted file divergent.
+    /// The override never throws into the host and adds no custom
+    /// configuration-save route; the bounded, secret-free validation outcome is
+    /// retained in <see cref="LastConfigurationValidationResult"/> for
+    /// diagnostics and a rejection is surfaced through the plugin-owned notifier
+    /// (ADR-021).
+    /// </summary>
+    /// <param name="configuration">The candidate configuration supplied by the host.</param>
+    public override void UpdateConfiguration(BasePluginConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        if (configuration is not PluginConfiguration candidate)
+        {
+            // The supported save path deserializes ConfigurationType, which is
+            // PluginConfiguration; any other subtype is not produced by the host.
+            // Ignore it rather than throwing.
+            return;
+        }
+
+        ConfigurationValidationResult result;
+        var activated = false;
+
+        // Serialize the whole validate/persist/activate sequence. The gate is
+        // held across the host persistence write so two elevation-gated saves
+        // cannot interleave and leave the running snapshot, the in-memory
+        // configuration, and the persisted file divergent.
+        lock (_configurationSaveGate)
+        {
+            // Validate before the base implementation persists anything: an
+            // invalid candidate is never written, so there is no crash window in
+            // which a rejected candidate is persisted and no restore step that a
+            // concurrent valid save could overwrite.
+            result = PluginConfigurationValidator.Validate(candidate);
+            LastConfigurationValidationResult = result;
+
+            if (result.IsValid)
+            {
+                base.UpdateConfiguration(candidate);
+                TryActivateConfiguration(candidate);
+                activated = true;
+            }
+        }
+
+        if (!activated)
+        {
+            // Notify outside the gate: the bounded activity write must not block
+            // another save.
+            TryNotifyRejected(result);
+        }
+    }
+
+    /// <summary>
+    /// Resolves the running configuration snapshot and activates an already
+    /// validated candidate. Any failure is contained and never thrown into the
+    /// host; an unactivated valid candidate is persisted and is activated on the
+    /// next host startup.
+    /// </summary>
+    /// <param name="candidate">The validated candidate configuration.</param>
+    private void TryActivateConfiguration(PluginConfiguration candidate)
+    {
+        ConfigurationSnapshotService? service;
+        try
+        {
+            service = _serviceProvider?.GetService(typeof(ConfigurationSnapshotService)) as ConfigurationSnapshotService;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // The running snapshot cannot be resolved; the persisted candidate is
+            // left for the next host startup and nothing is thrown.
+            return;
+        }
+
+        if (service is null)
+        {
+            return;
+        }
+
+        try
+        {
+            service.TryReplace(candidate, out _);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // The persisted candidate is valid; it is activated on the next host
+            // startup if it cannot be activated now.
+        }
+    }
+
+    /// <summary>
+    /// Surfaces a rejected configuration save to the administrator through the
+    /// plugin-owned notifier boundary (ADR-021). Notification is best-effort and
+    /// never throws into the host; the rejection and the retained configuration
+    /// are already enforced.
+    /// </summary>
+    /// <param name="result">The bounded, secret-free validation result.</param>
+    private void TryNotifyRejected(ConfigurationValidationResult result)
+    {
+        try
+        {
+            if (_serviceProvider?.GetService(typeof(IConfigurationRejectionNotifier)) is IConfigurationRejectionNotifier notifier)
+            {
+                notifier.NotifyRejected(result.Errors);
+            }
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // The rejection is already enforced; notification is best-effort.
+        }
     }
 
     /// <summary>

@@ -1,0 +1,288 @@
+{
+  "subject": "v1.1 Phase 9 task 9.3 (elevation-gated save path + runtime configuration activation) and the proposed administrator-surfacing mechanism for a rejected configuration save (ADR-016 clause 4), via a Jellyfin activity-log entry",
+  "reviewer_status": "CHANGES_REQUIRED",
+  "architecture_status": "NEEDS_DECISION",
+  "decision": "Treat the activity-log entry as the accepted, sufficient mechanism for ADR-016 clause 4's 'surfaced to the administrator' obligation, and formalize it in a new ADR-021 rather than rewriting ADR-016. Concretely: (1) on a rejected candidate, Plugin.UpdateConfiguration writes exactly one host activity-log entry through MediaBrowser.Model.Activity.IActivityManager.CreateAsync, resolved from host DI, with fixed secret-free Name/Type constants, Overview/ShortOverview built only from bounded secret-free validation reason codes (no candidate values, secrets, secret-reference values, URLs, payloads, or exception messages), UserId = Guid.Empty, LogSeverity = Warning, truncated to the host column bounds, wrapped so it never throws into the host; (2) a valid save writes no entry; (3) the trigger is only the elevation-gated PluginsController POST, so it is not attacker-reachable; (4) the entry is visible to administrators in the dashboard Activity log (GET /System/ActivityLog/Entries, RequiresElevation) and over the ActivityLog websocket, which satisfies clause 4 without a custom route and without an HTTP error; (5) no inline settings-page message and no plugin-owned status endpoint are added in v1.1. Add ADR-021, add a one-sentence pointer in ADR-016 clause 4, update architecture.md section 6 / PLANS.md 9.3 / changelog 9.3, add a new limitations SEC item plus a minimal SEC-5 scoping edit, and persist the expert's activity-log verification report under docs/research/jellyfin-expert/. Rework 9.3 to implement and test this before re-acceptance.",
+  "adr_changes": {
+    "primary_recommendation": "Add a new ADR-021 rather than editing ADR-016's decision text. ADR-016 clause 4 states the obligation ('surfaced to the administrator') but not the mechanism, so the mechanism is a genuine, surface-adding decision that belongs in its own record. This preserves ADR-016's history, matches the repository convention (ADR-020 recorded the analogous logging surface as its own ADR), and gives the next reviewer an unambiguous 'satisfies clause 4' reference. Add a pointer sentence to ADR-016 clause 4 and an entry in its References list; do not alter clauses 1-3 or 5-7.",
+    "new_adr_021": {
+      "title": "ADR-021: Administrator-Visible Configuration-Rejection Surfacing",
+      "status": "Accepted (v1.1)",
+      "context_must_state": [
+        "ADR-016 clause 4 requires an invalid candidate to be rejected with the last valid snapshot/secrets retained and the bounded validation failure surfaced to the administrator, while the Plugin.UpdateConfiguration override never throws into the host (clause 3 forbids a custom save route).",
+        "The pinned elevation-gated PluginsController POST calls the void UpdateConfiguration and unconditionally returns 204, so no HTTP error is available; an inline page message would require a new plugin-owned elevation-gated read-only status endpoint (a new surface beyond ADR-016 clauses 2 and 6).",
+        "The pinned Jellyfin 12.0.0 contract (commit 6c073e19ddf604b2369c638716164fdab4c952dc) exposes MediaBrowser.Model.Activity.IActivityManager.CreateAsync(Jellyfin.Database.Implementations.Entities.ActivityLog), resolvable via host DI without elevation; administrators read it via GET /System/ActivityLog/Entries ([Authorize(RequiresElevation)]) and the ActivityLog websocket."
+      ],
+      "decision_clauses": [
+        "1. Mechanism: on a rejected candidate, write one host activity-log entry via IActivityManager.CreateAsync, resolved from host DI.",
+        "2. Content is secret-free by construction: fixed Name/Type constants; Overview/ShortOverview built only from bounded validation reason codes; no candidate value, secret value, SecretLease, secret-reference value, provider payload, URL, header, or exception message; UserId = Guid.Empty; LogSeverity = Warning; strings truncated to the host column bounds.",
+        "3. Trigger boundary: only the elevation-gated PluginsController POST reaches UpdateConfiguration; a valid save writes no entry.",
+        "4. Never-throw: the write is wrapped so it never throws into the host and never changes save behavior; a failed write leaves no entry.",
+        "5. Visibility: the dashboard Activity log and ActivityLog websocket are the administrator-facing surface. This satisfies ADR-016 clause 4 without a custom route and without an HTTP error.",
+        "6. This ADR does not change ADR-016 clauses 1-3 or 5-7, does not authorize a custom configuration-save or status route, and does not add an ILogger/Serilog call site (that is ADR-020); it uses a separate host-owned audit surface.",
+        "7. Secret boundary: the entry is governed by ADR-005's existing diagnostic rule ('secret values may not appear in logs, exception messages, status responses, telemetry'); the mechanism adds no secret location and requires no ADR-005 change.",
+        "8. SEC-5 records the new outbound admin-visible surface as a positive secret-free contract (new limitations SEC-9); the ADR-020 logging rewrite of SEC-5 remains separate."
+      ],
+      "consequences_must_state": [
+        "ADR-016 clause 4 is satisfied without an HTTP error, without a custom route, and without throwing.",
+        "A new plugin-initiated, administrator-visible outbound surface exists and is secret-free by construction; it is bounded and administrator-triggered only.",
+        "The plugin takes a host API dependency on IActivityManager and the ActivityLog entity type; the dependency must be isolated and its pinned availability verified.",
+        "An inline settings-page message is not provided: the administrator sees the rejection in the Activity log, not on the ArrTags settings page, and the host POST still reports success (204)."
+      ],
+      "rejected_alternatives": [
+        "Inline settings-page message: requires a new plugin-owned elevation-gated read-only status endpoint (extra surface beyond ADR-016 clauses 2 and 6, extra secret-boundary and review cost, and contradicts the accepted static non-data page); rejected for v1.1.",
+        "Throw or return an HTTP error: impossible through the void UpdateConfiguration and the unconditional 204, and forbidden by the 'override never throws' requirement.",
+        "Host ILogger: collides with ADR-020 and would falsify SEC-5's 'zero logging call sites' claim before its owner rewrites it; it is a different pipeline from the activity-log audit surface.",
+        "Retain the validation result only on Plugin.LastConfigurationValidationResult: not administrator-visible, so it fails clause 4."
+      ]
+    },
+    "adr_016_clause_4_pointer_edit": {
+      "location": "docs/decisions.md, ADR-016 clause 4 (currently ending '... The override never throws into the host.')",
+      "add_sentence": "Surfacing is defined by ADR-021: a rejected candidate writes a bounded, secret-free administrator-visible activity-log entry. Clause 4 does not require an inline page message or an HTTP error, and adds no custom save route.",
+      "also_add_to_references": "ADR-021 (administrator-visible configuration-rejection surfacing)"
+    },
+    "minimal_fallback_if_no_new_adr": "If the orchestrator declines a new ADR, amend ADR-016 clause 4 in place to name the activity-log mechanism and add the secret-free/never-throw/bounded constraints to its Consequences, and record the rejected inline-message alternative. This is less consistent with the repository's history-preserving convention and is not recommended.",
+    "no_adr_005_change_required": true,
+    "no_adr_020_change_required": true
+  },
+  "sec5_handling": {
+    "recommendation": "Do both, minimally: add a new SEC item now and make a one-sentence scoping edit to SEC-5; leave the full SEC-5 rewrite to Phase 10 task 10.3.",
+    "new_item": {
+      "id": "SEC-9",
+      "title": "A rejected configuration save writes a bounded, secret-free administrator-visible activity-log entry (INFORMATIONAL/LOW, noted)",
+      "owner": "9.3 rework",
+      "body_must_state": "A rejected elevation-gated configuration save writes one host activity-log entry via IActivityManager. The entry is secret-free by construction (fixed Name/Type; Overview/ShortOverview only from bounded validation reason codes; no candidate/secret value; UserId = Guid.Empty; Warning). It is not an ILogger/Serilog call site and adds no secret location. Visible only to administrators (RequiresElevation) via the dashboard Activity log and websocket. Trigger is administrator-only.",
+      "evidence": [
+        "docs/decisions.md ADR-021 (new)",
+        "docs/research/jellyfin-expert/<activity-log report>.json (to be persisted)",
+        "src/ArrTags/Plugin.cs"
+      ]
+    },
+    "sec5_minimal_scoping_edit": {
+      "location": "docs/limitations.md, SEC-5 (sentence '...the plugin has no logging call sites, so no plugin log path can leak a secret.' and its Consequence sentence)",
+      "change": "Scope the claim to the diagnostic logging pipeline and cross-reference the new item, e.g. '...the plugin writes no diagnostic log (ILogger/Serilog) call sites, so no plugin diagnostic-log path can leak a secret; the only plugin-initiated outbound administrator-visible surface is the secret-free configuration-rejection activity-log entry recorded in SEC-9.'",
+      "rationale": "The absolute phrase 'no plugin log path can leak a secret' is misleading once an admin-visible activity entry exists. SEC-5 remains literally true for ILogger, but the documentation discipline against overclaiming requires the scope to be explicit. This is a one-sentence edit, not the Phase 10 rewrite."
+    },
+    "avoid_double_review": "Assign the activity-log surface to the ADR-016 save-path review (Phase 9 save path / task 14.4), and keep Phase 10's logging security review scoped to the ILogger redaction contract. Phase 10 task 10.3 owns the full SEC-5 rewrite to the ADR-020 redaction contract and must reconcile SEC-9 explicitly: either fold the activity-log surface into the rewritten SEC-5 or keep SEC-9 and state that it is already covered by ADR-005's diagnostic rule and the Phase 9 save-path review. Do not have both reviews independently re-audit the same activity-log path."
+  },
+  "documentation_owners": [
+    {
+      "task": "9.3 rework (Phase 9)",
+      "owns": [
+        "src/ArrTags/Plugin.cs: activity-log write on rejection, wrapped never-throw, isolated behind a plugin-owned boundary",
+        "tests/ArrTags.Tests/ConfigurationActivationTests.cs: add an entry-on-rejection test (fake IActivityManager) and a no-entry-on-valid-save test; refocus/rename InvalidSaveSurfacesABoundedSecretFreeValidationFailure so 'surfaces' is not overclaimed",
+        "PLANS.md 9.3: Work, Tests, Acceptance, Status (require administrator surfacing; remove the 'never returned by the configuration API' wording as the completion criterion)",
+        "docs/changelog.md 9.3 entry",
+        "docs/decisions.md: new ADR-021 + ADR-016 clause 4 pointer and reference",
+        "docs/architecture.md section 6 'Runtime configuration activation': describe the activity-log surfacing",
+        "docs/limitations.md: new SEC-9 + SEC-5 one-sentence scoping edit",
+        "docs/research/jellyfin-expert/: persist the activity-log verification report (mechanism, exact signature, pinned evidence, alternatives, Phase 10 interaction, open questions)"
+      ]
+    },
+    {
+      "task": "9.5 Goal A documentation and integration verification",
+      "owns": [
+        "README.md Configuration: state that a rejected save is retained/restored and surfaced in the dashboard Activity log (or defer the README sentence to V1.1-7 if 9.5 is kept narrow)",
+        "docs/limitations.md F2 reconciliation",
+        "docs/architecture.md section 6 and docs/data-model.md 3.12 reconciliation (no data-model change expected: the activity entry and validation result are not canonical ArrTags state)",
+        "Goal A save -> activate -> bounded-reconcile integration tests"
+      ]
+    },
+    {
+      "task": "Phase 10 task 10.3 (SEC-5 rewrite, documentation, logging security review)",
+      "owns": [
+        "docs/limitations.md SEC-5 full rewrite to the ADR-020 redaction contract, reconciling SEC-9",
+        "the logging security review (scoped to ILogger/Serilog; the activity-log path is reviewed under the Phase 9 save path)"
+      ]
+    },
+    {
+      "task": "V1.1-7 / Phase 13 docs pass",
+      "owns": [
+        "README.md full rewrite and consistency sweep of docs/project-status.md, docs/changelog.md, docs/implementation-readiness.md"
+      ]
+    },
+    {
+      "task": "14.3 live pinned-host verification",
+      "owns": [
+        "docs/testing/jellyfin-12-musl-test-host.md and the recorded result: confirm that a rejected settings-page save writes an administrator-visible Activity log entry and that a valid save does not"
+      ]
+    },
+    {
+      "task": "14.4 release security review",
+      "owns": [
+        "the ADR-016 settings page and administrator save path review, now including the activity-log surface and SEC-9"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "AR-01",
+      "severity": "HIGH",
+      "area": "ADR conformance / administrator surfacing",
+      "description": "ADR-016 clause 4 requires the bounded validation failure to be 'surfaced to the administrator', but the shipped 9.3 implementation surfaces nothing: the only artifact is Plugin.LastConfigurationValidationResult, a public property no production code reads, which architecture.md, the changelog, and the worker report explicitly describe as 'never returned by the configuration API'; the host POST returns 204. The documented 9.3 completion ('the bounded, secret-free validation failure is surfaced') therefore does not satisfy clause 4.",
+      "evidence": [
+        "docs/decisions.md ADR-016 clause 4",
+        "src/ArrTags/Plugin.cs:75-81, 144-182 (LastConfigurationValidationResult, no consumer)",
+        "docs/architecture.md:251-256",
+        "docs/changelog.md:2735-2737",
+        "docs/implementation/9.3/worker-report.json known_limitations[0]"
+      ],
+      "document_to_change": "docs/decisions.md (ADR-016 clause 4 pointer + new ADR-021), PLANS.md 9.3, docs/architecture.md section 6, docs/changelog.md 9.3, docs/limitations.md (SEC-9/SEC-5)",
+      "recommended_action": "Implement the activity-log surfacing in the 9.3 rework and formalize it in ADR-021; update the 9.3 completion criteria so administrator surfacing is required and testable. Do not re-accept 9.3 until an administrator-visible entry exists on rejection."
+    },
+    {
+      "id": "AR-02",
+      "severity": "HIGH",
+      "area": "missing architecture decision",
+      "description": "The administrator-surfacing mechanism is not recorded in any ADR. ADR-016 clause 4 is mechanism-agnostic, and the current canonical docs state the validation outcome is never returned by an API, which is indistinguishable from ignoring clause 4. A new outbound, administrator-visible surface (activity log) is a genuine surface-adding decision with secret-boundary and never-throw consequences, and it is currently hidden inside a task.",
+      "evidence": [
+        "docs/decisions.md ADR-016 clause 4",
+        "docs/architecture.md:247-256",
+        "docs/planning/v1.1.md Goal A acceptance criteria",
+        "AGENTS.md 'Prefer existing Jellyfin APIs over custom implementations'"
+      ],
+      "document_to_change": "docs/decisions.md (new ADR-021)",
+      "recommended_action": "Add ADR-021 recording the mechanism, its secret-free/bounded/never-throw constraints, the trigger boundary, the visibility surface, and the rejected inline-message alternative; add the clause-4 pointer in ADR-016."
+    },
+    {
+      "id": "AR-03",
+      "severity": "MEDIUM",
+      "area": "research evidence",
+      "description": "The pinned Jellyfin 12.0.0 verification of the activity-log mechanism is not persisted anywhere in the repository. docs/research/jellyfin-expert/ contains only jellyfin-12-config-pages-and-logging.json; IActivityManager/ActivityLog/activity log appear nowhere in the repository. The decision therefore rests on an unverifiable-from-repo claim, contrary to the project convention that research evidence lives under docs/research/.",
+      "evidence": [
+        "glob docs/research/**/*.json (only jellyfin-12-config-pages-and-logging.json and conditional-requests-and-inventory-caching.json)",
+        "grep 'IActivityManager|ActivityLog|activity log' -> no matches",
+        "docs/planning/v1.1.md section 8 'Research evidence'",
+        "docs/decisions.md ADR-016 References"
+      ],
+      "document_to_change": "docs/research/jellyfin-expert/ (new activity-log report JSON)",
+      "recommended_action": "Persist the expert's full activity-log report (mechanism, exact IActivityManager.CreateAsync signature, the Jellyfin.Database.Implementations.Entities.ActivityLog entity, pinned commit evidence, alternatives, Phase 10 interaction, open questions) and reference it from ADR-021, as ADR-016 references the config-pages/logging report."
+    },
+    {
+      "id": "AR-04",
+      "severity": "MEDIUM",
+      "area": "security documentation (SEC-5)",
+      "description": "SEC-5 claims the plugin has zero logging call sites so 'no plugin log path can leak a secret'. Once the activity-log entry lands, a new plugin-initiated outbound administrator-visible surface exists. It is not ILogger, but the absolute negative claim becomes misleading, and Phase 10 task 10.3 will rewrite SEC-5 anyway.",
+      "evidence": [
+        "docs/limitations.md SEC-5",
+        "docs/planning/v1.1.md Goal F (SEC-5 depends on zero logging call sites)",
+        "PLANS.md task 10.3",
+        "docs/decisions.md ADR-020 clause 8"
+      ],
+      "document_to_change": "docs/limitations.md (new SEC-9 + SEC-5 scoping sentence)",
+      "recommended_action": "Add SEC-9 now (owned by 9.3 rework) and make a one-sentence scoping edit to SEC-5; leave the full rewrite to Phase 10 10.3 and require 10.3 to reconcile SEC-9. Scope the Phase 10 logging review to ILogger so the activity-log path is reviewed once, under the Phase 9 save path."
+    },
+    {
+      "id": "AR-05",
+      "severity": "MEDIUM",
+      "area": "host API coupling / stability",
+      "description": "IActivityManager.CreateAsync takes Jellyfin.Database.Implementations.Entities.ActivityLog, a concrete host persistence entity in a database-implementation namespace rather than a MediaBrowser.Model interface. This is a lower API-stability tier than IHasWebPages/PluginPageInfo, and the entity must be public and constructible for the plugin to use it. The expert verified it against the pinned host, but it was not live-confirmed and is not recorded in the repository.",
+      "evidence": [
+        "expert basis: IActivityManager.CreateAsync(Jellyfin.Database.Implementations.Entities.ActivityLog)",
+        "GOALS.md 'Avoid relying on undocumented or version-specific internals where a supported API is available'",
+        "ADR-001/ADR-015 pattern of isolating host APIs behind plugin-owned boundaries"
+      ],
+      "document_to_change": "docs/decisions.md ADR-021 (consequences) and docs/research/jellyfin-expert/ report",
+      "recommended_action": "Isolate the activity-log write behind a small plugin-owned interface/adapter so a future host ABI change is contained; record the entity/interface classification (confirmed-supported vs public-but-unstable) in ADR-021 and the persisted report; add a host-guarded or live test that resolves IActivityManager from the pinned host."
+    },
+    {
+      "id": "AR-06",
+      "severity": "LOW",
+      "area": "UX / surfacing strength",
+      "description": "Activity-log surfacing is asynchronous and off-page: the administrator saves on the ArrTags settings page, receives the host's 204 'success', and the rejection appears only in the separate host Activity log (and websocket). The obligation is technically met, but the administrator can miss it, and the settings page still reports success.",
+      "evidence": [
+        "docs/decisions.md ADR-016 clause 4",
+        "docs/implementation/9.3/worker-report.json known_limitations[0]",
+        "docs/architecture.md:247-256"
+      ],
+      "document_to_change": "docs/decisions.md ADR-021 (consequences), README.md Configuration",
+      "recommended_action": "Document the exact administrator-visible behavior (rejection appears in the dashboard Activity log, the page still reports success) in ADR-021 and README; record the inline-message/new-endpoint option as the rejected alternative with its cost. Do not add an endpoint in v1.1."
+    },
+    {
+      "id": "AR-07",
+      "severity": "LOW",
+      "area": "bounded output / noise",
+      "description": "Each rejected save writes an activity-log entry; an administrator repeatedly saving an invalid configuration could create repeated entries, and the host Activity log is a global admin surface shared with host entries, so fixed Name/Type constants could make entries look like host entries or repeat without limit.",
+      "evidence": [
+        "expert basis: fixed Name/Type constants, LogSeverity Warning, bounded Overview/ShortOverview",
+        "docs/decisions.md ADR-020 clause 6 (bounded log volume precedent)"
+      ],
+      "document_to_change": "docs/decisions.md ADR-021",
+      "recommended_action": "State the Name/Type constants and the truncation bound in ADR-021; optionally suppress a duplicate consecutive rejection (same configuration version) or accept the admin-only trigger as the natural bound. Record whichever is chosen."
+    },
+    {
+      "id": "AR-08",
+      "severity": "INFORMATIONAL",
+      "area": "test quality",
+      "description": "The test InvalidSaveSurfacesABoundedSecretFreeValidationFailure asserts only that Plugin.LastConfigurationValidationResult is populated; it does not assert any administrator surfacing, so the test name overclaims relative to ADR-016 clause 4. A green suite currently coexists with an unmet clause.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationActivationTests.cs:140-168",
+        "docs/implementation/9.3/worker-report.json validation"
+      ],
+      "document_to_change": "tests/ArrTags.Tests/ConfigurationActivationTests.cs (9.3 rework)",
+      "recommended_action": "Add a test that a rejection writes exactly one activity-log entry (fake IActivityManager) with the fixed Name/Type and secret-free bounded content, and that a valid save writes none; rename or refocus the existing 'Surfaces' test so it asserts the diagnostic property, not administrator surfacing."
+    },
+    {
+      "id": "AR-09",
+      "severity": "INFORMATIONAL",
+      "area": "architecture soundness",
+      "description": "The activity-log mechanism is architecturally sound for this project: it is provider-neutral (it concerns configuration validation only); it uses a host-owned audit surface rather than jellyfin-web plugin-page internals; it is compliant with ADR-005's diagnostic rule provided the entry is secret-free by construction; it is triggered only by the elevation-gated POST so it is not attacker-reachable; and it is wrapped so it cannot harm Jellyfin. Choosing it over host ILogger correctly avoids colliding with ADR-020 and SEC-5's 'zero logging call sites' claim before its owner rewrites it.",
+      "evidence": [
+        "expert basis",
+        "docs/decisions.md ADR-005 (diagnostic rule), ADR-016 clauses 3 and 4, ADR-020",
+        "GOALS.md criterion 8 (failures do not adversely affect Jellyfin)"
+      ],
+      "document_to_change": "docs/decisions.md ADR-021 (record the soundness rationale)",
+      "recommended_action": "Record this rationale in ADR-021 so the choice is not reopened; no code or architecture change beyond the rework."
+    }
+  ],
+  "documents_checked": [
+    "GOALS.md",
+    "AGENTS.md",
+    "PLANS.md (Phase 9 tasks 9.1-9.5, Phase 10 tasks 10.1-10.3, Phase 14 tasks 14.3-14.4, Gate 9, risk register)",
+    "docs/planning/v1.1.md",
+    "docs/architecture.md (section 6 config/activation/secret boundary)",
+    "docs/data-model.md 3.12",
+    "docs/decisions.md (ADR-001, ADR-005, ADR-016, ADR-020)",
+    "docs/limitations.md (F1, F2, F3, SEC-2..SEC-8)",
+    "docs/implementation-readiness.md",
+    "docs/changelog.md (Phase 9 tasks 9.1-9.3)",
+    "docs/project-status.md",
+    "docs/implementation/9.2/security-review.json (S-9.2-03)",
+    "docs/implementation/9.3/worker-report.json",
+    "README.md (Configuration)",
+    "src/ArrTags/Plugin.cs",
+    "tests/ArrTags.Tests/ConfigurationActivationTests.cs"
+  ],
+  "decisions_checked": [
+    "ADR-005 (versioned secret access boundary: diagnostic rule)",
+    "ADR-016 (dashboard settings UI and runtime configuration activation; clauses 1-7)",
+    "ADR-020 (plugin logging and configurable verbosity; clauses 4, 6, 8)",
+    "ADR-004 (operational limits validation / last-valid retention)",
+    "ADR-012 (webhook authentication; referenced for secret handling)"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json",
+    "docs/research/jellyfin-12-architecture.md sections 9 and 10",
+    "docs/research/arr-api-researcher/conditional-requests-and-inventory-caching.json (not relevant to this decision)"
+  ],
+  "recommendation": "CHANGES_REQUIRED. The activity-log entry is the correct and sufficient way to satisfy ADR-016 clause 4, but the decision is currently hidden in a task and the shipped 9.3 does not satisfy clause 4 at all. Formalize the mechanism as ADR-021 (with a clause-4 pointer in ADR-016), persist the expert evidence under docs/research/jellyfin-expert/, add limitations SEC-9 plus a one-sentence SEC-5 scoping edit, and rework 9.3 to implement and test the entry (including renaming the overclaiming 'Surfaces' test). Keep an inline settings-page message and any new plugin-owned status endpoint out of v1.1 and record them as the rejected alternative. Assign the activity-log surface to the ADR-016 save-path security review (Phase 9/14.4) and keep Phase 10 10.3's review scoped to ILogger to avoid double-review.",
+  "summary": "The activity-log mechanism is architecturally sound, provider-neutral, secret-boundary-compatible, and non-harmful to the host, and it is one valid satisfaction of ADR-016 clause 4. However, clause 4's mechanism is unrecorded, the current 9.3 implementation does not surface anything to the administrator (so it conflicts with clause 4), the supporting expert evidence is not persisted, and SEC-5's absolute claim needs a minimal scoping edit. Recommend a new ADR-021, a clause-4 pointer, a persisted research report, a new SEC-9 with a one-sentence SEC-5 change, a 9.3 rework with an entry-on-rejection test, and a clear review split between Phase 9 (activity log) and Phase 10 (ILogger).",
+  "risks": [
+    "IActivityManager/ActivityLog was verified from pinned sources but not live-confirmed; the entity lives in Jellyfin.Database.Implementations, a lower-stability tier than MediaBrowser.Model, so a future host ABI change could break the write (mitigate: isolate behind a plugin-owned adapter and verify on the pinned host).",
+    "The activity-log write is asynchronous and off-page: the administrator can miss the rejection while the settings page still reports success, so clause 4 is met only weakly (mitigate: document the exact behavior; consider an inline message only under a new decision).",
+    "If the never-throw write silently fails, clause 4 is unmet with no signal from the save path; there is no second surfacing channel (accept as best-effort, or record a bounded fallback).",
+    "Repeated invalid saves could create repeated activity entries; admin-only trigger bounds the rate but the log is a shared global admin surface (mitigate: fixed constants and optional consecutive-duplicate suppression).",
+    "SEC-5 overclaims until reconciled; if Phase 10 10.3 and the 9.3 rework both edit SEC-5 without coordination, the two changes conflict and double-review the same path (mitigate: SEC-9 owned by 9.3, full SEC-5 rewrite owned by 10.3, review split by surface).",
+    "Fixed Name/Type constants could be confused with host activity entries; attribution depends on the constants being distinctive and documented.",
+    "Re-accepting 9.3 without an administrator-visible entry would repeat the current conformance failure; the acceptance criteria and tests must explicitly require surfacing."
+  ],
+  "open_questions": [
+    "Is the dashboard Activity log accepted as sufficient 'surfaced to the administrator', or does the user require an inline settings-page message (which needs a new plugin-owned elevation-gated read-only status endpoint)? Recommendation: Activity log sufficient; inline deferred and recorded as rejected.",
+    "Should the mechanism be a new ADR-021 (recommended) or an in-place ADR-016 clause-4 clarification? Recommendation: new ADR-021 plus a clause-4 pointer.",
+    "Should repeated consecutive rejections be suppressed, and what exact Name/Type constants and Overview truncation bound will be used?",
+    "Are the host ActivityLog column bounds documented/pinned, and does the write truncate to them?",
+    "Will the 9.3 rework be re-accepted as a new attempt, and is renaming/refocusing the existing 'Surfaces' test acceptable to the test-quality reviewer?",
+    "Should the activity entry include the plugin GUID or a stable plugin identifier for attribution?"
+  ]
+}

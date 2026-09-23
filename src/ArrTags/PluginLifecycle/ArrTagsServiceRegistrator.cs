@@ -40,6 +40,13 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton(CreateConfigurationSnapshotService);
         serviceCollection.AddSingleton<IPluginSecretResolver>(
             static serviceProvider => serviceProvider.GetRequiredService<ConfigurationSnapshotService>());
+
+        // ADR-021: the administrator-visible rejection surfacing is isolated
+        // behind the plugin-owned IConfigurationRejectionNotifier boundary; the
+        // Jellyfin implementation resolves the host IActivityManager lazily and
+        // never throws into the host.
+        serviceCollection.TryAddSingleton<IConfigurationRejectionNotifier>(
+            static serviceProvider => new JellyfinConfigurationRejectionNotifier(serviceProvider));
         serviceCollection.AddSingleton(CreateStateRepository);
         serviceCollection.TryAddSingleton<ILibraryEventSource, JellyfinLibraryEventSource>();
         serviceCollection.TryAddSingleton(CreateLibraryWorkQueue);

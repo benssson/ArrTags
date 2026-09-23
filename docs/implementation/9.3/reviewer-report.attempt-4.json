@@ -1,0 +1,45 @@
+{
+  "task": "9.3",
+  "attempt": 4,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Documentation-only rework (attempt 4) confirms all four required corrections. ADR-021 clause 4, the PLANS.md Project Status paragraph, docs/limitations.md F2 Current state, and the PLANS.md 9.3 Objective/Work bullets now accurately describe the implemented validate-before-persist flow (validate; for a valid candidate, base then TryReplace; an invalid candidate is never passed to base and is never persisted). A targeted grep found no remaining 'restored persisted' / 'restores the last valid' / 'base implementation and then validate' / 'call base and then' wording in any canonical current-state surface. No code changed since the approved attempt-3 implementation; build is 0 warnings / 0 errors and the full suite is 1260 passed / 63 skipped / 1323 total, matching attempt 3.",
+  "findings": [],
+  "required_changes": [],
+  "tests_checked": [
+    "Confirmed the implementation is unchanged from attempt 3: src/ArrTags/Plugin.cs:138-153 still validates before persistence, calls base.UpdateConfiguration only inside if (result.IsValid), and holds lock (_configurationSaveGate) across the whole validate/persist/activate sequence; TryRestoreLastValidConfiguration/lastValid remain absent.",
+    "Confirmed the new code/test surface is intact: ConfigurationActivationTests (11 facts, including ConcurrentValidAndInvalidSavesKeepSnapshotConfigurationAndPersistedStateConsistent with Serializer.BlockOn(invalid)), ConfigurationRejectionNotifierTests (9 facts), JellyfinConfigurationRejectionNotifier.Sanitize, and the TryAddSingleton<IConfigurationRejectionNotifier> registration.",
+    "Independently ran dotnet build ArrTags.slnx --configuration Release -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Independently ran dotnet test ArrTags.slnx --configuration Release --no-build -> Failed 0, Passed 1260, Skipped 63, Total 1323 (same as attempt 3)."
+  ],
+  "research_checked": [],
+  "documentation_checked": [
+    "docs/decisions.md ADR-021 clause 4 (lines 2624-2627): now '... does not affect the rejection, the retained snapshot/secrets, or the last valid configuration (which remains active and persisted; the rejected candidate is never persisted).' Accurate and consistent with clause 5.",
+    "PLANS.md line 19 Project Status paragraph: now 'Plugin.UpdateConfiguration validates a saved candidate before the base implementation persists it and, for a valid candidate, activates it at runtime without a host restart; an invalid candidate is rejected before persistence (it is never persisted), the last valid public snapshot and private secret generation remain active and persisted ...'. Accurate.",
+    "docs/limitations.md F2 Current state (lines 97-102): now 'validate the candidate before the base implementation persists it: a valid candidate is persisted and activated at runtime, while an invalid candidate is rejected before persistence (it is never written to ArrTags.xml) and the last valid public snapshot and private secret generation remain active and persisted.' Accurate.",
+    "PLANS.md 9.3 Objective (3645-3652) and Work bullet (3665-3669): now validate-first ('validate the candidate first; for a valid candidate call base.UpdateConfiguration ... and then TryReplace; an invalid candidate is never passed to base, so it is never persisted'). Accurate.",
+    "Grep across canonical surfaces (PLANS.md, docs/limitations.md, docs/decisions.md, docs/changelog.md, docs/project-status.md, docs/architecture.md, docs/data-model.md, docs/implementation-readiness.md, README.md) for 'restored persisted', 'restores the last valid', 'base implementation and then validate', 'call base and then': no matches. The only config-save 'restore' occurrence is docs/decisions.md:2657 ('no restore step'), which correctly negates a restore. Remaining 'restor' matches are unrelated artwork/uninstall restoration.",
+    "Historical reports under docs/implementation/9.3/ retain superseded wording, which is expected for the audit trail and not rewritten."
+  ],
+  "rework_log": [
+    "Attempt 2: approved by the implementation reviewer; the independent security review then reproduced MEDIUM SEC-9.3-01 (non-atomic Plugin.UpdateConfiguration).",
+    "Attempt 3: fixed SEC-9.3-01 by validating before base.UpdateConfiguration and serializing the validate/persist/activate sequence, removed TryRestoreLastValidConfiguration, and added the concurrent-save regression test. The implementation was verified correct, but four documentation residuals remained ('restored' / 'base then TryReplace' wording), so attempt 3 was CHANGES_REQUIRED.",
+    "Attempt 4 (this report): documentation-only correction of all four residuals. Re-verified; APPROVED."
+  ],
+  "ready_for_next_task": true,
+  "verified_claims": [
+    "Correction 1 present and accurate: docs/decisions.md ADR-021 clause 4 no longer says 'restored persisted configuration'; it states the last valid configuration remains active/persisted and the rejected candidate is never persisted.",
+    "Correction 2 present and accurate: PLANS.md line 19 no longer says 'restores the last valid persisted configuration on an invalid candidate'.",
+    "Correction 3 present and accurate: docs/limitations.md F2 Current state no longer says 'call the host base implementation and then validate ... the last valid configuration is restored'.",
+    "Correction 4 present and accurate: PLANS.md 9.3 Objective/Work now describe validate-first ordering (validate; valid -> base then TryReplace; invalid -> never passed to base).",
+    "No remaining contradictory wording in canonical current-state surfaces.",
+    "No code changed since attempt 3: Plugin.cs validate-before-persist + lock unchanged; restore path absent; test/code surface intact.",
+    "Build 0 warnings / 0 errors; full suite 1260 passed / 63 skipped / 1323 total."
+  ],
+  "notes": [
+    "The implementation remains as independently verified in attempt 3, including the falsification result that the concurrent-save regression test fails under a reconstructed pre-fix implementation.",
+    "Task 9.4 remains not implemented and F2 remains accurately open (its restart consequence resolved; existing posters still re-render only on the next library event/webhook/post-scan/scheduled run).",
+    "No new security review was performed here; that remains the orchestrator's separate gate.",
+    "This attempt was documentation-only; no implementation files were modified by the reviewer."
+  ]
+}

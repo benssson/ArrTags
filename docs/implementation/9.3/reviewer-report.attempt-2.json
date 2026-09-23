@@ -1,0 +1,162 @@
+{
+  "task": "9.3",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "9.3-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "architecture-review conformance (AR-05)",
+      "summary": "AR-05's recommended host-guarded or live test that resolves IActivityManager from the pinned host was not added in 9.3; the live confirmation remains owned by task 14.3 and is acknowledged in the worker report.",
+      "detail": "AR-05 recommended three things: (a) isolate the Jellyfin.Database.Implementations coupling behind a plugin-owned adapter, (b) record the entity/interface classification in ADR-021 and the persisted report, and (c) add a host-guarded or live test that resolves IActivityManager from the pinned host. (a) is done (IConfigurationRejectionNotifier is Jellyfin-free; only JellyfinConfigurationRejectionNotifier references Jellyfin types). (b) is done (ADR-021 Context/Consequences call out the lower-stability tier; the research report classifies it). (c) is not done in 9.3: no host-guarded test references IActivityManager (only the recording DispatchProxy double does), and the worker report explicitly assigns the live pinned-host confirmation to the documented live-verification tasks. The architecture reviewer's own documentation_owners table assigns 'confirm that a rejected settings-page save writes an administrator-visible Activity log entry' to task 14.3, so this is consistent with the project's live-verification split rather than a gap introduced by the rework.",
+      "evidence": [
+        "grep -l IActivityManager tests/ArrTags.Tests/*.cs -> only ActivityLogTestDoubles.cs, ConfigurationActivationTests.cs, ConfigurationRejectionNotifierTests.cs (no JellyfinHostFact test)",
+        "docs/reviews/architecture-review.json AR-05 recommended_action and documentation_owners[task 14.3]",
+        "docs/implementation/9.3/worker-report.json known_limitations[last]"
+      ],
+      "recommended_action": "No 9.3 change required; ensure task 14.3 performs the live pinned-host activity-log confirmation as already documented."
+    },
+    {
+      "id": "9.3-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation precision (activity-log column bounds)",
+      "summary": "PLANS 9.3 status, the changelog 9.3 entry, and the worker report describe the truncation as '512/256'; the actual pinned ActivityLog bounds are Name/Overview/ShortOverview 512 and Type 256 (ADR-021 states this correctly), and the code truncates to those bounds.",
+      "detail": "The pinned entity (src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/ActivityLog.cs) and the SQLite migration (20200514181226_AddActivityLog.cs) bound Name/Overview/ShortOverview to 512 and Type to 256. JellyfinConfigurationRejectionNotifier uses MaxFieldLength=512 for Overview and ShortOverview, a fixed 30-char Name, a fixed 29-char Type, and MaxReasonLength=256, so every written field is within the real column bounds. ADR-021 clause 3 states the bounds precisely ('Name/Overview/ShortOverview 512, Type 256'). The '512/256' shorthand in PLANS/changelog/worker-report can be read as 'ShortOverview 256', which is not the bound, but it is a phrasing imprecision rather than a correctness defect, and it is not a current-state status surface.",
+      "evidence": [
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/ActivityLog.cs (MaxLength 512/512/512/256)",
+        "Migrations/20200514181226_AddActivityLog.cs lines 23-26",
+        "src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs MaxFieldLength=512, MaxReasonLength=256",
+        "docs/decisions.md ADR-021 clause 3 (precise)"
+      ],
+      "recommended_action": "Optional wording cleanup in a later docs pass; no code or decision change required."
+    },
+    {
+      "id": "9.3-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / task acceptance criteria (AR-01)",
+      "summary": "The PLANS 9.3 formal 'Acceptance criteria' line was not amended to name administrator surfacing (AR-01's recommended rework), although the Objective, Work, Tests, Status, ADR-021, and the implementation all require and satisfy it.",
+      "detail": "AR-01 recommended_action included 'update the 9.3 completion criteria so administrator surfacing is required and testable'. The rework updated the 9.3 Status (which explicitly requires 'surfaced to the administrator as exactly one bounded, secret-free activity-log entry'), the Objective ('the bounded validation failure is surfaced to the administrator'), the Work bullet ('surface the bounded, secret-free validation failure'), and the Tests line ('the validation failure is surfaced safely'), and added a test that asserts exactly one bounded secret-free entry on rejection. Only the terse 'Acceptance criteria:' sentence still reads 'an invalid change is rejected and the last valid snapshot is retained' without naming surfacing. The substantive completion criteria are therefore covered; the omission is a documentation-completeness nit, not an unmet requirement.",
+      "evidence": [
+        "PLANS.md 9.3 Objective/Work/Tests/Status (all mention administrator surfacing)",
+        "PLANS.md 9.3 Acceptance criteria (surfacing not named)",
+        "docs/reviews/architecture-review.json AR-01 recommended_action",
+        "tests/ArrTags.Tests/ConfigurationActivationTests.cs InvalidSaveWritesExactlyOneBoundedSecretFreeActivityEntry"
+      ],
+      "recommended_action": "Optional: have task 9.5 (Goal A documentation) or the orchestrator add administrator surfacing to the 9.3 Acceptance criteria sentence. Not required to advance."
+    },
+    {
+      "id": "9.3-R4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness / never-throw scope",
+      "summary": "base.UpdateConfiguration is not wrapped, so a failure inside the host's own base method propagates unchanged; this preserves the host's pre-existing behavior and is documented, and every plugin-added path is contained.",
+      "detail": "The override calls base.UpdateConfiguration(configuration) outside a try/catch. The base implementation (pinned MediaBrowser.Common/Plugins/BasePluginOfT.cs) does Configuration = candidate; SaveConfiguration; ConfigurationChanged?.Invoke, and its own ArgumentNullException.ThrowIfNull(configuration) is mirrored by the override. A host base failure (e.g., an I/O failure in SaveConfiguration) therefore propagates exactly as it would without the override. All plugin-added logic is contained: snapshot-service resolution, TryReplace, restore, and notification are each wrapped with catch (Exception) when (exception is not OutOfMemoryException). The worker report records this as a known limitation; it does not defeat the task's requirement that the plugin-added activation/notification never throws, and wrapping base would change host behavior. The tests cover the valid, invalid, snapshot-service-unavailable, and notifier-failing paths.",
+      "evidence": [
+        "src/ArrTags/Plugin.cs UpdateConfiguration / TryActivateConfiguration / TryRestoreLastValidConfiguration / TryNotifyRejected",
+        "/tmp/jfsrc/.../MediaBrowser.Common/Plugins/BasePluginOfT.cs UpdateConfiguration",
+        "docs/implementation/9.3/worker-report.json known_limitations[3]"
+      ],
+      "recommended_action": "No change required; documented residual."
+    },
+    {
+      "id": "9.3-R5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / bounded-wait timeout path",
+      "summary": "The bounded 5s wait timeout path is contained by inspection (WaitAsync(TimeSpan) raises TimeoutException, which the catch-all contains) but is not exercised by a unit test; CreateAsync failure and unavailable-manager paths are tested.",
+      "detail": "JellyfinConfigurationRejectionNotifier.NotifyRejected does activityManager.CreateAsync(entry).WaitAsync(BoundedWait).GetAwaiter().GetResult() inside a catch-all. WaitAsync(TimeSpan) throws TimeoutException when the deadline elapses; the catch contains it and the save path is unaffected. There is no unit test with a never-completing CreateAsync task, so this specific branch is verified by inspection rather than execution. The notifier does not accept a CancellationToken (the host CreateAsync signature has none), so 'cancellation' is not an applicable input path. The tested containment cases are CreateAsync throwing (NotifyRejectedNeverThrowsWhenTheActivityManagerFails) and IActivityManager unavailable (NotifyRejectedDoesNothingWhenTheActivityManagerIsUnavailable).",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs BoundedWait=5s and catch-all",
+        "tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs",
+        "pinned IActivityManager.CreateAsync(ActivityLog) has no CancellationToken"
+      ],
+      "recommended_action": "Optional: add a slow-CreateAsync containment test in a later pass; not required."
+    }
+  ],
+  "tests_checked": [
+    "Re-ran `./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Re-ran `dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~ConfigurationActivationTests|FullyQualifiedName~ConfigurationRejectionNotifierTests\"` -> Passed: 17, Failed: 0, Skipped: 0, Total: 17.",
+    "Re-ran full `./build.sh test` -> Passed: 1257, Failed: 0, Skipped: 63, Total: 1320 (baseline 1240/63/1303; +17).",
+    "Inspected tests/ArrTags.Tests/ConfigurationActivationTests.cs (10 facts) including valid-save activation, invalid-save last-valid+secret retention, persisted restore, exactly-one-entry on rejection, no-entry on valid save, notifier-failure containment, never-throw, snapshot-service-unavailable, no-custom-route, per-operation snapshot resolution.",
+    "Inspected tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs (7 facts) including fixed name/type/severity/empty-user, no candidate/secret sentinel values, reason cap, column-bound truncation, CreateAsync-failure containment, unavailable-manager no-op, host-DI registration.",
+    "Inspected tests/ArrTags.Tests/ActivityLogTestDoubles.cs (RecordingActivityManager DispatchProxy, ThrowingRejectionNotifier)."
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/configuration-save-failure-surfacing.json (persisted; conclusions cross-checked against pinned sources).",
+    "Pinned Jellyfin source revision 6c073e19ddf604b2369c638716164fdab4c952dc: MediaBrowser.Model/Activity/IActivityManager.cs (CreateAsync(ActivityLog), no CancellationToken).",
+    "Pinned src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/ActivityLog.cs (Name/Overview/ShortOverview MaxLength 512, Type 256; public ctor(name,type,userId)).",
+    "Pinned Migrations/20200514181226_AddActivityLog.cs (SQLite column lengths 512/512/512/256).",
+    "Pinned Jellyfin.Api/Controllers/PluginsController.cs (class [Authorize(RequiresElevation)]; POST {pluginId}/Configuration calls configPlugin.UpdateConfiguration then unconditionally NoContent).",
+    "Pinned Jellyfin.Api/Controllers/ActivityLogController.cs (Route System/ActivityLog; [Authorize(RequiresElevation)]; GET Entries).",
+    "Pinned MediaBrowser.Common/Plugins/BasePluginOfT.cs (UpdateConfiguration virtual, not explicitly implemented, so the override is reached via IHasPluginConfiguration dispatch).",
+    "Pinned Emby.Server.Implementations/Plugins/PluginManager.cs (ActivatorUtilities.CreateInstance(_appHost.ServiceProvider!, type) -> Plugin receives the host root provider, so lazy IActivityManager/IConfigurationRejectionNotifier resolution is valid)."
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, Milestone 9 row, 9.3 status/checkbox, 9.3 Objective/Work/Tests/Acceptance.",
+    "docs/changelog.md 9.3 entry and Phase 9 status.",
+    "docs/project-status.md Phase 9 paragraph and next-tasks/open-items.",
+    "docs/architecture.md status line and section 6 'Runtime configuration activation'.",
+    "docs/implementation-readiness.md status and promoted-to-v1.1 item.",
+    "docs/limitations.md F2 (rewritten), SEC-5 (scoping sentence), SEC-9 (new).",
+    "README.md Configuration and limitations summary.",
+    "docs/decisions.md ADR-016 clause 4 pointer + References, ADR-021 full text.",
+    "docs/data-model.md 3.12 runtime activation paragraph.",
+    "docs/reviews/architecture-review.json AR-01..AR-09 and documentation_owners.",
+    "docs/implementation/9.3/worker-report.json and worker-report-attempt-1.json."
+  ],
+  "verified_claims": [
+    "Scope: git status/diff show only the intended source, test, research, and canonical-doc files; src/ArrTags/ArrTags.csproj is unchanged; the untracked docs/reviews/architecture-review.json is the architecture reviewer's expected artifact.",
+    "Admin-visible surfacing is genuine: Plugin.UpdateConfiguration -> TryNotifyRejected resolves IConfigurationRejectionNotifier and calls NotifyRejected(result.Errors); JellyfinConfigurationRejectionNotifier resolves the host IActivityManager and writes exactly one ActivityLog with fixed Name/Type (ArrTagsConfigurationRejected), UserId=Guid.Empty, LogSeverity=Warning.",
+    "Secret-free by construction: entry fields are built only from fixed constants and the validator's static reason strings; PluginConfigurationValidator messages interpolate only fixed field names, enum selectors, fixed bounds, and the placeholder constant - no candidate value, URL, key, or secret. Tests use sentinel secrets and assert absence.",
+    "Bounds correct: Overview/ShortOverview <= 512, Name <= 512, Type <= 256, at most 8 reasons, each reason <= 256; matches the pinned ActivityLog entity/migration.",
+    "Valid save writes no entry; invalid save writes exactly one entry - directly asserted by tests and non-vacuous (Assert.Single / Assert.Empty would fail if the wiring were absent).",
+    "Never-throw: adapter resolution, TryReplace, restore, and notification are each contained; notifier internally contains CreateAsync failure and the 5s WaitAsync timeout. Last-valid retention and persisted restore occur independently of notification.",
+    "Adapter isolation: IConfigurationRejectionNotifier is Jellyfin-free (only System.Collections.Generic); Jellyfin coupling is confined to JellyfinConfigurationRejectionNotifier.",
+    "No new shipped runtime asset: csproj unchanged; src/ArrTags/bin/Release/net10.0/ArrTags.deps.json contains no Jellyfin.* entries; plugin output is ArrTags.dll only.",
+    "ADR-021 is coherent; ADR-016 clause 4 carries the pointer sentence and the References entry; ADR-021 clause 3 states the exact column bounds.",
+    "SEC-9 exists and is accurate; the SEC-5 scoping sentence is accurate (no ILogger/Serilog call sites in src; only the LogLevel enum is used); the full SEC-5 rewrite is correctly left to Phase 10 task 10.3.",
+    "AR-01 (surfacing implemented + tested), AR-02 (ADR-021 added), AR-03 (research persisted), AR-04 (SEC-9 + SEC-5 scoping), AR-06 (ADR-021 consequences + README state the admin-visible behavior), AR-07 (fixed constants + ADR-021 clause 6 duplicate deferral), AR-08 (overclaiming 'Surfaces' test removed/refocused; no test by that name remains), AR-09 (rationale recorded) are addressed. AR-05's adapter isolation and classification are done; its host-guarded test recommendation is owned by task 14.3 (see 9.3-R1).",
+    "Task 9.4 was NOT implemented: the override enqueues nothing after a successful TryReplace; no reconciliation trigger code was added. F2 remains accurately open (restart consequence gone; re-render promptness remains), consistently stated across limitations/architecture/project-status/readiness/README/PLANS.",
+    "Acceptance criteria met: valid save applies without restart (activation + per-operation observation tests); invalid save rejected with last-valid snapshot/secrets retained AND surfaced to the administrator (entry test); saved only through the elevation-gated path (no custom route test; PluginsController is the only route and is RequiresElevation).",
+    "Build/tests independently reproduced: 0 warnings/0 errors; targeted 17/17; full suite 1257 passed, 63 skipped, 1320 total."
+  ],
+  "falsification_attempts": [
+    "Vacuity of the rejection-surfacing test: confirmed Assert.Single(ActivityRecorder.Entries) would fail if TryNotifyRejected were not wired; the harness registers the real JellyfinConfigurationRejectionNotifier against a recording IActivityManager, mirroring production wiring.",
+    "Vacuity of the no-entry-on-valid-save test: confirmed Assert.Empty(ActivityRecorder.Entries) would fail if a valid save wrote an entry.",
+    "Secret leakage: inspected every validator error site (PluginConfigurationValidator, OperationalLimits, RendererConfiguration); none interpolates a candidate/secret value. Tests additionally assert sentinel secrets and the invalid URL are absent from Name/Overview/ShortOverview.",
+    "Interface-dispatch bypass: verified BasePlugin<T> has no explicit IHasPluginConfiguration.UpdateConfiguration implementation, so the host's interface call reaches the override (not base directly).",
+    "Provider-resolution reachability: verified PluginManager constructs the Plugin via ActivatorUtilities.CreateInstance with the host root ServiceProvider, so _serviceProvider resolves the plugin-registered notifier and the host IActivityManager.",
+    "Column-bound overrun: checked the pinned entity and SQLite migration (512/512/512/256) rather than trusting the '512/256' shorthand; the code's 512/512/512 bounds are within the real columns.",
+    "Runtime-asset leakage: checked the plugin deps.json and bin output for Jellyfin.Database.Implementations; none shipped.",
+    "Overclaim check: grep for F2-resolved claims in current-state docs; only ADR-016's decision Consequences states F2 resolved as the design end-state, while all current-state surfaces correctly state partial resolution.",
+    "Reran build and both test scopes rather than trusting the worker's reported counts."
+  ],
+  "notes": [
+    "Residual uncertainty: the activity-log entry's live administrator visibility and the IActivityManager resolution on the real pinned host are not confirmed in this environment (no ARRTAGS_JELLYFIN_HOST_DIR; 63 host-guarded skips, identical to baseline). The persisted research and pinned-source inspection support the mechanism; task 14.3 owns live confirmation. This does not block 9.3.",
+    "Honest skips: I did not re-derive the web-client (jellyfin-web) behavior; ADR-021/README rely on the pinned server contract (void UpdateConfiguration + unconditional 204), which I did confirm in PluginsController. The claim that the dashboard reports success is a server-contract inference, not a live UI observation.",
+    "The plugin's LastConfigurationValidationResult diagnostic property remains and is documented as never persisted / never returned by the configuration API; it is no longer the sole surfacing channel.",
+    "Attempt-1's reviewer report was not found persisted under docs/implementation/9.3/ (only worker-report-attempt-1.json and worker-report.json exist). This attempt-2 report records the attempt-1 rejection in rework_log. The report was written to both reviewer-report.attempt-2.json (re-review convention) and reviewer-report.json (this project's per-task convention) with identical content; no earlier attempt outcome was overwritten."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "reviewer_status": "CHANGES_REQUIRED",
+      "issues": [
+        "AR-01: the only artifact of a rejected save was Plugin.LastConfigurationValidationResult, a non-admin-visible diagnostic property, so ADR-016 clause 4's requirement to surface the bounded validation failure to the administrator was unmet."
+      ],
+      "note": "Attempt-1's reviewer report was not persisted in the repository; recorded here from the orchestrator's context and the architecture reviewer's AR-01 finding."
+    },
+    {
+      "attempt": 2,
+      "reviewer_status": "APPROVED",
+      "issues": [],
+      "note": "Rework adds the administrator-visible activity-log surfacing (ADR-021) behind the plugin-owned IConfigurationRejectionNotifier adapter, retains attempt-1's activation/rejection behavior, and updates the canonical docs. Independently verified against the repo state, the full diff, the pinned Jellyfin 12.0.0 sources, and re-run build/tests. No blocker or required change remains."
+    }
+  ],
+  "ready_for_next_task": true
+}

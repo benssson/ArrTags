@@ -1,0 +1,46 @@
+{
+  "task": "9.3",
+  "attempt": 3,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Rework of task 9.3 fixing the reproduced MEDIUM state-integrity defect SEC-9.3-01 and the SEC-9.3-02/03/04 hardening items. Atomicity: Plugin.UpdateConfiguration now validates the candidate BEFORE the base implementation persists anything (using the existing PluginConfigurationValidator, no duplicated logic), and the whole validate/persist/activate sequence is serialized with a per-plugin lock. An invalid candidate is rejected before persistence: the override does not call base.UpdateConfiguration at all, so a rejected candidate is never written to plugins/configurations/ArrTags.xml, there is no crash window in which a rejected candidate is persisted, and there is no restore step for a concurrent valid save to overwrite. A valid candidate is persisted by base.UpdateConfiguration and activated by ConfigurationSnapshotService.TryReplace. The previous TryRestoreLastValidConfiguration path was removed. This changes ADR-016 clause 4's ordering from 'base then TryReplace' to 'validate; if valid, base then TryReplace', so ADR-016 clause 4 was updated in place (per the rework instruction) and ADR-021 clause 5/consequences were updated to state that a rejected candidate is never persisted rather than restored. SEC-9.3-03: the IConfigurationRejectionNotifier interface documents the single-caller invariant (Plugin.TryNotifyRejected passes the validator's secret-free messages), and JellyfinConfigurationRejectionNotifier now sanitizes each reason (strips control characters, collapses whitespace runs, skips empty) in addition to the existing count cap (8) and 512/256 truncation. SEC-9.3-04: the notifier's bounded wait is injectable (second constructor) and a slow-CreateAsync containment test exercises the timeout branch in ~50ms. SEC-9.3-02: the activity-log volume/spam aspect is recorded in docs/limitations.md SEC-9. Docs overclaims about 'not left persisted' were corrected to the implemented validate-before-persist guarantee across ADR-016, ADR-021, architecture section 6, data-model 3.12, changelog, PLANS 9.3, project-status, and implementation-readiness. Preserved: never throws into the host (the plugin's validate/activate/notify logic is contained), no custom save route, valid save activates without restart, invalid save retains the last-valid public snapshot and private secrets, rejection surfaced via the activity-log entry. No task 9.4 work was implemented.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~ConfigurationActivationTests|FullyQualifiedName~ConfigurationRejectionNotifierTests\" -> Passed! - Failed: 0, Passed: 20, Skipped: 0, Total: 20. This includes the new concurrent-save regression test ConcurrentValidAndInvalidSavesKeepSnapshotConfigurationAndPersistedStateConsistent, which asserts the rejected candidate never reaches persistence and that the running snapshot, Plugin.Configuration, and the persisted XML all agree on the valid candidate.",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1260, Skipped: 63, Total: 1323 (pre-task baseline: Failed 0, Passed 1240, Skipped 63, Total 1303; +20 passed, +20 total, 0 new skips)."
+  ],
+  "changed_files": [
+    "src/ArrTags/Plugin.cs",
+    "src/ArrTags/Configuration/IConfigurationRejectionNotifier.cs",
+    "src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/ConfigurationActivationTests.cs",
+    "tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs",
+    "tests/ArrTags.Tests/ActivityLogTestDoubles.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/decisions.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md",
+    "docs/research/jellyfin-expert/configuration-save-failure-surfacing.json"
+  ],
+  "known_limitations": [
+    "The rejected save's HTTP response remains 204 NoContent and the dashboard reports success; the rejection is surfaced only via the Activity log and, on reload, because the last valid configuration remains active and persisted (the rejected candidate was never written). Accepted per ADR-021.",
+    "Activity-log volume/spam (SEC-9.3-02): each rejected save writes one entry and consecutive-duplicate suppression is deliberately not implemented (ADR-021 clause 6); the trigger is administrator-only.",
+    "The activity-log write is best-effort (SEC-9.3-04): if IActivityManager is unavailable, CreateAsync throws, or it exceeds the bounded wait, no entry is written; the rejection and last-valid retention still hold and nothing is thrown.",
+    "base.UpdateConfiguration is not wrapped: a failure inside the host base method (for example an I/O failure in SaveConfiguration) propagates unchanged, as without the override. The plugin's validate/activate/notify logic itself never throws.",
+    "A valid candidate that cannot be activated because the running snapshot service is unavailable is persisted and is activated on the next host startup; the bounded secret-free validation result is still recorded.",
+    "Some singleton services capture OperationalLimits at construction (StateRepository cache/quota/retention; artwork artifact-size/decode limits); those values change only after a restart (pre-existing, outside the 9.3 acceptance criteria).",
+    "The bounded post-save reconciliation trigger (task 9.4) is not implemented.",
+    "Host-guarded tests (JellyfinHostFact) remain skipped because ARRTAGS_JELLYFIN_HOST_DIR is unset (63 skips, identical to the pre-task baseline); the live pinned-host activity-log confirmation is owned by the live-verification task."
+  ],
+  "ready_for_next_task": true
+}

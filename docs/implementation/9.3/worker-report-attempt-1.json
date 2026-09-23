@@ -1,0 +1,38 @@
+{
+  "task": "9.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the elevation-gated save path and runtime configuration activation (v1.1 Phase 9 task 9.3, ADR-016 clauses 3, 4, and 5 first bullet; closes security finding S-9.2-03). src/ArrTags/Plugin.cs now overrides BasePlugin<PluginConfiguration>.UpdateConfiguration: it captures the last valid configuration, calls base.UpdateConfiguration(configuration) (host persistence plus ConfigurationChanged), then resolves the singleton ConfigurationSnapshotService lazily from the injected IServiceProvider and calls TryReplace(candidate, out result). A valid candidate atomically becomes the running public snapshot and private secret generation, so a saved change applies without a host restart. An invalid candidate is rejected: TryReplace leaves the last valid public snapshot and private secret map unchanged, and the override restores the last valid configuration as both the active and the persisted configuration (Configuration = lastValid; SaveConfiguration(lastValid)), so a rejected save does not leave an invalid candidate in plugins/configurations/ArrTags.xml. The bounded, secret-free validation result is retained in the new read-only diagnostic property Plugin.LastConfigurationValidationResult (never persisted, never returned by the configuration API). Service-resolution and TryReplace failures are contained, so the override never throws into the host; it adds no custom configuration-save route (only the supported elevation-gated PluginsController POST path reaches UpdateConfiguration). Per-operation snapshot consumers were verified: LibraryWorkQueue and LibraryWorkWorker (queue capacity/in-flight), ProviderConcurrencyLimiter and the render DynamicConcurrencyLimiter (provider/render concurrency), MetadataReconciliationProcessor (metadata freshness, badge definitions, renderer output policy), ArtworkPublishingWorkItemProcessor (badge definitions/renderer output policy), and LibraryReconciliationService (scope) read ConfigurationSnapshotService.Current per operation and observe the replacement without a rebuild; this is covered by a ProviderConcurrencyLimiter test through the real override. Semantic decision resolved with the user before implementation: ADR-016 clause 4 says the failure is surfaced to the administrator AND that the override never throws, but the pinned PluginsController POST calls the void UpdateConfiguration and unconditionally returns 204, so a non-throwing override cannot notify the admin. The user selected 'Never throw; no admin notification', so the invalid-save rejection is observable only through the retained last-valid configuration (and the plugin-side bounded secret-free result) rather than an HTTP error; the plan's 'no throw' requirement is satisfied literally. No post-save reconciliation trigger was implemented (task 9.4).",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~ConfigurationActivationTests\" -> Passed! - Failed: 0, Passed: 8, Skipped: 0, Total: 8.",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1248, Skipped: 63, Total: 1311 (baseline before this task: Failed 0, Passed 1240, Skipped 63, Total 1303; +8 passed, +8 total, 0 new skips).",
+    "Inspected git diff: only src/ArrTags/Plugin.cs, tests/ArrTags.Tests/ConfigurationActivationTests.cs, and the canonical documentation surfaces changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Plugin.cs",
+    "tests/ArrTags.Tests/ConfigurationActivationTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "Admin notification is deliberately absent. Exact behaviour: an invalid save is rejected at runtime (last valid snapshot and private secrets retained, last valid configuration restored) but the elevation-gated POST still returns 204 and the dashboard reports success. Precondition: the supported PluginsController POST path, whose UpdateConfiguration returns void. Consequence: the administrator observes the rejection only by reloading and seeing the retained last-valid values, not via an HTTP error. This is the accepted resolution of the ADR-016 clause 4 wording conflict chosen by the user.",
+    "base.UpdateConfiguration is not wrapped. Exact behaviour: exceptions raised by the host's own base implementation (for example an I/O failure in SaveConfiguration) propagate unchanged, as they would without the override. Precondition: a failure inside the host base method. Consequence: the plugin-added activation logic never throws, but the host's pre-existing base behaviour is preserved; 'never throws into the host' is implemented for the plugin's activation step.",
+    "Some singleton services capture OperationalLimits at construction, so not every limit change is live. Exact behaviour: ArrTagsServiceRegistrator.CreateStateRepository, CreateArtworkImageAccess, CreateArtworkSourceReader, and CreateArtworkPublisher pass ConfigurationSnapshotService.Current.Limits once at construction (StateRepository caches the render work-cache TTL/quota and terminal-provenance retention days; JellyfinArtworkImageAccess/ArtworkSourceReader/ArtworkPublisher cache the artifact-size and decode limits). Precondition: those singletons are built once. Consequence: ADR-016 clause 5 first bullet's per-operation claim holds for queue capacity/in-flight, provider/render concurrency, metadata freshness, badge definitions, and the renderer output policy (verified), but a runtime change to the artifact-size/decode limits and to the StateRepository-backed cache/quota/terminal-provenance retention values is observed only after a host restart. This is a pre-existing Phase 1/6 implementation detail outside the 9.3 acceptance criteria (the plan's 9.3 Work bullet is to verify the services that already resolve per operation), and it is recorded here as an open follow-up for the orchestrator.",
+    "The bounded post-save reconciliation trigger (task 9.4) is not implemented. Exact behaviour: after a successful save the running snapshot is replaced immediately, but an already-published poster is not re-rendered by the save. Precondition: a work item whose ConfigurationVersion is older than the current snapshot is skipped by ArtworkPublishingWorkItemProcessor. Consequence: existing posters re-render only on the next library event, webhook, post-scan, or scheduled run; task 9.4 owns the prompt trigger and task 9.5 owns recording F2 as resolved.",
+    "Plugin.LastConfigurationValidationResult is a public diagnostic property set by the override; no production code consumes it. It exists so the bounded, secret-free validation outcome of a save is observable and testable without a custom route or a throw. It is never persisted and never returned by the configuration API.",
+    "Host-guarded tests (JellyfinHostFact) remain skipped in this environment because ARRTAGS_JELLYFIN_HOST_DIR is unset (63 skips, identical to the pre-task baseline); the live pinned-host save/activation confirmation remains owned by the documented live-verification tasks."
+  ],
+  "ready_for_next_task": true
+}

@@ -1,0 +1,67 @@
+{
+  "subject": "v1.1 task 9.3 (attempt 2) - Elevation-gated save path and runtime activation (ADR-016 clauses 3/4/5, ADR-021)",
+  "task": "9.3",
+  "attempt": 2,
+  "reviewer_status": "CONCERNS",
+  "security_status": "CONCERNS",
+  "findings": [
+    {
+      "id": "SEC-9.3-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "state integrity / configuration save atomicity",
+      "issue": "Plugin.UpdateConfiguration performs a non-atomic read-modify-persist sequence with no lock spanning it: it captures lastValid, calls base.UpdateConfiguration (which persists the candidate), then on an invalid candidate calls TryRestoreLastValidConfiguration, which re-persists the pre-save lastValid. Two overlapping elevation-gated saves can interleave so that an invalid save's restore overwrites a concurrent valid save's persisted configuration, leaving the running snapshot (new valid config) divergent from both plugin.Configuration and the persisted ArrTags.xml. The valid save returns 204 and is activated in the running snapshot, but it is lost from the persisted state; on the next host restart the pre-save configuration (including the old webhook secret) is loaded, and the admin configuration API shows the stale value while the runtime uses the new one. A crash or a failed restore write in the window between base.UpdateConfiguration and the restore can likewise leave the rejected candidate persisted.",
+      "evidence": [
+        "src/ArrTags/Plugin.cs:115-134 (UpdateConfiguration: lastValid = Configuration; base.UpdateConfiguration(configuration); TryActivateConfiguration)",
+        "src/ArrTags/Plugin.cs:178-182 (on !activated: TryRestoreLastValidConfiguration(lastValid))",
+        "src/ArrTags/Plugin.cs:216-227 (TryRestoreLastValidConfiguration sets Configuration = lastValid and SaveConfiguration(lastValid); no lock)",
+        "Pinned host PluginsController.cs:188-208 calls the void UpdateConfiguration synchronously per request with no serialization",
+        "REPRODUCED at /tmp/final-review/security/race: two concurrent Plugin.UpdateConfiguration calls produced running snapshot != persisted XML (DIVERGENT=True)"
+      ],
+      "recommended_action": "Serialize the whole save/activate/restore sequence in the override with a lock (or otherwise make it atomic), and/or validate the candidate before base.UpdateConfiguration persists it so an invalid candidate is never written. Make the restore conditional on the persisted state still being this save's candidate, and/or write the restored lastValid atomically. Correct the docs' 'not left persisted' wording to state the residual. Add a concurrent-save regression test."
+    },
+    {
+      "id": "SEC-9.3-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "bounded input / activity-log volume",
+      "issue": "An authenticated administrator can generate an unbounded number of activity-log rows by repeatedly POSTing an invalid configuration; there is no rate limit, and duplicate consecutive identical entries are deliberately not suppressed (ADR-021 clause 6). Each row is bounded (<= ~2 KB) and the host cleans old rows by retention, but within the retention window the row count is admin-controlled.",
+      "recommended_action": "Record the volume/spam aspect explicitly in docs/limitations.md SEC-9, or add a bounded suppression/rate cap in a later phase. No release blocker: admin-only and low impact."
+    },
+    {
+      "id": "SEC-9.3-03",
+      "severity": "LOW",
+      "status": "open",
+      "area": "secret redaction boundary",
+      "issue": "JellyfinConfigurationRejectionNotifier does not itself enforce secret-free content; it writes the caller's reason strings after only trim/truncate. Redaction is enforced at the single current call site by construction (PluginConfigurationValidator produces only fixed/static strings). The boundary contract is a convention, not an enforced invariant.",
+      "recommended_action": "Optional hardening: enforce a secret-free/allowlist filter at the notifier boundary, or add a test asserting the single-caller invariant. No current leak."
+    },
+    {
+      "id": "SEC-9.3-04",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "availability / bounded synchronous wait",
+      "issue": "NotifyRejected blocks the host request thread on activityManager.CreateAsync(entry).WaitAsync(5s).GetAwaiter().GetResult(). The wait is bounded and fully contained, but on timeout the underlying CreateAsync task is not cancelled or observed and continues in the background. Admin-only, bounded at 5s per rejected save.",
+      "recommended_action": "Optional: add a slow-CreateAsync containment test; consider not blocking the request thread. Consistent with the existing OnUninstalling drain, so acceptable."
+    },
+    {
+      "id": "SEC-9.3-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "dependency / host coupling",
+      "issue": "The new outbound path couples to Jellyfin.Database.Implementations (ActivityLog entity) and MediaBrowser.Model.Activity.IActivityManager, a lower API-stability tier (architecture risk AR-05). The coupling is correctly isolated behind the Jellyfin-free IConfigurationRejectionNotifier adapter, no runtime asset is shipped, and any resolution/type-load failure is caught. Live pinned-host resolution confirmation deferred to task 14.3.",
+      "recommended_action": "No 9.3 change; ensure task 14.3 performs the live pinned-host IActivityManager/activity-log confirmation."
+    },
+    {
+      "id": "SEC-9.3-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "never-throw scope",
+      "issue": "base.UpdateConfiguration is not wrapped, so a host-internal base failure (e.g. SaveConfiguration I/O) propagates unchanged. This preserves the host's pre-existing behavior; every plugin-added path is contained.",
+      "recommended_action": "No change required; documented residual."
+    }
+  ],
+  "summary": "The secret and elevation controls in task 9.3 are sound: the activity-log entry is secret-free by construction, the reason count (8) and ActivityLog column bounds are enforced, the adapter/CreateAsync/timeout paths never throw into the host, no custom save route exists, the only trigger is the elevation-gated PluginsController POST, the activity-log read/websocket is admin-gated, invalid saves retain the last-valid snapshot and version-matched private secrets under normal operation, and no new host runtime asset ships. One reproduced MEDIUM state-integrity defect remains (SEC-9.3-01): Plugin.UpdateConfiguration is not atomic, so concurrent saves can leave the running snapshot divergent from plugin.Configuration and the persisted ArrTags.xml, silently losing a valid (potentially security-relevant, e.g. webhook-secret rotation) save. There is no BLOCKER or HIGH.",
+  "residual_risk": "Concurrent-save/incomplete-restore divergence (SEC-9.3-01): a valid configuration change can be silently lost from persisted state while the running snapshot uses it, and the dashboard may display a stale configuration. Impact is admin-only and recovers to safe defaults on restart, but it can leave a stale webhook secret active after an intended rotation. Secondary residuals: admin-triggerable unbounded activity-log row count (SEC-9.3-02), notifier-boundary redaction by convention rather than enforcement (SEC-9.3-03), and a bounded synchronous 5s request-thread wait (SEC-9.3-04).",
+  "recommendation": "Track and fix SEC-9.3-01 before the v1.1 release gate: serialize the save/activate/restore sequence (or validate before base persists) and add a concurrent-save regression test; correct the 'invalid candidate is not left persisted' wording to state the residual. Record the activity-log volume aspect in docs/limitations.md SEC-9. Optionally harden the notifier boundary and add a slow-CreateAsync containment test. Ensure task 14.3 performs the deferred live pinned-host IActivityManager/activity-log confirmation (AR-05)."
+}

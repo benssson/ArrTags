@@ -1,0 +1,239 @@
+{
+  "task": "9.3",
+  "title": "Elevation-gated save path and runtime activation",
+  "phase": 9,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31d11657ffesDSHLmjtLodPmD"
+      }
+    },
+    {
+      "role": "jellyfin-expert",
+      "attempt": 1,
+      "outcome": "ADVISORY",
+      "execution": {
+        "agent": "jellyfin-expert",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f319edf33ffeS9gKHbR29b0p1B"
+      }
+    },
+    {
+      "role": "architecture-reviewer",
+      "attempt": 1,
+      "outcome": "ADVISORY",
+      "execution": {
+        "agent": "architecture-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31962c37ffe12rrbdw0ndBCS0"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31d11657ffesDSHLmjtLodPmD"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f317e05e8ffeZdXK76opdVNeoX"
+      }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 2,
+      "outcome": "CONCERNS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f3175e877ffeUtW56lwsSlSpZy"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 3,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31d11657ffesDSHLmjtLodPmD"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 3,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31599913ffeweDGbQn6KwTTzR"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 4,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31d11657ffesDSHLmjtLodPmD"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 4,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31599913ffeweDGbQn6KwTTzR"
+      }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 3,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f3175e877ffeUtW56lwsSlSpZy"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Attempt 1 was not accepted: the worker stored the invalid-save validation failure only in a non-admin-visible diagnostic property, so ADR-016 clause 4's requirement to surface the failure to the administrator was unmet. The user was asked and explicitly required an admin-visible surfacing. jellyfin-expert verified the supported mechanism (MediaBrowser.Model.Activity.IActivityManager activity-log entry), and architecture-reviewer recommended recording it as ADR-021 with a plugin-owned adapter and a SEC-9 item."
+    },
+    {
+      "attempt": 3,
+      "reason": "Attempt 2 passed implementation review but the independent security review reproduced MEDIUM defect SEC-9.3-01 (non-atomic Plugin.UpdateConfiguration allowed concurrent saves to diverge the running snapshot from plugin.Configuration and persisted XML, losing a valid save including a webhook-secret rotation). The worker reworked to validate-before-persist plus a per-plugin lock and removed the restore path."
+    },
+    {
+      "attempt": 4,
+      "reason": "Attempt 3 passed security review but the implementation reviewer required four documentation-only corrections because residual 'restored' / 'base then TryReplace' wording contradicted the implemented validate-before-persist flow. The worker corrected ADR-021 clause 4, PLANS.md Project Status and task 9.3 Objective/Work, and docs/limitations.md F2."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null; no estimation was performed.",
+    "The implementation-reviewer attempt-1 was not run: the user decision was required first, so the task was stopped and the worker was re-invoked as attempt 2 after the decision.",
+    "Specialist consults (jellyfin-expert, architecture-reviewer) are advisory evidence, not completion gates.",
+    "Final gates: implementation-reviewer attempt 4 APPROVED (no blockers, no required changes); security-reviewer attempt 3 PASS (SEC-9.3-01 fixed, no new MEDIUM+).",
+    "Attempt reports preserved: worker-report-attempt-1/2/3.json, reviewer-report.attempt-3/4.json, security-review.attempt-2.json, security-review.json (final)."
+  ]
+}

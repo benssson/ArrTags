@@ -1,0 +1,121 @@
+{
+  "task": "9.3",
+  "attempt": 3,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "summary": "The attempt-3 atomicity fix is correct and independently verified: Plugin.UpdateConfiguration validates the candidate before base.UpdateConfiguration persists anything, the validate/persist/activate sequence is serialized by a per-plugin lock, the old TryRestoreLastValidConfiguration path is gone, and the new concurrent-save regression test is genuine (it fails under a reconstructed pre-fix implementation). Targeted tests (20) and the full suite (1260 passed / 63 skipped / 1323 total) reproduce the worker's numbers, build is 0 warnings / 0 errors, and the SEC-9.3-02/03/04 hardening items are present and tested. However, the rework left stale 'restored' wording that contradicts the implemented validate-before-persist flow in ADR-021 clause 4, the PLANS.md Project Status paragraph, and docs/limitations.md F2, plus 'call base and then TryReplace' wording in the PLANS.md 9.3 objective/work bullets. The worker's claim that these overclaims were corrected across those surfaces is inaccurate, so the task's documentation-accuracy requirement is not yet met.",
+  "findings": [
+    {
+      "id": "DOC-9.3-A3-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "documentation / canonical current-state accuracy",
+      "summary": "Residual 'restored' wording contradicts the implemented validate-before-persist flow.",
+      "detail": "Three canonical/decision surfaces still describe a restore step that no longer exists, contradicting ADR-016 clause 4 and ADR-021 clause 5 and the code (an invalid candidate is never passed to base.UpdateConfiguration, so nothing is restored). (1) docs/decisions.md:2624-2627 (ADR-021 clause 4): 'a notifier failure does not affect the rejection, the retained snapshot/secrets, or the restored persisted configuration' - there is no restored persisted configuration; clause 5 of the same ADR says the rejected candidate is never persisted. (2) PLANS.md:19 (Project Status paragraph): task 9.3 '... retains the last valid public snapshot and private secret generation and restores the last valid persisted configuration on an invalid candidate ...'. (3) docs/limitations.md:97-102 (F2 Current state): 'Task 9.3 overrides Plugin.UpdateConfiguration to call the host base implementation and then validate and activate the candidate at runtime ... and the last valid configuration is restored so a rejected save does not leave an invalid candidate in ArrTags.xml.' All three contradict src/ArrTags/Plugin.cs:138-153, where validation precedes persistence and base is only called for a valid candidate.",
+      "evidence": [
+        "docs/decisions.md:2624-2627",
+        "PLANS.md:19",
+        "docs/limitations.md:97-102",
+        "src/ArrTags/Plugin.cs:138-153 (validate -> if valid base -> TryReplace)"
+      ],
+      "recommended_action": "Reword these three lines to the implemented guarantee: the candidate is validated before base persists anything, an invalid candidate is never written, and the last valid configuration remains active and persisted (no restore step). Keep ADR-021 clause 4 consistent with clause 5."
+    },
+    {
+      "id": "DOC-9.3-A3-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation / task description accuracy",
+      "summary": "PLANS.md 9.3 objective/work bullets still describe the old 'base then TryReplace' ordering.",
+      "detail": "PLANS.md:3645-3648 (9.3 Objective) says 'Override Plugin.UpdateConfiguration to call base and then ConfigurationSnapshotService.TryReplace' and PLANS.md:3665-3667 (Work) says 'Override UpdateConfiguration: call base.UpdateConfiguration(configuration), then ConfigurationSnapshotService.TryReplace(...)'. The implemented (and separately documented in the same section's Status) ordering is validate -> if valid, base -> TryReplace; an invalid candidate never reaches base. This is the exact residual 'base then TryReplace' wording the task asked to eliminate. It is lower severity than DOC-9.3-A3-01 because the section's Status paragraph is already correct, but it is inconsistent with it.",
+      "evidence": [
+        "PLANS.md:3645-3648",
+        "PLANS.md:3665-3667",
+        "PLANS.md:3599-3609 (Status paragraph, correct ordering)"
+      ],
+      "recommended_action": "Update the 9.3 Objective/Work bullets to the validate-before-persist ordering (validate; for a valid candidate, base then TryReplace), matching the Status paragraph."
+    },
+    {
+      "id": "DOC-9.3-A3-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "worker report accuracy",
+      "summary": "Worker summary overclaims that the 'restored' wording was corrected across PLANS 9.3 and related surfaces.",
+      "detail": "The attempt-3 worker summary states: 'Docs overclaims about not left persisted were corrected to the implemented validate-before-persist guarantee across ADR-016, ADR-021, architecture section 6, data-model 3.12, changelog, PLANS 9.3, project-status, and implementation-readiness.' ADR-021 clause 4, the PLANS Project Status paragraph, the PLANS 9.3 objective/work bullets, and limitations F2 were not corrected (see DOC-9.3-A3-01/02). The documentation update was partial, not complete.",
+      "evidence": [
+        "docs/implementation/9.3/worker-report.json:10",
+        "docs/decisions.md:2624-2627",
+        "PLANS.md:19",
+        "docs/limitations.md:97-102"
+      ],
+      "recommended_action": "Correct the remaining surfaces; no separate action beyond DOC-9.3-A3-01/02."
+    }
+  ],
+  "tests_checked": [
+    "Inspected tests/ArrTags.Tests/ConfigurationActivationTests.cs (11 facts) and tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs (9 facts) and tests/ArrTags.Tests/ActivityLogTestDoubles.cs.",
+    "Independently ran the targeted suite: dotnet test --filter 'ConfigurationActivationTests|ConfigurationRejectionNotifierTests' -> Failed 0, Passed 20, Skipped 0, Total 20.",
+    "Independently ran the full suite: dotnet test ArrTags.slnx --configuration Release --no-build -> Failed 0, Passed 1260, Skipped 63, Total 1323 (matches the worker's claim).",
+    "Independently ran ./build.sh build equivalent (dotnet build ArrTags.slnx --configuration Release) -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Falsification: reconstructed the pre-fix (attempt-2) Plugin.UpdateConfiguration with base-then-validate plus TryRestoreLastValidConfiguration in /tmp/9.3/oldimpl and ran ConcurrentValidAndInvalidSavesKeepSnapshotConfigurationAndPersistedStateConsistent -> FAILED with 'The rejected candidate must not be persisted.' (assert line 198), proving the regression test is genuine and non-vacuous.",
+    "Reviewed the concurrent-save test's blocking serializer (TestXmlSerializer.BlockOn/WaitForBlock/ReleaseBlock) and confirmed the invalid candidate is never serialized under the fix and was serialized under the pre-fix implementation."
+  ],
+  "research_checked": [
+    "Verified the notifier's host contract against the pinned source: MediaBrowser.Model.Activity.IActivityManager.CreateAsync(ActivityLog), ActivityLog(string name, string type, Guid userId), and the [MaxLength] bounds Name/Overview/ShortOverview=512 and Type=256 (Jellyfin.Database.Implementations/Entities/ActivityLog.cs).",
+    "Verified the pinned host ActivityManager.CreateAsync persists the entry and accepts Guid.Empty.",
+    "Verified the pinned host PluginsController.UpdatePluginConfiguration deserializes configPlugin.ConfigurationType (PluginConfiguration) and calls the void UpdateConfiguration per request with no serialization, so the plugin-side lock is the correct serialization point.",
+    "Verified the pinned BasePlugin<T>.UpdateConfiguration body (Configuration = candidate; SaveConfiguration(Configuration); ConfigurationChanged?.Invoke) and that ConfigurationChanged has no ArrTags subscriber, so the lock cannot deadlock via re-entrancy.",
+    "Inspected docs/research/jellyfin-expert/configuration-save-failure-surfacing.json (persisted expert report) and docs/reviews/architecture-review.json (orchestrator/reviewer report); both are allowed non-implementation artifacts."
+  ],
+  "documentation_checked": [
+    "PLANS.md (Project Status paragraph line 19; Phase 9 milestone row; 9.3 checkbox; 9.3 Status/Objective/Work; promoted-to-v1.1 backlog entry) - stale 'restored' wording found at line 19 and stale 'base then TryReplace' at 3645/3665.",
+    "docs/changelog.md (task 9.3 entry) - accurate (validate-before-persist, never persisted, counts).",
+    "docs/project-status.md (Phase 9 status and Next tasks) - accurate.",
+    "docs/architecture.md (status line and new 'Runtime configuration activation' section) - accurate.",
+    "docs/data-model.md 3.12 'Runtime activation (task 9.3)' - accurate.",
+    "docs/implementation-readiness.md (status line and promoted-to-v1.1 deferral) - accurate.",
+    "docs/limitations.md (F2 and SEC-9) - SEC-9 accurate and records SEC-9.3-02/03/04; F2 substance accurate but F2 Current state (97-102) stale.",
+    "docs/decisions.md (ADR-016 clause 4 updated in place and accurate; ADR-021 clauses 3/5 and consequences accurate; ADR-021 clause 4 stale).",
+    "README.md (settings/save behaviour and limitations list) - accurate.",
+    "Confirmed task 9.4 is not implemented (no post-save reconciliation trigger in src; PLANS 9.4 unchecked) and F2 is correctly left open (apart from the stale sentence above)."
+  ],
+  "required_changes": [
+    "Reword docs/decisions.md ADR-021 clause 4 to remove 'the restored persisted configuration' and state that a rejected candidate is never persisted while the last valid configuration remains active/persisted.",
+    "Reword PLANS.md line 19 (Project Status paragraph) to remove 'restores the last valid persisted configuration on an invalid candidate' and state the validate-before-persist/never-persisted guarantee.",
+    "Reword docs/limitations.md F2 Current state (lines 97-102) to remove 'call the host base implementation and then validate ... the last valid configuration is restored' and state that the override validates before the base implementation persists anything, so a rejected candidate is never written.",
+    "Reword PLANS.md 9.3 Objective (3645-3648) and Work bullet (3665-3667) to the validate-before-persist ordering (validate; for a valid candidate, base then TryReplace)."
+  ],
+  "rework_log": [
+    "Attempt 2 was approved by the implementation reviewer but the independent security review reproduced MEDIUM SEC-9.3-01 (non-atomic Plugin.UpdateConfiguration: concurrent saves could diverge the running snapshot, Plugin.Configuration, and persisted XML; a crash could persist a rejected candidate). Attempt 3 addressed it by validating before base.UpdateConfiguration and serializing the validate/persist/activate sequence, and removed TryRestoreLastValidConfiguration.",
+    "Attempt 3 re-review (this report): the functional fix and hardening are verified correct; only documentation residuals remain, so this attempt requires a documentation-only correction."
+  ],
+  "ready_for_next_task": false,
+  "verified_claims": [
+    "Atomicity: src/ArrTags/Plugin.cs:138-153 validates with PluginConfigurationValidator.Validate(candidate) before any persistence; base.UpdateConfiguration is called only inside if (result.IsValid); the whole validate/persist/activate sequence is inside lock (_configurationSaveGate). Verified by inspection and by the reconstructed-pre-fix falsification test.",
+    "No restore path: TryRestoreLastValidConfiguration/lastValid are absent from src (grep found no matches).",
+    "No duplicated validation logic: Plugin calls the existing PluginConfigurationValidator; ConfigurationSnapshotService.TryReplace also uses it (defense in depth, same logic).",
+    "Valid saves unchanged: ValidSaveActivatesTheNewSnapshotWithoutRestart passes; the snapshot version increments and both Plugin.Configuration and the persisted XML match the candidate.",
+    "Invalid saves: InvalidSaveDoesNotPersistTheRejectedCandidate and InvalidSaveRetainsLastValidSnapshotAndPrivateSecrets pass.",
+    "Never-throw: UpdateConfigurationNeverThrows, InvalidSaveDoesNotThrowWhenTheNotifierFailsAndRetainsLastValid, UpdateConfigurationDoesNotThrowWhenTheSnapshotServiceIsUnavailable pass; plugin-added paths catch Exception when not OutOfMemoryException. base.UpdateConfiguration is intentionally not wrapped (preserves host behaviour; documented).",
+    "No custom save route: PluginAddsNoCustomConfigurationSaveRoute passes.",
+    "Concurrent-save regression test is genuine: it fails under a reconstructed pre-fix implementation and passes now.",
+    "SEC-9.3-02: volume/spam note recorded in docs/limitations.md SEC-9.",
+    "SEC-9.3-03: IConfigurationRejectionNotifier remarks document the single-caller secret-free invariant; JellyfinConfigurationRejectionNotifier.Sanitize strips control characters and collapses whitespace; NotifyRejectedStripsControlCharactersAndCollapsesWhitespace passes.",
+    "SEC-9.3-04: injectable bounded-wait constructor plus NotifyRejectedContainsASlowActivityManagerWrite (PendingCreate) passes in ~50ms.",
+    "Notifier bounds: EntryName 512, EntryType 256, MaxSurfacedReasons 8, reason/field truncation verified against the pinned ActivityLog MaxLength attributes and by tests.",
+    "Build/tests: 0 warnings / 0 errors; 20 targeted passed; full suite 1260/63/1323 matches the worker's claim.",
+    "Task 9.4 not implemented; F2 left open."
+  ],
+  "falsification_attempts": [
+    "Searched for any path where an invalid candidate could reach base.UpdateConfiguration: none (the call is guarded by result.IsValid).",
+    "Searched for the removed restore path (TryRestoreLastValidConfiguration, lastValid): no matches in src.",
+    "Reconstructed the attempt-2 implementation in /tmp/9.3/oldimpl and ran the new concurrent-save test: it FAILED ('The rejected candidate must not be persisted.'), confirming the test would have caught the original defect.",
+    "Checked for lock-order inversion/deadlock between _configurationSaveGate and ConfigurationSnapshotService._gate and for ConfigurationChanged re-entrancy: ConfigurationChanged has no ArrTags subscriber; no reverse ordering exists.",
+    "Grepped the changed docs for residual 'restored'/'base then TryReplace' wording: found stale wording in ADR-021 clause 4, PLANS.md:19, PLANS.md:3645/3665, and docs/limitations.md:97-102.",
+    "Ran the full suite and build to confirm the worker's numbers rather than trusting them: matched."
+  ],
+  "notes": [
+    "The functional rework is sound; the only open items are documentation corrections (DOC-9.3-A3-01/02). No implementation change is required.",
+    "The lock is the necessary fix for the two-valid-saves divergence case (without it, base persist and TryReplace could interleave and leave snapshot != persisted); the validate-before-persist change is the necessary fix for the invalid-candidate/restore race. Both are present.",
+    "No new security review was produced for attempt 3; that is the orchestrator's separate gate and is not treated as a finding here.",
+    "Temporary artifacts under /tmp/9.3/ (oldimpl reconstruction and oldblock.txt) are reviewer-owned; the directory may be removed."
+  ]
+}

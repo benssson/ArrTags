@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-8 complete; Phase 7 complete (all five acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)). Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5 and 8 are now met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1). Task 7.6 consolidates the known limitations and deferred decisions in `docs/limitations.md`; all five Phase 7 acceptance criteria are met and no deferred or unverified capability is presented as available. Phase 8 release distribution is complete (tasks 8.1-8.6): the `1.0.1.0` release is prepared with plugin version `1.0.1.0`, the annotated tag `v1.0.1` at `8cba85b`, and the committed repository `manifest.json`; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with `scripts/publish-release.sh`, so the plugin-catalog install is prepared but not yet live. Phase 9 (v1.1) is in progress: task 9.1 makes `PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` settable so the elevation-gated configuration round-trip cannot drop them, and task 9.2 adds the dashboard settings page (`Plugin` implements `IHasWebPages`; one secret-free embedded `Configuration/config.html` served from the logical name `ArrTags.Configuration.config.html`) and records ADR-016 clause 6's explicit acceptance of the anonymous static page-resource endpoint; runtime activation (task 9.3) and the post-save reconciliation trigger (task 9.4) remain open, so limitation F2 is not yet resolved.
+**Status:** Accepted v1 (frozen for V1; Phases 1-8 complete; Phase 7 complete (all five acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)). Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5 and 8 are now met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1). Task 7.6 consolidates the known limitations and deferred decisions in `docs/limitations.md`; all five Phase 7 acceptance criteria are met and no deferred or unverified capability is presented as available. Phase 8 release distribution is complete (tasks 8.1-8.6): the `1.0.1.0` release is prepared with plugin version `1.0.1.0`, the annotated tag `v1.0.1` at `8cba85b`, and the committed repository `manifest.json`; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with `scripts/publish-release.sh`, so the plugin-catalog install is prepared but not yet live. Phase 9 (v1.1) is in progress: task 9.1 makes `PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` settable so the elevation-gated configuration round-trip cannot drop them, task 9.2 adds the dashboard settings page (`Plugin` implements `IHasWebPages`; one secret-free embedded `Configuration/config.html` served from the logical name `ArrTags.Configuration.config.html`) and records ADR-016 clause 6's explicit acceptance of the anonymous static page-resource endpoint; task 9.3 overrides `Plugin.UpdateConfiguration` so the elevation-gated save validates the candidate before persistence and, for a valid candidate, activates it as the running snapshot without a host restart (an invalid candidate is rejected before persistence, the last valid snapshot and private secrets are retained, and the rejection writes one bounded, secret-free administrator-visible activity-log entry per ADR-021; the save sequence is serialized so concurrent saves cannot diverge); the post-save reconciliation trigger (task 9.4) remains open, so limitation F2 is not yet fully resolved.
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -232,6 +232,45 @@ configuration data endpoint remains administrator-gated. This acceptance is the
 task 9.2 confirmation of the page-resource authorization behavior; the
 host-guarded tests additionally confirm the pinned route and authorization
 attributes where a pinned host directory is available.
+
+### Runtime configuration activation
+
+`Plugin` overrides `BasePlugin<T>.UpdateConfiguration`. The host's
+elevation-gated `PluginsController` `POST {pluginId}/Configuration` deserializes
+the candidate and calls the override. The override validates the candidate before
+the base implementation persists anything (using the same
+`PluginConfigurationValidator` the snapshot service uses); a valid candidate is
+persisted by `base.UpdateConfiguration(configuration)` and then activated by
+`ConfigurationSnapshotService.TryReplace(...)`, so a saved change takes effect
+without a host restart (ADR-016 clause 4). The whole validate/persist/activate
+sequence is serialized, so concurrent elevation-gated saves cannot leave the
+running snapshot, `Plugin.Configuration`, and the persisted file divergent
+(security finding SEC-9.3-01).
+
+An invalid candidate is rejected before persistence: the override does not call
+`base.UpdateConfiguration`, so a rejected candidate is never written to
+`plugins/configurations/ArrTags.xml` and the last valid public snapshot and
+private secret map remain active. The rejection is surfaced to the administrator
+as exactly one bounded, secret-free activity-log entry written through the
+plugin-owned `IConfigurationRejectionNotifier` adapter, whose Jellyfin
+implementation resolves the host `IActivityManager` and never throws into the
+host (ADR-021); a valid save writes no entry. The bounded, secret-free validation
+outcome is also retained on the plugin instance for diagnostics and is never
+persisted or returned by the configuration API. The override never throws into
+the host (service resolution, validation, and notification failures are
+contained) and adds no custom configuration-save route (ADR-016 clause 3).
+
+Services that resolve from the current snapshot on each operation — the work
+queue capacity and in-flight bound, provider/render concurrency, metadata
+freshness, badge definitions, and the renderer output policy — observe a
+replaced snapshot without rebuilding the singletons (ADR-016 clause 5 first
+bullet). Some singletons capture the artifact-size/decode limits and the
+`StateRepository`-backed render work-cache TTL/quota and terminal-provenance
+retention values from `OperationalLimits` at construction, so those particular
+values change only after a host restart; this pre-existing state/artwork-layer
+behaviour is outside the save-path change. The bounded, non-blocking post-save
+reconciliation trigger that re-renders existing posters is ADR-016 clause 5
+second bullet (task 9.4).
 
 ### Secret access boundary
 

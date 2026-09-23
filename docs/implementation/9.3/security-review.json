@@ -1,0 +1,69 @@
+{
+  "subject": "v1.1 task 9.3 (attempts 3-4) - Elevation-gated save path and runtime activation (ADR-016 clauses 3/4/5, ADR-021)",
+  "task": "9.3",
+  "attempt": "3-4",
+  "reviewer_status": "APPROVED",
+  "security_status": "PASS",
+  "findings": [
+    {
+      "id": "SEC-9.3-01",
+      "severity": "MEDIUM",
+      "status": "fixed",
+      "area": "state integrity / configuration save atomicity",
+      "issue": "RESOLVED. Plugin.UpdateConfiguration now validates the candidate with PluginConfigurationValidator before any persistence, calls base.UpdateConfiguration only inside if (result.IsValid), and holds lock (_configurationSaveGate) across the whole validate/persist/activate sequence. TryRestoreLastValidConfiguration/lastValid are removed, so an invalid candidate is never persisted and there is no restore step and no crash window.",
+      "evidence": [
+        "src/ArrTags/Plugin.cs:41 (_configurationSaveGate field), 119-161 (UpdateConfiguration)",
+        "src/ArrTags/Plugin.cs:147-152 (base.UpdateConfiguration called only when result.IsValid)",
+        "grep for TryRestoreLastValidConfiguration|lastValid in src -> no matches",
+        "INDEPENDENT REPRODUCTION: the original race interleaving now yields DIVERGENT=False (previously True)",
+        "Regression test tests/ArrTags.Tests/ConfigurationActivationTests.cs:146-212 (fails pre-fix, passes now)",
+        "docs/decisions.md ADR-016 clause 4 and ADR-021 clauses 4/5 updated to validate-before-persist / never-persisted",
+        "Targeted tests Passed 20/20; full suite Passed 1260, Skipped 63, Total 1323"
+      ],
+      "recommended_action": "None. Fix verified closed."
+    },
+    {
+      "id": "SEC-9.3-02",
+      "severity": "LOW",
+      "status": "recorded",
+      "area": "bounded input / activity-log volume",
+      "issue": "ACCEPTED/RECORDED. Repeated invalid saves can produce repeated activity-log entries; consecutive-duplicate suppression is deliberately not implemented (ADR-021 clause 6). Trigger is administrator-only. The volume/spam aspect is now recorded in docs/limitations.md SEC-9.",
+      "recommended_action": "No action required for 9.3; a future phase may add bounded suppression/rate cap."
+    },
+    {
+      "id": "SEC-9.3-03",
+      "severity": "LOW",
+      "status": "fixed",
+      "area": "secret redaction / injection boundary",
+      "issue": "HARDENED. The notifier sanitizes reason text (strips control characters, collapses whitespace runs, caps at eight reasons, truncates to bounds), and the IConfigurationRejectionNotifier remarks document the single-production-caller secret-free invariant. Secret-free-by-construction still holds.",
+      "recommended_action": "None; optional later: enforce an allowlist at the boundary."
+    },
+    {
+      "id": "SEC-9.3-04",
+      "severity": "LOW",
+      "status": "fixed",
+      "area": "availability / bounded synchronous wait",
+      "issue": "ADDRESSED. The bounded wait is now injectable (DefaultBoundedWait=5s), and a slow-CreateAsync containment test proves NotifyRejected returns promptly with no throw. The bounded synchronous wait on the request thread remains by design (admin-only).",
+      "recommended_action": "None; acceptable residual."
+    },
+    {
+      "id": "SEC-9.3-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "concurrency / lock scope",
+      "issue": "The new _configurationSaveGate is held across the host's synchronous persistence write and ConfigurationChanged. No deadlock/re-entrancy hazard is reachable: no ArrTags subscriber to ConfigurationChanged; no path acquires the service gate then the save gate.",
+      "recommended_action": "None."
+    },
+    {
+      "id": "SEC-9.3-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "runtime activation availability",
+      "issue": "If a valid candidate is persisted but the running snapshot service is unavailable/TryReplace throws, the running snapshot stays on the last valid configuration while persisted state holds the new valid candidate; the new valid candidate activates on the next host startup. Safe and documented.",
+      "recommended_action": "None."
+    }
+  ],
+  "summary": "security_status = PASS. SEC-9.3-01 is genuinely closed: an invalid candidate never reaches base.UpdateConfiguration, the lock spans the entire sequence, the restore path is gone, the original race reproduction no longer diverges, and the new concurrent-save regression test is non-vacuous. Secret-free surfacing, the elevation boundary, never-throw, and last-valid/private-secret retention all still hold. SEC-9.3-02 is recorded/accepted, SEC-9.3-03 and SEC-9.3-04 are hardened with tests. No new MEDIUM+ issue was introduced.",
+  "residual_risk": "Accepted residuals are administrator-only and low impact: repeated invalid saves can produce repeated activity-log entries; the rejection is surfaced only via the Activity log and on reload (HTTP stays 204, per ADR-021); a valid candidate whose snapshot activation fails is persisted and activates on the next host startup; the bounded synchronous activity write is not cancelled on timeout; the save path serializes on a per-plugin lock held across the host's synchronous config write. No credential exposure, privilege escalation, unauthenticated path, or new unbounded input was found.",
+  "recommendation": "No security change required; proceed. Retain the accepted residuals in docs/limitations.md SEC-9 and ensure task 14.3 performs the deferred live pinned-host IActivityManager/activity-log confirmation (AR-05)."
+}
