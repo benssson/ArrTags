@@ -172,6 +172,16 @@ without modifying original media files or external services.
   plugin-owned provenance state; original media files and Jellyfin's image cache
   are never modified directly.
 
+## Active Planning Scope
+
+The accepted scope currently being planned or executed is:
+
+`docs/planning/v1.1.md`
+
+The orchestrator determines the active scope from this pointer (see the
+orchestrator's Active Scope Discovery rule). Update this pointer when a new
+accepted scope supersedes the current one.
+
 ## How To Use This Plan
 
 - Keep milestone order unchanged. A milestone may be worked on only after its

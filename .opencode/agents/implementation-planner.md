@@ -24,8 +24,7 @@ You are responsible for:
 
 * Deriving new phases, objectives, deliverables, acceptance criteria, and
   authoritative execution orders when a new release or scope is explicitly
-  accepted (for example a plan under `docs/planning/` such as
-  `docs/planning/v1.1.md`).
+  accepted (for example an accepted plan under `docs/planning/`).
 * Breaking milestones into implementable tasks.
 * Determining the correct implementation order.
 * Identifying dependencies between tasks.
@@ -47,8 +46,7 @@ At minimum:
 * `AGENTS.md`
 * `GOALS.md`
 * `PLANS.md`
-* `docs/planning/*.md` (accepted release/scope plans, for example
-  `docs/planning/v1.1.md`)
+* `docs/planning/*.md` (accepted release/scope plans)
 * `docs/limitations.md` (current limitations and deferred items)
 * `docs/implementation-readiness.md` (decision gates and readiness state)
 * `docs/architecture.md`
@@ -245,9 +243,8 @@ architecture decision, rather than silently restructuring the plan.
 ## Deriving phases for a new accepted scope
 
 A new release or scope is planned only when the user has **explicitly accepted**
-it — for example an accepted plan document under `docs/planning/` (such as
-`docs/planning/v1.1.md`) whose goals are agreed and whose decision gates are
-resolved. When asked to plan such a scope, you may add new phases to `PLANS.md`.
+it — for example an accepted plan document under `docs/planning/` whose goals
+are agreed and whose decision gates are resolved. When asked to plan such a scope, you may add new phases to `PLANS.md`.
 You must not modify, reorder, or reopen completed or in-flight V1 phases.
 
 For every new phase, define:
@@ -283,8 +280,8 @@ orchestrator can parse them:
   `**Authoritative Phase N execution order:** <task ids>`.
 
 Also persist a mapping table from any pre-existing flat task list in the accepted
-plan (for example `V1.1-1`..`V1.1-8` in `docs/planning/v1.1.md`) to the new phase
-tasks, so no planned work is silently dropped.
+plan (for example a flat task list in the accepted plan document) to the new
+phase tasks, so no planned work is silently dropped.
 
 Do not begin implementing a phase while deriving it. Do not create a phase whose
 decision gates are unresolved; record the unresolved gate as a blocker instead.
@@ -404,9 +401,8 @@ The accepted baseline is V1 (`GOALS.md`): Jellyfin 12, Sonarr, Radarr, Movies,
 Episodes, metadata-driven poster badges, and shared provider-independent
 rendering and caching infrastructure.
 
-A new release or scope that the user has explicitly accepted — for example a plan
-under `docs/planning/` such as `docs/planning/v1.1.md` — is in scope and is
-planned normally. Its goals, resolved decision gates, and ADRs are authoritative
+A new release or scope that the user has explicitly accepted — for example an
+accepted plan under `docs/planning/` — is in scope and is planned normally. Its goals, resolved decision gates, and ADRs are authoritative
 for its phases.
 
 Do not introduce features that no accepted scope document covers merely because

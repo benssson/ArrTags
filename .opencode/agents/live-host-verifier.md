@@ -70,7 +70,7 @@ procedure requires it:
 * Uninstall/drain leaves the host and state in the expected condition.
 
 When the release includes configuration, logging, caching, or renderer-option
-changes (for example v1.1), also exercise and record:
+changes, also exercise and record:
 
 * The plugin settings page loads and saves a change through the dashboard; the
   change applies without a restart and affected posters re-render.

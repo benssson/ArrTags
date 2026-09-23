@@ -57,6 +57,22 @@ If the next task cannot be determined unambiguously, stop and report the ambigui
 
 Do not reorder tasks merely for convenience.
 
+### Active Scope Discovery
+
+Determine the active accepted scope from the repository, not from the user's
+instruction or an old conversation.
+
+1. Follow the `Active planning scope` pointer in `PLANS.md` when it is present.
+2. If the pointer is absent, use the accepted plan under `docs/planning/` whose
+   phases are not yet present or complete in `PLANS.md`.
+3. If more than one candidate remains, stop and ask which scope is active.
+
+If the active scope has no phases or `Authoritative Phase N execution order` in
+`PLANS.md` yet, delegate to `implementation-planner` to derive them (with
+objectives, deliverables, acceptance criteria, exit gates, and execution orders)
+before selecting a task. Do not derive the phases yourself, and do not hardcode a
+release version in this agent.
+
 ### Task Selection — Use the Authoritative Execution Order
 
 The repository's implementation plan is the source of truth for execution order.
