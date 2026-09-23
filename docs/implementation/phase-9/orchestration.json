@@ -1,0 +1,107 @@
+{
+  "phase": 9,
+  "title": "Dashboard settings UI and runtime configuration activation",
+  "release": "v1.1.0",
+  "phase_tag": "v1.1.0-phase9",
+  "status": "TASKS_COMPLETE_PENDING_PHASE_REVIEW",
+  "authoritative_execution_order": ["9.1", "9.2", "9.3", "9.4", "9.5"],
+  "tasks": [
+    {
+      "task": "9.1",
+      "title": "Configuration round-trip spike (blocking prerequisite)",
+      "status": "COMPLETE",
+      "commit": "33d86d7",
+      "planning_commit": "f6e96cd",
+      "state_commit": "18f0ac9",
+      "orchestration": "docs/implementation/9.1/orchestration.json",
+      "subagent_invocations": 3,
+      "rework_rounds": 0,
+      "final_gates": {
+        "implementation_reviewer": "APPROVED",
+        "test_quality_reviewer": "CONCERNS (LOW/INFORMATIONAL only; proceed)"
+      }
+    },
+    {
+      "task": "9.2",
+      "title": "Dashboard settings page and embedded page resource",
+      "status": "COMPLETE",
+      "commit": "1fdc8e6",
+      "state_commit": "177ac35",
+      "orchestration": "docs/implementation/9.2/orchestration.json",
+      "subagent_invocations": 3,
+      "rework_rounds": 0,
+      "final_gates": {
+        "implementation_reviewer": "APPROVED",
+        "security_reviewer": "PASS (S-9.2-03 carried to 9.3)"
+      }
+    },
+    {
+      "task": "9.3",
+      "title": "Elevation-gated save path and runtime activation",
+      "status": "COMPLETE",
+      "commit": "c3cc5f3",
+      "state_commit": "2653f94",
+      "orchestration": "docs/implementation/9.3/orchestration.json",
+      "subagent_invocations": 11,
+      "rework_rounds": 3,
+      "rework_reasons": [
+        "attempt 2: user required admin-visible surfacing; jellyfin-expert + architecture-reviewer consulted; ADR-021 added",
+        "attempt 3: security MEDIUM SEC-9.3-01 (non-atomic save) reproduced and fixed (validate-before-persist + lock)",
+        "attempt 4: implementation reviewer required four documentation-only corrections"
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 4)",
+        "security_reviewer": "PASS (SEC-9.3-01 fixed)"
+      }
+    },
+    {
+      "task": "9.4",
+      "title": "Bounded post-save reconciliation trigger",
+      "status": "COMPLETE",
+      "commit": "9edf634",
+      "state_commit": "512635f",
+      "orchestration": "docs/implementation/9.4/orchestration.json",
+      "subagent_invocations": 6,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: test-quality reviewer HIGH TQ-1 (unasserted hosted-service registration) and MEDIUM TQ-2 (untested bounded shutdown) fixed with test-only changes"
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "test_quality_reviewer": "PASS (attempt 2)"
+      }
+    },
+    {
+      "task": "9.5",
+      "title": "Goal A documentation and integration verification",
+      "status": "COMPLETE",
+      "commit": "bf56c3f",
+      "state_commit": "9ce13f8",
+      "orchestration": "docs/implementation/9.5/orchestration.json",
+      "subagent_invocations": 7,
+      "rework_rounds": 2,
+      "rework_reasons": [
+        "attempt 2: documentation-maintainer must-fix inaccuracies (stale pointer, stale counts, restart overclaim, V6 qualifier)",
+        "attempt 3: two prescribed LOW wording fixes folded in"
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "documentation_maintainer": "CONSISTENT (attempt 2), two LOW fixes applied in attempt 3"
+      }
+    }
+  ],
+  "summary": {
+    "total_task_subagent_invocations": 30,
+    "total_rework_rounds": 6,
+    "tasks_complete": 5,
+    "tasks_total": 5,
+    "user_decisions_required": [
+      "9.3: admin-visible surfacing of a rejected configuration save was required by the user (resolved via ADR-021 activity-log entry)"
+    ]
+  },
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null in the per-task records; no estimation was performed.",
+    "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and rework entries.",
+    "Phase tag v1.1.0-phase9 is created only after the phase-reviewer gate passes."
+  ]
+}
