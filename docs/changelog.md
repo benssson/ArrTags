@@ -2631,8 +2631,9 @@ not declared; the Phase 8 review is separate.
 
 ## Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1)
 
-**Status:** In progress (tasks 9.1, 9.2, 9.3, and 9.4 complete; task 9.5 open).
-The phase resolves limitation F2 when complete.
+**Status:** Tasks complete; the independent phase review, Gate 9, and the
+`v1.1.0-phase9` tag are pending (tasks 9.1, 9.2, 9.3, 9.4, and 9.5 complete). The
+phase resolves limitation F2.
 
 ### Task 9.1 - Configuration round-trip spike (blocking prerequisite)
 
@@ -2842,3 +2843,49 @@ media-library enumerator boundary its hosted-service resolution now needs.
 63, Total 1323; +10 passed, +10 total). The final Goal A documentation and
 integration verification (task 9.5) is not part of this task, so limitation F2 is
 not yet recorded as resolved.
+
+### Task 9.5 - Goal A documentation and integration verification
+
+**Status:** Complete. Owns the Goal A documentation reconciliation (v1.1
+documentation checklist V1.1-2) and records limitation F2 as resolved.
+
+The canonical current-state documents are reconciled with the shipped Goal A
+behaviour: `docs/architecture.md` section 6 (runtime activation and the bounded
+post-save reconciliation; limitation F2 resolved), `docs/data-model.md` 3.12
+(the post-save trigger enqueues the same provider-neutral `LibraryWorkHint` work
+at the new configuration version and adds no configuration or state field),
+`docs/limitations.md` (F2 moved to a new **Resolved limitations** section with a
+`Resolved (v1.1 Phase 9, task 9.5)` status; the restart requirement is gone for
+the values resolved per operation and the bounded post-save re-render is wired,
+with the construction-captured artifact-size/decode limits and render work-cache
+TTL/quota and terminal-provenance retention values still requiring a restart,
+consistent with ADR-016's consequences), and `README.md` (the Configuration
+section now states the save is validated and applied without a host restart for
+the settings that resolve per operation, with the construction-captured residual
+documented, and requests the bounded post-save reconciliation; the resolved F2
+bullet is removed from the Known limitations
+list).
+
+New tests (`tests/ArrTags.Tests/GoalAIntegrationTests.cs`, 2 facts) compose the
+full save -> activate -> bounded-reconcile flow without a live host: the pinned
+elevation-gated `PluginsController` JSON deserialization
+(`Jellyfin.Extensions.Json.JsonDefaults.Options`), the real
+`Plugin.UpdateConfiguration` override, the real `ConfigurationSnapshotService`,
+the real `ConfigurationReconciliationTrigger` over the real bounded
+`LibraryReconciliationService`, and the real artwork publishing pipeline over a
+real temporary XML configuration file. A valid save round-trips both previously
+get-only collections (`EnabledLibraries`, `Renderer.Selectors`), activates the
+running snapshot service at the next version without a restart, rotates the
+private secret generation (the new lease is valid at the new version and the
+retired value is not), persists the collections and the changed renderer
+template, and requests exactly one bounded post-save reconciliation whose fresh
+work item at the new version re-renders an existing published poster with the
+saved settings (new renderer configuration fingerprint and a changed published
+fingerprint). An invalid save retains the last valid snapshot and private
+secrets at the unchanged version, leaves the persisted `ArrTags.xml` unchanged,
+writes exactly one bounded, secret-free activity entry, and requests no
+reconciliation (the running trigger loop leaves the bounded queue empty).
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1272, Skipped 63, Total 1335 (baseline Failed 0, Passed 1270, Skipped
+63, Total 1333; +2 passed, +2 total, 0 new skips).

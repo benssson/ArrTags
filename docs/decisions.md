@@ -2137,6 +2137,20 @@ activation.
 - Configuration validation failures must be surfaced safely without exposing
   secret values.
 
+### Implementation note (v1.1, task 9.5)
+
+Clause 5's per-operation activation claim is verified for the bounded work queue
+and in-flight bound, provider/render concurrency, metadata freshness, badge
+definitions, and the renderer output policy. It is not met for every
+`OperationalLimits` value: some singletons capture the artifact-size/decode
+limits and the `StateRepository`-backed render work-cache TTL/quota and
+terminal-provenance retention values from `OperationalLimits` at construction, so
+those particular values still require a host restart. This is a pre-existing
+state/artwork-layer behaviour outside the `UpdateConfiguration` save path; the
+residual is tracked in `docs/limitations.md` F2 and `docs/architecture.md`
+section 6. Clause 5 itself is not rewritten; this note records the divergence
+between its per-operation wording and the shipped behaviour.
+
 ### Rejected alternatives
 
 - A plugin-owned custom configuration-save route was rejected: it would bypass

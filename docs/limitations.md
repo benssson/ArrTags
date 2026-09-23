@@ -1,16 +1,20 @@
 # ArrTags known limitations and deferred decisions
 
-This document is the canonical current-state record of what ArrTags V1 does
+This document is the canonical current-state record of what ArrTags does
 **not** yet do, or has **not** yet verified, so that no unsupported or
-unverified capability is presented as available. It is owned by Phase 7 task
+unverified capability is presented as available. It covers the shipped V1 scope
+and the v1.1 work; the **Resolved limitations** section retains items that were
+previously listed here and are now resolved, with their resolving change, so the
+current-state record stays traceable. It is owned by Phase 7 task
 7.6 and consolidates the deferred decisions previously scattered across
 `PLANS.md` (Post-V1 Backlog), `docs/implementation-readiness.md`,
 `docs/release/build-and-release.md`, and the Phase 6/7 review findings.
 
 It does **not** redefine V1 scope: the in-scope and out-of-scope lists in
 `GOALS.md` still govern. Items here are either deliberate V1 exclusions,
-implementation-time deferrals, or verification gaps caused by the available
-environment. Each item names its evidence (an ADR, a task report under
+implementation-time deferrals, verification gaps caused by the available
+environment, or resolved items retained for traceability. Each item names its
+evidence (an ADR, a task report under
 `docs/implementation/`, or a documented review finding).
 
 Architecture and accepted decisions remain authoritative in
@@ -69,53 +73,14 @@ post-scan, and manual reconciliation enqueues up to `QueueCapacity` work hints
   API requests to Sonarr and Radarr" is only partially met for provider
   fetches. Render and publication are fingerprint-gated and are not affected.
 
-### F2. A saved configuration change is activated at runtime and re-renders existing posters via the bounded post-save trigger
-
-`ConfigurationSnapshotService.TryReplace` is wired to Jellyfin's
-configuration-update mechanism (task 9.3), so a saved change is activated
-without a host restart. Task 9.4 adds the bounded, non-blocking post-save
-reconciliation trigger: a successful replacement requests a reconciliation
-through the plugin-owned `IConfigurationReconciliationTrigger` boundary, whose
-hosted `ConfigurationReconciliationTrigger` loop runs the existing bounded
-`LibraryReconciliationService` off the save thread and enqueues the same
-provider-neutral work hints as every other trigger, so existing posters re-render
-with the saved settings instead of waiting for the next library event, webhook,
-post-scan, or scheduled run. The trigger is never a synchronous full-library
-scan, never blocks the save response, and never throws into the host.
-
-- Evidence: task 7.7, 7.3, 7.8, and 9.4 worker reports; `PLANS.md` Phase 9 tasks
-  9.3, 9.4, and 9.5; `docs/implementation-readiness.md`.
-- Consequence: before task 9.3, a saved webhook-secret, provider enable/disable,
-  badge/selector, or DG-6 limit change was **not observed until the process
-  restarted**, and the live tasks 7.3 and 7.8 configured the plugin by writing
-  `data/plugins/configurations/ArrTags.xml` and restarting. That restart
-  consequence is resolved: the bounded work queue, provider/render concurrency
-  limiters, freshness window, retention interval, badge definitions, and the
-  renderer output policy resolve their values from the current snapshot per
-  operation, so the replaced snapshot is observed by subsequent work. The
-  re-render promptness consequence is also resolved by task 9.4's bounded
-  post-save trigger.
-- Current state (v1.1): task 9.2 added the dashboard settings page, which reads
-  and saves the configuration through Jellyfin's elevation-gated
-  `PluginsController` path, so an operator no longer has to edit
-  `ArrTags.xml` by hand. Task 9.3 overrides `Plugin.UpdateConfiguration` to
-  validate the candidate before the base implementation persists it: a valid
-  candidate is persisted and activated at runtime, while an invalid candidate is
-  rejected before persistence (it is never written to `ArrTags.xml`) and the last
-  valid public snapshot and private secret generation remain active and
-  persisted. Task 9.4 requests the bounded, non-blocking post-save reconciliation
-  after a successful replacement, so an already-published poster re-renders
-  promptly with the saved settings. The final Goal A verification that formally
-  records F2 as resolved (task 9.5) remains.
-
 ### F3. No bounded, secret-free metrics/diagnostic-status surface
 
 Queue depth, provider health, matching, cache, rendering, and stale-data
 counters exist internally, but there is no bounded, secret-free user-facing or
 diagnostic status surface.
 
-- Evidence: `docs/architecture.md` line 1114 (documented as an open limitation
-  here); `PLANS.md` Post-V1 Backlog.
+- Evidence: `docs/architecture.md` lines 1209-1212 (documented as an open
+  limitation here); `PLANS.md` Post-V1 Backlog.
 - Consequence: operators have no supported in-product view of queue depth or
   provider health. Architecture section 12 states this as a recommendation, not
   a hard V1 gate.
@@ -148,6 +113,72 @@ of ADR-010).
   a bundled copy. Validated only on the pinned Jellyfin `12.0.0`
   `linux-musl-x64` host; the plugin makes no RID-specific claim and does not
   distinguish musl from glibc.
+
+## Resolved limitations
+
+These items were previously recorded here as open limitations and are now
+resolved. They are retained with their evidence and the resolving change so the
+current-state record stays traceable; the shipped behaviour is authoritative in
+`docs/architecture.md`, `docs/data-model.md`, and `docs/decisions.md`.
+
+### F2. A saved configuration change is activated at runtime and re-renders existing posters via the bounded post-save trigger
+
+**Status:** Resolved (v1.1 Phase 9, task 9.5). The restart requirement is gone
+for the values resolved per operation and the bounded post-save re-render is
+wired, consistent with ADR-016's consequences; a residual restart requirement
+remains for the construction-captured limit values (see below and the ADR-016
+decision-record note in `docs/decisions.md`).
+
+`ConfigurationSnapshotService.TryReplace` is wired to Jellyfin's
+configuration-update mechanism (task 9.3), so a saved change is activated
+without a host restart for the values resolved per operation (see the residual
+below). Task 9.4 adds the bounded, non-blocking post-save
+reconciliation trigger: a successful replacement requests a reconciliation
+through the plugin-owned `IConfigurationReconciliationTrigger` boundary, whose
+hosted `ConfigurationReconciliationTrigger` loop runs the existing bounded
+`LibraryReconciliationService` off the save thread and enqueues the same
+provider-neutral work hints as every other trigger, so existing posters re-render
+with the saved settings instead of waiting for the next library event, webhook,
+post-scan, or scheduled run. The trigger is never a synchronous full-library
+scan, never blocks the save response, and never throws into the host. Task 9.5
+composes the full save -> activate -> bounded-reconcile flow in
+`GoalAIntegrationTests` (the pinned POST deserialization, the real
+`Plugin.UpdateConfiguration` override, the real snapshot service, the real
+post-save trigger over the bounded reconciliation service, and the real artwork
+publishing pipeline) and records F2 as resolved.
+
+- Evidence: task 7.7, 7.3, 7.8, 9.3, 9.4, and 9.5 worker reports; `PLANS.md`
+  Phase 9 tasks 9.3, 9.4, and 9.5; ADR-016; `docs/implementation-readiness.md`.
+- Historical consequence: before task 9.3, a saved webhook-secret, provider
+  enable/disable, badge/selector, or DG-6 limit change was **not observed until
+  the process restarted**, and the live tasks 7.3 and 7.8 configured the plugin
+  by writing `data/plugins/configurations/ArrTags.xml` and restarting. That
+  restart consequence is resolved for the values that resolve per operation: the
+  bounded work queue, provider/render concurrency limiters, metadata freshness,
+  badge definitions, and the renderer output policy resolve their values from the
+  current snapshot per operation, so the replaced snapshot is observed by
+  subsequent work. A residual remains: some singletons capture the
+  artifact-size/decode limits and the `StateRepository`-backed render work-cache
+  TTL/quota and terminal-provenance retention values from `OperationalLimits` at
+  construction, so those particular values still require a host restart; this is
+  the pre-existing state/artwork-layer behaviour recorded in
+  `docs/architecture.md` section 6, and ADR-016 clause 5's per-operation claim is
+  therefore met for queue/concurrency/freshness/badge/renderer-output but not for
+  those construction-captured values (see the ADR-016 note in
+  `docs/decisions.md`). The re-render promptness consequence is resolved by task
+  9.4's bounded post-save trigger.
+- Resolved state (v1.1): task 9.2 added the dashboard settings page, which reads
+  and saves the configuration through Jellyfin's elevation-gated
+  `PluginsController` path, so an operator no longer has to edit
+  `ArrTags.xml` by hand. Task 9.3 overrides `Plugin.UpdateConfiguration` to
+  validate the candidate before the base implementation persists it: a valid
+  candidate is persisted and activated at runtime, while an invalid candidate is
+  rejected before persistence (it is never written to `ArrTags.xml`) and the last
+  valid public snapshot and private secret generation remain active and
+  persisted. Task 9.4 requests the bounded, non-blocking post-save reconciliation
+  after a successful replacement, so an already-published poster re-renders
+  promptly with the saved settings. Task 9.5 verifies the composed flow at the
+  integration-test level without a live host.
 
 ## Verification coverage limits
 
@@ -236,9 +267,12 @@ original source poster.
 
 The host route/response, plugin-discovery, native-Skia, and package-content
 facts skip unless `ARRTAGS_JELLYFIN_HOST_DIR` points at the pinned host (and,
-for package content, `./build.sh package` has been run). The default suite is
-1,228 passed / 60 skipped / 1,288 total; the host-guarded suite is 1,244 passed
-/ 44 skipped / 1,288 total.
+for package content, `./build.sh package` has been run). The counts below are the
+`1.0.1.0` release matrix and are not current v1.1 truth: the `1.0.1.0` default
+suite was 1,228 passed / 60 skipped / 1,288 total and the `1.0.1.0` host-guarded
+suite was 1,244 passed / 44 skipped / 1,288 total. The current v1.1 working suite
+is Failed 0, Passed 1,272, Skipped 63, Total 1,335; the v1.1 release task
+refreshes this matrix (test-quality review finding TQ-8).
 
 - Evidence: tasks 7.5/7.8 worker reports; `docs/release/build-and-release.md`.
 - Consequence: the default `./build.sh test` run does not exercise the real host

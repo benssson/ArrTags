@@ -849,7 +849,10 @@ candidate before the base implementation persists anything (using the same
 `PluginConfigurationValidator` the snapshot service uses); a valid candidate is
 persisted by the host base implementation and then activated through
 `ConfigurationSnapshotService.TryReplace` (ADR-016 clause 4), so a saved change is
-observed without a host restart. An invalid candidate is rejected before
+observed without a host restart for the values resolved per operation (some
+construction-captured limits still require a host restart; see
+`docs/limitations.md` F2 and the ADR-016 implementation note in
+`docs/decisions.md`). An invalid candidate is rejected before
 persistence: the override does not call the base implementation, so a rejected
 candidate is never written to `plugins/configurations/ArrTags.xml` and neither the
 public snapshot nor the private secret map changes. The whole
@@ -863,7 +866,15 @@ entry through the plugin-owned `IConfigurationRejectionNotifier` adapter
 secret or candidate value. Services that resolve
 from the current snapshot per operation (work queue capacity and in-flight
 bound, provider/render concurrency, metadata freshness, badge definitions, and
-the renderer output policy) observe the replaced snapshot by subsequent work.
+the renderer output policy) observe the replaced snapshot by subsequent work. A
+successful activation also requests the bounded, non-blocking post-save
+reconciliation (task 9.4, ADR-016 clause 5 second bullet), which enqueues the
+same provider-neutral `LibraryWorkHint` work as every other trigger at the new
+configuration version, so an existing poster re-renders promptly instead of
+waiting for the next scheduled run; the trigger adds no configuration or state
+field. Task 9.5's Goal A integration verification exercises the full save ->
+activate -> bounded-reconcile flow without a live host, and limitation F2 is
+recorded as resolved.
 
 #### 3.12.1 Secret resolution semantics
 

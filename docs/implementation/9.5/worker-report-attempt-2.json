@@ -1,0 +1,31 @@
+{
+  "task": "9.5",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation-only rework of task 9.5 closing the documentation-maintainer's must-fix findings. No code or test was changed. Finding 1 (HIGH): PLANS.md Active Planning Scope pointer (~lines 188-192) no longer says the first open task is 9.3; it now states Phase 9 tasks 9.1-9.5 are complete and the next step is the independent Phase 9 phase review (Gate 9 and the v1.1.0-phase9 tag), with live Goal A confirmation owned by task 14.3. Finding 2 (MEDIUM): docs/project-status.md (~lines 590-601) now labels the 1,288/1,228/1,244 counts as the 1.0.1.0 release matrix, states they are not current v1.1 truth, and gives the current v1.1 working suite (Failed 0, Passed 1,272, Skipped 63, Total 1,335). Finding 3 (MEDIUM): the 'without a host restart' overclaim was qualified in docs/limitations.md F2 (status, intro paragraph, and historical-consequence bullet), README.md Configuration (~lines 51-65), and docs/data-model.md 3.12 (~line 851), and the PLANS.md Post-V1 backlog item (~line 4961) that wrongly listed the retention interval as per-operation was corrected; the residual (construction-captured artifact-size/decode limits and StateRepository-backed render work-cache TTL/quota and terminal-provenance retention values still require a host restart) is now the documented residual. A new 'Implementation note (v1.1, task 9.5)' subsection was added under ADR-016 in docs/decisions.md recording the clause-5 vs shipped-behaviour divergence without rewriting clause 5. Finding 4 (MEDIUM): docs/limitations.md V6 now labels its counts as the 1.0.1.0 release matrix, names them as not current v1.1 truth, and notes the v1.1 release task refreshes them (TQ-8 deferral); docs/release/build-and-release.md was left unchanged. Optional polish: project-status current milestone now reflects Phase 9 as active (phase review/tag pending) with Phase 8 relabelled as the previously gated milestone; docs/changelog.md Phase 9 status is now 'Tasks complete; the independent phase review, Gate 9, and the v1.1.0-phase9 tag are pending'; the F3 evidence citation was corrected from docs/architecture.md line 1114 to lines 1209-1212; and the limitations.md intro now notes the document carries shipped V1 plus v1.1 scope and retains the new 'Resolved limitations' section for traceability.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1272, Skipped: 63, Total: 1335 (unchanged from attempt 1; docs-only change).",
+    "Stale-string grep: 'first open implementation task is **9.3**' absent from PLANS.md; 'reflect the current suite' absent from docs/project-status.md; 'line 1114' absent from docs/limitations.md; 'retention interval' absent from docs/limitations.md, README.md, and PLANS.md (all confirmed gone).",
+    "docs/limitations.md V6 and docs/project-status.md release-matrix text inspected to confirm the 1.0.1.0 qualifier and the current v1.1 counts are both present."
+  ],
+  "changed_files": [
+    "PLANS.md",
+    "README.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/decisions.md",
+    "docs/limitations.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "The Goal A acceptance criteria are still verified at the integration-test level only. Exact behaviour: the composed save -> activate -> bounded-reconcile flow is exercised in-process (Phase6Harness plus a real temporary XML configuration file), not against a live Jellyfin host. Precondition: no live pinned host is available (ARRTAGS_JELLYFIN_HOST_DIR unset, 63 host-guarded facts skipped). Consequence: the live dashboard-page/activation confirmation remains owned by task 14.3 per PLANS.md Gate 9.",
+    "The residual restart requirement is documented, not removed. Exact behaviour: some singletons capture the artifact-size/decode limits and the StateRepository-backed render work-cache TTL/quota and terminal-provenance retention values from OperationalLimits at construction. Precondition: one of those particular limits is changed in a save. Consequence: the new value takes effect only after a host restart; this is recorded in docs/limitations.md F2, docs/data-model.md 3.12, README.md, docs/architecture.md section 6, and the ADR-016 implementation note in docs/decisions.md.",
+    "docs/release/build-and-release.md still carries the 1.0.1.0 test matrix (correctly labelled there). Exact behaviour: it was left unchanged per instruction. Precondition: the v1.1 release matrix is not final. Consequence: the v1.1 release task (14.x) must refresh it, as also noted in docs/limitations.md V6 (TQ-8)."
+  ],
+  "ready_for_next_task": true
+}

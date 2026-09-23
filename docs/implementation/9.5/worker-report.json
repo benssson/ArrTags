@@ -1,0 +1,26 @@
+{
+  "task": "9.5",
+  "attempt": 3,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation-only correction of task 9.5 applying the documentation-maintainer's two prescribed wording fixes. No code or test was changed. Fix 1: docs/implementation-readiness.md (lines 509-514, the v1.1 promoted runtime-configuration-replacement item) now qualifies the broad claim - a saved webhook secret, provider enable/disable, badge/selector change, or DG-6 limit change is observed without a restart 'for the values resolved per operation', and states that construction-captured limits (the artifact-size/decode limits and the render work-cache TTL/quota and terminal-provenance retention) still require a restart, citing docs/limitations.md F2. Fix 2: docs/changelog.md task 9.5 entry (lines 2857-2867) no longer says flatly that F2's 'restart requirement is gone' or that README 'states the save is validated and applied without a restart'; it now says the restart requirement is gone 'for the values resolved per operation' with the construction-captured artifact-size/decode limits and render work-cache TTL/quota and terminal-provenance retention values still requiring a restart, and says the README section states the save is validated and applied without a host restart 'for the settings that resolve per operation, with the construction-captured residual documented'. Both edits match the qualified F2/README/data-model wording from attempt 2. No other file or sentence was changed.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1272, Skipped: 63, Total: 1335 (unchanged; docs-only).",
+    "grep for 'without a restart'/'without a host restart' across README.md, PLANS.md, docs/architecture.md, docs/data-model.md, docs/limitations.md, docs/project-status.md, docs/implementation-readiness.md, docs/changelog.md, docs/decisions.md: the broad enumerating claims in docs/implementation-readiness.md (line 509-514) and docs/changelog.md (line 2857-2867) are now qualified with the per-operation/residual wording; all remaining occurrences are snapshot-specific (ADR-016 clause 4 semantics), plan acceptance criteria, or historical task records, and the residual is documented in docs/limitations.md F2 and the ADR-016 implementation note.",
+    "Read back both edited passages to confirm the exact wording."
+  ],
+  "changed_files": [
+    "docs/implementation-readiness.md",
+    "docs/changelog.md"
+  ],
+  "known_limitations": [
+    "Goal A is verified at the integration-test level only; live dashboard-page/activation confirmation remains owned by task 14.3 (63 host-guarded facts skipped, ARRTAGS_JELLYFIN_HOST_DIR unset).",
+    "The residual restart requirement is documented, not removed: construction-captured artifact-size/decode limits and StateRepository-backed render work-cache TTL/quota and terminal-provenance retention values take effect only after a host restart (docs/limitations.md F2, docs/data-model.md 3.12, README.md, docs/architecture.md section 6, ADR-016 implementation note, and now docs/implementation-readiness.md and docs/changelog.md).",
+    "docs/release/build-and-release.md still carries the correctly-labelled 1.0.1.0 matrix; the v1.1 release task (14.x) must refresh it (TQ-8), as noted in docs/limitations.md V6."
+  ],
+  "ready_for_next_task": true
+}

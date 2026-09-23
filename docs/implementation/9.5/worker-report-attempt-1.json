@@ -1,0 +1,33 @@
+{
+  "task": "9.5",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Completed the v1.1 Phase 9 task 9.5 Goal A documentation reconciliation and integration verification. Added tests/ArrTags.Tests/GoalAIntegrationTests.cs (2 facts) composing the full save -> activate -> bounded-reconcile flow without a live host: the pinned elevation-gated PluginsController JSON deserialization (Jellyfin.Extensions.Json.JsonDefaults.Options), a real Plugin.UpdateConfiguration override, a real ConfigurationSnapshotService, a real ConfigurationReconciliationTrigger over the real bounded LibraryReconciliationService, and the real artwork publishing pipeline (Phase6Harness) over a real temporary ArrTags.xml. The valid-save fact round-trips the previously get-only EnabledLibraries and Renderer.Selectors into the activated snapshot and the persisted XML, activates at the next version with no restart, rotates the private secret generation (new lease valid at the new version, retired value not), requests exactly one bounded post-save reconciliation, dequeues a fresh work item at the new version, and re-renders an existing published poster with a new renderer configuration fingerprint and a changed published fingerprint. The invalid-save fact retains the last valid snapshot and private secrets at the unchanged version, leaves the persisted XML unchanged, writes exactly one bounded secret-free activity entry, and requests no reconciliation (running trigger loop leaves the bounded queue empty). Reconciled the canonical documents: docs/limitations.md F2 was moved to a new 'Resolved limitations' section with a 'Resolved (v1.1 Phase 9, task 9.5)' status (restart requirement gone, bounded post-save re-render wired, consistent with ADR-016's consequences); docs/architecture.md section 6 and its status line now record F2 resolved; docs/data-model.md 3.12 documents the post-save trigger work hints and adds no field; README.md Configuration states the resolved behaviour and drops the stale F2 bullet from Known limitations; PLANS.md task 9.5 status/checkbox, project status, Milestone Status row, Phase 9 acceptance checkboxes, and the Post-V1 backlog note were updated; docs/changelog.md gained a Task 9.5 entry and a Phase 9 Complete status; docs/project-status.md and docs/implementation-readiness.md had their current-state Phase 9 lines and open-follow-up lists updated. Historical task 9.1-9.4 status records were left intact.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~GoalAIntegrationTests\" -> Passed! - Failed: 0, Passed: 2, Skipped: 0, Total: 2. Re-run three times consecutively with identical results (determinism of the async bounded-reconcile and negative no-request assertions).",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1272, Skipped: 63, Total: 1335 (pre-task baseline from task 9.4: Failed 0, Passed 1270, Skipped 63, Total 1333; +2 passed, +2 total, 0 new skips; the 63 skips are the pre-existing host-guarded facts skipped because ARRTAGS_JELLYFIN_HOST_DIR is unset)."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/GoalAIntegrationTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "The Goal A acceptance criteria are verified at the integration-test level only. Exact behaviour: the composed save -> activate -> bounded-reconcile flow is exercised in-process with host doubles (Phase6Harness and a real temporary XML configuration file), not against a live Jellyfin host. Precondition: no live pinned host is available in this environment (ARRTAGS_JELLYFIN_HOST_DIR is unset, so 63 host-guarded facts are skipped). Consequence: the live dashboard-page/activation confirmation remains owned by task 14.3 (per PLANS.md Gate 9), not by this task.",
+    "The post-save reconciliation reuses the existing full bounded library reconciliation rather than a targeted re-enqueue of only already-published subjects. Exact behaviour: the run is bounded by OperationalLimits.ReconciliationBatchSize per page and the work-queue capacity. Precondition: a library scope larger than QueueCapacity. Consequence: the pre-existing F4 bounded-prefix limitation applies to the post-save run too (a single run covers a bounded prefix and successive runs re-cover the same prefix); this is carried as limitation F4 in docs/limitations.md.",
+    "docs/limitations.md V6 and docs/release/build-and-release.md still carry the 1.0.1.0 test-matrix counts (TQ-8, informational). Exact behaviour: those counts were not changed. Precondition: the v1.1 release matrix is not final. Consequence: the v1.1 release/documentation task (14.x) must update them; this was explicitly out of scope for 9.5."
+  ],
+  "ready_for_next_task": true
+}

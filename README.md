@@ -50,14 +50,19 @@ selectors/templates and palette overrides, and the operational limits.
 
 The page itself embeds no secret and only shows a secret value that Jellyfin's
 existing administrator configuration API already returns. A saved change is
-validated and applied to the running plugin **without a host restart**; an
-invalid change is rejected, the last valid configuration stays active, and the
+validated and applied to the running plugin without a host restart for the
+settings that resolve per operation (the queue and concurrency limits, metadata
+freshness, badge definitions, and the renderer output policy); a few
+construction-captured limits (the artifact-size/decode limits and the render
+work-cache TTL/quota and retention values) still take effect only after a host
+restart. An invalid change is rejected, the last valid configuration stays
+active, and the
 rejection is recorded as a bounded, secret-free entry in the Jellyfin Activity
 log. A successful save also requests a bounded post-save reconciliation, so
 existing posters re-render with the new settings promptly instead of waiting for
 the next library event, webhook, post-scan, or scheduled run
-(`docs/limitations.md` F2; the final Goal A integration verification is task
-9.5). The XML below
+(`docs/limitations.md` F2, resolved in v1.1, with the construction-captured
+residual recorded there). The XML below
 remains the persisted shape and can still be edited directly at
 `plugins/configurations/ArrTags.xml` (that is,
 `<data>/plugins/configurations/ArrTags.xml`).
@@ -162,12 +167,6 @@ The canonical record of what ArrTags does not yet do or has not yet verified is
   re-reads the provider library, so the "avoid unnecessary provider requests"
   goal is only partially met for provider fetches; rendering and publication are
   fingerprint-gated (F1).
-- **Saved configuration changes are activated and re-render existing posters.**
-  A saved change is activated without a restart and requests a bounded
-  post-save reconciliation, so existing posters re-render promptly instead of
-  waiting for the next library event, webhook, post-scan, or scheduled run (F2;
-  the final Goal A integration verification that records F2 as resolved is
-  task 9.5).
 - **Jellyfin Enhanced coexistence is verified at the contract level only**;
   Enhanced is not installed on the pinned host (V3).
 - **Live-verification gaps.** There is no live Sonarr/Radarr instance, the live

@@ -1,0 +1,117 @@
+{
+  "task": "9.5",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "9.5-R5",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/current-state",
+      "summary": "The docs/changelog.md Task 9.5 entry still summarises the F2 move as 'the restart requirement is gone' without the residual qualification that attempt 2 added to F2 itself.",
+      "detail": "docs/changelog.md:2858 says the F2 move means 'the restart requirement is gone and the bounded post-save re-render is wired, consistent with ADR-016's consequences'. The corrected docs/limitations.md F2 (lines 126-166) now says the restart requirement is gone only 'for the values resolved per operation' and documents the construction-captured artifact-size/decode, render work-cache TTL/quota, and terminal-provenance retention residual. This is a chronological task record summarising the change, and it points to the (now-qualified) F2 section and the ADR-016 implementation note, so it does not misrepresent the shipped behaviour to a reader following the reference; the same unqualified phrasing also appears in the historical task 9.3 records (docs/changelog.md:2732, docs/project-status.md:52, docs/implementation-readiness.md:5, PLANS.md milestone row 9), which are task records of the per-operation activation and are not required to be rewritten. Recorded so the orchestrator is aware; not a material defect because every authoritative current-state description of the residual is now present.",
+      "evidence": [
+        "docs/changelog.md:2850-2862 (Task 9.5 entry)",
+        "docs/limitations.md:126-166 (corrected F2 residual)",
+        "docs/decisions.md:2140-2153 (ADR-016 implementation note)",
+        "docs/architecture.md:263-271 (section 6 residual)"
+      ],
+      "recommended_action": "No change required for approval; optionally qualify the Task 9.5 changelog summary in a later documentation pass."
+    },
+    {
+      "id": "9.5-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirements/phase-acceptance-criteria",
+      "summary": "Phase 9 acceptance criterion 1 (settings page appears in the dashboard) is checked; its strongest evidence (the pinned DashboardController serving the page) is host-guarded and skipped in the default suite, with live confirmation deferred to task 14.3.",
+      "detail": "Unchanged from attempt 1. The non-host DashboardSettingsPageTests prove the page declaration, embedded resource, in-tree page contract, field coverage, and secret-free source; the pinned-controller-serving fact is [JellyfinHostFact] and skipped without ARRTAGS_JELLYFIN_HOST_DIR. PLANS.md Gate 9 explicitly frames the criteria as met at the integration-test level with live confirmation owned by task 14.3.",
+      "evidence": [
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs:32-229",
+        "PLANS.md:3848-3865",
+        "dotnet test output: DashboardSettingsPageTests.PinnedDashboardControllerServesTheArrTagsSettingsPage [SKIP]"
+      ],
+      "recommended_action": "No change required; phase reviewer / task 14.3 owns the live confirmation."
+    },
+    {
+      "id": "9.5-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/non-vacuity",
+      "summary": "The valid-save fact asserts at least one post-save reconciliation and dequeues one item at the new version, rather than asserting an exact request count.",
+      "detail": "Unchanged from attempt 1. The exact one-bounded-request/coalesced-rerun behavior is proven by ConfigurationReconciliationTriggerTests; GoalAIntegrationTests proves the save-triggered v2 work item and the resulting re-render.",
+      "evidence": [
+        "tests/ArrTags.Tests/GoalAIntegrationTests.cs:100-121",
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "9.5-R4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/historical-record",
+      "summary": "docs/research/jellyfin-12-architecture.md still describes F2 as not connected to UpdateConfiguration.",
+      "detail": "Unchanged from attempt 1; a dated research snapshot, not a current-state surface, and not in the task's named documentation impact.",
+      "evidence": [
+        "docs/research/jellyfin-12-architecture.md:873,901"
+      ],
+      "recommended_action": "No change required."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1272, Skipped 63, Total 1335 (independently re-run after attempt 2; unchanged from attempt 1, consistent with a docs-only rework).",
+    "GoalAIntegrationTests.cs unchanged: mtime 2026-09-23 15:53:30 (before the attempt-2 rework at 16:17-16:18), still 373 lines with the same two facts DashboardSaveRoundTripsActivatesAndBoundedlyReconcilesAnExistingPoster and InvalidDashboardSaveRetainsLastValidSnapshotAndSecretsWithoutReconciling; sha256 7b34bf9f6b72e117f3ca7329cf64f99e5e9412897fc422cf35454d081e2477e9.",
+    "git diff --name-only contains only .md files; no src/ or test changes in attempt 2."
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-016 clause 5 (unchanged; the new 'Implementation note (v1.1, task 9.5)' records the per-operation divergence without rewriting the clause).",
+    "docs/decisions.md ADR-021 (unchanged).",
+    "docs/planning/v1.1.md Goal A criteria (unchanged)."
+  ],
+  "documentation_checked": [
+    "PLANS.md (Active Planning Scope pointer now points to the Phase 9 phase review / Gate 9 / tag; milestone row 9; task 9.5 status; Phase 9 checkboxes; Post-V1 backlog residual).",
+    "docs/project-status.md (Current milestone now Phase 9 with Phase 8 relabelled previously gated; 1.0.1.0 matrix counts explicitly labelled and current v1.1 counts given; open follow-ups F2 removed).",
+    "docs/limitations.md (intro updated; F2 residual qualified; F3 line reference corrected to architecture lines 1209-1212; V6 counts labelled 1.0.1.0 matrix with current v1.1 counts).",
+    "README.md (Configuration section qualifies the per-operation restart scope and records the construction-captured residual).",
+    "docs/data-model.md 3.12 (qualifies the per-operation restart scope; references F2 and the ADR-016 note).",
+    "docs/decisions.md (new ADR-016 implementation note; clause 5 text unchanged).",
+    "docs/changelog.md (Phase 9 status now 'Tasks complete; independent phase review, Gate 9, and v1.1.0-phase9 tag pending'; 9.5 entry appended).",
+    "docs/architecture.md (section 6 status/residual unchanged from attempt 1; authoritative residual already present).",
+    "docs/implementation-readiness.md (unchanged in attempt 2).",
+    "docs/release/build-and-release.md (left unchanged per TQ-8 instruction)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "reviewer_report": "docs/implementation/9.5/reviewer-report.json",
+      "findings": "Four INFORMATIONAL/noted findings (host-guarded page-serving evidence; stale V6 counts deferred to TQ-8; exact-count wording; dated research snapshot). No blockers, no required changes."
+    },
+    {
+      "attempt": 2,
+      "trigger": "The designated documentation-maintainer found must-fix documentation inaccuracies; the worker reworked documentation only.",
+      "changes_verified": [
+        "PLANS.md Active Planning Scope pointer no longer says the first open task is 9.3; it now states Phase 9 tasks 9.1-9.5 complete and the next step is the independent phase review (Gate 9 / v1.1.0-phase9 tag), live Goal A confirmation owned by task 14.3.",
+        "docs/project-status.md 1,288/1,228/1,244 counts are now explicitly labelled the 1.0.1.0 release matrix, stated not to be current v1.1 truth, with the current v1.1 suite (Failed 0, Passed 1,272, Skipped 63, Total 1,335) given.",
+        "'without a host restart' qualified in docs/limitations.md F2 (status, intro, historical-consequence bullet), README.md Configuration, docs/data-model.md 3.12, and the PLANS.md Post-V1 backlog (retention interval corrected from per-operation); the construction-captured residual is documented and a new ADR-016 'Implementation note (v1.1, task 9.5)' records the clause-5 divergence without rewriting clause 5.",
+        "docs/limitations.md V6 counts labelled the 1.0.1.0 matrix and noted as refreshed by the v1.1 release task (TQ-8); docs/release/build-and-release.md left unchanged.",
+        "Polish: project-status current milestone, changelog Phase 9 status wording, F3 line reference corrected to architecture lines 1209-1212, limitations intro updated."
+      ],
+      "outcome": "APPROVED (attempt 2)"
+    }
+  ],
+  "ready_for_next_task": true,
+  "verified_claims": [
+    "Attempt 2 changed documentation only: git diff --name-only lists only .md files (PLANS.md, README.md, docs/changelog.md, docs/data-model.md, docs/decisions.md, docs/limitations.md, docs/project-status.md); no src/ or test changes. The previously approved GoalAIntegrationTests.cs is unchanged (mtime 15:53:30 predates the 16:17-16:18 rework; 373 lines; same two facts; sha256 7b34bf9f...).",
+    "All four documentation-maintainer must-fix corrections are present and accurate, and the stale strings are gone: 'first open implementation task is **9.3**', 'reflect the current suite', 'line 1114', and 'retention interval' no longer appear where they were wrong.",
+    "No new contradiction or overclaim was introduced: the F2 status, README, data-model 3.12, PLANS backlog, architecture section 6, and the ADR-016 implementation note all agree on the per-operation restart scope and the construction-captured residual.",
+    "V1 history is not rewritten: ADR-016 clause 5 and ADR-021 text are unchanged (the decisions.md diff is purely additive, +14 lines), the 9.1-9.4 changelog entries and PLANS task statuses are intact, and the F2 entry retains its evidence and historical consequence.",
+    "Goal A acceptance criteria remain accurately presented: PLANS Gate 9 still requires tasks 9.1-9.5 criteria, the integration-test-level Goal A criteria, the approved phase review, and the v1.1.0-phase9 tag; the phase review/Gate 9/tag and task 14.3 live confirmation are shown as outstanding in PLANS (status paragraph, Active Planning Scope, milestone row, Gate 9), docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md.",
+    "The full default suite is unchanged after the docs-only rework: Failed 0, Passed 1272, Skipped 63, Total 1335 (independently re-run).",
+    "The F3 evidence citation now points at docs/architecture.md lines 1209-1212, which genuinely document the missing bounded metrics/diagnostic-status surface.",
+    "docs/limitations.md V6 and docs/release/build-and-release.md remain correctly labelled/deferred (TQ-8) without presenting the 1.0.1.0 matrix as current v1.1 truth."
+  ],
+  "notes": "APPROVED (attempt 2). The documentation-only rework closes the documentation-maintainer's must-fix findings accurately: the Active Planning Scope pointer, the release-matrix count labelling, the 'without a host restart' overclaim (now qualified in every authoritative surface with the construction-captured residual recorded, including a non-rewriting ADR-016 implementation note), and the V6 count labelling. No code or test changed and GoalAIntegrationTests.cs is byte-for-byte the previously approved file; the suite still reproduces 1272/63/1335. V1 history and ADR-016 clause 5 are intact. The only new observation is LOW/informational (the Task 9.5 changelog summary retains an unqualified 'restart requirement is gone' phrase while F2 itself now carries the residual), which does not affect the shipped-behaviour description a reader follows from that entry and does not require rework. Gate 9's independent phase review and the v1.1.0-phase9 tag remain the orchestrator's next step, correctly recorded as pending."
+}

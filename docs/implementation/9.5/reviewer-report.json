@@ -1,0 +1,111 @@
+{
+  "task": "9.5",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "9.5-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirements/phase-acceptance-criteria",
+      "summary": "Phase 9 acceptance criterion 1 (settings page appears in the dashboard) is checked; its strongest evidence (the pinned DashboardController actually serving the page) is host-guarded and skipped in the default suite, with live dashboard confirmation deferred to task 14.3.",
+      "detail": "The non-host facts in DashboardSettingsPageTests prove GetPages() returns the single page, the embedded resource resolves by logical name, the page follows the in-tree dashboard configuration-page contract, and the page loads current configuration via ApiClient.getPluginConfiguration. The fact that the pinned Jellyfin 12.0.0 DashboardController serves the resource is [JellyfinHostFact] and is skipped when ARRTAGS_JELLYFIN_HOST_DIR is unset (observed as 2 of the 63 skips). PLANS.md Gate 9 explicitly frames the phase criteria as met 'at the integration-test level' with 'live confirmation ... owned by task 14.3', so checking the box is consistent with the project's own gate framing; this is a scope/evidence qualification, not a defect.",
+      "evidence": [
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs:32-229",
+        "PLANS.md:3848-3865 (Phase 9 acceptance criteria and Gate 9)",
+        "dotnet test output: DashboardSettingsPageTests.PinnedDashboardControllerServesTheArrTagsSettingsPage [SKIP]"
+      ],
+      "recommended_action": "No change required for task 9.5; the phase reviewer/task 14.3 owns the live confirmation."
+    },
+    {
+      "id": "9.5-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/current-state",
+      "summary": "docs/limitations.md V6 still carries the 1.0.1.0 test-matrix counts (1,228/60/1,288), stale versus the current 1,272/63/1,335.",
+      "detail": "V6 and docs/release/build-and-release.md were intentionally left unchanged for the release/documentation task (documented TQ-8, deferred by the task 9.4 test-quality review and explicitly out of scope for 9.5). The counts were already stale before this task, and the orchestrator instruction was to confirm they were left for TQ-8. Not a required change here.",
+      "evidence": [
+        "docs/limitations.md:251-261 (V6 counts unchanged by the diff)",
+        "docs/implementation/9.4/test-quality-review.json TQ-8",
+        "docs/implementation/9.5/worker-report.json known_limitations[2]"
+      ],
+      "recommended_action": "No change required; the v1.1 release task (TQ-8) updates the matrix."
+    },
+    {
+      "id": "9.5-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/non-vacuity",
+      "summary": "The valid-save fact asserts at least one post-save reconciliation and dequeues one item at the new version, rather than asserting an exact request count.",
+      "detail": "The GoalAIntegrationTests valid-save fact waits for Queue.Count >= 1 and asserts the dequeued work item's ConfigurationVersion == 2; the exact 'one bounded request / coalesced rerun' behavior is proven separately by ConfigurationReconciliationTriggerTests (task 9.4). The status wording 'requests exactly one bounded post-save reconciliation' is therefore supported by the combination of the two test classes, not by the integration fact alone. This is a wording/coverage nuance, not a correctness gap.",
+      "evidence": [
+        "tests/ArrTags.Tests/GoalAIntegrationTests.cs:100-105",
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs (coalescing/exactly-one facts)"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "9.5-R4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/historical-record",
+      "summary": "docs/research/jellyfin-12-architecture.md still describes F2 as not connected to UpdateConfiguration.",
+      "detail": "Lines 873 and 901 are a dated research snapshot ('currently not connected to UpdateConfiguration (docs/limitations.md F2)'), not a current-state surface. The task's named documentation impact (architecture.md section 6, data-model.md 3.12, limitations.md F2, README.md) does not include research records, and historical records are not required to be rewritten.",
+      "evidence": [
+        "docs/research/jellyfin-12-architecture.md:873,901",
+        "PLANS.md:3824-3826 (named affected files/components)"
+      ],
+      "recommended_action": "No change required."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently reproduced).",
+    "dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~GoalAIntegrationTests\" -> Passed 2/2, three consecutive runs, deterministic.",
+    "dotnet test ArrTags.slnx -c Release --no-build -> Failed 0, Passed 1272, Skipped 63, Total 1335 (independently reproduced; matches worker claim and +2 over the 9.4 baseline of 1333).",
+    "Inspected tests/ArrTags.Tests/GoalAIntegrationTests.cs in full (373 lines).",
+    "Inspected the composed production types: Plugin.UpdateConfiguration, ConfigurationSnapshotService, ConfigurationReconciliationTrigger, LibraryReconciliationService, ArtworkPublishingWorkItemProcessor, ArtworkRegenerationPlanner, PluginConfigurationValidator, PluginConfigurationSnapshot, JellyfinConfigurationRejectionNotifier.",
+    "Inspected the test doubles/harness: Phase6Harness, Phase6Host, Phase6Renderer, FakeMediaLibraryEnumerator, RecordingActivityManager, ConfigurationActivationTests.TestXmlSerializer/TestApplicationPaths."
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-016 (clauses 3, 4, 5 first/second bullet, 6, 7) against the implementation and the test.",
+    "docs/decisions.md ADR-021 (exactly-one bounded secret-free activity entry) against Plugin.TryNotifyRejected and JellyfinConfigurationRejectionNotifier.",
+    "docs/planning/v1.1.md Goal A acceptance criteria and checklist V1.1-2.",
+    "docs/research/jellyfin-12-architecture.md section 9 references (noted as a dated snapshot, not rewritten)."
+  ],
+  "documentation_checked": [
+    "PLANS.md (project status paragraph, Milestone Status row 9, task 9.5 status, Phase 9 acceptance checkboxes, Post-V1 backlog note).",
+    "docs/changelog.md (Phase 9 header status and new Task 9.5 entry; 9.1-9.4 entries untouched).",
+    "docs/project-status.md (Phase 9 current-state paragraph, next-tasks list, open follow-ups, counts).",
+    "docs/architecture.md (status line and section 6 runtime-activation / bounded post-save reconciliation text).",
+    "docs/implementation-readiness.md (status line and F2 promotion line).",
+    "docs/limitations.md (F2 moved to a new 'Resolved limitations' section with 'Resolved (v1.1 Phase 9, task 9.5)'; V6 untouched).",
+    "README.md (Configuration section and Known limitations list).",
+    "docs/data-model.md 3.12 (post-save trigger sentence; no field added).",
+    "docs/release/build-and-release.md (confirmed not modified)."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true,
+  "verified_claims": [
+    "Scope: the working tree changes are exactly the 8 named docs plus the new test and docs/implementation/9.5/; no src/ changes and no Phase 10+ work.",
+    "GoalAIntegrationTests has two genuine, non-vacuous facts that compose the real components: pinned JsonDefaults.Options deserialization, real Plugin.UpdateConfiguration override resolving the real ConfigurationSnapshotService and real ConfigurationReconciliationTrigger from DI, the real bounded LibraryReconciliationService, and the real Phase 6 artwork publishing graph over a real temporary ArrTags.xml.",
+    "Valid-save fact: both previously get-only collections are populated by the pinned deserialization (asserted pre-save), the running snapshot service advances to version 2 with the new collections/BadgeEpisodePosters (no restart of the in-process service), the new secret lease is valid at version 2 and the retired value/version-1 lease are not, the persisted XML retains the collections and the changed renderer template, and exactly one bounded reconciliation enqueues a version-2 work item whose processing re-renders (render/save call counts 2, changed renderer configuration fingerprint, Quality/Q{value} badge definition, changed published fingerprint).",
+    "Invalid-save fact: validation result invalid, snapshot version unchanged with Radarr/EnabledLibraries retained, stable secret retained and rejected secret not resolvable, persisted XML unchanged, exactly one secret-free activity entry (rejected secret and 'not-a-url' absent), and no reconciliation (queue stays 0 across a 300ms stability window).",
+    "Build 0 warnings/0 errors and full-suite counts 1272/63/1335 independently reproduced; the 9.4 baseline 1270/63/1333 is corroborated by the changelog and +2 arithmetic.",
+    "Documentation reconciliation is accurate and not overclaiming: architecture status line and section 6, data-model 3.12, README Configuration/Known limitations, PLANS status/milestone/task/checklist, changelog, project-status, and implementation-readiness all describe the shipped behaviour and consistently qualify the phase as 'tasks complete, independent phase review and v1.1.0-phase9 tag pending' with live confirmation owned by task 14.3.",
+    "V1 history is preserved: the 9.1-9.4 changelog entries and PLANS task statuses are unchanged; F2 retains its evidence and historical consequence after being moved to the resolved section. TQ-8 (limitations V6 and build-and-release matrix) was left untouched as instructed.",
+    "All six Phase 9 acceptance criteria have integration/contract-test coverage: page declaration/resource/contract and secret-free source (DashboardSettingsPageTests), valid/invalid save activation and elevation-gated-only route (ConfigurationActivationTests), bounded reconciliation (ConfigurationReconciliationTriggerTests + GoalAIntegrationTests), get-only round-trip (ConfigurationRoundTripTests + GoalAIntegrationTests).",
+    "Tasks 9.1-9.4 are not regressed: no source or test files for those tasks changed and the full suite including their facts passes."
+  ],
+  "falsification_attempts": [
+    "Causal-link check on the valid-save fact: confirmed the version-2 work item can only come from the save-triggered reconciliation (the initial publish processes a directly-supplied work item and never enqueues), so removing the post-save trigger would make Phase6Wait.UntilAsync fail; the re-render cannot happen without that work item.",
+    "Non-vacuity check on the get-only round-trip: the candidate is asserted populated immediately after JsonDefaults.Options deserialization, before the save, so a reverted get-only property would fail at that assertion.",
+    "Non-vacuity check on activation/secret rotation: verified ConfigurationSnapshotService.TryReplace rebuilds the secret map from the candidate and TryAcquire gates on the exact version, so the version-2 new-secret match and version-1 old-secret rejection are real, not incidental.",
+    "Non-vacuity check on the invalid-save persistence assertion: the initial and rejected payloads differ in WebhookSecret/BaseUrl/EnabledLibraries, so reading the persisted file after the rejected save genuinely detects persistence.",
+    "Non-vacuity check on the re-render: confirmed the default Quality template is '{value}' versus the saved 'Q{value}', so the renderer configuration fingerprint and the desired publication fingerprint actually change; the last RenderRequest also carries the new BadgeDefinitions.",
+    "Determinism check: ran the two GoalAIntegrationTests facts three consecutive times with identical results; the negative assertion uses a 300ms stability window rather than a fixed delay.",
+    "Count claim check: re-ran the full default suite and reproduced 1272 passed / 63 skipped / 1335 total with 0 failures."
+  ],
+  "notes": "APPROVED (attempt 1). The task is correctly and completely implemented: the two integration facts compose the real save -> activate -> bounded-reconcile path and each key claim (round-trip, no-restart activation, secret rotation, persisted XML, bounded reconciliation, re-render with saved settings, invalid-save retention, exactly-one secret-free activity entry, no reconciliation) is backed by a non-vacuous assertion. The documentation reconciliation matches the repository state and the task's named current-state surfaces, F2 is recorded as resolved as required, V1 history is preserved, and the deliberately deferred TQ-8 matrix counts were left untouched. No src/ changes, no unrelated changes, no Phase 10+ work. The only findings are informational (host-guarded page-serving evidence, deferred TQ-8 counts, exact-count wording, dated research snapshot) and none require action. Gate 9's independent phase review and the v1.1.0-phase9 tag remain the orchestrator's next step and are correctly recorded as pending."
+}
