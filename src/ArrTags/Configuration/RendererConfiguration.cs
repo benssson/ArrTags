@@ -30,11 +30,26 @@ public sealed class RendererConfiguration
     /// </summary>
     public const int CurrentSchemaVersion = 1;
 
+    private Collection<BadgeSelectorConfiguration> _selectors = new Collection<BadgeSelectorConfiguration>();
+
     /// <summary>
-    /// Gets the configured selector entries. Entries must name a known V1
-    /// selector, must be unique, and must carry a bounded valid template.
+    /// Gets or sets the configured selector entries. Entries must name a known V1
+    /// selector, must be unique, and must carry a bounded valid template. A null
+    /// value is treated as an empty set.
     /// </summary>
-    public Collection<BadgeSelectorConfiguration> Selectors { get; } = new Collection<BadgeSelectorConfiguration>();
+    /// <remarks>
+    /// The property is settable so the elevation-gated <c>PluginsController</c>
+    /// POST round-trip can populate it. The pinned Jellyfin 12.0.0
+    /// deserialization options do not populate a get-only collection property
+    /// and would silently drop the value (ADR-016 clause 7).
+    /// </remarks>
+#pragma warning disable CA2227 // The configuration is a replacement-snapshot DTO; the setter is required for the POST round-trip.
+    public Collection<BadgeSelectorConfiguration> Selectors
+    {
+        get => _selectors;
+        set => _selectors = value ?? new Collection<BadgeSelectorConfiguration>();
+    }
+#pragma warning restore CA2227
 
     /// <summary>
     /// Gets or sets the technical-badge background override. An empty value keeps

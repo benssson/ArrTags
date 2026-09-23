@@ -14,6 +14,8 @@ namespace ArrTags.Configuration;
 /// </remarks>
 public class PluginConfiguration : BasePluginConfiguration
 {
+    private Collection<string> _enabledLibraries = new Collection<string>();
+
     /// <summary>
     /// Gets or sets the Sonarr connection configuration.
     /// </summary>
@@ -31,10 +33,22 @@ public class PluginConfiguration : BasePluginConfiguration
     public string WebhookSecret { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets the configured libraries eligible for badges. An empty set means no
-    /// library restriction.
+    /// Gets or sets the configured libraries eligible for badges. An empty set
+    /// means no library restriction; a null value is treated as an empty set.
     /// </summary>
-    public Collection<string> EnabledLibraries { get; } = new Collection<string>();
+    /// <remarks>
+    /// The property is settable so the elevation-gated <c>PluginsController</c>
+    /// POST round-trip can populate it. The pinned Jellyfin 12.0.0
+    /// deserialization options do not populate a get-only collection property
+    /// and would silently drop the value (ADR-016 clause 7).
+    /// </remarks>
+#pragma warning disable CA2227 // The configuration is a replacement-snapshot DTO; the setter is required for the POST round-trip.
+    public Collection<string> EnabledLibraries
+    {
+        get => _enabledLibraries;
+        set => _enabledLibraries = value ?? new Collection<string>();
+    }
+#pragma warning restore CA2227
 
     /// <summary>
     /// Gets or sets a value indicating whether movie posters are eligible.

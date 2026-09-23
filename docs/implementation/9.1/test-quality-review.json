@@ -1,0 +1,90 @@
+{
+  "subject": "Task 9.1 - Configuration round-trip spike (blocking prerequisite, ADR-016 clause 7 first bullet)",
+  "reviewer_status": "CONCERNS",
+  "findings": [
+    {
+      "id": "9.1-TQ1",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage/skips",
+      "description": "The host-guarded fact confirms the pinned controller has a private JsonSerializerOptions field initialized to JsonDefaults.Options and that UpdatePluginConfiguration carries the [HttpPost(\"{pluginId}/Configuration\")] route, but it never asserts that the POST action actually deserializes with that field. A future pinned host that kept the field but switched the action to different options would still pass this fact. The missing link is only documented in docs/research/jellyfin-12-architecture.md 9.3 and confirmed by source review, not pinned by the test.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:139-159",
+        "pinned v12.0 Jellyfin.Api/Controllers/PluginsController.cs: UpdatePluginConfiguration calls JsonSerializer.DeserializeAsync(Request.Body, configPlugin.ConfigurationType, _serializerOptions)"
+      ],
+      "recommended_action": "Optional strengthening: invoke the real UpdatePluginConfiguration action with a plugin-manager double and assert both collections populate end-to-end, or at minimum assert the action references _serializerOptions."
+    },
+    {
+      "id": "9.1-TQ2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage",
+      "description": "The host-guarded Assert.Same(JsonDefaults.Options, fieldValue) runs in-process, where Jellyfin.Api.dll loaded from the host directory resolves Jellyfin.Extensions to the already-loaded NuGet 12.0.0 copy via the default AssemblyLoadContext. The assertion therefore proves the pinned Jellyfin.Api.dll IL assigns the JsonDefaults.Options static; it does not compare against the host install's own Jellyfin.Extensions.dll instance. Mitigated because both the host and the NuGet reference are pinned to 12.0.0, but the host-level identity is not literally exercised.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:190-202 (default ALC Resolving fallback)",
+        "tests/ArrTags.Tests/ArrTags.Tests.csproj:17-18 (Jellyfin.Controller/Model 12.0.0)",
+        "pinned v12.0 src/Jellyfin.Extensions/Json/JsonDefaults.cs: Options => _jsonSerializerOptions (static readonly singleton, so Assert.Same is stable)"
+      ],
+      "recommended_action": "None required while the host and package are version-pinned; note the limitation if the pinned host is ever loaded in a separate ALC."
+    },
+    {
+      "id": "9.1-TQ3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "PinnedPostDeserializationOptionsArePascalCase pins only JsonDefaults.Options.PropertyNamingPolicy == null (naming), while the actual cause of the dropped get-only collections is the default System.Text.Json PreferredObjectCreationHandling (Replace), which is not asserted. The test is a library-behavior pin, not an ArrTags behavior assertion; non-vacuity is supplied by the population tests instead.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:55-63",
+        "pinned v12.0 JsonDefaults.cs has no PreferredObjectCreationHandling override"
+      ],
+      "recommended_action": "None required; optionally assert PreferredObjectCreationHandling == Replace to document the root cause explicitly."
+    },
+    {
+      "id": "9.1-TQ4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "DeserializedConfigurationPassesValidation still passes when the source properties are reverted to get-only (independently reproduced), so it does not contribute to proving the fix; it is a sanity check only. The changelog lists it neutrally, so there is no overclaim.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:88-94",
+        "revert probe: get-only shape -> Failed 3, Passed 3, Skipped 1; DeserializedConfigurationPassesValidation passed"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "9.1-TQ5",
+      "severity": "LOW",
+      "status": "open",
+      "area": "determinism/isolation",
+      "description": "HostAssembly (static Lazy) registers a process-global AssemblyLoadContext.Default.Resolving handler that is never unregistered. It executes only in host-guarded runs and follows an existing repo pattern (JellyfinImageResponseTests, JellyfinImageRouteTests, PluginDiscoveryHostTests do the same), but it is a cross-test coupling risk when the host directory is supplied.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:190-202",
+        "tests/ArrTags.Tests/JellyfinImageResponseTests.cs:553, JellyfinImageRouteTests.cs:148, PluginDiscoveryHostTests.cs:170"
+      ],
+      "recommended_action": "Optional: move the resolver registration into an IDisposable fixture that unregisters it."
+    },
+    {
+      "id": "9.1-TQ6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "description": "The host-guarded fact could not be executed in this environment (no pinned Jellyfin.Api.dll available). Its claims were independently verified against the pinned v12.0 source, and the guard was verified to fail (not skip/pass) when ARRTAGS_JELLYFIN_HOST_DIR points at a directory without Jellyfin.Api.dll. The documented default matrix (Failed 0 / Passed 1234 / Skipped 61 / Total 1295) was reproduced exactly.",
+      "evidence": [
+        "dotnet test --filter ConfigurationRoundTripTests -> Passed 6, Skipped 1, Total 7",
+        "./build.sh test -> Passed 1234, Skipped 61, Total 1295",
+        "ARRTAGS_JELLYFIN_HOST_DIR=<bogus> on the guarded fact -> Failed 1 (Expected ... Jellyfin.Api.dll)",
+        "webfetch pinned v12.0 PluginsController.cs and JsonDefaults.cs"
+      ],
+      "recommended_action": "Execute the host-guarded fact once in a pinned-host run and record the host-guarded count for Phase 9."
+    }
+  ],
+  "coverage_gaps": [
+    "No test invokes the real PluginsController.UpdatePluginConfiguration action end-to-end; the POST path is proven by direct deserialization with the same options plus a reflection-level field/route pin (9.1-TQ1).",
+    "The XML persist/reload test uses System.Xml.Serialization.XmlSerializer directly rather than Jellyfin's IXmlSerializer used by BasePlugin<T>.SaveConfiguration. This matches the pre-existing ConfigurationFoundationTests/RendererConfigurationTests pattern and is adequate for the 9.1 persistence scope (runtime activation is task 9.3).",
+    "The host install's own JsonDefaults.Options instance is not compared because the default ALC unifies Jellyfin.Extensions to the NuGet copy (9.1-TQ2).",
+    "Other persisted get-only collections: none. EnabledLibraries and RendererConfiguration.Selectors are the only persisted collections reachable from PluginConfiguration (the PluginsController ConfigurationType); ArrConnectionConfiguration, OperationalLimits, and BadgeSelectorConfiguration have no collection members, and PluginConfigurationSnapshot/ConfigurationValidationResult are computed views, not deserialized DTOs."
+  ],
+  "determinism_notes": "Deterministic and order-independent for the default suite. The tests use exact sequence assertions, no wall-clock, culture, filesystem-order, network, or process-state coupling; build/test run with DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1. JSON and XML serialization are deterministic. The only environment coupling is the intentional ARRTAGS_JELLYFIN_HOST_DIR host guard. The one isolation smell is the never-unregistered process-global AssemblyLoadContext.Default.Resolving handler in the static Lazy (host-guarded runs only). No test mutates the shared JsonDefaults.Options singleton.",
+  "honest_skips": "Honest. [JellyfinHostFact] sets Skip only when ARRTAGS_JELLYFIN_HOST_DIR is unset/blank; when it is set to a directory lacking Jellyfin.Api.dll the fact FAILS (independently reproduced), so it cannot silently pass. It is not counted as verification in the default matrix (61 skips include it). The guarded assertion is non-tautological: it checks the POST route template, the private _serializerOptions field type, and reference identity with JsonDefaults.Options, any of which would fail if the pinned contract changed. The unguarded population tests are the actual proof and are non-vacuous: reverting the two properties to get-only makes exactly PostRoundTripPopulatesEnabledLibraries, PostRoundTripPopulatesRendererSelectors, and PostRoundTripSurvivesXmlPersistAndReload fail (independently reproduced: Failed 3 / Passed 3 / Skipped 1), and removing only the null-coalescing setter makes NullCollectionValuesAreTreatedAsEmpty fail with ArgumentNullException.",
+  "recommendation": "Not blocking: the task 9.1 acceptance criteria are met and independently reproduced, and the default matrix is accurate. Proceed to task 9.2. Track the low-severity gaps: strengthen the host-guarded fact to exercise the POST action (or assert its use of _serializerOptions), unregister the ALC resolver, and execute the host-guarded fact once on a pinned host to record the Phase 9 host-guarded count. Note: per the read-only constraint this report was written to /tmp/final-review/test-quality/9.1-test-quality-review.json and not into docs/implementation/."
+}

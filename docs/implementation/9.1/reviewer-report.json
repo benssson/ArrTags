@@ -1,0 +1,110 @@
+{
+  "task": "9.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "9.1-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope",
+      "summary": "The working tree contains a large v1.1 phase-planning addition that is not part of task 9.1.",
+      "detail": "`git diff` shows ~1388 lines added to PLANS.md ('v1.1 Milestones (Phases 9-14)', DG-10..DG-14 rows, milestone table rows 9-14) plus untracked `docs/implementation/planning/v1.1-phases.json`. These are the implementation-planner's output (its `change` field describes deriving v1.1 into phases 9-14 in PLANS.md), produced before task 9.1, and are consistent with the accepted scope. They are not task 9.1 code and do not affect its correctness. Recorded so the orchestrator knows the uncommitted tree mixes the planning deliverable with the 9.1 deliverable.",
+      "evidence": [
+        "git diff -- PLANS.md (hunk @@ -3329,6 +3344,1388 @@ 'v1.1 Milestones (Phases 9-14)')",
+        "docs/implementation/planning/v1.1-phases.json (untracked)"
+      ],
+      "recommended_action": "None for 9.1. The orchestrator should decide whether the planning artifact is committed separately from the 9.1 change."
+    },
+    {
+      "id": "9.1-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The host-guarded PluginsController fact is skipped in this environment; its controller-level claim was verified against the pinned source instead.",
+      "detail": "`ARRTAGS_JELLYFIN_HOST_DIR` is unset and no `Jellyfin.Api.dll` exists in the environment, so `PinnedPluginsControllerPostDeserializesWithThePinnedOptions` reports [SKIP]. The skip is honest: running the fact with `ARRTAGS_JELLYFIN_HOST_DIR=/tmp/9.1/nohost` produced a FAIL ('Expected the pinned host Jellyfin.Api.dll at ...'), not a pass or skip. The underlying claim (`_serializerOptions = JsonDefaults.Options` in the PluginsController constructor and the POST route) was independently confirmed by fetching the pinned v12.0 source.",
+      "evidence": [
+        "dotnet test ... --filter PinnedPluginsControllerPostDeserializesWithThePinnedOptions -> Skipped (env unset)",
+        "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/9.1/nohost -> Failed 1, Passed 0, Skipped 0",
+        "https://raw.githubusercontent.com/jellyfin/jellyfin/v12.0/Jellyfin.Api/Controllers/PluginsController.cs"
+      ],
+      "recommended_action": "None. Optionally execute the host-guarded fact when a pinned host directory is available."
+    },
+    {
+      "id": "9.1-F3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The host-guarded test registers a process-global AssemblyLoadContext resolving handler that is never removed.",
+      "detail": "`ConfigurationRoundTripTests.HostAssembly` adds a handler to `AssemblyLoadContext.Default.Resolving` inside a Lazy and never unregisters it. This only executes when the host directory is set, and the handler is a bounded fallback that loads only from the host directory, so it does not affect the default suite. It could theoretically interact with other host-guarded tests in the same process, but no failure was observed and this is not a 9.1 correctness issue.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:190-202"
+      ],
+      "recommended_action": "None required for 9.1."
+    },
+    {
+      "id": "9.1-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation",
+      "summary": "docs/architecture.md status line does not mention Phase 9 in progress, but makes no false claim.",
+      "detail": "The architecture status line states 'Accepted v1 (frozen for V1; Phases 1-8 complete; ...)'. That remains true after task 9.1, and the task's documented documentation impact was limited to `docs/data-model.md` 3.12 (the phase-level `docs/architecture.md` section 6 update is owned by task 9.5). No stale/overclaiming statement was found.",
+      "evidence": [
+        "docs/architecture.md:3",
+        "PLANS.md task 9.1 'Documentation impact: docs/data-model.md 3.12 if the configuration shape changes.'"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs (full source inspected; 6 [Fact] + 1 [JellyfinHostFact])",
+    "dotnet test --filter FullyQualifiedName~ConfigurationRoundTripTests -> Failed 0, Passed 6, Skipped 1, Total 7",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/9.1/nohost on the guarded fact -> Failed 1 (honest guard, no silent pass)",
+    "./build.sh test (full default suite) -> Failed 0, Passed 1234, Skipped 61, Total 1295",
+    "dotnet build src/ArrTags/ArrTags.csproj -c Release -t:Rebuild -> 0 Warning(s), 0 Error(s) (CA2227 suppression effective)",
+    "Existing ConfigurationFoundationTests.LibraryScopeRoundTripsThroughXmlSerializer and RendererConfigurationTests.RendererConfigurationRoundTripsThroughXmlSerializer still pass",
+    "Scratch probe /tmp/9.1/probe: get-only Collection<T> under JsonDefaults.Options -> 0 items; settable -> 2 items; JSON null -> empty non-null; PropertyNamingPolicy null; PreferredObjectCreationHandling=Replace",
+    "Scratch probe /tmp/9.1/xmlprobe: XmlSerializer output shape unchanged (<EnabledLibraries><string>..</string>, <Renderer><Selectors><BadgeSelectorConfiguration>..) and reload preserves values"
+  ],
+  "research_checked": [
+    "Pinned source jellyfin v12.0 Jellyfin.Api/Controllers/PluginsController.cs: constructor `_serializerOptions = JsonDefaults.Options;`; POST {pluginId}/Configuration deserializes `configPlugin.ConfigurationType` with `_serializerOptions`",
+    "Pinned source jellyfin v12.0 src/Jellyfin.Extensions/Json/JsonDefaults.cs: `Options => _jsonSerializerOptions`, PropertyNamingPolicy not set (null), no PreferredObjectCreationHandling override",
+    "docs/research/jellyfin-12-architecture.md section 9.3 (supported save path) and 9.6 (classification of JsonDefaults.Options naming behavior)",
+    "docs/decisions.md ADR-016 clause 7 first bullet (prescribes the settable-collection remedy if the get-only round-trip fails)",
+    "Empirical scratch probe of JsonDefaults.Options deserialization behavior (get-only vs settable)"
+  ],
+  "documentation_checked": [
+    "PLANS.md: task 9.1 checkbox [x], 9.2-9.5 [ ], task 9.1 Status paragraph, Project Status paragraph, Milestone 9 row, first-open-task pointer",
+    "docs/changelog.md: Phase 9 / Task 9.1 entry (counts 1234/61/1295, baseline 1228/60/1288)",
+    "docs/data-model.md section 3.12 'Collection persistence shape (task 9.1)'",
+    "docs/project-status.md: Phase 9 status paragraph and Next tasks entry",
+    "docs/implementation-readiness.md: status line Phase 9 sentence",
+    "docs/architecture.md status line (no false Phase 9 claim)",
+    "docs/limitations.md F2 (still accurately open; owned by tasks 9.3/9.5)",
+    "README.md Configuration table (no get-only claim; unaffected)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true,
+  "verified_claims": [
+    "The pinned PluginsController POST deserializes with JsonDefaults.Options, and JsonDefaults.Options has a null PropertyNamingPolicy (PascalCase) with default Replace object-creation handling. Verified against the pinned v12.0 source and by an independent scratch probe.",
+    "A get-only Collection<T> property is NOT populated under JsonDefaults.Options and is silently dropped. Independently reproduced (get-only -> 0 items; settable -> 2 items).",
+    "Both persisted collections are now settable with a backing field and a null-coalescing setter; the non-null invariant used by PluginConfigurationValidator.Validate and PluginConfigurationSnapshot.From is preserved (JSON null -> empty non-null collection).",
+    "The persisted XML shape is unchanged and backward compatible. Independently serialized the real PluginConfiguration: <EnabledLibraries><string>..</string></EnabledLibraries> and <Renderer><Selectors><BadgeSelectorConfiguration>..; reload preserves values.",
+    "CA2227 is suppressed per property with a justification, scoped by #pragma disable/restore; a clean rebuild reports 0 warnings / 0 errors. The suppression pattern is consistent with existing CA5359/CA1711/CA1849 suppressions.",
+    "Test counts: filtered round-trip suite 6 passed / 1 skipped / 7 total; full default suite 1234 passed / 61 skipped / 1295 total. Both reproduced. The baseline 1228/60/1288 is documented in docs/changelog.md (task 8.6).",
+    "The host-guarded skip is honest: it fails (not skips/passes) when ARRTAGS_JELLYFIN_HOST_DIR is set to a directory without Jellyfin.Api.dll.",
+    "Tasks 9.2-9.4 remain unimplemented: no IHasWebPages/GetPages/PluginPageInfo, no config.html, no Plugin.UpdateConfiguration override in src/.",
+    "Documentation accurately reflects the shipped change with no overclaim (data-model 3.12, changelog, project-status, implementation-readiness, PLANS task/milestone/status)."
+  ],
+  "falsification_attempts": [
+    "Tried to show the get-only shape would round-trip (i.e. that the change is unnecessary): scratch probe under the exact JsonDefaults.Options produced 0 items for a get-only Collection<T>. The fix is necessary; the tests are non-vacuous.",
+    "Tried to show the host-guarded fact is a fake pass: setting a bogus host dir made it FAIL with a missing-assembly message rather than skip or pass.",
+    "Tried to show the XML shape changed or broke backward compatibility: serialized the real types with the new settable properties and reloaded; element names/shape match the documented pre-change shape and values survive.",
+    "Tried to show a null collection can reach the validator/snapshot (NRE risk): JSON null is coerced to an empty non-null collection by the setter; validator and snapshot remain safe.",
+    "Tried to find other persisted get-only collection properties that would still be dropped: the only persisted configuration collections are EnabledLibraries and Selectors; PluginConfigurationSnapshot/ConfigurationValidationResult are computed immutable views, not deserialized configuration DTOs.",
+    "Tried to find later-task work (9.2-9.4) sneaking in: none present in src/."
+  ],
+  "notes": "APPROVED. The acceptance criteria are met: the configuration shape was changed so the POST round-trip populates EnabledLibraries and RendererConfiguration.Selectors, and tests prove the round-trip under the pinned options plus the XML persist/reload. The single skip is the honest host-guarded fact; the controller-level claim it would check was independently confirmed against the pinned v12.0 source. Residual uncertainty: the host-guarded fact was not executed here because no pinned Jellyfin host install is available; it should be exercised when one is. The working tree also contains uncommitted v1.1 phase-planning artifacts (PLANS.md phases 9-14 and docs/implementation/planning/v1.1-phases.json) that are not task 9.1 changes."
+}

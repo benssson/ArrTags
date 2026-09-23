@@ -1,0 +1,39 @@
+{
+  "task": "9.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Blocking round-trip spike for ADR-016 clause 7 first bullet. Verified against the pinned Jellyfin 12.0.0 contract (source at commit 6c073e19ddf604b2369c638716164fdab4c952dc, tag v12.0) that Jellyfin.Api.Controllers.PluginsController POST {pluginId}/Configuration assigns Jellyfin.Extensions.Json.JsonDefaults.Options to its serializer and that JsonDefaults.Options has PropertyNamingPolicy == null (PascalCase) with default System.Text.Json object-creation handling (Replace). With those exact options, a get-only Collection<T> property is NOT populated and is silently dropped. The two persisted collections, PluginConfiguration.EnabledLibraries and RendererConfiguration.Selectors, were therefore silently dropped on a dashboard save. Fix: both properties are now settable (get/set) with a backing field and a null-coalescing setter that treats null as an empty collection (preserving the non-null invariant the validator and PluginConfigurationSnapshot.From rely on). CA2227 is suppressed per property with the round-trip justification (the project's established #pragma warning disable pattern). The persisted XML shape is unchanged (<EnabledLibraries><string>...</string></EnabledLibraries> and <Renderer><Selectors><BadgeSelectorConfiguration>...), verified by serializing the real type, so existing plugins/configurations/ArrTags.xml files remain loadable. No architecture decision was needed: ADR-016 clause 7 explicitly prescribes the settable-collection remedy, so this is a straightforward implementation fix consistent with the accepted contract. Recorded in docs/data-model.md 3.12, docs/changelog.md, PLANS.md (task 9.1 status/checkbox, milestone 9 row, Project Status and first-open-task pointer), docs/project-status.md, and docs/implementation-readiness.md. The settings page (9.2) is unblocked.",
+  "validation": [
+    "`. /config/arrtags-env.sh && ./build.sh restore` -> 'All projects are up-to-date for restore.' Exit 0.",
+    "`. /config/arrtags-env.sh && ./build.sh build` -> 'Build succeeded. 0 Warning(s) 0 Error(s)'. Exit 0.",
+    "`. /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~ConfigurationRoundTripTests\"` -> 'Passed! - Failed: 0, Passed: 6, Skipped: 1, Total: 7, Duration: 257 ms - ArrTags.Tests.dll (net10.0)'. The single skip is the host-guarded fact (ARRTAGS_JELLYFIN_HOST_DIR unset).",
+    "`. /config/arrtags-env.sh && ./build.sh test` (full default suite) -> 'Passed! - Failed: 0, Passed: 1234, Skipped: 61, Total: 1295, Duration: 17 s - ArrTags.Tests.dll (net10.0)'. Baseline recorded in docs/changelog.md for 1.0.1.0 was Failed 0, Passed 1228, Skipped 60, Total 1288; delta is exactly +6 passed / +1 skipped / +7 total from ConfigurationRoundTripTests.",
+    "Non-vacuous check of the blocking test: temporarily reverted the two source properties to get-only (`git stash push -- src/ArrTags/Configuration/PluginConfiguration.cs src/ArrTags/Configuration/RendererConfiguration.cs`), rebuilt, and reran the filtered round-trip suite. Result: 'Failed! - Failed: 3, Passed: 3, Skipped: 1, Total: 7'; the failures were exactly PostRoundTripPopulatesEnabledLibraries, PostRoundTripPopulatesRendererSelectors, and PostRoundTripSurvivesXmlPersistAndReload (the two per-collection population assertions and the XML persist/reload round-trip). The property shape was then restored (`git stash pop`), rebuilt, and the full suite re-run to the final 1234/61/1295 result above.",
+    "Pinned-options behavior probe (scratch, /tmp/9.1/probe, not committed): a class with the same get-only Collection<T> shape deserialized with Jellyfin.Extensions.Json.JsonDefaults.Options produced empty collections for the JSON array payload; with a public setter it produced the expected values. `JsonDefaults.Options.PropertyNamingPolicy` printed as null. This confirms the default (Replace) object-creation handling is the cause.",
+    "XML-shape probe (scratch, /tmp/9.1/xml, not committed): serializing a PluginConfiguration with a populated EnabledLibraries and Renderer.Selectors through XmlSerializer(typeof(PluginConfiguration)) emitted the unchanged element shape `<EnabledLibraries><string>library-a</string></EnabledLibraries>` and `<Renderer><Selectors><BadgeSelectorConfiguration><Selector>Quality</Selector>...`. Existing XML files remain compatible.",
+    "Research verification against the pinned source (raw.githubusercontent.com at commit 6c073e19ddf604b2369c638716164fdab4c952dc): Jellyfin.Api/Controllers/PluginsController.cs (`_serializerOptions = JsonDefaults.Options`; POST deserializes configPlugin.ConfigurationType) and src/Jellyfin.Extensions/Json/JsonDefaults.cs (Options => _jsonSerializerOptions; PropertyNamingPolicy not set on Options)."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/PluginConfiguration.cs",
+    "src/ArrTags/Configuration/RendererConfiguration.cs",
+    "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs",
+    "docs/data-model.md",
+    "docs/changelog.md",
+    "docs/project-status.md",
+    "docs/implementation-readiness.md",
+    "PLANS.md",
+    "docs/implementation/9.1/worker-report.json"
+  ],
+  "known_limitations": [
+    "The host-guarded confirmation PinnedPluginsControllerPostDeserializesWithThePinnedOptions was skipped in this environment because no pinned Jellyfin host directory was available (ARRTAGS_JELLYFIN_HOST_DIR is unset and no Jellyfin.Api.dll is present). It reflects over Jellyfin.Api.dll, asserts the UpdatePluginConfiguration POST route, reads the private `_serializerOptions` field, constructs the controller with null dependencies, and asserts Assert.Same(JsonDefaults.Options, fieldValue). If a future pinned host renames that private field or changes the constructor signature, this fact fails (only when the host directory is set); the skip keeps the default suite green.",
+    "Limitation F2 (runtime configuration replacement not wired to Jellyfin's save path) remains open: this task only proves and fixes the persistence round-trip. Wiring Plugin.UpdateConfiguration and runtime activation is task 9.3 and the bounded post-save reconciliation trigger is task 9.4, per PLANS.md.",
+    "The round-trip test pins the POST deserialization options via JsonDefaults.Options (classified 'public but potentially unstable' in docs/research/jellyfin-12-architecture.md 9.6). A future Jellyfin change to JsonDefaults.Options or the PluginsController field would need the test and the shape decision revisited.",
+    "The CA2227 analyzer warning is suppressed per property with `#pragma warning disable CA2227` and a justification; the settable shape is deliberate and required by the pinned POST deserialization, but it does expose a public setter that callers could use to replace the collection, consistent with the other settable configuration DTO properties (Sonarr, Radarr, Limits, Renderer)."
+  ],
+  "ready_for_next_task": true
+}

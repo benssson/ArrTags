@@ -2628,3 +2628,41 @@ manifest are local only; the GitHub release, the asset upload, and the manifest
 push remain the user's manual step with `scripts/publish-release.sh
 --release-only`, so catalog installation is prepared but not yet live. Gate 8 is
 not declared; the Phase 8 review is separate.
+
+## Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1)
+
+**Status:** In progress (task 9.1 complete; tasks 9.2-9.5 open). The phase
+resolves limitation F2 when complete.
+
+### Task 9.1 - Configuration round-trip spike (blocking prerequisite)
+
+**Status:** Complete. Owns ADR-016 clause 7 first bullet.
+
+The spike proved, against the pinned Jellyfin 12.0.0 contract, that the
+elevation-gated `Jellyfin.Api.Controllers.PluginsController` `POST
+{pluginId}/Configuration` action deserializes the request body with
+`Jellyfin.Extensions.Json.JsonDefaults.Options` (PascalCase), whose default
+`System.Text.Json` object-creation handling (`Replace`) does not populate a
+get-only collection property. The get-only `PluginConfiguration.EnabledLibraries`
+and `RendererConfiguration.Selectors` were therefore silently dropped on a
+dashboard save.
+
+`PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` are
+now settable (`get`/`set`) with a null-coalescing setter that treats a null value
+as an empty collection, so the POST round-trip populates them and the non-null
+invariant the validator and snapshot rely on is preserved. The `CA2227` analyzer
+warning is suppressed per property with the round-trip justification. The
+persisted XML shape is unchanged (`<EnabledLibraries><string>...</string>` and
+`<Renderer><Selectors><BadgeSelectorConfiguration>...`), so existing
+`plugins/configurations/ArrTags.xml` files remain loadable. The shape change is
+recorded in `docs/data-model.md` 3.12.
+
+New tests (`tests/ArrTags.Tests/ConfigurationRoundTripTests.cs`): a PascalCase
+options pin, one explicit round-trip assertion per get-only collection,
+deserialized-configuration validation, an XML persist/reload round-trip, null
+handling, and a host-guarded confirmation that the pinned `PluginsController`
+POST deserializes with the same `JsonDefaults.Options` (skipped without
+`ARRTAGS_JELLYFIN_HOST_DIR`). `./build.sh build` reported 0 warnings / 0 errors;
+the default suite was Failed 0, Passed 1234, Skipped 61, Total 1295 (baseline
+Failed 0, Passed 1228, Skipped 60, Total 1288; +7 new tests, one host-guarded
+skip).

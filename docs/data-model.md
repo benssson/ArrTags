@@ -812,6 +812,22 @@ connections, library and image scope, and webhook secret, while an
 `OperationalLimits` instance carries the queue, concurrency, timeout, retry,
 artifact-size, decode, cache, quota, retention, and stale-window limits accepted
 by ADR-004 and recorded in `docs/architecture.md` section 12.
+
+**Collection persistence shape (task 9.1).** The two persisted collection
+properties, `PluginConfiguration.EnabledLibraries` and
+`RendererConfiguration.Selectors`, are **settable** (`get`/`set`) with a
+null-coalescing setter that treats a null value as an empty collection. The
+pinned Jellyfin 12.0.0 elevation-gated `PluginsController` POST deserializes the
+request body with `Jellyfin.Extensions.Json.JsonDefaults.Options`, whose default
+`System.Text.Json` object-creation handling (`Replace`) does not populate a
+get-only collection property; a get-only shape silently dropped both collections
+on a dashboard save. Making the properties settable lets the POST round-trip
+populate them, and the setter preserves the non-null invariant the validator and
+snapshot rely on. The persisted XML shape is unchanged
+(`<EnabledLibraries><string>…</string></EnabledLibraries>` and
+`<Renderer><Selectors><BadgeSelectorConfiguration>…`), so existing
+`plugins/configurations/ArrTags.xml` files remain loadable.
+
 `PluginConfigurationSnapshot` is the immutable, secret-free view validated by
 `PluginConfigurationValidator` and supplied to workers; API keys and webhook
 secrets remain only in the persisted configuration and appear in canonical state
