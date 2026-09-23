@@ -3,7 +3,7 @@
   "title": "Bounded, redacted log call sites and volume bounds",
   "phase": 10,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "8407964",
   "subagents": [
     {
       "role": "implementation-worker",
