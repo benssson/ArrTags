@@ -4,6 +4,7 @@ using System.Net.Http;
 using ArrTags.Artwork;
 using ArrTags.Concurrency;
 using ArrTags.Configuration;
+using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Providers;
 using ArrTags.Providers.Radarr;
@@ -22,6 +23,8 @@ using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Providers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ArrTags.PluginLifecycle;
 
@@ -46,6 +49,13 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         // through the host DI; ArrTags registers no custom ILoggerProvider/sink
         // and does not replace the host ILoggerFactory.
         serviceCollection.TryAddSingleton<ILogVerbosityGate, LogVerbosityGate>();
+
+        // ADR-020 clauses 4 and 6: the plugin-owned logging boundary resolves the
+        // host ILogger<T> per instrumented type, gates on the verbosity gate, and
+        // bounds volume with one shared repetition suppressor. Registration never
+        // fails when the host has not registered logging (a NullLogger fallback is
+        // used), and no custom ILoggerProvider/sink is added.
+        RegisterArrTagsLogs(serviceCollection);
 
         // ADR-021: the administrator-visible rejection surfacing is isolated
         // behind the plugin-owned IConfigurationRejectionNotifier boundary; the
@@ -150,6 +160,39 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddHostedService<WebhookIntakeService>();
     }
 
+    /// <summary>
+    /// Registers the plugin-owned logging boundary for every instrumented
+    /// boundary type (ADR-020). Each type gets a category-scoped
+    /// <see cref="IArrTagsLog{T}"/> over the host <see cref="ILogger{T}"/>, the
+    /// current-snapshot verbosity gate, and one shared <see cref="LogThrottle"/>.
+    /// When the host has not registered logging, the category logger falls back
+    /// to a <see cref="NullLogger{T}"/>, so registration never fails.
+    /// </summary>
+    private static void RegisterArrTagsLogs(IServiceCollection serviceCollection)
+    {
+        serviceCollection.TryAddSingleton<LogThrottle>();
+        serviceCollection.TryAddSingleton<IArrTagsLog<ConcurrencyLimitedArrMetadataReader<RadarrMetadataReader>>>(CreateLog<ConcurrencyLimitedArrMetadataReader<RadarrMetadataReader>>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<ConcurrencyLimitedArrMetadataReader<SonarrMetadataReader>>>(CreateLog<ConcurrencyLimitedArrMetadataReader<SonarrMetadataReader>>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<RadarrMetadataReader>>(CreateLog<RadarrMetadataReader>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<SonarrMetadataReader>>(CreateLog<SonarrMetadataReader>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<MetadataReconciliationProcessor>>(CreateLog<MetadataReconciliationProcessor>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<ArtworkGenerationCoordinator>>(CreateLog<ArtworkGenerationCoordinator>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<LibraryWorkWorker>>(CreateLog<LibraryWorkWorker>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<LibraryReconciliationService>>(CreateLog<LibraryReconciliationService>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<WebhookIntakeService>>(CreateLog<WebhookIntakeService>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<WebhookAuthenticationFilter>>(CreateLog<WebhookAuthenticationFilter>);
+        serviceCollection.TryAddSingleton<IArrTagsLog<ArrTagsLifecycleService>>(CreateLog<ArrTagsLifecycleService>);
+    }
+
+    private static IArrTagsLog<T> CreateLog<T>(IServiceProvider serviceProvider)
+    {
+        var logger = serviceProvider.GetService<ILogger<T>>() ?? NullLogger<T>.Instance;
+        return new ArrTagsLog<T>(
+            logger,
+            serviceProvider.GetRequiredService<ILogVerbosityGate>(),
+            serviceProvider.GetRequiredService<LogThrottle>());
+    }
+
     private static void RegisterProviderHttpClients(IServiceCollection serviceCollection)
     {
         serviceCollection.AddHttpClient(ArrHttpClientNames.Sonarr);
@@ -192,7 +235,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<IMediaLibraryResolver>(),
             serviceProvider.GetRequiredService<IMediaLibraryEnumerator>(),
             serviceProvider.GetRequiredService<IWorkHintSink>(),
-            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>());
+            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>(),
+            serviceProvider.GetRequiredService<IArrTagsLog<LibraryReconciliationService>>());
     }
 
     private static ConfigurationSnapshotService CreateConfigurationSnapshotService(IServiceProvider serviceProvider)
@@ -340,7 +384,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<IRenderer>(),
             serviceProvider.GetRequiredService<ArtworkPublisher>(),
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
-            serviceProvider.GetRequiredService<SourceArtifactStore>());
+            serviceProvider.GetRequiredService<SourceArtifactStore>(),
+            serviceProvider.GetRequiredService<IArrTagsLog<ArtworkGenerationCoordinator>>());
     }
 
     private static ArtifactRetention CreateArtifactRetention(IServiceProvider serviceProvider)

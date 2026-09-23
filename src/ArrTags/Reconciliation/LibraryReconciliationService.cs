@@ -3,8 +3,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Artwork;
 using ArrTags.Configuration;
+using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Updates;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.Reconciliation;
 
@@ -32,6 +34,7 @@ public sealed class LibraryReconciliationService
     private readonly IMediaLibraryEnumerator _library;
     private readonly IWorkHintSink _workHints;
     private readonly ArtworkLifecycleFenceStore _fences;
+    private readonly IArrTagsLog<LibraryReconciliationService>? _log;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LibraryReconciliationService"/> class.
@@ -41,19 +44,22 @@ public sealed class LibraryReconciliationService
     /// <param name="library">The bounded candidate enumerator.</param>
     /// <param name="workHints">The bounded, non-blocking enqueue boundary.</param>
     /// <param name="fences">The durable active lifecycle fence store.</param>
+    /// <param name="log">The optional bounded, secret-free reconciliation-boundary log.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public LibraryReconciliationService(
         ConfigurationSnapshotService configuration,
         IMediaLibraryResolver resolver,
         IMediaLibraryEnumerator library,
         IWorkHintSink workHints,
-        ArtworkLifecycleFenceStore fences)
+        ArtworkLifecycleFenceStore fences,
+        IArrTagsLog<LibraryReconciliationService>? log = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         _library = library ?? throw new ArgumentNullException(nameof(library));
         _workHints = workHints ?? throw new ArgumentNullException(nameof(workHints));
         _fences = fences ?? throw new ArgumentNullException(nameof(fences));
+        _log = log;
     }
 
     /// <summary>
@@ -75,24 +81,24 @@ public sealed class LibraryReconciliationService
 
         if (!snapshot.SonarrEnabled && !snapshot.RadarrEnabled)
         {
-            return LibraryReconciliationResult.Skipped(
+            return LogResult(LibraryReconciliationResult.Skipped(
                 LibraryReconciliationOutcome.NoEnabledProvider,
                 source,
                 0,
                 0,
                 0,
-                "No Arr provider is enabled, so no reconciliation work is relevant.");
+                "No Arr provider is enabled, so no reconciliation work is relevant."));
         }
 
         if (!AllowsNewWork())
         {
-            return LibraryReconciliationResult.Skipped(
+            return LogResult(LibraryReconciliationResult.Skipped(
                 LibraryReconciliationOutcome.Fenced,
                 source,
                 0,
                 0,
                 0,
-                "The lifecycle fence refuses new publication work.");
+                "The lifecycle fence refuses new publication work."));
         }
 
         var batchSize = snapshot.Limits.ReconciliationBatchSize;
@@ -117,13 +123,13 @@ public sealed class LibraryReconciliationService
 
                 if (!AllowsNewWork())
                 {
-                    return LibraryReconciliationResult.Skipped(
+                    return LogResult(LibraryReconciliationResult.Skipped(
                         LibraryReconciliationOutcome.Fenced,
                         source,
                         inspected,
                         eligible,
                         enqueued,
-                        "The lifecycle fence refuses new publication work.");
+                        "The lifecycle fence refuses new publication work."));
                 }
 
                 var page = _library.EnumerateCandidates(startIndex, batchSize)
@@ -176,13 +182,13 @@ public sealed class LibraryReconciliationService
 
                 if (!AllowsNewWork())
                 {
-                    return LibraryReconciliationResult.Skipped(
+                    return LogResult(LibraryReconciliationResult.Skipped(
                         LibraryReconciliationOutcome.Fenced,
                         source,
                         inspected,
                         eligible,
                         enqueued,
-                        "The lifecycle fence was raised during the reconciliation; no further work was enqueued.");
+                        "The lifecycle fence was raised during the reconciliation; no further work was enqueued."));
                 }
 
                 if (page.Count < batchSize)
@@ -197,16 +203,39 @@ public sealed class LibraryReconciliationService
         }
         catch (OperationCanceledException)
         {
-            return LibraryReconciliationResult.Cancelled(source, inspected, eligible, enqueued);
+            return LogResult(LibraryReconciliationResult.Cancelled(source, inspected, eligible, enqueued));
         }
 
         Report(progress, 100);
-        return LibraryReconciliationResult.Completed(
+        return LogResult(LibraryReconciliationResult.Completed(
             source,
             inspected,
             eligible,
             enqueued,
-            "The bounded reconciliation completed.");
+            "The bounded reconciliation completed."));
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free reconciliation-boundary record. The
+    /// bounded <see cref="LibraryReconciliationResult"/> summary (outcome,
+    /// trigger, counts, and reason) carries no item identifier, path, credential,
+    /// or provider payload (ADR-020 clause 4).
+    /// </summary>
+    private LibraryReconciliationResult LogResult(LibraryReconciliationResult result)
+    {
+        if (_log is null || !_log.IsEnabled(LogLevel.Information))
+        {
+            return result;
+        }
+
+        _log.Write(
+            LogLevel.Information,
+            result.Outcome == LibraryReconciliationOutcome.Completed
+                ? ArrTagsLogEvent.ReconciliationCompleted
+                : ArrTagsLogEvent.ReconciliationSkipped,
+            FormattableString.Invariant(
+                $"Reconciliation ({result.Source}) {result.Outcome}: inspected {result.Inspected}, eligible {result.Eligible}, enqueued {result.Enqueued}. {result.Reason}"));
+        return result;
     }
 
     private bool AllowsNewWork()

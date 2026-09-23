@@ -2,8 +2,11 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
+using ArrTags.Logging;
+using ArrTags.Providers;
 using ArrTags.Updates;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.Webhooks;
 
@@ -29,6 +32,7 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
     private readonly WebhookReconciliationResolver _resolver;
     private readonly IWorkHintSink _workHints;
     private readonly ConfigurationSnapshotService _configuration;
+    private readonly IArrTagsLog<WebhookIntakeService>? _log;
     private readonly TimeSpan _shutdownTimeout;
     private CancellationTokenSource? _cts;
     private Task? _loop;
@@ -42,19 +46,22 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
     /// <param name="workHints">The existing bounded update work hint sink.</param>
     /// <param name="configuration">The current public configuration snapshot.</param>
     /// <param name="boundedShutdownTimeout">The optional bounded shutdown timeout.</param>
+    /// <param name="log">The optional bounded, secret-free webhook-boundary log.</param>
     /// <exception cref="ArgumentNullException">A required dependency is <see langword="null"/>.</exception>
     public WebhookIntakeService(
         WebhookIntake intake,
         WebhookReconciliationResolver resolver,
         IWorkHintSink workHints,
         ConfigurationSnapshotService configuration,
-        TimeSpan? boundedShutdownTimeout = null)
+        TimeSpan? boundedShutdownTimeout = null,
+        IArrTagsLog<WebhookIntakeService>? log = null)
     {
         _intake = intake ?? throw new ArgumentNullException(nameof(intake));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         _workHints = workHints ?? throw new ArgumentNullException(nameof(workHints));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _shutdownTimeout = boundedShutdownTimeout ?? BoundedShutdownTimeout;
+        _log = log;
     }
 
     /// <inheritdoc />
@@ -139,6 +146,14 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
             catch (Exception exception) when (exception is not OutOfMemoryException)
             {
                 // An intake failure must never take down the loop or the host.
+                if (_log is not null && _log.IsEnabled(LogLevel.Warning))
+                {
+                    _log.Write(
+                        LogLevel.Warning,
+                        ArrTagsLogEvent.WebhookEventContained,
+                        FormattableString.Invariant($"The webhook intake could not dequeue an event. {exception.GetType().Name}."));
+                }
+
                 continue;
             }
 
@@ -150,6 +165,13 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
             {
                 // A webhook is a best-effort accelerator; a resolution failure is
                 // contained and repaired by the authoritative reconciliation.
+                if (_log is not null && _log.IsEnabled(LogLevel.Warning))
+                {
+                    _log.Write(
+                        LogLevel.Warning,
+                        ArrTagsLogEvent.WebhookEventContained,
+                        FormattableString.Invariant($"The webhook event could not be resolved to item hints. {exception.GetType().Name}."));
+                }
             }
         }
     }
@@ -162,6 +184,18 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
         {
             var hint = new LibraryWorkHint(itemIds[index], LibraryWorkReason.Updated, snapshot.ConfigurationVersion);
             _workHints.TryEnqueue(in hint);
+        }
+
+        if (_log is not null && _log.IsEnabled(LogLevel.Debug))
+        {
+            // Only the bounded event kind, the provider family, and the resolved
+            // item count are emitted; the event's advertised provider identifiers
+            // and the raw payload are not written (ADR-020 clause 4).
+            _log.Write(
+                LogLevel.Debug,
+                ArrTagsLogEvent.WebhookEventResolved,
+                FormattableString.Invariant(
+                    $"Webhook event {webhookEvent.EventType} ({webhookEvent.ProviderKind.ToApiName()}) resolved to {itemIds.Count} item hint(s)."));
         }
     }
 }

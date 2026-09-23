@@ -1,0 +1,103 @@
+{
+  "task": "10.2",
+  "attempt": 1,
+  "reviewer": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "ready_for_next_task": true,
+  "findings": [
+    {
+      "id": "10.2-F1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/current-state",
+      "issue": "docs/project-status.md still states the current v1.1 working suite count as Failed 0, Passed 1,272, Skipped 63, Total 1,335; the actual current suite is Failed 0, Passed 1,363, Skipped 63, Total 1,426.",
+      "summary": "Stale current-suite count in docs/project-status.md (pre-existing, not introduced by 10.2)",
+      "detail": "docs/project-status.md line ~612 says 'the current v1.1 working suite is Failed 0, Passed 1,272, Skipped 63, Total 1,335'. Independently re-run: Failed 0, Passed 1363, Skipped 63, Total 1426. This line was already stale at commit ae7f5c9 (task 10.1): it read 1,272 at ae7f5c9^ when that was accurate, and was not updated when 10.1 raised the suite to 1,298/1,361. It therefore predates task 10.2; task 10.2 raised the count again (+65). The worker's own project-status.md edits (Current milestone and Next tasks sections) are accurate and do not repeat a count. The stale line does not affect any 10.2 acceptance criterion. Recorded as informational per the established project precedent (10.1-F3) for pre-existing stale canonical lines outside a task's declared documentation impact (architecture section 12).",
+      "evidence": [
+        "sed -n '595,625p' docs/project-status.md -> 'the current v1.1 working suite is Failed 0, Passed 1,272, Skipped 63, Total 1,335'",
+        ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426'",
+        "git show ae7f5c9^:docs/project-status.md | grep 'current v1.1 working suite' -> 1,272 (accurate then); git show ae7f5c9:... -> still 1,272 (already stale after 10.1)",
+        "git diff -- docs/project-status.md touches only the Current milestone and Next tasks sections"
+      ],
+      "recommended_action": "Non-blocking for 10.2: update the docs/project-status.md 'current v1.1 working suite' line to 1,363/63/1,426 in the task 10.3 documentation pass or the Phase 13 documentation pass."
+    },
+    {
+      "id": "10.2-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/accuracy",
+      "issue": "docs/architecture.md section 12 lists 'durations' among the value kinds ArrTags logs, but no instrumented call site emits a duration.",
+      "summary": "Minor overclaim of the emission surface ('durations') in the architecture section 12 redaction paragraph",
+      "detail": "The section 12 paragraph enumerates the emitted values as '...item/record identifiers that are not secret, counts, and durations'. Inspection of every added message template shows no duration is logged: the emitted values are Guids, provider/status/method/outcome enums, the non-secret connection identity, configuration version, counts, fixed bounded reason strings, and exception type names. The substantive redaction contract (what is never logged) is accurate; the illustrative list includes one value kind that is not actually emitted. No correctness or secret-exposure impact.",
+      "evidence": [
+        "git diff -U0 -- src/ | grep '^+' | grep -E '\\$\\\"' -> all 16 added message templates inspected; none contains a duration",
+        "docs/architecture.md section 12 paragraph 'item/record identifiers that are not secret, counts, and durations'"
+      ],
+      "recommended_action": "Optional: drop 'and durations' from the section 12 paragraph in the task 10.3 documentation pass."
+    },
+    {
+      "id": "10.2-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/bounded-volume",
+      "issue": "The LogThrottle 256-key tracking-set cap is enforced by a non-atomic Count check followed by Clear, so concurrent insertion of many distinct keys can transiently exceed the cap.",
+      "summary": "LogThrottle tracking-set cap is a defensive bound, not a strict atomic invariant; production keys are finite and never reach it",
+      "detail": "LogThrottle.Acquire does 'if (_buckets.Count >= MaxTrackedKeys && !_buckets.ContainsKey(key)) _buckets.Clear();' then GetOrAdd outside any global lock. Under concurrent distinct-key insertion the dictionary can briefly exceed 256 entries. However, in production the key is category + '|' + ArrTagsLogEvent, both code-owned and finite: 11 registered categories using a total of ~21 distinct (category,event) pairs, far below 256. The reset path is therefore never reached in production, and the per-key per-window emission bound (which is the actual log-volume bound) holds under the per-bucket lock. The test ThrottleTrackingSetIsBounded verifies the bound single-threaded; ThrottleIsThreadSafeAndBoundedUnderConcurrentAdmission verifies the per-key emission bound under concurrency. No material impact.",
+      "evidence": [
+        "src/ArrTags/Logging/LogThrottle.cs:69-77 (Count check + Clear + GetOrAdd)",
+        "src/ArrTags/Logging/LogThrottle.cs:80-106 (per-bucket lock enforces MaxEmissionsPerWindow)",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:171-185 (11 registered categories); ArrTagsLogEvent has 19 emitted event values"
+      ],
+      "recommended_action": "None required. Optionally document the cap as a defensive bound rather than a strict concurrent invariant."
+    },
+    {
+      "id": "10.2-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/scope",
+      "issue": "docs/limitations.md SEC-5 still states 'the plugin has no logging call sites' and 'the plugin still has no diagnostic log call sites', which task 10.2 makes stale.",
+      "summary": "SEC-5 is now stale but correctly deferred to task 10.3, which the task explicitly forbids 10.2 from rewriting",
+      "detail": "SEC-5 (docs/limitations.md line 509-520) asserts no plugin log path can leak a secret because there are no logging call sites. After 10.2 there are instrumented call sites. Task 10.2's binding constraint is 'must NOT rewrite docs/limitations.md SEC-5 (task 10.3)'; SEC-5 already names Phase 10 task 10.3 as owning the rewrite. git diff confirms docs/limitations.md is unmodified. Correct scope behavior, not a defect; recorded so the audit trail shows the deferral is intentional.",
+      "evidence": [
+        "git diff --name-only | grep -i limitations -> (none; docs/limitations.md unmodified)",
+        "docs/limitations.md:514-520 'the plugin has no logging call sites... This is a scoping note only; the full SEC-5 rewrite that reconciles SEC-9 is Phase 10 task 10.3'",
+        "PLANS.md task 10.2 / binding constraint: 10.2 must not rewrite SEC-5"
+      ],
+      "recommended_action": "None for 10.2; task 10.3 rewrites SEC-5."
+    }
+  ],
+  "summary": "APPROVED. Task 10.2 instruments all eight required boundaries (provider, matching, metadata, artwork, queue, reconciliation, webhook, lifecycle) through a new plugin-owned IArrTagsLog<T>/ArrTagsLog<T> facade that gates on the task 10.1 ILogVerbosityGate read from the current snapshot and applies one shared LogThrottle. Independent inspection of the full diff and all new files found no emission of an API key, webhook secret, SecretLease value, X-Api-Key/X-ArrTags-Webhook-Secret header, raw request/response body, provider DTO/payload, URL, or mutable PluginConfiguration: every emitted value is a Guid, a bounded enum, the non-secret connection identity, a configuration version, a count, a fixed bounded reason string, or an exception type name. ArrProviderError.Message is bounded to 512 chars and every producer (RadarrClient/SonarrClient/readers) uses a fixed constant, so logging it is within the ADR-020 clause 4 allowlist. There is no Trace-only branch, so raising verbosity cannot expand a redacted value. The registrator registers only ILogVerbosityGate, LogThrottle, and closed IArrTagsLog<T> types; it registers no ILoggerProvider/sink and does not replace ILoggerFactory, resolving ILogger<T> through host DI with ArrTags.* categories (NullLogger fallback when logging is absent). Log volume is genuinely bounded by the code-owned LogThrottle (5 records per category/event per 1-minute window, one bounded suppression summary on rollover, 256-key defensive cap) and the architecture.md section 12 limit row accurately records it. LogRedactionTests (65 cases) is meaningful and non-vacuous: it drives each boundary with sentinel secrets present in its inputs at all six verbosity levels, asserts no sentinel in captured host output with exact per-level counts, asserts Trace adds no message beyond Debug, and covers suppression, the window summary, the tracking bound, and thread safety. Independently reproduced: build 0 warnings / 0 errors; focused LogRedactionTests 65/0/65; full suite Failed 0, Passed 1363, Skipped 63, Total 1426 (baseline 1298/63/1361, +65). docs/limitations.md SEC-5 is deliberately untouched (task 10.3 owns it). Four informational/low findings recorded (stale pre-existing project-status suite count, an architecture 'durations' wording overclaim, the defensive nature of the throttle tracking cap, and the intentional SEC-5 deferral); none affect the acceptance criteria or block advancement.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s).' (independently re-run)",
+    ". /config/arrtags-env.sh && dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build --filter FullyQualifiedName~LogRedactionTests -> 'Passed! - Failed: 0, Passed: 65, Skipped: 0, Total: 65' (independently re-run)",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426' (independently re-run; matches the worker claim and the +65 delta over the task 10.1 baseline 1298/63/1361)",
+    "git diff --name-only -> 16 modified files (11 src boundaries/registrator + PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md) plus 3 untracked (src/ArrTags/Logging/, tests/ArrTags.Tests/LogRedactionTests.cs, docs/implementation/10.2/); no unrelated files, docs/limitations.md unmodified",
+    "grep -rn 'ILogger|ILoggerProvider|AddProvider|ILoggerFactory|AddLogging|UseSerilog' src/ -> only the Logging facade and registrator comments; no direct ILogger use in any boundary and no custom provider/sink/factory replacement",
+    "git diff -U0 -- src/ | grep '^+' | grep -E '\\$\\\"' -> all 16 added message templates inspected; every interpolated value is bounded/non-secret",
+    "sha256 of src diff: 535a7741f04c60d3a822a59555b19235b40171546fc893fab2c0259160b199ac (HEAD 61dd895790667599db6c504ab28adf1d3263e1fc)"
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/LogRedactionTests.cs (read in full; 8 boundary theories x 6 verbosity levels + 12 facts = 65 cases; verified meaningful, deterministic, non-vacuous via exact per-level count assertions and the Trace>0 assertion)",
+    "Focused run: LogRedactionTests -> 65 passed / 0 failed / 0 skipped",
+    "Full default suite: ./build.sh test -> 0 failed / 1363 passed / 63 skipped / 1426 total",
+    "Existing tests/ArrTags.Tests/LogVerbosityTests.cs (task 10.1) still pass within the full suite"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-020 clauses 4 (redaction contract) and 6 (bounded volume) - implementation conforms",
+    "docs/decisions.md ADR-005 (secret boundary) - logging emits only safe SecretReference/connection identity, never a SecretLease value",
+    "docs/decisions.md ADR-016 (runtime activation) - the gate reads the current snapshot per call; no restart needed",
+    "docs/research/jellyfin-12-architecture.md section 10 (host ILogger/Serilog contract) - no custom provider/sink and no ILoggerFactory replacement, matching the pinned-host constraint"
+  ],
+  "documentation_checked": [
+    "docs/architecture.md - status line updated (Phase 10 10.1+10.2, 10.3 remains); section 6 redaction/volume paragraph accurate; section 12 limit row 'Plugin log volume | 5 per minute per category/event | messages | code-owned (not user-configurable) | ...' matches LogThrottle constants and is a valid 5-column row",
+    "PLANS.md - Project Status paragraph, Milestone row 10, task 10.2 checkbox [x] and Status: Complete; Phase 10 acceptance criteria correctly left unchecked (10.3 remains)",
+    "docs/changelog.md - Task 10.2 entry accurate (call sites, redaction allowlist, volume bound, 65 tests, counts)",
+    "docs/project-status.md - Current milestone and Next tasks sections accurate; pre-existing stale 'current v1.1 working suite 1,272/1,335' line recorded as 10.2-F1",
+    "docs/implementation-readiness.md - status line accurate; 10.2 recorded complete and 10.3 remaining",
+    "docs/limitations.md - deliberately unmodified (SEC-5 owned by task 10.3); SEC-5 deferral recorded as 10.2-F4",
+    "README.md - no stale 'no logging' claim; LogVerbosity documented (from task 10.1)"
+  ],
+  "required_changes": [],
+  "rework_log": []
+}

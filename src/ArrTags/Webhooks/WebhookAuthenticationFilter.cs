@@ -1,9 +1,11 @@
 using System;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
+using ArrTags.Logging;
 using ArrTags.Secrets;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.Webhooks;
 
@@ -31,19 +33,23 @@ public sealed class WebhookAuthenticationFilter : IAsyncAuthorizationFilter
 {
     private readonly ConfigurationSnapshotService _configuration;
     private readonly IPluginSecretResolver _secrets;
+    private readonly IArrTagsLog<WebhookAuthenticationFilter>? _log;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WebhookAuthenticationFilter"/> class.
     /// </summary>
     /// <param name="configuration">The current public configuration snapshot.</param>
     /// <param name="secrets">The versioned secret resolver used for constant-time authentication.</param>
+    /// <param name="log">The optional bounded, secret-free webhook-boundary log.</param>
     /// <exception cref="ArgumentNullException">A required dependency is <see langword="null"/>.</exception>
     public WebhookAuthenticationFilter(
         ConfigurationSnapshotService configuration,
-        IPluginSecretResolver secrets)
+        IPluginSecretResolver secrets,
+        IArrTagsLog<WebhookAuthenticationFilter>? log = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _secrets = secrets ?? throw new ArgumentNullException(nameof(secrets));
+        _log = log;
     }
 
     /// <inheritdoc />
@@ -59,6 +65,17 @@ public sealed class WebhookAuthenticationFilter : IAsyncAuthorizationFilter
             // Fail closed with the uniform safe status before any body read, so
             // the response never reveals whether a secret is configured, why the
             // candidate was rejected, or any header/body content.
+            if (_log is not null && _log.IsEnabled(LogLevel.Warning))
+            {
+                // Only a fixed, bounded reason is emitted. The supplied header
+                // value, the configured secret, and the request body are never
+                // written (ADR-020 clause 4).
+                _log.Write(
+                    LogLevel.Warning,
+                    ArrTagsLogEvent.WebhookAuthenticationRejected,
+                    "The inbound webhook request was rejected because authentication failed.");
+            }
+
             context.Result = new UnauthorizedResult();
             return Task.CompletedTask;
         }
@@ -70,6 +87,14 @@ public sealed class WebhookAuthenticationFilter : IAsyncAuthorizationFilter
             // here, before the read, rather than letting the framework consume it
             // up to its own limits. The status stays a bounded client error and
             // no body detail is reflected.
+            if (_log is not null && _log.IsEnabled(LogLevel.Information))
+            {
+                _log.Write(
+                    LogLevel.Information,
+                    ArrTagsLogEvent.WebhookAuthenticationRejected,
+                    "The inbound webhook request was rejected because its content type is not JSON.");
+            }
+
             context.Result = new BadRequestResult();
         }
 

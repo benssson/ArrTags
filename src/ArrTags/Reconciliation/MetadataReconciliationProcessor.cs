@@ -6,10 +6,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
+using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Providers;
 using ArrTags.State;
 using ArrTags.Updates;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.Reconciliation;
 
@@ -34,6 +36,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     private readonly IMediaLibraryResolver _library;
     private readonly IReadOnlyDictionary<ArrProviderKind, IArrMetadataReader> _readers;
     private readonly MetadataStateStore _store;
+    private readonly IArrTagsLog<MetadataReconciliationProcessor>? _log;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MetadataReconciliationProcessor"/> class.
@@ -42,17 +45,20 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     /// <param name="library">The Jellyfin library and item resolver boundary.</param>
     /// <param name="readers">The provider-neutral reconciliation readers, one per provider.</param>
     /// <param name="store">The metadata state store.</param>
+    /// <param name="log">The optional bounded, secret-free metadata-boundary log.</param>
     /// <exception cref="ArgumentNullException">A required dependency is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">More than one reader is registered for a provider.</exception>
     public MetadataReconciliationProcessor(
         ConfigurationSnapshotService configuration,
         IMediaLibraryResolver library,
         IEnumerable<IArrMetadataReader> readers,
-        MetadataStateStore store)
+        MetadataStateStore store,
+        IArrTagsLog<MetadataReconciliationProcessor>? log = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _library = library ?? throw new ArgumentNullException(nameof(library));
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _log = log;
         ArgumentNullException.ThrowIfNull(readers);
 
         var map = new Dictionary<ArrProviderKind, IArrMetadataReader>();
@@ -98,36 +104,36 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         var snapshot = _configuration.Current;
         if (item.ConfigurationVersion != snapshot.ConfigurationVersion)
         {
-            return Discard(FormattableString.Invariant(
+            return Discard(item.Key.ItemId, FormattableString.Invariant(
                 $"The work was based on configuration v{item.ConfigurationVersion} but the current configuration is v{snapshot.ConfigurationVersion}."));
         }
 
         var currentItem = _library.ResolveItem(item.Key.ItemId);
         if (currentItem is null)
         {
-            return Discard("The Jellyfin item is no longer present.");
+            return Discard(item.Key.ItemId, "The Jellyfin item is no longer present.");
         }
 
         if (!MediaIdentityFactory.TryCreate(currentItem, _library, out var identity) || identity is null)
         {
-            return Discard("The Jellyfin item is no longer a supported media identity.");
+            return Discard(item.Key.ItemId, "The Jellyfin item is no longer a supported media identity.");
         }
 
         if (!MediaEligibility.IsEligible(identity, snapshot))
         {
-            return Discard("The Jellyfin item is no longer eligible for a badge.");
+            return Discard(item.Key.ItemId, "The Jellyfin item is no longer eligible for a badge.");
         }
 
         var kind = ResolveProviderKind(identity.ItemType);
         if (kind is null)
         {
-            return Discard("The Jellyfin item type has no reconciliation provider.");
+            return Discard(item.Key.ItemId, "The Jellyfin item type has no reconciliation provider.");
         }
 
         var connection = ResolveConnection(snapshot, kind.Value);
         if (connection is null || !connection.Enabled)
         {
-            return Discard("The provider connection is not available.");
+            return Discard(item.Key.ItemId, "The provider connection is not available.");
         }
 
         if (!_readers.TryGetValue(kind.Value, out var reader))
@@ -148,6 +154,15 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             // An unclassified reader failure is terminal and never publishes.
+            if (_log is not null && _log.IsEnabled(LogLevel.Warning))
+            {
+                _log.Write(
+                    LogLevel.Warning,
+                    ArrTagsLogEvent.MetadataReadFailed,
+                    FormattableString.Invariant(
+                        $"Metadata read failed for item {item.Key.ItemId:D} ({kind.Value.ToApiName()}): the reader threw {exception.GetType().Name}."));
+            }
+
             return MetadataReconciliationResult.Processed(
                 WorkProcessingResult.Terminal("The provider read failed."));
         }
@@ -158,6 +173,15 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             {
                 return MetadataReconciliationResult.Processed(
                     WorkProcessingResult.Terminal("The provider read returned no outcome."));
+            }
+
+            if (_log is not null && _log.IsEnabled(LogLevel.Warning))
+            {
+                _log.Write(
+                    LogLevel.Warning,
+                    ArrTagsLogEvent.MetadataReadFailed,
+                    FormattableString.Invariant(
+                        $"Metadata read failed for item {item.Key.ItemId:D} ({kind.Value.ToApiName()}): {read.Error.Code} ({read.Error.Retryability}). {read.Error.Message}"));
             }
 
             if (read.Error.Retryability == ArrErrorRetryability.Later)
@@ -179,28 +203,28 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         if (publishSnapshot.ConfigurationVersion != item.ConfigurationVersion
             || publishSnapshot.ConfigurationVersion != snapshot.ConfigurationVersion)
         {
-            return Discard("The configuration changed while the work was processing.");
+            return Discard(item.Key.ItemId, "The configuration changed while the work was processing.");
         }
 
         var publishItem = _library.ResolveItem(item.Key.ItemId);
         if (publishItem is null)
         {
-            return Discard("The Jellyfin item was removed while the work was processing.");
+            return Discard(item.Key.ItemId, "The Jellyfin item was removed while the work was processing.");
         }
 
         if (!MediaIdentityFactory.TryCreate(publishItem, _library, out var publishIdentity) || publishIdentity is null)
         {
-            return Discard("The Jellyfin item changed while the work was processing.");
+            return Discard(item.Key.ItemId, "The Jellyfin item changed while the work was processing.");
         }
 
         if (!SubjectMatches(identity, publishIdentity))
         {
-            return Discard("The Jellyfin item changed while the work was processing.");
+            return Discard(item.Key.ItemId, "The Jellyfin item changed while the work was processing.");
         }
 
         if (!MediaEligibility.IsEligible(publishIdentity, publishSnapshot))
         {
-            return Discard("The Jellyfin item is no longer eligible for a badge.");
+            return Discard(item.Key.ItemId, "The Jellyfin item is no longer eligible for a badge.");
         }
 
         var publishConnection = ResolveConnection(publishSnapshot, kind.Value);
@@ -208,7 +232,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             || !publishConnection.Enabled
             || !publishConnection.ConnectionId.Equals(connection.ConnectionId))
         {
-            return Discard("The provider connection changed while the work was processing.");
+            return Discard(item.Key.ItemId, "The provider connection changed while the work was processing.");
         }
 
         var entry = MetadataStateEntry.From(
@@ -221,6 +245,15 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             TimeSpan.FromMinutes(publishSnapshot.Limits.MetadataStaleWindowMinutes));
 
         _store.Write(entry);
+
+        if (_log is not null && _log.IsEnabled(LogLevel.Information))
+        {
+            _log.Write(
+                LogLevel.Information,
+                ArrTagsLogEvent.MetadataPublished,
+                FormattableString.Invariant(
+                    $"Published metadata state '{entry.State}' for provider '{entry.ProviderKind.ToApiName()}' at configuration v{publishSnapshot.ConfigurationVersion}."));
+        }
 
         return MetadataReconciliationResult.WithEntry(
             WorkProcessingResult.Completed(FormattableString.Invariant(
@@ -297,8 +330,17 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         }
     }
 
-    private static MetadataReconciliationResult Discard(string reason)
+    private MetadataReconciliationResult Discard(Guid itemId, string reason)
     {
+        if (_log is not null && _log.IsEnabled(LogLevel.Information))
+        {
+            _log.Write(
+                LogLevel.Information,
+                ArrTagsLogEvent.MetadataDiscarded,
+                FormattableString.Invariant(
+                    $"Metadata reconciliation discarded item {itemId:D}: {reason}"));
+        }
+
         return MetadataReconciliationResult.Processed(WorkProcessingResult.Completed(reason));
     }
 

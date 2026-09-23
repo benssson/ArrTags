@@ -1,0 +1,127 @@
+{
+  "task": "10.2",
+  "reviewer": "security-reviewer",
+  "subject": "Task 10.2 - Bounded, redacted log call sites and volume bounds (ADR-020 clauses 4 and 6)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "open_blocker_high_medium": 0,
+  "findings": [
+    {
+      "id": "SEC-10.2-1",
+      "severity": "LOW",
+      "area": "documentation/assurance",
+      "issue": "docs/limitations.md SEC-5 still asserts the pre-10.2 negative claim that 'the plugin has no logging call sites, so no plugin log path can leak a secret' and 'the plugin still has no diagnostic log (ILogger/Serilog) call sites'. After task 10.2 this is false: 21 instrumented log call sites now exist. This is a stale false-assurance statement, not an exploitable defect; the new path is correctly documented in ADR-020, docs/architecture.md sections 6 and 12, and the worker report flags SEC-5 as stale. The plan assigns the SEC-5 rewrite to task 10.3.",
+      "evidence": [
+        "docs/limitations.md:509-523 (SEC-5 text)",
+        "docs/architecture.md:1229-1249 (correct redaction/volume contract)",
+        "docs/implementation/10.2/worker-report.json known_limitations[0] (worker explicitly flags SEC-5 as stale and assigns it to task 10.3)",
+        "docs/changelog.md task 10.2 entry: 'task 10.3 (SEC-5 rewrite and logging security review) remains'"
+      ],
+      "status": "open",
+      "recommended_action": "Complete the task 10.3 SEC-5 rewrite from the 'no logging call sites' negative result to the reviewed ADR-020 redaction contract before Gate 10. No code change is required for task 10.2."
+    },
+    {
+      "id": "SEC-10.2-2",
+      "severity": "LOW",
+      "area": "secret",
+      "issue": "The provider and metadata log call sites emit ArrProviderError.Message. ArrProviderError bounds the message to 512 chars but does not redact content, so the ADR-020 clause 4 guarantee for that field rests on every upstream producer. All current producers were enumerated and verified to use fixed, code-owned strings (no URL, key, header, or payload). This is a future-regression risk only, already acknowledged by the worker.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrProviderError.cs:55-64 (trims/truncates only)",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:142-153,207-234,242-263,314-341 (all fixed strings)",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:157-176,232-286,339-366 (all fixed strings)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:135, src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:208 (fixed strings)",
+        "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs:85-89 and src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:178-186 (the only log sites that consume error.Message)",
+        "docs/implementation/10.2/worker-report.json known_limitations[1]"
+      ],
+      "status": "noted",
+      "recommended_action": "Keep the producer-side invariant (fixed, code-owned ArrProviderError messages) covered by review; if a future provider-client change wants to surface response-derived text, add a redaction/sanitize step at ArrProviderError construction or before the log boundary. No action required for task 10.2."
+    },
+    {
+      "id": "SEC-10.2-3",
+      "severity": "LOW",
+      "area": "input/logging",
+      "issue": "Several log payload strings are length-bounded but not control-character-stripped: ArrProviderError.Message (trim/truncate), WorkProcessingResult.Reason (trim/truncate), and MediaMatch.AmbiguityReason (trim). ArtworkOperationErrors.Sanitize (used by artwork reasons) does strip control characters. Today every producer supplies fixed code-owned text, so no attacker-controlled value reaches these log lines and CR/LF log-forging is not exploitable. This is defense-in-depth only; it matters only if a future producer propagates response-derived text into one of these fields.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrProviderError.cs:55-64",
+        "src/ArrTags/Updates/WorkProcessingResult.cs:96-105",
+        "src/ArrTags/Matching/MediaMatch.cs:115",
+        "src/ArrTags/Artwork/ArtworkOperationErrors.cs:27-61 (contrast: strips control characters)",
+        "src/ArrTags/Updates/LibraryWorkWorker.cs LogProcessed/LogRetryScheduled (logs result.Reason)"
+      ],
+      "status": "noted",
+      "recommended_action": "Optional hardening: route log-bound reason strings through a control-character-stripping sanitizer at the boundary (the artwork path already does this) so a future producer cannot forge log lines. No action required for task 10.2."
+    },
+    {
+      "id": "SEC-10.2-4",
+      "severity": "INFORMATIONAL",
+      "area": "boundary",
+      "issue": "docs/architecture.md section 12 prose lists 'durations' among the bounded values emitted by the logging boundary, but no 10.2 call site logs a duration. The section 12 limit row itself (Plugin log volume, 5 per minute per category/event, code-owned, suppression summary, 256-key cap) is accurate against LogThrottle's constants.",
+      "evidence": [
+        "docs/architecture.md:1236-1238 ('...counts, and durations')",
+        "docs/architecture.md:1227 (log-volume limit row)",
+        "src/ArrTags/Logging/LogThrottle.cs:23,29,34 (MaxEmissionsPerWindow=5, MaxTrackedKeys=256, SuppressionWindow=1 min)",
+        "git diff HEAD -- src (no duration value appears in any of the 21 _log.Write payloads)"
+      ],
+      "status": "noted",
+      "recommended_action": "Optional wording fix: drop 'durations' or add a duration-valued call site in a later task. The limit row is correct."
+    },
+    {
+      "id": "SEC-10.2-5",
+      "severity": "INFORMATIONAL",
+      "area": "boundary",
+      "issue": "Every instrumented class takes an optional IArrTagsLog<T>? that defaults to null, so a non-DI construction that omits it emits nothing. This is a diagnostic gap (missing logs), not a secret-exposure path; production DI supplies the registered log for all boundaries (factories for ArtworkGenerationCoordinator and LibraryReconciliationService pass it explicitly, and the MVC TypeFilter construction path is covered by a test).",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:172-195 (RegisterArrTagsLogs/CreateLog)",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:238,387 (explicit factory injection)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:404-430 (MvcFilterConstructionInjectsTheRegisteredLogBoundary)",
+        "docs/implementation/10.2/worker-report.json known_limitations[3]"
+      ],
+      "status": "noted",
+      "recommended_action": "None required; a future non-DI construction site should be required to pass the log."
+    },
+    {
+      "id": "SEC-10.2-6",
+      "severity": "INFORMATIONAL",
+      "area": "logging",
+      "issue": "Live host Serilog emission and sink formatting were not exercised (ARRTAGS_JELLYFIN_HOST_DIR unset, 63 host-guarded tests skipped). Category prefixing, verbosity gating, redaction, and the no-custom-sink wiring are proven over a capturing ILoggerProvider in unit/integration tests. Live confirmation belongs to the consolidated pinned-host verification.",
+      "evidence": [
+        "docs/implementation/10.2/worker-report.json known_limitations[2]",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:370-402 (DI/category/fallback tests)",
+        "build.sh test: Passed 1363, Skipped 63, Total 1426"
+      ],
+      "status": "noted",
+      "recommended_action": "Confirm host sink emission in the task 14.3 pinned-host verification."
+    }
+  ],
+  "secret_paths_checked": [
+    "src/ArrTags/Providers/Radarr/RadarrClient.cs (X-Api-Key via lease.ApplyTo; no log call)",
+    "src/ArrTags/Providers/Sonarr/SonarrClient.cs (X-Api-Key via lease.ApplyTo; no log call)",
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs (X-ArrTags-Webhook-Secret candidate value never logged)",
+    "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs (logs connection identity + ArrProviderError only)",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (no custom ILoggerProvider/sink; no ILoggerFactory replacement)",
+    "src/ArrTags/Logging/ArrTagsLog.cs (facade passes only the caller-supplied bounded message)"
+  ],
+  "auth_paths_checked": [
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:56-102 (authenticate-first, uniform bounded rejection message, no header/body/secret reflected)",
+    "tests/ArrTags.Tests/LogRedactionTests.cs:608-649,212-225 (header/body sentinels absent at every verbosity)"
+  ],
+  "state_paths_checked": [
+    "src/ArrTags/Reconciliation/MetadataStateEntry.cs (State is a bounded enum; only State/ProviderKind/config version logged)",
+    "src/ArrTags/Updates/WorkItemKey.cs:108-113 (ToString carries item id + non-secret connection id + surface)",
+    "src/ArrTags/Artwork/ArtworkGenerationResult.cs (reason is sanitized/bounded; no path/credential)",
+    "src/ArrTags/Reconciliation/LibraryReconciliationResult.cs (bounded summary; fixed reasons)"
+  ],
+  "input_paths_checked": [
+    "src/ArrTags/Logging/LogThrottle.cs (bounded tracking set, per-bucket lock, code-owned constants)",
+    "src/ArrTags/Logging/ArrTagsLog.cs (IsEnabled gate then single bounded message; suppression summary is count/event only)",
+    "src/ArrTags/Webhooks/WebhookIntakeService.cs (logs bounded event kind/provider/count)",
+    "src/ArrTags/Updates/LibraryWorkWorker.cs (logs bounded key/outcome/retryability/reason; exception type name only)",
+    "src/ArrTags/PluginLifecycle/LogVerbosityGate.cs (undefined verbosity falls back to Warning)"
+  ],
+  "reproductions": [
+    "Build: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Redaction suite: dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\" -> Passed 65, Failed 0.",
+    "Full suite: . /config/arrtags-env.sh && ./build.sh test -> Passed 1363, Skipped 63, Total 1426, Failed 0.",
+    "Independent non-vacuousness probe (isolated git worktree at /tmp/final-review/security/probe-wt, removed afterwards; audited tree diff md5 unchanged 08c56371f68d4bdf34e9735f69412cc9): injected two temporary leaks - ConcurrencyLimitedArrMetadataReader logged connection.BaseUrl (URL-credential sentinel) and WebhookAuthenticationFilter logged the supplied candidate header value. Result: Failed 11, Passed 54, Total 65. The redaction assertions caught both leaks (AssertNoSentinel failed on 'SENTINEL-URL-CREDENTIAL-71ab' and 'SENTINEL-HEADER-VALUE-58f0'), proving the suite is non-vacuous. Worktree removed and audited tree verified unmodified."
+  ],
+  "summary": "The task 10.2 logging path implements the ADR-020 clause 4 redaction contract and clause 6 volume bound correctly. All 21 instrumented log call sites were enumerated and each emits only bounded, already-redacted values (bounded enums/counts, Jellyfin item ids, the non-secret ArrConnectionId identity, configuration version, ArrProviderError code/retryability/fixed message, exception type names). No API key, webhook secret, SecretLease value, X-Api-Key/X-ArrTags-Webhook-Secret header, request/response body, provider DTO, or PluginConfiguration reaches a log line; no call site uses LogLevel.Trace or a level-conditional payload expansion, so raising verbosity to Debug/Trace cannot expand a redacted value (verified by the per-level sentinel theories and the Debug==Trace comparison). The LogThrottle is thread-safe and bounded (5 per category/event per minute, one suppression summary per window, 256-key cap; the tracking key is code-owned so the cap is effectively unreachable in production). DI wiring adds no custom ILoggerProvider/sink, does not replace the host ILoggerFactory, resolves ILogger<T> through the host DI with a NullLogger fallback, and yields ArrTags.* categories. The section 12 log-volume row is accurate. No BLOCKER, HIGH, or MEDIUM finding remains open. The only open finding is LOW documentation debt: docs/limitations.md SEC-5 still contains the stale 'no logging call sites' negative claim, which the plan explicitly assigns to task 10.3; the remaining findings are noted hardening/assurance observations. Verdict: PASS_WITH_FINDINGS."
+}

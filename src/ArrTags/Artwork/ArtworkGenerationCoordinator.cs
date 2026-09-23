@@ -1,8 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using ArrTags.Logging;
 using ArrTags.Rendering;
 using ArrTags.State;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.Artwork;
 
@@ -43,6 +45,7 @@ public sealed class ArtworkGenerationCoordinator
     private readonly ArtworkPublisher _publisher;
     private readonly PublishedArtworkStateStore _states;
     private readonly SourceArtifactStore _artifacts;
+    private readonly IArrTagsLog<ArtworkGenerationCoordinator>? _log;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArtworkGenerationCoordinator"/> class.
@@ -52,19 +55,22 @@ public sealed class ArtworkGenerationCoordinator
     /// <param name="publisher">The durable single-subject publisher.</param>
     /// <param name="states">The authoritative published-artwork state store used for retained-source selection.</param>
     /// <param name="artifacts">The authoritative retained source-artifact store used for retained-source selection.</param>
+    /// <param name="log">The optional bounded, secret-free artwork-boundary log.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public ArtworkGenerationCoordinator(
         IArtworkSourceReader reader,
         IRenderer renderer,
         ArtworkPublisher publisher,
         PublishedArtworkStateStore states,
-        SourceArtifactStore artifacts)
+        SourceArtifactStore artifacts,
+        IArrTagsLog<ArtworkGenerationCoordinator>? log = null)
     {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _states = states ?? throw new ArgumentNullException(nameof(states));
         _artifacts = artifacts ?? throw new ArgumentNullException(nameof(artifacts));
+        _log = log;
     }
 
     /// <summary>
@@ -82,28 +88,53 @@ public sealed class ArtworkGenerationCoordinator
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        ArtworkGenerationResult result;
         if (!TryValidate(request, out var validationReason))
         {
-            return ArtworkGenerationResult.Blocked(validationReason);
+            result = ArtworkGenerationResult.Blocked(validationReason);
+        }
+        else if (cancellationToken.IsCancellationRequested)
+        {
+            result = ArtworkGenerationResult.Cancelled("The artwork generation was cancelled before it started.");
+        }
+        else
+        {
+            try
+            {
+                result = await GenerateCoreAsync(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                result = ArtworkGenerationResult.Cancelled("The artwork generation was cancelled.");
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                result = ArtworkGenerationResult.Blocked("The artwork generation could not be completed safely.");
+            }
         }
 
-        if (cancellationToken.IsCancellationRequested)
+        LogOutcome(request, result);
+        return result;
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free artwork-boundary record. Only the target
+    /// Jellyfin item identifier, the bounded generation outcome, and the bounded
+    /// non-secret reason are emitted; source bytes, artifact paths, provider
+    /// payloads, and credentials are never available here (ADR-020 clause 4).
+    /// </summary>
+    private void LogOutcome(ArtworkGenerationRequest request, ArtworkGenerationResult result)
+    {
+        if (_log is null || !_log.IsEnabled(LogLevel.Information))
         {
-            return ArtworkGenerationResult.Cancelled("The artwork generation was cancelled before it started.");
+            return;
         }
 
-        try
-        {
-            return await GenerateCoreAsync(request, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            return ArtworkGenerationResult.Cancelled("The artwork generation was cancelled.");
-        }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            return ArtworkGenerationResult.Blocked("The artwork generation could not be completed safely.");
-        }
+        _log.Write(
+            LogLevel.Information,
+            ArrTagsLogEvent.ArtworkGenerationCompleted,
+            FormattableString.Invariant(
+                $"Artwork generation for item {request.JellyfinItemId:D} completed with {result.Outcome}: {result.Reason}"));
     }
 
     private async Task<ArtworkGenerationResult> GenerateCoreAsync(

@@ -2,7 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
+using ArrTags.Logging;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.Updates;
 
@@ -36,6 +38,7 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
     private readonly LibraryWorkQueue _queue;
     private readonly IWorkItemProcessor _processor;
     private readonly ConfigurationSnapshotService _configuration;
+    private readonly IArrTagsLog<LibraryWorkWorker>? _log;
     private readonly int _workerCount;
     private readonly TimeSpan _shutdownTimeout;
     private CancellationTokenSource? _cts;
@@ -50,19 +53,22 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
     /// <param name="configuration">The current public configuration snapshot used for the retry policy.</param>
     /// <param name="workerCount">The optional bounded worker count; defaults to <see cref="DefaultWorkerCount"/>.</param>
     /// <param name="boundedShutdownTimeout">The optional bounded shutdown timeout; defaults to <see cref="BoundedShutdownTimeout"/>.</param>
+    /// <param name="log">The optional bounded, secret-free queue-boundary log.</param>
     /// <exception cref="ArgumentNullException">A required dependency is <see langword="null"/>.</exception>
     public LibraryWorkWorker(
         LibraryWorkQueue queue,
         IWorkItemProcessor processor,
         ConfigurationSnapshotService configuration,
         int workerCount = DefaultWorkerCount,
-        TimeSpan? boundedShutdownTimeout = null)
+        TimeSpan? boundedShutdownTimeout = null,
+        IArrTagsLog<LibraryWorkWorker>? log = null)
     {
         _queue = queue ?? throw new ArgumentNullException(nameof(queue));
         _processor = processor ?? throw new ArgumentNullException(nameof(processor));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _workerCount = workerCount < 1 ? 1 : workerCount;
         _shutdownTimeout = boundedShutdownTimeout ?? BoundedShutdownTimeout;
+        _log = log;
     }
 
     /// <inheritdoc />
@@ -153,6 +159,7 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
             catch (Exception exception) when (exception is not OutOfMemoryException)
             {
                 // A queue failure must never take down the worker or the host.
+                LogFailure("The work queue could not dequeue an item.", exception);
                 continue;
             }
 
@@ -199,17 +206,75 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
             {
                 // An unclassified processor failure is terminal for this attempt;
                 // the worker does not retry an unknown failure.
+                LogFailure("The work processor failed for an item.", exception);
                 result = WorkProcessingResult.Terminal("The work processor failed.");
             }
 
             if (!result.IsRetryable || attempt == maxAttempts - 1)
             {
+                LogProcessed(item, result, attempt + 1);
                 return;
             }
 
+            LogRetryScheduled(item, result, attempt + 1);
             await Task.Delay(
                 WorkRetryPolicy.ComputeBackoff(limits, attempt),
                 cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free queue-boundary record for a processed
+    /// work item. Only the bounded work key, the outcome classification, and the
+    /// bounded non-secret reason are emitted (ADR-020 clause 4).
+    /// </summary>
+    private void LogProcessed(LibraryWorkItem item, WorkProcessingResult result, int attempts)
+    {
+        if (_log is null || !_log.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        _log.Write(
+            LogLevel.Debug,
+            ArrTagsLogEvent.WorkItemProcessed,
+            FormattableString.Invariant(
+                $"Work item {item.Key} processed in {attempts} attempt(s): success={result.IsSuccess}, retryability={result.Retryability}. {result.Reason}"));
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free queue-boundary record for a scheduled
+    /// retry.
+    /// </summary>
+    private void LogRetryScheduled(LibraryWorkItem item, WorkProcessingResult result, int attempts)
+    {
+        if (_log is null || !_log.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        _log.Write(
+            LogLevel.Debug,
+            ArrTagsLogEvent.WorkItemRetryScheduled,
+            FormattableString.Invariant(
+                $"Work item {item.Key} will be retried after {attempts} attempt(s): retryability={result.Retryability}. {result.Reason}"));
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free queue-boundary record for an unexpected
+    /// contained failure. Only the bounded description and the exception type
+    /// name are emitted; no message, payload, or credential is written.
+    /// </summary>
+    private void LogFailure(string description, Exception exception)
+    {
+        if (_log is null || !_log.IsEnabled(LogLevel.Warning))
+        {
+            return;
+        }
+
+        _log.Write(
+            LogLevel.Warning,
+            ArrTagsLogEvent.WorkItemFailed,
+            FormattableString.Invariant($"{description} {exception.GetType().Name}."));
     }
 }

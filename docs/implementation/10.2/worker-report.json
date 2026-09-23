@@ -1,0 +1,52 @@
+{
+  "task": "10.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Instrumented the provider, matching, metadata, artwork, queue, reconciliation, webhook, and lifecycle boundaries with secret-free log calls under the ADR-020 clause 4 redaction contract and bounded log volume (ADR-020 clause 6). Added a plugin-owned src/ArrTags/Logging boundary: IArrTagsLog<T>/ArrTagsLog<T> resolves the host ILogger<T> for the calling type (category = the calling type's name, so every category is prefixed ArrTags.*), gates every call on the task 10.1 ILogVerbosityGate read from the current configuration snapshot, and applies one shared, provider-neutral, thread-safe LogThrottle. Call sites: ConcurrencyLimitedArrMetadataReader<T> (provider read outcome), RadarrMetadataReader/SonarrMetadataReader (match outcome), MetadataReconciliationProcessor (publish/discard/read failure), ArtworkGenerationCoordinator (generation outcome), LibraryWorkWorker (processed/retry/contained failure), LibraryReconciliationService (bounded result summary), WebhookAuthenticationFilter and WebhookIntakeService (auth rejection/resolution/contained failure), and ArrTagsLifecycleService (start/stop/item removal). Only bounded, already-redacted values are emitted (ArrProviderError code/retryability/message, non-secret connection identity, provider kind, bounded match status/method/ambiguity reason, configuration version, bounded outcome/reason enums, bounded item/record identifiers, counts, exception type names); no API key, webhook secret, SecretLease value, X-Api-Key/X-ArrTags-Webhook-Secret header, raw request/response body, full provider payload/DTO, or mutable PluginConfiguration is logged. The emitted data shape is identical at every level (no Trace-only branch), so raising verbosity cannot expand a redacted value into a secret-bearing one. Log volume is bounded by the code-owned LogThrottle (not user-configurable): at most 5 records per category/event per one-minute window, one bounded suppression summary per window rollover, and a 256-key tracking cap; the bound is recorded as a docs/architecture.md section 12 limit row. ArrTagsServiceRegistrator registers LogThrottle and a closed IArrTagsLog<T> for every instrumented type via a factory that resolves ILogger<T> through the host DI and falls back to NullLogger<T> when the host has not registered logging; it registers no custom ILoggerProvider/sink and does not replace the host ILoggerFactory. LogRedactionTests (65 cases) drives every boundary with sentinel secrets at every verbosity level, asserts no sentinel in captured output with exact per-level emission counts, proves a Trace raise adds no message beyond Debug for every boundary, proves the suppression/tracking/thread-safety bounds, proves the MVC TypeFilter construction path receives the registered log, and proves the registrator's ArrTags.* category prefixes and no-logging fallback. Redaction assertions were proven non-vacuous by temporarily leaking the connection URL and the webhook header value at two call sites, which failed 10 cases.",
+  "validation": [
+    "Baseline before changes (recorded in task 10.1): build 0 warnings / 0 errors; suite Failed 0, Passed 1298, Skipped 63, Total 1361.",
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\" -> Passed! - Failed: 0, Passed: 65, Skipped: 0, Total: 65.",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426 (baseline Failed 0, Passed 1298, Skipped 63, Total 1361; +65 passed, +65 total, 0 new skips; the 63 skips are the host-guarded facts, unchanged because ARRTAGS_JELLYFIN_HOST_DIR is unset).",
+    "Non-vacuousness check: temporarily changed ConcurrencyLimitedArrMetadataReader.LogReadOutcome to log connection.BaseUrl and WebhookAuthenticationFilter to log the supplied candidate header value, then ran the LogRedactionTests filter -> Failed! - Failed: 10, Passed: 54, Total: 64 (the provider and webhook sentinel theories failed with the sentinel substrings found). Both files were reverted from task-owned backups (/tmp/10.2, now removed) and reconfirmed via grep; the 65-case suite then passed.",
+    "git status/diff inspection: changes are limited to the 11 instrumented src files, the new src/ArrTags/Logging files, the new tests/ArrTags.Tests/LogRedactionTests.cs, and the canonical docs (PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md); docs/limitations.md SEC-5 is deliberately unchanged (task 10.3 owns its rewrite)."
+  ],
+  "changed_files": [
+    "src/ArrTags/Logging/ArrTagsLogEvent.cs",
+    "src/ArrTags/Logging/IArrTagsLog.cs",
+    "src/ArrTags/Logging/ArrTagsLog.cs",
+    "src/ArrTags/Logging/LogThrottleDecision.cs",
+    "src/ArrTags/Logging/LogThrottle.cs",
+    "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs",
+    "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs",
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs",
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs",
+    "src/ArrTags/Updates/LibraryWorkWorker.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationService.cs",
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs",
+    "src/ArrTags/Webhooks/WebhookIntakeService.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/LogRedactionTests.cs",
+    "docs/architecture.md",
+    "PLANS.md",
+    "docs/changelog.md",
+    "docs/project-status.md",
+    "docs/implementation-readiness.md",
+    "docs/implementation/10.2/worker-report.json"
+  ],
+  "known_limitations": [
+    "docs/limitations.md SEC-5 is now stale. Exact behaviour: it still states 'the plugin has no logging call sites, so no plugin log path can leak a secret', which was true before task 10.2 but is no longer true because the instrumented call sites exist. Precondition: task 10.2 deliberately did not rewrite SEC-5 because the assigned task and PLANS.md assign the SEC-5 rewrite to task 10.3. Consequence: until task 10.3 lands, SEC-5 is a stale negative claim and must be rewritten to the ADR-020 redaction contract before Gate 10.",
+    "The bounded/redacted contract of ArrProviderError.Message is relied upon but not re-verified. Exact behaviour: the provider boundary and the metadata boundary log ArrProviderError.Message, which ArrProviderError bounds to 512 characters and documents as never containing an API key, request URL, or raw provider payload. Precondition: the provider client implementations (RadarrClient/SonarrClient) are the only producers of that message and were not modified by this task. Consequence: if a future provider-client change put a credential into ArrProviderError.Message, the log call would emit it; the redaction tests exercise the boundary with a fixed, redacted message and cannot detect that upstream construction defect.",
+    "The actual host Serilog emission and sink output were not live-verified. Exact behaviour: host ILogger<T> resolution, the ArrTags.* category prefix, verbosity gating, and redaction are proven by unit/integration tests over the DI container and a capturing ILoggerProvider; no live pinned Jellyfin host was started in this environment. Precondition: ARRTAGS_JELLYFIN_HOST_DIR is unset, so the 63 host-guarded facts remain skipped. Consequence: a host-specific emission or sink-format issue (for example the logging.json vs logging.user.json naming caveat noted in docs/research/jellyfin-12-architecture.md section 10.2) would not be caught here; live confirmation belongs to the consolidated pinned-host verification (task 14.3).",
+    "Boundaries constructed without a log instance emit nothing. Exact behaviour: each instrumented class takes an optional IArrTagsLog<T>? defaulting to null, so a direct construction that omits it is silent; production DI always supplies the registered closed type, and the MVC TypeFilter construction path is proven by a test to receive it. Precondition: only callers that construct the class outside the registrator. Consequence: a new non-DI construction site would silently lose the boundary's logging until it passes the log; this is a diagnostic gap, not a secret-exposure path.",
+    "LogThrottle window-rollover semantics drop one message. Exact behaviour: when a window rolls over and the previous window had suppressed messages, the next call emits one bounded suppression summary instead of its own message. Precondition: a category/event that exceeds the 5-per-minute bound. Consequence: at most one ordinary message per category/event per window is replaced by the summary; this is intentional volume bounding, not data loss of authoritative state."
+  ],
+  "ready_for_next_task": true
+}

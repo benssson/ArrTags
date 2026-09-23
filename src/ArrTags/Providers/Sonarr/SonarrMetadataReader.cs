@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ArrTags.Logging;
 using ArrTags.Matching;
 using ArrTags.Media;
 using ArrTags.Reconciliation;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.Providers.Sonarr;
 
@@ -18,15 +20,20 @@ namespace ArrTags.Providers.Sonarr;
 public sealed class SonarrMetadataReader : IArrMetadataReader
 {
     private readonly IArrReadClientFactory _clients;
+    private readonly IArrTagsLog<SonarrMetadataReader>? _log;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SonarrMetadataReader"/> class.
     /// </summary>
     /// <param name="clients">The connection-scoped read client factory.</param>
+    /// <param name="log">The optional bounded, secret-free matching-boundary log.</param>
     /// <exception cref="ArgumentNullException">The factory is <see langword="null"/>.</exception>
-    public SonarrMetadataReader(IArrReadClientFactory clients)
+    public SonarrMetadataReader(
+        IArrReadClientFactory clients,
+        IArrTagsLog<SonarrMetadataReader>? log = null)
     {
         _clients = clients ?? throw new ArgumentNullException(nameof(clients));
+        _log = log;
     }
 
     /// <inheritdoc />
@@ -47,12 +54,14 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
             // The canonical matcher produces the bounded missing-series-context
             // outcome for an episode without parent context, and unsupported for
             // any non-episode item.
-            return ArrMetadataReadResult.Success(MediaMatcher.MatchEpisode(
+            var unsupported = MediaMatcher.MatchEpisode(
                 identity,
                 connection.Provider,
                 connection.ConnectionId,
                 Array.Empty<MatchCandidate>(),
-                Array.Empty<MatchCandidate>()));
+                Array.Empty<MatchCandidate>());
+            LogMatch(identity, connection, unsupported);
+            return ArrMetadataReadResult.Success(unsupported);
         }
 
         var client = _clients.CreateSonarr(connection);
@@ -83,12 +92,14 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
         {
             // The parent series did not match, so the episode is not evaluated.
             // The canonical matcher supplies the bounded outcome and reason.
-            return ArrMetadataReadResult.Success(MediaMatcher.MatchEpisode(
+            var unmatched = MediaMatcher.MatchEpisode(
                 identity,
                 connection.Provider,
                 connection.ConnectionId,
                 seriesCandidates,
-                Array.Empty<MatchCandidate>()));
+                Array.Empty<MatchCandidate>());
+            LogMatch(identity, connection, unmatched);
+            return ArrMetadataReadResult.Success(unmatched);
         }
 
         SonarrSeriesResource? matchedSeries = null;
@@ -103,12 +114,14 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
 
         if (matchedSeries is null)
         {
-            return ArrMetadataReadResult.Success(MediaMatcher.MatchEpisode(
+            var unmatched = MediaMatcher.MatchEpisode(
                 identity,
                 connection.Provider,
                 connection.ConnectionId,
                 seriesCandidates,
-                Array.Empty<MatchCandidate>()));
+                Array.Empty<MatchCandidate>());
+            LogMatch(identity, connection, unmatched);
+            return ArrMetadataReadResult.Success(unmatched);
         }
 
         var episodesResult = await client.GetEpisodesAsync(seriesRecord.SeriesId, cancellationToken).ConfigureAwait(false);
@@ -143,6 +156,7 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
             connection.ConnectionId,
             seriesCandidates,
             episodeCandidates);
+        LogMatch(identity, connection, match);
 
         if (match.Status != MediaMatchStatus.Matched || match.RecordIdentity is not SonarrIdentity episodeRecord)
         {
@@ -195,5 +209,26 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
             ArrProviderErrorCode.InvalidResponse,
             ArrErrorRetryability.Never,
             "The provider returned a resource that could not be mapped.");
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free matching-boundary record. Only the
+    /// Jellyfin item identifier, the provider kind, the bounded match status and
+    /// method, and the bounded ambiguity reason are emitted; the provider DTO,
+    /// the API key, and the request are never available here (ADR-020 clause 4).
+    /// </summary>
+    private void LogMatch(MediaIdentity identity, ArrConnection connection, MediaMatch match)
+    {
+        if (_log is null || !_log.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        var reason = match.AmbiguityReason is { } ambiguity ? " Reason: " + ambiguity : string.Empty;
+        _log.Write(
+            LogLevel.Debug,
+            ArrTagsLogEvent.MatchResolved,
+            FormattableString.Invariant(
+                $"Match for Jellyfin item {identity.JellyfinItemId:D} via {connection.Provider.Kind.ToApiName()} resolved to {match.Status} ({match.MatchMethod}).{reason}"));
     }
 }

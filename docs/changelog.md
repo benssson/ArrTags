@@ -2935,3 +2935,58 @@ Documentation: `docs/architecture.md` sections 6 (logging and verbosity) and 12
 `./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
 0, Passed 1298, Skipped 63, Total 1361 (baseline Failed 0, Passed 1272, Skipped
 63, Total 1335; +26 passed, +26 total, 0 new skips).
+
+### Task 10.2 - Bounded, redacted log call sites and volume bounds
+
+**Status:** Complete.
+
+Instruments every ArrTags boundary with secret-free log calls under the ADR-020
+clause 4 redaction contract and bounds log volume (ADR-020 clause 6). A new
+plugin-owned `src/ArrTags/Logging` boundary provides `IArrTagsLog<T>`/
+`ArrTagsLog<T>`: it resolves the host `ILogger<T>` for the calling type (so the
+category is the calling type's name and every category is prefixed `ArrTags.*`),
+gates on the task 10.1 `ILogVerbosityGate` read from the current configuration
+snapshot, and applies one shared, provider-neutral, thread-safe `LogThrottle`.
+Call sites were added at the provider
+(`ConcurrencyLimitedArrMetadataReader<T>`), matching (`RadarrMetadataReader`,
+`SonarrMetadataReader`), metadata (`MetadataReconciliationProcessor`), artwork
+(`ArtworkGenerationCoordinator`), queue (`LibraryWorkWorker`), reconciliation
+(`LibraryReconciliationService`), webhook (`WebhookAuthenticationFilter`,
+`WebhookIntakeService`), and lifecycle (`ArrTagsLifecycleService`) boundaries.
+
+Only bounded, already-redacted values are emitted: `ArrProviderError`
+code/retryability/bounded message, the non-secret connection identity, the
+provider kind, the bounded match status/method and ambiguity reason,
+configuration version, bounded outcome/reason enums, bounded item/record
+identifiers, and counts. No API key, webhook secret, `SecretLease` value,
+`X-Api-Key`/`X-ArrTags-Webhook-Secret` header, raw request/response body, full
+provider payload/DTO, or mutable `PluginConfiguration` is logged. The emitted
+data shape is identical at every level, so raising verbosity cannot expand a
+redacted value into a secret-bearing one.
+
+Log volume is bounded by the code-owned `LogThrottle`: at most 5 records per
+category and event within a one-minute window, one bounded suppression summary
+when the window rolls over, and a tracking set capped at 256 keys. The bound is
+code-owned and not user-configurable (ADR-020 authorizes a new configuration
+field only for the verbosity itself), and the section 12 limit row records it.
+
+New tests (`tests/ArrTags.Tests/LogRedactionTests.cs`, 65 cases) drive every
+instrumented boundary with sentinel secret values present in its secret-bearing
+inputs (configured API key and webhook secret, a credential-bearing connection
+URL, a media identity name, and the webhook header and body) at every verbosity
+level (`Off`, `Error`, `Warning`, `Information`, `Debug`, `Trace`), assert no
+sentinel appears in the captured host log output, assert the exact emission count
+per level, prove a Trace raise adds no message beyond Debug for every boundary,
+prove the repetition suppression, the one-summary-per-window behavior, the
+tracking-set bound, and thread safety, and prove the registrator resolves the
+instrumented logs with `ArrTags.*` category prefixes without registering a
+custom `ILoggerProvider` or replacing the host `ILoggerFactory`. The redaction
+assertions were verified to be non-vacuous by temporarily leaking the connection
+URL and the webhook header value at two call sites, which failed 10 cases.
+
+Documentation: `docs/architecture.md` sections 6 (logging and verbosity) and 12
+(the log-volume row and the redaction contract).
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1363, Skipped 63, Total 1426 (baseline Failed 0, Passed 1298, Skipped
+63, Total 1361; +65 passed, +65 total, 0 new skips).

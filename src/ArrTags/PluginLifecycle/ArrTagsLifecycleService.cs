@@ -5,8 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Artwork;
 using ArrTags.Configuration;
+using ArrTags.Logging;
 using ArrTags.Updates;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace ArrTags.PluginLifecycle;
 
@@ -33,6 +35,7 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
     private readonly IArtworkLifecycleCoordinator _coordinator;
     private readonly ConfigurationSnapshotService _configuration;
     private readonly IWorkHintSink _workHints;
+    private readonly IArrTagsLog<ArrTagsLifecycleService>? _log;
     private readonly TimeSpan _boundedDrainTimeout;
     private readonly ConcurrentDictionary<Task, byte> _pendingRemovals = new();
     private int _subscribed;
@@ -46,19 +49,22 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
     /// <param name="configuration">The current public configuration snapshot used for synchronous relevance checks.</param>
     /// <param name="workHints">The bounded, non-blocking enqueue boundary for relevant update work.</param>
     /// <param name="boundedDrainTimeout">An optional bounded drain timeout; defaults to <see cref="BoundedDrainTimeout"/>.</param>
+    /// <param name="log">The optional bounded, secret-free lifecycle-boundary log.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public ArrTagsLifecycleService(
         ILibraryEventSource libraryEvents,
         IArtworkLifecycleCoordinator coordinator,
         ConfigurationSnapshotService configuration,
         IWorkHintSink workHints,
-        TimeSpan? boundedDrainTimeout = null)
+        TimeSpan? boundedDrainTimeout = null,
+        IArrTagsLog<ArrTagsLifecycleService>? log = null)
     {
         _libraryEvents = libraryEvents ?? throw new ArgumentNullException(nameof(libraryEvents));
         _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _workHints = workHints ?? throw new ArgumentNullException(nameof(workHints));
         _boundedDrainTimeout = boundedDrainTimeout ?? BoundedDrainTimeout;
+        _log = log;
     }
 
     /// <inheritdoc />
@@ -78,6 +84,14 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
             _libraryEvents.ItemRemoved += OnLibraryItemChanged;
         }
 
+        if (_log is not null && _log.IsEnabled(LogLevel.Information))
+        {
+            _log.Write(
+                LogLevel.Information,
+                ArrTagsLogEvent.LifecycleStarted,
+                "The ArrTags lifecycle started and library events are subscribed.");
+        }
+
         return Task.CompletedTask;
     }
 
@@ -86,6 +100,14 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
     {
         Interlocked.Exchange(ref _stopping, 1);
         Unsubscribe();
+
+        if (_log is not null && _log.IsEnabled(LogLevel.Information))
+        {
+            _log.Write(
+                LogLevel.Information,
+                ArrTagsLogEvent.LifecycleStopping,
+                "The ArrTags lifecycle is stopping and beginning its bounded drain.");
+        }
 
         try
         {
@@ -124,6 +146,15 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
         // It stays off the library-event thread.
         if (e.Reason == LibraryWorkReason.Removed)
         {
+            if (_log is not null && _log.IsEnabled(LogLevel.Debug))
+            {
+                _log.Write(
+                    LogLevel.Debug,
+                    ArrTagsLogEvent.LifecycleItemRemoved,
+                    FormattableString.Invariant(
+                        $"Library item {e.ItemId:D} was removed; a bounded artwork removal was requested."));
+            }
+
             TrackRemoval(e.ItemId);
         }
 
