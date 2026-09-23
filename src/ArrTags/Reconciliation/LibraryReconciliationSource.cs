@@ -13,4 +13,12 @@ public enum LibraryReconciliationSource
 
     /// <summary>A reconciliation requested after a Jellyfin library scan.</summary>
     PostScan,
+
+    /// <summary>
+    /// A bounded reconciliation requested after a successful configuration
+    /// replacement, so saved settings re-render existing posters without waiting
+    /// for the next library event, webhook, post-scan, or scheduled run
+    /// (ADR-016 clause 5 second bullet).
+    /// </summary>
+    PostSave,
 }

@@ -1,0 +1,115 @@
+{
+  "task": "9.4",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "9.4-TQ1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/hosted-service-wiring",
+      "summary": "TQ-1 (HIGH) is closed: the new RegistratorRegistersThePostSaveTriggerAsAHostedService test genuinely proves the shipped hosted wiring and is non-vacuous.",
+      "detail": "The test builds a ServiceCollection with host-free boundaries, calls the real ArrTagsServiceRegistrator.RegisterServices, builds the provider, resolves IEnumerable<IHostedService>, and asserts Assert.Single(hosted.OfType<ConfigurationReconciliationTrigger>()) plus Assert.Same against both IConfigurationReconciliationTrigger and ConfigurationReconciliationTrigger. This proves the trigger is registered as a hosted service and that the save path resolves the same singleton that the host starts, so a missing AddHostedService line (which would leave _started==0 and silently no-op RequestReconciliation) fails the test. Non-vacuity is structural: TryAddSingleton<ConfigurationReconciliationTrigger>() and TryAddSingleton<IConfigurationReconciliationTrigger> do not register IHostedService; only the AddHostedService(factory) call does, so OfType would be empty without it. The worker additionally confirmed this by temporarily removing the line (test failed with Assert.Single 'collection was empty').",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:367-405",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:96-98, 116-117"
+      ],
+      "recommended_action": "No change required; the gap is closed."
+    },
+    {
+      "id": "9.4-TQ2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/bounded-shutdown",
+      "summary": "TQ-2 (MEDIUM) is closed: StopAsyncIsBoundedWhenTheReconciliationIsBlocked deterministically proves the bounded shutdown and cancellation observation.",
+      "detail": "The test blocks the enumerator (which cancellation cannot interrupt), requests a reconciliation, waits for the scan to enter the blocked enumeration, then asserts StopAsync returns within a 4s bounded wait and under 4s on a Stopwatch while the harness configures a 2s bounded shutdown timeout. After releasing the enumerator it asserts via a bounded stability poll that no hint is enqueued (the loop observes cancellation). The mechanism is sound: StopAsync cancels the CTS and awaits loop.WaitAsync with a linked 2s timeout; ReconcileAsync's cancellation token is cancelled, so once the enumeration returns, ThrowIfCancellationRequested aborts before any enqueue. Ran 12 times with no failure.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:238-270",
+        "src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs:102-136, 149-204"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "9.4-TQ3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/activation-accuracy",
+      "summary": "TQ-3 is closed: ValidButUnactivatedSaveRequestsNoReconciliation directly covers the valid-but-unactivated case previously verified only by inspection.",
+      "detail": "SaveHarness(registerSnapshotService: false) leaves the ConfigurationSnapshotService unregistered, so Plugin.TryActivateConfiguration resolves null and returns false. The test asserts the candidate is valid (LastConfigurationValidationResult.IsValid) but the snapshot version is unchanged and trigger.RequestCount is 0. This directly exercises the 'else if (replacementActivated)' branch.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:88-104",
+        "src/ArrTags/Plugin.cs:152-173, 184-213"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "9.4-TQ56",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/assertion-quality",
+      "summary": "TQ-5/TQ-6 addressed without weakening coverage: vacuous assertions removed and the fixed delay replaced by a bounded stability poll.",
+      "detail": "The removed Assert.False(release.IsSet)/Assert.Empty(Hints) were vacuous (they hold regardless of implementation because the enumerator is still blocked); the load-bearing assertion (the save task completes within 5s while the scan is blocked, which would deadlock on a synchronous scan) is retained, and the test still awaits the scan-entered signal. The fixed Task.Delay(200) in the coalescing test is replaced by AssertStableAsync, a 300ms bounded poll asserting the enumeration count stays 2; this is deterministic because after the single rerun requestedVersion==servedVersion, so a third run cannot occur.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:106-145, 180-236, 421-439",
+        "src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs:168-203"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "9.4-TQ8",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/release-matrix",
+      "summary": "TQ-8 (stale 1.0.1.0 build/test/size/SHA matrix in docs/limitations.md V6 and docs/release/build-and-release.md) remains, but is pre-existing and release-task owned.",
+      "detail": "docs/release/build-and-release.md is not modified by task 9.4 at all (git status shows no change) and the V6 release-identity section in docs/limitations.md is pre-existing Phase 7/8 content. These stale v1.0.1 counts are not introduced by this task, are not part of its acceptance criteria, and are explicitly owned by the v1.1 release task. Per scope discipline they do not block task 9.4.",
+      "evidence": [
+        "docs/limitations.md:251-335",
+        "docs/release/build-and-release.md (unmodified by this task)",
+        "git status --short docs/release/ (empty)"
+      ],
+      "recommended_action": "No change required for task 9.4; the v1.1 release task should refresh the release matrix."
+    }
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs (10 facts) — inspected all 10; ran the class 12 times with 10/10 passing every run, no flakiness",
+    "./build.sh build — Build succeeded, 0 warnings, 0 errors (re-run)",
+    "./build.sh test (full suite) — Failed 0, Passed 1270, Skipped 63, Total 1333 (re-run; matches worker claim; +10 vs the 1323 baseline; 0 new skips)",
+    "RegistratorRegistersThePostSaveTriggerAsAHostedService — verified it resolves the real registrator's IEnumerable<IHostedService> and is structurally non-vacuous (only AddHostedService makes the trigger an IHostedService)",
+    "LifecycleFoundationTests.RegistratorRegistersFoundationServices — unchanged from attempt 1"
+  ],
+  "research_checked": [
+    "ADR-016 clause 5 second bullet — unchanged production behavior matches the accepted decision",
+    "No new host API contract introduced; no additional research required"
+  ],
+  "documentation_checked": [
+    "PLANS.md task 9.4 status — updated to 10 facts / Passed 1270 / Total 1333 / +10 and the new test descriptions",
+    "docs/changelog.md Task 9.4 entry — same count and test-description updates",
+    "docs/project-status.md — same count update (1270/63/1333)",
+    "Verified no stale '1268'/'1331'/'8 facts' remains anywhere (grep returned no matches)",
+    "docs/architecture.md, docs/implementation-readiness.md, docs/limitations.md, README.md — no count references, correctly unchanged in attempt 2"
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "outcome": "APPROVED by implementation-reviewer",
+      "subsequent": "test-quality-reviewer found TQ-1 (HIGH: hosted-service registration unasserted), TQ-2 (MEDIUM: untested bounded shutdown), and lower items (TQ-3 valid-but-unactivated untested, TQ-5 vacuous assertions, TQ-6 fixed delay, TQ-7 weak registrator test, TQ-8 stale release matrix)."
+    },
+    {
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "changes_reviewed": "Test-only rework: 8 -> 10 facts; TQ-1 closed by RegistratorRegistersThePostSaveTriggerAsAHostedService (replacing the weak TQ-7 test), TQ-2 closed by StopAsyncIsBoundedWhenTheReconciliationIsBlocked, TQ-3 closed by ValidButUnactivatedSaveRequestsNoReconciliation, TQ-5/TQ-6 addressed; TQ-8 left as out-of-scope release-task content. No production source changed."
+    }
+  ],
+  "ready_for_next_task": true,
+  "verified_claims": [
+    "No production source changed in attempt 2: Plugin.cs blob a0a752e..ff5b7a3, ArrTagsServiceRegistrator.cs blob ..1417664, LibraryReconciliationSource.cs blob ..9825755, LibraryWorkReason.cs diff identical to attempt 1, and IConfigurationReconciliationTrigger.cs / ConfigurationReconciliationTrigger.cs contents byte-for-byte identical to the attempt-1 versions reviewed.",
+    "Only tests + doc count text changed: changed_files = tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs, PLANS.md, docs/changelog.md, docs/project-status.md.",
+    "The new hosted-registration assertion genuinely proves the shipped wiring (real registrator, resolved IEnumerable<IHostedService>, single ConfigurationReconciliationTrigger, Assert.Same with the save path's interface and concrete singleton) and is non-vacuous.",
+    "The new tests are deterministic (12 consecutive 10/10 runs) and the removed assertions were vacuous, so existing coverage was not weakened.",
+    "Build 0 warnings/0 errors; targeted 10/10; full suite 1270/63/1333 — all match the worker report.",
+    "Documentation counts updated consistently (10 facts, Passed 1270, Total 1333, +10) with no stale attempt-1 counts remaining."
+  ],
+  "notes": "APPROVED (attempt 2). The attempt-2 rework is test-only and closes the test-quality reviewer's HIGH (TQ-1) and MEDIUM (TQ-2) gaps, plus TQ-3, and improves assertion quality (TQ-5/TQ-6). No production behavior changed, so the attempt-1 correctness conclusions still hold. The only remaining item (TQ-8) is pre-existing release-documentation staleness owned by the v1.1 release task and outside task 9.4's acceptance criteria. No unresolved user or architecture decision. ready_for_next_task = true."
+}

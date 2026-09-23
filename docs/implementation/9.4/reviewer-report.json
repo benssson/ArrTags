@@ -1,0 +1,109 @@
+{
+  "task": "9.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "9.4-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirements/activation-accuracy",
+      "summary": "A valid candidate whose running snapshot could not be replaced requests no reconciliation; verified by code inspection but not by a dedicated test.",
+      "detail": "Plugin.UpdateConfiguration now branches on 'else if (replacementActivated)' and TryActivateConfiguration returns false when the snapshot service cannot be resolved (null provider / resolution throw) or when TryReplace returns false/throws. No reconciliation is requested in those cases. The worker claims this behavior; it is correct by inspection. The task acceptance criteria only require the successful-save case, so no dedicated test is required.",
+      "evidence": [
+        "src/ArrTags/Plugin.cs:137-173 (replacementActivated branch)",
+        "src/ArrTags/Plugin.cs:184-213 (TryActivateConfiguration returns false paths)",
+        "src/ArrTags/Configuration/ConfigurationSnapshotService.cs:72-91 (TryReplace returns true only when valid and replaced)"
+      ],
+      "recommended_action": "No change required; the behavior is correct and covered by the successful-save test in combination with the invalid-save test."
+    },
+    {
+      "id": "9.4-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/scope",
+      "summary": "docs/limitations.md F2 was rewritten in task 9.4 even though PLANS.md assigns the F2 formal resolution to task 9.5; the rewrite is accurate and does not overclaim.",
+      "detail": "PLANS.md task 9.4 lists 'docs/architecture.md section 6' as its documentation impact and task 9.5 lists 'docs/limitations.md F2'. The worker updated the F2 entry to describe the implemented trigger while explicitly stating 'The final Goal A verification that formally records F2 as resolved (task 9.5) remains.' No canonical surface claims F2 is formally resolved. This is a minor scope expansion, not an overclaim, and 9.5 can still perform the formal reconciliation.",
+      "evidence": [
+        "PLANS.md task 9.4 'Documentation impact: docs/architecture.md section 6'",
+        "PLANS.md task 9.5 'Affected files/components: ... docs/limitations.md F2'",
+        "docs/limitations.md F2 body: 'The final Goal A verification that formally records F2 as resolved (task 9.5) remains.'"
+      ],
+      "recommended_action": "No change required for this task; task 9.5 should still perform the formal F2 resolution recording."
+    },
+    {
+      "id": "9.4-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/concurrency",
+      "summary": "The 'exactly one bounded rerun' property is per arrival batch; successive saves during a run produce sequential bounded reruns, which is the documented coalescing behavior.",
+      "detail": "The RunAsync do/while sets servedVersion to the latest requested version after each run, so any request arriving during a run is served by one rerun. If further saves arrive during that rerun, another rerun occurs. There is still at most one in-flight run and at most one pending request slot (SemaphoreSlim(0,1)), so no unbounded queue can grow. The worker's known_limitations records this and the test asserts exactly two invocations for eight requests during a single blocked run.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs:149-204",
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:159-210"
+      ],
+      "recommended_action": "No change required; behavior is bounded and matches the documented coalescing semantics."
+    },
+    {
+      "id": "9.4-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/failure-containment",
+      "summary": "The hosted loop's own failure containment is verified by inspection, not by direct throw-injection; the Plugin boundary containment is tested.",
+      "detail": "The save-path containment (a throwing IConfigurationReconciliationTrigger is swallowed and the save still activates) is directly tested. The loop's internal try/catch around WaitAsync and ReconcileAsync was inspected and is correct; LibraryReconciliationService already contains provider/library/fence failures internally and returns a bounded result. The worker documents the absence of a direct loop throw-injection test. This does not leave an acceptance criterion unverified.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs:153-204",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:112-210",
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:74-83"
+      ],
+      "recommended_action": "No change required."
+    }
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs (8 facts) — inspected all; ran 21 times (1 + 5 + 15) with 8/8 passing every run, no flakiness observed",
+    "./build.sh build — Build succeeded, 0 warnings, 0 errors (re-run)",
+    "./build.sh test (full suite) — Failed 0, Passed 1268, Skipped 63, Total 1331 (re-run; matches worker claim and +8 vs the 1323 baseline)",
+    "tests/ArrTags.Tests/LifecycleFoundationTests.cs RegistratorRegistersFoundationServices — inspected the added IMediaLibraryEnumerator stub and its necessity",
+    "Empirical probe /tmp/9.4/inline: confirmed SemaphoreSlim(0,1).Release() does NOT resume the awaiting loop inline on the releasing thread, so the save thread cannot run the reconciliation scan"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-016 clause 5 second bullet (bounded re-render trigger) — implementation matches: bounded enqueue, non-blocking, never throws, reuses existing boundary, required because ArtworkPublishingWorkItemProcessor skips stale ConfigurationVersion",
+    "docs/research/jellyfin-12-architecture.md section 9 reference for the save path — not re-fetched; no new host API contract is introduced by this task",
+    "Microsoft.Extensions.Hosting/DI behavior (hosted-service start ordering, optional constructor parameter defaults, factory-resolved singleton hosted service) — verified by successful resolution in LifecycleFoundationTests and existing project patterns"
+  ],
+  "documentation_checked": [
+    "PLANS.md — Project Status paragraph, Milestone Status row 9, task 9.4 status/checkbox, Phase 9 acceptance criterion, backlog item",
+    "docs/changelog.md — Phase 9 status line and new Task 9.4 entry",
+    "docs/project-status.md — current build/test/structure/next-step statements",
+    "docs/architecture.md — status line and new section 6 'Bounded post-save reconciliation' subsection",
+    "docs/implementation-readiness.md — status line and deferral list",
+    "docs/limitations.md — F2 entry (accurate; formal resolution explicitly left to 9.5)",
+    "README.md — end-user configuration/limitations text"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true,
+  "verified_claims": [
+    "UpdateConfiguration requests reconciliation only after TryReplace actually activated the replacement; invalid saves request none (test + inspection).",
+    "New plugin-owned, Jellyfin-free ArrTags.Configuration.IConfigurationReconciliationTrigger boundary with RequestReconciliation(); production implementation in ArrTags.PluginLifecycle (interface file has no Jellyfin usings).",
+    "Trigger resolved from the host service provider and called outside the save gate; resolution/request failures contained and never thrown into the host.",
+    "Bounded request slot SemaphoreSlim(0,1); at most one pending; redundant requests coalesced; a request during a run schedules one bounded rerun (deterministic test).",
+    "Reuses the existing LibraryReconciliationService/IWorkHintSink boundary; no parallel queue and no synchronous scan.",
+    "LibraryReconciliationSource.PostSave added and passed to ReconcileAsync; LibraryWorkReason.Reconciliation doc updated.",
+    "Fresh post-save hint carries the current ConfigurationVersion, so ArtworkPublishingWorkItemProcessor (snapshot.ConfigurationVersion != item.ConfigurationVersion) does not skip it; a stale pre-save item is skipped (integration test).",
+    "Shutdown cancels and awaits the loop within a bounded timeout (BoundedShutdownTimeout = 15s; linked to the host shutdown token).",
+    "DI registration adds descriptors only (no provider/render/library work at registration); hosted service starts after the lifecycle service.",
+    "Full suite result 1268/63/1331 and the +8 delta match the worker report; build 0 warnings/0 errors.",
+    "Save response non-blocking: code path is O(1) Interlocked.Increment + SemaphoreSlim.Release; empirically confirmed the loop continuation is not inlined on the save thread, and the dedicated test proves the save returns while the enumeration is blocked."
+  ],
+  "falsification_attempts": [
+    "Attempted to falsify the non-blocking claim by testing whether SemaphoreSlim.Release resumes the awaiting async loop inline on the releasing thread; result: NOT inline (afterAwaitThread != releaseThread), so the save thread cannot run CountCandidates/EnumerateCandidates synchronously.",
+    "Attempted to find an unbounded-queue path: the loop holds at most one semaphore slot and one in-flight run; repeated requests only advance a version counter, so no queue can grow.",
+    "Attempted to find a lost-request race between Interlocked.Increment and SemaphoreSlim.Release/SemaphoreFullException: the version counter is incremented before Release, so a coalesced request is always observed by the version comparison; no lost request found.",
+    "Attempted to find a stale-hint path: LibraryReconciliationService builds hints with snapshot.ConfigurationVersion read at run start, and the rerun rereads the snapshot, so the latest replaced version is observed.",
+    "Re-ran the new test class 21 times to falsify flakiness in the coalescing/rerun and non-blocking tests; zero failures.",
+    "Attempted to find scope creep: git status/diff show only task-owned source, test, planning, and documentation files; no unrelated changes."
+  ],
+  "notes": "APPROVED. The implementation satisfies the task objective and acceptance criterion (a successful save triggers a bounded, non-blocking reconciliation that enqueues fresh work at the new snapshot version so existing posters re-render). Boundedness is structurally guaranteed (single in-flight run, one-slot semaphore, version-based coalescing, bounded shutdown), the save path contains all trigger failures, and the host coupling is confined to the implementation behind a Jellyfin-free interface. Tests are genuine and non-vacuous and drove the real Plugin.UpdateConfiguration override and the real ConfigurationReconciliationTrigger. Only informational observations are recorded; none requires action. Limitation F2's formal resolution remains correctly assigned to task 9.5. No user/architecture decision is left unresolved."
+}

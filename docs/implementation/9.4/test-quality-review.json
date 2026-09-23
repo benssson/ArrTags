@@ -1,0 +1,100 @@
+{
+  "subject": "v1.1 Phase 9 task 9.4 (attempt 2) - Bounded post-save reconciliation trigger (ADR-016 clause 5 second bullet)",
+  "task": "9.4",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "test_quality_status": "PASS",
+  "attempt_1_status": "CONCERNS",
+  "findings": [
+    {
+      "id": "TQ-1",
+      "severity": "HIGH",
+      "disposition": "CLOSED - genuinely fixed, non-vacuous",
+      "area": "coverage/real-path",
+      "description": "New RegistratorRegistersThePostSaveTriggerAsAHostedService calls the real ArrTagsServiceRegistrator.RegisterServices, builds a provider, resolves IEnumerable<IHostedService>, asserts Assert.Single(hosted.OfType<ConfigurationReconciliationTrigger>()), and Assert.Same against both IConfigurationReconciliationTrigger and ConfigurationReconciliationTrigger. Non-vacuity is structural (only AddHostedService registers IHostedService) and was reproduced by temporarily removing the registration line (Assert.Single failed).",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:367-405",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:96-98, 116-117"
+      ]
+    },
+    {
+      "id": "TQ-2",
+      "severity": "MEDIUM",
+      "disposition": "CLOSED - deterministic bounded-shutdown test",
+      "area": "coverage/skips",
+      "description": "New StopAsyncIsBoundedWhenTheReconciliationIsBlocked blocks the enumerator with a cancellation-immune wait, asserts StopAsync returns within a 4s bound and under 4s (2s harness shutdown bound), then asserts via a bounded stability poll that no hint is enqueued.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:238-270",
+        "src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs:102-136"
+      ]
+    },
+    {
+      "id": "TQ-3",
+      "severity": "LOW",
+      "disposition": "CLOSED - valid-but-unactivated case directly exercised",
+      "area": "coverage",
+      "description": "New ValidButUnactivatedSaveRequestsNoReconciliation uses SaveHarness(registerSnapshotService: false); asserts LastConfigurationValidationResult.IsValid is true and trigger.RequestCount == 0. The meaningful assertion is RequestCount == 0.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:88-104"
+      ]
+    },
+    {
+      "id": "TQ-5",
+      "severity": "LOW",
+      "disposition": "CLOSED - vacuous assertions removed, load-bearing one retained",
+      "area": "meaningfulness",
+      "description": "The vacuous Assert.False(release.IsSet)/Assert.Empty(Hints) were removed; the bounded save.WaitAsync(5s) before release.Set() remains the genuine non-blocking assertion.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:106-145"
+      ]
+    },
+    {
+      "id": "TQ-6",
+      "severity": "LOW",
+      "disposition": "CLOSED - fixed delay replaced by bounded stability poll",
+      "area": "determinism",
+      "description": "The Task.Delay(200) negative assertion was replaced by AssertStableAsync(expected: 2, stabilityMilliseconds: 300), which is strictly stronger and cannot observe a pre-increment value.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:180-236, 421-439"
+      ]
+    },
+    {
+      "id": "TQ-7",
+      "severity": "INFORMATIONAL",
+      "disposition": "CLOSED - overstating test replaced",
+      "area": "meaningfulness",
+      "description": "The overstating RegistratorWiresThePostSaveTriggerWithoutStartupWork was removed and superseded by the TQ-1 hosted-registration test, which also asserts IWorkHintSink.Count == 0 after resolution.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:367-405"
+      ]
+    },
+    {
+      "id": "TQ-4",
+      "severity": "LOW",
+      "disposition": "NOT REQUIRED - optional, correctly declined",
+      "area": "coverage/real-path",
+      "description": "No single fact composes Plugin.UpdateConfiguration -> real trigger -> re-render; the two halves remain individually covered. Residual optional gap, not a false-confidence risk.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs:38-51, 272-365"
+      ]
+    },
+    {
+      "id": "TQ-8",
+      "severity": "INFORMATIONAL",
+      "disposition": "OPEN - correctly deferred",
+      "area": "skips/documented-matrix",
+      "description": "docs/limitations.md V6 (and docs/release/build-and-release.md) still report the 1.0.1.0 matrix while the v1.1 working suite is now 1270/63/1333. Release/documentation task owned; outside task 9.4's acceptance criteria.",
+      "evidence": [
+        "docs/limitations.md:235-245",
+        "docs/release/build-and-release.md:160-165"
+      ]
+    }
+  ],
+  "coverage_gaps": [
+    "TQ-4 (optional): no single end-to-end fact composes the Plugin save path with the real trigger and a poster re-render.",
+    "TQ-8 (documentation, not test quality): the v1.1 matrix counts in docs/limitations.md V6 and docs/release/build-and-release.md remain at the 1.0.1.0 values; release task owned."
+  ],
+  "determinism_notes": "The reworked class passed 10/10 in 8 consecutive audit runs (reviewer reported 12/12); the full suite reproduced at Failed 0 / Passed 1270 / Skipped 63 / Total 1333. No new wall-clock/culture/order coupling was introduced.",
+  "honest_skips": "The task-9.4 facts are unguarded: 10 passed / 0 skipped in the default suite. The 63 default-suite skips are pre-existing and unchanged; none hides post-save trigger behavior.",
+  "recommendation": "PASS. TQ-1 (HIGH) and TQ-2 (MEDIUM) are genuinely closed; TQ-3/TQ-5/TQ-6/TQ-7 addressed without weakening assertions; counts reproduce. Only the INFORMATIONAL TQ-8 stale release matrix remains, correctly deferred to the v1.1 release/documentation task. No further rework is required for task 9.4."
+}

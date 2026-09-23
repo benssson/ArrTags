@@ -2631,7 +2631,7 @@ not declared; the Phase 8 review is separate.
 
 ## Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1)
 
-**Status:** In progress (tasks 9.1, 9.2, and 9.3 complete; tasks 9.4-9.5 open).
+**Status:** In progress (tasks 9.1, 9.2, 9.3, and 9.4 complete; task 9.5 open).
 The phase resolves limitation F2 when complete.
 
 ### Task 9.1 - Configuration round-trip spike (blocking prerequisite)
@@ -2787,3 +2787,58 @@ the host's base persistence is exercised. `./build.sh build` reported 0 warnings
 The bounded post-save reconciliation trigger (task 9.4) is not part of this task;
 limitation F2's restart consequence is gone, and F2 is recorded as resolved by
 task 9.5.
+
+### Task 9.4 - Bounded post-save reconciliation trigger
+
+**Status:** Complete. Owns ADR-016 clause 5 second bullet.
+
+`src/ArrTags/Plugin.cs` now requests the bounded, non-blocking post-save
+reconciliation after a successful replacement. The host coupling is isolated
+behind the new plugin-owned, Jellyfin-free
+`ArrTags.Configuration.IConfigurationReconciliationTrigger` boundary
+(`RequestReconciliation()`), which `Plugin` resolves from the host service
+provider and calls outside the save gate; a trigger-resolution or trigger failure
+is contained and never throws into the host. The override now distinguishes a
+validated candidate from an activated replacement: an invalid candidate is
+rejected and notified as before, and only a replacement that
+`ConfigurationSnapshotService.TryReplace` actually activated requests the
+reconciliation.
+
+The production `src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs`
+is a hosted singleton. Its loop waits on a bounded request slot
+(`SemaphoreSlim(0, 1)`) and runs the existing bounded `LibraryReconciliationService`
+off the save thread with the new `LibraryReconciliationSource.PostSave` source,
+so the save response never waits for a full-library scan. At most one
+reconciliation is pending; a redundant request is coalesced, and a request that
+arrives while a reconciliation is running schedules exactly one bounded rerun (a
+run reads the current snapshot once when it starts), so the latest replaced
+snapshot is still observed. On shutdown the loop is cancelled and awaited within
+a bounded timeout. No parallel queue and no synchronous scan is added: the
+trigger reuses the existing reconciliation boundary, which enqueues the same
+provider-neutral `LibraryWorkHint` work as the scheduled, manual, and post-scan
+triggers. The registrator registers the trigger singleton, its interface, and the
+hosted service; registration performs no provider, rendering, or library work.
+`ArrTagsServiceRegistrator` and `LibraryWorkReason.Reconciliation` documentation
+were updated for the new trigger.
+
+New tests (`tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs`,
+10 facts) drive the real override and the real trigger: a successful save requests
+exactly one bounded reconciliation and activates the snapshot; an invalid save
+requests none; a valid candidate that could not be activated (the running snapshot
+service is unavailable) also requests none; a failing trigger is contained and the
+save still activates; the save returns while the reconciliation is blocked in the
+library enumeration (no synchronous scan and no save-response blocking); the
+trigger enqueues bounded hints at the current snapshot version in
+`ReconciliationBatchSize` pages; rapid requests coalesce into exactly one bounded
+rerun; a blocked reconciliation still lets `StopAsync` return within its bounded
+shutdown timeout and the loop observes cancellation; an existing published poster
+re-renders after the save while a stale work item is skipped; and the registrator
+wires the trigger as a hosted service whose instance is the same singleton the
+save path resolves, without starting it.
+`LifecycleFoundationTests.RegistratorRegistersFoundationServices` supplies the
+media-library enumerator boundary its hosted-service resolution now needs.
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1270, Skipped 63, Total 1333 (baseline Failed 0, Passed 1260, Skipped
+63, Total 1323; +10 passed, +10 total). The final Goal A documentation and
+integration verification (task 9.5) is not part of this task, so limitation F2 is
+not yet recorded as resolved.

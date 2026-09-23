@@ -1,0 +1,42 @@
+{
+  "task": "9.4",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the bounded, non-blocking post-save reconciliation trigger (v1.1 Phase 9 task 9.4, ADR-016 clause 5 second bullet). Plugin.UpdateConfiguration now requests a reconciliation after a replacement that ConfigurationSnapshotService.TryReplace actually activated; an invalid candidate is still rejected and notified as before, and a valid candidate whose running snapshot could not be replaced does not request one. The host coupling is isolated behind the new plugin-owned, Jellyfin-free ArrTags.Configuration.IConfigurationReconciliationTrigger boundary (RequestReconciliation()), which Plugin resolves from the host service provider and calls outside the save gate; trigger-resolution and trigger failures are contained and never throw into the host. The production ArrTags.PluginLifecycle.ConfigurationReconciliationTrigger is a hosted singleton: its loop waits on a bounded request slot (SemaphoreSlim(0,1)) and runs the existing bounded LibraryReconciliationService off the save thread with the new LibraryReconciliationSource.PostSave source, so the save response never waits for a full-library scan. At most one reconciliation is pending; a redundant request is coalesced, and a request that arrives while a reconciliation is running schedules exactly one bounded rerun (a run reads the current snapshot once when it starts), so the latest replaced snapshot is still observed. On shutdown the loop is cancelled and awaited within a bounded timeout. No parallel queue and no synchronous scan is added: the trigger reuses the existing reconciliation boundary, which enqueues the same provider-neutral LibraryWorkHint work as the scheduled, manual, and post-scan triggers. This matters because ArtworkPublishingWorkItemProcessor skips a work item whose ConfigurationVersion is older than the current snapshot; the trigger supplies fresh work at the new version so existing posters re-render instead of waiting for the next library event, webhook, post-scan, or scheduled run. New tests (tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs, 8 facts) drive the real override and the real trigger: a successful save requests exactly one bounded reconciliation and activates the snapshot; an invalid save requests none; a failing trigger is contained and the save still activates; the save returns while the reconciliation is blocked in the library enumeration (no synchronous scan and no save-response blocking); the trigger enqueues bounded hints at the current snapshot version in ReconciliationBatchSize pages; rapid requests coalesce into exactly one bounded rerun; an existing published poster re-renders after the save while a stale work item is skipped (the second render is asserted to carry the new renderer configuration fingerprint and the new quality template, and the published fingerprint changes); and the registrator wires the trigger without startup work. LifecycleFoundationTests.RegistratorRegistersFoundationServices now supplies the IMediaLibraryEnumerator boundary its hosted-service resolution needs. Documentation updated: docs/architecture.md section 6 (new 'Bounded post-save reconciliation' subsection and status line), PLANS.md (task 9.4 status/checkbox, Milestone Status row, Project Status paragraph, Phase 9 acceptance criterion, backlog item), docs/changelog.md (Phase 9 status + task 9.4 entry), docs/project-status.md, docs/implementation-readiness.md, docs/limitations.md F2, and README.md.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~ConfigurationReconciliationTriggerTests\" -> Passed! - Failed: 0, Passed: 8, Skipped: 0, Total: 8. Re-run three times consecutively with identical results (determinism of the bounded-rerun and non-blocking tests).",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1268, Skipped: 63, Total: 1331 (pre-task baseline: Failed 0, Passed 1260, Skipped 63, Total 1323; +8 passed, +8 total, 0 new skips)."
+  ],
+  "changed_files": [
+    "src/ArrTags/Plugin.cs",
+    "src/ArrTags/Configuration/IConfigurationReconciliationTrigger.cs",
+    "src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationSource.cs",
+    "src/ArrTags/Updates/LibraryWorkReason.cs",
+    "tests/ArrTags.Tests/ConfigurationReconciliationTriggerTests.cs",
+    "tests/ArrTags.Tests/LifecycleFoundationTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "A request made before the hosted service StartAsync (host startup) or after StopAsync (host shutdown) is dropped. Exact behaviour: RequestReconciliation returns without enqueueing when the started flag is clear. Precondition: the host has not yet started or has stopped the ConfigurationReconciliationTrigger hosted service. Consequence: that particular save relies on the next library event, webhook, post-scan, or scheduled run; in normal operation elevation-gated saves occur after startup, so this is a narrow startup/shutdown window.",
+    "A reconciliation run reads the current snapshot once when it starts. Exact behaviour: a save that lands during a run bumps the request version and is served by exactly one bounded rerun; if further saves land during that rerun the loop runs again for the latest version (at most one run in flight, one pending). Precondition: saves arrive faster than a full bounded reconciliation completes. Consequence: intermediate configuration versions are not each separately reconciled; this is safe because every enqueued hint carries the version current when it was enqueued and ArtworkPublishingWorkItemProcessor skips a hint older than the snapshot.",
+    "The post-save trigger runs the existing full bounded library reconciliation (bounded by OperationalLimits.ReconciliationBatchSize per page and the work-queue capacity), not a targeted re-enqueue of only already-published subjects. Precondition: a library scope larger than QueueCapacity. Consequence: the existing F4 bounded-prefix limitation applies to the post-save run too (a single run covers a bounded prefix and successive runs re-cover the same prefix); event, webhook, and per-item triggers are unaffected.",
+    "The trigger's own failure containment is verified at the Plugin boundary (a throwing IConfigurationReconciliationTrigger is contained and the save still activates) and by code review of the hosted loop's try/catch; LibraryReconciliationService itself contains provider/library/fence failures internally and returns a bounded result rather than throwing, so a direct throw-injection test of the loop is not part of this task.",
+    "Host-guarded tests (JellyfinHostFact and the packaged-plugin facts) remain skipped because ARRTAGS_JELLYFIN_HOST_DIR is unset (63 skips, identical to the pre-task baseline); the consolidated live pinned-host confirmation is owned by the live-verification task, not this one.",
+    "Limitation F2 is not formally recorded as resolved by this task. Exact behaviour: the re-render promptness behaviour is implemented and covered by unit/integration tests, and docs/limitations.md F2, README.md, and the current-state surfaces now describe the trigger; the formal F2 resolution recording plus the Goal A integration verification are assigned to task 9.5 by PLANS.md. Consequence: F2 remains listed as not-yet-recorded-resolved until 9.5 completes."
+  ],
+  "ready_for_next_task": true
+}

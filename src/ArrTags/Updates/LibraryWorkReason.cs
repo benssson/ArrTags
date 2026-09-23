@@ -17,10 +17,10 @@ public enum LibraryWorkReason
     Removed,
 
     /// <summary>
-    /// A periodic, manual, or post-scan reconciliation requested a fresh read of
-    /// the item. The reconciliation trigger re-reads current Jellyfin and Arr
-    /// state exactly like every other hint, so the reason never bypasses the
-    /// worker's basis validation.
+    /// A periodic, manual, post-scan, or post-save reconciliation requested a
+    /// fresh read of the item. The reconciliation trigger re-reads current
+    /// Jellyfin and Arr state exactly like every other hint, so the reason never
+    /// bypasses the worker's basis validation.
     /// </summary>
     Reconciliation,
 }

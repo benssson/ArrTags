@@ -113,7 +113,12 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// configuration-save route; the bounded, secret-free validation outcome is
     /// retained in <see cref="LastConfigurationValidationResult"/> for
     /// diagnostics and a rejection is surfaced through the plugin-owned notifier
-    /// (ADR-021).
+    /// (ADR-021). A successful replacement also requests the bounded,
+    /// non-blocking post-save reconciliation through the plugin-owned
+    /// <see cref="IConfigurationReconciliationTrigger"/> boundary, so existing
+    /// posters re-render with the saved settings without waiting for the next
+    /// library event, webhook, post-scan, or scheduled run (ADR-016 clause 5
+    /// second bullet).
     /// </summary>
     /// <param name="configuration">The candidate configuration supplied by the host.</param>
     public override void UpdateConfiguration(BasePluginConfiguration configuration)
@@ -129,7 +134,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         }
 
         ConfigurationValidationResult result;
-        var activated = false;
+        var replacementActivated = false;
 
         // Serialize the whole validate/persist/activate sequence. The gate is
         // held across the host persistence write so two elevation-gated saves
@@ -147,16 +152,24 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             if (result.IsValid)
             {
                 base.UpdateConfiguration(candidate);
-                TryActivateConfiguration(candidate);
-                activated = true;
+                replacementActivated = TryActivateConfiguration(candidate);
             }
         }
 
-        if (!activated)
+        if (!result.IsValid)
         {
             // Notify outside the gate: the bounded activity write must not block
             // another save.
             TryNotifyRejected(result);
+        }
+        else if (replacementActivated)
+        {
+            // ADR-016 clause 5 second bullet: a successful replacement enqueues a
+            // bounded, non-blocking reconciliation so existing posters re-render
+            // with the saved settings instead of waiting for the next library
+            // event, webhook, post-scan, or scheduled run. The request is made
+            // outside the save gate and returns immediately.
+            TryRequestReconciliation();
         }
     }
 
@@ -167,7 +180,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// next host startup.
     /// </summary>
     /// <param name="candidate">The validated candidate configuration.</param>
-    private void TryActivateConfiguration(PluginConfiguration candidate)
+    /// <returns><see langword="true"/> when the running snapshot was replaced; otherwise <see langword="false"/>.</returns>
+    private bool TryActivateConfiguration(PluginConfiguration candidate)
     {
         ConfigurationSnapshotService? service;
         try
@@ -178,22 +192,46 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             // The running snapshot cannot be resolved; the persisted candidate is
             // left for the next host startup and nothing is thrown.
-            return;
+            return false;
         }
 
         if (service is null)
         {
-            return;
+            return false;
         }
 
         try
         {
-            service.TryReplace(candidate, out _);
+            return service.TryReplace(candidate, out _);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             // The persisted candidate is valid; it is activated on the next host
             // startup if it cannot be activated now.
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Requests the bounded, non-blocking post-save reconciliation through the
+    /// plugin-owned trigger boundary (ADR-016 clause 5 second bullet). The
+    /// request returns immediately and never throws into the host; a failure to
+    /// request it leaves the next library event, webhook, post-scan, or scheduled
+    /// run authoritative.
+    /// </summary>
+    private void TryRequestReconciliation()
+    {
+        try
+        {
+            if (_serviceProvider?.GetService(typeof(IConfigurationReconciliationTrigger)) is IConfigurationReconciliationTrigger trigger)
+            {
+                trigger.RequestReconciliation();
+            }
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Activation already succeeded; the bounded post-save reconciliation
+            // is best-effort and must never delay or fail the save response.
         }
     }
 

@@ -37,6 +37,13 @@ public class LifecycleFoundationTests
         // as the other foundation tests supply their fakes.
         services.AddSingleton<IMediaLibraryResolver>(new ReconciliationLibraryResolver());
 
+        // Task 9.4: the hosted post-save reconciliation trigger resolves the real
+        // bounded reconciliation service, which resolves the media library
+        // enumerator; the host enumerator requires the Jellyfin library manager
+        // this foundation test does not provide, so the boundary is supplied as a
+        // stub like the resolver above.
+        services.AddSingleton<IMediaLibraryEnumerator>(new FakeMediaLibraryEnumerator());
+
         // Task 6.4: the work pipeline and the startup recovery service resolve the
         // artwork recovery gate, whose real implementation composes the whole
         // artwork stack. The gate boundary is supplied here as a foundation stub.

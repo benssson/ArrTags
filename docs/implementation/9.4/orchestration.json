@@ -1,0 +1,135 @@
+{
+  "task": "9.4",
+  "title": "Bounded post-save reconciliation trigger",
+  "phase": 9,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31462db3ffen7drrMkkBfhhzC"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f312dff48ffeah91nnE6SctwcP"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "CONCERNS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31265813ffeBKjosPEGGca6tr"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31462db3ffen7drrMkkBfhhzC"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f312dff48ffeah91nnE6SctwcP"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f31265813ffeBKjosPEGGca6tr"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Attempt 1 passed implementation review but the designated test-quality-reviewer found a HIGH coverage gap (TQ-1: the production hosted-service registration of ConfigurationReconciliationTrigger was unasserted, so removing it would silently disable the shipped feature while the suite stayed green) and a MEDIUM gap (TQ-2: untested bounded shutdown), plus LOW items TQ-3/TQ-5/TQ-6/TQ-7. The worker added test-only changes (no production change): hosted-registration assertion with Assert.Same singleton identity, bounded-shutdown test, valid-but-unactivated negative test, removal of vacuous assertions, and a bounded stability poll replacing a fixed delay."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null; no estimation was performed.",
+    "Final gates: implementation-reviewer attempt 2 APPROVED (no blockers, no required changes); test-quality-reviewer attempt 2 PASS (TQ-1 HIGH and TQ-2 MEDIUM closed; only INFORMATIONAL TQ-8 stale release-matrix remains, deferred to the v1.1 release/documentation task).",
+    "Attempt reports preserved: worker-report-attempt-2.json and reviewer-report.attempt-2.json; test-quality-review.json is the final attempt-2 PASS report.",
+    "No production code changed in attempt 2 (ArrTagsServiceRegistrator byte-identical to attempt 1)."
+  ]
+}

@@ -69,18 +69,22 @@ post-scan, and manual reconciliation enqueues up to `QueueCapacity` work hints
   API requests to Sonarr and Radarr" is only partially met for provider
   fetches. Render and publication are fingerprint-gated and are not affected.
 
-### F2. A saved configuration change is activated at runtime but existing posters are not promptly re-rendered
+### F2. A saved configuration change is activated at runtime and re-renders existing posters via the bounded post-save trigger
 
-`ConfigurationSnapshotService.TryReplace` is now wired to Jellyfin's
+`ConfigurationSnapshotService.TryReplace` is wired to Jellyfin's
 configuration-update mechanism (task 9.3), so a saved change is activated
-without a host restart. The remaining gap is that a saved change does not
-promptly re-render existing posters: a work item whose `ConfigurationVersion` is
-older than the current snapshot is skipped, so existing posters update only on
-the next library event, webhook, post-scan, or scheduled run until the bounded,
-non-blocking post-save reconciliation trigger (task 9.4) lands.
+without a host restart. Task 9.4 adds the bounded, non-blocking post-save
+reconciliation trigger: a successful replacement requests a reconciliation
+through the plugin-owned `IConfigurationReconciliationTrigger` boundary, whose
+hosted `ConfigurationReconciliationTrigger` loop runs the existing bounded
+`LibraryReconciliationService` off the save thread and enqueues the same
+provider-neutral work hints as every other trigger, so existing posters re-render
+with the saved settings instead of waiting for the next library event, webhook,
+post-scan, or scheduled run. The trigger is never a synchronous full-library
+scan, never blocks the save response, and never throws into the host.
 
-- Evidence: task 7.7, 7.3, and 7.8 worker reports; `PLANS.md` Phase 9 tasks 9.3
-  and 9.4; `docs/implementation-readiness.md`.
+- Evidence: task 7.7, 7.3, 7.8, and 9.4 worker reports; `PLANS.md` Phase 9 tasks
+  9.3, 9.4, and 9.5; `docs/implementation-readiness.md`.
 - Consequence: before task 9.3, a saved webhook-secret, provider enable/disable,
   badge/selector, or DG-6 limit change was **not observed until the process
   restarted**, and the live tasks 7.3 and 7.8 configured the plugin by writing
@@ -89,8 +93,8 @@ non-blocking post-save reconciliation trigger (task 9.4) lands.
   limiters, freshness window, retention interval, badge definitions, and the
   renderer output policy resolve their values from the current snapshot per
   operation, so the replaced snapshot is observed by subsequent work. The
-  remaining consequence is re-render promptness only: an already-published
-  poster is not re-rendered by the save itself until task 9.4 adds the trigger.
+  re-render promptness consequence is also resolved by task 9.4's bounded
+  post-save trigger.
 - Current state (v1.1): task 9.2 added the dashboard settings page, which reads
   and saves the configuration through Jellyfin's elevation-gated
   `PluginsController` path, so an operator no longer has to edit
@@ -99,8 +103,10 @@ non-blocking post-save reconciliation trigger (task 9.4) lands.
   candidate is persisted and activated at runtime, while an invalid candidate is
   rejected before persistence (it is never written to `ArrTags.xml`) and the last
   valid public snapshot and private secret generation remain active and
-  persisted. The post-save reconciliation trigger (task 9.4) and the final
-  Goal A verification that records F2 as resolved (task 9.5) remain.
+  persisted. Task 9.4 requests the bounded, non-blocking post-save reconciliation
+  after a successful replacement, so an already-published poster re-renders
+  promptly with the saved settings. The final Goal A verification that formally
+  records F2 as resolved (task 9.5) remains.
 
 ### F3. No bounded, secret-free metrics/diagnostic-status surface
 

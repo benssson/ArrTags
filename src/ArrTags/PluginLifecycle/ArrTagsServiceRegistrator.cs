@@ -87,6 +87,16 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateArtifactRetention);
         serviceCollection.TryAddSingleton(CreateLibraryReconciliationService);
 
+        // ADR-016 clause 5 second bullet: the post-save reconciliation trigger is
+        // a plugin-owned boundary so the elevation-gated save path never touches
+        // the reconciliation service directly. It is a hosted singleton: the
+        // hosted loop runs the existing bounded reconciliation off the save
+        // thread, and registration performs no provider, rendering, or library
+        // work.
+        serviceCollection.TryAddSingleton<ConfigurationReconciliationTrigger>();
+        serviceCollection.TryAddSingleton<IConfigurationReconciliationTrigger>(
+            static serviceProvider => serviceProvider.GetRequiredService<ConfigurationReconciliationTrigger>());
+
         // The scheduled and post-scan reconciliation tasks are concrete public
         // types that Jellyfin discovers by scanning the plugin assembly
         // (IScheduledTask via ITaskManager.AddTasks, ILibraryPostScanTask via
@@ -98,6 +108,13 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton<ArrTagsPostScanTask>();
         RegisterProviderHttpClients(serviceCollection);
         serviceCollection.AddHostedService<ArrTagsLifecycleService>();
+
+        // The hosted post-save reconciliation loop waits for bounded requests
+        // from a successful configuration replacement; it performs no work until
+        // one is requested. Registered after the lifecycle service so the fence
+        // state is settled before any reconciliation can run.
+        serviceCollection.AddHostedService(
+            static serviceProvider => serviceProvider.GetRequiredService<ConfigurationReconciliationTrigger>());
 
         // Registered after the lifecycle service (which clears a stale fence) so
         // the bounded startup scan runs against the active fence, and before the
