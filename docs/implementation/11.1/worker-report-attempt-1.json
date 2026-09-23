@@ -1,0 +1,42 @@
+{
+  "task": "11.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the v1.1 Phase 11 task 11.1 canonical provider inventory cache model, boundary, and limits (ADR-018 clauses 1, 5, 6, and 7). src/ArrTags/Providers gains four provider-neutral types: ArrInventoryCacheEntry (one canonical, secret-free observation set per ArrConnection carrying the computed freshness and bounded last-known-good boundaries), ArrInventoryRecordObservation (a canonical MatchCandidate paired with the canonical BadgeMetadata mapped from the record's current file, or an explicit absent-file identity), ArrInventoryCacheState (Fresh/Stale/Expired), and ArrInventoryCache (a bounded, thread-safe, in-memory per-connection store). The cache is non-authoritative and secret-free: it is never persisted, is rebuilt empty on restart, holds only canonical MatchCandidate/BadgeMetadata observations (never a provider DTO, credential, request URL, or Jellyfin item state), and cannot evict authoritative provenance or a non-terminal artwork operation. The configured inventory TTL is the total bounded lifetime of one observation set: fresh for the first half, explicit bounded last-known-good for the remaining half, and expired and unusable as current at or after the TTL, so a provider failure keeps the bounded last-known-good inventory without extending the window (WithFailure preserves ObservedAt/ExpiresAt/StaleUntil). An observation set that exceeds the per-connection record or byte bound is rejected by TryStore and the caller keeps the direct provider read unchanged. OperationalLimits gains InventoryCacheTtlMinutes (default 15, range 1-1440), InventoryCacheMaxRecords (default 10000, range 1-100000), and InventoryCacheMaxBytes (default 32 MiB, range 1 MiB-256 MiB), with Validate, Clone, and the matching settings-page fields. The chosen default TTL and its rationale (deliberately far shorter than the 24-hour metadata last-known-good window because the inventory holds raw observations cheap to re-read and event-based invalidation is primary) are recorded in docs/architecture.md section 12. Documentation was reconciled: docs/data-model.md section 6 gains its own 'Inventory cache' subsection (explicitly distinct from MetadataCacheEntry 3.9) and a cache-key row; docs/architecture.md sections 8 (cache boundary in the reconciliation flow) and 12 (three limit rows plus the bounded/secret-free semantics paragraph) and the status line; PLANS.md (task 11.1 status/checkbox, Project Status paragraph, Milestone Status row); docs/changelog.md; docs/project-status.md; docs/implementation-readiness.md; and docs/limitations.md V6 suite counts. No provider client, metadata reader, or invalidation source is wired, and no provider ETag/revision token/history-since/SignalR dependency was added.",
+  "validation": [
+    "Pre-task baseline: . /config/arrtags-env.sh && ./build.sh build && ./build.sh test -> Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426.",
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~ArrInventoryCacheTests\" -> Passed! - Failed: 0, Passed: 19, Skipped: 0, Total: 19.",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1382, Skipped: 63, Total: 1445 (pre-task baseline Failed 0, Passed 1363, Skipped 63, Total 1426; +19 passed, +19 total, 0 new skips).",
+    "git diff --check -> clean (no whitespace errors); all changed and new files inspected for task relevance."
+  ],
+  "changed_files": [
+    "src/ArrTags/Providers/ArrInventoryCache.cs",
+    "src/ArrTags/Providers/ArrInventoryCacheEntry.cs",
+    "src/ArrTags/Providers/ArrInventoryCacheState.cs",
+    "src/ArrTags/Providers/ArrInventoryRecordObservation.cs",
+    "src/ArrTags/Configuration/OperationalLimits.cs",
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/ArrInventoryCacheTests.cs",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "The cache boundary is defined but not consumed. Exact behaviour: ArrInventoryCache is a standalone in-memory store with no DI registration and no caller; TryStore/TryGet are the only operations and no provider client or metadata reader uses them. Precondition: provider-client integration (11.2) and invalidation (11.3) are not implemented by this task. Consequence: reconciliation read volume and limitation F1 are unchanged until 11.2/11.3 land; docs/limitations.md F1 is deliberately left listed as unresolved.",
+    "No invalidation API is implemented. Exact behaviour: the boundary exposes only TryStore (replacement), TryGet, TTL expiry on access, and per-entry bound rejection; there is no Remove/Clear or webhook/post-scan/scheduled invalidation hook. Precondition: task 11.3 owns the ArrTags-side invalidation sources. Consequence: the TTL is the only freshness fallback in the model until 11.3 adds the event-based sources.",
+    "The byte bound is enforced against a deterministic conservative size estimate. Exact behaviour: ArrInventoryCacheEntry.SizeBytes sums UTF-16 string lengths of the canonical observations plus fixed per-record (256) and per-file (512) overheads, and TryStore rejects an entry whose estimate exceeds InventoryCacheMaxBytes. Precondition: the estimate is used for accounting only. Consequence: the configured byte bound is a conservative estimate of retained canonical bytes, not an exact serialized size; it cannot be used as an exact memory measurement.",
+    "The inventory TTL is interpreted as the total bounded last-known-good lifetime with a fresh-first-half/stale-second-half split. Exact behaviour: ExpiresAt = ObservedAt + TTL/2 and StaleUntil = ObservedAt + TTL; the set is Fresh before ExpiresAt, Stale (usable, explicit last-known-good) until StaleUntil, and Expired at or after StaleUntil. Precondition: this mirrors the existing metadata last-known-good semantics that ADR-018 clause 5 says apply on provider failure and that docs/architecture.md section 12 already defines for metadata. Consequence: this interpretation is not silent; it is stated with rationale in docs/architecture.md section 12 and docs/data-model.md section 6, and the default 15-minute TTL and 10000-record / 32-MiB bounds are chosen, documented values rather than values fixed by ADR-018.",
+    "Host-guarded facts (JellyfinHostFact and package-content facts) remain skipped without ARRTAGS_JELLYFIN_HOST_DIR: 63 skips, identical to the pre-task baseline. Consequence: the live pinned-host confirmation is unaffected by this task and remains owned by the live-verification/release tasks."
+  ],
+  "ready_for_next_task": true
+}

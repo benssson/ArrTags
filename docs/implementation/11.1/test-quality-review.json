@@ -1,0 +1,133 @@
+{
+  "subject": "v1.1 task 11.1 - provider inventory cache model, bounds, and limits (tests/ArrTags.Tests/ArrInventoryCacheTests.cs)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "assessment": "All five required behaviors are genuinely exercised with independent assertions on real production types, and none of the tests is a tautology: six mutation experiments in a throwaway copy each broke the expected test. The limit-validation bounds are correct and boundary-sensitive; the record and byte bounds are independently enforced; the restart test fails if the cache retains state across instances; the provider-failure helper is sensitive to window extension. The residual risk is in depth, not presence: the binding of the validated OperationalLimits to the cache (ArrInventoryCache.FromLimits) is untested and a deliberately broken mapping still passed 19/19, the provider-failure claim is established only on the unused entry helper rather than the cache boundary, and the secret-free test is a name-substring heuristic with a demonstrated false negative. No BLOCKER; PASS_WITH_FINDINGS.",
+  "findings": [
+    {
+      "id": "TQ-11.1-1",
+      "severity": "HIGH",
+      "status": "open",
+      "area": "coverage",
+      "summary": "The validated-limit-to-cache binding (ArrInventoryCache.FromLimits) is untested; a broken mapping still passes all 19 tests.",
+      "description": "The acceptance criterion ties 'bounded' to 'validated TTL/size limits'. The suite verifies that OperationalLimits validation rejects out-of-range values and that the ArrInventoryCache constructor enforces record/byte bounds, but nothing verifies that the validated limits reach the cache. FromLimits maps InventoryCacheTtlMinutes -> TimeSpan.FromMinutes, InventoryCacheMaxRecords -> maxRecords, InventoryCacheMaxBytes -> maxBytes; this is the only production path that binds the configured limits to the boundary and it will be the integration point consumed by task 11.2. It is currently dead code (no caller, no DI registration).",
+      "evidence": [
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs: bounds tests construct `new ArrInventoryCache(1, 8L*1024*1024, Ttl)` etc. with literals; no test calls ArrInventoryCache.FromLimits.",
+        "grep FromLimits -> only src/ArrTags/Providers/ArrInventoryCache.cs:98 (no test, no production caller).",
+        "Mutation I (throwaway copy): FromLimits changed to TimeSpan.FromMinutes(1) and record/byte bounds swapped -> `dotnet test --filter FullyQualifiedName~ArrInventoryCacheTests` => Passed 19, Failed 0."
+      ],
+      "recommended_action": "Add a test that builds ArrInventoryCache.FromLimits(limits) with distinctive non-default limit values and asserts MaxRecordsPerConnection, MaxBytesPerConnection, and Ttl (e.g. 1440 minutes -> TimeSpan.FromHours(24)) match the limits."
+    },
+    {
+      "id": "TQ-11.1-2",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "meaningfulness",
+      "summary": "The provider-failure claim is verified only on the entry helper ArrInventoryCacheEntry.WithFailure, which no production path uses; the cache-level failure path is not exercised.",
+      "description": "ProviderFailureKeepsBoundedLastKnownGoodAndNeverExtendsIt reads a retained entry via cache.TryGet, calls retained.WithFailure(failure) on the detached object, and asserts the boundaries are unchanged. The cache is never mutated by the failure: the final TryGet at ObservedAt+20min returns false purely because of TTL expiry, not because of any failure handling. WithFailure is referenced only by this test (no production caller), and the cache has no overload that stores a WithFailure result; TryStore(connection, observedAt, records, lastError) recomputes ExpiresAt/StaleUntil from the caller-supplied observedAt, so the 'never extends' guarantee is not enforced at the cache boundary. The TryStore lastError parameter and a failure-annotated entry retained in the cache are untested.",
+      "evidence": [
+        "grep WithFailure -> only tests/ArrTags.Tests/ArrInventoryCacheTests.cs:172; src has the definition at ArrInventoryCacheEntry.cs:245 but no caller.",
+        "ArrInventoryCache.TryStore computes `ArrInventoryCacheEntry.From(connection, observedAt, Ttl, records, lastError)` (ArrInventoryCache.cs:129) from the caller's observedAt; no entry-preserving failure write exists.",
+        "Mutation E (throwaway copy): WithFailure uses TimeSpan.FromMinutes(60) instead of StaleUntil-ObservedAt -> ProviderFailureKeepsBoundedLastKnownGoodAndNeverExtendsIt fails, so the entry-level assertion is sensitive; the cache-level claim remains unverified."
+      ],
+      "recommended_action": "Exercise the cache-level path (e.g. store a last-known-good entry, then store/retain a failure-annotated entry at the original ObservedAt and assert the window is unchanged), or add an entry-preserving failure write that the test can drive. Also assert the retained Records are preserved across WithFailure."
+    },
+    {
+      "id": "TQ-11.1-3",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "meaningfulness",
+      "summary": "The secret-free test is a property/field name-substring heuristic with a demonstrated false negative.",
+      "description": "InventoryCacheTypesDoNotExposeSecretPropertiesOrFields flags only member names containing Secret/Key/Token/Credential. A secret stored under a neutral member name is not detected, and a secret value inside a plain string property (e.g. ArrProviderError.Message) is never inspected. This gives partial confidence for the 'cache secret-free' requirement; the structural companion test InventoryObservationCarriesOnlyCanonicalProviderNeutralTypes is stronger but only inspects ArrInventoryRecordObservation property types and ArrInventoryCacheEntry.Records.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:266-272 IsSecretName matches only the four substrings.",
+        "Mutation H (throwaway copy): added `private string? _sessionMaterial = \"secret-session-token-value\";` to ArrInventoryCacheEntry (neutral name, secret value) -> InventoryCacheTypesDoNotExposeSecretPropertiesOrFields still Passed 1/1.",
+        "ArrInventoryCacheEntry exposes `LastError` of type ArrProviderError whose `Message` is an arbitrary bounded string (ArrProviderError.cs:53) and is not type-checked by any test."
+      ],
+      "recommended_action": "Add a value-level assertion that the entry holds no credential material (e.g. assert ArrInventoryCacheEntry exposes no ArrConnection / ArrConnectionConfiguration and that no member type is a credential-bearing type), and/or a data-driven denylist of known credential field types rather than name substrings."
+    },
+    {
+      "id": "TQ-11.1-4",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage",
+      "summary": "The byte bound is tested only with maxBytes=1, so it proves the check is wired but not that it is applied at the real accounting boundary.",
+      "description": "OverBoundObservationSetIsNotCachedAndTheCallerKeepsDirectRead uses `new ArrInventoryCache(1000, 1, Ttl)`, a bound below any possible entry size. There is no 'just under the bound is accepted / just over is rejected' pair for bytes, unlike the record bound which does have an accept-at-boundary case (max 1, exactly 1 record). The mutation experiments confirm the byte check is genuinely enforced (neutralising it fails the test), so the residual risk is low.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:202-204 byteBounded = new ArrInventoryCache(1000, 1, Ttl).",
+        "Mutations B (neutralise byte check) and F (EstimateSizeBytes returns 0) each fail OverBoundObservationSetIsNotCachedAndTheCallerKeepsDirectRead, confirming sensitivity but not precision."
+      ],
+      "recommended_action": "Add a boundary pair using an entry's actual SizeBytes: maxBytes = SizeBytes accepted, maxBytes = SizeBytes - 1 rejected."
+    },
+    {
+      "id": "TQ-11.1-5",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "meaningfulness",
+      "summary": "The test name claims 'the caller keeps the direct read unchanged', but only TryStore==false / Count==0 is asserted.",
+      "description": "The direct-read fallback lives in task 11.2 (no caller exists; the worker report's known_limitations says the boundary is defined but not consumed). The observable cache contract (reject and store nothing) is what is actually verified; the name overstates. This is not false confidence in shipped behavior because the cache is not consumed yet.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:189-205 asserts only TryStore false and Count 0/1.",
+        "docs/implementation/11.1/worker-report.json known_limitations: 'ArrInventoryCache is a standalone in-memory store with no DI registration and no caller'."
+      ],
+      "recommended_action": "Rename to reflect the cache contract (rejected set is not cached and does not displace the previous set) until 11.2 can assert the caller fallback."
+    },
+    {
+      "id": "TQ-11.1-6",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "meaningfulness",
+      "summary": "The 'distinct from MetadataCacheEntry' test leans on near-tautological type checks and a field scan of the wrong class.",
+      "description": "The two IsAssignableFrom asserts cannot fail for two unrelated sealed classes unless inheritance is changed (which the sealed modifier prevents), so they are regression guards rather than meaningful verification. The metadata-store field scan targets typeof(ArrInventoryCache), not ArrInventoryCacheEntry, so an inventory entry that internally held a MetadataStateEntry/MetadataStateStore field would not be caught. The meaningful part is the absence of JellyfinItemId/MatchStatus/Metadata property names on ArrInventoryCacheEntry. Note the test correctly targets the real production type MetadataStateEntry (docs/ADR name it MetadataCacheEntry).",
+      "evidence": [
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:250-264.",
+        "src/ArrTags/Reconciliation/MetadataStateEntry.cs:36 (sealed); src/ArrTags/Providers/ArrInventoryCacheEntry.cs:25 (sealed)."
+      ],
+      "recommended_action": "Keep the property-absence checks; extend the field-type scan to ArrInventoryCacheEntry and assert the entry exposes no MetadataStateEntry/MetadataStateStore member."
+    },
+    {
+      "id": "TQ-11.1-7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism",
+      "summary": "Deterministic, isolated, no hidden skips; independently reproduced counts match the documented v1.1 default matrix.",
+      "description": "The file uses a fixed ObservedAt and a constant TTL, no wall-clock/network/filesystem/process-state dependence, and each test creates its own cache/configuration with no shared mutable state. No skip or guard attribute is present. Independently re-ran the full default suite: Failed 0, Passed 1382, Skipped 63, Total 1445 (matches docs/limitations.md V6 and the worker report); filtered task suite: Passed 19, Skipped 0, Total 19. The 63 skips are environment-guarded facts elsewhere (JellyfinHostFact, PackagedPluginFact, SkiaNativeTheory, NonCanonicalRuntimeFact) and are unchanged by this task, so no task 11.1 behavior is masked. Host-guarded and forced-native suites were not run (ARRTAGS_JELLYFIN_HOST_DIR and ARRTAGS_SKIA_COMPAT unset), consistent with V6's stated caveat that its matrix is 1.0.1.0 historical.",
+      "evidence": [
+        "./build.sh test => Failed 0, Passed 1382, Skipped 63, Total 1445.",
+        "dotnet test --filter FullyQualifiedName~ArrInventoryCacheTests => Passed 19, Skipped 0, Total 19.",
+        "docs/limitations.md:273-275 records the same 1382/63/1445 v1.1 working-suite counts."
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "mutation_evidence": [
+    {"mutation": "A: remove `entry.Records.Count > MaxRecordsPerConnection`", "expected_failure": "OverBoundObservationSetIsNotCachedAndTheCallerKeepsDirectRead", "observed": "Failed 1, Passed 18"},
+    {"mutation": "B: neutralise `entry.SizeBytes > MaxBytesPerConnection` (false)", "expected_failure": "OverBoundObservationSetIsNotCachedAndTheCallerKeepsDirectRead", "observed": "Failed 1, Passed 18"},
+    {"mutation": "C: remove InventoryCacheTtlMinutes range validation", "expected_failure": "ValidatorRejectsOutOfRangeInventoryLimits (ttl 0 and 1441)", "observed": "Failed 2, Passed 17"},
+    {"mutation": "D: TTL upper bound 1440 -> 1439", "expected_failure": "ValidatorAcceptsInventoryLimitBoundaries(1440,...)", "observed": "Failed 1, Passed 18"},
+    {"mutation": "E: WithFailure extends the window (60 min ttl)", "expected_failure": "ProviderFailureKeepsBoundedLastKnownGoodAndNeverExtendsIt", "observed": "Failed 1, Passed 18"},
+    {"mutation": "F: EstimateSizeBytes returns 0", "expected_failure": "CacheEntrySizeEstimateGrowsWithBoundedContent and the byte-bound case", "observed": "Failed 2, Passed 17"},
+    {"mutation": "G: entry store made static (state retained across instances)", "expected_failure": "CacheIsEmptyOnConstructionAndRebuiltAfterRestart", "observed": "Failed 1, Passed 0 (filtered to that test)"},
+    {"mutation": "H: add secret-valued field `_sessionMaterial` with a neutral name", "expected_failure": "(demonstrates false negative)", "observed": "InventoryCacheTypesDoNotExposeSecretPropertiesOrFields still Passed 1"},
+    {"mutation": "I: break ArrInventoryCache.FromLimits (wrong TTL units, swapped record/byte bounds)", "expected_failure": "(demonstrates coverage gap)", "observed": "Passed 19, Failed 0"},
+    {"mutation": "J: give ArrInventoryCacheEntry a private MetadataStateEntry field", "expected_failure": "(build rejected unused field; dropped, assessed by inspection)", "observed": "not executed"}
+  ],
+  "matrix_observed": {
+    "default": "1382 passed / 63 skipped / 1445 total (independently reproduced)",
+    "host_guarded": "not run (ARRTAGS_JELLYFIN_HOST_DIR unset); docs record 1.0.1.0 historical 1244 passed / 44 skipped / 1288 total",
+    "forced_native": "not run (ARRTAGS_SKIA_COMPAT unset); native theories skipped in the default run",
+    "task_11_1_filtered": "19 passed / 0 skipped / 19 total"
+  },
+  "substitutes_checked": [
+    "No doubles, mocks, or in-process substitutes: tests use the real PluginConfigurationValidator, OperationalLimits, ArrInventoryCache, ArrInventoryCacheEntry, ArrInventoryRecordObservation, MatchCandidate, BadgeMetadata, and ArrConnectionCatalog.FromSnapshot."
+  ],
+  "skips_checked": [
+    "ArrInventoryCacheTests.cs contains no [Fact(Skip=...)], no JellyfinHostFact, and no environment guard.",
+    "Filtered run: 19 passed, 0 skipped. Full default suite skips 63, all in pre-existing host/package/native/non-canonical guards; unchanged from the pre-task baseline, so no task 11.1 fact is masked."
+  ],
+  "determinism_checked": [
+    "Fixed ObservedAt (2026-09-23T12:00:00Z) and constant TTL; no DateTimeOffset.UtcNow, network, filesystem, or process-state use in the assertions.",
+    "Per-test construction of caches/configuration; no shared mutable state or order dependence.",
+    "Repeated filtered runs produced identical 19/19; mutation runs were deterministic."
+  ],
+  "summary": "The task 11.1 tests genuinely establish all five required behaviors on the real production path and are sensitive to the corresponding implementation defects (verified by mutation). No BLOCKER. Three gaps remain open: the validated-limits-to-cache binding (FromLimits) is untested and a broken mapping passed 19/19 (HIGH), the provider-failure 'never extends' claim is established only on the unused entry helper rather than at the cache boundary (MEDIUM), and the secret-free check is a name heuristic with a demonstrated false negative (MEDIUM). Two low-severity coverage/precision notes and one informational matrix/determinism observation. Reviewer status: PASS_WITH_FINDINGS."
+}

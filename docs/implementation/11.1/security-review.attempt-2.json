@@ -1,0 +1,164 @@
+{
+  "task": "11.1",
+  "attempt": 2,
+  "reviewer": "security-reviewer",
+  "subject": "v1.1 task 11.1 - Inventory cache model, bounds, and limits (security re-review after correction round)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "open_blocker_high_medium": 0,
+  "findings": [
+    {
+      "id": "SEC-11.1-1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "secret/error-message",
+      "summary": "CLOSED-AS-DOCUMENTED. The documented contract now matches the actual guarantee: LastError is a bounded ArrProviderError whose value-level redaction is the producer contract, and the cache boundary explicitly does not redact it.",
+      "issue": "Attempt 1 recorded that ArrInventoryCacheEntry.LastError retained an ArrProviderError.Message verbatim and that secret-freedom rested on caller/producer convention rather than boundary enforcement. The correction round deliberately did not invent a new value-redaction policy; it made the documentation honest about the actual guarantee. Verified: (a) ArrInventoryCache remarks (src/ArrTags/Providers/ArrInventoryCache.cs:19-24) state the boundary 'does not add value-level redaction and relies on that producer contract'; (b) ArrInventoryCacheEntry remarks (src/ArrTags/Providers/ArrInventoryCacheEntry.cs:16-22) state the cache 'stores that value unchanged and does not perform value-level redaction of its message'; (c) docs/data-model.md section 6 (lines 1209-1213) states value-level redaction 'is the producer contract ... consistent with the per-item metadata record's last-error summary'; (d) docs/architecture.md section 12 (lines 1285-1290) states the same. The behavior is unchanged and still matches the docs: an independent probe confirmed a secret-bearing message is retained verbatim (so the docs are not overclaiming redaction). The cross-reference is accurate: MetadataStateEntry.LastError is also a producer-contract carrier with no boundary redaction (src/ArrTags/Reconciliation/MetadataStateEntry.cs:133,273), and ADR-020 clause 4 explicitly lists ArrProviderError among the types 'already proven bounded and redacted'. Residual nuance (no action): the per-member XML summaries on ArrInventoryCacheEntry (constructor param :54, LastError :129, WithFailure :243,248) still use the word 'redacted' and rely on the reader reaching the class remarks for the producer-contract qualifier; this wording is identical to the pre-existing MetadataStateEntry.LastError wording and to ArrProviderError's own documented contract, so it is consistent rather than a new overstatement. With no caller yet (task 11.2 wires the producer), the resolution is sufficient for 11.1.",
+      "description": "The one free-text field is documented as a bounded ArrProviderError whose value-level redaction is the producer's responsibility; the cache does not claim boundary redaction and does not enforce it. This is honest and consistent with the existing per-item metadata last-error contract.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCache.cs:19-24 (remarks: 'the boundary does not add value-level redaction and relies on that producer contract')",
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:16-22 (remarks: 'stores that value unchanged and does not perform value-level redaction of its message')",
+        "docs/data-model.md:1209-1213 (Inventory cache subsection: 'value-level redaction of that message is the producer contract ... the cache itself stores no credential')",
+        "docs/architecture.md:1285-1290 (section 12: 'value-level redaction of that message is the producer contract ... consistent with the per-item metadata record's last-error summary')",
+        "src/ArrTags/Providers/ArrProviderError.cs:5-8,55-64 (bounded by trim/truncate; message 'must never contain API keys, request URLs, or raw provider payloads' - a producer requirement)",
+        "src/ArrTags/Reconciliation/MetadataStateEntry.cs:133,273 (same producer-contract pattern, no boundary redaction)",
+        "docs/decisions.md:2535-2541 (ADR-020 clause 4 lists ArrProviderError among the types 'already proven bounded and redacted')",
+        "Reproduction (/tmp/final-review/security/attempt2): secret-bearing message 'GET https://radarr.local:7878/api/v3/movie?apikey=SUPERSECRETVALUE failed' retained verbatim (Contains secret? True) - confirming the docs, not the value, are the correction"
+      ],
+      "recommended_action": "No action for 11.1. Carry the producer-contract obligation into task 11.2: when the provider client is wired, the ArrProviderError.Message producer must remain bounded and non-secret (the same obligation MetadataStateEntry.LastError producers carry)."
+    },
+    {
+      "id": "SEC-11.1-2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "bounds/accounting",
+      "summary": "UNCHANGED. InventoryCacheMaxBytes is enforced against a conservative estimate that omits several retained fields; the record-count bound remains the hard memory cap.",
+      "issue": "Attempt 1 recorded that EstimateSizeBytes sums UTF-16 lengths of a subset of canonical fields plus fixed overheads and omits BadgeMetadata.MetadataFingerprint, ArrRecordIdentity strings, ArrProvider strings, audio features, and object overhead, so actual retained bytes can exceed the configured byte bound by a bounded per-record amount. The correction round did not change the accounting (the worker report's known_limitations[2] continues to disclose it, and ByteBoundIsEnforcedAtTheActualEntrySize only pins the existing accounting boundary). This remains an accounting-accuracy gap, not unbounded growth: the record-count bound (<=100000) plus the counted variable strings keep memory bounded, and an over-bound store returns a safe false (direct-read fallback). No security action is required for 11.1.",
+      "description": "InventoryCacheMaxBytes is a lower-bound accounting estimate; InventoryCacheMaxRecords is the hard memory cap.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:312-349 (EstimateSizeBytes enumerates a subset of fields; StringBytes is UTF-16 length x2)",
+        "src/ArrTags/Providers/ArrInventoryCache.cs:135-140 (record-count and byte-bound rejection; no other retained-size enforcement)",
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:135-140 (SizeBytes documented as 'an accounting estimate, not an exact serialized size')",
+        "docs/implementation/11.1/worker-report.json known_limitations[2] (worker still discloses the estimate is not an exact serialized size)"
+      ],
+      "recommended_action": "No action for 11.1. Optional: state explicitly in docs/architecture.md section 12 / docs/data-model.md section 6 that the byte bound is a lower-bound accounting estimate and the record-count bound is the hard cap."
+    },
+    {
+      "id": "SEC-11.1-3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "test-honesty/secret-free",
+      "summary": "CLOSED. The strengthened guard is non-vacuous: a member-type denylist over the cache object graph (including private fields) plus a bounded ArrProviderError contract assertion.",
+      "issue": "Attempt 1 recorded that the secret-free test was a non-recursive name heuristic that would not flag an innocuously-named secret-typed member. The correction renamed the heuristic to InventoryCacheTypesHaveNoSecretNamedMembers (explicitly marked secondary) and added InventoryCacheTypesExposeNoCredentialBearingMembers, which enumerates the member types (properties and private/public fields, unwrapping generics and arrays) of ArrInventoryCache, ArrInventoryCacheEntry, ArrInventoryRecordObservation, and ArrInventoryCacheState and rejects ArrConnection, ArrConnectionConfiguration, SecretReference, SecretLease, PluginConfiguration, MetadataStateEntry, and MetadataStateStore; it also asserts inspected > 0. Independently verified non-vacuous: the guard's enumeration covers private instance fields, and an isolated probe showed the same logic flags an innocuously-named property of type SecretLease and a private ArrConnection field. The new LastErrorSatisfiesTheBoundedRedactedProviderErrorContract asserts ArrProviderError.Message is truncated to MaxMessageLength and that ArrProviderError exposes exactly Code/Message/Retryability; it does not claim value redaction (consistent with the documented producer contract). Residual nuance (no action): the denylist is exact-type and does not recurse into nested canonical types (MatchCandidate/BadgeMetadata are pre-existing reviewed types), and SecretLease is sealed so exact-type matching is sufficient for it.",
+      "description": "The secret-free guard is now structural (member types, not names) and demonstrably catches a credential-typed member regardless of member name.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:141-171 (InventoryCacheTypesExposeNoCredentialBearingMembers; forbidden type denylist; inspected > 0)",
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:432-449 (EnumerateMemberTypes includes BindingFlags.NonPublic | Instance | Static fields and properties)",
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:115-139 (InventoryCacheTypesHaveNoSecretNamedMembers explicitly marked secondary)",
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:173-196 (LastErrorSatisfiesTheBoundedRedactedProviderErrorContract: truncation to MaxMessageLength; property set exactly Code/Message/Retryability)",
+        "src/ArrTags/Secrets/SecretLease.cs:13 (SecretLease is sealed)",
+        "Reproduction (/tmp/final-review/security/attempt2): the denylist logic flagged 'ArrTags.Secrets.SecretLease' for an innocuously-named 'Lease' property and 'ArrTags.Providers.ArrConnection' for a private '_forbiddenMember' field (probe inspected=3, hits=3)",
+        "Live observation: when a private ArrConnection-typed field was transiently injected into ArrInventoryCacheEntry during this review, it was an exact denylist hit and broke the build (see SEC-11.1-7)"
+      ],
+      "recommended_action": "No action for 11.1. The guard carries the structural assurance; the name heuristic is correctly labelled secondary."
+    },
+    {
+      "id": "SEC-11.1-4",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "state/bounds",
+      "summary": "UNCHANGED. No cache-wide entry-count cap, but the live connection count is fixed at two.",
+      "issue": "ArrInventoryCache._entries is keyed by ArrConnectionId with no cap on distinct connections; ArrConnectionCatalog.FromSnapshot returns exactly two connections and V1 configures at most one per provider kind, so the live bound is two entries. A future multi-connection configuration would need a cache-wide cap.",
+      "description": "Per-connection bounds only; number of connections is externally bounded to two today.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCache.cs:30-31,142-145 (Dictionary keyed by connection; no entry-count cap)",
+        "src/ArrTags/Providers/ArrConnectionCatalog.cs (exactly Sonarr and Radarr)",
+        "docs/decisions.md ADR-018 (scope is per ArrConnection; V1 has one connection per provider kind)"
+      ],
+      "recommended_action": "No action for 11.1. If a future release allows more than one connection per provider kind, add an explicit cache-wide connection cap."
+    },
+    {
+      "id": "SEC-11.1-5",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "freshness/integrity",
+      "summary": "UNCHANGED. observedAt is caller-supplied and not clamped to the store time.",
+      "issue": "ComputeFreshnessWindow derives ExpiresAt/StaleUntil from the caller-supplied observedAt; TryStore/TryGet do not reject a future observedAt, so a buggy caller passing a far-future observedAt would extend the freshness window. observedAt is the local provider read time (not attacker-influenced) and no caller exists yet.",
+      "description": "TTL is relative to the caller-supplied observation time, not the store time.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:182-200 (freshness derived from observedAt)",
+        "src/ArrTags/Providers/ArrInventoryCache.cs:125-148 (TryStore accepts observedAt without a future check)"
+      ],
+      "recommended_action": "No action for 11.1. Optional hardening at 11.2: clamp observedAt to the store time (or reject a future observedAt) so the TTL cannot be extended by a caller defect."
+    },
+    {
+      "id": "SEC-11.1-6",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "input/paths",
+      "summary": "UNCHANGED. The cache retains raw provider strings as canonical observations but introduces no path/URL/log sink.",
+      "issue": "ArrInventoryRecordObservation retains provider-influenced strings (MatchCandidate.Title/PrimaryPath, provider ids, BadgeMetadata values). The cache performs no filesystem, URL, or log operation on them, so it adds no traversal/injection sink; BadgeMetadata already bounds custom badges and strips control characters, and MatchCandidate trims/normalizes provider ids. Task 11.2 must keep treating these values as untrusted and must not use PrimaryPath in a filesystem path, provider URL, or log line unescaped.",
+      "description": "Raw provider strings are stored as observations; the cache is not a path/URL/log sink.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryRecordObservation.cs:26-61 (holds MatchCandidate and BadgeMetadata only)",
+        "grep for ETag/If-None-Match/IfModifiedSince/SignalR/history/revision/Token/ApiKey/Secret/Logger/Log(/Console/Json/Serialize/Url/Uri over the four new cache files -> NO MATCHES",
+        "src/ArrTags/Providers/ArrInventoryCache.cs / ArrInventoryCacheEntry.cs (no Path/File/Url/Uri/log/serialization usage)"
+      ],
+      "recommended_action": "No action for 11.1. Carry this as an explicit input-handling requirement into task 11.2's review."
+    },
+    {
+      "id": "SEC-11.1-7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "review-environment/guard-effectiveness",
+      "summary": "A credential-bearing private field was transiently present in the working tree during this review, then reverted; it demonstrates the SEC-11.1-3 guard is non-vacuous.",
+      "issue": "During this review the working tree changed under the reviewer: at 2026-09-23T21:47:26Z a private field 'private ArrConnection? _forbiddenMember;' appeared in src/ArrTags/Providers/ArrInventoryCacheEntry.cs and ArrInventoryCache.cs was rewritten (its FromLimits then produced wrong values in a probe: Ttl=00:01:30, MaxRecords=8, MaxBytes=7). The injected field broke the build (CS0169 unused field, SA1203 constant-before-non-constant, CA1823 unused field) so the focused suite could not run, and it would also have been an exact hit in the InventoryCacheTypesExposeNoCredentialBearingMembers denylist (ArrConnection is forbidden). At 2026-09-23T21:48:48Z the field was reverted and FromLimits was restored. The final reviewed state is clean: member-type scan of the four model types yields 44 members with 0 forbidden hits, build is 0 warnings/0 errors, and the focused suite is 24/24. This is recorded as an observation about the review environment and as evidence that the correction's guard catches exactly this class of regression; it is not a defect in the final deliverable.",
+      "description": "Transient injected credential-bearing member observed mid-review and reverted; validates the structural guard.",
+      "evidence": [
+        "stat: src/ArrTags/Providers/ArrInventoryCacheEntry.cs mtime 2026-09-23 21:47:26Z (injected) then 21:48:48Z (reverted); ArrInventoryCache.cs mtime 21:47:26Z",
+        "Observed content at 21:47:26Z: 'private ArrConnection? _forbiddenMember;' at ArrInventoryCacheEntry.cs:39",
+        "Build during injection: error CS0169 / SA1203 / CA1823 for '_forbiddenMember' (dotnet run of an isolated probe referencing the project)",
+        "Reproduction after reversion (/tmp/final-review/security/attempt2): 44 member types inspected, 0 forbidden hits; FromLimits Ttl=01:30:00, MaxRecords=7, MaxBytes=3145728 (correct)",
+        "Final verification: ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s); focused suite Passed 24/24; full default suite Passed 1387, Skipped 63, Total 1450"
+      ],
+      "recommended_action": "None for the deliverable. Note for the harness: the transient fault was detected by direct inspection and would have been caught by the strengthened guard; the final state is clean."
+    }
+  ],
+  "secret_paths_checked": [
+    "src/ArrTags/Providers/ArrInventoryCache.cs (in-memory Dictionary only; no log/serialization; remarks state no value-level redaction; FromLimits verified correct: 90 min -> 01:30:00, records 7, bytes 3145728)",
+    "src/ArrTags/Providers/ArrInventoryCacheEntry.cs (holds ArrConnectionId, ArrProviderKind, timestamps, IReadOnlyList<ArrInventoryRecordObservation>, ArrProviderError, SizeBytes; no secret-typed member; no ToString override; remarks state the cache stores LastError unchanged)",
+    "src/ArrTags/Providers/ArrInventoryRecordObservation.cs (holds MatchCandidate + BadgeMetadata only)",
+    "src/ArrTags/Providers/ArrInventoryCacheState.cs (enum, no data)",
+    "src/ArrTags/Providers/ArrProviderError.cs:5-8,55-64 (bounded by trim/truncate; redaction is a producer requirement, ADR-020 clause 4)",
+    "src/ArrTags/Reconciliation/MetadataStateEntry.cs:133,273 (LastError is the same producer-contract pattern; cross-reference verified accurate)",
+    "grep for ETag/If-None-Match/IfModifiedSince/SignalR/history/revision/Token/ApiKey/Secret/Logger/Log(/Console/Json/Serialize/Url/Uri over the four new cache files -> NO MATCHES",
+    "grep for redact over the new cache files -> only the documented producer-contract remarks"
+  ],
+  "auth_paths_checked": [
+    "src/ArrTags/Configuration/config.html:222-236,365-373,442-450 (three new numeric fields only; min/max match the server-side ranges; the API-key/webhook-secret fields are the pre-existing elevation-gated path, unchanged by 11.1)",
+    "src/ArrTags/Configuration/OperationalLimits.cs:145-166,193-198,232-236 (three new limits validated via AddRangeError; Clone copies them)",
+    "No auth boundary, webhook route, or plugin dashboard save path was modified by this task (git diff HEAD touches only docs, OperationalLimits.cs, and config.html)"
+  ],
+  "state_paths_checked": [
+    "src/ArrTags/Providers/ArrInventoryCache.cs:30-31,125-148,160-182 (in-memory Dictionary under a lock; replacement on TryStore; expired eviction on TryGet; no persistence)",
+    "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:251-263 (WithFailure preserves ObservedAt/ExpiresAt/StaleUntil; cannot extend the bounded window)",
+    "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:272-310 (Validate enforces cache version, defined provider kind, positive lifetime, and per-record connection/provider scope)",
+    "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:413-430 (cache entry/cache member scan shows no MetadataStateEntry/MetadataStateStore reference)",
+    "Probe: MetadataStateEntry present? False; MetadataStateStore present? False"
+  ],
+  "input_paths_checked": [
+    "src/ArrTags/Configuration/OperationalLimits.cs:193-198 (InventoryCacheTtlMinutes 1-1440, InventoryCacheMaxRecords 1-100000, InventoryCacheMaxBytes 1 MiB-256 MiB validated with AddRangeError)",
+    "src/ArrTags/Providers/ArrInventoryCache.cs:40-66,103-111,125-148 (constructor positivity checks; FromLimits; TryStore record/byte rejection returns false without displacing the retained set)",
+    "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:182-200 (ComputeFreshnessWindow rejects a non-positive TTL and handles the degenerate sub-tick window)",
+    "src/ArrTags/Configuration/config.html:225-236 (numeric inputs with min/max matching the server-side ranges)"
+  ],
+  "reproductions": [
+    "git status --porcelain / git diff HEAD --stat: only PLANS.md, docs/architecture.md, docs/changelog.md, docs/data-model.md, docs/implementation-readiness.md, docs/limitations.md, docs/project-status.md, src/ArrTags/Configuration/OperationalLimits.cs, and src/ArrTags/Configuration/config.html are modified; the four cache files and the test file are new/untracked. No provider client, csproj, or package reference changed.",
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --filter \"FullyQualifiedName~ArrInventoryCacheTests\" -> Passed! - Failed: 0, Passed: 24, Skipped: 0, Total: 24.",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build -> Passed! - Failed: 0, Passed: 1387, Skipped: 63, Total: 1450 (matches the worker report).",
+    "Isolated probe (/tmp/final-review/security/attempt2, ProjectReference to the repo; no repository file modified): (a) an ArrProviderError whose Message contains '?apikey=SUPERSECRETVALUE' is retained verbatim in ArrInventoryCacheEntry.LastError (Contains secret? True); (b) ArrProviderError.Message is truncated to MaxMessageLength=512 and the type exposes exactly Code/Message/Retryability; (c) the denylist logic flags 'ArrTags.Secrets.SecretLease' for an innocuously-named 'Lease' property and 'ArrTags.Providers.ArrConnection' for a private '_forbiddenMember' field (probe inspected=3, hits=3); (d) FromLimits(90 min, 7, 3 MiB) -> Ttl 01:30:00, MaxRecords 7, MaxBytes 3145728.",
+    "Transient injected-fault observation (see SEC-11.1-7): at 2026-09-23T21:47:26Z a private ArrConnection field appeared in ArrInventoryCacheEntry and broke the build; it was reverted at 21:48:48Z and the final state builds clean with 24/24 focused and 1387/1450 full.",
+    "grep -rniE 'ETag|If-None-Match|IfModifiedSince|SignalR|history|revision|Token|ApiKey|Secret|Logger|Log\\(|Console|Json|Serialize|Url|Uri' over the four new cache files -> NO MATCHES; no ETag/revision-token/SignalR dependency introduced."
+  ],
+  "summary": "Attempt-2 security re-review of v1.1 task 11.1 finds the cache genuinely secret-free and bounded for its actual data, non-authoritative, with no open BLOCKER/HIGH/MEDIUM. SEC-11.1-1 is now closed-as-documented: the ArrInventoryCache/ArrInventoryCacheEntry remarks, docs/data-model.md section 6, and docs/architecture.md section 12 all state that LastError is a bounded ArrProviderError whose value-level redaction is the producer contract (ADR-020 clause 4), consistent with MetadataStateEntry.LastError, and the boundary explicitly does not redact; an independent probe confirmed the behavior matches (a secret-bearing message is retained verbatim), so no remaining claim overstates value-level redaction. SEC-11.1-3 is closed: the strengthened InventoryCacheTypesExposeNoCredentialBearingMembers guard is non-vacuous (member-type denylist over properties and private/public fields, unwrapping generics/arrays; independently demonstrated to catch an innocuously-named SecretLease property and a private ArrConnection field), and LastErrorSatisfiesTheBoundedRedactedProviderErrorContract asserts the bounded ArrProviderError contract without claiming value redaction. SEC-11.1-2 is unchanged (noted): InventoryCacheMaxBytes remains a conservative lower-bound estimate with the record-count bound as the hard cap, and the worker still discloses it. SEC-11.1-4/5/6 remain INFORMATIONAL/not_required. A transient credential-bearing private field was injected into the working tree during this review and reverted; it broke the build and was an exact denylist hit, which is recorded as SEC-11.1-7 (INFORMATIONAL) and as evidence that the correction's guard catches this class of regression. The final reviewed state builds with 0 warnings/0 errors, passes 24/24 focused and 1387/1450 default tests, and introduces no ETag/revision-token/SignalR dependency. Verdict: PASS_WITH_FINDINGS; the producer-contract obligation should be carried into task 11.2."
+}

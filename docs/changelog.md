@@ -3029,3 +3029,70 @@ this documentation change; the verdict is recorded in
 `docs/implementation/10.3/security-review.json` and is not asserted here. No
 production code or test changed, so the build/test counts are unchanged: build 0
 warnings / 0 errors; default suite Failed 0, Passed 1363, Skipped 63, Total 1426.
+
+## Phase 11 - Provider inventory cache and library-refresh-driven refresh (v1.1)
+
+**Status:** In progress. Task 11.1 is complete; tasks 11.2-11.4 remain, so
+limitation F1 is not yet resolved.
+
+### Task 11.1 - Inventory cache model, bounds, and limits
+
+**Status:** Complete.
+
+Defines the canonical, secret-free provider inventory cache boundary (ADR-018
+clauses 1, 5, 6, and 7). `src/ArrTags/Providers` gains `ArrInventoryCacheEntry`
+(one canonical, secret-free observation set per `ArrConnection`),
+`ArrInventoryRecordObservation` (the provider-neutral `MatchCandidate` plus the
+canonical `BadgeMetadata` mapped from the record's current file),
+`ArrInventoryCacheState` (`Fresh`/`Stale`/`Expired`), and `ArrInventoryCache`
+(the bounded, thread-safe, in-memory store keyed by connection). The cache is
+non-authoritative: it is never persisted, is rebuilt empty on restart, holds only
+canonical observations (never a provider DTO, credential, request URL, or
+Jellyfin item state), and cannot evict authoritative provenance or a non-terminal
+artwork operation. The configured inventory TTL is the total bounded lifetime of
+one observation set: fresh for the first half, explicit bounded last-known-good
+for the remaining half, and expired and unusable as current at or after the TTL,
+so a provider failure keeps the bounded last-known-good inventory without
+extending the window. An observation set that exceeds the per-connection record
+or byte bound is rejected and the caller keeps the direct provider read
+unchanged. No provider `ETag`, `If-None-Match`, revision token, or `history/since`
+watermark is assumed; such a token remains an optional future observation. The
+cache is distinct from the per-item `MetadataCacheEntry` (`docs/data-model.md`
+3.9). No provider client, metadata reader, or invalidation source is wired
+(tasks 11.2 and 11.3).
+
+`OperationalLimits` gains the validated `InventoryCacheTtlMinutes` (default 15,
+range 1-1440), `InventoryCacheMaxRecords` (default 10000, range 1-100000), and
+`InventoryCacheMaxBytes` (default 32 MiB, range 1 MiB-256 MiB) limits, with
+`Validate` and `Clone` coverage and the matching settings-page fields. The default
+TTL is deliberately far shorter than the 24-hour metadata last-known-good window
+because the inventory holds raw observations that are cheap to re-read;
+event-based invalidation is the primary freshness source and the TTL is only the
+bounded fallback (ADR-018 clause 3).
+
+Documentation: `docs/data-model.md` section 6 (new "Inventory cache" subsection
+and cache-key row), `docs/architecture.md` sections 8 (the cache boundary in the
+reconciliation flow) and 12 (the three limit rows and the bounded, secret-free
+semantics paragraph), `PLANS.md`, `docs/project-status.md`, and
+`docs/implementation-readiness.md`.
+
+New tests (`tests/ArrTags.Tests/ArrInventoryCacheTests.cs`, 24 cases) cover the
+limit validation bounds and the defaults/clone, the `FromLimits`
+validated-limit-to-cache binding (TTL unit and record/byte field mapping), the
+secret-free and provider-neutral cache shape (a member-type denylist covering
+`ArrConnection`/`SecretReference`/`SecretLease`/`MetadataStateEntry` plus the
+bounded `ArrProviderError` producer contract), the in-memory rebuild on restart,
+the fresh/stale/expired TTL boundaries, the bounded last-known-good on provider
+failure without extending the window (both on the entry helper and through
+`TryStore(..., lastError:)` at the cache boundary), the over-bound rejection
+without displacing the retained set, the byte bound at the real accounting
+boundary, connection-scope rejection, the mismatched file-observation rejection,
+the deterministic size estimate, and the distinctness from `MetadataStateEntry`.
+The entry's only free-text carrier is a bounded `ArrProviderError`; value-level
+redaction of that message is the producer contract (ADR-020 clause 4),
+consistent with `MetadataStateEntry.LastError`, and the boundary does not claim
+to redact it.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1387, Skipped 63, Total 1450 (pre-task baseline Failed 0, Passed 1363,
+Skipped 63, Total 1426; +24 passed, +24 total, 0 new skips).

@@ -222,6 +222,15 @@
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="terminalProvenanceRetentionDays" pattern="[0-9]*" min="1" max="365" label="Terminal provenance retention (days)" />
                         </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="inventoryCacheTtlMinutes" pattern="[0-9]*" min="1" max="1440" label="Inventory cache TTL (minutes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="inventoryCacheMaxRecords" pattern="[0-9]*" min="1" max="100000" label="Inventory cache records per connection" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="inventoryCacheMaxBytes" pattern="[0-9]*" min="1048576" max="268435456" label="Inventory cache bytes per connection" />
+                        </div>
                     </div>
 
                     <div class="verticalSection">
@@ -356,6 +365,9 @@
                         document.querySelector('#renderCacheQuotaBytes').value = config.Limits.RenderCacheQuotaBytes;
                         document.querySelector('#artifactStorageQuotaBytes').value = config.Limits.ArtifactStorageQuotaBytes;
                         document.querySelector('#terminalProvenanceRetentionDays').value = config.Limits.TerminalProvenanceRetentionDays;
+                        document.querySelector('#inventoryCacheTtlMinutes').value = config.Limits.InventoryCacheTtlMinutes;
+                        document.querySelector('#inventoryCacheMaxRecords').value = config.Limits.InventoryCacheMaxRecords;
+                        document.querySelector('#inventoryCacheMaxBytes').value = config.Limits.InventoryCacheMaxBytes;
 
                         document.querySelector('#logVerbosity').value = config.LogVerbosity;
 
@@ -430,6 +442,9 @@
                         config.Limits.RenderCacheQuotaBytes = parseInt(document.querySelector('#renderCacheQuotaBytes').value, 10);
                         config.Limits.ArtifactStorageQuotaBytes = parseInt(document.querySelector('#artifactStorageQuotaBytes').value, 10);
                         config.Limits.TerminalProvenanceRetentionDays = parseInt(document.querySelector('#terminalProvenanceRetentionDays').value, 10);
+                        config.Limits.InventoryCacheTtlMinutes = parseInt(document.querySelector('#inventoryCacheTtlMinutes').value, 10);
+                        config.Limits.InventoryCacheMaxRecords = parseInt(document.querySelector('#inventoryCacheMaxRecords').value, 10);
+                        config.Limits.InventoryCacheMaxBytes = parseInt(document.querySelector('#inventoryCacheMaxBytes').value, 10);
 
                         config.LogVerbosity = document.querySelector('#logVerbosity').value;
 

@@ -1,0 +1,175 @@
+{
+  "task": "11.1",
+  "title": "Inventory cache model, bounds, and limits",
+  "phase": 11,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fe52984ffemhObS4m6AR313O"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fd7c30effezkl95rMxJP7Sz5"
+      }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fd7c30cffe1HIU49LNUXCM52"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fd7c2ffffekj3g3nVuVUWcVC"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fe52984ffemhObS4m6AR313O"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fc56e55ffeSA124CAzcYf0Fb"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 2,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fc56e53ffeZJ4yyEu0pDypU1"
+      }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 2,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fc56e45ffeQZ51Ukfvr9baGC"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "test-quality-reviewer attempt 1 raised HIGH TQ-11.1-1 (the ArrInventoryCache.FromLimits validated-limits binding was untested) plus MEDIUM TQ-11.1-2 (provider-failure path only exercised the uncalled WithFailure helper, not the cache boundary) and TQ-11.1-3 (the secret-free guard was a non-vacuous name heuristic); security-reviewer attempt 1 raised LOW SEC-11.1-1 (LastError value-level redaction not enforced at the boundary) and SEC-11.1-3 (weak guard). The worker added mutation-sensitive tests binding FromLimits to the cache, a provider-failure-through-TryStore boundary test asserting the bounded window is not extended, a non-vacuous member-type credential denylist, a real-boundary byte accept/reject pair, and honest documentation of the producer-side redaction contract; production behavior was unchanged except one unused-using removal. All attempt-1 findings were independently confirmed closed in attempt 2."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null; no estimation was performed.",
+    "Final gates: implementation-reviewer APPROVED (attempt 2, no blockers; all attempt-1 findings closed); test-quality-reviewer PASS_WITH_FINDINGS (attempt 2, no BLOCKER/HIGH/MEDIUM; all six attempt-1 findings closed); security-reviewer PASS_WITH_FINDINGS (attempt 2, 0 open BLOCKER/HIGH/MEDIUM).",
+    "Validation: build 0 warnings / 0 errors; focused ArrInventoryCacheTests 24/0/24; full default suite Failed 0, Passed 1387, Skipped 63, Total 1450 (attempt-1 baseline 1382/63/1445; +5 passed/+5 total, 0 new skips; pre-task baseline 1363/63/1426).",
+    "Non-vacuousness independently reproduced: implementation-reviewer and test-quality-reviewer each ran temporary mutations (break FromLimits; extend the failure window; add a forbidden ArrConnection member; byte-bound off-by-one; over-bound displacement) and confirmed the corresponding tests fail, then reverted.",
+    "Tracked non-blocking findings: TQ-11.1-8 (LOW, the credential denylist is direct-member-only while its comment says 'cache object graph'; no transitive credential member exists today), TQ-11.1-9/-10 (INFORMATIONAL), SEC-11.1-2 (LOW, SizeBytes is a conservative lower-bound estimate; record-count bound is the hard cap), SEC-11.1-1 (LOW, closed-as-documented: value-level redaction of LastError is the producer contract, consistent with MetadataStateEntry.LastError and ADR-020 clause 4), SEC-11.1-4/-5/-6/-7 (INFORMATIONAL).",
+    "The inventory cache boundary is defined and bounded but not yet consumed; provider-client integration and invalidation remain tasks 11.2 and 11.3, and docs/limitations.md F1 is deliberately left open."
+  ]
+}

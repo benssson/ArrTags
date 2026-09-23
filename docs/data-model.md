@@ -1183,6 +1183,37 @@ client response cache and has no authority to publish or restore artwork.
 `PublishedArtworkState` is the source of truth for whether the active image is
 an ArrTags publication and whether guarded restoration is possible.
 
+### Inventory cache
+
+The provider inventory cache (ADR-018) is the bounded, in-memory,
+per-connection observation set that lets one provider library read serve a
+reconciliation window. It holds the provider library list (Sonarr `/series`,
+Radarr `/movie`) and the per-record file observations needed for badge metadata
+as canonical, secret-free observations, and it is **distinct from
+`MetadataCacheEntry` (3.9)**: the inventory cache holds raw canonical provider
+observations for reuse, while `MetadataCacheEntry` remains the per-item match
+and metadata freshness record.
+
+It is non-authoritative: it is never persisted as authoritative state, it is
+rebuilt empty on restart, and it never contains a credential, secret lease, or
+provider DTO. One `ArrInventoryCacheEntry` per connection carries
+`ArrInventoryRecordObservation` values (a canonical `MatchCandidate` plus the
+canonical `BadgeMetadata` mapped from the record's current file). The configured
+inventory TTL (`OperationalLimits.InventoryCacheTtlMinutes`) is the total bounded
+lifetime of one observation set: the set is fresh for the first half and may be
+served as explicit bounded last-known-good for the remaining half, so a provider
+failure keeps the bounded last-known-good inventory without extending the
+window. The per-connection record and byte bounds
+(`OperationalLimits.InventoryCacheMaxRecords` and
+`InventoryCacheMaxBytes`) reject an over-bound observation set and the caller
+keeps the direct provider read unchanged. The entry's only free-text field is a
+bounded `ArrProviderError` failure summary; value-level redaction of that message
+is the producer contract (`ArrProviderError` is documented as bounded and
+redacted, ADR-020 clause 4), consistent with the per-item metadata record's
+last-error summary, and the cache itself stores no credential. The cache assumes
+no provider `ETag` or revision token; such a token remains an optional
+observation only (see "ETags and provider versions").
+
 ### Cache keys and fingerprints
 
 | Cache/object | Key or fingerprint inputs |
@@ -1190,6 +1221,7 @@ an ArrTags publication and whether guarded restoration is possible.
 | Metadata entry | Jellyfin item ID, connection ID, provider kind, every typed record/file identity component, and metadata cache version. |
 | Metadata fingerprint | Every typed record/file identity component (including explicit file-identity presence), badge-affecting normalized metadata, the match identity, and badge schema version. |
 | Artwork entry | Jellyfin item/image surface/index, source image fingerprint, metadata fingerprint, configuration fingerprint, and renderer version. |
+| Inventory entry | Connection ID, provider kind, and inventory cache version. |
 | Configuration fingerprint | Output-affecting badge definitions/rendering/coexistence settings; never API keys or webhook secrets. |
 
 ### ETags and provider versions

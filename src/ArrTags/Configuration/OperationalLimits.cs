@@ -33,6 +33,13 @@ public sealed class OperationalLimits
     public const long DefaultWebhookMaxPayloadBytes = 256L * Kibibyte;
 
     /// <summary>
+    /// The default provider inventory cache time-to-live in minutes (ADR-018).
+    /// The configured value is the total bounded lifetime of one cached
+    /// observation set.
+    /// </summary>
+    public const int DefaultInventoryCacheTtlMinutes = 15;
+
+    /// <summary>
     /// Gets or sets the maximum number of pending update queue entries.
     /// </summary>
     public int QueueCapacity { get; set; } = 512;
@@ -139,6 +146,25 @@ public sealed class OperationalLimits
     public int TerminalProvenanceRetentionDays { get; set; } = 30;
 
     /// <summary>
+    /// Gets or sets the provider inventory cache time-to-live in minutes. The
+    /// configured value is the total bounded lifetime of one cached observation
+    /// set (ADR-018).
+    /// </summary>
+    public int InventoryCacheTtlMinutes { get; set; } = DefaultInventoryCacheTtlMinutes;
+
+    /// <summary>
+    /// Gets or sets the maximum number of record observations retained in the
+    /// provider inventory cache for one connection (ADR-018).
+    /// </summary>
+    public int InventoryCacheMaxRecords { get; set; } = 10000;
+
+    /// <summary>
+    /// Gets or sets the maximum estimated canonical observation size in bytes
+    /// retained in the provider inventory cache for one connection (ADR-018).
+    /// </summary>
+    public long InventoryCacheMaxBytes { get; set; } = 32L * Mebibyte;
+
+    /// <summary>
     /// Validates every limit and appends a safe message for each violation.
     /// </summary>
     /// <param name="errors">The bounded error collection to append to.</param>
@@ -167,6 +193,9 @@ public sealed class OperationalLimits
         AddRangeError(errors, nameof(RenderCacheQuotaBytes), RenderCacheQuotaBytes, 64L * Mebibyte, 64L * Gibibyte);
         AddRangeError(errors, nameof(ArtifactStorageQuotaBytes), ArtifactStorageQuotaBytes, 256L * Mebibyte, 256L * Gibibyte);
         AddRangeError(errors, nameof(TerminalProvenanceRetentionDays), TerminalProvenanceRetentionDays, 1, 365);
+        AddRangeError(errors, nameof(InventoryCacheTtlMinutes), InventoryCacheTtlMinutes, 1, 24 * MinutesPerHour);
+        AddRangeError(errors, nameof(InventoryCacheMaxRecords), InventoryCacheMaxRecords, 1, 100000);
+        AddRangeError(errors, nameof(InventoryCacheMaxBytes), InventoryCacheMaxBytes, Mebibyte, 256L * Mebibyte);
 
         if (RetryBackoffMaxSeconds < RetryBackoffInitialSeconds)
         {
@@ -203,6 +232,9 @@ public sealed class OperationalLimits
             RenderCacheQuotaBytes = RenderCacheQuotaBytes,
             ArtifactStorageQuotaBytes = ArtifactStorageQuotaBytes,
             TerminalProvenanceRetentionDays = TerminalProvenanceRetentionDays,
+            InventoryCacheTtlMinutes = InventoryCacheTtlMinutes,
+            InventoryCacheMaxRecords = InventoryCacheMaxRecords,
+            InventoryCacheMaxBytes = InventoryCacheMaxBytes,
         };
     }
 

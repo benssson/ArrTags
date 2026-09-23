@@ -1,0 +1,95 @@
+{
+  "task": "11.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Task 11.1 is correctly implemented and independently verified. The canonical, secret-free, in-memory per-ArrConnection inventory cache boundary (ArrInventoryCache/ArrInventoryCacheEntry/ArrInventoryRecordObservation/ArrInventoryCacheState) is defined, bounded by validated record/byte limits and a TTL, and mirrors the existing MetadataStateEntry fresh-first-half / bounded-last-known-good semantics. The new OperationalLimits fields are validated at configuration load (PluginConfigurationValidator -> OperationalLimits.Validate, reached from ConfigurationSnapshotService construction/TryReplace and Plugin.UpdateConfiguration), included in Clone, and exposed with matching settings-page fields that an existing DashboardSettingsPageTests mapping check exercises. docs/data-model.md section 6 documents the cache as its own subsection distinct from MetadataCacheEntry (3.9); docs/architecture.md sections 8 and 12 document the boundary and the exact defaults/units/ranges/safe-failure, which match the code. No provider-client/reader/invalidation wiring was added and no ETag/revision-token/history-since/SignalR dependency was introduced. Independent build succeeded 0 warnings/0 errors; the focused class passed 19/19 and the full default suite passed 1382/63/1445, matching the worker's reported counts and the reconciled documentation.",
+  "findings": [
+    {
+      "id": "11.1-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation",
+      "summary": "New subsection references MetadataCacheEntry (3.9) while the implementing code type is MetadataStateEntry; this follows the pre-existing docs naming and is internally consistent.",
+      "detail": "docs/data-model.md 3.9 is titled 'MetadataCacheEntry' and ADR-018 clause 6 and the Phase 11 task block both use that name; the actual code type is ArrTags.Reconciliation.MetadataStateEntry. The worker's new section 6 text and ADR references use the same 'MetadataCacheEntry (3.9)' name as the authoritative task/ADR wording, so the new documentation is self-consistent. The heading-vs-type mismatch predates this task and is not introduced by it. No action required for 11.1.",
+      "evidence": [
+        "docs/data-model.md:568 (### 3.9 MetadataCacheEntry)",
+        "src/ArrTags/Reconciliation/MetadataStateEntry.cs:36 (public sealed class MetadataStateEntry)",
+        "docs/decisions.md ADR-018 clause 6",
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:250-264 (asserts distinctness from MetadataStateEntry)"
+      ],
+      "recommended_action": "None for this task; a later documentation pass could align the 3.9 heading with the code type name."
+    },
+    {
+      "id": "11.1-F2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "code style",
+      "summary": "ArrInventoryCacheEntry.cs carries an unused 'using ArrTags.Matching;'.",
+      "detail": "The file references no type from ArrTags.Matching by name (candidate data is reached through ArrInventoryRecordObservation properties). The build reports 0 warnings, so this is purely cosmetic and does not affect correctness, acceptance criteria, or validation.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:3",
+        "grep for MatchCandidate/MediaMatch/ArrRecordIdentity in ArrInventoryCacheEntry.cs returned no matches",
+        "build output: Build succeeded, 0 Warning(s), 0 Error(s)"
+      ],
+      "recommended_action": "None required; remove opportunistically in a later change if desired."
+    },
+    {
+      "id": "11.1-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/accounting",
+      "summary": "The per-connection byte bound is enforced against a deterministic conservative estimate, not an exact serialized size; this is documented and tested.",
+      "detail": "ArrInventoryCacheEntry.EstimateSizeBytes sums UTF-16 string lengths plus fixed per-record (256) and per-file (512) overheads. This bounds retained canonical bytes deterministically and cannot undercount the dominant string payload relative to a serialized form for the retained fields. The task acceptance criterion (bounded cache with validated size limits) is satisfied, and the estimate nature is explicitly documented in ArrInventoryCacheEntry remarks, docs/architecture.md section 12, and the worker's known limitations. No exact-memory guarantee is claimed.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:306-348",
+        "docs/architecture.md section 12 inventory cache bytes row",
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:231-247 (size estimate grows with bounded content)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "11.1-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope/architecture",
+      "summary": "WithFailure and FromLimits have no production caller yet; this is expected because provider-client integration is task 11.2.",
+      "detail": "grep confirms ArrInventoryCache*/ArrInventoryRecordObservation are referenced only from their own files and the new test class; there is no DI registration, provider-reader, or invalidation hook usage. Task 11.1 is explicitly a model/bounds-only task that must not wire the cache, so the absence of production callers is correct, not a defect. WithFailure is exercised by the provider-failure test.",
+      "evidence": [
+        "grep ArrInventory across src/ and tests/ returns only the four new source files and ArrInventoryCacheTests.cs",
+        "PLANS.md 11.1 work items and scope checks (no wiring into 11.2/11.3)",
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:158-186"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~ArrInventoryCacheTests -> Passed! Failed 0, Passed 19, Skipped 0, Total 19",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! Failed 0, Passed 1382, Skipped 63, Total 1445 (independently confirms the worker's reported suite counts and the docs/limitations.md V6 + docs/project-status.md reconciled counts; 63 skips match the host-guarded baseline)",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs (existing) asserts every writable OperationalLimits property appears in config.html and no unknown property is referenced; passes with the three new limits, confirming the settings-page fields are wired"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-018 (clauses 1, 3, 5, 6, 7) - scope, bounds, non-authoritative/LKG semantics, distinctness from the per-item record, and no assumed ETag/revision token",
+    "docs/planning/v1.1.md Goal C and DG-12 (resolved by ADR-018)",
+    "PLANS.md Phase 11 execution order and the 11.1 task block (objective, work items, tests, acceptance criteria)",
+    "docs/data-model.md section 6 and 3.9",
+    "docs/architecture.md sections 8 and 12",
+    "Cross-checked the inventory TTL interpretation against the existing MetadataStateEntry.ComputeFreshnessWindow (src/ArrTags/Reconciliation/MetadataStateEntry.cs:363-381) and MetadataReconciliationProcessor:245; the fresh-first-half / bounded-last-known-good split is an exact mirror, so 'provider failure keeps the existing bounded last-known-good behavior' is grounded in the existing model rather than a silent reinterpretation",
+    "Confirmed ArrConnectionId.For excludes user info and the API key from the cache key (src/ArrTags/Providers/ArrConnectionId.cs)",
+    "Confirmed canonical observation types carry no provider DTO/credential (ArrProviderError is bounded/redacted; MatchCandidate/BadgeMetadata are provider-neutral)"
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, Milestone 11 status row, task 11.1 checkbox, and the 11.1 status/definition block - all updated and consistent with the implementation; PLANS.md:4017 retains the historical task 10.2 suite count (1363/1426), which is an accurate earlier-state record and not a stale current-state claim",
+    "docs/changelog.md - new Phase 11 / task 11.1 entry with counts and scope",
+    "docs/project-status.md - current milestone and next-task sections plus current v1.1 suite count 1382/1445",
+    "docs/architecture.md - status line, section 8 cache-boundary paragraph, and section 12 three limit rows with exact defaults/units/ranges/safe-failure plus the semantics paragraph (values match code: 15 min / 1-1440, 10000 / 1-100000, 32 MiB / 1 MiB-256 MiB)",
+    "docs/data-model.md - section 6 'Inventory cache' subsection (distinct from MetadataCacheEntry 3.9), 'Inventory entry' cache-key row, consistent with the ETags section",
+    "docs/implementation-readiness.md - status line appended with Phase 11 task 11.1; Post-V1 promotion text remains accurate",
+    "docs/limitations.md - V6 counts updated to 1382/1445; F1 correctly left open (cache is defined but not yet wired)",
+    "README.md - Known limitations 'No provider inventory/catalogue cache' remains accurate pending 11.2/11.3 wiring"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}
