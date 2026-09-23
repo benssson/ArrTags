@@ -3,7 +3,7 @@
   "title": "Logging foundation, verbosity configuration, and fingerprint exclusion",
   "phase": 10,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "ae7f5c9",
   "subagents": [
     {
       "role": "implementation-worker",
