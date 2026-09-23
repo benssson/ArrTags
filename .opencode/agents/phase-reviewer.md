@@ -133,6 +133,8 @@ The project's canonical current-state surfaces are:
 * `docs/project-status.md` — current build/test/structure/next-step statements.
 * `docs/architecture.md` — status line and affected sections.
 * `docs/implementation-readiness.md` — status line and deferral lists.
+* `docs/limitations.md` — the canonical limitations record.
+* `README.md` — the end-user guide.
 
 Check each of these against the completed phase. A stale current-state line that
 has survived multiple phase reviews is a material finding, not a stylistic one.

@@ -40,8 +40,10 @@ You are a verifier, not an implementer. You never fix defects you find.
 * Compare them with the identity recorded in
   `docs/release/build-and-release.md`. Do not install an artifact whose identity
   does not match unless the mismatch is the finding being investigated.
-* Confirm the pinned host is available at the documented location
-  (`/tmp/jf/jellyfin` by default) and provision it with the documented script
+* Confirm the pinned host is available at the location documented in
+  `docs/testing/jellyfin-12-musl-test-host.md` (the provision script's default
+  prefix is `/tmp/arrtags-jellyfin`, so the host is
+  `/tmp/arrtags-jellyfin/jellyfin`) and provision it with the documented script
   only when it is missing.
 
 ### 2. Install and load
@@ -67,6 +69,17 @@ procedure requires it:
 * Restart/upgrade preserves the install and state.
 * Uninstall/drain leaves the host and state in the expected condition.
 
+When the release includes configuration, logging, caching, or renderer-option
+changes (for example v1.1), also exercise and record:
+
+* The plugin settings page loads and saves a change through the dashboard; the
+  change applies without a restart and affected posters re-render.
+* A configured log verbosity is honored in the host log.
+* A configured badge option (value allowlist, size, or position) changes the
+  rendered output as expected.
+* The provider inventory cache reduces repeated provider reads within its window
+  where the procedure can observe it.
+
 ### 4. Record, do not repair
 
 * Record exact commands, host paths, timings where relevant, and observed values.
@@ -81,8 +94,8 @@ Never implement code, tests, or documentation changes.
 
 Never commit and never create or move a tag.
 
-Treat the host and `/tmp/jf` as disposable infrastructure, but leave it in a
-coherent state (the host stopped cleanly) when finished.
+Treat the host and its provision prefix as disposable infrastructure, but leave
+it in a coherent state (the host stopped cleanly) when finished.
 
 Temporary files belong under the verifier-owned directory:
 

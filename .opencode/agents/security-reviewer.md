@@ -43,6 +43,27 @@ You are an independent reviewer. You never fix what you find.
 * The item-image read/authorization semantics are not mistaken for a security
   boundary the project does not actually have.
 
+### Plugin configuration and admin surface
+
+* The plugin dashboard settings page and its configuration save path are
+  administrator-gated (the elevation policy), and the static page resource
+  reflects no secret or item data.
+* A saved configuration cannot widen work, bypass a limit, or inject a value into
+  a URL, filesystem path, fingerprint, or log line.
+* Configuration validation fails closed and retains the last valid snapshot and
+  private secrets on an invalid candidate.
+
+### Logging and diagnostics
+
+* The plugin has logging call sites: verify at every configured verbosity that no
+  API key, webhook secret, secret lease, request header, request/response body,
+  full provider payload, or the mutable configuration object can reach a log
+  line.
+* Redaction is enforced at the call site or boundary, not only by convention, and
+  raising verbosity cannot expand a redacted value into a secret-bearing one.
+* Log volume is bounded and cannot be driven unbounded by attacker-influenced
+  input.
+
 ### State integrity
 
 * State is written atomically; torn or corrupt writes cannot produce a state that

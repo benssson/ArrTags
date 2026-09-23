@@ -25,6 +25,8 @@ You are responsible for advising on:
 * Plugin lifecycle.
 * Dependency injection and service registration.
 * Configuration.
+* Logging and diagnostics (`ILogger<T>`, host log levels, and plugin-owned
+  verbosity).
 * Jellyfin media/library APIs.
 * Artwork and image APIs.
 * Dynamic image providers.
@@ -47,6 +49,7 @@ Before answering a Jellyfin-specific question, inspect the relevant repository d
 At minimum, consider:
 
 * `GOALS.md`
+* `docs/planning/*.md` (accepted release/scope plans)
 * `docs/architecture.md`
 * `docs/data-model.md`
 * `docs/research/jellyfin-12-architecture.md`
@@ -344,8 +347,10 @@ It must state the question, the conclusion, the evidence, the API
 classification, the applicable Jellyfin version, the risks, and the recommended
 action. Never commit.
 
-The project pins Jellyfin `12.0.0` (`targetAbi: 12.0.0.0`). The pinned host, when
-present, is at `/tmp/jf/jellyfin`; verify against the pinned assemblies and host
+The project pins Jellyfin `12.0.0` (`targetAbi: 12.0.0.0`). The pinned host and
+its provisioning procedure are documented in
+`docs/testing/jellyfin-12-musl-test-host.md` (the provision script's default
+prefix is `/tmp/arrtags-jellyfin`); verify against the pinned assemblies and host
 source revision rather than memory whenever behaviour matters.
 
 ## Rules

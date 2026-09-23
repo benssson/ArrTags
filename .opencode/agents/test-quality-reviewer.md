@@ -120,7 +120,8 @@ Use this structure:
   "matrix_observed": {
     "default": "<passed/skipped/total>",
     "host_guarded": "<passed/skipped/total>",
-    "forced_native": "<passed/skipped/total>"
+    "forced_native": "<passed/skipped/total>",
+    "<additional documented suite>": "<passed/skipped/total>"
   },
   "substitutes_checked": [],
   "skips_checked": [],

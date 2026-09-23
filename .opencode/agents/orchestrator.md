@@ -35,6 +35,7 @@ Before doing any work:
    * `GOALS.md`
    * `PLANS.md`
    * `README.md`
+   * `docs/planning/*.md` (accepted release/scope plans)
 3. Read relevant architecture, design, research, decision, and implementation-state documents.
 4. Inspect the repository's current git status and relevant recent changes.
 5. Identify the current implementation phase and the next incomplete task according to the project's authoritative state.
@@ -113,7 +114,8 @@ specialist subagents are available. Delegate to them rather than performing the
 work yourself or guessing.
 
 * `implementation-planner` — when a planning gap is found, when new corrective
-  tasks must be added, or when the authoritative execution order must be updated.
+  tasks must be added, when an accepted new release scope must be turned into
+  phases and tasks, or when the authoritative execution order must be updated.
   It maintains `PLANS.md` and returns a dependency-ordered plan.
 * `architecture-reviewer` — when a product or architectural decision is required,
   when documents conflict, or before implementing a change that alters an

@@ -198,6 +198,7 @@ reality:
 * `docs/architecture.md` — status line and affected sections.
 * `docs/implementation-readiness.md` — status line and deferral lists.
 * `docs/limitations.md` — the canonical limitations record.
+* `README.md` — the end-user guide.
 
 Identify stale, contradictory, or overclaiming statements. Distinguish current
 project state from historical records: do not require historical entries to be

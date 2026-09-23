@@ -44,6 +44,10 @@ You own the accuracy of exactly these current-state surfaces:
 * `docs/architecture.md` — status line and affected sections.
 * `docs/implementation-readiness.md` — status line and deferral lists.
 * `docs/limitations.md` — the canonical limitations record.
+* `README.md` — the end-user guide: capabilities, configuration, install/update,
+  and known-limitations statements.
+* `docs/release/build-and-release.md` — the recorded artifact identity, supported
+  version ranges, and release commands.
 
 Do not treat `docs/decisions.md` historical ADR text as freely editable: a
 divergence between an ADR and actual behavior is a finding to record, not
@@ -87,10 +91,12 @@ it silently.
 
 ## Report
 
-Persist a concise record of what changed and why:
+Persist a concise record of what changed and why. Use the release-level location
+for a release-wide update, or a phase-scoped location for a single phase:
 
 ```text
 docs/implementation/final-review/documentation-update.json
+docs/implementation/phase-<phase>/documentation-update.json
 ```
 
 Use this structure:

@@ -239,6 +239,10 @@ stale:
 * `docs/architecture.md` — the status line and any section the change makes
   inaccurate.
 * `docs/implementation-readiness.md` — its status line and any deferral list.
+* `docs/limitations.md` — the canonical limitations record: resolve, add, or
+  update any limitation the change affects.
+* `README.md` — the end-user guide: update any capability, configuration, or
+  limitation statement the change makes stale.
 
 Do not guess that a surface is unaffected: if the task changes a completion
 count, a phase status, an implemented capability, or a deferred item, verify the

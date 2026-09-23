@@ -183,6 +183,8 @@ The project's current-state status surfaces are:
 * `docs/project-status.md` — current build/test/structure/next-step statements.
 * `docs/architecture.md` — status line and affected sections.
 * `docs/implementation-readiness.md` — status line and deferral lists.
+* `docs/limitations.md` — the canonical limitations record.
+* `README.md` — the end-user guide.
 
 Independently check these against the implementation whenever the task changes a
 completion count, a phase status, an implemented capability, or a deferred item.

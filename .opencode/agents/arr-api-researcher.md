@@ -19,6 +19,7 @@ You are a researcher and consultant, not an implementer.
 ## Required Inputs
 
 * `GOALS.md`, `PLANS.md`, `AGENTS.md`
+* `docs/planning/*.md` (accepted release/scope plans)
 * `docs/research/sonarr-api.md`
 * `docs/research/radarr-api.md`
 * `docs/research/media-metadata-mapping.md`
@@ -72,7 +73,9 @@ or range for each conclusion.
 
 Never modify application code or tests.
 
-Never invent requirements or silently expand V1 scope.
+Never invent requirements or silently expand any scope: research only the
+accepted baseline and any explicitly accepted new scope (for example a plan under
+`docs/planning/`), and record anything else as a required decision.
 
 Never change an architectural or provider-contract decision; if a change is
 needed, record it as a required decision instead.

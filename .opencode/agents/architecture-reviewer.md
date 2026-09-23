@@ -29,6 +29,7 @@ You are an independent reviewer and consultant, not an implementer.
 Always read `GOALS.md`, `PLANS.md`, and `AGENTS.md` before making conclusions,
 then the relevant documents under `docs/`, at minimum:
 
+* `docs/planning/*.md` (accepted release/scope plans)
 * `docs/architecture.md`
 * `docs/data-model.md`
 * `docs/decisions.md`
