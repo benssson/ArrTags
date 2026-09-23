@@ -3,7 +3,7 @@
   "title": "Inventory cache model, bounds, and limits",
   "phase": 11,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "65313f8",
   "subagents": [
     {
       "role": "implementation-worker",
