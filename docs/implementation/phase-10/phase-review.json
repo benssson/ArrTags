@@ -1,0 +1,178 @@
+{
+  "phase": 10,
+  "title": "Logging with configurable verbosity (v1.1 Goal F, ADR-020)",
+  "release": "v1.1.0",
+  "phase_tag": "v1.1.0-phase10",
+  "reviewer": "phase-reviewer",
+  "reviewer_status": "APPROVED",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "reviewed_head": "8f72341f8498d367d87405301c837c34e6d8c800",
+  "reviewed_branch": "v1.1",
+  "findings": [
+    {
+      "id": "P10-F1",
+      "severity": "MEDIUM",
+      "area": "documentation-consistency",
+      "issue": "PLANS.md and docs/project-status.md still describe the task 10.3 logging security review as not yet recorded ('the task 10.3 logging security review remains to be recorded' at PLANS.md:194-198 and docs/project-status.md:5-10,665-671; 'logging security review pending' in the Milestone 10 row at PLANS.md:237; 'Documentation complete; the logging security review remains' at the task 10.3 status, PLANS.md:4054). At HEAD the review IS recorded at docs/implementation/10.3/security-review.json (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM), so these are now-false current-state claims on canonical surfaces, and the Milestone 10 row also implies the phase's own Gate 10 condition is unmet when it is met.",
+      "description": "PLANS.md and docs/project-status.md retain pre-review wording that the Phase 10 logging security review is pending/unrecorded, which is now false.",
+      "evidence": [
+        "PLANS.md:194-198, PLANS.md:237, PLANS.md:4054",
+        "docs/project-status.md:5-10, docs/project-status.md:652-671",
+        "docs/implementation/10.3/security-review.json (reviewer_status PASS_WITH_FINDINGS, open_blocker_high_medium 0)",
+        "docs/changelog.md:2994-3024 (correctly states the review 'is run by the orchestrator and recorded at docs/implementation/10.3/security-review.json')",
+        "docs/architecture.md status line and docs/implementation-readiness.md status line (correctly state the review is recorded)"
+      ],
+      "recommended_action": "When the phase review is recorded and the tag is created, update the PLANS.md Project Status paragraph, the Milestone 10 row, the task 10.3 checkbox/status, the Phase 10 acceptance-criteria checkboxes, and the docs/project-status.md current-milestone/Next-tasks text to state that the logging security review is recorded and the phase is complete. This mirrors the post-Phase-9 reconciliation commit 61dd895.",
+      "status": "open"
+    },
+    {
+      "id": "P10-F2",
+      "severity": "LOW",
+      "area": "documentation-consistency",
+      "issue": "The current v1.1 suite count is stale in two canonical current-state surfaces: docs/project-status.md:615-616 ('the current v1.1 working suite is Failed 0, Passed 1,272, Skipped 63, Total 1,335') and docs/limitations.md V6 (same count). The independently reproduced HEAD suite is Failed 0, Passed 1363, Skipped 63, Total 1426 (+91 = the 26-case LogVerbosityTests plus the 65-case LogRedactionTests added by this phase).",
+      "description": "Stale v1.1 suite counts (1,272/63/1,335) in docs/project-status.md and docs/limitations.md V6 versus the reproduced 1,363/63/1,426.",
+      "evidence": [
+        "docs/project-status.md:615-616",
+        "docs/limitations.md V6 (line 266+)",
+        ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426",
+        "docs/implementation/10.2/reviewer-report.json 10.2-F1 and docs/implementation/10.3/security-review.json SEC-10.3-2 (already tracked)",
+        "docs/limitations.md V6 explicitly routes the refresh to the v1.1 release task (TQ-8)"
+      ],
+      "recommended_action": "Refresh the counts in docs/project-status.md and docs/limitations.md V6 during the Phase 13/v1.1-release documentation reconciliation (already tracked; no Phase 10 action required).",
+      "status": "open"
+    },
+    {
+      "id": "P10-F3",
+      "severity": "LOW",
+      "area": "documentation-consistency",
+      "issue": "docs/planning/v1.1.md:146-147 still states the Goal F 'Current state: The plugin has zero logging call sites; docs/limitations.md SEC-5 relies on that to assert no plugin log path can leak a secret.' This is a now-false current-state claim, though it sits outside the task 10.3 named-document scope and the planning document is a governing-scope artifact rather than a canonical current-state surface.",
+      "description": "Stale pre-logging 'zero logging call sites' current-state line in docs/planning/v1.1.md Goal F.",
+      "evidence": [
+        "docs/planning/v1.1.md:146-147",
+        "docs/implementation/10.3/security-review.json SEC-10.3-2 (LOW, open, routed to Phase 13)",
+        "docs/implementation/10.3/reviewer-report.json 10.3-F4"
+      ],
+      "recommended_action": "Correct the Goal F 'Current state' wording in the Phase 13 documentation reconciliation (already tracked; no Phase 10 action required).",
+      "status": "open"
+    },
+    {
+      "id": "P10-F4",
+      "severity": "LOW",
+      "area": "security-defense-in-depth",
+      "issue": "The rewritten SEC-5's absolute wording ('cannot leak a secret') and the redaction guarantee rest on the code-owned producer invariant for ArrProviderError.Message and its transitive carriers (WorkProcessingResult.Reason, MediaMatch.AmbiguityReason, and the ArtworkPublicationResult reason, which is sanitized). Those fields are length-bounded/trimmed but not control-character-stripped at the boundary. All current producers were independently re-verified as fixed, code-owned strings (no URL, key, header, or provider-response text), so no secret reaches a log line at HEAD and CR/LF log-forging is not exploitable today; this is a future-regression risk only.",
+      "description": "Log-bound reason strings depend on the producer invariant rather than boundary sanitization; bounded but not control-character-stripped.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrProviderError.cs:55-64 (Bound trims/truncates only)",
+        "src/ArrTags/Updates/WorkProcessingResult.cs:96-105 (Bound trims/truncates only)",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:304-341 and src/ArrTags/Providers/Sonarr/SonarrClient.cs (ClassifyStatus uses fixed code-owned strings)",
+        "src/ArrTags/Artwork/ArtworkPublicationResult.cs:91 (Sanitize applied) and src/ArrTags/Artwork/ArtworkOperationErrors.cs (contrast: sanitizes control characters)",
+        "docs/implementation/10.2/security-review.json SEC-10.2-2/-3 and docs/implementation/10.3/security-review.json SEC-10.3-1 (LOW, noted/accepted)"
+      ],
+      "recommended_action": "No Phase 10 action required; accepted and tracked. Optionally route log-bound reason strings through a control-character-stripping sanitizer at the logging boundary as post-V1 hardening.",
+      "status": "accepted"
+    },
+    {
+      "id": "P10-F5",
+      "severity": "LOW",
+      "area": "technical-debt",
+      "issue": "Every instrumented production constructor takes its log boundary as a nullable optional parameter (`IArrTagsLog<T>? log = null`) and the plugin log registrations are a hand-maintained per-type list. A future instrumented type that is not added to ArrTagsServiceRegistrator.RegisterArrTagsLogs would resolve to the default null (Microsoft.Extensions.DependencyInjection fills an unregistered optional parameter with its default) and silently emit no log records rather than failing fast. All eleven currently instrumented types are registered, so there is no current defect.",
+      "description": "Fail-silent logging if a future instrumented type is not added to the registrator's per-type log list.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:171-185 (RegisterArrTagsLogs per-type list) and :187-194 (CreateLog factory)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:56, src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:66, src/ArrTags/Updates/LibraryWorkWorker.cs:64, src/ArrTags/Reconciliation/LibraryReconciliationService.cs:55, src/ArrTags/Webhooks/WebhookIntakeService.cs:57, src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:48, src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs:60, src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:32, src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:33, src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs:40 (all nullable optional)",
+        "grep '_log.Write(' src/ArrTags -> 21 call sites; grep 'IArrTagsLog<' src/ArrTags -> all instrumented types have a matching registration"
+      ],
+      "recommended_action": "No Phase 10 action required. Consider a registrator test that enumerates the instrumented types and asserts each resolves an IArrTagsLog<T>, or make the dependency non-optional at the DI boundary, so a future omission is caught.",
+      "status": "open"
+    }
+  ],
+  "tasks_checked": [
+    "10.1 Logging foundation, verbosity configuration, and fingerprint exclusion (commit ae7f5c9, state 99aabdb) - complete, 1 rework round, attempt-2 worker/reviewer/test-quality records canonical, attempt-1 reports preserved",
+    "10.2 Bounded, redacted log call sites and volume bounds (commit 8407964, state 9f3ec01) - complete, 0 rework rounds, implementation-reviewer APPROVED, security-reviewer PASS_WITH_FINDINGS 0 open BLOCKER/HIGH/MEDIUM",
+    "10.3 SEC-5 rewrite, documentation, and logging security review (commit 7333980, state a667ee2) - complete, 0 rework rounds, implementation-reviewer APPROVED, security-reviewer PASS_WITH_FINDINGS 0 open BLOCKER/HIGH/MEDIUM",
+    "No task skipped; authoritative execution order 10.1 -> 10.2 -> 10.3 walked in order"
+  ],
+  "commits_checked": [
+    "ae7f5c9 Implement v1.1 task 10.1 logging foundation and verbosity configuration",
+    "99aabdb Record v1.1 task 10.1 commit hash in implementation state",
+    "61dd895 Reconcile Phase 9 completion across canonical documentation surfaces (related, not a Phase 10 task)",
+    "8407964 Implement v1.1 task 10.2 bounded redacted logging",
+    "9f3ec01 Record v1.1 task 10.2 commit hash in implementation state",
+    "7333980 Implement v1.1 task 10.3 SEC-5 rewrite and logging documentation",
+    "a667ee2 Record v1.1 task 10.3 commit hash in implementation state",
+    "8f72341 Record v1.1 Phase 10 task orchestration aggregate",
+    "7f4f7e5 Record Phase 9 review (Gate 9 met) and fold P9-F1 into task 14.3 (phase base)"
+  ],
+  "requirements_checked": [
+    "Phase 10 AC1 'The plugin logs through the host logging pipeline at a configurable verbosity' - SATISFIED: ILogger<T>/ILoggerFactory resolve through plugin DI (ArrTagsServiceRegistrator.RegisterArrTagsLogs, CreateLog) with ArrTags.* categories; the plugin-owned IArrTagsLog<T>/ArrTagsLog<T> facade writes through the host ILogger<T>; the bounded LogVerbosity setting selects the effective level. Confirmed at the DI/contract and integration-test level; live Serilog sink emission is deferred to task 14.3 (documented).",
+    "Phase 10 AC2 'Verbosity is bounded, validated, secret-free, and applied without restart (via Goal A)' - SATISFIED: bounded LogVerbosity enum (Off/Error/Warning/Information/Debug/Trace, default Warning) validated by PluginConfigurationValidator.ValidateLogVerbosity (Enum.IsDefined) and carried on PluginConfigurationSnapshot; LogVerbosityGate reads _configuration.Current.LogVerbosity on every call, and ConfigurationSnapshotService.TryReplace is invoked by the Goal A save path, so a saved change applies without restart (LogVerbosityTests.GateAppliesAReplacedVerbosityWithoutARestart, RegistratorResolvesTheGateFromTheCurrentSnapshot).",
+    "Phase 10 AC3 'Every log call is secret-free; redaction is covered by tests at every level' - SATISFIED: 21 _log.Write call sites across 8 boundaries emit only bounded values (ArrProviderError code/retryability/message, non-secret connection identity, provider kind, match status/method, bounded reason enums, item/record ids, counts, exception type name); LogRedactionTests (65 cases) drives every boundary with sentinel secrets in its secret-bearing inputs at all six verbosity levels and asserts no sentinel appears, plus exact per-level counts and a Trace-vs-Debug message-shape equality per boundary.",
+    "Phase 10 AC4 'Verbosity does not affect rendered output or output fingerprints' - SATISFIED: LogVerbosity is excluded from RendererConfigurationFingerprint (computed only from resolved badge definitions and output policy) and does not change RenderVersion (still 2). LogVerbosityTests.ChangingVerbosityDoesNotChangeTheProductionRegenerationDecision proves on the real ArtworkRegenerationPlanner that a verbosity-only snapshot change yields the same desired fingerprint and a Skip (no republish).",
+    "Phase 10 AC5 'SEC-5 is rewritten and the logging path is security-reviewed' - SATISFIED: docs/limitations.md SEC-5 is rewritten from the 'no logging call sites' negative result to the ADR-020 redaction contract and reconciled with SEC-9; docs/implementation/10.3/security-review.json records PASS_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM.",
+    "v1.1 Goal F acceptance criteria (docs/planning/v1.1.md section 2) - all five met; DG-14 resolved by ADR-020",
+    "ADR-020 clauses 1-8 - each implemented as specified; clauses not rewritten (only an additive implementation note in docs/decisions.md)"
+  ],
+  "architecture_checked": [
+    "GOALS.md - Goal F is additive; no V1 goal or scope changed; no production behavior outside Goal F",
+    "docs/architecture.md section 6 (logging and verbosity subsection), section 11 (failure/security policy), section 12 (verbosity limit row and log-volume row plus the redaction-contract paragraph) - consistent with the shipped implementation",
+    "docs/data-model.md 3.12 - logVerbosity row and logging-verbosity note consistent with PluginConfiguration/PluginConfigurationSnapshot",
+    "docs/decisions.md ADR-020 clauses 1-8 - implementation conforms; the 10.3 change is an additive 'Implementation note' only (git show 7333980 -- docs/decisions.md adds 16 lines, rewrites no clause)",
+    "No custom ILoggerProvider/sink registered and the host ILoggerFactory is not replaced (ArrTagsServiceRegistrator registers no ILoggerProvider; LogVerbosityTests.RegistratorDoesNotReplaceTheHostLoggerFactoryOrRegisterAProvider asserts the host factory instance is preserved)",
+    "RenderVersion unchanged (CurrentRendererVersion = 2); verbosity excluded from the renderer/configuration output fingerprint",
+    "Cross-boundary integration: all eleven instrumented types have a matching IArrTagsLog<T> registration; DI resolves the optional log for hosted services (ActivatorUtilities), MVC TypeFilter construction, and reader factories; no duplicated/conflicting logging mechanism and no alternate logging path (no Console/Debug/Trace.Write, EventLog, File.AppendAllText, StreamWriter in src)",
+    "Execution order internally consistent with the documented dependencies (10.1 depends on 9.4; 10.2 on 10.1; 10.3 on 10.2) and walked in order",
+    "No overreach: the production diff is confined to Goal F (Configuration logging fields, Logging/, PluginLifecycle gate+registrator, config.html, and the instrumented boundaries); ArtworkGenerationCoordinator's restructure preserves the original decision/exception semantics and only adds the post-outcome log"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-12-architecture.md section 10 (10.1 ILogger<T>/ILoggerFactory resolution and {SourceContext}; 10.2 plugin-owned verbosity gating and no host log-level API; 10.3 custom provider ineffective on the pinned host with no-arg UseSerilog; 10.4 pre-logging negative result) - supports ADR-020's platform assumptions; classified as static/assembly evidence with no live-host probe",
+    "docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json (structured report referenced by ADR-020) - present and cited",
+    "Research section 10.4's 'zero logging call sites' text is a dated research snapshot; it was intentionally not rewritten and is not a canonical current-state surface"
+  ],
+  "documentation_checked": [
+    "PLANS.md - Project Status paragraph, Milestone 10 row, task 10.1/10.2/10.3 statuses and checkboxes, Phase 10 acceptance criteria, Gate 10 (P10-F1: security-review-pending wording is now stale)",
+    "docs/changelog.md - Phase 10 entries for 10.1/10.2/10.3 present and accurate (10.3 correctly states the review is recorded)",
+    "docs/project-status.md - current milestone and Next tasks (P10-F1 stale review-pending wording; P10-F2 stale suite count)",
+    "docs/architecture.md - status line accurate; sections 6/11/12 updated",
+    "docs/implementation-readiness.md - status line accurate (review recorded)",
+    "docs/limitations.md - SEC-5 rewritten and reconciled with SEC-9; V6 stale suite count (P10-F2)",
+    "README.md - LogVerbosity row and settings-page description added, consistent with the implementation",
+    "docs/planning/v1.1.md - Goal F current-state line stale (P10-F3); verification requirements section 9 unchanged",
+    "docs/decisions.md - ADR-020 implementation note additive; no clause rewritten"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/phase-10/orchestration.json - status TASKS_COMPLETE_PENDING_PHASE_REVIEW; authoritative_execution_order [10.1,10.2,10.3]; per-task commit/state_commit/orchestration paths correct",
+    "Per-task invocation counts match the aggregate: 10.1=6, 10.2=3, 10.3=3; total_task_subagent_invocations=12; total_rework_rounds=1",
+    "10.1 rework visible as an explicit rework entry plus incremented attempt (attempt 1 preserved: worker-report-attempt-1.json, reviewer-report-attempt-1.json, test-quality-review-attempt-1.json CONCERNS; canonical attempt-2 records worker/reviewer APPROVED and test-quality PASS)",
+    "10.2 and 10.3 have empty rework arrays and single-attempt records",
+    "Phase aggregate consistent with the per-task records; related_commits correctly records 61dd895 as non-Phase-10",
+    "State commits (99aabdb, 9f3ec01, a667ee2) each record the task commit hash in the task orchestration state"
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 12,
+    "total_attempts": 12,
+    "correction_rounds": 1
+  },
+  "verified": {
+    "build": ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "tests": ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1363, Skipped 63, Total 1426 (baseline before Phase 10: 1272/63/1335; delta +91 = 26 LogVerbosityTests + 65 LogRedactionTests)",
+    "focused_tests": "LogRedactionTests 65/0/65; LogVerbosityTests 26/0/26",
+    "working_tree": "clean; git diff --stat HEAD -- src tests empty",
+    "independent_inspection": "Read ADR-020, the per-task orchestration/worker/reviewer/security records, the phase aggregate, the full Phase 10 production and test diff, all logging sources, all 21 call sites, the configuration/snapshot/validator, the renderer fingerprint and ArtworkRegenerationPlanner path, the settings page, SEC-5, and the canonical documentation surfaces; grepped for alternate logging paths, custom providers/factories, and unregistered instrumented types",
+    "reproduced_gate_conditions": "Gate 10: tasks 10.1-10.3 meet their acceptance criteria; the logging security review is recorded with 0 open BLOCKER/HIGH; the phase review is approved (this report); the tag remains the orchestrator's action"
+  },
+  "notes": [
+    "Live pinned-host logging verification (real Serilog sink emission, category, and level) was not performed: ARRTAGS_JELLYFIN_HOST_DIR is unset, so the 63 host-guarded facts skip. This is disclosed in the phase orchestration notes and deferred to task 14.3, consistent with the Phase 9 live-Goal-A deferral. The host-pipeline claim is supported by the pinned-assembly research (confirmed supported API) plus DI/contract integration tests over a capturing ILoggerProvider, but it is not proven by observing real sink output.",
+    "A verbosity-only save still increments ConfigurationVersion through the Goal A save path and therefore requests the bounded post-save reconciliation (provider re-reads at the new version). This is inherent to Goal A's design and bounded; it does not republish artwork because verbosity is absent from the publication fingerprint.",
+    "SEC-10.3-4 (pre-existing, out of Goal F scope): configuration validation accepts an absolute http/https base URL with embedded user information; ArrTags' own identity and log call sites exclude it, but framework-level HttpClient logging (a host category, not gated by LogVerbosity) could include it. Requires administrator misconfiguration and is not introduced by this phase; noted only.",
+    "docs/research/jellyfin-12-architecture.md section 10.4 still states the pre-logging 'zero logging call sites' negative result; it is a dated research snapshot (status: research for ADR-020) and was intentionally left unchanged as historical evidence.",
+    "The security review's two LOW residuals (ArrProviderError.Message producer invariant; stale v1.1.md line) and two INFORMATIONAL observations (live host sink deferred to 14.3; pre-existing base-URL userinfo gap) are non-blocking and correctly recorded; none is BLOCKER/HIGH/MEDIUM.",
+    "P10-F1 is expected to be resolved by the same phase-closure reconciliation that records this review and creates the tag (the precedent is commit 61dd895 after the Phase 9 review); it does not block the gate."
+  ],
+  "phase_tag_recommendation": {
+    "create": true,
+    "tag": "v1.1.0-phase10",
+    "reason": "All three Phase 10 tasks are complete and in the authoritative order, all five Phase 10 acceptance criteria and the five Goal F acceptance criteria are met with non-vacuous evidence, the logging security review is recorded with 0 open BLOCKER/HIGH/MEDIUM, the build is clean and the full suite passes at HEAD, and this independent phase review is APPROVED with no BLOCKER/HIGH findings. Gate 10 is met once the tag is created; the orchestrator should update the now-stale PLANS.md/project-status.md 'security review pending' wording (P10-F1) while recording the review."
+  },
+  "summary": "APPROVED. Phase 10 (v1.1 Goal F, ADR-020) is complete and architecturally consistent with GOALS.md, the documented architecture, ADR-020 clauses 1-8, and the pinned Jellyfin 12 logging research. Tasks 10.1 -> 10.2 -> 10.3 were executed in the authoritative order with no skipped task; each has a commit, a state commit, and worker plus independent reviewer evidence, and task 10.1's single correction round is visible as a preserved attempt-1 report set plus a rework entry and incremented attempt. I independently reproduced the build (0 warnings / 0 errors) and the full suite (Failed 0, Passed 1363, Skipped 63, Total 1426; +91 over the pre-phase baseline), and inspected the production/test diff, all 21 log call sites, the IArrTagsLog<T>/ArrTagsLog<T> facade, LogThrottle, LogVerbosityGate, the configuration/snapshot/validator, the renderer fingerprint and ArtworkRegenerationPlanner path, SEC-5, and every canonical documentation surface. All five Phase 10 acceptance criteria are met: host-pipeline logging with ArrTags.* categories through plugin DI; a bounded, validated, secret-free verbosity applied without restart via the current snapshot; redaction proven at all six levels with sentinel secrets at every boundary; verbosity excluded from the renderer/configuration output fingerprint and RenderVersion (production-path proof of no republish); and SEC-5 rewritten with a dedicated security review recorded (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM). No custom ILoggerProvider/sink and no host ILoggerFactory replacement exist, and no alternate logging path was found. Findings are non-blocking documentation/defense-in-depth items: P10-F1 (MEDIUM, now-stale 'security review pending' wording in PLANS.md/project-status.md to fix at phase closure), P10-F2/P10-F3 (LOW, stale suite count and the v1.1.md 'zero logging call sites' line, both already routed to Phase 13), P10-F4 (LOW, accepted producer-invariant residual), and P10-F5 (LOW, fail-silent optional-log technical debt). phase_complete is true and ready_for_next_phase is true; the tag v1.1.0-phase10 should be created."
+}

@@ -3,7 +3,23 @@
   "title": "Logging with configurable verbosity",
   "release": "v1.1.0",
   "phase_tag": "v1.1.0-phase10",
-  "status": "TASKS_COMPLETE_PENDING_PHASE_REVIEW",
+  "status": "COMPLETE",
+  "phase_review": {
+    "report": "docs/implementation/phase-10/phase-review.json",
+    "reviewer_status": "APPROVED",
+    "phase_complete": true,
+    "ready_for_next_phase": true,
+    "open_blocker_or_high": 0,
+    "reviewed_head": "8f72341f8498d367d87405301c837c34e6d8c800",
+    "findings": [
+      {"id": "P10-F1", "severity": "MEDIUM", "status": "fix-at-phase-closure", "summary": "PLANS.md and docs/project-status.md still say the 10.3 logging security review is pending/remains to be recorded; it is now recorded (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM)."},
+      {"id": "P10-F2", "severity": "LOW", "status": "tracked", "summary": "Stale v1.1 suite count in docs/project-status.md and docs/limitations.md V6; routed to Phase 13/release."},
+      {"id": "P10-F3", "severity": "LOW", "status": "tracked", "summary": "Stale 'zero logging call sites' line in docs/planning/v1.1.md Goal F; routed to Phase 13."},
+      {"id": "P10-F4", "severity": "LOW", "status": "accepted", "summary": "Log-bound reason strings depend on the code-owned producer invariant; all current producers are fixed strings."},
+      {"id": "P10-F5", "severity": "LOW", "status": "tracked", "summary": "Nullable-optional IArrTagsLog<T> parameters plus a hand-maintained registration list make a future omission fail-silent."}
+    ],
+    "tag_recommendation": "create v1.1.0-phase10"
+  },
   "authoritative_execution_order": ["10.1", "10.2", "10.3"],
   "tasks": [
     {
