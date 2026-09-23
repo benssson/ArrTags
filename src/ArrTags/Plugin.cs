@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using ArrTags.Artwork;
@@ -6,6 +7,7 @@ using ArrTags.Configuration;
 using ArrTags.PluginLifecycle;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 
 namespace ArrTags;
@@ -13,7 +15,7 @@ namespace ArrTags;
 /// <summary>
 /// The ArrTags plugin entry point.
 /// </summary>
-public class Plugin : BasePlugin<PluginConfiguration>
+public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     /// <summary>
     /// The plugin-owned state folder name. The state root is created directly
@@ -22,6 +24,18 @@ public class Plugin : BasePlugin<PluginConfiguration>
     /// enumerated as a plugin folder.
     /// </summary>
     public const string StateFolderName = "ArrTags";
+
+    /// <summary>
+    /// The dashboard settings page name. It is the value of the
+    /// <c>name</c> query parameter and the <c>PluginPageInfo.Name</c>.
+    /// </summary>
+    public const string SettingsPageName = "ArrTags";
+
+    /// <summary>
+    /// The exact assembly manifest resource logical name of the embedded
+    /// dashboard settings page (ADR-016 clause 1).
+    /// </summary>
+    public const string SettingsPageResourceName = "ArrTags.Configuration.config.html";
 
     private readonly IServiceProvider? _serviceProvider;
 
@@ -56,6 +70,23 @@ public class Plugin : BasePlugin<PluginConfiguration>
 
     /// <inheritdoc />
     public override Guid Id => Guid.Parse("40322d52-5680-449f-b33e-e01836ee2f46");
+
+    /// <summary>
+    /// Returns the single ArrTags dashboard settings page. The page is served by
+    /// the pinned host <c>DashboardController</c> from the embedded resource
+    /// named by <see cref="SettingsPageResourceName"/>; the host injects nothing
+    /// and the page itself embeds no secret (ADR-016 clauses 1, 2, and 6).
+    /// </summary>
+    /// <returns>The one dashboard settings page.</returns>
+    public IEnumerable<PluginPageInfo> GetPages()
+    {
+        yield return new PluginPageInfo
+        {
+            Name = SettingsPageName,
+            EmbeddedResourcePath = SettingsPageResourceName,
+            EnableInMainMenu = false,
+        };
+    }
 
     /// <summary>
     /// Resolves the plugin-owned state root. It is placed directly under the

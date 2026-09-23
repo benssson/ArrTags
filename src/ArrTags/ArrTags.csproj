@@ -62,6 +62,15 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- ADR-016 clause 1: the dashboard settings page is an embedded HTML resource
+       with the explicit logical name the pinned DashboardController resolves
+       through Assembly.GetManifestResourceStream(page.EmbeddedResourcePath). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration/config.html">
+      <LogicalName>ArrTags.Configuration.config.html</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <!-- Phase 7 task 7.5: this target stages the exact release files; the
        deterministic archive is then produced by `scripts/pack-release.cs`
        (invoked from `build.sh package`). The previous `ZipDirectory` task

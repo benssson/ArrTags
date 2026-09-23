@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-8 complete; Phase 7 complete (all five acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)). Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5 and 8 are now met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1). Task 7.6 consolidates the known limitations and deferred decisions in `docs/limitations.md`; all five Phase 7 acceptance criteria are met and no deferred or unverified capability is presented as available. Phase 8 release distribution is complete (tasks 8.1-8.6): the `1.0.1.0` release is prepared with plugin version `1.0.1.0`, the annotated tag `v1.0.1` at `8cba85b`, and the committed repository `manifest.json`; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with `scripts/publish-release.sh`, so the plugin-catalog install is prepared but not yet live.
+**Status:** Accepted v1 (frozen for V1; Phases 1-8 complete; Phase 7 complete (all five acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)). Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5 and 8 are now met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1). Task 7.6 consolidates the known limitations and deferred decisions in `docs/limitations.md`; all five Phase 7 acceptance criteria are met and no deferred or unverified capability is presented as available. Phase 8 release distribution is complete (tasks 8.1-8.6): the `1.0.1.0` release is prepared with plugin version `1.0.1.0`, the annotated tag `v1.0.1` at `8cba85b`, and the committed repository `manifest.json`; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with `scripts/publish-release.sh`, so the plugin-catalog install is prepared but not yet live. Phase 9 (v1.1) is in progress: task 9.1 makes `PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` settable so the elevation-gated configuration round-trip cannot drop them, and task 9.2 adds the dashboard settings page (`Plugin` implements `IHasWebPages`; one secret-free embedded `Configuration/config.html` served from the logical name `ArrTags.Configuration.config.html`) and records ADR-016 clause 6's explicit acceptance of the anonymous static page-resource endpoint; runtime activation (task 9.3) and the post-save reconciliation trigger (task 9.4) remain open, so limitation F2 is not yet resolved.
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -200,6 +200,38 @@ The persisted configuration includes:
 API keys and webhook secrets must not appear in logs, status responses, cache
 keys, fingerprints, or exception messages. TLS certificate validation is strict
 by default; any exception is explicit and scoped to one connection.
+
+### Dashboard settings page
+
+`Plugin` implements `MediaBrowser.Model.Plugins.IHasWebPages` and returns one
+`PluginPageInfo` (`Name` `ArrTags`, `EnableInMainMenu = false`) whose
+`EmbeddedResourcePath` is the embedded `Configuration/config.html` with the
+explicit assembly manifest logical name `ArrTags.Configuration.config.html`
+(ADR-016 clause 1). The pinned `Jellyfin.Api.Controllers.DashboardController`
+serves the page from the plugin's own assembly resource at
+`GET web/ConfigurationPage?name=ArrTags`; the server injects nothing into the
+page.
+
+The page is read/write for the user-adjustable settings only: the Sonarr and
+Radarr connections and their API keys, the webhook secret, the Movie/Episode
+poster flags, the enabled-library scope, the renderer selectors/templates and
+palette overrides, and the operational limits. It reads and writes them through
+the supported elevation-gated `PluginsController` `GET`/`POST
+{pluginId}/Configuration` path and adds no custom save route (ADR-016 clause 3).
+The three secret inputs are password fields with no embedded value; the page
+embeds no secret literal and only ever surfaces a secret value through the same
+administrator-gated configuration API that already returns it (ADR-016
+clause 2).
+
+The pinned static page-resource action carries no `[Authorize]`, the controller
+has no class-level `[Authorize]`, and there is no fallback authorization policy,
+so the page resource itself is reachable without authentication. ADR-016
+clause 6 explicitly accepts this anonymous static page-resource endpoint as a
+non-data surface: the page is static HTML/JS, reflects no data, and every
+configuration data endpoint remains administrator-gated. This acceptance is the
+task 9.2 confirmation of the page-resource authorization behavior; the
+host-guarded tests additionally confirm the pinned route and authorization
+attributes where a pinned host directory is available.
 
 ### Secret access boundary
 

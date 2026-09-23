@@ -1,0 +1,96 @@
+{
+  "task": "9.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F-9.2-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirements/scope",
+      "summary": "The page covers the current configuration model only; the v1.1 allowlist/placement/verbosity settings do not yet exist and are owned by later tasks.",
+      "detail": "ADR-016 clause 2 and the task Work bullet name 'the v1.1 allowlist/placement/verbosity settings' and 'the settings surface the later v1.1 goals add'. Those fields are absent from PluginConfiguration/RendererConfiguration/BadgeSelectorConfiguration, and the phase plan explicitly assigns exposing them to Phase 10 (ADR-020 verbosity) and Phase 12 (ADR-017 allowlist / ADR-019 placement) tasks, which say 'Expose it through the ADR-016 settings page'. The page cannot edit a non-existent property without inventing configuration, and the worker recorded this as a deliberate, documented scope decision in PLANS.md 9.2 and docs/changelog.md rather than silently dropping it. The PageFieldsCoverEveryUserAdjustableConfigurationProperty test reflects the current model and will force the page to be extended when those properties land.",
+      "evidence": [
+        "src/ArrTags/Configuration/PluginConfiguration.cs",
+        "src/ArrTags/Configuration/RendererConfiguration.cs",
+        "src/ArrTags/Configuration/BadgeSelectorConfiguration.cs",
+        "PLANS.md task 9.2 Status and Phase 10/12 task definitions",
+        "docs/changelog.md Task 9.2"
+      ],
+      "recommended_action": "No action for 9.2. Later tasks 10.x/12.x must extend the page and the coverage test will enforce it."
+    },
+    {
+      "id": "F-9.2-02",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/authorization",
+      "summary": "The two host-guarded DashboardController facts are skipped in this environment; live dashboard appearance and route/authorization behavior are deferred to the plan's task 14.3.",
+      "detail": "ARRTAGS_JELLYFIN_HOST_DIR is unset and no Jellyfin.Api.dll exists on this machine, so PinnedDashboardControllerServesTheArrTagsSettingsPage and PinnedDashboardControllerPageResourceIsAnonymousAndTheListIsElevationGated are skipped, exactly as the JellyfinHostFactAttribute documents (skip when unset, fail when set but the assembly is missing). The task acceptance criterion 'the page-resource authorization behavior is confirmed' is satisfied by the explicit decision in ADR-016 clause 6 (recorded in docs/architecture.md section 6), which ADR-016 clause 7 second bullet accepts as an alternative to live-host confirmation; the static pinned-source evidence is in docs/research/jellyfin-12-architecture.md 9.1. PLANS.md 'Phase-transition criterion' and Gate 9 explicitly state goal acceptance criteria are met at the integration-test level and consolidated live confirmation is owned by task 14.3.",
+      "evidence": [
+        "tests/ArrTags.Tests/JellyfinHostFactAttribute.cs",
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs lines 174-229",
+        "docs/decisions.md ADR-016 clauses 6 and 7",
+        "PLANS.md lines 3369-3384 and Gate 9 (lines 3749-3752)",
+        "docs/research/jellyfin-12-architecture.md 9.1"
+      ],
+      "recommended_action": "No action for 9.2. Task 14.3 owns the live pinned-host confirmation."
+    },
+    {
+      "id": "F-9.2-03",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The model-coverage test asserts property-name presence, not that each field is both read and written.",
+      "detail": "PageFieldsCoverEveryUserAdjustableConfigurationProperty only requires each public settable configuration property name to appear as a word somewhere in the page source; a property present only in a description would still pass. The reviewer independently reproduced the worker's non-vacuity claim (replacing all QueueCapacity tokens failed the coverage fact with OperationalLimits.QueueCapacity missing) and a companion fact (renaming only the save-side reference failed PageOnlyReferencesKnownConfigurationProperties). Manual inspection confirms every field is in fact both populated on pageshow and written on submit, so the weakness is not currently masking a defect. This is a test-strength observation, not a correctness defect.",
+      "evidence": [
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs lines 82-141",
+        "src/ArrTags/Configuration/config.html lines 297-415",
+        "reviewer falsification runs: Failed 1, Passed 5, Skipped 2 in both experiments"
+      ],
+      "recommended_action": "No change required. A future hardening could assert per-field read+write, but the current coverage is non-vacuous and the fields are verified by inspection."
+    },
+    {
+      "id": "F-9.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "security",
+      "summary": "The page echoes the API-returned secrets into password inputs; this is within ADR-016 clause 2 and remains subject to the task's separate security review.",
+      "detail": "The three secret inputs (sonarrApiKey, radarrApiKey, webhookSecret) are type=password with no embedded value; the pageshow handler assigns the value returned by ApiClient.getPluginConfiguration. That is the same administrator-gated value the existing configuration API already returns, which ADR-016 clause 2 explicitly permits ('exposes no secret value beyond what Jellyfin's existing administrator configuration API already returns'). No secret literal is embedded (reviewer grep found only the public plugin GUID as a long token; the sentinel test passes). Task 9.2's Review field is security-reviewer, which is a separate gate owned by the orchestrator.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html lines 23, 46, 61, 300, 306, 310",
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs lines 143-172",
+        "docs/decisions.md ADR-016 clause 2",
+        "PLANS.md task 9.2 Review: security-reviewer"
+      ],
+      "recommended_action": "No action for the implementation review; the security-reviewer gate still applies."
+    }
+  ],
+  "tests_checked": [
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~DashboardSettingsPageTests\" -> Failed 0, Passed 6, Skipped 2, Total 8 (reproduced)",
+    "dotnet test ArrTags.slnx --configuration Release --no-build -> Failed 0, Passed 1240, Skipped 63, Total 1303 (reproduced; matches the claimed +6/+2/+8 delta over 1234/61/1295)",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (reproduced)",
+    "Reviewer falsification run 1: all QueueCapacity tokens replaced with RenderConcurrency -> PageFieldsCoverEveryUserAdjustableConfigurationProperty failed with [\"OperationalLimits.QueueCapacity\"]; source restored (sha256 8c69574d...) and re-verified",
+    "Reviewer falsification run 2: save-side config.Limits.QueueCapacity renamed to config.Limits.CapacityQueue -> PageOnlyReferencesKnownConfigurationProperties failed with [\"config.Limits.CapacityQueue\"]; source restored and full suite re-run green",
+    "Independent reflection of built ArrTags.dll: manifest resources are ArrTags.Resources.DejaVuSans-Bold.ttf and ArrTags.Configuration.config.html; GetManifestResourceStream(\"ArrTags.Configuration.config.html\") resolves (length 30387)",
+    "Independent reflection of pinned Jellyfin.Model 12.0.0 VirtualFolderInfo: exposes Name (String) and ItemId (String), confirming the page's library-identifier field exists"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-016 clauses 1, 2, 3, 6, 7 (page mechanism, secret boundary, supported save path, anonymous page-resource acceptance, verification bullets)",
+    "docs/research/jellyfin-12-architecture.md section 9 (IHasWebPages/PluginPageInfo shape, DashboardController serving and authorization, PluginsController save path, embedded-resource logical name, in-tree client contract, classification)",
+    "PLANS.md task 9.2 definition, Phase 9 acceptance criteria, Gate 9, and the phase-transition/live-verification ownership note",
+    "Pinned Jellyfin.Model 12.0.0 assembly reflection for VirtualFolderInfo.ItemId"
+  ],
+  "documentation_checked": [
+    "PLANS.md project status paragraph, Milestone 9 row, task 9.2 checkbox and Status, next open task moved to 9.3",
+    "docs/changelog.md Phase 9 status and the new Task 9.2 entry",
+    "docs/project-status.md current status and Next tasks",
+    "docs/architecture.md status line and section 6 'Dashboard settings page'",
+    "docs/implementation-readiness.md status line",
+    "docs/limitations.md F2 current-state note (restart consequence unchanged)",
+    "README.md Configuration section (page availability, F2 restart caveat, EnabledLibraries now 'identifiers')"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

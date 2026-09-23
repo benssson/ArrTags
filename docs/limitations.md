@@ -83,6 +83,13 @@ not connected to Jellyfin's configuration-update mechanism.
   queue, provider/render concurrency limiters, freshness window, and retention
   interval already resolve their values from the current snapshot per
   operation, so wiring the replacement is the remaining step.
+- Current state (v1.1): task 9.2 added the dashboard settings page, which reads
+  and saves the configuration through Jellyfin's elevation-gated
+  `PluginsController` path, so an operator no longer has to edit
+  `ArrTags.xml` by hand. The save persists the XML but runtime activation is not
+  yet wired (`Plugin.UpdateConfiguration` is not overridden), so this
+  limitation's restart consequence is unchanged until task 9.3 (and the
+  post-save reconciliation trigger in task 9.4).
 
 ### F3. No bounded, secret-free metrics/diagnostic-status surface
 

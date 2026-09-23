@@ -1,0 +1,64 @@
+{
+  "subject": "v1.1 task 9.2 - Dashboard settings page and embedded page resource (ADR-016 clauses 1, 2, 6, 7)",
+  "task": "9.2",
+  "reviewer_status": "APPROVED",
+  "security_status": "PASS",
+  "findings": [
+    {
+      "id": "S-9.2-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "secrets",
+      "description": "The three secret inputs (sonarrApiKey, radarrApiKey, webhookSecret) are type=password with no embedded value; the pageshow handler copies the value returned by ApiClient.getPluginConfiguration into the DOM at runtime. This is exactly what ADR-016 clause 2 permits. No secret literal is embedded in the static resource, and the resource is never templated with configuration.",
+      "recommended_action": "None for 9.2. This is the intended, documented behavior."
+    },
+    {
+      "id": "S-9.2-02",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "auth/boundary",
+      "description": "The static page-resource endpoint is anonymous, independently confirmed against the pinned v12.0 source, and is a non-data surface accepted by ADR-016 clause 6. The page adds no route, controller, or data endpoint; all configuration data goes through the elevation-gated PluginsController. The two host-guarded tests that assert this are skipped in this environment; live-host confirmation remains owned by task 14.3.",
+      "recommended_action": "None for 9.2; task 14.3 performs the live-host confirmation."
+    },
+    {
+      "id": "S-9.2-03",
+      "severity": "LOW",
+      "status": "carry-forward",
+      "area": "input/state-integrity",
+      "description": "The page's numeric min/max/pattern attributes and client-side template/color rules are UX hints, not a security boundary. Because task 9.2 deliberately does not override UpdateConfiguration, a page save currently calls base.UpdateConfiguration, which persists an unvalidated candidate to plugins/configurations/ArrTags.xml. On the next startup an invalid persisted configuration causes ConfigurationSnapshotService to fall back to the default configuration for the whole snapshot (fail-closed: providers disabled, webhook auth fails; secrets remain in XML). Pre-existing XML-editing behavior, admin-only, and ADR-016 clause 4 explicitly assigns last-valid retention to task 9.3.",
+      "recommended_action": "Task 9.3 must override UpdateConfiguration to call base then TryReplace and retain the last valid snapshot/secrets, so a save cannot persist an invalid candidate."
+    },
+    {
+      "id": "S-9.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "input",
+      "description": "Empty number inputs produce parseInt('') = NaN, which JSON.stringify serializes as null; a null for a non-nullable int property makes the PluginsController POST deserialization fail before UpdateConfiguration, so the save errors instead of persisting a bad value. Robustness/UX behavior, not a security weakness.",
+      "recommended_action": "Optional hardening only; not required for 9.2."
+    },
+    {
+      "id": "S-9.2-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "boundary",
+      "description": "The page now surfaces the pre-existing AllowInsecureTls per-connection TLS-relaxation flag in the dashboard. A legitimate, documented administrator setting that already existed; the page does not change its semantics or make it reachable to non-administrators.",
+      "recommended_action": "None; already covered by the existing configuration security boundary."
+    }
+  ],
+  "verified_controls": [
+    "No secret literal in the page or embedded resource; the only long token is the public plugin GUID (sentinel test passes).",
+    "The embedded resource is static and never templated (30387 bytes equals the source file; logical name ArrTags.Configuration.config.html resolves from the built assembly).",
+    "No custom route/controller/endpoint added; Plugin only adds IHasWebPages.GetPages().",
+    "All configuration data access is elevation-gated via PluginsController GET/POST {pluginId}/Configuration.",
+    "Anonymous static page-resource endpoint confirmed against pinned v12.0 source and accepted by ADR-016 clause 6.",
+    "No DOM XSS sinks: values written only via .value/.checked, span.textContent, setAttribute; no innerHTML/outerHTML/insertAdjacentHTML/document.write/eval/new Function/document.cookie/localStorage.",
+    "No external resource loading; data-require resolves only local emby-* components.",
+    "No CSRF/confused-deputy mutation: the only automatic action on load is a read; saving requires an explicit admin submit.",
+    "Secrets never placed in URLs; API keys/webhook secret travel only in the admin-gated POST body.",
+    "Server-side validation boundary exists and is fail-closed for the fields the page edits.",
+    "Reproduced: dotnet test --filter FullyQualifiedName~DashboardSettingsPageTests -> Failed 0, Passed 6, Skipped 2."
+  ],
+  "residual_risk": "Until task 9.3 wires UpdateConfiguration to ConfigurationSnapshotService.TryReplace, a page save persists the raw candidate without server-side validation; on the next restart an invalid persisted configuration makes the plugin fall back to the default snapshot (fail-closed: providers disabled, webhook auth fails; secrets remain in XML). Admin-only, pre-existing for XML editing, and explicitly sequenced to 9.3. The anonymous static page-resource endpoint is accepted risk per ADR-016 clause 6; it exposes no data. The live-host route/authorization confirmation is deferred to task 14.3.",
+  "recommendation": "Approve task 9.2 for security. Carry S-9.2-03 forward as a required 9.3 acceptance item (validation and last-valid/secret retention on save) and ensure task 14.3 performs the live pinned-host confirmation of the page route and authorization attributes.",
+  "summary": "No BLOCKER or HIGH security defect was found in task 9.2. The page is a static, non-templated embedded resource that embeds no secret; it reads and writes configuration exclusively through Jellyfin's elevation-gated PluginsController, and it adds no custom route, unauthenticated data endpoint, external resource, or DOM-injection sink."
+}

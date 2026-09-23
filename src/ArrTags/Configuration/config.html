@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ArrTags</title>
+</head>
+<body>
+    <div id="configPage" data-role="page" class="page type-interior pluginConfigurationPage configPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <h1>ArrTags</h1>
+                <form class="configForm">
+                    <div class="verticalSection">
+                        <h2>Sonarr connection</h2>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="sonarrEnabled" />
+                            <span>Enable the Sonarr connection.</span>
+                        </label>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="sonarrBaseUrl" label="Sonarr base URL" />
+                            <div class="fieldDescription">The absolute base URL without an API path, for example http://sonarr:8989.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="password" id="sonarrApiKey" label="Sonarr API key" />
+                            <div class="fieldDescription">Sent to Sonarr as the X-Api-Key header. Never logged or surfaced outside Jellyfin's administrator configuration API.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="sonarrRequestTimeoutSeconds" pattern="[0-9]*" min="1" max="120" label="Sonarr request timeout (seconds)" />
+                        </div>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="sonarrAllowInsecureTls" />
+                            <span>Relax TLS certificate validation for this connection only.</span>
+                        </label>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h2>Radarr connection</h2>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="radarrEnabled" />
+                            <span>Enable the Radarr connection.</span>
+                        </label>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="radarrBaseUrl" label="Radarr base URL" />
+                            <div class="fieldDescription">The absolute base URL without an API path, for example http://radarr:7878.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="password" id="radarrApiKey" label="Radarr API key" />
+                            <div class="fieldDescription">Sent to Radarr as the X-Api-Key header. Never logged or surfaced outside Jellyfin's administrator configuration API.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="radarrRequestTimeoutSeconds" pattern="[0-9]*" min="1" max="120" label="Radarr request timeout (seconds)" />
+                        </div>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="radarrAllowInsecureTls" />
+                            <span>Relax TLS certificate validation for this connection only.</span>
+                        </label>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h2>Inbound webhook</h2>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="password" id="webhookSecret" label="Webhook shared secret" />
+                            <div class="fieldDescription">Required in the X-ArrTags-Webhook-Secret header on the anonymous Sonarr/Radarr webhook endpoints. Never logged or surfaced outside Jellyfin's administrator configuration API.</div>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h2>Badge scope</h2>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="badgeMoviePosters" />
+                            <span>Badge Movie posters.</span>
+                        </label>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="badgeEpisodePosters" />
+                            <span>Badge Episode posters.</span>
+                        </label>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Choose which Jellyfin libraries are eligible for badges. No selection means no library restriction.</div>
+                        <div id="enabledLibraries"></div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h2>Renderer selectors</h2>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Enable or disable each badge selector and edit its bounded display template. A template contains at most one {value} placeholder.</div>
+
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-Quality-enabled" />
+                                <span>Quality</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-Quality-template" label="Quality template" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-Resolution-enabled" />
+                                <span>Resolution</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-Resolution-template" label="Resolution template" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-DynamicRange-enabled" />
+                                <span>Dynamic range</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-DynamicRange-template" label="Dynamic range template" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-Source-enabled" />
+                                <span>Source</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-Source-template" label="Source template" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-VideoCodec-enabled" />
+                                <span>Video codec</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-VideoCodec-template" label="Video codec template" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-Audio-enabled" />
+                                <span>Audio</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-Audio-template" label="Audio template" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-CustomBadge-enabled" />
+                                <span>Custom badge</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-CustomBadge-template" label="Custom badge template" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="selector-UpgradePending-enabled" />
+                                <span>Upgrade pending</span>
+                            </label>
+                            <input is="emby-input" type="text" id="selector-UpgradePending-template" label="Upgrade pending template" />
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h2>Renderer palette</h2>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Optional RRGGBB overrides. Leave a value empty to keep the default color. Each text/background pair must reach at least 4.5:1 contrast.</div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="technicalBackground" label="Technical badge background" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="technicalText" label="Technical badge text" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="statusBackground" label="Upgrade status background" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="statusText" label="Upgrade status text" />
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h2>Operational limits</h2>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Bounds validated when the configuration loads. An out-of-range value is rejected and the last valid configuration stays active.</div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="queueCapacity" pattern="[0-9]*" min="1" max="100000" label="Queue capacity" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="perItemInFlightWork" pattern="[0-9]*" min="1" max="1" label="In-flight work per item" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="providerConcurrencyPerConnection" pattern="[0-9]*" min="1" max="16" label="Provider concurrency per connection" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="providerConcurrencyGlobal" pattern="[0-9]*" min="1" max="32" label="Provider concurrency (global)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="renderConcurrency" pattern="[0-9]*" min="1" max="8" label="Render concurrency" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="requestTimeoutSeconds" pattern="[0-9]*" min="1" max="120" label="Request timeout (seconds)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="transientRetryCount" pattern="[0-9]*" min="0" max="5" label="Transient retry count" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="retryBackoffInitialSeconds" pattern="[0-9]*" min="1" max="60" label="Initial retry backoff (seconds)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="retryBackoffFactor" pattern="[0-9]*" min="1" max="10" label="Retry backoff multiplier" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="retryBackoffMaxSeconds" pattern="[0-9]*" min="1" max="120" label="Maximum retry backoff (seconds)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="providerResponseLimitBytes" pattern="[0-9]*" min="65536" max="67108864" label="Provider response limit (bytes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="webhookMaxPayloadBytes" pattern="[0-9]*" min="4096" max="4194304" label="Webhook payload limit (bytes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="sourceArtifactLimitBytes" pattern="[0-9]*" min="65536" max="134217728" label="Source artifact limit (bytes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="derivedArtifactLimitBytes" pattern="[0-9]*" min="65536" max="134217728" label="Derived artifact limit (bytes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="maxImageDimensionPixels" pattern="[0-9]*" min="512" max="16384" label="Maximum image dimension (pixels)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="reconciliationBatchSize" pattern="[0-9]*" min="1" max="1000" label="Reconciliation batch size" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="metadataStaleWindowMinutes" pattern="[0-9]*" min="5" max="10080" label="Metadata stale window (minutes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="renderCacheTtlMinutes" pattern="[0-9]*" min="1" max="43200" label="Render cache TTL (minutes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="renderCacheQuotaBytes" pattern="[0-9]*" min="67108864" max="68719476736" label="Render cache quota (bytes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="artifactStorageQuotaBytes" pattern="[0-9]*" min="268435456" max="274877906944" label="Artifact storage quota (bytes)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="terminalProvenanceRetentionDays" pattern="[0-9]*" min="1" max="365" label="Terminal provenance retention (days)" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var PluginConfig = {
+                pluginId: "40322d52-5680-449f-b33e-e01836ee2f46"
+            };
+
+            var selectorNames = ['Quality', 'Resolution', 'DynamicRange', 'Source', 'VideoCodec', 'Audio', 'CustomBadge', 'UpgradePending'];
+
+            var populateLibraries = function (enabledLibraries) {
+                var container = document.querySelector('#enabledLibraries');
+                while (container.firstChild) {
+                    container.removeChild(container.firstChild);
+                }
+
+                ApiClient.getVirtualFolders().then(function (folders) {
+                    if (!folders || folders.length === 0) {
+                        var empty = document.createElement('div');
+                        empty.className = 'fieldDescription';
+                        empty.textContent = 'No libraries found.';
+                        container.appendChild(empty);
+                        return;
+                    }
+
+                    folders.forEach(function (folder) {
+                        var label = document.createElement('label');
+                        label.className = 'checkboxContainer';
+
+                        var input = document.createElement('input');
+                        input.setAttribute('is', 'emby-checkbox');
+                        input.type = 'checkbox';
+                        input.className = 'enabledLibrary';
+                        input.setAttribute('data-library-id', folder.ItemId);
+                        input.checked = enabledLibraries.indexOf(folder.ItemId) !== -1;
+
+                        var span = document.createElement('span');
+                        span.textContent = folder.Name;
+
+                        label.appendChild(input);
+                        label.appendChild(span);
+                        container.appendChild(label);
+                    });
+                });
+            };
+
+            var populateSelectors = function (selectors) {
+                selectorNames.forEach(function (selectorName) {
+                    var configured = null;
+                    for (var i = 0; i < selectors.length; i++) {
+                        if (selectors[i].Selector === selectorName) {
+                            configured = selectors[i];
+                            break;
+                        }
+                    }
+
+                    var enabled = configured ? configured.Enabled : true;
+                    var template = configured && configured.Template ? configured.Template : '{value}';
+                    document.querySelector('#selector-' + selectorName + '-enabled').checked = enabled;
+                    document.querySelector('#selector-' + selectorName + '-template').value = template;
+                });
+            };
+
+            document.querySelector('#configPage')
+                .addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+
+                    ApiClient.getPluginConfiguration(PluginConfig.pluginId).then(function (config) {
+                        document.querySelector('#sonarrEnabled').checked = config.Sonarr.Enabled;
+                        document.querySelector('#sonarrBaseUrl').value = config.Sonarr.BaseUrl;
+                        document.querySelector('#sonarrApiKey').value = config.Sonarr.ApiKey;
+                        document.querySelector('#sonarrRequestTimeoutSeconds').value = config.Sonarr.RequestTimeoutSeconds;
+                        document.querySelector('#sonarrAllowInsecureTls').checked = config.Sonarr.AllowInsecureTls;
+
+                        document.querySelector('#radarrEnabled').checked = config.Radarr.Enabled;
+                        document.querySelector('#radarrBaseUrl').value = config.Radarr.BaseUrl;
+                        document.querySelector('#radarrApiKey').value = config.Radarr.ApiKey;
+                        document.querySelector('#radarrRequestTimeoutSeconds').value = config.Radarr.RequestTimeoutSeconds;
+                        document.querySelector('#radarrAllowInsecureTls').checked = config.Radarr.AllowInsecureTls;
+
+                        document.querySelector('#webhookSecret').value = config.WebhookSecret;
+
+                        document.querySelector('#badgeMoviePosters').checked = config.BadgeMoviePosters;
+                        document.querySelector('#badgeEpisodePosters').checked = config.BadgeEpisodePosters;
+                        populateLibraries(config.EnabledLibraries || []);
+
+                        populateSelectors(config.Renderer.Selectors || []);
+
+                        document.querySelector('#technicalBackground').value = config.Renderer.TechnicalBackground;
+                        document.querySelector('#technicalText').value = config.Renderer.TechnicalText;
+                        document.querySelector('#statusBackground').value = config.Renderer.StatusBackground;
+                        document.querySelector('#statusText').value = config.Renderer.StatusText;
+
+                        document.querySelector('#queueCapacity').value = config.Limits.QueueCapacity;
+                        document.querySelector('#perItemInFlightWork').value = config.Limits.PerItemInFlightWork;
+                        document.querySelector('#providerConcurrencyPerConnection').value = config.Limits.ProviderConcurrencyPerConnection;
+                        document.querySelector('#providerConcurrencyGlobal').value = config.Limits.ProviderConcurrencyGlobal;
+                        document.querySelector('#renderConcurrency').value = config.Limits.RenderConcurrency;
+                        document.querySelector('#requestTimeoutSeconds').value = config.Limits.RequestTimeoutSeconds;
+                        document.querySelector('#transientRetryCount').value = config.Limits.TransientRetryCount;
+                        document.querySelector('#retryBackoffInitialSeconds').value = config.Limits.RetryBackoffInitialSeconds;
+                        document.querySelector('#retryBackoffFactor').value = config.Limits.RetryBackoffFactor;
+                        document.querySelector('#retryBackoffMaxSeconds').value = config.Limits.RetryBackoffMaxSeconds;
+                        document.querySelector('#providerResponseLimitBytes').value = config.Limits.ProviderResponseLimitBytes;
+                        document.querySelector('#webhookMaxPayloadBytes').value = config.Limits.WebhookMaxPayloadBytes;
+                        document.querySelector('#sourceArtifactLimitBytes').value = config.Limits.SourceArtifactLimitBytes;
+                        document.querySelector('#derivedArtifactLimitBytes').value = config.Limits.DerivedArtifactLimitBytes;
+                        document.querySelector('#maxImageDimensionPixels').value = config.Limits.MaxImageDimensionPixels;
+                        document.querySelector('#reconciliationBatchSize').value = config.Limits.ReconciliationBatchSize;
+                        document.querySelector('#metadataStaleWindowMinutes').value = config.Limits.MetadataStaleWindowMinutes;
+                        document.querySelector('#renderCacheTtlMinutes').value = config.Limits.RenderCacheTtlMinutes;
+                        document.querySelector('#renderCacheQuotaBytes').value = config.Limits.RenderCacheQuotaBytes;
+                        document.querySelector('#artifactStorageQuotaBytes').value = config.Limits.ArtifactStorageQuotaBytes;
+                        document.querySelector('#terminalProvenanceRetentionDays').value = config.Limits.TerminalProvenanceRetentionDays;
+
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+            document.querySelector('.configForm')
+                .addEventListener('submit', function (e) {
+                    Dashboard.showLoadingMsg();
+
+                    ApiClient.getPluginConfiguration(PluginConfig.pluginId).then(function (config) {
+                        config.Sonarr.Enabled = document.querySelector('#sonarrEnabled').checked;
+                        config.Sonarr.BaseUrl = document.querySelector('#sonarrBaseUrl').value;
+                        config.Sonarr.ApiKey = document.querySelector('#sonarrApiKey').value;
+                        config.Sonarr.RequestTimeoutSeconds = parseInt(document.querySelector('#sonarrRequestTimeoutSeconds').value, 10);
+                        config.Sonarr.AllowInsecureTls = document.querySelector('#sonarrAllowInsecureTls').checked;
+
+                        config.Radarr.Enabled = document.querySelector('#radarrEnabled').checked;
+                        config.Radarr.BaseUrl = document.querySelector('#radarrBaseUrl').value;
+                        config.Radarr.ApiKey = document.querySelector('#radarrApiKey').value;
+                        config.Radarr.RequestTimeoutSeconds = parseInt(document.querySelector('#radarrRequestTimeoutSeconds').value, 10);
+                        config.Radarr.AllowInsecureTls = document.querySelector('#radarrAllowInsecureTls').checked;
+
+                        config.WebhookSecret = document.querySelector('#webhookSecret').value;
+
+                        config.BadgeMoviePosters = document.querySelector('#badgeMoviePosters').checked;
+                        config.BadgeEpisodePosters = document.querySelector('#badgeEpisodePosters').checked;
+
+                        var enabledLibraries = [];
+                        var libraryCheckboxes = document.querySelectorAll('.enabledLibrary');
+                        for (var i = 0; i < libraryCheckboxes.length; i++) {
+                            if (libraryCheckboxes[i].checked) {
+                                enabledLibraries.push(libraryCheckboxes[i].getAttribute('data-library-id'));
+                            }
+                        }
+                        config.EnabledLibraries = enabledLibraries;
+
+                        var selectorConfigs = [];
+                        selectorNames.forEach(function (selectorName) {
+                            selectorConfigs.push({
+                                Selector: selectorName,
+                                Enabled: document.querySelector('#selector-' + selectorName + '-enabled').checked,
+                                Template: document.querySelector('#selector-' + selectorName + '-template').value
+                            });
+                        });
+                        config.Renderer.Selectors = selectorConfigs;
+
+                        config.Renderer.TechnicalBackground = document.querySelector('#technicalBackground').value;
+                        config.Renderer.TechnicalText = document.querySelector('#technicalText').value;
+                        config.Renderer.StatusBackground = document.querySelector('#statusBackground').value;
+                        config.Renderer.StatusText = document.querySelector('#statusText').value;
+
+                        config.Limits.QueueCapacity = parseInt(document.querySelector('#queueCapacity').value, 10);
+                        config.Limits.PerItemInFlightWork = parseInt(document.querySelector('#perItemInFlightWork').value, 10);
+                        config.Limits.ProviderConcurrencyPerConnection = parseInt(document.querySelector('#providerConcurrencyPerConnection').value, 10);
+                        config.Limits.ProviderConcurrencyGlobal = parseInt(document.querySelector('#providerConcurrencyGlobal').value, 10);
+                        config.Limits.RenderConcurrency = parseInt(document.querySelector('#renderConcurrency').value, 10);
+                        config.Limits.RequestTimeoutSeconds = parseInt(document.querySelector('#requestTimeoutSeconds').value, 10);
+                        config.Limits.TransientRetryCount = parseInt(document.querySelector('#transientRetryCount').value, 10);
+                        config.Limits.RetryBackoffInitialSeconds = parseInt(document.querySelector('#retryBackoffInitialSeconds').value, 10);
+                        config.Limits.RetryBackoffFactor = parseInt(document.querySelector('#retryBackoffFactor').value, 10);
+                        config.Limits.RetryBackoffMaxSeconds = parseInt(document.querySelector('#retryBackoffMaxSeconds').value, 10);
+                        config.Limits.ProviderResponseLimitBytes = parseInt(document.querySelector('#providerResponseLimitBytes').value, 10);
+                        config.Limits.WebhookMaxPayloadBytes = parseInt(document.querySelector('#webhookMaxPayloadBytes').value, 10);
+                        config.Limits.SourceArtifactLimitBytes = parseInt(document.querySelector('#sourceArtifactLimitBytes').value, 10);
+                        config.Limits.DerivedArtifactLimitBytes = parseInt(document.querySelector('#derivedArtifactLimitBytes').value, 10);
+                        config.Limits.MaxImageDimensionPixels = parseInt(document.querySelector('#maxImageDimensionPixels').value, 10);
+                        config.Limits.ReconciliationBatchSize = parseInt(document.querySelector('#reconciliationBatchSize').value, 10);
+                        config.Limits.MetadataStaleWindowMinutes = parseInt(document.querySelector('#metadataStaleWindowMinutes').value, 10);
+                        config.Limits.RenderCacheTtlMinutes = parseInt(document.querySelector('#renderCacheTtlMinutes').value, 10);
+                        config.Limits.RenderCacheQuotaBytes = parseInt(document.querySelector('#renderCacheQuotaBytes').value, 10);
+                        config.Limits.ArtifactStorageQuotaBytes = parseInt(document.querySelector('#artifactStorageQuotaBytes').value, 10);
+                        config.Limits.TerminalProvenanceRetentionDays = parseInt(document.querySelector('#terminalProvenanceRetentionDays').value, 10);
+
+                        ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                    });
+
+                    e.preventDefault();
+                    return false;
+                });
+        </script>
+    </div>
+</body>
+</html>

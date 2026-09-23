@@ -41,11 +41,19 @@ restored.
 
 ## Configuration
 
-There is **no web configuration UI** in v1. Configure the plugin by editing
-`plugins/configurations/ArrTags.xml` under Jellyfin's data directory (that is,
-`<data>/plugins/configurations/ArrTags.xml`) and restarting Jellyfin. A saved
-configuration change is **not observed until the process restarts**
-(`docs/limitations.md` F2).
+A dashboard settings page is available at **Dashboard → Plugins → ArrTags**. It
+loads the current configuration and saves it through Jellyfin's administrator-gated
+configuration API, so the plugin no longer has to be configured by editing XML by
+hand. The page covers the provider connections and their API keys, the webhook
+secret, the Movie/Episode poster flags, the enabled-library scope, the renderer
+selectors/templates and palette overrides, and the operational limits.
+
+The page itself embeds no secret and only shows a secret value that Jellyfin's
+existing administrator configuration API already returns. Runtime activation is
+not yet wired, so a saved change is **not observed until the process restarts**
+(`docs/limitations.md` F2); the XML below remains the persisted shape and can
+still be edited directly at `plugins/configurations/ArrTags.xml` (that is,
+`<data>/plugins/configurations/ArrTags.xml`).
 
 ### Fields
 
@@ -66,7 +74,7 @@ Other fields:
 | `WebhookSecret` | The shared secret required by the inbound webhook endpoints. |
 | `BadgeMoviePosters` | Whether Movie posters are eligible for badges (default `true`). |
 | `BadgeEpisodePosters` | Whether Episode posters are eligible for badges (default `true`). |
-| `EnabledLibraries` | The Jellyfin library names eligible for badges. An empty set means no library restriction. |
+| `EnabledLibraries` | The Jellyfin library identifiers eligible for badges. An empty set means no library restriction. |
 | `Renderer.Selectors` | The configured badge selectors (see below). |
 | `Renderer` palette overrides | Optional `TechnicalBackground`, `TechnicalText`, `StatusBackground`, and `StatusText` colors (see below). |
 | `Limits` | The operational bounds (queue capacity, concurrency, timeouts, payload and artifact sizes, cache and retention windows). Defaults are validated when the configuration loads. |

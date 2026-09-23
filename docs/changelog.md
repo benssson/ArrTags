@@ -2631,8 +2631,8 @@ not declared; the Phase 8 review is separate.
 
 ## Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1)
 
-**Status:** In progress (task 9.1 complete; tasks 9.2-9.5 open). The phase
-resolves limitation F2 when complete.
+**Status:** In progress (tasks 9.1 and 9.2 complete; tasks 9.3-9.5 open). The
+phase resolves limitation F2 when complete.
 
 ### Task 9.1 - Configuration round-trip spike (blocking prerequisite)
 
@@ -2666,3 +2666,53 @@ POST deserializes with the same `JsonDefaults.Options` (skipped without
 the default suite was Failed 0, Passed 1234, Skipped 61, Total 1295 (baseline
 Failed 0, Passed 1228, Skipped 60, Total 1288; +7 new tests, one host-guarded
 skip).
+
+### Task 9.2 - Dashboard settings page and embedded page resource
+
+**Status:** Complete. Owns ADR-016 clause 7 second bullet (the page-resource
+authorization acceptance).
+
+`src/ArrTags/Plugin.cs` now implements
+`MediaBrowser.Model.Plugins.IHasWebPages` and returns one `PluginPageInfo`
+(`Name` `ArrTags`, `EnableInMainMenu = false`) whose `EmbeddedResourcePath` is
+`ArrTags.Configuration.config.html`. `src/ArrTags/ArrTags.csproj` embeds
+`Configuration/config.html` with that explicit logical name.
+`src/ArrTags/Configuration/config.html` is a new in-tree-pattern dashboard page:
+the `configPage`/`pluginConfigurationPage`/`configPage` element, the
+`data-require="emby-input,emby-button,emby-checkbox"` contract, the `pageshow`
+event, `ApiClient.getPluginConfiguration`/`updatePluginConfiguration`, and
+`Dashboard.processPluginConfigurationUpdateResult`.
+
+The page reads and writes every user-adjustable setting in the current
+configuration model: the Sonarr and Radarr connections (`Enabled`, `BaseUrl`,
+`ApiKey`, `RequestTimeoutSeconds`, `AllowInsecureTls`), `WebhookSecret`,
+`BadgeMoviePosters`, `BadgeEpisodePosters`, `EnabledLibraries` (selected from
+`ApiClient.getVirtualFolders()` by library identifier), the eight renderer
+selectors with their bounded templates, the four `Renderer` palette overrides,
+and all 21 `OperationalLimits` fields with their validated ranges. The three
+secret inputs are password fields with no embedded value; the page embeds no
+secret literal and only ever surfaces a secret through Jellyfin's existing
+administrator-gated configuration API (ADR-016 clauses 2 and 6). Library names
+are inserted as text, never as HTML.
+
+New tests (`tests/ArrTags.Tests/DashboardSettingsPageTests.cs`): the `GetPages()`
+contract, the embedded resource logical name, the in-tree page contract, coverage
+of every writable configuration-model property (a temporary rename was used to
+confirm the assertion is non-vacuous), a check that the page references only known
+configuration properties, and a secret-free source check (sentinel secret values
+absent, secret inputs are password fields with no value attribute). Two
+host-guarded facts confirm the pinned `DashboardController` serves the page
+resource by name (case-insensitively) with `text/html`, that a missing page is a
+404, and that `GetDashboardConfigurationPage` carries no `[Authorize]` while
+`GetConfigurationPages` carries `[Authorize(Policy = Policies.RequiresElevation)]`
+and the controller has no class-level `[Authorize]`; both are skipped without
+`ARRTAGS_JELLYFIN_HOST_DIR`.
+
+ADR-016 clause 6's explicit acceptance of the anonymous static page-resource
+endpoint is recorded in `docs/architecture.md` section 6. The elevation-gated
+`Plugin.UpdateConfiguration` activation is task 9.3 and the post-save
+reconciliation trigger is task 9.4, so limitation F2 remains open and a saved
+change is still only observed after a restart. `./build.sh build` reported 0
+warnings / 0 errors; the default suite was Failed 0, Passed 1240, Skipped 63,
+Total 1303 (baseline Failed 0, Passed 1234, Skipped 61, Total 1295; +6 passed,
++2 host-guarded skips, +8 total).

@@ -21,20 +21,32 @@ GitHub release publication, the asset upload, and the manifest push remain the
 manual user step with `scripts/publish-release.sh`, so the plugin catalog cannot
 be installed from the public repository until the user publishes that release.**
 Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is in
-progress: task 9.1 (configuration round-trip spike, blocking prerequisite) is
-complete. The spike proved that the pinned Jellyfin 12.0.0 elevation-gated
+progress: tasks 9.1 (configuration round-trip spike, blocking prerequisite) and
+9.2 (dashboard settings page and embedded page resource) are complete. The 9.1
+spike proved that the pinned Jellyfin 12.0.0 elevation-gated
 `PluginsController` POST deserializes with
 `Jellyfin.Extensions.Json.JsonDefaults.Options`, whose default `System.Text.Json`
 object-creation handling does not populate a get-only collection property, so
 `PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` were
 silently dropped on a dashboard save. Both are now settable with a null-coalescing
 setter that treats null as empty; the persisted XML shape is unchanged, so
-existing `ArrTags.xml` files remain loadable. `./build.sh build` reported 0
-warnings / 0 errors and the default suite was Failed 0, Passed 1234, Skipped 61,
-Total 1295 (the seven new `ConfigurationRoundTripTests` include a host-guarded
-`PluginsController` confirmation that is skipped without
-`ARRTAGS_JELLYFIN_HOST_DIR`). Tasks 9.2-9.5 remain; the settings page is unblocked.
-See `PLANS.md` task 9.1 and `docs/data-model.md` 3.12.
+existing `ArrTags.xml` files remain loadable. Task 9.2 adds the dashboard settings
+page: `Plugin` implements `IHasWebPages` and returns one secret-free embedded
+`Configuration/config.html` page (logical name
+`ArrTags.Configuration.config.html`) that reads and writes the user-adjustable
+configuration through Jellyfin's existing administrator-gated API; ADR-016
+clause 6's explicit acceptance of the anonymous static page-resource endpoint is
+recorded in `docs/architecture.md` section 6, and the pinned
+`DashboardController` serving and authorization behavior are confirmed by
+host-guarded tests that are skipped without `ARRTAGS_JELLYFIN_HOST_DIR`. Runtime
+activation (task 9.3) and the post-save reconciliation trigger (task 9.4) remain,
+so limitation F2 is not yet resolved. `./build.sh build` reported 0 warnings / 0
+errors and the default suite was Failed 0, Passed 1240, Skipped 63, Total 1303
+(the eight new `DashboardSettingsPageTests` include two host-guarded facts that
+are skipped without `ARRTAGS_JELLYFIN_HOST_DIR`; the 9.1
+`ConfigurationRoundTripTests` add one more). Tasks 9.3-9.5 remain. See `PLANS.md`
+tasks 9.1 and 9.2, `docs/data-model.md` 3.12, and `docs/architecture.md`
+section 6.
 Phase 7 — Testing & release is complete: all five
 Phase 7 acceptance criteria are met. Gate 7 is met (Phase 7 review approved; tag
 `v0.1.0-phase7`). Tasks 7.1
@@ -585,14 +597,17 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 Next tasks:
 
 - Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is
-  in progress: task 9.1 (configuration round-trip spike, blocking prerequisite) is
-  complete. The get-only `Collection<T>` round-trip was proven to fail with the
-  pinned `JsonDefaults.Options`, so `PluginConfiguration.EnabledLibraries` and
+  in progress: tasks 9.1 (configuration round-trip spike, blocking prerequisite)
+  and 9.2 (dashboard settings page and embedded page resource) are complete. The
+  get-only `Collection<T>` round-trip was proven to fail with the pinned
+  `JsonDefaults.Options`, so `PluginConfiguration.EnabledLibraries` and
   `RendererConfiguration.Selectors` are now settable and are populated by the
-  supported `PluginsController` POST; the settings page (task 9.2), the
-  elevation-gated save path and runtime activation (task 9.3), the bounded
-  post-save reconciliation trigger (task 9.4), and the Goal A documentation and
-  integration verification (task 9.5) remain.
+  supported `PluginsController` POST; `Plugin` now implements `IHasWebPages` with
+  one secret-free embedded settings page that reads and writes the user-adjustable
+  configuration through the administrator-gated API. The elevation-gated save path
+  and runtime activation (task 9.3), the bounded post-save reconciliation trigger
+  (task 9.4), and the Goal A documentation and integration verification (task 9.5)
+  remain.
 - Phase 8 — Release distribution is **complete** (tasks 8.1-8.6): 8.1 (end-user
   `README.md` and preserved `docs/project-status.md`), 8.2 (agent current-state
   reference repoint), 8.3 (`build.yaml` metadata fix and `1.0.1.0` version bump),
