@@ -188,7 +188,9 @@ the V1.1-1..V1.1-8 task-outline mapping, and each phase's authoritative
 execution order are recorded in "v1.1 Milestones (Phases 9-14)". Phase 9 tasks
 9.1-9.5 are complete; the next step is the independent Phase 9 phase review
 (Gate 9 and the `v1.1.0-phase9` tag), with the live Goal A confirmation owned by
-task 14.3. V1.1-1 (this plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
+task 14.3. Phase 10 task 10.1 (logging foundation, verbosity configuration, and
+fingerprint exclusion) is complete; tasks 10.2 and 10.3 remain. V1.1-1 (this
+plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
 pointers) is already complete at commit `5ec8ae2` and is not re-planned as open
 work.
 
@@ -226,7 +228,7 @@ work.
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 | 8 | Release distribution | Complete (tasks 8.1-8.6 complete; all seven Phase 8 acceptance criteria are met; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 is met - Phase 8 review approved in `docs/implementation/phase-8/phase-review.json`) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 | 9 | Dashboard settings UI and runtime configuration activation (v1.1) | Tasks complete (Phase 9 tasks 9.1-9.5 complete: the get-only `Collection<T>` round-trip was proven to fail under the pinned `JsonDefaults.Options`, so `EnabledLibraries`/`Renderer.Selectors` are now settable and round-trip; `Plugin` implements `IHasWebPages` with an embedded secret-free settings page; `Plugin.UpdateConfiguration` validates and activates a saved candidate at runtime without a restart with last-valid snapshot and private-secret retention; a successful replacement requests a bounded, non-blocking post-save reconciliation so existing posters re-render promptly; and `GoalAIntegrationTests` verifies the composed save -> activate -> bounded-reconcile flow, so limitation F2 is resolved. The Goal A acceptance criteria are met at the integration-test level; the independent phase review, Gate 9, and the `v1.1.0-phase9` tag are pending) | A dashboard settings page loads and saves through the elevation-gated path, a valid change applies without restart with last-valid retention, and a successful save triggers a bounded reconciliation; the get-only `Collection<T>` round-trip is proven. Phase tag `v1.1.0-phase9`. |
-| 10 | Logging with configurable verbosity (v1.1) | Not started (Phase 10 tasks 10.1-10.3) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
+| 10 | Logging with configurable verbosity (v1.1) | In progress (task 10.1 complete; tasks 10.2-10.3 remain) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
 | 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | Not started (Phase 11 tasks 11.1-11.4; resolves limitation F1) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
 | 12 | Badge value allowlist and badge size/position (v1.1) | Not started (Phase 12 tasks 12.1-12.4; Goals B and E; ADR-017 and ADR-019) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
 | 13 | README and documentation pass (v1.1) | Not started (Phase 13 tasks 13.1-13.2; Goal D) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
@@ -3889,7 +3891,7 @@ redaction contract. The new logging path is security-reviewed.
 
 **Tasks:**
 
-- [ ] 10.1 Logging foundation, verbosity configuration, and fingerprint exclusion.
+- [x] 10.1 Logging foundation, verbosity configuration, and fingerprint exclusion.
 - [ ] 10.2 Bounded, redacted log call sites and volume bounds.
 - [ ] 10.3 SEC-5 rewrite, documentation, and logging security review.
 
@@ -3905,7 +3907,25 @@ execution order and task numbering conflict, the execution order wins.
 
 #### 10.1 Logging foundation, verbosity configuration, and fingerprint exclusion
 
-**Status:** Not started.
+**Status:** Complete. The bounded `LogVerbosity` enum (`Off`, `Error`, `Warning`,
+`Information`, `Debug`, `Trace`, default `Warning`) is persisted in
+`PluginConfiguration`, validated at configuration load, exposed through the
+ADR-016 settings page and the XML configuration, and carried on the immutable
+`PluginConfigurationSnapshot`. A plugin-owned `ILogVerbosityGate` reads the
+current snapshot's verbosity on every call and decides whether a
+`Microsoft.Extensions.Logging.LogLevel` is enabled, so a saved change applies
+without a restart; `ArrTagsServiceRegistrator` resolves `ILogger<T>`/
+`ILoggerFactory` through the host DI and registers no custom `ILoggerProvider`/
+sink and does not replace the host `ILoggerFactory`. Verbosity is excluded from
+the renderer and configuration output fingerprints and does not change
+`RenderVersion`, so changing it never republishes artwork. `LogVerbosityTests`
+(26 cases) covers the enum validation, page/XML exposure, DI resolution,
+per-level gating, the no-provider/no-factory-replacement check, and the
+fingerprint exclusion. `./build.sh build` reported 0 warnings / 0 errors; the
+default suite was Failed 0, Passed 1298, Skipped 63, Total 1361 (baseline Failed
+0, Passed 1272, Skipped 63, Total 1335; +26 passed, +26 total, 0 new skips).
+Recorded in `docs/architecture.md` sections 6 and 12, `docs/data-model.md` 3.12,
+and `README.md`.
 
 **Objective:** Add the logging foundation and the bounded verbosity setting, and
 exclude verbosity from output fingerprints (ADR-020 clauses 1, 2, 3, and 5).

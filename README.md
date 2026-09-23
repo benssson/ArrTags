@@ -46,13 +46,15 @@ loads the current configuration and saves it through Jellyfin's administrator-ga
 configuration API, so the plugin no longer has to be configured by editing XML by
 hand. The page covers the provider connections and their API keys, the webhook
 secret, the Movie/Episode poster flags, the enabled-library scope, the renderer
-selectors/templates and palette overrides, and the operational limits.
+selectors/templates and palette overrides, the operational limits, and the
+bounded log verbosity.
 
 The page itself embeds no secret and only shows a secret value that Jellyfin's
 existing administrator configuration API already returns. A saved change is
 validated and applied to the running plugin without a host restart for the
 settings that resolve per operation (the queue and concurrency limits, metadata
-freshness, badge definitions, and the renderer output policy); a few
+freshness, badge definitions, the renderer output policy, and the log
+verbosity); a few
 construction-captured limits (the artifact-size/decode limits and the render
 work-cache TTL/quota and retention values) still take effect only after a host
 restart. An invalid change is rejected, the last valid configuration stays
@@ -84,6 +86,7 @@ Other fields:
 | Field | Meaning |
 | --- | --- |
 | `WebhookSecret` | The shared secret required by the inbound webhook endpoints. |
+| `LogVerbosity` | How much ArrTags writes to the Jellyfin server log: `Off`, `Error`, `Warning` (default), `Information`, `Debug`, or `Trace`. It bounds ArrTags only, applies without a restart, never changes the Jellyfin host log level, and never changes rendered posters. |
 | `BadgeMoviePosters` | Whether Movie posters are eligible for badges (default `true`). |
 | `BadgeEpisodePosters` | Whether Episode posters are eligible for badges (default `true`). |
 | `EnabledLibraries` | The Jellyfin library identifiers eligible for badges. An empty set means no library restriction. |

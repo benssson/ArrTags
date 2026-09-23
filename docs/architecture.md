@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Accepted v1 (frozen for V1; Phases 1-8 complete; Phase 7 complete (all five acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)). Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5 and 8 are now met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1). Task 7.6 consolidates the known limitations and deferred decisions in `docs/limitations.md`; all five Phase 7 acceptance criteria are met and no deferred or unverified capability is presented as available. Phase 8 release distribution is complete (tasks 8.1-8.6): the `1.0.1.0` release is prepared with plugin version `1.0.1.0`, the annotated tag `v1.0.1` at `8cba85b`, and the committed repository `manifest.json`; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with `scripts/publish-release.sh`, so the plugin-catalog install is prepared but not yet live. Phase 9 (v1.1) tasks are complete and the phase is pending its independent phase review and tag: task 9.1 makes `PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` settable so the elevation-gated configuration round-trip cannot drop them, task 9.2 adds the dashboard settings page (`Plugin` implements `IHasWebPages`; one secret-free embedded `Configuration/config.html` served from the logical name `ArrTags.Configuration.config.html`) and records ADR-016 clause 6's explicit acceptance of the anonymous static page-resource endpoint; task 9.3 overrides `Plugin.UpdateConfiguration` so the elevation-gated save validates the candidate before persistence and, for a valid candidate, activates it as the running snapshot without a host restart (an invalid candidate is rejected before persistence, the last valid snapshot and private secrets are retained, and the rejection writes one bounded, secret-free administrator-visible activity-log entry per ADR-021; the save sequence is serialized so concurrent saves cannot diverge); task 9.4 adds the bounded, non-blocking post-save reconciliation trigger (the plugin-owned `IConfigurationReconciliationTrigger` boundary and the hosted `ConfigurationReconciliationTrigger` over the existing bounded `LibraryReconciliationService`, coalescing redundant requests to at most one bounded rerun), so a successful save re-renders existing posters instead of waiting for the next library event, webhook, post-scan, or scheduled run; task 9.5 completes the Goal A documentation reconciliation and integration verification (a new `GoalAIntegrationTests` composes the pinned POST deserialization, the real `Plugin.UpdateConfiguration` override, the real snapshot service, the real post-save trigger over the bounded reconciliation service, and the real publishing pipeline), so limitation F2 is recorded as resolved.
+**Status:** Accepted v1 (frozen for V1; Phases 1-8 complete; Phase 7 complete (all five acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)). Task 7.2 found that the standard versioned install layout collided with the plugin's Jellyfin-derived data folder `PluginsPath/ArrTags` and deleted the install folder on the next restart; task 7.7 resolves this by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-ran the live install/upgrade/reload/uninstall verification on the pinned Jellyfin `12.0.0` host, so Phase 7 acceptance criterion 2 is now met. Gate 6 is met at the integration-test level, tag `v0.1.0-phase6`.) Task 7.8 resolves the task 7.3 release blocker 7.3-F1: the plugin no longer bundles the managed `SkiaSharp.dll` or native `libSkiaSharp.so` and shares the host's SkiaSharp through the default load context (ADR-015, which supersedes the bundling parts of ADR-010). The re-run live end-to-end verification on the pinned Jellyfin `12.0.0` musl host passes for the committed package: it loads with no error, a badge publishes with no `[FTL]`/`InvalidCastException`, `GET /Items/{id}/Images/Primary` serves the published bytes matching the persisted `ActiveImageIdentity`, the original source posters are byte-unchanged, changed metadata republishes and unchanged metadata does not, and a provider outage leaves the host up with current artwork unchanged, so `GOALS.md` criteria 5 and 8 are now met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1). Task 7.6 consolidates the known limitations and deferred decisions in `docs/limitations.md`; all five Phase 7 acceptance criteria are met and no deferred or unverified capability is presented as available. Phase 8 release distribution is complete (tasks 8.1-8.6): the `1.0.1.0` release is prepared with plugin version `1.0.1.0`, the annotated tag `v1.0.1` at `8cba85b`, and the committed repository `manifest.json`; the GitHub release publication, the asset upload, and the manifest push remain the user's manual step with `scripts/publish-release.sh`, so the plugin-catalog install is prepared but not yet live. Phase 9 (v1.1) is complete (Gate 9 met; tag `v1.1.0-phase9`). Phase 10 task 10.1 adds the bounded `LogVerbosity` setting and the plugin-owned logging/verbosity gate, with tasks 10.2-10.3 remaining. Phase 9 task 9.1 makes `PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` settable so the elevation-gated configuration round-trip cannot drop them, task 9.2 adds the dashboard settings page (`Plugin` implements `IHasWebPages`; one secret-free embedded `Configuration/config.html` served from the logical name `ArrTags.Configuration.config.html`) and records ADR-016 clause 6's explicit acceptance of the anonymous static page-resource endpoint; task 9.3 overrides `Plugin.UpdateConfiguration` so the elevation-gated save validates the candidate before persistence and, for a valid candidate, activates it as the running snapshot without a host restart (an invalid candidate is rejected before persistence, the last valid snapshot and private secrets are retained, and the rejection writes one bounded, secret-free administrator-visible activity-log entry per ADR-021; the save sequence is serialized so concurrent saves cannot diverge); task 9.4 adds the bounded, non-blocking post-save reconciliation trigger (the plugin-owned `IConfigurationReconciliationTrigger` boundary and the hosted `ConfigurationReconciliationTrigger` over the existing bounded `LibraryReconciliationService`, coalescing redundant requests to at most one bounded rerun), so a successful save re-renders existing posters instead of waiting for the next library event, webhook, post-scan, or scheduled run; task 9.5 completes the Goal A documentation reconciliation and integration verification (a new `GoalAIntegrationTests` composes the pinned POST deserialization, the real `Plugin.UpdateConfiguration` override, the real snapshot service, the real post-save trigger over the bounded reconciliation service, and the real publishing pipeline), so limitation F2 is recorded as resolved.
 
 **Last reviewed against:**
 - Jellyfin 12.x
@@ -196,6 +196,11 @@ The persisted configuration includes:
   policy (ADR-011) is realized entirely through the existing poster enable flags
   and renderer selector enablement, with no automatic duplicate/overlap
   suppression and no Enhanced-internals dependency.
+- Bounded per-plugin log verbosity (`LogVerbosity`, default `Warning`). It is
+  validated at configuration load and applied without a restart from the current
+  snapshot. It is not output-affecting: it is excluded from the renderer and
+  configuration output fingerprints and never changes `RenderVersion` (ADR-020
+  clause 5).
 
 API keys and webhook secrets must not appear in logs, status responses, cache
 keys, fingerprints, or exception messages. TLS certificate validation is strict
@@ -215,7 +220,8 @@ page.
 The page is read/write for the user-adjustable settings only: the Sonarr and
 Radarr connections and their API keys, the webhook secret, the Movie/Episode
 poster flags, the enabled-library scope, the renderer selectors/templates and
-palette overrides, and the operational limits. It reads and writes them through
+palette overrides, the operational limits, and the bounded log verbosity. It
+reads and writes them through
 the supported elevation-gated `PluginsController` `GET`/`POST
 {pluginId}/Configuration` path and adds no custom save route (ADR-016 clause 3).
 The three secret inputs are password fields with no embedded value; the page
@@ -269,6 +275,36 @@ bullet). Some singletons capture the artifact-size/decode limits and the
 retention values from `OperationalLimits` at construction, so those particular
 values change only after a host restart; this pre-existing state/artwork-layer
 behaviour is outside the save-path change.
+
+### Logging and verbosity
+
+ArrTags logs through the host's `Microsoft.Extensions.Logging`
+`ILogger<T>`/`ILoggerFactory`, resolved through plugin DI (ADR-020 clause 1).
+The host's Serilog pipeline and sinks receive the records with the logger
+category (the calling type's full name) as `{SourceContext}`; because every
+ArrTags type lives under the `ArrTags` namespace, every category is prefixed
+`ArrTags.*` (for example `ArrTags.Providers.Radarr`), so an administrator's
+host-level per-category override is predictable. ArrTags registers no custom
+`ILoggerProvider`/sink and does not replace the host `ILoggerFactory` (ADR-020
+clause 3); a plugin-registered provider would be ineffective on the pinned host.
+
+Per-plugin verbosity is the bounded `LogVerbosity` enum (`Off`, `Error`,
+`Warning`, `Information`, `Debug`, `Trace`; default `Warning`), persisted in
+`PluginConfiguration`, validated at configuration load, and exposed through the
+settings page and the XML configuration. A plugin-owned `ILogVerbosityGate`
+reads the effective verbosity from the current configuration snapshot on every
+call, so a saved change applies without a restart; it is provider-neutral and
+decides whether a `Microsoft.Extensions.Logging.LogLevel` is enabled for
+ArrTags. An undefined level is rejected by validation and defensively treated as
+`Warning`, so an invalid candidate can never raise verbosity.
+
+Verbosity is not output-affecting: it is excluded from the renderer and
+configuration output fingerprints and never changes `RenderVersion`, so
+changing it never republishes artwork (ADR-020 clause 5). This foundation adds
+the DI resolution, the bounded setting, the gating boundary, and the
+fingerprint exclusion; the log call sites at the plugin boundaries and the
+bounded log-volume limit row are added with the logging instrumentation
+(ADR-020 clauses 4 and 6). The `Warning` default keeps normal operation quiet.
 
 ### Bounded post-save reconciliation
 
@@ -1185,6 +1221,14 @@ retains the last valid snapshot rather than partially applying it.
 | Render work-cache quota | 1 | GiB | `64 MiB`–`64 GiB` | LRU eviction bounded by the quota; never evicts authoritative state. |
 | Authoritative artifact/provenance storage quota | 4 | GiB | `256 MiB`–`256 GiB` | On exhaustion, reject new derived work and preserve the current artwork. |
 | Terminal provenance retention | 30 | days | `1`–`365 days` | Cleanup only after the operation is terminal and cleanup is proven safe. |
+| Plugin log verbosity | Warning | level | `Off`, `Error`, `Warning`, `Information`, `Debug`, or `Trace` | An undefined level rejects the configuration and retains the last valid snapshot; the default keeps normal operation quiet. |
+
+The plugin log verbosity is a bounded, validated level (`LogVerbosity`) that
+selects how much ArrTags writes through the host logging pipeline. It is applied
+without a restart from the current configuration snapshot, is excluded from the
+renderer and configuration output fingerprints, and never changes
+`RenderVersion`, so it is not output-affecting. The bounded log-volume bound is
+recorded when the log call sites are instrumented (ADR-020 clause 6).
 
 Active provenance and any non-terminal artwork operation are never evicted as
 ordinary cache entries. They remain until the operation is committed, safely

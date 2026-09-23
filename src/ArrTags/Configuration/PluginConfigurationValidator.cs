@@ -30,6 +30,7 @@ public static class PluginConfigurationValidator
         ValidateConnection("Sonarr", configuration.Sonarr, errors);
         ValidateConnection("Radarr", configuration.Radarr, errors);
         ValidateLibraryScope(configuration.EnabledLibraries, errors);
+        ValidateLogVerbosity(configuration.LogVerbosity, errors);
         (configuration.Limits ?? new OperationalLimits()).Validate(errors);
         (configuration.Renderer ?? new RendererConfiguration()).Validate(errors);
 
@@ -89,6 +90,14 @@ public static class PluginConfigurationValidator
             {
                 errors.Add("Library scope entries must be unique.");
             }
+        }
+    }
+
+    private static void ValidateLogVerbosity(LogVerbosity verbosity, List<string> errors)
+    {
+        if (!Enum.IsDefined(verbosity))
+        {
+            errors.Add("Log verbosity must be one of Off, Error, Warning, Information, Debug, or Trace.");
         }
     }
 }

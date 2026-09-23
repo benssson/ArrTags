@@ -65,7 +65,7 @@ public class DashboardSettingsPageTests
             page,
             StringComparison.Ordinal);
         Assert.Contains(
-            "data-require=\"emby-input,emby-button,emby-checkbox\"",
+            "data-require=\"emby-input,emby-button,emby-checkbox,emby-select\"",
             page,
             StringComparison.Ordinal);
         Assert.Contains("addEventListener('pageshow'", page, StringComparison.Ordinal);

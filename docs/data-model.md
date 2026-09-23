@@ -804,6 +804,7 @@ badge selection, rendering, cache policy, and update behavior.
 | `enhancedCoexistencePolicy` | Existing poster and selector enable flags | Yes | Configuration | Realized by the existing `BadgeMoviePosters`/`BadgeEpisodePosters` flags and renderer selector enablement; ADR-011 adds no automatic duplicate/overlap suppression and no Enhanced-internals dependency. |
 | `pathMappings` | Optional connection-scoped mappings | Optional | Configuration | Reserved post-V1; ADR-008 defers path fallback and V1 snapshots do not carry this field. |
 | `secretReferences` | Protected, typed secret-slot references | Optional | Configuration | API keys and webhook secrets are represented only by safe references; values are excluded from fingerprints, logs, canonical snapshots, and state. |
+| `logVerbosity` | Bounded level enum | Yes | Configuration | Per-plugin log verbosity: `Off`/`Error`/`Warning`/`Information`/`Debug`/`Trace`, default `Warning`. Validated at load and exposed through the settings page and the XML configuration. Not output-affecting: excluded from the renderer/configuration fingerprints and never changes `RenderVersion`. |
 
 The conceptual `renderingPolicy`, `cachePolicy`, and `updatePolicy` objects above
 are realized incrementally. At the foundation boundary, the persisted
@@ -842,6 +843,20 @@ semantics are fixed by ADR-009. Path mappings are explicitly post-V1 under
 ADR-008 and are not part of the V1 snapshot. The Jellyfin Enhanced coexistence
 policy (ADR-011) is realized by the existing poster and renderer selector enable
 flags; it adds no snapshot field and no automatic duplicate/overlap suppression.
+
+**Logging verbosity (task 10.1).** `PluginConfiguration.LogVerbosity` is the
+bounded per-plugin log verbosity (`Off`/`Error`/`Warning`/`Information`/`Debug`/
+`Trace`, default `Warning`). It is validated at configuration load by
+`PluginConfigurationValidator` (an undefined level rejects the candidate and the
+last valid snapshot stays active), persisted in the XML configuration, exposed
+through the settings page, and carried on the immutable
+`PluginConfigurationSnapshot` as `LogVerbosity`. A plugin-owned
+`ILogVerbosityGate` reads the snapshot's verbosity on every call and decides
+whether a `Microsoft.Extensions.Logging.LogLevel` is enabled, so a replaced
+configuration applies without a host restart; ArrTags registers no custom
+`ILoggerProvider`/sink and does not replace the host `ILoggerFactory`. The value
+is not output-affecting: it is excluded from the renderer/configuration
+fingerprint and never changes `RenderVersion`.
 
 **Runtime activation (task 9.3).** The persisted `PluginConfiguration` is the
 candidate supplied to `Plugin.UpdateConfiguration`. The override validates the

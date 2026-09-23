@@ -1,0 +1,44 @@
+{
+  "task": "10.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the logging foundation and bounded verbosity setting (v1.1 Phase 10 task 10.1, ADR-020 clauses 1, 2, 3, and 5). Added the bounded ArrTags.Configuration.LogVerbosity enum (Off, Error, Warning, Information, Debug, Trace; default Warning) as PluginConfiguration.LogVerbosity; PluginConfigurationValidator now rejects an undefined level with a secret-free message; PluginConfigurationSnapshot carries the validated value; and the ADR-016 settings page exposes a bounded emby-select control that round-trips config.LogVerbosity while the persisted XML shape stays loadable (an existing ArrTags.xml without the element keeps the Warning default). Added the plugin-owned, provider-neutral gating boundary ArrTags.PluginLifecycle.ILogVerbosityGate/LogVerbosityGate, which maps the bounded verbosity to a Microsoft.Extensions.Logging.LogLevel (Off -> None; undefined -> Warning) and reads the effective verbosity from the current ConfigurationSnapshotService on every call, so a saved change applies without a host restart; it is registered by ArrTagsServiceRegistrator, which resolves ILogger<T>/ILoggerFactory through the host DI and registers no custom ILoggerProvider/sink and does not replace the host ILoggerFactory. Verbosity is excluded from the renderer configuration fingerprint and the renderer output fingerprint and never changes RenderVersion, so changing it never republishes artwork. This task adds no production log call sites (those are task 10.2) and does not rewrite docs/limitations.md SEC-5 (task 10.3). New tests in tests/ArrTags.Tests/LogVerbosityTests.cs (26 cases) cover the enum validation and secret-free message, JSON and XML round-trips plus the legacy-XML default, snapshot mapping and last-valid retention on an undefined level, per-level gating, application of a replaced snapshot without a restart, DI resolution of the gate and of host logging with the ArrTags.* category prefix, the no-custom-provider/no-host-factory-replacement check, the settings page control, and the renderer/configuration fingerprint and RenderVersion exclusion; DashboardSettingsPageTests was updated for the added emby-select requirement. Documentation updated: docs/architecture.md sections 6 (new 'Logging and verbosity' subsection) and 12 (verbosity row and paragraph), docs/data-model.md 3.12, README.md, PLANS.md (task 10.1 status/checkbox, Milestone Status row, Active Planning Scope note), docs/changelog.md (new Phase 10 section and task 10.1 entry), and docs/project-status.md (Next tasks).",
+  "validation": [
+    "Baseline before change: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s). . /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1272, Skipped: 63, Total: 1335.",
+    "After change: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~LogVerbosityTests|FullyQualifiedName~DashboardSettingsPageTests|FullyQualifiedName~ConfigurationRoundTripTests|FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~ConfigurationFoundationTests\" -> Passed! - Failed: 0, Passed: 75, Skipped: 3, Total: 78 (the 3 skips are the pre-existing ARRTAGS_JELLYFIN_HOST_DIR-guarded facts).",
+    "After change: . /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1298, Skipped: 63, Total: 1361 (baseline Failed 0, Passed 1272, Skipped 63, Total 1335; +26 passed, +26 total, 0 new skips).",
+    "git diff inspection: the working-tree diff contains only the task's source, test, and documentation files; no unrelated files are modified."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/LogVerbosity.cs",
+    "src/ArrTags/Configuration/PluginConfiguration.cs",
+    "src/ArrTags/Configuration/PluginConfigurationValidator.cs",
+    "src/ArrTags/Configuration/PluginConfigurationSnapshot.cs",
+    "src/ArrTags/Configuration/config.html",
+    "src/ArrTags/PluginLifecycle/ILogVerbosityGate.cs",
+    "src/ArrTags/PluginLifecycle/LogVerbosityGate.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/LogVerbosityTests.cs",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "No production log call site exists yet. Exact behaviour: ArrTags still emits no log records at any verbosity because the provider/matching/metadata/artwork/queue/reconciliation/webhook/lifecycle call sites are task 10.2. Precondition: this task only. Consequence: the verbosity setting has no observable log output until 10.2 lands; the ILogVerbosityGate boundary and host DI resolution are in place for 10.2 to gate every call.",
+    "The bounded log-volume (rate-limit/repetition-suppression) limit row and the redaction tests at every level are task 10.2 (ADR-020 clauses 4 and 6); this task adds no redaction-sensitive call sites.",
+    "docs/limitations.md SEC-5 is deliberately unchanged. Its current statement that the plugin has no logging call sites remains accurate for this task; the SEC-5 rewrite to the redaction contract is task 10.3.",
+    "The settings page's emby-select control and the enum string round-trip through jellyfin-web were not live-verified. Exact behaviour: the embedded page source, the pinned PluginsController JSON deserialization of the enum string, and the XML round-trip are covered by tests; the live dashboard load/save confirmation is owned by the consolidated live pinned-host verification (task 14.3). Precondition: no live host is used in this environment. Consequence: a jellyfin-web-specific rendering issue with the control would not be caught here.",
+    "Host-guarded tests (JellyfinHostFact and packaged-plugin facts) remain skipped (63 skips, identical to the pre-task baseline) because ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment."
+  ],
+  "ready_for_next_task": true
+}

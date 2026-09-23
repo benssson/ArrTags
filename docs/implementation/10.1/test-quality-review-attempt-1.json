@@ -1,0 +1,108 @@
+{
+  "task": "10.1",
+  "reviewer": "test-quality-reviewer",
+  "reviewer_status": "CONCERNS",
+  "findings": [
+    {
+      "id": "TQ-10.1-01",
+      "severity": "MEDIUM",
+      "area": "coverage / meaningfulness (fingerprint exclusion)",
+      "issue": "The renderer-output-fingerprint exclusion test does not exercise the production input-assembly path and cannot detect verbosity entering the output fingerprint. It re-implements the RenderFingerprintInput construction in a local helper whose only snapshot-derived fields are RendererConfigurationFingerprint (already proven equal by the preceding test) and RendererOutputPolicy (code-owned default). The two inputs are therefore identical by construction, so the output/request fingerprint equality is a pure determinism assertion on equal inputs, not an independent verbosity-exclusion test. A regression that threaded snapshot.LogVerbosity into RenderFingerprintInput (e.g. a new field with a default) would leave this test green, because the helper never supplies verbosity. The production path assembles the input from request.ConfigurationFingerprint / BadgeDefinitions / RendererOutputPolicy in ArtworkRegenerationPlanner.ComputeDesiredFingerprint and SkiaBadgeRenderer, none of which the test touches.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogVerbosityTests.cs:201-226 ChangingVerbosityDoesNotChangeTheRendererOutputFingerprintOrRenderVersion",
+        "tests/ArrTags.Tests/LogVerbosityTests.cs:307-321 BuildFingerprintInput never references LogVerbosity",
+        "src/ArrTags/Artwork/ArtworkRegenerationPlanner.cs:152-188 ComputeDesiredFingerprint constructs the real RenderFingerprintInput from configurationFingerprint/badgeDefinitions/outputPolicy/versions",
+        "src/ArrTags/Rendering/SkiaBadgeRenderer.cs:284-302 the real render path constructs the same input from request.ConfigurationFingerprint",
+        "src/ArrTags/Rendering/RenderFingerprintInput.cs:33-81 the type has no verbosity member (structural guarantee, not test-established)"
+      ],
+      "status": "open",
+      "recommended_action": "Drive the real path with two snapshots differing only in LogVerbosity (e.g. ArtworkRegenerationPlanner.ComputeDesiredFingerprint or Decide with the published-state fixture) and assert the desired/published fingerprint is identical and the decision is Skip; that single test would cover output-fingerprint exclusion, RenderVersion, and 'never republishes artwork' on the production path."
+    },
+    {
+      "id": "TQ-10.1-02",
+      "severity": "LOW",
+      "area": "meaningfulness",
+      "issue": "The RenderVersion assertions restate a compile-time constant. RenderVersion.CurrentRendererVersion is a const int, and the test-built inputs never pass a rendererVersion argument, so 'input.RendererVersion == RenderVersion.CurrentRendererVersion' cannot vary with verbosity or anything else. The assertion adds no evidence for the 'never changes RenderVersion' claim.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogVerbosityTests.cs:216-218",
+        "tests/ArrTags.Tests/LogVerbosityTests.cs:307-321 BuildFingerprintInput does not pass rendererVersion",
+        "src/ArrTags/Rendering/RenderVersion.cs:20 public const int CurrentRendererVersion = 2"
+      ],
+      "status": "noted",
+      "recommended_action": "Replace with a behavioral assertion (a verbosity-only snapshot replacement yields the same planner desired fingerprint / a Skip decision) or drop the tautological assertion and rely on the structural const guarantee."
+    },
+    {
+      "id": "TQ-10.1-03",
+      "severity": "LOW",
+      "area": "meaningfulness",
+      "issue": "HostLoggingResolvesWithArrTagsCategoryPrefixes largely restates framework and namespace behavior. ILogger<Plugin> resolves with category typeof(Plugin).FullName by Microsoft.Extensions.Logging convention, and the 'ArrTags.' prefix is a property of the Plugin type's namespace rather than anything ArrTags configures (this task adds no log call site). The test does prove the host provider is reachable through the container after registration, but the category assertions are near-tautological.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogVerbosityTests.cs:265-279",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:44-48 registers only ILogVerbosityGate and no logging services"
+      ],
+      "status": "noted",
+      "recommended_action": "Keep as boundary documentation; when task 10.2 adds call sites, assert the actual emitted categories/SourceContext rather than the type-name convention."
+    },
+    {
+      "id": "TQ-10.1-04",
+      "severity": "INFORMATIONAL",
+      "area": "coverage",
+      "issue": "'Changing verbosity never republishes artwork' (ADR-020 clause 5, docs/architecture.md:303) is established only transitively: no test replaces the snapshot with a verbosity-only change through the regeneration planner or publishing pipeline. It follows logically from the proven fingerprint equality plus the existing fingerprint-gated Skip in ArtworkRegenerationPlanner, and the task's stated test list did not require an end-to-end republish test.",
+      "evidence": [
+        "docs/decisions.md:2542-2544 (ADR-020 clause 5)",
+        "docs/architecture.md:301-303",
+        "src/ArrTags/Artwork/ArtworkRegenerationPlanner.cs:106-111 fingerprint-gated Skip"
+      ],
+      "status": "not_required",
+      "recommended_action": "No action required for 10.1; the planner-level test recommended in TQ-10.1-01 would close this as a side effect."
+    },
+    {
+      "id": "TQ-10.1-05",
+      "severity": "INFORMATIONAL",
+      "area": "skips",
+      "issue": "The pinned PluginsController enum-string deserialization is covered only by the host-guarded fact, which is skipped in the shipping (no ARRTAGS_JELLYFIN_HOST_DIR) configuration. The non-guarded JSON test uses Jellyfin.Extensions.Json.JsonDefaults.Options directly. This is honestly labeled: the worker report records it as a known limitation owned by the consolidated live pinned-host verification (task 14.3), and no shipped behavior is claimed as verified while its test is skipped.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogVerbosityTests.cs:90-100 PostRoundTripPopulatesLogVerbosity uses JsonDefaults.Options",
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:133 [JellyfinHostFact] (skipped, ARRTAGS_JELLYFIN_HOST_DIR unset)",
+        "docs/implementation/10.1/worker-report.json known_limitations[3]"
+      ],
+      "status": "noted",
+      "recommended_action": "None for 10.1; confirm during the task 14.3 live run."
+    }
+  ],
+  "matrix_observed": {
+    "default": "Failed 0, Passed 1298, Skipped 63, Total 1361",
+    "host_guarded": "Not run in this environment (ARRTAGS_JELLYFIN_HOST_DIR unset); the host-guarded facts are within the 63 default-run skips",
+    "forced_native": "Not run in this environment (ARRTAGS_SKIA_COMPAT unset); the native Skia golden/cross-runtime cases are within the 63 default-run skips",
+    "log_verbosity_focused": "Failed 0, Passed 26, Skipped 0, Total 26 (FullyQualifiedName~LogVerbosityTests)"
+  },
+  "substitutes_checked": [
+    "Host ILoggerFactory (new LoggerFactory()) in RegistratorDoesNotReplaceTheHostLoggerFactoryOrRegisterAProvider - appropriate double; the test detects a second ILoggerFactory registration via Assert.Same and an ILoggerProvider descriptor via Assert.DoesNotContain, so it is non-vacuous",
+    "CapturingLoggerProvider (test-local ILoggerProvider) in HostLoggingResolvesWithArrTagsCategoryPrefixes - appropriate host-pipeline double; records the resolved category",
+    "No ArrTags production type is doubled in the fingerprint tests: PluginConfigurationSnapshot.From, RendererConfigurationResolver.ComputeFingerprint, RenderFingerprint.ComputeOutputFingerprint/ComputeRequestFingerprint, ConfigurationSnapshotService, LogVerbosityGate and ArrTagsServiceRegistrator are all exercised directly"
+  ],
+  "skips_checked": [
+    "Default run has 63 skips, identical to the pre-task baseline (63); LogVerbosityTests itself has 0 skips",
+    "Skips are the [JellyfinHostFact] pinned-host facts (ARRTAGS_JELLYFIN_HOST_DIR unset) and the native Skia / non-canonical-golden guarded cases (ARRTAGS_SKIA_COMPAT / ARRTAGS_NONCANONICAL_GOLDENS unset); guard messages are explicit and fail when the variable is set but the asset is missing",
+    "No task 10.1 behavior is asserted only by a skipped test; the pinned-host settings-page and PluginsController gaps are recorded as limitations"
+  ],
+  "determinism_checked": [
+    "Full suite run twice: identical Failed 0, Passed 1298, Skipped 63, Total 1361",
+    "Focused LogVerbosityTests run: 26 passed, 0 failed, 0 skipped, repeated consistently",
+    "No wall-clock, filesystem-order, network, or process-global dependence in LogVerbosityTests; per-test ServiceCollection/ConfigurationSnapshotService instances and a test-local ConcurrentBag only",
+    "Fingerprint determinism verified structurally: LogVerbosity appears only in src/ArrTags/Configuration (enum/property/validator/snapshot), src/ArrTags/PluginLifecycle (gate/registrator) and config.html; it is absent from src/ArrTags/Rendering and the artwork fingerprint code, and RenderVersion is a const, so there is no path by which verbosity enters an output fingerprint or changes RenderVersion",
+    "Config-fingerprint exclusion test is non-vacuous: it guards that the two snapshots differ in LogVerbosity (Assert.NotEqual) and then asserts equal RendererConfigurationFingerprint computed by the real PluginConfigurationSnapshot.From/RendererConfigurationResolver path",
+    "Bounded enum validation covered: undefined level rejected with a secret-free message, and ConfigurationSnapshotService.TryReplace retains the last valid snapshot",
+    "Gating per level covered for all six levels including Off (EffectiveLevel None, IsEnabled false); a replaced snapshot changes the gate without a restart, including through the registrator-resolved service",
+    "Page/XML exposure covered: emby-select with all six option values, config.LogVerbosity load/save references, XML round-trip, and legacy XML without the element defaulting to Warning"
+  ],
+  "summary": "The task's core claims are established. Fingerprint exclusion is non-vacuously proven on the real configuration-fingerprint path (two snapshots differing only in LogVerbosity produce the same RendererConfigurationFingerprint), and there is no code path by which verbosity enters an output fingerprint or changes RenderVersion (structural verification: LogVerbosity is absent from the Rendering/artwork fingerprint code and RenderVersion is a const). Bounded enum validation with a secret-free message, last-valid-snapshot retention, all six gating levels including Off, apply-without-restart through the registrator-resolved gate, the settings-page control, the legacy-XML Warning default, and the no-custom-ILoggerProvider/no-host-ILoggerFactory-replacement check are all genuinely tested and non-vacuous. Skips are honest and unchanged at 63; the suite is deterministic across repeated runs (1298/63/1361). The single material test-quality gap is TQ-10.1-01 (MEDIUM): the test named for renderer-output-fingerprint exclusion re-implements the RenderFingerprintInput assembly and would not fail if verbosity were added directly to the output fingerprint; its RenderVersion assertions are tautological (TQ-10.1-02). No BLOCKER or HIGH finding and no must-fix item: the documented matrix accurately reflects what the suite establishes, so the verdict is CONCERNS with recommended (non-blocking) test strengthening rather than a clean PASS.",
+  "validation": {
+    "build": ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "full_test_run_1": ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1298, Skipped 63, Total 1361",
+    "full_test_run_2": ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1298, Skipped 63, Total 1361 (identical; deterministic)",
+    "focused_run": "dotnet test --filter FullyQualifiedName~LogVerbosityTests -> Failed 0, Passed 26, Skipped 0, Total 26",
+    "worker_report_counts_match": "Claimed after-state 1298/63/1361 and baseline 1272/63/1335 both reproduce; +26 passed, +26 total, 0 new skips",
+    "scope": "Read-only audit; no production or test code modified; no commit created; scratch output under /tmp/final-review/test-quality/"
+  }
+}

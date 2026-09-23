@@ -41,6 +41,12 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<IPluginSecretResolver>(
             static serviceProvider => serviceProvider.GetRequiredService<ConfigurationSnapshotService>());
 
+        // ADR-020 clause 3: per-plugin verbosity is a plugin-owned gate over the
+        // current configuration snapshot. It resolves ILogger<T>/ILoggerFactory
+        // through the host DI; ArrTags registers no custom ILoggerProvider/sink
+        // and does not replace the host ILoggerFactory.
+        serviceCollection.TryAddSingleton<ILogVerbosityGate, LogVerbosityGate>();
+
         // ADR-021: the administrator-visible rejection surfacing is isolated
         // behind the plugin-owned IConfigurationRejectionNotifier boundary; the
         // Jellyfin implementation resolves the host IActivityManager lazily and

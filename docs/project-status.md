@@ -636,6 +636,15 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 
 Next tasks:
 
+- Phase 10 — Logging with configurable verbosity (v1.1) task 10.1 (logging
+  foundation, verbosity configuration, and fingerprint exclusion) is complete:
+  the bounded `LogVerbosity` setting (default `Warning`) is validated and
+  exposed through the settings page and XML, a plugin-owned `ILogVerbosityGate`
+  gates log levels from the current snapshot without a restart, host logging is
+  resolved through DI with `ArrTags.*` categories and no custom provider is
+  registered, and verbosity is excluded from the renderer/configuration
+  fingerprints and `RenderVersion`. Tasks 10.2 (log call sites and volume
+  bounds) and 10.3 (SEC-5 rewrite and logging security review) remain.
 - Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is
   complete at the task level: tasks 9.1 (configuration round-trip spike, blocking
   prerequisite), 9.2 (dashboard settings page and embedded page resource), 9.3

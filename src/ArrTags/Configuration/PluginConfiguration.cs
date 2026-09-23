@@ -17,6 +17,15 @@ public class PluginConfiguration : BasePluginConfiguration
     private Collection<string> _enabledLibraries = new Collection<string>();
 
     /// <summary>
+    /// Gets or sets the bounded per-plugin log verbosity (ADR-020 clause 2). It
+    /// defaults to <see cref="LogVerbosity.Warning"/> so normal operation stays
+    /// quiet, and it is validated at configuration load. It is not
+    /// output-affecting: it is excluded from the renderer and configuration
+    /// fingerprints and never changes <see cref="Rendering.RenderVersion"/>.
+    /// </summary>
+    public LogVerbosity LogVerbosity { get; set; } = LogVerbosity.Warning;
+
+    /// <summary>
     /// Gets or sets the Sonarr connection configuration.
     /// </summary>
     public ArrConnectionConfiguration Sonarr { get; set; } = new ArrConnectionConfiguration();

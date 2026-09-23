@@ -1,0 +1,32 @@
+{
+  "task": "10.1",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction round 2 for task 10.1 (implementation unchanged; production behavior unchanged). Correction 1 (TQ-10.1-01, MEDIUM) replaced the vacuous renderer-output-fingerprint test with ChangingVerbosityDoesNotChangeTheProductionRegenerationDecision, which drives the real production path: two PluginConfigurationSnapshot values that differ only in LogVerbosity feed ArtworkRegenerationPlanner.ComputeDesiredFingerprint and ArtworkRegenerationPlanner.Decide with their own snapshot-derived BadgeDefinitions, RendererOutputPolicy, and RendererConfigurationFingerprint. The warning snapshot's desired fingerprint is stored as the published state's PublishedFingerprint, and the test asserts the desired fingerprints for the warning and trace snapshots are equal and that both Decide calls return Skip with a null DesiredFingerprint. The test is non-vacuous: I temporarily threaded LogVerbosity into PluginConfigurationSnapshot.From's rendererConfigurationFingerprint and the strengthened test (and the configuration-fingerprint test) failed, then reverted the temporary mutation and reconfirmed green. This also closes TQ-10.1-02 by dropping the tautological RenderVersion assertions on test-built inputs (no fake version added) and TQ-10.1-04 by asserting the production planner's fingerprint-gated Skip for a verbosity-only change, so 'changing verbosity never republishes artwork' is now proven on the production path rather than transitively. The local BuildFingerprintInput helper and the unused ItemId field/imports were removed; test-local PublishedState/SourceA fixtures were added following ArtworkRegenerationPlannerTests conventions. Correction 2 (implementation-reviewer finding 10.1-F1) updated the docs/architecture.md line-3 status line: it now records Phase 9 as complete (Gate 9 met; tag v1.1.0-phase9) and Phase 10 task 10.1 as adding the bounded LogVerbosity setting and the plugin-owned logging/verbosity gate with tasks 10.2-10.3 remaining, replacing the stale 'pending its independent phase review and tag' wording. No other part of that line or document was rewritten; SEC-5 was not touched and no production log call site was added.",
+  "validation": [
+    "Correction 1 non-vacuousness check: temporarily changed PluginConfigurationSnapshot.From to append configuration.LogVerbosity to the renderer configuration fingerprint, ran dotnet test --filter FullyQualifiedName~LogVerbosityTests -> Failed! - Failed: 2, Passed: 24, Skipped: 0, Total: 26 (ChangingVerbosityDoesNotChangeTheProductionRegenerationDecision and ChangingVerbosityDoesNotChangeTheRendererConfigurationFingerprint both failed). The temporary mutation was then reverted from a task-owned backup (/tmp/10.1, now removed) and the file reconfirmed to contain only the legitimate configuration.LogVerbosity mapping argument.",
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~LogVerbosityTests\" -> Passed! - Failed: 0, Passed: 26, Skipped: 0, Total: 26.",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1298, Skipped: 63, Total: 1361 (attempt-1 after-state was Failed 0, Passed 1298, Skipped 63, Total 1361; the renamed test replaced one test, so the count is unchanged and no new skips were introduced).",
+    "git diff inspection: attempt-2 changes are limited to tests/ArrTags.Tests/LogVerbosityTests.cs and docs/architecture.md (plus this report); src/ArrTags production files are unchanged from attempt 1 (PluginConfigurationSnapshot.cs diff is exactly the attempt-1 LogVerbosity mapping)."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/LogVerbosityTests.cs",
+    "docs/architecture.md",
+    "docs/implementation/10.1/worker-report.json"
+  ],
+  "known_limitations": [
+    "No production log call site exists yet. Exact behaviour: ArrTags still emits no log records at any verbosity because the provider/matching/metadata/artwork/queue/reconciliation/webhook/lifecycle call sites are task 10.2. Precondition: this task only. Consequence: the verbosity setting has no observable log output until 10.2 lands; the ILogVerbosityGate boundary and host DI resolution are in place for 10.2 to gate every call.",
+    "The bounded log-volume (rate-limit/repetition-suppression) limit row and the redaction tests at every level are task 10.2 (ADR-020 clauses 4 and 6); this task adds no redaction-sensitive call sites.",
+    "docs/limitations.md SEC-5 is deliberately unchanged. Its current statement that the plugin has no logging call sites remains accurate for this task; the SEC-5 rewrite to the redaction contract is task 10.3.",
+    "The settings page's emby-select control and the enum string round-trip through jellyfin-web were not live-verified. Exact behaviour: the embedded page source, the pinned PluginsController JSON deserialization of the enum string, and the XML round-trip are covered by tests; the live dashboard load/save confirmation is owned by the consolidated live pinned-host verification (task 14.3). Precondition: no live host is used in this environment. Consequence: a jellyfin-web-specific rendering issue with the control would not be caught here.",
+    "Host-guarded tests (JellyfinHostFact and packaged-plugin facts) remain skipped (63 skips, identical to the attempt-1 baseline) because ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment.",
+    "TQ-10.1-03 remains noted but not actioned (as the reviewer recommended): HostLoggingResolvesWithArrTagsCategoryPrefixes proves the host provider is reachable through the container after registration and records the resolved category, but the category value is the Microsoft.Extensions.Logging type-name convention; asserting actual emitted SourceContext categories belongs to task 10.2 when call sites exist."
+  ],
+  "ready_for_next_task": true
+}

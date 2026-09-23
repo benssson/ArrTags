@@ -2889,3 +2889,48 @@ reconciliation (the running trigger loop leaves the bounded queue empty).
 `./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
 0, Passed 1272, Skipped 63, Total 1335 (baseline Failed 0, Passed 1270, Skipped
 63, Total 1333; +2 passed, +2 total, 0 new skips).
+
+## Phase 10 - Logging with configurable verbosity (v1.1)
+
+### Task 10.1 - Logging foundation, verbosity configuration, and fingerprint exclusion
+
+**Status:** Complete.
+
+Adds the logging foundation and the bounded verbosity setting for Goal F
+(ADR-020 clauses 1, 2, 3, and 5). `LogVerbosity` (`Off`, `Error`, `Warning`,
+`Information`, `Debug`, `Trace`; default `Warning`) is added to
+`PluginConfiguration`, validated at configuration load by
+`PluginConfigurationValidator` (an undefined level rejects the candidate), and
+exposed through the ADR-016 settings page (`emby-select` control with a
+`config.LogVerbosity` round-trip) and the XML configuration (the persisted XML
+shape stays loadable, and an existing file without the element keeps the
+`Warning` default). The immutable `PluginConfigurationSnapshot` carries the
+validated value.
+
+`ILogVerbosityGate`/`LogVerbosityGate` (in `src/ArrTags/PluginLifecycle`) is the
+plugin-owned, provider-neutral gating boundary: it reads the effective verbosity
+from the current configuration snapshot on every call and decides whether a
+`Microsoft.Extensions.Logging.LogLevel` is enabled, so a saved change applies
+without a host restart. `ArrTagsServiceRegistrator` registers the gate and
+resolves `ILogger<T>`/`ILoggerFactory` through the host DI with `ArrTags.*`
+category prefixes; it registers no custom `ILoggerProvider`/sink and does not
+replace the host `ILoggerFactory`. Verbosity is not output-affecting: it is
+excluded from the renderer and configuration output fingerprints and does not
+change `RenderVersion`, so changing it never republishes artwork.
+
+New tests (`tests/ArrTags.Tests/LogVerbosityTests.cs`, 26 cases) cover the enum
+validation and secret-free message, the JSON and XML round-trips and the legacy
+XML default, the snapshot mapping and last-valid retention on an undefined
+level, per-level gating, the gate's application of a replaced snapshot without a
+restart, DI resolution of the gate and of host logging with the `ArrTags.*`
+category prefix, the no-provider/no-host-factory-replacement check, the settings
+page control, and the renderer/configuration fingerprint and `RenderVersion`
+exclusion. `DashboardSettingsPageTests` was updated for the added `emby-select`
+requirement.
+
+Documentation: `docs/architecture.md` sections 6 (logging and verbosity) and 12
+(the verbosity row), `docs/data-model.md` 3.12, and `README.md`.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1298, Skipped 63, Total 1361 (baseline Failed 0, Passed 1272, Skipped
+63, Total 1335; +26 passed, +26 total, 0 new skips).

@@ -24,6 +24,7 @@ public sealed class PluginConfigurationSnapshot
         bool radarrAllowInsecureTls,
         bool radarrHasApiKey,
         bool webhookConfigured,
+        LogVerbosity logVerbosity,
         IReadOnlyList<string> enabledLibraries,
         bool badgeMoviePosters,
         bool badgeEpisodePosters,
@@ -44,6 +45,7 @@ public sealed class PluginConfigurationSnapshot
         RadarrAllowInsecureTls = radarrAllowInsecureTls;
         RadarrHasApiKey = radarrHasApiKey;
         WebhookConfigured = webhookConfigured;
+        LogVerbosity = logVerbosity;
         EnabledLibraries = enabledLibraries;
         BadgeMoviePosters = badgeMoviePosters;
         BadgeEpisodePosters = badgeEpisodePosters;
@@ -113,6 +115,13 @@ public sealed class PluginConfigurationSnapshot
     /// Gets a value indicating whether an inbound webhook secret is configured.
     /// </summary>
     public bool WebhookConfigured { get; }
+
+    /// <summary>
+    /// Gets the validated, bounded per-plugin log verbosity. It is not
+    /// output-affecting and is excluded from the renderer configuration
+    /// fingerprint.
+    /// </summary>
+    public LogVerbosity LogVerbosity { get; }
 
     /// <summary>
     /// Gets the configured libraries eligible for badges.
@@ -197,6 +206,7 @@ public sealed class PluginConfigurationSnapshot
             radarr.AllowInsecureTls,
             !string.IsNullOrEmpty(radarr.ApiKey),
             !string.IsNullOrEmpty(configuration.WebhookSecret),
+            configuration.LogVerbosity,
             libraries,
             configuration.BadgeMoviePosters,
             configuration.BadgeEpisodePosters,
