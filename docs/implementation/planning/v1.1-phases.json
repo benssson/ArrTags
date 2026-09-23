@@ -1,0 +1,399 @@
+{
+  "name": "v1.1-phases",
+  "milestone": "v1.1",
+  "change": "Derive the accepted v1.1 scope (docs/planning/v1.1.md, Goals A-F, DG-10..DG-14 resolved by ADR-016..ADR-020) into phases 9-14 with objectives, deliverables, acceptance criteria, exit gates, and authoritative execution orders in PLANS.md.",
+  "active_scope": "docs/planning/v1.1.md",
+  "release": {
+    "version": "1.1.0.0",
+    "release_tag": "v1.1.0",
+    "phase_tag_convention": "v1.1.0-phase<N>"
+  },
+  "prior_scope": {
+    "v1_phases": "1-8 complete; not restructured, reordered, or reopened",
+    "v1_1_1": {
+      "outline_task": "V1.1-1",
+      "status": "COMPLETE",
+      "commit": "5ec8ae2",
+      "note": "v1.1 plan, ADR-016..ADR-020, and GOALS.md/PLANS.md pointers; not re-planned as open work."
+    }
+  },
+  "phases": [
+    {
+      "id": "9",
+      "name": "Dashboard settings UI and runtime configuration activation",
+      "goal": "Goal A (ADR-016)",
+      "objective": "Add a Jellyfin dashboard settings page for ArrTags and wire the elevation-gated save path to runtime configuration activation, so a saved change applies without a host restart and triggers a bounded reconciliation that re-renders affected posters. Resolves limitation F2.",
+      "deliverables": [
+        "A proven get-only Collection<T> configuration round-trip (or the corrected configuration shape) as the blocking prerequisite.",
+        "A Jellyfin dashboard settings page (IHasWebPages plus embedded ArrTags.Configuration.config.html) that loads and saves the user-adjustable settings without embedding or returning any secret.",
+        "An elevation-gated save path through the supported PluginsController route with a Plugin.UpdateConfiguration override that activates a validated replacement and retains the last valid snapshot (and private secrets) on an invalid one.",
+        "Runtime activation and a bounded, non-blocking post-save reconciliation trigger.",
+        "Documentation updates: docs/architecture.md section 6, docs/data-model.md 3.12, docs/limitations.md F2, README.md Configuration."
+      ],
+      "acceptance_criteria": [
+        "A plugin settings page appears in the Jellyfin dashboard and loads its current configuration.",
+        "Saving a valid change applies it at runtime without a host restart; an invalid change is rejected and the last valid snapshot is retained.",
+        "A successful save triggers a bounded reconciliation so affected posters re-render with the new settings instead of waiting for the next scheduled run.",
+        "No secret is embedded in the page or returned beyond Jellyfin's existing admin configuration behavior.",
+        "Configuration is saved only through the elevation-gated supported path.",
+        "The get-only Collection<T> round-trip is proven (or the configuration shape is corrected) and no collection is silently dropped."
+      ],
+      "exit_gate": "Gate 9: tasks 9.1-9.5 meet their acceptance criteria; Goal A criteria met at the integration-test level (live confirmation owned by 14.3); phase review approved; tag v1.1.0-phase9 created. Resolves F2.",
+      "authoritative_execution_order": ["9.1", "9.2", "9.3", "9.4", "9.5"],
+      "tasks": [
+        {
+          "id": "9.1",
+          "name": "Configuration round-trip spike (blocking prerequisite)",
+          "traceability": "Goal A; ADR-016 clause 7; DG-10 verification requirement",
+          "dependencies": [],
+          "acceptance_criteria": "A test proves the POST round-trip populates the get-only collection properties, or the configuration shape is changed so it does; a save cannot silently drop EnabledLibraries or RendererConfiguration.Selectors.",
+          "decision_gates": ["DG-10 (resolved by ADR-016)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "9.2",
+          "name": "Dashboard settings page and embedded page resource",
+          "traceability": "Goal A; ADR-016 clauses 1, 2, 6, 7",
+          "dependencies": ["9.1"],
+          "acceptance_criteria": "A plugin settings page appears in the dashboard and loads current configuration; no secret embedded/returned; page-resource authorization confirmed.",
+          "decision_gates": ["DG-10 (resolved by ADR-016)"],
+          "review": "security-reviewer"
+        },
+        {
+          "id": "9.3",
+          "name": "Elevation-gated save path and runtime activation",
+          "traceability": "Goal A; ADR-016 clauses 3, 4, 5",
+          "dependencies": ["9.1", "9.2"],
+          "acceptance_criteria": "A valid change applies at runtime without restart; an invalid change is rejected with the last valid snapshot retained; configuration is saved only through the elevation-gated supported path.",
+          "decision_gates": ["DG-10 (resolved by ADR-016)"],
+          "review": "security-reviewer"
+        },
+        {
+          "id": "9.4",
+          "name": "Bounded post-save reconciliation trigger",
+          "traceability": "Goal A; ADR-016 clause 5",
+          "dependencies": ["9.3"],
+          "acceptance_criteria": "A successful save triggers a bounded reconciliation so affected posters re-render without waiting for the next scheduled run.",
+          "decision_gates": ["DG-10 (resolved by ADR-016)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "9.5",
+          "name": "Goal A documentation and integration verification",
+          "traceability": "Goal A; ADR-016; documentation checklist V1.1-2",
+          "dependencies": ["9.4"],
+          "acceptance_criteria": "Goal A acceptance criteria met at the integration-test level; F2 recorded as resolved; canonical docs describe the shipped behavior.",
+          "decision_gates": ["DG-10 (resolved by ADR-016)"],
+          "review": "documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "name": "Logging with configurable verbosity",
+      "goal": "Goal F (ADR-020)",
+      "objective": "Add plugin logging through the host's logging pipeline with a bounded, validated, secret-free per-plugin verbosity setting that applies without restart, and rewrite limitation SEC-5 from 'no logging call sites' to the redaction contract. The new logging path is security-reviewed.",
+      "deliverables": [
+        "ILogger<T>/ILoggerFactory logging through plugin DI with ArrTags.* logger categories.",
+        "A bounded verbosity setting (Off/Error/Warning/Information/Debug/Trace, default Warning) validated at configuration load and exposed through the ADR-016 settings UI and the XML configuration.",
+        "Plugin-owned verbosity gating from the current snapshot; no custom ILoggerProvider/sink and no replacement of the host ILoggerFactory.",
+        "Secret-free log call sites using only bounded, already-redacted types, with redaction tests at every verbosity level and bounded log volume.",
+        "The rewritten docs/limitations.md SEC-5 and the logging security review."
+      ],
+      "acceptance_criteria": [
+        "The plugin logs through the host logging pipeline at a configurable verbosity.",
+        "Verbosity is bounded, validated, secret-free, and applied without restart (via Goal A).",
+        "Every log call is secret-free; redaction is covered by tests at every level.",
+        "Verbosity does not affect rendered output or output fingerprints.",
+        "SEC-5 is rewritten and the logging path is security-reviewed."
+      ],
+      "exit_gate": "Gate 10: tasks 10.1-10.3 meet their acceptance criteria; logging security review recorded with no open BLOCKER/HIGH; phase review approved; tag v1.1.0-phase10 created.",
+      "authoritative_execution_order": ["10.1", "10.2", "10.3"],
+      "tasks": [
+        {
+          "id": "10.1",
+          "name": "Logging foundation, verbosity configuration, and fingerprint exclusion",
+          "traceability": "Goal F; ADR-020 clauses 1, 2, 3, 5; DG-14",
+          "dependencies": ["9.4"],
+          "acceptance_criteria": "Logs through the host pipeline at a configurable verbosity; verbosity bounded/validated/secret-free/applied without restart; verbosity does not affect rendered output or output fingerprints.",
+          "decision_gates": ["DG-14 (resolved by ADR-020)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "10.2",
+          "name": "Bounded, redacted log call sites and volume bounds",
+          "traceability": "Goal F; ADR-020 clauses 4, 6",
+          "dependencies": ["10.1"],
+          "acceptance_criteria": "Every log call is secret-free; redaction covered by tests at every level; log volume bounded with the architecture section 12 limit row recorded.",
+          "decision_gates": ["DG-14 (resolved by ADR-020)"],
+          "review": "security-reviewer"
+        },
+        {
+          "id": "10.3",
+          "name": "SEC-5 rewrite, documentation, and logging security review",
+          "traceability": "Goal F; ADR-020 clause 8; verification requirements section 9",
+          "dependencies": ["10.2"],
+          "acceptance_criteria": "SEC-5 is rewritten; the logging path is security-reviewed.",
+          "decision_gates": ["DG-14 (resolved by ADR-020)"],
+          "review": "security-reviewer"
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "name": "Provider inventory cache and library-refresh-driven refresh",
+      "goal": "Goal C (ADR-018)",
+      "objective": "Add a bounded, in-memory, per-connection provider inventory cache so one provider library read serves a reconciliation window, with ArrTags-side invalidation (webhook, Jellyfin library refresh/post-scan, scheduled/manual reconciliation, and a bounded TTL fallback). Resolves limitation F1.",
+      "deliverables": [
+        "A canonical, secret-free inventory cache shape per ArrConnection (provider library list plus per-record file resources), distinct from MetadataCacheEntry.",
+        "Inventory TTL and entry/size bounds added to OperationalLimits and docs/architecture.md section 12, validated at configuration load.",
+        "Provider-client integration with the bulk selection endpoints so multiple records are read in one request.",
+        "ArrTags-side invalidation across the complete trigger set; no provider conditional request, revision token, history/since watermark, or SignalR dependency.",
+        "Documentation updates: docs/architecture.md sections 8 and 12, docs/data-model.md section 6, docs/limitations.md F1."
+      ],
+      "acceptance_criteria": [
+        "One provider library read per connection serves a reconciliation window instead of one read per work item.",
+        "Invalidation is ArrTags-side (webhook, Jellyfin library refresh/post-scan, scheduled/manual reconciliation, bounded TTL); no provider conditional request, revision token, or SignalR dependency.",
+        "The cache is bounded and secret-free, with validated TTL/size limits.",
+        "Provider failure keeps the existing bounded last-known-good behavior."
+      ],
+      "exit_gate": "Gate 11: tasks 11.1-11.4 meet their acceptance criteria; phase review approved; tag v1.1.0-phase11 created. Resolves F1.",
+      "authoritative_execution_order": ["11.1", "11.2", "11.3", "11.4"],
+      "tasks": [
+        {
+          "id": "11.1",
+          "name": "Inventory cache model, bounds, and limits",
+          "traceability": "Goal C; ADR-018 clauses 1, 5, 6, 7; DG-12",
+          "dependencies": ["9.4"],
+          "acceptance_criteria": "The cache is bounded and secret-free with validated TTL/size limits; provider failure keeps the existing bounded last-known-good behavior.",
+          "decision_gates": ["DG-12 (resolved by ADR-018)"],
+          "review": "security-reviewer, test-quality-reviewer"
+        },
+        {
+          "id": "11.2",
+          "name": "Provider-client integration and bulk reads",
+          "traceability": "Goal C; ADR-018 clauses 2, 4",
+          "dependencies": ["11.1"],
+          "acceptance_criteria": "One provider library read per connection serves a reconciliation window; bulk reads avoid per-item reads.",
+          "decision_gates": ["DG-12 (resolved by ADR-018)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "11.3",
+          "name": "ArrTags-side invalidation",
+          "traceability": "Goal C; ADR-018 clause 3",
+          "dependencies": ["11.2"],
+          "acceptance_criteria": "Invalidation is ArrTags-side per ADR-018; no provider conditional request, revision token, history/since, or SignalR dependency; periodic scheduled reconciliation continues.",
+          "decision_gates": ["DG-12 (resolved by ADR-018)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "11.4",
+          "name": "Goal C documentation and integration verification",
+          "traceability": "Goal C; ADR-018; documentation checklist V1.1-4",
+          "dependencies": ["11.3"],
+          "acceptance_criteria": "F1 recorded as resolved; docs describe the shipped cache behavior; integration tests pass.",
+          "decision_gates": ["DG-12 (resolved by ADR-018)"],
+          "review": "documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "name": "Badge value allowlist and badge size/position",
+      "goals": ["Goal B (ADR-017)", "Goal E (ADR-019)"],
+      "objective": "Add the per-selector badge value allowlist and the configurable badge size/position, with a single coordinated renderer-configuration schema and RenderVersion advance and regenerated goldens.",
+      "why_one_phase": "Both goals are output-affecting and ADR-017/ADR-019 define a single shared advance (RendererConfiguration.CurrentSchemaVersion 1->2 and RenderVersion.CurrentRendererVersion 2->3) with one golden regeneration; splitting them would double the advance or leave one goal's RenderVersion criterion unmet at its own gate.",
+      "deliverables": [
+        "Per-selector AllowedValues on BadgeSelectorConfiguration, bounded and validated, mapped into the resolved BadgeDefinition and included in the renderer configuration fingerprint.",
+        "The allowlist filter applied in the documented order (value resolution -> allowlist filter -> template -> normalization/truncation -> layout).",
+        "BadgePosition (four corners plus center) and BadgeSize (Small/Medium/Large) on RendererConfiguration, carried on the resolved RenderOutputPolicy, with rail packing, status-pill placement, and safe-area behavior defined per anchor.",
+        "The coordinated schema/RenderVersion advance and the regenerated goldens.",
+        "Documentation: docs/architecture.md section 9, docs/data-model.md 3.6/3.12, README.md, docs/decisions.md ADR-019 and the superseded notes in ADR-009/ADR-010."
+      ],
+      "acceptance_criteria": [
+        "A configured allowlist restricts rendering to the listed values.",
+        "The allowlist is bounded, validated at configuration load, and secret-free.",
+        "Unknown/absent values remain omitted; an empty allowlist means no restriction.",
+        "A configured size and anchor (four corners plus center) affect the rendered badge.",
+        "Rail packing, status-pill placement, and safe-area bounds are defined per anchor; no badge paints outside the safe area.",
+        "The change is output-affecting: the fingerprint changes, RenderVersion advances, and the goldens are regenerated."
+      ],
+      "exit_gate": "Gate 12: tasks 12.1-12.4 meet their acceptance criteria; the single coordinated schema/RenderVersion advance and golden regeneration are verified; phase review approved; tag v1.1.0-phase12 created.",
+      "authoritative_execution_order": ["12.1", "12.2", "12.3", "12.4"],
+      "tasks": [
+        {
+          "id": "12.1",
+          "name": "Allowlist configuration, bounds, validation, and fingerprint",
+          "traceability": "Goal B; ADR-017 clauses 1, 5, 6, 7; DG-11",
+          "dependencies": ["9.4"],
+          "acceptance_criteria": "The allowlist is bounded, validated at configuration load, and secret-free; the renderer configuration fingerprint changes when the allowlist changes.",
+          "decision_gates": ["DG-11 (resolved by ADR-017)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "12.2",
+          "name": "Allowlist resolution and renderer filtering order",
+          "traceability": "Goal B; ADR-017 clauses 2, 3, 4",
+          "dependencies": ["12.1"],
+          "acceptance_criteria": "A configured allowlist restricts rendering to the listed values; unknown/absent values remain omitted; an empty allowlist means no restriction.",
+          "decision_gates": ["DG-11 (resolved by ADR-017)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "12.3",
+          "name": "Badge size/position configuration and layout engine",
+          "traceability": "Goal E; ADR-019 clauses 1-5, 7; DG-13",
+          "dependencies": ["9.4"],
+          "acceptance_criteria": "A configured size and anchor affect the rendered badge; rail packing, status-pill placement, and safe-area bounds are defined per anchor; no badge paints outside the safe area.",
+          "decision_gates": ["DG-13 (resolved by ADR-019)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "12.4",
+          "name": "Coordinated schema/RenderVersion advance, golden regeneration, and documentation",
+          "traceability": "Goals B and E; ADR-017 clause 6; ADR-019 clause 6; verification requirements section 9",
+          "dependencies": ["12.1", "12.2", "12.3"],
+          "acceptance_criteria": "Output-affecting: the renderer configuration fingerprint changes, RenderVersion advances, and the goldens are regenerated; the default configuration reproduces the V1 output.",
+          "decision_gates": ["DG-11 (resolved by ADR-017)", "DG-13 (resolved by ADR-019)"],
+          "review": "test-quality-reviewer"
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "name": "README and documentation pass",
+      "goal": "Goal D plus v1.1 documentation reconciliation",
+      "objective": "Document the palette override fields that README.md names but never explains (Goal D), document the v1.1 features, and reconcile the canonical current-state documentation so no stale claim remains.",
+      "deliverables": [
+        "The four palette override fields documented with meaning, default colors, and the 4.5:1 contrast rule.",
+        "README documentation of the settings UI, allowlist, placement/size, verbosity, and provider inventory cache behavior, with the stale F1/F2 restart limitation notes removed.",
+        "A consistency sweep of docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md."
+      ],
+      "acceptance_criteria": [
+        "The four palette override fields are documented with their meaning, default colors, and the 4.5:1 contrast rule.",
+        "README.md documents the v1.1 settings UI, allowlist, placement/size, verbosity, and inventory cache behavior.",
+        "docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md are reconciled with no stale claim."
+      ],
+      "exit_gate": "Gate 13: tasks 13.1-13.2 meet their acceptance criteria; phase review approved; tag v1.1.0-phase13 created.",
+      "authoritative_execution_order": ["13.1", "13.2"],
+      "tasks": [
+        {
+          "id": "13.1",
+          "name": "README palette documentation and v1.1 feature documentation",
+          "traceability": "Goal D; documentation checklist V1.1-7",
+          "dependencies": ["12.4"],
+          "acceptance_criteria": "The four fields documented with meaning, default colors, and the 4.5:1 contrast rule; README describes the v1.1 features and no longer claims the removed limitations.",
+          "decision_gates": [],
+          "review": "documentation-maintainer"
+        },
+        {
+          "id": "13.2",
+          "name": "Canonical current-state reconciliation sweep",
+          "traceability": "documentation checklist V1.1-7",
+          "dependencies": ["13.1"],
+          "acceptance_criteria": "The canonical current-state surfaces describe the v1.1 state with no stale claim presented as current.",
+          "decision_gates": [],
+          "review": "documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "name": "v1.1 release",
+      "goal": "v1.1 release (outline task V1.1-8)",
+      "objective": "Bump ArrTags to 1.1.0.0, build and package reproducibly, run the full suite and the live pinned-host verification, run the release security review (including the ADR-016 settings UI surface), and complete the changelog/release documentation and the annotated v1.1.0 tag.",
+      "deliverables": [
+        "Version 1.1.0.0 in build.yaml and Directory.Build.props.",
+        "A reproducibly built artifacts/ArrTags_1.1.0.0.zip.",
+        "The full default and host-guarded test suites passing.",
+        "The recorded live pinned-host verification of the v1.1 matrix.",
+        "The release security-review report and any accepted limitations.",
+        "Updated docs/changelog.md, docs/project-status.md, docs/release/build-and-release.md, manifest.json, and build.yaml.",
+        "The annotated tag v1.1.0, created only after the release-reviewer gate; the GitHub publish remains the user's manual step."
+      ],
+      "acceptance_criteria": [
+        "The version is 1.1.0.0 in build.yaml and Directory.Build.props.",
+        "./build.sh package produces a reproducible artifacts/ArrTags_1.1.0.0.zip with recorded identity.",
+        "The full default and host-guarded suites pass.",
+        "The live pinned-host verification passes and is recorded.",
+        "The release security review is recorded with no open BLOCKER/HIGH.",
+        "docs/changelog.md and docs/project-status.md reflect v1.1.",
+        "The annotated tag v1.1.0 is created after the release-reviewer gate; the GitHub publish remains the user's manual step."
+      ],
+      "exit_gate": "Gate 14: tasks 14.1-14.5 meet their acceptance criteria; full suite and live pinned-host matrix pass; release security review has no open BLOCKER/HIGH; phase review approved; release-reviewer gate passes so the annotated tag v1.1.0 can be created.",
+      "authoritative_execution_order": ["14.1", "14.2", "14.3", "14.4", "14.5"],
+      "tasks": [
+        {
+          "id": "14.1",
+          "name": "Version bump and release metadata",
+          "traceability": "v1.1 release; v1.1 release identity section 1",
+          "dependencies": ["13.2"],
+          "acceptance_criteria": "The version is 1.1.0.0 in build.yaml and Directory.Build.props and the metadata accurately describes the shipped v1.1 behavior.",
+          "decision_gates": [],
+          "review": "implementation-reviewer (default)"
+        },
+        {
+          "id": "14.2",
+          "name": "Release build, full suite, reproducible artifact, and release documentation",
+          "traceability": "verification requirements section 9",
+          "dependencies": ["14.1"],
+          "acceptance_criteria": "The v1.1 artifact is reproducible and documented.",
+          "decision_gates": [],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "14.3",
+          "name": "Live pinned-host verification",
+          "traceability": "verification requirements section 9; Goals A, C, F",
+          "dependencies": ["14.2"],
+          "acceptance_criteria": "The live verification is recorded and passes.",
+          "decision_gates": [],
+          "review": "live-host-verifier"
+        },
+        {
+          "id": "14.4",
+          "name": "Release security review",
+          "traceability": "verification requirements section 9; ADR-016, ADR-020",
+          "dependencies": ["14.3"],
+          "acceptance_criteria": "The release security review is recorded with no open BLOCKER/HIGH.",
+          "decision_gates": [],
+          "review": "security-reviewer"
+        },
+        {
+          "id": "14.5",
+          "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.1.0 tag",
+          "traceability": "v1.1 release; documentation checklist V1.1-8",
+          "dependencies": ["14.4"],
+          "acceptance_criteria": "docs/changelog.md and docs/project-status.md reflect v1.1; the release-review gate passes; the annotated tag v1.1.0 exists; the GitHub publish remains the user's manual step.",
+          "decision_gates": [],
+          "review": "release-reviewer (gate)"
+        }
+      ]
+    }
+  ],
+  "decision_gates": [
+    {"gate": "DG-10", "goal": "A", "status": "resolved by ADR-016", "phase": "9", "verification_requirements": ["9.1 get-only Collection<T> round-trip test", "9.2 page-resource authorization confirmation"]},
+    {"gate": "DG-11", "goal": "B", "status": "resolved by ADR-017", "phase": "12"},
+    {"gate": "DG-12", "goal": "C", "status": "resolved by ADR-018", "phase": "11"},
+    {"gate": "DG-13", "goal": "E", "status": "resolved by ADR-019", "phase": "12"},
+    {"gate": "DG-14", "goal": "F", "status": "resolved by ADR-020", "phase": "10"}
+  ],
+  "risks": [
+    "v1.1: the get-only Collection<T> round-trip drops settings. Mitigated by task 9.1 as a blocking prerequisite; if it fails, the configuration shape is corrected and recorded before the page is built.",
+    "v1.1: the settings page or save path exposes a secret or bypasses elevation. Mitigated by the ADR-016 elevation-gated PluginsController path, a secret-free page, and security-reviewer reviews (9.2, 9.3, 14.4).",
+    "v1.1: logging creates a secret-exposure path. Mitigated by the ADR-020 redaction contract, per-level redaction tests, bounded volume, and a dedicated logging security review (10.2, 10.3).",
+    "v1.1: the output-affecting renderer changes are versioned inconsistently. Mitigated by one phase with a single coordinated schema/RenderVersion advance and one golden regeneration (12.4).",
+    "v1.1: the inventory cache serves stale metadata as current. Mitigated by a bounded TTL and ArrTags-side invalidation from the complete trigger set, with non-authoritative last-known-good (11.1-11.3)."
+  ],
+  "open_questions": [
+    "Planning interpretation (not a blocker): Goals B and E are grouped into one phase (Phase 12) because ADR-017 and ADR-019 define a single shared schema/RenderVersion advance; confirm this grouping is acceptable rather than two phases.",
+    "Planning interpretation (not a blocker): Goal F's logging security review (task 10.3, required by ADR-020 clause 8) and the release-level security review (task 14.4, required by v1.1 section 9) are planned as two reviews; confirm no consolidation is preferred.",
+    "Planning interpretation (not a blocker): per-goal acceptance criteria are met at the integration-test level within each goal phase, with the consolidated live pinned-host verification owned by task 14.3 (matching the V1 pattern); confirm this is acceptable.",
+    "Conditional: if task 9.1 proves the get-only Collection<T> round-trip does not populate the collections, the configuration-shape change (for example settable collection properties) must be recorded as a data-model/architecture change before the page is built; this may require an architecture decision."
+  ],
+  "planning_gaps": [
+    "No unresolved decision gate or unowned deliverable was found: every v1.1 goal acceptance criterion, ADR-016..ADR-020 obligation, decision gate, and section 9 verification requirement maps to at least one phase task (see the coverage in the phase tasks above).",
+    "The v1.1 documentation checklist (section 7) assigns README updates to V1.1-2, -3, -5, -6 and -7; the plan performs incremental README updates in Phases 9-12 and the consolidated Goal D pass in Phase 13, so README may be touched in more than one phase by design."
+  ]
+}

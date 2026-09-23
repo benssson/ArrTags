@@ -16,7 +16,7 @@ user-visible metadata is corrected, and the `v1.0.1` release (plugin version
 manifest are local only; the actual GitHub release, asset upload, and manifest
 push remain a manual user step with `scripts/publish-release.sh`. No functional
 plugin behavior changes in Phase 8 beyond version/release metadata. Phase 7 record: tasks 7.1, 7.2, 7.3, 7.4, 7.5,
-7.6, 7.7, and 7.8 are complete; all five Phase 7 acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`); the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin had persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treated that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deleted the install folder, and loaded no ArrTags plugin - which task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-running the live install/upgrade/reload/uninstall verification, now passing with the install folder and state preserved, so Phase 7 acceptance criterion 2 is met; the task 7.3 GOALS verification executed live end-to-end on the pinned musl host and met success criteria 1-4 and 9, covering criteria 5-8 only under a diagnostic SkiaSharp-sharing install or at the contract level, and found release blocker 7.3-F1 - the committed package's bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin during the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; task 7.8 resolves the duplicate-SkiaSharp packaging blocker 7.3-F1 by ADR-015 (the plugin compiles against the pinned SkiaSharp but shares the host's runtime instead of bundling it) and re-runs the live end-to-end verification, which now passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 is complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review on the live pinned host found no credential leakage and no unbounded path, a negative result; see the task 7.4 status); task 7.5 is complete - the release package is built from a clean checkout and is now byte-reproducible across clean builds, with the commands, inputs, artifact identity, and supported version ranges recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 is complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md` so nothing unsupported is presented as available; see the task 7.6 status). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items remain open and are consolidated in `docs/limitations.md` rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, a safe metrics/diagnostic-status surface, and the `QueueCapacity`-bounded reconciliation prefix. Phase 7 later performed live end-to-end verification on the pinned Jellyfin `12.0.0` musl host against the committed mock Arr fixture (tasks 7.3 and 7.8). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed).
+7.6, 7.7, and 7.8 are complete; all five Phase 7 acceptance criteria are met; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`); the task 7.2 live verification on the pinned Jellyfin `12.0.0` musl host found a release-blocking defect in the standard versioned install layout - once the plugin had persisted state under its Jellyfin-derived data folder `PluginsPath/ArrTags`, the next host restart treated that data folder and the versioned install folder `PluginsPath/ArrTags_<version>` as two versions of the same-named plugin, deleted the install folder, and loaded no ArrTags plugin - which task 7.7 resolves by relocating the plugin state root to `ProgramDataPath/ArrTags` outside `PluginsPath` (ADR-014) and re-running the live install/upgrade/reload/uninstall verification, now passing with the install folder and state preserved, so Phase 7 acceptance criterion 2 is met; the task 7.3 GOALS verification executed live end-to-end on the pinned musl host and met success criteria 1-4 and 9, covering criteria 5-8 only under a diagnostic SkiaSharp-sharing install or at the contract level, and found release blocker 7.3-F1 - the committed package's bundled `SkiaSharp.dll`/`libSkiaSharp.so` collide fatally with the host's own SkiaSharp and abort Jellyfin during the first badge publication - so `GOALS.md` criteria 5, 6, and 8 are not met as shipped and Phase 7 acceptance criteria 3 and 4 remain unchecked; task 7.8 resolves the duplicate-SkiaSharp packaging blocker 7.3-F1 by ADR-015 (the plugin compiles against the pinned SkiaSharp but shares the host's runtime instead of bundling it) and re-runs the live end-to-end verification, which now passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 is complete (the logs/diagnostics/HTTP-behavior/persisted-state secret-leakage and unbounded-data review on the live pinned host found no credential leakage and no unbounded path, a negative result; see the task 7.4 status); task 7.5 is complete - the release package is built from a clean checkout and is now byte-reproducible across clean builds, with the commands, inputs, artifact identity, and supported version ranges recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 is complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md` so nothing unsupported is presented as available; see the task 7.6 status). DG-9 (supported live Sonarr/Radarr release ranges and optional-field compatibility policy) is resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on the `/api/v3` contract, absent optional fields map to explicit unknown values, and a malformed required field fails closed as `ProviderIncompatible` with no version-number gate. Phase 6 tasks 6.1 through 6.9 are complete and Gate 6 is met at the integration-test level (tag `v0.1.0-phase6`): the bounded coalescing queue and hosted workers, atomic basis-revalidated metadata-state publication, artwork-operation recovery before new work, the metadata freshness policy separated from artwork retention and bounded artifact GC, fingerprint-gated artwork regeneration with retained-source repeat publication, the ADR-012 authenticated bounded webhook boundary, the restart/outage/corruption/pressure verification matrix, and the scheduled, post-scan, and manual/periodic reconciliation triggers with provider/render concurrency enforcement. Residual Phase 6 items remain open and are consolidated in `docs/limitations.md` rather than presented as solved: a provider inventory/catalogue cache (provider metadata is still fetched per work item, so Phase 6 acceptance criterion 1 is only partially met), wiring runtime configuration replacement, a safe metrics/diagnostic-status surface, and the `QueueCapacity`-bounded reconciliation prefix. Phase 7 later performed live end-to-end verification on the pinned Jellyfin `12.0.0` musl host against the committed mock Arr fixture (tasks 7.3 and 7.8). Milestone 1 (plugin foundation), Milestone 2 (Sonarr and Radarr integration), Milestone 3 (media matching, tasks 3.1 through 3.8), and Milestone 4 (badge rendering, tasks 4.1 through 4.11) are complete; Gates 1, 2, 3, and 4 are met. Phase 5 tasks 5.1 (confirm the item-image publication ABI and route variants), 5.2 (source-artwork provenance and guarded restoration state), 5.3 (the Jellyfin host source adapter), 5.4 (renderer managed/native packaging), 5.6 (the durable `ArtworkOperation` write-ahead record and store), 5.5 (publish completed artwork through Jellyfin's supported item-image APIs), 5.7 (postcondition reconciliation of uncertain publication outcomes), 5.8 (preserve the current usable artwork when source capture or rendering cannot safely complete), 5.9 (fence and drain publication operations during disable/uninstall and tombstone confirmed item removal), and 5.10 (the configured disable/limit policy for duplicate or overlapping badges, resolved by ADR-011), and 5.11 (standard server image-response integration tests for Web and other image-consuming clients) are complete; Phase 5 is complete and Gate 5 is met for the pinned 12.0.0 ABI at the integration-test level (validated in-process against the real pinned `ImageController` and the real ArrTags publication boundary; no live HTTP round-trip was performed). Phase 9 (v1.1) is in progress: task 9.1 (configuration round-trip spike, blocking prerequisite) is complete - the pinned elevation-gated `PluginsController` POST deserializes with `Jellyfin.Extensions.Json.JsonDefaults.Options`, which does not populate a get-only `Collection<T>`, so `PluginConfiguration.EnabledLibraries` and `RendererConfiguration.Selectors` are now settable (null-coalescing) and round-trip through the supported save path, with the persisted XML shape unchanged and existing `ArrTags.xml` files still loadable; tasks 9.2-9.5 remain.
 
 **Release security fix (SEC-1):** The 0.1.0 release security review found that
 MVC model binding read form/multipart request bodies before the anonymous
@@ -182,6 +182,15 @@ The orchestrator determines the active scope from this pointer (see the
 orchestrator's Active Scope Discovery rule). Update this pointer when a new
 accepted scope supersedes the current one.
 
+The accepted v1.1 scope is derived into **Phases 9-14** below. V1 Phases 1-8 are
+complete and are not restructured, reordered, or reopened. The v1.1 phase set,
+the V1.1-1..V1.1-8 task-outline mapping, and each phase's authoritative
+execution order are recorded in "v1.1 Milestones (Phases 9-14)". The first open
+implementation task is **9.2** (task 9.1, the configuration round-trip spike, is
+complete). V1.1-1 (this plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
+pointers) is already complete at commit `5ec8ae2` and is not re-planned as open
+work.
+
 ## How To Use This Plan
 
 - Keep milestone order unchanged. A milestone may be worked on only after its
@@ -215,6 +224,12 @@ accepted scope supersedes the current one.
 | 6 | Caching, updates & performance | Complete | Reconciliation, invalidation, persistence, and bounded work avoid unnecessary requests and processing. |
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 | 8 | Release distribution | Complete (tasks 8.1-8.6 complete; all seven Phase 8 acceptance criteria are met; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 is met - Phase 8 review approved in `docs/implementation/phase-8/phase-review.json`) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
+| 9 | Dashboard settings UI and runtime configuration activation (v1.1) | In progress (Phase 9 tasks 9.1-9.5; task 9.1 complete: the get-only `Collection<T>` round-trip was proven to fail under the pinned `JsonDefaults.Options`, so `EnabledLibraries`/`Renderer.Selectors` are now settable and round-trip; tasks 9.2-9.5 remain; resolves limitation F2) | A dashboard settings page loads and saves through the elevation-gated path, a valid change applies without restart with last-valid retention, and a successful save triggers a bounded reconciliation; the get-only `Collection<T>` round-trip is proven. Phase tag `v1.1.0-phase9`. |
+| 10 | Logging with configurable verbosity (v1.1) | Not started (Phase 10 tasks 10.1-10.3) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
+| 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | Not started (Phase 11 tasks 11.1-11.4; resolves limitation F1) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
+| 12 | Badge value allowlist and badge size/position (v1.1) | Not started (Phase 12 tasks 12.1-12.4; Goals B and E; ADR-017 and ADR-019) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
+| 13 | README and documentation pass (v1.1) | Not started (Phase 13 tasks 13.1-13.2; Goal D) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
+| 14 | v1.1 release | Not started (Phase 14 tasks 14.1-14.5) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
 
 ## Milestones
 
@@ -3329,6 +3344,1388 @@ is created. The GitHub release publication (which pushes the branch/tag and
 uploads the asset) is explicitly left to the user via
 `scripts/publish-release.sh --release-only`.
 
+## v1.1 Milestones (Phases 9-14)
+
+**Scope:** The accepted v1.1 scope is [`docs/planning/v1.1.md`](docs/planning/v1.1.md)
+(Goals A-F, decision gates DG-10..DG-14, dependency order section 5, task outline
+section 6, documentation checklist section 7, verification requirements section
+9). Its decision gates are resolved by ADR-016..ADR-020, which are binding for
+these phases. V1 Phases 1-8 are complete and are not restructured, reordered, or
+reopened; the v1.1 phases are additive, starting at Phase 9. V1.1-1 (the v1.1
+plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md pointers) is already complete at
+commit `5ec8ae2` and is not re-planned as open work.
+
+**Phase set and ordering.** The phases follow the v1.1 dependency order
+(section 5): Goal A first (the delivery vehicle for the new settings; resolves
+limitation F2), Goal F next (cross-cutting; rewrites SEC-5), Goal C next
+(independent; shares Goal A's runtime-configuration plumbing), Goals B and E last
+(both output-affecting), Goal D and the consolidated documentation pass next, and
+the v1.1 release last. Goals B and E are deliberately one phase: ADR-017 and
+ADR-019 define a **single shared** renderer-configuration schema advance
+(`1 -> 2`) and `RenderVersion` advance (`2 -> 3`) with one golden regeneration, so
+splitting them across phases would either double the advance or leave one goal's
+`RenderVersion` acceptance criterion unmet at its own gate.
+
+**Phase-transition criterion.** A phase is finalized only after its
+`phase-reviewer` gate passes (`reviewer_status: APPROVED`,
+`phase_complete: true`, `ready_for_next_phase: true`, no unresolved BLOCKER or
+HIGH findings) and the phase tag `v1.1.0-phase<N>` is created. Phases do not
+auto-advance: the orchestrator must not begin the next phase until the current
+phase gate is met and, where the process requires it, the user has approved
+continuation. Per-goal acceptance criteria are met at the integration-test level
+within the goal phase; the consolidated live pinned-host verification is owned by
+task 14.3 (this matches the V1 pattern, where Phase 5 criteria were met at the
+integration-test level and live verification landed in Phase 7).
+
+**Decision gates.** DG-10..DG-14 are all resolved (ADR-016..ADR-020) and no
+unresolved gate blocks any v1.1 task. ADR-016 clause 7's get-only `Collection<T>`
+round-trip test (task 9.1) and the page-resource authorization confirmation
+(task 9.2) are verification requirements of an already-resolved gate, not open
+decisions.
+
+**v1.1 phase map and task-outline mapping.** The flat task outline in
+`docs/planning/v1.1.md` section 6 maps to the phase tasks as follows, so no
+planned work is silently dropped:
+
+| Outline task | Goal(s) | Phase tasks |
+| --- | --- | --- |
+| V1.1-1 | planning | Complete (commit `5ec8ae2`): `docs/planning/v1.1.md`, ADR-016..ADR-020, GOALS.md/PLANS.md pointers. Not open work. |
+| V1.1-2 | A | 9.1, 9.2, 9.3, 9.4, 9.5 |
+| V1.1-3 | F | 10.1, 10.2, 10.3 |
+| V1.1-4 | C | 11.1, 11.2, 11.3, 11.4 |
+| V1.1-5 | B | 12.1, 12.2, 12.4 |
+| V1.1-6 | E | 12.3, 12.4 |
+| V1.1-7 | D + all | 13.1, 13.2 |
+| V1.1-8 | release | 14.1, 14.2, 14.3, 14.4, 14.5 |
+
+### 9. Dashboard settings UI and runtime configuration activation
+
+**Goal:** Goal A (ADR-016). **Release:** v1.1.0. **Phase tag:** `v1.1.0-phase9`.
+
+**Objective:** Add a Jellyfin dashboard settings page for ArrTags and wire the
+elevation-gated save path to runtime configuration activation, so a saved change
+applies without a host restart and triggers a bounded reconciliation that
+re-renders affected posters. This resolves limitation F2.
+
+**Deliverables:**
+
+- A proven get-only `Collection<T>` configuration round-trip (or the corrected
+  configuration shape) as the blocking prerequisite.
+- A Jellyfin dashboard settings page (`IHasWebPages` plus an embedded
+  `ArrTags.Configuration.config.html`) that loads and saves the user-adjustable
+  settings without embedding or returning any secret.
+- An elevation-gated save path through the supported `PluginsController` route,
+  with a `Plugin.UpdateConfiguration` override that activates a validated
+  replacement and retains the last valid snapshot (and private secrets) on an
+  invalid one.
+- Runtime activation and a bounded, non-blocking post-save reconciliation
+  trigger.
+- Documentation updates: `docs/architecture.md` section 6,
+  `docs/data-model.md` 3.12, `docs/limitations.md` F2, `README.md`
+  Configuration.
+
+**Tasks:**
+
+- [x] 9.1 Configuration round-trip spike (blocking prerequisite).
+- [ ] 9.2 Dashboard settings page and embedded page resource.
+- [ ] 9.3 Elevation-gated save path and runtime activation.
+- [ ] 9.4 Bounded post-save reconciliation trigger.
+- [ ] 9.5 Goal A documentation and integration verification.
+
+**Authoritative Phase 9 execution order:** 9.1, 9.2, 9.3, 9.4, 9.5. Task IDs are
+stable references only; this execution order is the canonical sequence. When the
+execution order and task numbering conflict, the execution order wins.
+
+| Order | Task | Depends on |
+| --- | --- | --- |
+| 9.1 | Configuration round-trip spike | — |
+| 9.2 | Dashboard settings page and embedded page resource | 9.1 |
+| 9.3 | Elevation-gated save path and runtime activation | 9.1, 9.2 |
+| 9.4 | Bounded post-save reconciliation trigger | 9.3 |
+| 9.5 | Goal A documentation and integration verification | 9.4 |
+
+#### 9.1 Configuration round-trip spike (blocking prerequisite)
+
+**Status:** Complete. The pinned Jellyfin 12.0.0 elevation-gated
+`PluginsController` POST deserializes with
+`Jellyfin.Extensions.Json.JsonDefaults.Options`, whose default `System.Text.Json`
+object-creation handling does not populate a get-only collection property, so the
+get-only `PluginConfiguration.EnabledLibraries` and
+`RendererConfiguration.Selectors` were silently dropped on a save. Both are now
+settable with a null-coalescing setter (null is treated as empty) and are
+populated by the round-trip; the persisted XML shape is unchanged, so existing
+`ArrTags.xml` files remain loadable. `ConfigurationRoundTripTests` proves the
+round-trip over the pinned options, the XML persist/reload, and one explicit
+assertion per collection, with a host-guarded `PluginsController` confirmation
+that is skipped without `ARRTAGS_JELLYFIN_HOST_DIR`. `./build.sh build` reported
+0 warnings / 0 errors; the default suite was Failed 0, Passed 1234, Skipped 61,
+Total 1295. Recorded in `docs/data-model.md` 3.12 and `docs/changelog.md`.
+
+**Objective:** Prove that the supported elevation-gated `PluginsController` POST
+round-trip populates ArrTags' get-only `Collection<T>` configuration properties
+(`PluginConfiguration.EnabledLibraries`, `RendererConfiguration.Selectors`); if
+it does not, change the configuration shape (for example settable collection
+properties) before the settings page is built, so a save cannot silently drop
+them (ADR-016 clause 7, first bullet).
+
+**Traceability:** Goal A; ADR-016 clause 7; v1.1 DG-10 verification requirement.
+
+**Dependencies:** None. First v1.1 task.
+
+**Affected files/components:** `src/ArrTags/Configuration/PluginConfiguration.cs`,
+`src/ArrTags/Configuration/RendererConfiguration.cs`, and the configuration
+round-trip test surface under `tests/ArrTags.Tests/`.
+
+**Work:**
+
+- Build a round-trip test that deserializes a representative settings payload
+  into `PluginConfiguration` using the same PascalCase `System.Text.Json` options
+  the pinned `PluginsController` uses, then persists and reloads through the
+  existing XML configuration boundary.
+- Assert that `EnabledLibraries` and `RendererConfiguration.Selectors` (and any
+  other get-only collection property) are populated rather than silently dropped.
+- If the round-trip fails, change the configuration shape so the collections
+  survive, record the shape change in `docs/data-model.md` 3.12, and, if it
+  changes an accepted configuration contract, surface it as an architecture
+  decision before the page is built rather than guessing.
+
+**Tests:** Unit round-trip test over the pinned deserialization options; XML
+persist/reload round-trip; an explicit assertion per get-only collection.
+Host-guarded confirmation against the pinned `PluginsController` where the pinned
+host is available.
+
+**Acceptance criteria:** A test proves the POST round-trip populates the get-only
+collection properties, or the configuration shape is changed so it does; a save
+cannot silently drop `EnabledLibraries` or `RendererConfiguration.Selectors`.
+
+**Decision gates:** DG-10 resolved by ADR-016; this task owns ADR-016 clause 7
+first bullet. No unresolved gate.
+
+**Review:** `test-quality-reviewer` (the honesty and determinism of the blocking
+round-trip test).
+
+**Documentation impact:** `docs/data-model.md` 3.12 if the configuration shape
+changes.
+
+**Definition of done:** The round-trip test passes (or the shape is corrected and
+the test passes), and the settings page is unblocked.
+
+#### 9.2 Dashboard settings page and embedded page resource
+
+**Status:** Not started.
+
+**Objective:** Implement `IHasWebPages` on `Plugin` and an embedded read/write
+settings page that loads and saves the user-adjustable settings without embedding
+or returning any secret, following the in-tree Jellyfin page pattern (ADR-016
+clauses 1, 2, 6, and 7 second bullet).
+
+**Traceability:** Goal A; ADR-016 clauses 1, 2, 6, 7.
+
+**Dependencies:** 9.1.
+
+**Affected files/components:** `src/ArrTags/Plugin.cs`,
+`src/ArrTags/Configuration/config.html` (new embedded resource),
+`src/ArrTags/ArrTags.csproj` (embedded resource logical name), page-resource and
+host-guarded tests under `tests/ArrTags.Tests/`, `README.md` Configuration,
+`docs/architecture.md` section 6.
+
+**Work:**
+
+- Implement `IHasWebPages.GetPages()` returning one `PluginPageInfo` (name
+  `ArrTags`, `EnableInMainMenu = false`) whose `EmbeddedResourcePath` is the
+  embedded `Configuration/config.html` with the explicit logical name
+  `ArrTags.Configuration.config.html`.
+- Build the page read/write for the user-adjustable settings only: provider
+  connections and secrets, the webhook secret, poster/library scope, renderer
+  selectors/templates/palette, the operational limits, and the settings surface
+  the later v1.1 goals add. Embed no secret and expose no secret value beyond
+  what Jellyfin's existing administrator configuration API already returns.
+- Confirm the anonymous static page-resource behavior on the pinned host
+  (host-guarded test or live confirmation) and record the explicit acceptance
+  from ADR-016 clause 6.
+
+**Tests:** `GetPages()` returns the expected page; the embedded resource logical
+name resolves; a host-guarded `DashboardController` fetch serves the page; the
+page source contains no secret or credential literal; the page fields match the
+configuration model.
+
+**Acceptance criteria:** A plugin settings page appears in the Jellyfin dashboard
+and loads its current configuration; no secret is embedded in the page or
+returned beyond Jellyfin's existing admin configuration behavior; the
+page-resource authorization behavior is confirmed.
+
+**Decision gates:** DG-10 resolved by ADR-016; this task owns ADR-016 clause 7
+second bullet.
+
+**Review:** `security-reviewer` (the new page surface and its secret-free
+guarantee).
+
+**Documentation impact:** `README.md` Configuration; `docs/architecture.md`
+section 6.
+
+**Definition of done:** The page loads in the dashboard with current values and
+contains no secret.
+
+#### 9.3 Elevation-gated save path and runtime activation
+
+**Status:** Not started.
+
+**Objective:** Override `Plugin.UpdateConfiguration` to call `base` and then
+`ConfigurationSnapshotService.TryReplace`, so a saved change is validated and
+activated at runtime without a host restart; an invalid candidate is rejected
+with the last valid snapshot (and private secrets) retained; the bounded
+validation failure is surfaced to the administrator; the override never throws
+into the host; and configuration is saved only through the supported
+elevation-gated `PluginsController` path with no custom save route (ADR-016
+clauses 3, 4, and 5 first bullet).
+
+**Traceability:** Goal A; ADR-016 clauses 3, 4, 5.
+
+**Dependencies:** 9.1, 9.2.
+
+**Affected files/components:** `src/ArrTags/Plugin.cs`,
+`src/ArrTags/Configuration/ConfigurationSnapshotService.cs`, configuration
+activation tests, `docs/data-model.md` 3.12, `docs/limitations.md` F2,
+`docs/architecture.md` section 6.
+
+**Work:**
+
+- Override `UpdateConfiguration`: call `base.UpdateConfiguration(configuration)`,
+  then `ConfigurationSnapshotService.TryReplace((PluginConfiguration)configuration,
+  out errors)`.
+- On success, activate the new public snapshot and private secret generation; on
+  failure, retain the last valid snapshot and private secrets and surface the
+  bounded, secret-free validation failure.
+- Ensure the override never throws into the host and that no custom
+  configuration-save route is added.
+- Verify that services that already resolve limits, concurrency, freshness,
+  retention, badge definitions, and the renderer output policy from the current
+  snapshot per operation observe the replaced snapshot.
+
+**Tests:** Valid save applies without restart; invalid save retains last-valid and
+private secrets; the validation failure is surfaced safely; no throw; no custom
+route; per-operation snapshot resolution observes the replacement.
+
+**Acceptance criteria:** Saving a valid change applies it at runtime without a
+host restart; an invalid change is rejected and the last valid snapshot is
+retained; configuration is saved only through the elevation-gated supported path.
+
+**Decision gates:** DG-10 resolved by ADR-016.
+
+**Review:** `security-reviewer` (elevation boundary, secret retention, no custom
+save route).
+
+**Documentation impact:** `docs/data-model.md` 3.12; `docs/limitations.md` F2;
+`docs/architecture.md` section 6.
+
+**Definition of done:** Valid/invalid save behavior and secret retention are
+deterministic and covered by tests.
+
+#### 9.4 Bounded post-save reconciliation trigger
+
+**Status:** Not started.
+
+**Objective:** On a successful replacement, enqueue a bounded, non-blocking
+reconciliation through the existing work-hint/reconciliation boundary so saved
+settings re-render existing posters promptly; the trigger is never a synchronous
+full-library scan, never throws into the host, and never blocks the save
+response (ADR-016 clause 5 second bullet).
+
+**Traceability:** Goal A; ADR-016 clause 5.
+
+**Dependencies:** 9.3.
+
+**Affected files/components:** `src/ArrTags/Plugin.cs`, `src/ArrTags/Updates`
+(the work-hint/reconciliation boundary), reconciliation trigger tests,
+`docs/architecture.md` section 6.
+
+**Work:**
+
+- After a successful `TryReplace`, enqueue a bounded reconciliation through the
+  existing `IWorkHintSink`/reconciliation boundary.
+- Do not perform a synchronous full-library scan; keep the enqueue bounded and
+  non-blocking; contain all exceptions.
+- Confirm that a work item whose `ConfigurationVersion` is older than the
+  current snapshot is superseded by the trigger, so existing posters update
+  without waiting for the next library event, webhook, post-scan, or scheduled
+  run.
+
+**Tests:** Bounded enqueue on a successful save; no synchronous scan; no throw
+and no save-response blocking; an existing published poster re-renders after the
+save; an invalid save triggers no reconciliation.
+
+**Acceptance criteria:** A successful save triggers a bounded reconciliation so
+affected posters re-render with the new settings instead of waiting for the next
+scheduled run.
+
+**Decision gates:** DG-10 resolved by ADR-016.
+
+**Review:** `test-quality-reviewer` (bounded, non-blocking trigger determinism).
+
+**Documentation impact:** `docs/architecture.md` section 6.
+
+**Definition of done:** The trigger is bounded, non-blocking, and covered by
+tests.
+
+#### 9.5 Goal A documentation and integration verification
+
+**Status:** Not started.
+
+**Objective:** Complete the Goal A documentation changes and verify the
+configuration round-trip, runtime activation, last-valid retention, and post-save
+reconciliation at the integration-test level.
+
+**Traceability:** Goal A; ADR-016; v1.1 documentation checklist V1.1-2.
+
+**Dependencies:** 9.4.
+
+**Affected files/components:** `docs/architecture.md` section 6,
+`docs/data-model.md` 3.12, `docs/limitations.md` F2, `README.md`, Goal A
+integration tests.
+
+**Work:** Reconcile the named documents; add or extend the integration tests that
+exercise the save -> activate -> bounded-reconcile flow without a live host.
+
+**Tests:** Configuration round-trip (get-only collections); valid/invalid save
+with last-valid retention; secret retention; bounded post-save reconciliation; no
+host restart.
+
+**Acceptance criteria:** The Goal A acceptance criteria are met at the
+integration-test level; `docs/limitations.md` F2 is recorded as resolved; the
+canonical docs describe the shipped behavior.
+
+**Decision gates:** DG-10 resolved by ADR-016.
+
+**Review:** `documentation-maintainer` (canonical current-state reconciliation).
+
+**Documentation impact:** the named documents.
+
+**Definition of done:** Goal A documentation is reconciled and the integration
+tests pass.
+
+**Phase 9 acceptance criteria:**
+
+- [ ] A plugin settings page appears in the Jellyfin dashboard and loads its
+  current configuration.
+- [ ] Saving a valid change applies it at runtime without a host restart; an
+  invalid change is rejected and the last valid snapshot is retained.
+- [ ] A successful save triggers a bounded reconciliation so affected posters
+  re-render with the new settings instead of waiting for the next scheduled run.
+- [ ] No secret is embedded in the page or returned beyond Jellyfin's existing
+  admin configuration behavior.
+- [ ] Configuration is saved only through the elevation-gated supported path.
+- [ ] The get-only `Collection<T>` round-trip is proven (or the configuration
+  shape is corrected) and no collection is silently dropped.
+
+**Gate 9:** Met when tasks 9.1-9.5 meet their acceptance criteria, the Goal A
+acceptance criteria are met at the integration-test level (live confirmation is
+owned by task 14.3), the phase review is approved, and the tag `v1.1.0-phase9` is
+created. Phase 9 resolves limitation F2.
+
+### 10. Logging with configurable verbosity
+
+**Goal:** Goal F (ADR-020). **Release:** v1.1.0. **Phase tag:** `v1.1.0-phase10`.
+
+**Objective:** Add plugin logging through the host's logging pipeline with a
+bounded, validated, secret-free per-plugin verbosity setting that applies without
+restart, and rewrite limitation SEC-5 from "no logging call sites" to the
+redaction contract. The new logging path is security-reviewed.
+
+**Deliverables:**
+
+- `ILogger<T>`/`ILoggerFactory` logging through plugin DI with `ArrTags.*`
+  logger categories.
+- A bounded verbosity setting (`Off`/`Error`/`Warning`/`Information`/`Debug`/
+  `Trace`, default `Warning`) validated at configuration load and exposed through
+  the ADR-016 settings UI and the XML configuration.
+- Plugin-owned verbosity gating from the current snapshot; no custom
+  `ILoggerProvider`/sink and no replacement of the host `ILoggerFactory`.
+- Secret-free log call sites using only bounded, already-redacted types, with
+  redaction tests at every verbosity level and bounded log volume.
+- The rewritten `docs/limitations.md` SEC-5 and the logging security review.
+
+**Tasks:**
+
+- [ ] 10.1 Logging foundation, verbosity configuration, and fingerprint exclusion.
+- [ ] 10.2 Bounded, redacted log call sites and volume bounds.
+- [ ] 10.3 SEC-5 rewrite, documentation, and logging security review.
+
+**Authoritative Phase 10 execution order:** 10.1, 10.2, 10.3. Task IDs are stable
+references only; this execution order is the canonical sequence. When the
+execution order and task numbering conflict, the execution order wins.
+
+| Order | Task | Depends on |
+| --- | --- | --- |
+| 10.1 | Logging foundation, verbosity configuration, and fingerprint exclusion | 9.4 |
+| 10.2 | Bounded, redacted log call sites and volume bounds | 10.1 |
+| 10.3 | SEC-5 rewrite, documentation, and logging security review | 10.2 |
+
+#### 10.1 Logging foundation, verbosity configuration, and fingerprint exclusion
+
+**Status:** Not started.
+
+**Objective:** Add the logging foundation and the bounded verbosity setting, and
+exclude verbosity from output fingerprints (ADR-020 clauses 1, 2, 3, and 5).
+
+**Traceability:** Goal F; ADR-020 clauses 1, 2, 3, 5; v1.1 DG-14.
+
+**Dependencies:** 9.4 (the verbosity setting is exposed through the ADR-016 page
+and applied through Goal A runtime activation).
+
+**Affected files/components:** `src/ArrTags/Configuration/PluginConfiguration.cs`,
+the configuration validator/snapshot, `src/ArrTags/PluginLifecycle`
+(DI/logging), the ADR-016 settings page, `docs/architecture.md` sections 6 and
+12, `docs/data-model.md` 3.12, `README.md`.
+
+**Work:**
+
+- Add a `LogVerbosity` enum (`Off`, `Error`, `Warning`, `Information`, `Debug`,
+  `Trace`) to `PluginConfiguration`, default `Warning`, validated at
+  configuration load.
+- Expose it through the ADR-016 settings page and the XML configuration.
+- Resolve `ILogger<T>`/`ILoggerFactory` through plugin DI with `ArrTags.*`
+  category prefixes. Do not register a custom `ILoggerProvider`/sink and do not
+  replace the host `ILoggerFactory`.
+- Gate log calls by the plugin's own verbosity read from the current
+  configuration snapshot.
+- Keep verbosity out of the renderer and configuration output fingerprints and
+  do not let it change `RenderVersion`.
+
+**Tests:** Enum validation; page/XML exposure; DI resolution; gating per level;
+changing verbosity does not change the renderer or configuration fingerprint and
+does not change `RenderVersion`; no custom provider is registered.
+
+**Acceptance criteria:** The plugin logs through the host pipeline at a
+configurable verbosity; verbosity is bounded, validated, secret-free, and applied
+without restart; verbosity does not affect rendered output or output
+fingerprints.
+
+**Decision gates:** DG-14 resolved by ADR-020.
+
+**Review:** `test-quality-reviewer` (fingerprint-exclusion determinism).
+
+**Documentation impact:** `docs/architecture.md` sections 6 and 12,
+`docs/data-model.md` 3.12, `README.md`.
+
+**Definition of done:** Verbosity is configurable, gated, and provably excluded
+from output fingerprints.
+
+#### 10.2 Bounded, redacted log call sites and volume bounds
+
+**Status:** Not started.
+
+**Objective:** Instrument the plugin's boundaries with secret-free log calls
+under the ADR-020 redaction contract and bound log volume (ADR-020 clauses 4 and
+6).
+
+**Traceability:** Goal F; ADR-020 clauses 4, 6.
+
+**Dependencies:** 10.1.
+
+**Affected files/components:** provider, matching, metadata, artwork, queue,
+reconciliation, webhook, and lifecycle boundaries under `src/ArrTags/`;
+`docs/architecture.md` section 12.
+
+**Work:**
+
+- Add log call sites at the provider, matching, metadata, artwork, queue,
+  reconciliation, webhook, and lifecycle boundaries.
+- Use only types already proven bounded and redacted (`ArrProviderError`, safe
+  `SecretReference`, connection identity, configuration version, bounded reason
+  codes). Never log an API key, the webhook secret, a `SecretLease` value, an
+  `X-Api-Key`/`X-ArrTags-Webhook-Secret` header, a raw request/response body, a
+  full provider payload, or the mutable `PluginConfiguration`.
+- Ensure raising verbosity cannot expand a redacted value into a secret-bearing
+  one.
+- Rate-limit or repetition-suppress high-frequency messages and record the bound
+  as a `docs/architecture.md` section 12 limit row.
+
+**Tests:** Sentinel-secret redaction tests at every verbosity level; no secret in
+any log output; high-frequency suppression; bounded volume; a verbosity raise does
+not expand a redacted value.
+
+**Acceptance criteria:** Every log call is secret-free; redaction is covered by
+tests at every level; log volume is bounded and the section 12 limit row is
+recorded.
+
+**Decision gates:** DG-14 resolved by ADR-020.
+
+**Review:** `security-reviewer` (the redaction contract).
+
+**Documentation impact:** `docs/architecture.md` section 12.
+
+**Definition of done:** Redaction is proven at every level and volume is bounded.
+
+#### 10.3 SEC-5 rewrite, documentation, and logging security review
+
+**Status:** Not started.
+
+**Objective:** Rewrite `docs/limitations.md` SEC-5 to the redaction contract and
+obtain a fresh security review of the new logging path (ADR-020 clause 8).
+
+**Traceability:** Goal F; ADR-020 clause 8; v1.1 verification requirements
+section 9.
+
+**Dependencies:** 10.2.
+
+**Affected files/components:** `docs/limitations.md` SEC-5,
+`docs/architecture.md` sections 6/11/12, `docs/data-model.md` 3.12, `README.md`,
+the security-review report.
+
+**Work:** Rewrite SEC-5 from "no logging call sites" to the redaction contract;
+update the named documents; run the logging security review and record its report
+and any accepted limitations.
+
+**Tests:** Documentation consistency; the security-review report is recorded with
+no open BLOCKER/HIGH/MEDIUM or with accepted limitations recorded in
+`docs/limitations.md`.
+
+**Acceptance criteria:** SEC-5 is rewritten; the logging path is security-reviewed.
+
+**Decision gates:** DG-14 resolved by ADR-020.
+
+**Review:** `security-reviewer` (logging path and SEC-5).
+
+**Documentation impact:** the named documents.
+
+**Definition of done:** SEC-5 and the logging review are complete and recorded.
+
+**Phase 10 acceptance criteria:**
+
+- [ ] The plugin logs through the host logging pipeline at a configurable
+  verbosity.
+- [ ] Verbosity is bounded, validated, secret-free, and applied without restart
+  (via Goal A).
+- [ ] Every log call is secret-free; redaction is covered by tests at every
+  level.
+- [ ] Verbosity does not affect rendered output or output fingerprints.
+- [ ] SEC-5 is rewritten and the logging path is security-reviewed.
+
+**Gate 10:** Met when tasks 10.1-10.3 meet their acceptance criteria, the logging
+security review is recorded with no open BLOCKER/HIGH, the phase review is
+approved, and the tag `v1.1.0-phase10` is created.
+
+### 11. Provider inventory cache and library-refresh-driven refresh
+
+**Goal:** Goal C (ADR-018). **Release:** v1.1.0. **Phase tag:** `v1.1.0-phase11`.
+
+**Objective:** Add a bounded, in-memory, per-connection provider inventory cache
+so one provider library read serves a reconciliation window, with ArrTags-side
+invalidation (webhook, Jellyfin library refresh/post-scan, scheduled/manual
+reconciliation, and a bounded TTL fallback). This resolves limitation F1.
+
+**Deliverables:**
+
+- A canonical, secret-free inventory cache shape per `ArrConnection` (the
+  provider library list plus the per-record file resources needed for badge
+  metadata), distinct from `MetadataCacheEntry`.
+- Inventory TTL and entry/size bounds added to `OperationalLimits` and
+  `docs/architecture.md` section 12, validated at configuration load.
+- Provider-client integration with the bulk selection endpoints so multiple
+  records are read in one request.
+- ArrTags-side invalidation across the complete trigger set; no provider
+  conditional request, revision token, `history/since` watermark, or SignalR
+  dependency.
+- Documentation updates: `docs/architecture.md` sections 8 and 12,
+  `docs/data-model.md` section 6, `docs/limitations.md` F1.
+
+**Tasks:**
+
+- [ ] 11.1 Inventory cache model, bounds, and limits.
+- [ ] 11.2 Provider-client integration and bulk reads.
+- [ ] 11.3 ArrTags-side invalidation.
+- [ ] 11.4 Goal C documentation and integration verification.
+
+**Authoritative Phase 11 execution order:** 11.1, 11.2, 11.3, 11.4. Task IDs are
+stable references only; this execution order is the canonical sequence. When the
+execution order and task numbering conflict, the execution order wins.
+
+| Order | Task | Depends on |
+| --- | --- | --- |
+| 11.1 | Inventory cache model, bounds, and limits | 9.4 |
+| 11.2 | Provider-client integration and bulk reads | 11.1 |
+| 11.3 | ArrTags-side invalidation | 11.2 |
+| 11.4 | Goal C documentation and integration verification | 11.3 |
+
+#### 11.1 Inventory cache model, bounds, and limits
+
+**Status:** Not started.
+
+**Objective:** Define the canonical, secret-free inventory cache shape and its
+bounds (ADR-018 clauses 1, 5, 6, and 7).
+
+**Traceability:** Goal C; ADR-018 clauses 1, 5, 6, 7; v1.1 DG-12.
+
+**Dependencies:** 9.4 (the new limits share the Goal A runtime-configuration
+plumbing).
+
+**Affected files/components:** `src/ArrTags/Providers` (cache boundary),
+`src/ArrTags/Configuration` (`OperationalLimits` and validation),
+`docs/data-model.md` section 6, `docs/architecture.md` sections 8 and 12.
+
+**Work:**
+
+- Define the per-`ArrConnection` cache shape holding the provider library list
+  (Sonarr `/series`, Radarr `/movie`) and the per-record file resources as
+  canonical, secret-free observations.
+- Document it in `docs/data-model.md` section 6 as its own subsection, distinct
+  from `MetadataCacheEntry` (3.9).
+- Add the inventory TTL and cache entry/size bounds to `OperationalLimits` and
+  `docs/architecture.md` section 12, validated at configuration load.
+- Keep the cache non-authoritative, in-memory, rebuilt on restart, and never
+  holding a credential; on provider failure the existing bounded last-known-good
+  semantics apply.
+- Do not assume provider `ETag`/revision tokens; treat them as optional future
+  observations only.
+
+**Tests:** Limit validation bounds; cache secret-free; in-memory rebuild on
+restart; non-authoritative last-known-good on provider failure; distinct from
+`MetadataCacheEntry`.
+
+**Acceptance criteria:** The cache is bounded and secret-free with validated
+TTL/size limits; provider failure keeps the existing bounded last-known-good
+behavior.
+
+**Decision gates:** DG-12 resolved by ADR-018.
+
+**Review:** `security-reviewer` (secret-free cache) and `test-quality-reviewer`
+(bounds).
+
+**Documentation impact:** `docs/data-model.md` section 6,
+`docs/architecture.md` sections 8 and 12.
+
+**Definition of done:** The cache shape and bounds are defined, validated, and
+documented.
+
+#### 11.2 Provider-client integration and bulk reads
+
+**Status:** Not started.
+
+**Objective:** Populate and consume the cache at the provider-client boundary so
+one library read per connection serves all work items in a reconciliation window,
+and use the bulk selection endpoints (ADR-018 clauses 2 and 4).
+
+**Traceability:** Goal C; ADR-018 clauses 2, 4.
+
+**Dependencies:** 11.1.
+
+**Affected files/components:** `src/ArrTags/Providers/Radarr`,
+`src/ArrTags/Providers/Sonarr`, `src/ArrTags/Reconciliation` (metadata readers),
+provider integration tests.
+
+**Work:** Integrate the cache into the Radarr/Sonarr clients and the metadata
+readers; use Radarr `moviefile?movieId=` repeated ids and Sonarr episode/
+episodeFile id selection to avoid per-item reads; keep the observations canonical
+and secret-free.
+
+**Tests:** One library read per connection serves multiple work items; bulk reads
+are used; no per-item library read within a reconciliation window;
+canonical/secret-free.
+
+**Acceptance criteria:** One provider library read per connection serves a
+reconciliation window; bulk reads avoid per-item reads.
+
+**Decision gates:** DG-12 resolved by ADR-018.
+
+**Review:** `test-quality-reviewer`.
+
+**Documentation impact:** `docs/architecture.md` section 8.
+
+**Definition of done:** The provider reads are served from the cache within a
+window and bulk reads are used.
+
+#### 11.3 ArrTags-side invalidation
+
+**Status:** Not started.
+
+**Objective:** Invalidate the cache on provider webhook events (ADR-012), Jellyfin
+library refresh/post-scan, scheduled/manual reconciliation, and a bounded TTL
+fallback, with no provider conditional request, revision token, `history/since`
+watermark, or SignalR dependency; v1.1 is not refresh-only (ADR-018 clause 3).
+
+**Traceability:** Goal C; ADR-018 clause 3.
+
+**Dependencies:** 11.2.
+
+**Affected files/components:** `src/ArrTags/Updates` (triggers),
+`src/ArrTags/Webhooks`, `src/ArrTags/Reconciliation` (scheduled/post-scan), the
+cache boundary.
+
+**Work:** Wire each invalidation source; keep periodic scheduled reconciliation
+alongside the webhook, post-scan, manual, and TTL sources; do not use provider
+conditional requests, revision tokens, `history/since`, or SignalR.
+
+**Tests:** Each invalidation source; TTL fallback; no provider conditional/
+revision/SignalR dependency; periodic scheduled reconciliation continues.
+
+**Acceptance criteria:** Invalidation is ArrTags-side per ADR-018; no provider
+conditional request, revision token, `history/since`, or SignalR dependency;
+periodic scheduled reconciliation continues.
+
+**Decision gates:** DG-12 resolved by ADR-018.
+
+**Review:** `test-quality-reviewer`.
+
+**Documentation impact:** `docs/architecture.md` sections 8 and 12.
+
+**Definition of done:** Every invalidation source is wired and tested.
+
+#### 11.4 Goal C documentation and integration verification
+
+**Status:** Not started.
+
+**Objective:** Complete the Goal C documentation, record F1 as resolved, and
+verify cache invalidation and bounds at the integration-test level.
+
+**Traceability:** Goal C; ADR-018; v1.1 documentation checklist V1.1-4.
+
+**Dependencies:** 11.3.
+
+**Affected files/components:** `docs/architecture.md` sections 8 and 12,
+`docs/data-model.md` section 6, `docs/limitations.md` F1,
+`docs/decisions.md` ADR-018, Goal C integration tests.
+
+**Work:** Reconcile the named documents; add the integration tests for
+one-read-per-window, invalidation sources, bounds, and last-known-good.
+
+**Tests:** One-read-per-window; invalidation sources; bounds; last-known-good.
+
+**Acceptance criteria:** F1 is recorded as resolved; the docs describe the
+shipped cache behavior; the integration tests pass.
+
+**Decision gates:** DG-12 resolved by ADR-018.
+
+**Review:** `documentation-maintainer`.
+
+**Documentation impact:** the named documents.
+
+**Definition of done:** Goal C documentation is reconciled, F1 is resolved, and
+the integration tests pass.
+
+**Phase 11 acceptance criteria:**
+
+- [ ] One provider library read per connection serves a reconciliation window
+  instead of one read per work item.
+- [ ] Invalidation is ArrTags-side (webhook, Jellyfin library refresh/post-scan,
+  scheduled/manual reconciliation, bounded TTL); no provider conditional
+  request, revision token, or SignalR dependency.
+- [ ] The cache is bounded and secret-free, with validated TTL/size limits.
+- [ ] Provider failure keeps the existing bounded last-known-good behavior.
+
+**Gate 11:** Met when tasks 11.1-11.4 meet their acceptance criteria, the phase
+review is approved, and the tag `v1.1.0-phase11` is created. Phase 11 resolves
+limitation F1.
+
+### 12. Badge value allowlist and badge size/position
+
+**Goals:** Goal B (ADR-017) and Goal E (ADR-019). **Release:** v1.1.0. **Phase
+tag:** `v1.1.0-phase12`.
+
+**Objective:** Add the per-selector badge value allowlist and the configurable
+badge size/position, with a single coordinated renderer-configuration schema and
+`RenderVersion` advance and regenerated goldens.
+
+**Why one phase:** Both goals are output-affecting, and ADR-017 and ADR-019 define
+a **single shared** advance (`RendererConfiguration.CurrentSchemaVersion` 1 -> 2
+and `RenderVersion.CurrentRendererVersion` 2 -> 3) with one golden regeneration.
+Implementing them as separate phases would either double the version advance or
+leave one goal's acceptance criterion ("`RenderVersion` advances") unmet at its
+own gate, so they are one phase with one bump and one golden regeneration.
+
+**Deliverables:**
+
+- Per-selector `AllowedValues` on `BadgeSelectorConfiguration`, bounded and
+  validated, mapped into the resolved `BadgeDefinition` and included in the
+  renderer configuration fingerprint.
+- The allowlist filter applied in the documented order (value resolution ->
+  allowlist filter -> template -> normalization/truncation -> layout).
+- `BadgePosition` (four corners plus center) and `BadgeSize`
+  (Small/Medium/Large) on `RendererConfiguration`, carried on the resolved
+  `RenderOutputPolicy`, with rail packing, status-pill placement, and safe-area
+  behavior defined per anchor.
+- The coordinated schema/`RenderVersion` advance and the regenerated goldens.
+- Documentation: `docs/architecture.md` section 9, `docs/data-model.md`
+  3.6/3.12, `README.md`, `docs/decisions.md` ADR-019, and the superseded notes in
+  ADR-009/ADR-010.
+
+**Tasks:**
+
+- [ ] 12.1 Allowlist configuration, bounds, validation, and fingerprint.
+- [ ] 12.2 Allowlist resolution and renderer filtering order.
+- [ ] 12.3 Badge size/position configuration and layout engine.
+- [ ] 12.4 Coordinated schema/`RenderVersion` advance, golden regeneration, and
+  documentation.
+
+**Authoritative Phase 12 execution order:** 12.1, 12.2, 12.3, 12.4. Task IDs are
+stable references only; this execution order is the canonical sequence. When the
+execution order and task numbering conflict, the execution order wins.
+
+| Order | Task | Depends on |
+| --- | --- | --- |
+| 12.1 | Allowlist configuration, bounds, validation, and fingerprint | 9.4 |
+| 12.2 | Allowlist resolution and renderer filtering order | 12.1 |
+| 12.3 | Badge size/position configuration and layout engine | 9.4 |
+| 12.4 | Coordinated schema/`RenderVersion` advance, golden regeneration, and documentation | 12.1, 12.2, 12.3 |
+
+#### 12.1 Allowlist configuration, bounds, validation, and fingerprint
+
+**Status:** Not started.
+
+**Objective:** Add the per-selector allowlist configuration, its bounds and
+validation, the resolved `BadgeDefinition` allowlist, and the fingerprint
+inclusion (ADR-017 clauses 1, 5, 6 first half, and 7).
+
+**Traceability:** Goal B; ADR-017 clauses 1, 5, 6, 7; v1.1 DG-11.
+
+**Dependencies:** 9.4 (config plumbing and settings-page exposure).
+
+**Affected files/components:** `src/ArrTags/Configuration/BadgeSelectorConfiguration.cs`,
+`RendererConfiguration.cs`, `RendererConfigurationFingerprint.cs`,
+`src/ArrTags/Rendering/BadgeDefinitionResolver.cs`, the ADR-016 settings page,
+`docs/data-model.md` 3.6/3.12, `docs/architecture.md` section 9.
+
+**Work:**
+
+- Add a bounded `AllowedValues` string list to `BadgeSelectorConfiguration`;
+  empty means no restriction.
+- Validate in `RendererConfiguration.Validate` with secret-free messages: at most
+  32 entries per selector, each at most 64 characters, trimmed, control
+  characters rejected, blank entries rejected, and case-insensitive duplicates
+  rejected.
+- Add the resolved allowlist to `BadgeDefinition` and map it in
+  `RendererConfigurationResolver.ResolveDefinitions`.
+- Include the resolved allowlists in `RendererConfigurationFingerprint`.
+- Expose the setting through the ADR-016 settings page. No provider coupling.
+
+**Tests:** Bounds/validation; fingerprint sensitivity to allowlist values and
+insensitivity to case/entry-order normalization; secret-free messages; page
+exposure.
+
+**Acceptance criteria:** The allowlist is bounded, validated at configuration
+load, and secret-free; the renderer configuration fingerprint changes when the
+allowlist changes.
+
+**Decision gates:** DG-11 resolved by ADR-017.
+
+**Review:** `test-quality-reviewer`.
+
+**Documentation impact:** `docs/data-model.md` 3.6/3.12,
+`docs/architecture.md` section 9.
+
+**Definition of done:** The allowlist is configurable, bounded, validated, and
+included in the fingerprint.
+
+#### 12.2 Allowlist resolution and renderer filtering order
+
+**Status:** Not started.
+
+**Objective:** Apply the allowlist filter in the documented order and semantics
+(ADR-017 clauses 2, 3, and 4).
+
+**Traceability:** Goal B; ADR-017 clauses 2, 3, 4.
+
+**Dependencies:** 12.1.
+
+**Affected files/components:** `src/ArrTags/Rendering/BadgeSelectorResolver.cs`
+and the renderer filtering path, renderer tests.
+
+**Work:**
+
+- Filter resolved values by case-insensitive ordinal exact match against the
+  resolved pre-template value, trimmed; no substring, wildcard, prefix, or
+  regular-expression matching.
+- Apply per retained `CustomBadge` value; match the full `Audio` composite
+  (features, then codec, then channel count); permit the fixed `UpgradePending`
+  status text.
+- Order: value resolution -> allowlist filter -> definition template -> text
+  normalization/truncation -> layout. Unknown/absent values remain omitted and
+  are never widened.
+
+**Tests:** Exact match/case/trim behavior; per-value custom badge; the audio
+composite; upgrade pending; an empty allowlist means no restriction;
+unknown/absent unchanged; filter-before-template order; an allowlisted value that
+cannot fit still follows shorten/omit.
+
+**Acceptance criteria:** A configured allowlist restricts rendering to the listed
+values; unknown/absent values remain omitted; an empty allowlist means no
+restriction.
+
+**Decision gates:** DG-11 resolved by ADR-017.
+
+**Review:** `test-quality-reviewer`.
+
+**Documentation impact:** `docs/architecture.md` section 9.
+
+**Definition of done:** The filter order and semantics are implemented and tested.
+
+#### 12.3 Badge size/position configuration and layout engine
+
+**Status:** Not started.
+
+**Objective:** Add the global badge position and size settings and the per-anchor
+layout behavior (ADR-019 clauses 1-5 and 7).
+
+**Traceability:** Goal E; ADR-019 clauses 1-5, 7; v1.1 DG-13.
+
+**Dependencies:** 9.4 (config plumbing and settings-page exposure).
+
+**Affected files/components:** `src/ArrTags/Configuration/RendererConfiguration.cs`,
+`RendererConfigurationFingerprint.cs`, `src/ArrTags/Rendering/BadgeGeometry.cs`,
+`BadgeLayoutEngine.cs`, `SkiaBadgeRenderer.cs`, `RenderOutputPolicy`, the ADR-016
+settings page, `docs/architecture.md` section 9, `docs/data-model.md` 3.6/3.12.
+
+**Work:**
+
+- Add `BadgePosition` (`TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`,
+  `Center`, default `BottomLeft`) and `BadgeSize` (`Small`, `Medium`, `Large`,
+  default `Medium`) to `RendererConfiguration`.
+- Compute `effectiveScale = clamp(width / 1000, 0.5, 4.0) * sizeFactor`
+  (`Small` 0.75, `Medium` 1.0, `Large` 1.5), clamped so the badge still fits the
+  safe area.
+- Position the technical rail per anchor; keep the `UPGRADE` status pill
+  top-right except when the rail anchor is `TopRight`, then top-left. No separate
+  status-position setting.
+- Rail packing: rows stack away from the anchored edge; rows align to the
+  anchored side; pills pack in the ADR-009 priority order; the at-most-two-rows /
+  three-pills-per-row limit, shortening, and omission are unchanged.
+- Keep the 24-pixel scaled inset and all safe-area/text-limit/contrast/opacity/
+  determinism guarantees; no pill paints outside the safe area.
+- Carry the position and size on the resolved `RenderOutputPolicy` (passed into
+  `BadgeLayoutEngine.Build`) and include them in `RendererConfigurationFingerprint`
+  and `RenderFingerprint.ComputeOutputFingerprint`.
+- Expose the settings through the ADR-016 settings page. No per-selector
+  placement.
+
+**Tests:** Geometry per anchor and size; rail packing/alignment; status-pill
+placement (including the `TopRight` -> top-left rule); safe-area bounds on narrow
+and short posters; fingerprint sensitivity.
+
+**Acceptance criteria:** A configured size and anchor affect the rendered badge;
+rail packing, status-pill placement, and safe-area bounds are defined per anchor;
+no badge paints outside the safe area.
+
+**Decision gates:** DG-13 resolved by ADR-019.
+
+**Review:** `test-quality-reviewer`.
+
+**Documentation impact:** `docs/architecture.md` section 9,
+`docs/data-model.md` 3.6/3.12.
+
+**Definition of done:** The position/size settings and per-anchor layout are
+implemented and tested.
+
+#### 12.4 Coordinated schema/RenderVersion advance, golden regeneration, and documentation
+
+**Status:** Not started.
+
+**Objective:** Advance the renderer-configuration schema and `RenderVersion` once
+for both changes, regenerate the committed goldens, and complete the Goal B/E
+documentation (ADR-017 clause 6, ADR-019 clause 6).
+
+**Traceability:** Goals B and E; ADR-017 clause 6; ADR-019 clause 6; v1.1
+verification requirements section 9.
+
+**Dependencies:** 12.1, 12.2, 12.3.
+
+**Affected files/components:** `RendererConfiguration.CurrentSchemaVersion`,
+`RenderVersion.CurrentRendererVersion`, `tests/ArrTags.Tests/Goldens/`,
+`docs/architecture.md` section 9, `docs/data-model.md` 3.6/3.12, `README.md`,
+`docs/decisions.md` ADR-019 and the superseded notes in ADR-009/ADR-010.
+
+**Work:**
+
+- Advance `RendererConfiguration.CurrentSchemaVersion` from 1 to 2 and
+  `RenderVersion.CurrentRendererVersion` from 2 to 3 (one shared advance for
+  ADR-017 and ADR-019).
+- Regenerate the committed golden manifest and goldens under ADR-010 with no
+  auto-approval or writer path; confirm the default (`BottomLeft`, `Medium`, empty
+  allowlist) reproduces the V1 output and add goldens for the new anchor/size
+  cases.
+- Add or refresh byte-determinism and PNG-contract coverage.
+- Update the named documentation, including the superseded notes in
+  ADR-009/ADR-010.
+
+**Tests:** Golden regeneration with no writer/auto-approve path; byte-determinism;
+the existing goldens fail closed on mutation; the schema and renderer versions are
+the single advanced values; the fingerprint reflects position/size/allowlist.
+
+**Acceptance criteria:** The change is output-affecting: the renderer
+configuration fingerprint changes, `RenderVersion` advances, and the goldens are
+regenerated; the default configuration reproduces the V1 output.
+
+**Decision gates:** DG-11 and DG-13 resolved by ADR-017 and ADR-019.
+
+**Review:** `test-quality-reviewer` (golden and byte-determinism honesty).
+
+**Documentation impact:** the named documents.
+
+**Definition of done:** The single coordinated version advance and golden
+regeneration are complete and documented.
+
+**Phase 12 acceptance criteria:**
+
+- [ ] A configured allowlist restricts rendering to the listed values.
+- [ ] The allowlist is bounded, validated at configuration load, and secret-free.
+- [ ] Unknown/absent values remain omitted; an empty allowlist means no
+  restriction.
+- [ ] A configured size and anchor (four corners plus center) affect the rendered
+  badge.
+- [ ] Rail packing, status-pill placement, and safe-area bounds are defined per
+  anchor; no badge paints outside the safe area.
+- [ ] The change is output-affecting: the fingerprint changes, `RenderVersion`
+  advances, and the goldens are regenerated.
+
+**Gate 12:** Met when tasks 12.1-12.4 meet their acceptance criteria, the single
+coordinated schema/`RenderVersion` advance and golden regeneration are verified,
+the phase review is approved, and the tag `v1.1.0-phase12` is created.
+
+### 13. README and documentation pass
+
+**Goal:** Goal D plus the v1.1 documentation reconciliation. **Release:** v1.1.0.
+**Phase tag:** `v1.1.0-phase13`.
+
+**Objective:** Document the palette override fields that `README.md` names but
+never explains (Goal D), document the v1.1 features, and reconcile the canonical
+current-state documentation so no stale claim remains.
+
+**Deliverables:**
+
+- The four palette override fields documented with their meaning, default colors,
+  and the 4.5:1 contrast rule.
+- README documentation of the settings UI, allowlist, placement/size, verbosity,
+  and provider inventory cache behavior, with the stale F1/F2 restart limitation
+  notes removed.
+- A consistency sweep of `docs/project-status.md`, `docs/changelog.md`, and
+  `docs/implementation-readiness.md`.
+
+**Tasks:**
+
+- [ ] 13.1 README palette documentation and v1.1 feature documentation.
+- [ ] 13.2 Canonical current-state reconciliation sweep.
+
+**Authoritative Phase 13 execution order:** 13.1, 13.2. Task IDs are stable
+references only; this execution order is the canonical sequence. When the
+execution order and task numbering conflict, the execution order wins.
+
+| Order | Task | Depends on |
+| --- | --- | --- |
+| 13.1 | README palette documentation and v1.1 feature documentation | 12.4 |
+| 13.2 | Canonical current-state reconciliation sweep | 13.1 |
+
+#### 13.1 README palette documentation and v1.1 feature documentation
+
+**Status:** Not started.
+
+**Objective:** Document `TechnicalBackground`, `TechnicalText`, `StatusBackground`,
+and `StatusText` with their meaning, default colors, and the 4.5:1 contrast rule
+(Goal D), and update `README.md` for the v1.1 features.
+
+**Traceability:** Goal D; v1.1 documentation checklist V1.1-7.
+
+**Dependencies:** 12.4 (documents the completed v1.1 features).
+
+**Affected files/components:** `README.md`.
+
+**Work:** Add the palette table to `README.md`; document the settings UI,
+allowlist, placement/size, verbosity, and inventory cache; remove the "no web
+configuration UI" and restart-required claims; keep the incremental README
+updates made by Phases 9-12 consistent.
+
+**Tests:** Manual review that each field has a meaning, default color, and the
+contrast rule; that no stale "no web configuration UI"/restart/F1/F2 claim
+remains; that the documented behavior matches the shipped behavior.
+
+**Acceptance criteria:** The four fields are documented with their meaning,
+default colors, and the 4.5:1 contrast rule; `README.md` describes the v1.1
+features and no longer claims the removed limitations.
+
+**Decision gates:** None (Goal D has no ADR).
+
+**Review:** `documentation-maintainer`.
+
+**Documentation impact:** `README.md`.
+
+**Definition of done:** The palette and v1.1 feature documentation is accurate and
+complete.
+
+#### 13.2 Canonical current-state reconciliation sweep
+
+**Status:** Not started.
+
+**Objective:** Reconcile `docs/project-status.md`, `docs/changelog.md`, and
+`docs/implementation-readiness.md` with the v1.1 state.
+
+**Traceability:** v1.1 documentation checklist V1.1-7.
+
+**Dependencies:** 13.1.
+
+**Affected files/components:** `docs/project-status.md`, `docs/changelog.md`,
+`docs/implementation-readiness.md`.
+
+**Work:** Reconcile the current-state framing and any stale limitation/status
+claims; keep historical entries historical and do not rewrite V1 history.
+
+**Tests:** Search for stale claims (no logging, no web UI, F1/F2 open, V1 phase
+status) and confirm each is corrected or intentionally historical.
+
+**Acceptance criteria:** The canonical current-state surfaces describe the v1.1
+state with no stale claim presented as current.
+
+**Decision gates:** None.
+
+**Review:** `documentation-maintainer`.
+
+**Documentation impact:** the named documents.
+
+**Definition of done:** The canonical current-state surfaces are consistent with
+v1.1.
+
+**Phase 13 acceptance criteria:**
+
+- [ ] The four palette override fields are documented with their meaning, default
+  colors, and the 4.5:1 contrast rule.
+- [ ] `README.md` documents the v1.1 settings UI, allowlist, placement/size,
+  verbosity, and inventory cache behavior.
+- [ ] `docs/project-status.md`, `docs/changelog.md`, and
+  `docs/implementation-readiness.md` are reconciled with no stale claim.
+
+**Gate 13:** Met when tasks 13.1-13.2 meet their acceptance criteria, the phase
+review is approved, and the tag `v1.1.0-phase13` is created.
+
+### 14. v1.1 release
+
+**Goal:** v1.1 release (outline task V1.1-8). **Release:** v1.1.0. **Phase tag:**
+none (this phase ends with the release tag `v1.1.0`).
+
+**Objective:** Bump ArrTags to `1.1.0.0`, build and package reproducibly, run the
+full suite and the live pinned-host verification, run the release security review
+(including the ADR-016 settings UI surface), and complete the changelog/release
+documentation and the annotated `v1.1.0` tag.
+
+**Deliverables:**
+
+- Version `1.1.0.0` in `build.yaml` and `Directory.Build.props`.
+- A reproducibly built `artifacts/ArrTags_1.1.0.0.zip`.
+- The full default and host-guarded test suites passing.
+- The recorded live pinned-host verification of the v1.1 matrix.
+- The release security-review report and any accepted limitations.
+- Updated `docs/changelog.md`, `docs/project-status.md`,
+  `docs/release/build-and-release.md`, `manifest.json`, and `build.yaml`.
+- The annotated tag `v1.1.0`, created only after the `release-reviewer` gate; the
+  GitHub publish remains the user's manual step.
+
+**Tasks:**
+
+- [ ] 14.1 Version bump and release metadata.
+- [ ] 14.2 Release build, full suite, reproducible artifact, and release
+  documentation.
+- [ ] 14.3 Live pinned-host verification.
+- [ ] 14.4 Release security review.
+- [ ] 14.5 Changelog, release-readiness verification, manifest commit, and the
+  annotated `v1.1.0` tag.
+
+**Authoritative Phase 14 execution order:** 14.1, 14.2, 14.3, 14.4, 14.5. Task IDs
+are stable references only; this execution order is the canonical sequence. When
+the execution order and task numbering conflict, the execution order wins.
+
+| Order | Task | Depends on |
+| --- | --- | --- |
+| 14.1 | Version bump and release metadata | 13.2 |
+| 14.2 | Release build, full suite, reproducible artifact, and release documentation | 14.1 |
+| 14.3 | Live pinned-host verification | 14.2 |
+| 14.4 | Release security review | 14.3 |
+| 14.5 | Changelog, release-readiness verification, manifest commit, and the annotated `v1.1.0` tag | 14.4 |
+
+#### 14.1 Version bump and release metadata
+
+**Status:** Not started.
+
+**Objective:** Set the release version to `1.1.0.0` and update the version
+literals and metadata.
+
+**Traceability:** v1.1 release; v1.1 release identity section 1.
+
+**Dependencies:** 13.2.
+
+**Affected files/components:** `build.yaml`, `Directory.Build.props`, the
+packaging/state/discovery test version literals.
+
+**Work:** Set `version: "1.1.0.0"` in `build.yaml` and `<Version>`/
+`<AssemblyVersion>`/`<FileVersion>` to `1.1.0.0` in `Directory.Build.props`;
+update the hard-coded version literals in the packaging/state/discovery tests;
+update `build.yaml` `overview`/`description`/`changelog` to describe the shipped
+v1.1 behavior. Do not change `guid`, `targetAbi`, `framework`, `category`,
+`owner`, or the `artifacts` list.
+
+**Tests:** Build at `1.1.0.0`; the package is `artifacts/ArrTags_1.1.0.0.zip`;
+`build.yaml` version/ABI/framework match the declared pins.
+
+**Acceptance criteria:** The version is `1.1.0.0` in `build.yaml` and
+`Directory.Build.props`, and the metadata accurately describes the shipped v1.1
+behavior.
+
+**Decision gates:** None.
+
+**Review:** implementation-reviewer (default).
+
+**Documentation impact:** `build.yaml`, `Directory.Build.props`.
+
+**Definition of done:** The project builds and packages at `1.1.0.0`.
+
+#### 14.2 Release build, full suite, reproducible artifact, and release documentation
+
+**Status:** Not started.
+
+**Objective:** Build and package reproducibly at `1.1.0.0` and record the artifact
+identity, commands, and supported ranges.
+
+**Traceability:** v1.1 verification requirements section 9 (reproducible
+build/package at `1.1.0.0`).
+
+**Dependencies:** 14.1.
+
+**Affected files/components:** `artifacts/ArrTags_1.1.0.0.zip`, `manifest.json`,
+`docs/release/build-and-release.md`, `build.yaml`.
+
+**Work:** Clean rebuild; run the full default and host-guarded suites; run
+`./build.sh package`; regenerate `manifest.json` and
+`docs/release/build-and-release.md`; record the SHA-256/MD5 and entries.
+
+**Tests:** Build 0 warnings / 0 errors; both suites pass; the archive is
+byte-stable across repeated package runs; the manifest checksum matches the
+artifact.
+
+**Acceptance criteria:** The v1.1 artifact is reproducible and documented.
+
+**Decision gates:** None.
+
+**Review:** `test-quality-reviewer` (reproducibility evidence).
+
+**Documentation impact:** `docs/release/build-and-release.md`, `manifest.json`,
+`build.yaml`.
+
+**Definition of done:** The reproducible artifact identity is recorded.
+
+#### 14.3 Live pinned-host verification
+
+**Status:** Not started.
+
+**Objective:** Run the documented pinned-host matrix for v1.1 (settings page
+load/save, post-save re-render, cache behavior, and log output/level) and record
+the reproducible results.
+
+**Traceability:** v1.1 verification requirements section 9; Goals A, C, and F.
+
+**Dependencies:** 14.2.
+
+**Affected files/components:** `docs/testing/jellyfin-12-musl-test-host.md`, the
+recorded live-verification result.
+
+**Work:** Use the `live-host-verifier` procedure in
+`docs/testing/jellyfin-12-musl-test-host.md` against the pinned Jellyfin `12.0.0`
+host; record the matrix result in machine-readable form.
+
+**Tests:** The live matrix passes; results are reproducible.
+
+**Acceptance criteria:** The live verification is recorded and passes.
+
+**Decision gates:** None.
+
+**Review:** `live-host-verifier`.
+
+**Documentation impact:** `docs/testing/jellyfin-12-musl-test-host.md` and the
+recorded result.
+
+**Definition of done:** The live v1.1 matrix is recorded and passes.
+
+#### 14.4 Release security review
+
+**Status:** Not started.
+
+**Objective:** Obtain a fresh security review covering the new logging path and
+the SEC-5 rewrite, and the ADR-016 settings page and administrator save path.
+
+**Traceability:** v1.1 verification requirements section 9; ADR-016, ADR-020.
+
+**Dependencies:** 14.3.
+
+**Affected files/components:** the security-review report,
+`docs/limitations.md` (accepted limitations).
+
+**Work:** Run the `security-reviewer` audit on the release candidate; record the
+report and any accepted limitations in `docs/limitations.md`.
+
+**Tests:** The review report is recorded with no open BLOCKER/HIGH (or accepted
+limitations recorded).
+
+**Acceptance criteria:** The release security review is recorded with no open
+BLOCKER/HIGH.
+
+**Decision gates:** None.
+
+**Review:** `security-reviewer`.
+
+**Documentation impact:** `docs/limitations.md` (accepted limitations).
+
+**Definition of done:** The release security review is complete and recorded.
+
+#### 14.5 Changelog, release-readiness verification, manifest commit, and the annotated v1.1.0 tag
+
+**Status:** Not started.
+
+**Objective:** Complete the changelog/project-status, verify release readiness,
+commit the manifest, and create the annotated `v1.1.0` tag after the
+`release-reviewer` gate.
+
+**Traceability:** v1.1 release; v1.1 documentation checklist V1.1-8.
+
+**Dependencies:** 14.4.
+
+**Affected files/components:** `docs/changelog.md`, `docs/project-status.md`,
+`manifest.json`, the annotated tag `v1.1.0`.
+
+**Work:** Update `docs/changelog.md` and `docs/project-status.md`; commit
+`manifest.json`; run the `release-reviewer` gate; create the annotated tag
+`v1.1.0`; leave the push and GitHub release to the user (consistent with V1
+limitation P6).
+
+**Tests:** The release-review report exists with `reviewer_status` `APPROVED` or
+`APPROVED_WITH_ACCEPTED_LIMITATIONS` and no open BLOCKER/HIGH; the tag `v1.1.0`
+exists; the working tree is clean.
+
+**Acceptance criteria:** `docs/changelog.md` and `docs/project-status.md` reflect
+v1.1; the release-review gate passes; the annotated tag `v1.1.0` exists; the
+GitHub publish remains the user's manual step.
+
+**Decision gates:** None. The release tag is created only after the
+`release-reviewer` gate.
+
+**Review:** `release-reviewer` (gate).
+
+**Documentation impact:** `docs/changelog.md`, `docs/project-status.md`,
+committed `manifest.json`, the annotated tag.
+
+**Definition of done:** The v1.1 release is prepared, reviewed, and tagged; the
+publish remains the user's manual step.
+
+**Phase 14 acceptance criteria:**
+
+- [ ] The version is `1.1.0.0` in `build.yaml` and `Directory.Build.props`.
+- [ ] `./build.sh package` produces a reproducible `artifacts/ArrTags_1.1.0.0.zip`
+  with recorded identity.
+- [ ] The full default and host-guarded suites pass.
+- [ ] The live pinned-host verification passes and is recorded.
+- [ ] The release security review is recorded with no open BLOCKER/HIGH.
+- [ ] `docs/changelog.md` and `docs/project-status.md` reflect v1.1.
+- [ ] The annotated tag `v1.1.0` is created after the release-reviewer gate; the
+  GitHub publish remains the user's manual step.
+
+**Gate 14:** Met when tasks 14.1-14.5 meet their acceptance criteria, the full
+suite and the live pinned-host matrix pass, the release security review has no
+open BLOCKER/HIGH, the phase review is approved, and the `release-reviewer` gate
+passes so the annotated tag `v1.1.0` can be created. The GitHub release
+publication is explicitly left to the user.
+
 ## Decision Gates
 
 These decisions must be resolved and recorded before the dependent work becomes
@@ -3345,6 +4742,11 @@ an implementation assumption.
 | DG-7 | Webhook exposure, authentication, payload limits, replay handling, and route administration flow. Resolved by ADR-012: an anonymous plugin route authenticated by the `X-ArrTags-Webhook-Secret` header through the constant-time versioned webhook lease, a bounded tolerant payload with a configured size limit, a bounded coalescing intake with idempotent replay handling, bounded provider-record-to-Jellyfin resolution into the existing work-hint path, and an administration flow that reuses the ADR-005 `WebhookSecret` slot. Secret persistence and versioned access remain resolved by ADR-005. | Milestone 6 |
 | DG-8 | Jellyfin Enhanced duplicate-badge defaults and Spoiler Guard behavior. Resolved by ADR-011: ArrTags adds no automatic duplicate/overlap detection or suppression and no Enhanced-internals dependency; the existing poster and selector enable flags are the user's control surface, and Spoiler Guard has no material effect on ArrTags badge display. | Milestone 5 |
 | DG-9 | Supported live Sonarr/Radarr release ranges and optional-field compatibility policy. Resolved by ADR-013: supported ranges are Sonarr 3.x-4.x and Radarr 3.x-6.x on `/api/v3`; absent optional fields map to explicit unknown values and a malformed required field fails closed as `ProviderIncompatible`, with no version-number gate. | Milestones 2 and 7 |
+| DG-10 | Page mechanism, save/activation path, get-only collection round-trip, and acceptance of the anonymous static page-resource endpoint. Resolved by ADR-016 (v1.1). The get-only `Collection<T>` round-trip test (task 9.1) and the page-resource live confirmation (task 9.2) are verification requirements of the resolved gate, not open decisions. | Phase 9 |
+| DG-11 | Allowlist scope (per-selector vs global), matching/normalization, bound, and unknown/custom-value interaction. Resolved by ADR-017 (v1.1): per-selector, case-insensitive exact match against the resolved value, bounded and validated. | Phase 12 |
+| DG-12 | Inventory cache shape, TTL, invalidation sources, and bounds. Resolved by ADR-018 (v1.1). | Phase 11 |
+| DG-13 | Size semantics, corner/center anchors, rail packing, and status-pill placement. Resolved by ADR-019 (v1.1): four corners plus center, preset Small/Medium/Large, derived opposite-corner status placement. | Phase 12 |
+| DG-14 | Logging mechanism, verbosity model, activation, redaction contract, and volume bounds. Resolved by ADR-020 (v1.1). | Phase 10 |
 
 ## Risks and Mitigations
 
@@ -3359,6 +4761,11 @@ an implementation assumption.
 | Cache/state corruption survives restart. | Repeated failures or unavailable badges. | Versioned records, atomic writes, integrity checks, quarantine/discard, and rebuild tests. |
 | Webhook payloads trigger unbounded or unauthorized work. | Security or resource exhaustion. | Shared-secret authentication, bounded payloads, rate/coalescing limits, and re-read current provider state. |
 | Enhanced and ArrTags show overlapping information. | Confusing or duplicated client presentation. | No automatic duplicate/overlap suppression and no Enhanced-internals dependency (ADR-011); user control through the existing poster and selector enable flags, with coexistence tests covering quality tags and spoiler behavior. |
+| v1.1: the get-only `Collection<T>` round-trip drops settings. | Saved library scope or selectors are silently lost on a save. | Task 9.1 is a blocking prerequisite; if the round-trip fails, the configuration shape is corrected and the change recorded before the page is built. |
+| v1.1: the settings page or save path exposes a secret or bypasses elevation. | Credential exposure or an unsupported save path. | ADR-016 mandates the elevation-gated `PluginsController` path with no custom route, a secret-free page, and a `security-reviewer` review of the page and save path (tasks 9.2, 9.3, 14.4). |
+| v1.1: logging creates a secret-exposure path. | A secret appears in host logs. | ADR-020's redaction contract, per-level redaction tests, bounded volume, and a dedicated logging security review (tasks 10.2, 10.3). |
+| v1.1: the output-affecting renderer changes are versioned inconsistently. | Stale artwork or a broken fingerprint/golden oracle. | Goals B and E are one phase with a single coordinated schema/`RenderVersion` advance and one golden regeneration (task 12.4), with fail-closed goldens and no auto-approval path. |
+| v1.1: the inventory cache serves stale metadata as current. | Incorrect badges after a provider change. | Bounded TTL and ArrTags-side invalidation from the complete trigger set; the cache stays non-authoritative with bounded last-known-good (ADR-018, tasks 11.1-11.3). |
 
 ## Post-V1 Backlog
 
@@ -3369,8 +4776,10 @@ expand V1 scope by themselves.
 **v1.1 promotion:** The provider catalogue/inventory cache (F1) and the runtime
 configuration replacement wiring (F2) are promoted into v1.1 and are now tracked
 in [`docs/planning/v1.1.md`](docs/planning/v1.1.md) (Goals C and A, resolved by
-ADR-018 and ADR-016). The remaining open items below stay deferred unless a
-later decision promotes them.
+ADR-018 and ADR-016). They are planned as **Phase 11** (provider inventory cache,
+resolves F1) and **Phase 9** (dashboard settings UI and runtime activation,
+resolves F2) in "v1.1 Milestones (Phases 9-14)". The remaining open items below
+stay deferred unless a later decision promotes them.
 
 - Add additional normalized badge metadata already identified in the data model,
   such as bit depth, frame rate, scan type, language, subtitles, release group,
