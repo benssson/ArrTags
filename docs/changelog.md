@@ -2893,6 +2893,12 @@ reconciliation (the running trigger loop leaves the bounded queue empty).
 
 ## Phase 10 - Logging with configurable verbosity (v1.1)
 
+**Status:** Complete; the independent phase review is approved (Gate 10 met; see
+`docs/implementation/phase-10/phase-review.json`) and the `v1.1.0-phase10` tag is
+created (tasks 10.1, 10.2, and 10.3 complete). The logging security review is
+recorded at `docs/implementation/10.3/security-review.json`
+(PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM).
+
 ### Task 10.1 - Logging foundation, verbosity configuration, and fingerprint exclusion
 
 **Status:** Complete.
@@ -2993,8 +2999,9 @@ Documentation: `docs/architecture.md` sections 6 (logging and verbosity) and 12
 
 ### Task 10.3 - SEC-5 rewrite, documentation, and logging security review
 
-**Status:** Documentation complete; the logging security review is run by the
-orchestrator and recorded at `docs/implementation/10.3/security-review.json`.
+**Status:** Complete. The logging security review is recorded at
+`docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open
+BLOCKER/HIGH/MEDIUM).
 
 Rewrites `docs/limitations.md` SEC-5 from the pre-logging negative result ("the
 plugin has no logging call sites, so no plugin log path can leak a secret") to

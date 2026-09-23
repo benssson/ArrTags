@@ -3,11 +3,16 @@
 ## Project Status
 
 **Current milestone:** Phase 10 — Logging with configurable verbosity (v1.1) is
-in progress (task 10.1, logging foundation, verbosity configuration, and
-fingerprint exclusion, and task 10.2, bounded, redacted log call sites and volume
-bounds, are complete, and task 10.3's SEC-5 rewrite and documentation
-reconciliation are complete; the task 10.3 logging security review remains to be
-recorded). Phase 9 —
+complete: tasks 10.1 (logging foundation, verbosity configuration, and
+fingerprint exclusion), 10.2 (bounded, redacted log call sites and volume
+bounds), and 10.3 (SEC-5 rewrite, documentation, and logging security review) are
+complete; all five Phase 10 acceptance criteria are met at the integration-test
+level; the logging security review is recorded at
+`docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open
+BLOCKER/HIGH/MEDIUM); Gate 10 is met (the Phase 10 review is approved in
+`docs/implementation/phase-10/phase-review.json`) and the annotated tag
+`v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned
+by task 14.3. Phase 9 —
 Dashboard settings UI and runtime configuration activation (v1.1) is complete:
 tasks 9.1-9.5 are complete, all six Phase 9 acceptance criteria (including the
 v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is
@@ -612,8 +617,8 @@ The plugin:
   `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244 with 44
   skips, and running `./build.sh package` first unskips the package-content
   cases. These are the `1.0.1.0` release-matrix counts, not current v1.1 truth:
-  the current v1.1 working suite is Failed 0, Passed 1,272, Skipped 63, Total
-  1,335 (see the Project Status above and `docs/limitations.md` V6, which the
+  the current v1.1 working suite is Failed 0, Passed 1,363, Skipped 63, Total
+  1,426 (see the Project Status above and `docs/limitations.md` V6, which the
   v1.1 release task refreshes). The `1.0.1.0` counts reflect the suite after the
   SEC-1 webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
 
@@ -663,12 +668,17 @@ Next tasks:
   already-redacted values, and the code-owned `LogThrottle` bounds volume at 5
   records per category/event per minute with one bounded suppression summary per
   window and a 256-key tracking cap. Task 10.3 (SEC-5 rewrite and logging
-  security review) is documentation-complete: `docs/limitations.md` SEC-5 is
+  security review) is complete: `docs/limitations.md` SEC-5 is
   rewritten to the ADR-020 redaction contract and reconciled with SEC-9, and the
   named documents (`docs/architecture.md` sections 6/11/12, `docs/data-model.md`
   3.12, and `README.md`) describe the shipped Goal F behavior; the logging
-  security review remains to be recorded at
-  `docs/implementation/10.3/security-review.json`.
+  security review is recorded at
+  `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open
+  BLOCKER/HIGH/MEDIUM). All five Phase 10 acceptance criteria are met at the
+  integration-test level; Gate 10 is met (the Phase 10 review is approved in
+  `docs/implementation/phase-10/phase-review.json`) and the annotated tag
+  `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned
+  by task 14.3.
 - Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is
   complete: tasks 9.1 (configuration round-trip spike, blocking
   prerequisite), 9.2 (dashboard settings page and embedded page resource), 9.3

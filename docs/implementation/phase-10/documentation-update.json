@@ -1,0 +1,199 @@
+{
+  "scope": "Phase 10 - Logging with configurable verbosity (v1.1 Goal F, ADR-020): post-review documentation reconciliation after Gate 10 met and tag v1.1.0-phase10 created (fixes P10-F1; also corrects the now-false current v1.1 suite count raised as P10-F2)",
+  "surfaces_checked": [
+    "PLANS.md",
+    "docs/project-status.md",
+    "docs/changelog.md",
+    "docs/architecture.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "README.md",
+    "docs/release/build-and-release.md",
+    "docs/planning/v1.1.md",
+    "docs/decisions.md"
+  ],
+  "changes": [
+    {
+      "document": "PLANS.md",
+      "section": "Project Status paragraph (Phase 10 completion clause appended after the Phase 9 clause)",
+      "before": "...the annotated tag `v1.1.0-phase9` is created; the live Goal A confirmation remains owned by task 14.3. (no Phase 10 completion statement)",
+      "after": "...the live Goal A confirmation remains owned by task 14.3. Phase 10 (v1.1) is complete (Gate 10 met; tag `v1.1.0-phase10`): tasks 10.1 ..., 10.2 ..., and 10.3 ... are complete; all five Phase 10 acceptance criteria are met at the integration-test level; the logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM); Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json (reviewer_status APPROVED, phase_complete true, ready_for_next_phase true, phase_tag_recommendation.create true)",
+        "docs/implementation/10.3/security-review.json (reviewer_status PASS_WITH_FINDINGS, open_blocker_high_medium 0)",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase10 (annotated; tag commit 451bd95)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Active Planning Scope paragraph",
+      "before": "Phase 10 is in progress: tasks 10.1 (logging foundation, verbosity configuration, and fingerprint exclusion) and 10.2 (bounded, redacted log call sites and volume bounds) are complete, and task 10.3's SEC-5 rewrite and documentation reconciliation are complete; the task 10.3 logging security review remains to be recorded.",
+      "after": "Phase 10 is complete: tasks 10.1 ..., 10.2 ..., and 10.3 ... are complete; all five Phase 10 acceptance criteria are met at the integration-test level; the logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM); Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3. Phase 11 (Provider inventory cache and library-refresh-driven refresh) is the next not-started phase.",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json (phase_complete true; phase_tag_recommendation tag v1.1.0-phase10)",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase10",
+        "PLANS.md Milestone Status row 11 ('Not started (Phase 11 tasks 11.1-11.4; resolves limitation F1)')"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Milestone Status row 10",
+      "before": "| 10 | Logging with configurable verbosity (v1.1) | In progress (tasks 10.1-10.2 complete; task 10.3 SEC-5 rewrite and documentation complete, logging security review pending) | ...",
+      "after": "| 10 | Logging with configurable verbosity (v1.1) | Complete (tasks 10.1-10.3 complete; all five Phase 10 acceptance criteria are met at the integration-test level; the logging security review is recorded at `docs/implementation/10.3/security-review.json` with 0 open BLOCKER/HIGH/MEDIUM; Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3) | ...",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json (phase_complete true; phase_tag_recommendation)",
+        "docs/implementation/10.3/security-review.json (open_blocker_high_medium 0)",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase10",
+        "PLANS.md Gate 10 definition ('Met when tasks 10.1-10.3 meet their acceptance criteria, the logging security review is recorded with no open BLOCKER/HIGH, the phase review is approved, and the tag v1.1.0-phase10 is created')"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Phase 10 task list checkbox (task 10.3)",
+      "before": "- [ ] 10.3 SEC-5 rewrite, documentation, and logging security review.",
+      "after": "- [x] 10.3 SEC-5 rewrite, documentation, and logging security review.",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json tasks_checked ('10.3 ... - complete, 0 rework rounds, implementation-reviewer APPROVED, security-reviewer PASS_WITH_FINDINGS 0 open BLOCKER/HIGH/MEDIUM')"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Task 10.3 status line",
+      "before": "**Status:** Documentation complete; the logging security review remains.",
+      "after": "**Status:** Complete. The logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM); the live pinned-host logging confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/10.3/security-review.json (reviewer_status PASS_WITH_FINDINGS, open_blocker_high_medium 0)",
+        "docs/implementation/phase-10/phase-review.json notes (live pinned-host logging verification deferred to task 14.3)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Task 10.3 body (security-review process sentence)",
+      "before": "The logging security review (ADR-020 clause 8) is run by the orchestrator after the documentation change and recorded at `docs/implementation/10.3/security-review.json`; the verdict is not recorded here.",
+      "after": "The logging security review (ADR-020 clause 8) was run by the orchestrator after the documentation change and is recorded at `docs/implementation/10.3/security-review.json`; the verdict is not recorded here.",
+      "evidence": [
+        "docs/implementation/10.3/security-review.json (recorded at HEAD)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Phase 10 acceptance criteria checkboxes",
+      "before": "Five unchecked boxes (- [ ] The plugin logs through the host logging pipeline ...; - [ ] Verbosity is bounded ...; - [ ] Every log call is secret-free ...; - [ ] Verbosity does not affect rendered output ...; - [ ] SEC-5 is rewritten ...)",
+      "after": "All five boxes checked (- [x] ...), matching the Phase 9 acceptance-criteria convention",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json requirements_checked (all five Phase 10 AC1-AC5 SATISFIED)"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Project Status opening ('Current milestone')",
+      "before": "**Current milestone:** Phase 10 - Logging with configurable verbosity (v1.1) is in progress (task 10.1 ... and task 10.2 ... are complete, and task 10.3's SEC-5 rewrite and documentation reconciliation are complete; the task 10.3 logging security review remains to be recorded).",
+      "after": "**Current milestone:** Phase 10 - Logging with configurable verbosity (v1.1) is complete: tasks 10.1 ..., 10.2 ..., and 10.3 ... are complete; all five Phase 10 acceptance criteria are met at the integration-test level; the logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM); Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json (phase_complete true, APPROVED)",
+        "docs/implementation/10.3/security-review.json",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase10"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Next tasks (Phase 10 bullet)",
+      "before": "Task 10.3 (SEC-5 rewrite and logging security review) is documentation-complete: ...; the logging security review remains to be recorded at `docs/implementation/10.3/security-review.json`.",
+      "after": "Task 10.3 (SEC-5 rewrite and logging security review) is complete: ...; the logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM). All five Phase 10 acceptance criteria are met at the integration-test level; Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/10.3/security-review.json",
+        "docs/implementation/phase-10/phase-review.json",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase10"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Current v1.1 suite count (the 'current v1.1 working suite' line)",
+      "before": "the current v1.1 working suite is Failed 0, Passed 1,272, Skipped 63, Total 1,335",
+      "after": "the current v1.1 working suite is Failed 0, Passed 1,363, Skipped 63, Total 1,426",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json verified.tests ('Failed 0, Passed 1363, Skipped 63, Total 1426; baseline before Phase 10: 1272/63/1335; delta +91 = 26 LogVerbosityTests + 65 LogRedactionTests')",
+        "docs/implementation/10.3/security-review.json summary (suite Failed 0, Passed 1363, Skipped 63, Total 1426)"
+      ]
+    },
+    {
+      "document": "docs/architecture.md",
+      "section": "Status line (Phase 10 clause)",
+      "before": "Phase 10 task 10.1 adds the bounded `LogVerbosity` setting ... and covers the logging path with a dedicated security review (`docs/implementation/10.3/security-review.json`), with the Phase 10 gate review pending.",
+      "after": "Phase 10 (v1.1) is complete (Gate 10 met; tag `v1.1.0-phase10`): task 10.1 adds the bounded `LogVerbosity` setting ... and covers the logging path with a dedicated security review (`docs/implementation/10.3/security-review.json`); all five Phase 10 acceptance criteria are met at the integration-test level, and the live pinned-host logging confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json (APPROVED, phase_complete true)",
+        "docs/implementation/10.3/security-review.json",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase10"
+      ]
+    },
+    {
+      "document": "docs/changelog.md",
+      "section": "Phase 10 section status line (added after the Phase 10 heading)",
+      "before": "## Phase 10 - Logging with configurable verbosity (v1.1)\\n\\n### Task 10.1 - ... (no Phase 10 section status line)",
+      "after": "## Phase 10 - Logging with configurable verbosity (v1.1)\\n\\n**Status:** Complete; the independent phase review is approved (Gate 10 met; see `docs/implementation/phase-10/phase-review.json`) and the `v1.1.0-phase10` tag is created (tasks 10.1, 10.2, and 10.3 complete). The logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM).\\n\\n### Task 10.1 - ...",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json",
+        "docs/implementation/10.3/security-review.json",
+        "docs/changelog.md Phase 8/Phase 9 sections (section-level `**Status:**` line convention)"
+      ]
+    },
+    {
+      "document": "docs/changelog.md",
+      "section": "Task 10.3 status line",
+      "before": "**Status:** Documentation complete; the logging security review is run by the orchestrator and recorded at `docs/implementation/10.3/security-review.json`.",
+      "after": "**Status:** Complete. The logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM).",
+      "evidence": [
+        "docs/implementation/10.3/security-review.json (reviewer_status PASS_WITH_FINDINGS, open_blocker_high_medium 0)"
+      ]
+    },
+    {
+      "document": "docs/implementation-readiness.md",
+      "section": "Status line (Phase 10 clause)",
+      "before": "Phase 10 (v1.1) logging is in progress: task 10.1 adds ...; task 10.3 rewrites `docs/limitations.md` SEC-5 ... with the logging security review run by the orchestrator and recorded at `docs/implementation/10.3/security-review.json`.",
+      "after": "Phase 10 (v1.1) logging is complete: task 10.1 adds ...; task 10.3 rewrites `docs/limitations.md` SEC-5 ... and the logging security review is recorded at `docs/implementation/10.3/security-review.json` (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM). All five Phase 10 acceptance criteria are met at the integration-test level; Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json",
+        "docs/implementation/10.3/security-review.json",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase10"
+      ]
+    },
+    {
+      "document": "docs/limitations.md",
+      "section": "V6 (Host-guarded facts are skipped without the pinned host) - current v1.1 working suite count",
+      "before": "The current v1.1 working suite is Failed 0, Passed 1,272, Skipped 63, Total 1,335; the v1.1 release task refreshes this matrix (test-quality review finding TQ-8).",
+      "after": "The current v1.1 working suite is Failed 0, Passed 1,363, Skipped 63, Total 1,426; the v1.1 release task refreshes this matrix (test-quality review finding TQ-8).",
+      "evidence": [
+        "docs/implementation/phase-10/phase-review.json verified.tests (Failed 0, Passed 1363, Skipped 63, Total 1426)",
+        "docs/implementation/10.3/security-review.json summary (same reproduced suite)"
+      ]
+    }
+  ],
+  "ambiguous_or_deferred": [
+    {
+      "claim": "P10-F2 was routed by the phase reviewer to the Phase 13/v1.1-release reconciliation, but it is a now-false current-state claim (the current v1.1 suite count), so it was corrected during this phase closure in docs/project-status.md and docs/limitations.md V6 rather than deferred. The `1.0.1.0` release-matrix counts (1,228/60/1,288 default; 1,244/44/1,288 host-guarded) remain labelled as historical and unchanged.",
+      "recommended_action": "None further for Phase 10; the Phase 13 reconciliation should re-confirm the counts after Phases 11-12 add tests."
+    },
+    {
+      "claim": "docs/planning/v1.1.md Goal F still says 'Current state: The plugin has zero logging call sites' (P10-F3). This is a now-false current-state claim, but docs/planning/v1.1.md is a governing-scope planning artifact rather than one of the canonical current-state surfaces, and the phase reviewer routed it to the Phase 13 reconciliation.",
+      "recommended_action": "Correct in the Phase 13 documentation reconciliation as tracked (SEC-10.3-2 / 10.3-F4); intentionally left unchanged here per instruction."
+    },
+    {
+      "claim": "PLANS.md task 9.5/10.1 and docs/changelog.md task 9.5/10.1 historical entries retain '1,272/63/1,335' and '1,298/63/1,361' as the build/test results observed at those tasks. These are historical records of a past run, not current-state claims.",
+      "recommended_action": "None; preserve as historical (do not rewrite earlier phase/changelog entries merely because the project moved on)."
+    },
+    {
+      "claim": "The PLANS.md Gate 10 statement ('Met when tasks 10.1-10.3 meet their acceptance criteria, the logging security review is recorded with no open BLOCKER/HIGH, the phase review is approved, and the tag v1.1.0-phase10 is created') is a gate definition, not a completion claim; it was confirmed present and its conditions are all satisfied per docs/implementation/phase-10/phase-review.json and the created tag. No change was needed.",
+      "recommended_action": "None; the gate-met fact is recorded in the Project Status paragraph, the Active Planning Scope paragraph, and the Milestone Status row 10."
+    },
+    {
+      "claim": "Live pinned-host logging confirmation (real Serilog sink emission, category, and level) is not proven: ARRTAGS_JELLYFIN_HOST_DIR is unset and the 63 host-guarded facts skip. It is recorded as owned by task 14.3 in every updated Phase 10 surface.",
+      "recommended_action": "Task 14.3 performs and records the live confirmation; no canonical surface presents the live confirmation as done."
+    },
+    {
+      "claim": "README.md and docs/release/build-and-release.md were checked and require no Phase 10 change: they contain no Phase 10 security-review-pending wording and no stale current v1.1 suite count (the release doc records the historical `1.0.1.0` artifact identity, and README describes the shipped logging capability).",
+      "recommended_action": "None; recorded so the surfaces are accounted for."
+    }
+  ],
+  "summary": "Phase 10 (v1.1 Goal F, ADR-020) is complete and the canonical current-state surfaces now say so consistently: tasks 10.1-10.3 complete, all five Phase 10 acceptance criteria met at the integration-test level, the logging security review recorded at docs/implementation/10.3/security-review.json (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM), Gate 10 met (phase review APPROVED, phase_complete true), and the annotated tag v1.1.0-phase10 created at HEAD 451bd95, with the live pinned-host logging confirmation still owned by task 14.3. Stale 'security review pending / remains to be recorded' wording was corrected in PLANS.md (Project Status paragraph, Active Planning Scope, Milestone Status row 10, task 10.3 checkbox/status/body, Phase 10 acceptance-criteria checkboxes), docs/project-status.md (current milestone, Next tasks), docs/architecture.md (status line), docs/changelog.md (new Phase 10 section status line and task 10.3 status), and docs/implementation-readiness.md (status line). The now-false current v1.1 suite count was corrected to Failed 0, Passed 1,363, Skipped 63, Total 1,426 in docs/project-status.md and docs/limitations.md V6 (P10-F2), keeping all `1.0.1.0` release-matrix counts and all earlier historical phase/changelog run counts unchanged. docs/planning/v1.1.md's Goal F 'zero logging call sites' line (P10-F3) was intentionally left for Phase 13. No application code, tests, build scripts, artifact, ADR clause, dated research snapshot, or historical phase report was modified; no commits were made."
+}
