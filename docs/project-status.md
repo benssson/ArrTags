@@ -2,10 +2,16 @@
 
 ## Project Status
 
-**Current milestone:** Phase 9 — Dashboard settings UI and runtime configuration
-activation (v1.1) — tasks 9.1-9.5 are complete; the independent phase review,
-Gate 9, and the `v1.1.0-phase9` tag are pending (live Goal A confirmation is
-owned by task 14.3). The previously gated milestone Phase 8 — Release
+**Current milestone:** Phase 10 — Logging with configurable verbosity (v1.1) is
+in progress (task 10.1, logging foundation, verbosity configuration, and
+fingerprint exclusion, is complete; tasks 10.2 and 10.3 remain). Phase 9 —
+Dashboard settings UI and runtime configuration activation (v1.1) is complete:
+tasks 9.1-9.5 are complete, all six Phase 9 acceptance criteria (including the
+v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is
+met (the Phase 9 review is approved in
+`docs/implementation/phase-9/phase-review.json`), and the annotated tag
+`v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.
+The previously gated milestone Phase 8 — Release
 distribution is **complete** (tasks
 8.1-8.6 complete): the `v1.0.1` release is prepared as plugin version `1.0.1.0`
 with the annotated tag `v1.0.1` (tag commit `8cba85b`) and the committed
@@ -25,12 +31,16 @@ GitHub release publication, the asset upload, and the manifest push remain the
 manual user step with `scripts/publish-release.sh`, so the plugin catalog cannot
 be installed from the public repository until the user publishes that release.**
 Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is
-complete at the task level: tasks 9.1 (configuration round-trip spike, blocking
+complete: tasks 9.1 (configuration round-trip spike, blocking
 prerequisite), 9.2 (dashboard settings page and embedded page resource), 9.3
 (elevation-gated save path and runtime activation), 9.4 (bounded post-save
 reconciliation trigger), and 9.5 (Goal A documentation and integration
-verification) are complete; the independent phase review and the
-`v1.1.0-phase9` tag are pending. The 9.1
+verification) are complete; all six Phase 9 acceptance criteria (including the
+v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is
+met (the Phase 9 review is approved in
+`docs/implementation/phase-9/phase-review.json`), and the annotated tag
+`v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.
+The 9.1
 spike proved that the pinned Jellyfin 12.0.0 elevation-gated
 `PluginsController` POST deserializes with
 `Jellyfin.Extensions.Json.JsonDefaults.Options`, whose default `System.Text.Json`
@@ -646,12 +656,16 @@ Next tasks:
   fingerprints and `RenderVersion`. Tasks 10.2 (log call sites and volume
   bounds) and 10.3 (SEC-5 rewrite and logging security review) remain.
 - Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is
-  complete at the task level: tasks 9.1 (configuration round-trip spike, blocking
+  complete: tasks 9.1 (configuration round-trip spike, blocking
   prerequisite), 9.2 (dashboard settings page and embedded page resource), 9.3
   (elevation-gated save path and runtime activation), 9.4 (bounded post-save
   reconciliation trigger), and 9.5 (Goal A documentation and integration
-  verification) are complete; the independent phase review and the
-  `v1.1.0-phase9` tag are pending. The get-only
+  verification) are complete; all six Phase 9 acceptance criteria (including the
+  v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9
+  is met (the Phase 9 review is approved in
+  `docs/implementation/phase-9/phase-review.json`), and the annotated tag
+  `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.
+  The get-only
   `Collection<T>` round-trip was proven to fail with the pinned
   `JsonDefaults.Options`, so `PluginConfiguration.EnabledLibraries` and
   `RendererConfiguration.Selectors` are now settable and are populated by the

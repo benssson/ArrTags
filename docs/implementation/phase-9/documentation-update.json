@@ -1,0 +1,129 @@
+{
+  "scope": "Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1 Goal A): post-review documentation reconciliation after Gate 9 met and tag v1.1.0-phase9 created",
+  "surfaces_checked": [
+    "PLANS.md",
+    "docs/project-status.md",
+    "docs/changelog.md",
+    "docs/architecture.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/release/build-and-release.md",
+    "README.md"
+  ],
+  "changes": [
+    {
+      "document": "PLANS.md",
+      "section": "Project Status paragraph (Phase 9 recap, opening clause)",
+      "before": "Phase 9 (v1.1) tasks are complete and the phase is pending its independent phase review and tag: task 9.1 (configuration round-trip spike, blocking prerequisite) is complete",
+      "after": "Phase 9 (v1.1) is complete (Gate 9 met; tag `v1.1.0-phase9`): task 9.1 (configuration round-trip spike, blocking prerequisite) is complete",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json (reviewer_status APPROVED, phase_complete true, ready_for_next_phase true, phase_tag_recommendation.create true)",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase9 (annotated, commit 421611a)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Project Status paragraph (Phase 9 recap, closing clause)",
+      "before": "all six Phase 9 acceptance criteria are met at the integration-test level and the live confirmation is owned by task 14.3, so Phase 9 is pending its independent phase review and the `v1.1.0-phase9` tag.",
+      "after": "all six Phase 9 acceptance criteria (including the v1.1 Goal A acceptance criteria) are met at the integration-test level. Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`) and the annotated tag `v1.1.0-phase9` is created; the live Goal A confirmation remains owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json (requirements_checked: six Phase 9 acceptance criteria checked; Goal A criteria met at the integration-test level; notes: live confirmation owned by task 14.3)",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase9"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Active Planning Scope paragraph",
+      "before": "Phase 9 tasks 9.1-9.5 are complete; the next step is the independent Phase 9 phase review (Gate 9 and the `v1.1.0-phase9` tag), with the live Goal A confirmation owned by task 14.3. Phase 10 task 10.1 (logging foundation, verbosity configuration, and fingerprint exclusion) is complete; tasks 10.2 and 10.3 remain.",
+      "after": "Phase 9 tasks 9.1-9.5 are complete and Phase 9 is complete: all six Phase 9 acceptance criteria (including the v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`), and the annotated tag `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3. Phase 10 is in progress: task 10.1 (logging foundation, verbosity configuration, and fingerprint exclusion) is complete; tasks 10.2 and 10.3 remain.",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase9",
+        "PLANS.md Milestone Status row 10 ('In progress (task 10.1 complete; tasks 10.2-10.3 remain)')"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Milestone Status row 9",
+      "before": "Tasks complete (Phase 9 tasks 9.1-9.5 complete: ... The Goal A acceptance criteria are met at the integration-test level; the independent phase review, Gate 9, and the `v1.1.0-phase9` tag are pending)",
+      "after": "Complete (Phase 9 tasks 9.1-9.5 complete: ... The Goal A acceptance criteria are met at the integration-test level; Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`) and the `v1.1.0-phase9` tag is created; the live Goal A confirmation is owned by task 14.3)",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json (phase_complete true; phase_tag_recommendation tag v1.1.0-phase9)",
+        "git tag -l 'v1.1.0-*'",
+        "PLANS.md Gate 9 definition ('Met when tasks 9.1-9.5 meet their acceptance criteria, the Goal A acceptance criteria are met at the integration-test level ..., the phase review is approved, and the tag v1.1.0-phase9 is created')"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Project Status opening ('Current milestone')",
+      "before": "**Current milestone:** Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1) - tasks 9.1-9.5 are complete; the independent phase review, Gate 9, and the `v1.1.0-phase9` tag are pending (live Goal A confirmation is owned by task 14.3).",
+      "after": "**Current milestone:** Phase 10 - Logging with configurable verbosity (v1.1) is in progress (task 10.1, logging foundation, verbosity configuration, and fingerprint exclusion, is complete; tasks 10.2 and 10.3 remain). Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1) is complete: tasks 9.1-9.5 are complete, all six Phase 9 acceptance criteria (including the v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`), and the annotated tag `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.",
+      "evidence": [
+        "PLANS.md Milestone Status row 10 (Phase 10 in progress; task 10.1 complete)",
+        "docs/implementation/phase-9/phase-review.json",
+        "git tag -l 'v1.1.0-*'"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Project Status Phase 9 detail paragraph",
+      "before": "Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1) is complete at the task level: ... are complete; the independent phase review and the `v1.1.0-phase9` tag are pending.",
+      "after": "Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1) is complete: ... are complete; all six Phase 9 acceptance criteria (including the v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`), and the annotated tag `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json",
+        "git tag -l 'v1.1.0-*'"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Next tasks (Phase 9 bullet)",
+      "before": "- Phase 9 - ... is complete at the task level: ... are complete; the independent phase review and the `v1.1.0-phase9` tag are pending.",
+      "after": "- Phase 9 - ... is complete: ... are complete; all six Phase 9 acceptance criteria (including the v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`), and the annotated tag `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json",
+        "git tag -l 'v1.1.0-*'"
+      ]
+    },
+    {
+      "document": "docs/changelog.md",
+      "section": "Phase 9 status line",
+      "before": "**Status:** Tasks complete; the independent phase review, Gate 9, and the `v1.1.0-phase9` tag are pending (tasks 9.1, 9.2, 9.3, 9.4, and 9.5 complete). The phase resolves limitation F2.",
+      "after": "**Status:** Complete; the independent phase review is approved (Gate 9 met; see `docs/implementation/phase-9/phase-review.json`) and the `v1.1.0-phase9` tag is created (tasks 9.1, 9.2, 9.3, 9.4, and 9.5 complete). The phase resolves limitation F2.",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json (reviewer_status APPROVED)",
+        "git tag -l 'v1.1.0-*' -> v1.1.0-phase9"
+      ]
+    },
+    {
+      "document": "docs/implementation-readiness.md",
+      "section": "Status line (Phase 9 opening clause)",
+      "before": "Phase 9 (v1.1) dashboard settings UI tasks are complete and the phase is pending its independent phase review and tag: task 9.1 (configuration round-trip spike, blocking prerequisite) is complete",
+      "after": "Phase 9 (v1.1) dashboard settings UI tasks are complete: task 9.1 (configuration round-trip spike, blocking prerequisite) is complete",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json",
+        "git tag -l 'v1.1.0-*'"
+      ]
+    },
+    {
+      "document": "docs/implementation-readiness.md",
+      "section": "Status line (Phase 9 closing clause)",
+      "before": "so all six Phase 9 acceptance criteria are met at the integration-test level and the independent phase review and `v1.1.0-phase9` tag are pending.",
+      "after": "so all six Phase 9 acceptance criteria are met at the integration-test level. Phase 9 is complete: Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`) and the annotated tag `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-9/phase-review.json",
+        "git tag -l 'v1.1.0-*'"
+      ]
+    }
+  ],
+  "ambiguous_or_deferred": [
+    {
+      "claim": "docs/architecture.md status line already recorded 'Phase 9 (v1.1) is complete (Gate 9 met; tag `v1.1.0-phase9`)' before this pass (added by the task 10.1 commit ae7f5c9), so no change was needed there.",
+      "recommended_action": "None; recorded so the surface is accounted for."
+    },
+    {
+      "claim": "Phase 9 residual findings P9-F1..P9-F7 (reviewer MEDIUM/LOW/INFORMATIONAL) remain unresolved by design; P9-F1 (live activity-log confirmation on the pinned host) is owned by task 14.3.",
+      "recommended_action": "No new limitations entry: the residuals are recorded in docs/implementation/phase-9/phase-review.json and F2's resolution is already recorded in docs/limitations.md; task 14.3/13.x own any further canonical recording."
+    }
+  ],
+  "summary": "Phase 9 (v1.1 Goal A) is complete and the canonical current-state surfaces now say so consistently: tasks 9.1-9.5 complete, all six Phase 9 acceptance criteria (including the v1.1 Goal A criteria) met at the integration-test level, Gate 9 met (phase review APPROVED, `phase_complete: true`), and the annotated tag `v1.1.0-phase9` created, with live Goal A confirmation still owned by task 14.3. Stale 'independent phase review, Gate 9, and/or the `v1.1.0-phase9` tag are pending' wording was corrected in PLANS.md (Project Status paragraph, Active Planning Scope, Milestone Status row 9), docs/project-status.md (opening, Phase 9 detail, Next tasks), docs/changelog.md (Phase 9 status), and docs/implementation-readiness.md (status line); docs/architecture.md already stated Phase 9 complete and was left unchanged. Phase 10 is recorded as in progress (task 10.1 complete; 10.2-10.3 remain). No application code, tests, build scripts, artifact, ADR, dated research snapshot, or historical phase report was modified; no commits were made."
+}

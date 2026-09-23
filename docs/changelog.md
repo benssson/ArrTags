@@ -2631,9 +2631,10 @@ not declared; the Phase 8 review is separate.
 
 ## Phase 9 - Dashboard settings UI and runtime configuration activation (v1.1)
 
-**Status:** Tasks complete; the independent phase review, Gate 9, and the
-`v1.1.0-phase9` tag are pending (tasks 9.1, 9.2, 9.3, 9.4, and 9.5 complete). The
-phase resolves limitation F2.
+**Status:** Complete; the independent phase review is approved (Gate 9 met; see
+`docs/implementation/phase-9/phase-review.json`) and the `v1.1.0-phase9` tag is
+created (tasks 9.1, 9.2, 9.3, 9.4, and 9.5 complete). The phase resolves
+limitation F2.
 
 ### Task 9.1 - Configuration round-trip spike (blocking prerequisite)
 
