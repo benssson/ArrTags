@@ -2,6 +2,9 @@
   "task": "9.1",
   "title": "Configuration round-trip spike (blocking prerequisite)",
   "phase": 9,
+  "status": "COMPLETE",
+  "commit": "33d86d7",
+  "planning_commit": "f6e96cd",
   "subagents": [
     {
       "role": "implementation-worker",
