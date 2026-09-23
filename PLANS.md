@@ -4754,10 +4754,12 @@ artifact.
 **Status:** Not started.
 
 **Objective:** Run the documented pinned-host matrix for v1.1 (settings page
-load/save, post-save re-render, cache behavior, and log output/level) and record
-the reproducible results.
+load/save, post-save re-render, the configuration-rejection activity-log entry,
+cache behavior, and log output/level) and record the reproducible results.
 
-**Traceability:** v1.1 verification requirements section 9; Goals A, C, and F.
+**Traceability:** v1.1 verification requirements section 9; Goals A, C, and F;
+ADR-021 (Phase 9 finding P9-F1: the `IActivityManager`/`ActivityLog` host ABI is
+pinned-source- and unit-verified but not live-verified).
 
 **Dependencies:** 14.2.
 
@@ -4766,7 +4768,10 @@ recorded live-verification result.
 
 **Work:** Use the `live-host-verifier` procedure in
 `docs/testing/jellyfin-12-musl-test-host.md` against the pinned Jellyfin `12.0.0`
-host; record the matrix result in machine-readable form.
+host; record the matrix result in machine-readable form. Include an explicit
+matrix line for ADR-021: a rejected configuration save writes a bounded,
+secret-free administrator-visible activity-log entry that appears in the
+dashboard Activity log, and a valid save writes none.
 
 **Tests:** The live matrix passes; results are reproducible.
 

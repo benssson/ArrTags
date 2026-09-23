@@ -3,7 +3,24 @@
   "title": "Dashboard settings UI and runtime configuration activation",
   "release": "v1.1.0",
   "phase_tag": "v1.1.0-phase9",
-  "status": "TASKS_COMPLETE_PENDING_PHASE_REVIEW",
+  "status": "COMPLETE",
+  "phase_review": {
+    "report": "docs/implementation/phase-9/phase-review.json",
+    "reviewer_status": "APPROVED",
+    "phase_complete": true,
+    "ready_for_next_phase": true,
+    "open_blocker_or_high": 0,
+    "findings": [
+      {"id": "P9-F1", "severity": "MEDIUM", "status": "tracked", "summary": "ADR-021 activity-log host ABI is pinned-source- and unit-verified but not live-verified; folded into PLANS task 14.3 as an explicit matrix line."},
+      {"id": "P9-F2", "severity": "LOW", "status": "tracked", "summary": "Provider fetch volume per save until the Phase 11 inventory cache (limitation F1)."},
+      {"id": "P9-F3", "severity": "LOW", "status": "tracked", "summary": "Dashboard numeric inputs unguarded against empty values (host deserialization error, no state corruption)."},
+      {"id": "P9-F4", "severity": "LOW", "status": "tracked", "summary": "Two open 9.1 test-quality LOW items (host-guarded fact strengthening, ALC resolver unregistration)."},
+      {"id": "P9-F5", "severity": "INFORMATIONAL", "status": "noted", "summary": "ADR-016 clause-5 implementation note enumeration not exhaustive (e.g. ArtifactStorageQuotaBytes)."},
+      {"id": "P9-F6", "severity": "INFORMATIONAL", "status": "noted", "summary": "Dated research snapshot still describes F2 as open."},
+      {"id": "P9-F7", "severity": "INFORMATIONAL", "status": "noted", "summary": "9.3 canonical reviewer filename holds the first attempt; later attempts preserved separately."}
+    ],
+    "tag_recommendation": "create v1.1.0-phase9"
+  },
   "authoritative_execution_order": ["9.1", "9.2", "9.3", "9.4", "9.5"],
   "tasks": [
     {

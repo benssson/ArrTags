@@ -1,0 +1,245 @@
+{
+  "phase": 9,
+  "title": "Dashboard settings UI and runtime configuration activation (v1.1 Goal A)",
+  "release": "v1.1.0",
+  "phase_tag": "v1.1.0-phase9",
+  "reviewer": "phase-reviewer",
+  "reviewer_status": "APPROVED",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "reviewed_head": "45ee797c284a1de8c0468c54c387eb38a42bb924",
+  "reviewed_branch": "v1.1",
+  "findings": [
+    {
+      "id": "P9-F1",
+      "severity": "MEDIUM",
+      "area": "platform assumption / verification coverage (ADR-021 host ABI)",
+      "issue": "The activity-log rejection surfacing introduced by task 9.3 depends on the host types MediaBrowser.Model.Activity.IActivityManager and Jellyfin.Database.Implementations.Entities.ActivityLog. The mechanism is verified only against pinned Jellyfin 12.0.0 source and unit tests that substitute a DispatchProxy IActivityManager double; no host-guarded or live fact resolves IActivityManager from the pinned host. This is the plugin's only new lower-stability-tier host ABI dependency, and the notifier's write is best-effort (failures are swallowed), so a pinned-host mismatch would silently leave ADR-016 clause 4's administrator surfacing unmet with no signal. Live confirmation is deliberately owned by task 14.3 per the plan, but PLANS.md task 14.3's objective enumerates 'settings page load/save, post-save re-render, cache behavior, and log output/level' without naming the rejected-save activity-log entry that the v1.1 architecture review assigned to it.",
+      "evidence": [
+        "docs/reviews/architecture-review.json (AR-05; documentation_owners task 14.3: 'confirm that a rejected settings-page save writes an administrator-visible Activity log entry and that a valid save does not')",
+        "docs/implementation/9.3/reviewer-report.json (finding 9.3-R1: no host-guarded test references IActivityManager; only the recording double)",
+        "PLANS.md:4752-4782 (task 14.3 objective/work)",
+        "src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs:80-99 (lazy IActivityManager resolution, fully contained write)",
+        "docs/research/jellyfin-expert/configuration-save-failure-surfacing.json"
+      ],
+      "recommended_action": "Make the rejected-save activity-log entry (and the valid-save no-entry case) an explicit line item of the task 14.3 live pinned-host matrix and record the result; optionally add a host-guarded fact that resolves IActivityManager from the pinned host directory. No Phase 9 code change is required, and this does not block the Phase 9 gate because the plan defers live confirmation to 14.3."
+    },
+    {
+      "id": "P9-F2",
+      "severity": "LOW",
+      "area": "performance / accepted design interaction with limitation F1",
+      "issue": "Every successful configuration replacement requests the bounded full-library reconciliation, regardless of whether the changed value is output-affecting. The reconciliation enqueues a work item for every eligible item, and the metadata stage re-reads the provider per work item before the output-fingerprint gate can skip artwork work (limitation F1: no provider inventory cache). A save that only changes, for example, the webhook secret therefore causes a bounded provider-fetch sweep. This is bounded and explicitly accepted by ADR-016 clause 5, but it is non-trivial provider load per save until the Phase 11 inventory cache lands.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ConfigurationReconciliationTrigger.cs (unconditional bounded reconciliation on replacement)",
+        "src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs:61-103 (metadata reconciliation runs before the fingerprint gate)",
+        "docs/limitations.md F1",
+        "docs/decisions.md ADR-016 clause 5 second bullet"
+      ],
+      "recommended_action": "No Phase 9 change (the plan accepts the bounded post-save reconciliation). Ensure Phase 11's inventory cache covers this path, and consider requesting reconciliation only when an output-affecting value changed as a later optimization."
+    },
+    {
+      "id": "P9-F3",
+      "severity": "LOW",
+      "area": "settings-page robustness / input handling",
+      "issue": "The dashboard page's save handler parses every numeric limit with parseInt(value, 10) and posts the whole configuration. An administrator who clears a numeric field produces NaN, JSON.stringify emits null, and the pinned PluginsController POST deserializes the body into non-nullable int properties, which raises a host deserialization error rather than reaching the plugin's bounded validate/reject path. State is not corrupted (the candidate never reaches persistence) and validation/atomicity/secret handling are unaffected; the impact is an opaque host error instead of the documented bounded rejection.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html:357-364, 395-415 (parseInt over numeric inputs)",
+        "src/ArrTags/Plugin.cs:143-157 (validate-before-persist; a deserialization failure never reaches this override)",
+        "docs/research/jellyfin-12-architecture.md section 9 (POST deserializes into ConfigurationType)"
+      ],
+      "recommended_action": "Optional later hardening: treat an empty numeric input as 'keep the current value', or add a client-side guard, so a cleared field cannot produce a host deserialization error. Not required for the Phase 9 gate."
+    },
+    {
+      "id": "P9-F4",
+      "severity": "LOW",
+      "area": "test-quality debt carried from task 9.1",
+      "issue": "Two LOW findings from the task 9.1 test-quality review remain open: 9.1-TQ1 (the host-guarded fact pins the pinned PluginsController's private _serializerOptions field and the POST route template but never asserts that the POST action actually uses that field, so a future host that kept the field but changed the action would still pass) and 9.1-TQ5 (a process-global AssemblyLoadContext.Default.Resolving handler in a static Lazy is never unregistered). Both are non-blocking: the unguarded round-trip tests are the actual non-vacuous proof of the collection fix, and the pattern is shared with pre-existing host-guarded tests.",
+      "evidence": [
+        "docs/implementation/9.1/test-quality-review.json (9.1-TQ1 status open; 9.1-TQ5 status open)",
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:133-160, 190-202"
+      ],
+      "recommended_action": "Track for the release/documentation pass; optional strengthening (invoke the real POST action, or unregister the ALC resolver in a disposable fixture)."
+    },
+    {
+      "id": "P9-F5",
+      "severity": "INFORMATIONAL",
+      "area": "documentation precision / ADR-016 clause-5 implementation note",
+      "issue": "The ADR-016 implementation note (and the matching limitations F2 / architecture section 6 / data-model 3.12 wording) enumerates the construction-captured limits as 'the artifact-size/decode limits and the StateRepository-backed render work-cache TTL/quota and terminal-provenance retention values'. ArtifactStorageQuotaBytes is also construction-captured (SourceArtifactStore reads repository.Limits.ArtifactStorageQuotaBytes at construction). The note's 'some singletons capture ...' phrasing is illustrative and clause 5 is correctly not rewritten, so this is a precision nit rather than an overclaim.",
+      "evidence": [
+        "docs/decisions.md:2140-2152 (ADR-016 implementation note)",
+        "src/ArrTags/Artwork/SourceArtifactStore.cs:47",
+        "src/ArrTags/State/StateRepository.cs:37,48,192-199"
+      ],
+      "recommended_action": "Optionally add 'and the artifact/provenance storage quota' or state explicitly that the enumeration is illustrative. No action required."
+    },
+    {
+      "id": "P9-F6",
+      "severity": "INFORMATIONAL",
+      "area": "documentation consistency / dated research snapshot",
+      "issue": "docs/research/jellyfin-12-architecture.md section 9.3 still states that ConfigurationSnapshotService.TryReplace 'is currently not connected to UpdateConfiguration (docs/limitations.md F2)' and section 9.4 still states that the README 'no web configuration UI' claim 'is accurate for the current source'. Both statements are now false after Phase 9. The file is a dated research/evidence snapshot, not a canonical current-state surface, and the task 9.5 reviewer recorded this as informational (9.5-R4); the canonical current-state surfaces (PLANS.md, architecture.md, data-model.md, limitations.md, README.md, changelog.md, project-status.md, implementation-readiness.md) are reconciled.",
+      "evidence": [
+        "docs/research/jellyfin-12-architecture.md (section 9.3 activation paragraph; section 9.4)",
+        "docs/implementation/9.5/reviewer-report.json (9.5-R4)"
+      ],
+      "recommended_action": "No change required. If a future documentation pass edits the research file, add a 'superseded by v1.1 Phase 9 (ADR-016)' note."
+    },
+    {
+      "id": "P9-F7",
+      "severity": "INFORMATIONAL",
+      "area": "orchestration record clarity",
+      "issue": "docs/implementation/9.3/reviewer-report.json is byte-identical to reviewer-report.attempt-2.json (the first reviewer attempt, which approved), while the final APPROVED review is reviewer-report.attempt-4.json. This matches the repository convention (unsuffixed = first attempt; suffixed = later attempts) and the phase aggregate records the final gate as 'APPROVED (attempt 4)', so no rework was overwritten, but a reader who opens only the canonical filename could mistake attempt 2 for the final verdict.",
+      "evidence": [
+        "md5 equality: docs/implementation/9.3/reviewer-report.json == reviewer-report.attempt-2.json",
+        "docs/implementation/9.3/orchestration.json (final_gates, rework)",
+        "docs/implementation/phase-9/orchestration.json (9.3 final_gates 'APPROVED (attempt 4)')"
+      ],
+      "recommended_action": "Optional: keep a one-line 'final_attempt: 4' pointer in docs/implementation/9.3/orchestration.json (it already names attempt 4) or in the unsuffixed report. No action required."
+    }
+  ],
+  "tasks_checked": [
+    {
+      "task": "9.1",
+      "title": "Configuration round-trip spike (blocking prerequisite)",
+      "status": "complete",
+      "commit": "33d86d7",
+      "state_commit": "18f0ac9",
+      "worker_evidence": "docs/implementation/9.1/worker-report.json",
+      "reviewer_evidence": ["docs/implementation/9.1/reviewer-report.json (APPROVED)", "docs/implementation/9.1/test-quality-review.json (CONCERNS; LOW/INFORMATIONAL only, proceed)"],
+      "independent_verification": "ConfigurationRoundTripTests proves the pinned JsonDefaults.Options POST round-trip populates both settable collections, the XML persist/reload, and null-coalescing; the unguarded facts pass and the host-guarded fact skips without ARRTAGS_JELLYFIN_HOST_DIR."
+    },
+    {
+      "task": "9.2",
+      "title": "Dashboard settings page and embedded page resource",
+      "status": "complete",
+      "commit": "1fdc8e6",
+      "state_commit": "177ac35",
+      "worker_evidence": "docs/implementation/9.2/worker-report.json",
+      "reviewer_evidence": ["docs/implementation/9.2/reviewer-report.json (APPROVED)", "docs/implementation/9.2/security-review.json (PASS; S-9.2-03 carried to 9.3 and closed there)"],
+      "independent_verification": "GetPages() returns the single page with the explicit logical name; the embedded resource resolves; the page follows the in-tree contract; the page writes all 21 OperationalLimits fields and the connection/renderer/library settings; the three secret inputs are password fields with no value attribute; the page source contains no sentinel secret."
+    },
+    {
+      "task": "9.3",
+      "title": "Elevation-gated save path and runtime activation",
+      "status": "complete",
+      "commit": "c3cc5f3",
+      "state_commit": "2653f94",
+      "worker_evidence": ["docs/implementation/9.3/worker-report-attempt-1.json", "docs/implementation/9.3/worker-report-attempt-2.json", "docs/implementation/9.3/worker-report-attempt-3.json", "docs/implementation/9.3/worker-report.json (attempt 4)"],
+      "reviewer_evidence": ["docs/implementation/9.3/reviewer-report.json (attempt 2 APPROVED)", "docs/implementation/9.3/reviewer-report.attempt-3.json (CHANGES_REQUIRED, documentation-only)", "docs/implementation/9.3/reviewer-report.attempt-4.json (APPROVED)", "docs/implementation/9.3/security-review.json (PASS; SEC-9.3-01 MEDIUM fixed)"],
+      "specialist_evidence": ["docs/implementation/9.3 (jellyfin-expert advisory; architecture-reviewer advisory -> ADR-021)", "docs/reviews/architecture-review.json"],
+      "independent_verification": "Plugin.UpdateConfiguration validates before base.UpdateConfiguration, holds a per-plugin lock across validate/persist/activate, retains the last valid snapshot and secrets on rejection, persists no rejected candidate, writes exactly one bounded secret-free activity entry, never throws, and adds no custom configuration-save route."
+    },
+    {
+      "task": "9.4",
+      "title": "Bounded post-save reconciliation trigger",
+      "status": "complete",
+      "commit": "9edf634",
+      "state_commit": "512635f",
+      "worker_evidence": ["docs/implementation/9.4/worker-report.json (attempt 1)", "docs/implementation/9.4/worker-report-attempt-2.json (attempt 2, test-only)"],
+      "reviewer_evidence": ["docs/implementation/9.4/reviewer-report.json (attempt 1 APPROVED)", "docs/implementation/9.4/reviewer-report.attempt-2.json (attempt 2 APPROVED)", "docs/implementation/9.4/test-quality-review.json (PASS; TQ-1 HIGH and TQ-2 MEDIUM closed)"],
+      "independent_verification": "The hosted ConfigurationReconciliationTrigger coalesces to at most one pending request plus one bounded rerun, never blocks the save response, is registered as a hosted singleton identical to the save path's resolved boundary, and re-renders an existing poster at the new configuration version."
+    },
+    {
+      "task": "9.5",
+      "title": "Goal A documentation and integration verification",
+      "status": "complete",
+      "commit": "bf56c3f",
+      "state_commit": "9ce13f8",
+      "worker_evidence": ["docs/implementation/9.5/worker-report-attempt-1.json", "docs/implementation/9.5/worker-report-attempt-2.json", "docs/implementation/9.5/worker-report.json (attempt 3, two LOW wording fixes)"],
+      "reviewer_evidence": ["docs/implementation/9.5/reviewer-report.json (attempt 1 APPROVED)", "docs/implementation/9.5/reviewer-report.attempt-2.json (attempt 2 APPROVED)"],
+      "documentation_evidence": ["docs/implementation/9.5/orchestration.json (documentation-maintainer attempt 2 CONSISTENT)"],
+      "independent_verification": "GoalAIntegrationTests composes the pinned POST deserialization, the real Plugin.UpdateConfiguration override, the real ConfigurationSnapshotService, the real ConfigurationReconciliationTrigger over the real LibraryReconciliationService, and the real Phase 6 artwork pipeline; the valid-save and invalid-save facts are non-vacuous and pass."
+    }
+  ],
+  "commits_checked": [
+    "f6e96cd Derive v1.1 phases 9-14 and authoritative execution orders (planning)",
+    "33d86d7 Implement v1.1 task 9.1 configuration round-trip spike",
+    "18f0ac9 Record v1.1 task 9.1 commit hash in implementation state",
+    "1fdc8e6 Implement v1.1 task 9.2 dashboard settings page",
+    "177ac35 Record v1.1 task 9.2 commit hash in implementation state",
+    "c3cc5f3 Implement v1.1 task 9.3 runtime configuration activation and rejection surfacing",
+    "2653f94 Record v1.1 task 9.3 commit hash in implementation state",
+    "9edf634 Implement v1.1 task 9.4 bounded post-save reconciliation trigger",
+    "512635f Record v1.1 task 9.4 commit hash in implementation state",
+    "bf56c3f Implement v1.1 task 9.5 Goal A documentation and integration verification",
+    "9ce13f8 Record v1.1 task 9.5 commit hash in implementation state",
+    "45ee797 Record v1.1 Phase 9 task orchestration aggregate"
+  ],
+  "requirements_checked": [
+    "v1.1 Goal A acceptance criteria 1-5 (docs/planning/v1.1.md section 2): page appears and loads current configuration; a valid change applies at runtime without restart with last-valid retention on invalid; a successful save triggers a bounded reconciliation; no secret embedded or returned beyond Jellyfin's admin configuration behavior; configuration saved only through the elevation-gated supported path. All met at the integration-test level.",
+    "Phase 9 acceptance criteria 1-6 (PLANS.md:3849-3861): all six checked, including the get-only Collection<T> round-trip.",
+    "Gate 9 (PLANS.md:3863-3866): tasks meet their criteria, Goal A criteria met at the integration-test level, phase review approved, tag to be created. Live confirmation explicitly owned by task 14.3.",
+    "DG-10 (PLANS.md:4888): resolved by ADR-016; the round-trip test (9.1) and page-resource authorization acceptance (9.2) are verification requirements, both satisfied.",
+    "v1.1 documentation checklist V1.1-2 (docs/planning/v1.1.md section 7): architecture.md section 6, data-model.md 3.12, limitations.md F2, README.md Configuration, decisions.md ADR-016/ADR-021 - all updated.",
+    "GOALS.md success criteria 8 and 9 remain satisfied (failures do not adversely affect Jellyfin; build/test reproducible)."
+  ],
+  "architecture_checked": [
+    "docs/architecture.md section 6: 'Dashboard settings page', 'Runtime configuration activation', 'Bounded post-save reconciliation', and 'Secret access boundary' match the implementation.",
+    "docs/data-model.md 3.12 and 3.12.1: the settable collection shape, the runtime activation semantics, and the rejection surfacing are recorded without adding canonical state fields.",
+    "docs/decisions.md ADR-016 clauses 1-7: all implemented; clause 5's construction-captured-limits divergence is recorded in an 'Implementation note (v1.1, task 9.5)' with clause 5's text left unchanged (verified: clause 5 does not contain 'construction').",
+    "docs/decisions.md ADR-021 clauses 1-6: exactly one bounded secret-free activity entry, Jellyfin-free notifier contract, fixed constants, Guid.Empty/Warning, bounded synchronous wait, no custom route.",
+    "docs/decisions.md ADR-005: the secret boundary is preserved; secrets remain only in the persisted plugin configuration and the private version-matched map; no secret in the page resource, state, fingerprints, or the activity entry.",
+    "Jellyfin 12 compatibility: the plugin still builds on net10.0 against pinned Jellyfin 12.0.0 with targetAbi 12.0.0.0; version remains 1.0.1.0 (the v1.1.0.0 bump is owned by Phase 14).",
+    "No architecture drift: no new custom configuration route, no duplicate reconciliation mechanism, no new secret location."
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/configuration-save-failure-surfacing.json (IActivityManager/ActivityLog contract, column bounds, elevation-gated read surface, Jellyfin.Database.Implementations stability tier).",
+    "docs/reviews/architecture-review.json (v1.1 planning review: AR-01/AR-02 HIGH addressed by ADR-021 + implementation; AR-03/AR-04 addressed; AR-05 MEDIUM residual -> P9-F1; AR-06/AR-07 documented; AR-08 addressed by the new tests).",
+    "docs/research/jellyfin-12-architecture.md section 9 (config page mechanism, PluginsController elevation, JsonDefaults.Options, BasePlugin.UpdateConfiguration semantics)."
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, Milestone Status row 9, Phase 9 task statuses/checkboxes, Gate 9, DG-10 row, task 14.3 - consistent with the phase state.",
+    "docs/changelog.md Phase 9 header and tasks 9.1-9.5 entries - accurate; F2 resolution recorded.",
+    "docs/project-status.md Phase 9 paragraph and next-tasks list - current and consistent.",
+    "docs/architecture.md status line and section 6 - current.",
+    "docs/implementation-readiness.md status line and the F2 promotion note - current.",
+    "docs/limitations.md F2 (moved to 'Resolved limitations', residual recorded), SEC-9 (new), SEC-5 (scoped to the diagnostic-log pipeline and cross-referenced to SEC-9, full rewrite owned by 10.3), V6 (counts explicitly labelled 1.0.1.0 and the current v1.1 counts given) - no stale current-state overclaim.",
+    "README.md Configuration (settings page, save behaviour, construction-captured residual, Activity log rejection, post-save reconciliation) and Known limitations - accurate.",
+    "docs/release/build-and-release.md counts explicitly labelled historical/1.0.1.0 - no stale overclaim.",
+    "docs/research/jellyfin-12-architecture.md - dated snapshot only (P9-F6)."
+  ],
+  "orchestration_checked": [
+    "docs/implementation/phase-9/orchestration.json exists, status TASKS_COMPLETE_PENDING_PHASE_REVIEW, authoritative_execution_order [9.1..9.5], per-task commit/state_commit/subagent_invocations/rework_rounds/final_gates, summary totals 30 invocations / 6 rework rounds / 5 of 5 tasks.",
+    "Aggregate is consistent with each task record: 9.1=3, 9.2=3, 9.3=11, 9.4=6, 9.5=7 (sum 30); rework rounds 0/0/3/1/2 (sum 6); commits 33d86d7/1fdc8e6/c3cc5f3/9edf634/bf56c3f.",
+    "Each task's orchestration.json contains per-invocation execution metadata (agent, model, variant, session_id, null token/cost fields) and explicit rework entries with incremented attempts.",
+    "Attempt reports are preserved rather than overwritten: 9.3 worker attempts 1-3, reviewer attempts 2-4, security attempt 2 + final; 9.4/9.5 attempt files preserved.",
+    "Working tree is clean at HEAD 45ee797; no v1.1.0-phase9 tag exists yet (correct: created after this gate)."
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 30,
+    "total_attempts": 30,
+    "correction_rounds": 6,
+    "by_task": {
+      "9.1": { "invocations": 3, "rework_rounds": 0 },
+      "9.2": { "invocations": 3, "rework_rounds": 0 },
+      "9.3": { "invocations": 11, "rework_rounds": 3 },
+      "9.4": { "invocations": 6, "rework_rounds": 1 },
+      "9.5": { "invocations": 7, "rework_rounds": 2 }
+    }
+  },
+  "verified": [
+    "Phase completeness: the authoritative execution order 9.1 -> 9.2 -> 9.3 -> 9.4 -> 9.5 is fully implemented, in order, with no skipped task; each task has a commit, a state commit, worker evidence, and at least one independent reviewer evidence; the phase aggregate is consistent with the task records.",
+    "Build and suite independently reproduced: dotnet build ArrTags.slnx -c Release -> 0 warnings / 0 errors; dotnet test ArrTags.slnx -c Release --no-build -> Failed 0, Passed 1272, Skipped 63, Total 1335, matching the recorded counts. Phase 9 classes alone: 44 passed, 3 host-guarded skips.",
+    "Task 9.1: the pinned PluginsController POST deserialization with JsonDefaults.Options does not populate a get-only Collection<T>, so EnabledLibraries and RendererConfiguration.Selectors are settable with a null-coalescing setter; the XML shape is unchanged and the round-trip is proven.",
+    "Task 9.2: Plugin implements IHasWebPages with one secret-free embedded page whose logical name is ArrTags.Configuration.config.html; the page writes every writable configuration property (21 OperationalLimits fields and all connection/renderer/library settings); the only plugin controller is the pre-existing webhook route, so no configuration route is added.",
+    "Task 9.3: Plugin.UpdateConfiguration validates before base.UpdateConfiguration, serializes validate/persist/activate under a per-plugin lock, retains the last valid snapshot and private secret generation on rejection, never persists a rejected candidate, surfaces exactly one bounded secret-free activity entry, never throws, and adds no custom save route. Services that resolve per operation (work queue, provider/render concurrency, metadata freshness, badge definitions, renderer output policy, provider request limits via ArrReadClientFactory) observe the replacement without restart.",
+    "Task 9.4: the hosted ConfigurationReconciliationTrigger coalesces redundant requests to at most one bounded rerun, runs off the save thread, never blocks the save response, is registered as a hosted singleton identical to the boundary the save path resolves, and enqueues hints at the new configuration version that the publishing processor accepts (stale-version items are skipped).",
+    "Task 9.5: GoalAIntegrationTests composes the real save -> activate -> bounded-reconcile flow (pinned POST deserialization, real override, real snapshot service, real trigger over the real bounded reconciliation service, real artwork pipeline) and proves collection round-trip, no-restart activation, atomic secret rotation, persisted XML, exactly-one bounded reconciliation, poster re-render with the saved settings, invalid-save retention, exactly-one secret-free activity entry, and no reconciliation on rejection.",
+    "ADR-016 clause 5's divergence is handled correctly: clause 5's decision text is not rewritten, an explicit implementation note records the construction-captured-limits residual, and the residual is carried in limitations F2, architecture section 6, data-model 3.12, and README.",
+    "Secret boundary preserved: no secret is embedded in the page, and the only secret exposure is through Jellyfin's existing elevation-gated configuration API; the activity entry contains only bounded validation reasons.",
+    "Documentation consistency: the canonical current-state surfaces (PLANS.md, changelog.md, project-status.md, architecture.md, implementation-readiness.md, limitations.md, README.md) describe the shipped behaviour and consistently record the phase as tasks complete with the independent review and tag pending; V6 and build-and-release counts are explicitly qualified; the resolved F2 retains its evidence and historical consequence.",
+    "No regression: prior-phase files are unchanged except additive test wiring (LifecycleFoundationTests) and documentation; the full prior suite still passes."
+  ],
+  "notes": [
+    "Residual uncertainty: no live Jellyfin 12.0.0 host was provisioned for this review (no ARRTAGS_JELLYFIN_HOST_DIR), so the three host-guarded Phase 9 facts were skipped, consistent with the recorded baseline. Live Goal A confirmation, including the activity-log rejection entry and the IActivityManager resolution on the pinned host, is owned by task 14.3 per PLANS.md and is not required for this gate (P9-F1).",
+    "The activity-log mechanism was verified against the pinned Jellyfin 12.0.0 source (IActivityManager.CreateAsync(ActivityLog), ActivityLog column bounds 512/512/512/256, elevation-gated read surface) and is unit-tested with a recording double; it is not live-verified.",
+    "Temporary files: none created under /tmp by this review; no phase-owned temporary directory was needed.",
+    "Review scope was limited to Phase 9 and its integration boundaries; pre-existing repository issues outside the phase were not audited.",
+    "The stale `1.0.1.0` matrix counts in docs/limitations.md V6 and docs/release/build-and-release.md are explicitly qualified as historical/non-current and the current v1.1 counts are given, so they are not a stale-current-state finding; TQ-8 owns the refresh."
+  ],
+  "phase_tag_recommendation": {
+    "create": true,
+    "tag": "v1.1.0-phase9",
+    "reason": "Gate 9's conditions are met: tasks 9.1-9.5 satisfy their acceptance criteria, all six Phase 9 acceptance criteria and the Goal A acceptance criteria are met at the integration-test level, this independent phase review is APPROVED with no BLOCKER or HIGH finding, and the live pinned-host confirmation is explicitly owned by task 14.3. Creating the annotated tag `v1.1.0-phase9` at the post-review commit is therefore appropriate. The residual MEDIUM/LOW/INFORMATIONAL items (P9-F1..P9-F7) are tracked and do not block progression."
+  },
+  "summary": "APPROVED. Phase 9 (v1.1 Goal A - dashboard settings UI and runtime configuration activation) is complete: the blocking round-trip spike proved the pinned get-only Collection<T> failure and corrected the configuration shape; the plugin exposes one secret-free embedded settings page through the elevation-gated PluginsController path; Plugin.UpdateConfiguration validates before persistence, serializes validate/persist/activate, activates a valid replacement without restart while retaining the last valid snapshot and private secrets on rejection, surfaces the rejection as one bounded secret-free activity-log entry, and never throws; a successful replacement requests a bounded, non-blocking post-save reconciliation that re-renders existing posters at the new configuration version; and GoalAIntegrationTests composes the full flow. Independent inspection reproduced the build (0 warnings/0 errors) and the suite (1272 passed / 63 skipped / 1335 total), confirmed the per-task commits, evidence, and rework records (30 invocations, 6 correction rounds, attempts preserved), and confirmed that the ADR-016 clause-5 divergence is recorded in an implementation note with the decision text unchanged and the residual documented in the canonical docs. No BLOCKER or HIGH findings; seven residual MEDIUM/LOW/INFORMATIONAL items are tracked, of which the only meaningful one (P9-F1: the activity-log host ABI is not live-verified) is explicitly owned by task 14.3. phase_complete = true; ready_for_next_phase = true; recommend creating the annotated tag `v1.1.0-phase9`."
+}
