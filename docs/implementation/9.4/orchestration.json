@@ -3,7 +3,7 @@
   "title": "Bounded post-save reconciliation trigger",
   "phase": 9,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "9edf634",
   "subagents": [
     {
       "role": "implementation-worker",
