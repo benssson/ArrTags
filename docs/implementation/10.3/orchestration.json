@@ -3,7 +3,7 @@
   "title": "SEC-5 rewrite, documentation, and logging security review",
   "phase": 10,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "7333980",
   "subagents": [
     {
       "role": "implementation-worker",
