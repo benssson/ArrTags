@@ -3,7 +3,7 @@
   "title": "Dashboard settings page and embedded page resource",
   "phase": 9,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "1fdc8e6",
   "subagents": [
     {
       "role": "implementation-worker",
