@@ -88,3 +88,10 @@ The project will be considered successful when:
 7. The plugin operates correctly alongside Jellyfin Enhanced.
 8. Failures in Sonarr, Radarr, artwork processing, or matching do not adversely affect Jellyfin.
 9. The project can be built and tested reproducibly.
+
+## V1.1 Goals
+
+V1.1 is an additive release. Its scope, goals, decision gates, and task outline
+are defined in [`docs/planning/v1.1.md`](docs/planning/v1.1.md); the V1 scope and
+success criteria above remain authoritative for V1. V1.1 decisions are recorded
+as ADR-016 onward in [`docs/decisions.md`](docs/decisions.md).

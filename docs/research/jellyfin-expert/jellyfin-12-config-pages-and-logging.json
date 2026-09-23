@@ -1,0 +1,155 @@
+{
+  "subject": "Jellyfin 12 contracts for (1) plugin dashboard configuration pages and the supported save/activation path, and (2) plugin logging with configurable verbosity (ADR-016 and ADR-020 gating)",
+  "conclusion": "Both capabilities are supported through stable Jellyfin 12 APIs. A plugin exposes a dashboard settings page via IHasWebPages.GetPages()/PluginPageInfo, served by Jellyfin.Api DashboardController (web/ConfigurationPages, web/ConfigurationPage) from an embedded HTML resource, and saved through the elevation-gated PluginsController GET/POST {pluginId}/Configuration path into IHasPluginConfiguration.UpdateConfiguration. Activation is the plugin's responsibility: BasePlugin<T>.UpdateConfiguration persists the XML and raises ConfigurationChanged but does not refresh plugin runtime state, so ArrTags must override UpdateConfiguration (call base, then ConfigurationSnapshotService.TryReplace) or subscribe to ConfigurationChanged. Logging uses ILogger<T>/ILoggerFactory resolved through plugin DI, which flows to the host Serilog log with the logger category as {SourceContext}. Per-plugin verbosity is only supported as plugin-owned gating from its own configuration; the host's Serilog MinimumLevel.Override is host configuration, not a plugin API, and a plugin-registered ILoggerProvider/sink is ineffective on the pinned host (Jellyfin calls the no-argument UseSerilog() with no LoggerProviderCollection). Adding logging creates a new secret-exposure path that the current SEC-5 negative result does not cover.",
+  "evidence": {
+    "assemblies": [
+      "jellyfin.model 12.0.0.0 MediaBrowser.Model.dll",
+      "jellyfin.common 12.0.0.0 MediaBrowser.Common.dll",
+      "jellyfin.api 12.0.0.0 Jellyfin.Api.dll"
+    ],
+    "source_revision": "6c073e19ddf604b2369c638716164fdab4c952dc (tag v12.0)",
+    "config_pages": [
+      "MediaBrowser.Model/Plugins/IHasWebPages.cs",
+      "MediaBrowser.Model/Plugins/PluginPageInfo.cs",
+      "Jellyfin.Api/Controllers/DashboardController.cs",
+      "Jellyfin.Api/Controllers/PluginsController.cs",
+      "MediaBrowser.Common/Plugins/BasePluginOfT.cs",
+      "MediaBrowser.Common/Plugins/IHasPluginConfiguration.cs",
+      "Jellyfin.Server/Extensions/ApiServiceCollectionExtensions.cs",
+      "MediaBrowser.Providers/Plugins/Tmdb/Plugin.cs",
+      "MediaBrowser.Providers/Plugins/Tmdb/Configuration/config.html",
+      "MediaBrowser.Providers/MediaBrowser.Providers.csproj"
+    ],
+    "logging": [
+      "Jellyfin.Server/Program.cs",
+      "Jellyfin.Server/Helpers/StartupHelpers.cs",
+      "Jellyfin.Server/Resources/Configuration/logging.json",
+      "Jellyfin.Server/Migrations/Routines/20250420060000_CreateUserLoggingConfigFile.cs",
+      "Emby.Server.Implementations/ApplicationHost.cs",
+      "Emby.Server.Implementations/Plugins/PluginManager.cs",
+      "MediaBrowser.Model/Configuration/ServerConfiguration.cs",
+      "Serilog.Extensions.Hosting 9.0.0 SerilogServiceCollectionExtensions/SerilogHostBuilderExtensions",
+      "Serilog.Extensions.Logging 9.0.0 SerilogLoggerFactory"
+    ]
+  },
+  "findings": [
+    {
+      "claim": "A plugin exposes a dashboard configuration page by implementing MediaBrowser.Model.Plugins.IHasWebPages with IEnumerable<PluginPageInfo> GetPages(); PluginPageInfo has Name, DisplayName, EmbeddedResourcePath, EnableInMainMenu, MenuSection, MenuIcon.",
+      "source": "MediaBrowser.Model/Plugins/IHasWebPages.cs and PluginPageInfo.cs at pinned revision; confirmed in MediaBrowser.Model.dll 12.0.0.0.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "Jellyfin serves the page: DashboardController GET web/ConfigurationPages (RequiresElevation) lists IHasWebPages plugin pages, and GET web/ConfigurationPage?name= returns plugin.GetType().Assembly.GetManifestResourceStream(page.EmbeddedResourcePath) via MimeTypes.GetMimeType (.html -> text/html).",
+      "source": "Jellyfin.Api/Controllers/DashboardController.cs at pinned revision.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "In the pinned source the page-resource action GetDashboardConfigurationPage carries no [Authorize]; DashboardController has no class-level [Authorize]; AddJellyfinApiAuthorization sets a DefaultPolicy but no FallbackPolicy. The static page resource is reachable without authentication. This is not a data boundary (static HTML/JS only); the configuration data endpoints are administrator-gated.",
+      "source": "Jellyfin.Api/Controllers/DashboardController.cs; BaseJellyfinApiController; Jellyfin.Server/Extensions/ApiServiceCollectionExtensions.cs (AddJellyfinApiAuthorization).",
+      "classification": "Internal implementation detail (route/authorization behavior), not live-confirmed"
+    },
+    {
+      "claim": "The supported configuration save path is PluginsController (class-level [Authorize(Policy = Policies.RequiresElevation)]): GET {pluginId}/Configuration returns IHasPluginConfiguration.Configuration; POST {pluginId}/Configuration deserializes the body with JsonDefaults.Options (PascalCase) and calls IHasPluginConfiguration.UpdateConfiguration.",
+      "source": "Jellyfin.Api/Controllers/PluginsController.cs; MediaBrowser.Common/Plugins/IHasPluginConfiguration.cs; Jellyfin.Extensions JsonDefaults.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "BasePlugin<TConfigurationType>.UpdateConfiguration is virtual: it sets Configuration, calls SaveConfiguration(Configuration) (XML to ConfigurationFilePath = plugins/configurations/<file>), and raises ConfigurationChanged. It does not refresh plugin runtime state.",
+      "source": "MediaBrowser.Common/Plugins/BasePluginOfT.cs at pinned revision.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "Activation must be wired by the plugin: override UpdateConfiguration to call base then ConfigurationSnapshotService.TryReplace, or subscribe to ConfigurationChanged. BasePlugin<T>.Configuration is lazy-loaded and replaced, so a snapshot service built from plugin.Configuration does not observe later replacements unless wired. Plugin already receives IServiceProvider.",
+      "source": "MediaBrowser.Common/Plugins/BasePluginOfT.cs; src/ArrTags/Plugin.cs; src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs.",
+      "classification": "Confirmed supported API (plugin-owned activation)"
+    },
+    {
+      "claim": "The README claim 'There is no web configuration UI in v1' is accurate for the current source: src/ArrTags has no IHasWebPages/GetPages/PluginPageInfo and no embedded HTML resource (only Resources/DejaVuSans-Bold.ttf); configuration is read from plugins/configurations/ArrTags.xml at startup (limitation F2).",
+      "source": "src/ArrTags source and csproj EmbeddedResource entries; docs/limitations.md F2.",
+      "classification": "Confirmed"
+    },
+    {
+      "claim": "The config-page mechanism is shape-identical between Jellyfin v10.9.11 and the pinned v12.0 revision; the 12-specific difference is the authorization pipeline (AddJellyfinApiAuthorization with the RequiresElevation administrator-role-claim policy), not the page mechanism.",
+      "source": "Pinned v12.0 DashboardController/PluginsController/PluginPageInfo vs the v10.9.11 GitHub equivalents.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "ILogger<T>/ILoggerFactory are resolvable through plugin DI: plugin service registrators run before the provider is built (ApplicationHost.Init -> PluginManager.RegisterServices), and plugin controllers are added via AddControllersAsServices. Plugin log lines flow through the host Serilog pipeline to the console and %JELLYFIN_LOG_DIR%/log_.log sinks with {SourceContext} = logger category (by convention the type full name).",
+      "source": "Jellyfin.Server/Program.cs; Emby.Server.Implementations/ApplicationHost.cs; Emby.Server.Implementations/Plugins/PluginManager.cs; Serilog.Extensions.Logging 9.0.0.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "Host log level is Serilog configuration only: logging.default.json (bundled default) plus optional logging.json (LoggingConfigFileSystem), both reloadOnChange, plus JELLYFIN_-prefixed env/cmdline. MinimumLevel.Override is keyed by source-context prefix (e.g. \"ArrTags\": \"Debug\") but is host configuration, not a plugin API. ServerConfiguration has no log-level field; the dashboard exposes log viewing, not level control.",
+      "source": "Jellyfin.Server/Program.cs; Jellyfin.Server/Helpers/StartupHelpers.cs; Jellyfin.Server/Resources/Configuration/logging.json; MediaBrowser.Model/Configuration/ServerConfiguration.cs.",
+      "classification": "Confirmed supported API for the mechanism; MinimumLevel.Override keys are public but potentially unstable"
+    },
+    {
+      "claim": "A plugin can control its own verbosity independently and in a fully supported way by gating its own log calls from its own configuration snapshot (a bounded verbosity field validated with PluginConfiguration, read before calling _logger.LogDebug(...)). This has no host dependency and is the recommended mechanism.",
+      "source": "Standard Microsoft.Extensions.Logging usage; no host API required.",
+      "classification": "Confirmed supported API"
+    },
+    {
+      "claim": "A plugin-registered ILoggerProvider/sink does not receive events on the pinned host: Jellyfin calls the no-argument UseSerilog(), registering ILoggerFactory as new SerilogLoggerFactory(null, false) with no LoggerProviderCollection; SerilogLoggerFactory.AddProvider ignores providers and CreateLogger always returns a Serilog logger. UseSerilog(writeToProviders: true) is not used.",
+      "source": "Jellyfin.Server/Program.cs; Serilog.Extensions.Hosting 9.0.0; Serilog.Extensions.Logging 9.0.0 SerilogLoggerFactory.",
+      "classification": "Public but potentially unstable API; ineffective on the pinned host"
+    },
+    {
+      "claim": "src/ArrTags currently has zero logging call sites (no ILogger/Console./Debug.Write/Trace.Write/Log.*); the only ILogger<> references are test doubles. The docs claim 'no plugin log path can leak a secret' (SEC-5) is accurate today.",
+      "source": "Repository search across src/ArrTags; tests/ArrTags.Tests.",
+      "classification": "Confirmed"
+    }
+  ],
+  "api_classification": {
+    "confirmed_supported": [
+      "IHasWebPages.GetPages",
+      "PluginPageInfo",
+      "DashboardController web/ConfigurationPage(s)",
+      "PluginsController GET/POST {pluginId}/Configuration",
+      "IHasPluginConfiguration.UpdateConfiguration",
+      "BasePlugin<T>.SaveConfiguration/ConfigurationChanged",
+      "ILogger<T>/ILoggerFactory via plugin DI",
+      "plugin-owned verbosity gating"
+    ],
+    "public_but_unstable": [
+      "ConfigurationPageInfo (Jellyfin.Api.Models)",
+      "JsonDefaults.Options naming",
+      "jellyfin-web ApiClient/Dashboard/data-require/pageshow",
+      "Serilog MinimumLevel.Override keys",
+      "ILoggerProvider registration"
+    ],
+    "internal": [
+      "DashboardController/PluginsController action/route names",
+      "MimeTypes mapping",
+      "host Serilog wiring (no-arg UseSerilog, SerilogLoggerFactory without provider collection)",
+      "logging.default.json/logging.json filenames + reload",
+      "no ServerConfiguration log-level field"
+    ],
+    "unsupported_workaround": [
+      "plugin unauthenticated config-save route",
+      "plugin-registered ILoggerProvider/sink",
+      "replacing host ILoggerFactory"
+    ]
+  },
+  "jellyfin_version": "12.0.0 (targetAbi 12.0.0.0)",
+  "risks": [
+    "The config page resource endpoint is anonymous in the pinned source (static HTML/JS only; data endpoints are admin-gated) and was not live-confirmed.",
+    "Adding logging creates a new secret-exposure path; PluginConfiguration contains Sonarr.ApiKey, Radarr.ApiKey, and WebhookSecret.",
+    "Plugin-registered ILoggerProvider is silently ignored (host-internal Serilog wiring); a plugin must not rely on it.",
+    "logging.json vs logging.user.json filename inconsistency exists in the pinned revision; confirm on a live host only if relying on host per-category overrides.",
+    "jellyfin-web client loading/CSP behavior is not pinned by the server repository.",
+    "System.Text.Json population of ArrTags get-only Collection<T> config properties (EnabledLibraries, Renderer.Selectors) on the POST round-trip is unverified."
+  ],
+  "documentation_impact": [
+    "docs/research/jellyfin-12-architecture.md (new section 9 'Plugin configuration pages (Jellyfin 12)' and section 10 'Plugin logging and log levels (Jellyfin 12)'; extended section 8 Source references)",
+    "ADR-016 and ADR-020 (consumers only; not created here)"
+  ],
+  "recommended_action": "ADR-016: implement IHasWebPages with an embedded Configuration/config.html (logical name ArrTags.Configuration.config.html), use the elevation-gated PluginsController save path, and override Plugin.UpdateConfiguration to call ConfigurationSnapshotService.TryReplace (surfacing validation failure safely). ADR-020: log through ILogger<T> and gate verbosity with a plugin-owned, bounded, secret-free configuration field; do not register a custom logging provider/sink; require every log call site to be secret-free and add redaction tests plus a security review of SEC-5.",
+  "unresolved": [
+    "ADR-016: accept the anonymous page-resource endpoint (static HTML/JS) or live-confirm route/authorization on the pinned host.",
+    "ADR-016: verify System.Text.Json populates ArrTags get-only Collection<T> configuration properties on POST.",
+    "ADR-016: decide read-only vs read/write page and how TryReplace validation failure is surfaced through Dashboard.processPluginConfigurationUpdateResult.",
+    "ADR-020: choose plugin-owned verbosity vs host MinimumLevel.Override and fix the logger category/prefix convention (for example ArrTags.*).",
+    "ADR-020: if host per-category overrides are relied on, confirm the effective override filename (logging.json vs logging.user.json) and reload behavior on a live pinned host.",
+    "No live-host probe was performed for either question; conclusions are from pinned assemblies and version-pinned sources."
+  ]
+}

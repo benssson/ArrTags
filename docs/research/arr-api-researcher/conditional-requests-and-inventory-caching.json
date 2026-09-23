@@ -1,0 +1,109 @@
+{
+  "subject": "Conditional requests, revision tokens, bulk reads, rate limiting, and push mechanisms for Sonarr/Radarr v3 API inventory caching (ADR-018 gating)",
+  "conclusion": "Neither Sonarr nor Radarr offers a usable conditional-request or bulk revision-token mechanism for the library/per-record reads ArrTags performs. There is no ETag and no If-None-Match handling anywhere in the response path, and /api/** is explicitly classified as non-cacheable, so no Last-Modified is emitted and If-Modified-Since is ignored for those reads. The closest change signal is GET /api/v3/history/since?date=, which is a durable but incomplete file-mutation log (grab/import/failed/delete/rename only) that still requires a provider poll. No server-side API rate limiter or documented polling interval exists. The only push mechanisms are the already-researched outbound webhook and the authenticated, internal SignalR hub; there is no SSE/long-poll. An inventory cache must therefore be invalidated by an ArrTags-side signal (webhook, Jellyfin library refresh, and/or a bounded TTL), not by a provider validator or revision token.",
+  "evidence": [
+    {
+      "claim": "Neither Sonarr nor Radarr generates an ETag response header for API resources.",
+      "source": "Exhaustive search for ETag generation across Sonarr develop + v3.0.9.1549 and Radarr develop + v3.2.2.5080 source trees; the only matches were unrelated substrings such as LanguageTags/MovieTags. Response-cache code: Sonarr/Radarr CacheHeaderMiddleware.cs, IfModifiedMiddleware.cs, Extensions/RequestExtensions.cs (v4); Extensions/Pipelines/CacheHeaderPipeline.cs, IfModifiedPipeline.cs, Extensions/ReqResExtensions.cs (v3).",
+      "classification": "Supported"
+    },
+    {
+      "claim": "Neither provider reads If-None-Match; the only conditional request header referenced is If-Modified-Since.",
+      "source": "Sonarr/Radarr IfModifiedMiddleware.cs (v4) and Extensions/Pipelines/IfModifiedPipeline.cs (v3); grep for If-None-Match/ifnonematch returns no response-path match.",
+      "classification": "Supported"
+    },
+    {
+      "claim": "/api/** is classified as non-cacheable, so library and per-record reads receive Cache-Control: no-cache, no-store and no Last-Modified.",
+      "source": "Sonarr develop src/Sonarr.Http/Middleware/CacheableSpecification.cs (returns false for /api except /api/**/MediaCover); Radarr develop src/Radarr.Http/Middleware/CacheableSpecification.cs (returns false for all /api); v3 equivalents at src/Sonarr.Http/Frontend/CacheableSpecification.cs and src/Radarr.Http/Frontend/CacheableSpecification.cs. DisableCache in Sonarr.Http/Extensions/RequestExtensions.cs (v4) removes Last-Modified; v3 ReqResExtensions.DisableCache sets no-store and never sets Last-Modified.",
+      "classification": "Supported"
+    },
+    {
+      "claim": "If-Modified-Since is ignored for library/per-record reads because the conditional middleware only runs for cacheable requests.",
+      "source": "Sonarr develop src/Sonarr.Http/Middleware/IfModifiedMiddleware.cs; Radarr develop src/Radarr.Http/Middleware/IfModifiedMiddleware.cs; v3 Extensions/Pipelines/IfModifiedPipeline.cs. All gate on ICacheableSpecification.IsCacheable first.",
+      "classification": "Supported"
+    },
+    {
+      "claim": "When a path is cacheable, the conditional middleware returns 304 whenever If-Modified-Since is present, without comparing its value to any resource timestamp; Last-Modified is the build time, a per-install constant.",
+      "source": "Sonarr/Radarr IfModifiedMiddleware.cs (v4) and Extensions/Pipelines/IfModifiedPipeline.cs (v3); EnableCache in Sonarr.Http/Extensions/RequestExtensions.cs sets Last-Modified = BuildInfo.BuildDateTime; v3 ReqResExtensions sets Last-Modified = BuildInfo.BuildDateTime and Cache-Control max-age=31536000.",
+      "classification": "Supported with caveats"
+    },
+    {
+      "claim": "A query key 'h' makes any path cacheable, including /api reads, because the check precedes the /api exclusion.",
+      "source": "Sonarr develop and Radarr develop CacheableSpecification.cs ('if (request.Query.ContainsKey(\"h\")) return true;'); v3 CacheableSpecification.cs equivalent. Undocumented and unintended for API reads; not a freshness validator.",
+      "classification": "Public but unstable"
+    },
+    {
+      "claim": "In non-production (debug) builds no path is cacheable, so no cache headers are emitted at all.",
+      "source": "CacheableSpecification.cs ('if (!RuntimeInfo.IsProduction) return false;') in both providers, v3 and v4.",
+      "classification": "Supported"
+    },
+    {
+      "claim": "Sonarr v3 uses Nancy (IfModifiedPipeline/CacheHeaderPipeline via NzbDrone.Api/Sonarr.Http), while v4+ uses ASP.NET Core middleware (IfModifiedMiddleware/CacheHeaderMiddleware). The /api non-cacheable rule is the same in both; only the header lookup differs (strongly-typed Nancy property vs the literal Headers[\"IfModifiedSince\"]).",
+      "source": "Sonarr v3.0.9.1549 src/Sonarr.Http/Extensions/Pipelines/IfModifiedPipeline.cs and src/Sonarr.Http/Frontend/CacheableSpecification.cs; Sonarr v4.0.0.741 and develop src/Sonarr.Http/Middleware/*. Commit 'New: Use ASP.NET Core instead of Nancy' (1169741, 2022).",
+      "classification": "Supported"
+    },
+    {
+      "claim": "Sonarr treats /api/**/MediaCover images as cacheable; Radarr never treats /api or /MediaCover as cacheable.",
+      "source": "Sonarr CacheableSpecification.cs (path contains /MediaCover -> true); Radarr CacheableSpecification.cs (/api -> false; /MediaCover -> false). Both v3 and v4.",
+      "classification": "Supported with caveats"
+    },
+    {
+      "claim": "GET /api/v3/system/status exposes version, buildTime, startTime and migrationVersion, none of which change on a library mutation.",
+      "source": "Sonarr develop src/Sonarr.Api.V3/System/SystemController.cs and SystemResource.cs; Radarr develop equivalent.",
+      "classification": "Supported"
+    },
+    {
+      "claim": "GET /api/v3/history/since?date= exists on both providers and returns HistoryResource[] for records with Date >= date (joined, unpaged). It records grab/import/failed/delete/rename events only.",
+      "source": "Sonarr develop src/Sonarr.Api.V3/History/HistoryController.cs ([HttpGet(\"since\")]) and src/NzbDrone.Core/History/HistoryRepository.cs (WHERE Date >= date, joined); Radarr develop src/Radarr.Api.V3/History/HistoryController.cs and HistoryRepository.cs. Event enums: EpisodeHistoryEventType (Grabbed, SeriesFolderImported, DownloadFolderImported, DownloadFailed, EpisodeFileDeleted, EpisodeFileRenamed, DownloadIgnored) and MovieHistoryEventType (Grabbed, DownloadFolderImported, DownloadFailed, MovieFileDeleted, MovieFolderImported, MovieFileRenamed, DownloadIgnored).",
+      "classification": "Supported with caveats"
+    },
+    {
+      "claim": "History is house-kept only for orphaned items, not age-pruned, so a since watermark is durable but still does not cover non-history library mutations (add series/movie, metadata refresh, profile/monitor edits, quality changes without an import event).",
+      "source": "Sonarr/Radarr src/NzbDrone.Core/Housekeeping/Housekeepers/CleanupOrphanedHistoryItems.cs; no age-based history cleanup found.",
+      "classification": "Supported with caveats"
+    },
+    {
+      "claim": "GET /api/v3/command, GET /api/v3/system/task and GET /api/v3/queue are not library revision tokens.",
+      "source": "Sonarr develop src/Sonarr.Api.V3/Commands/CommandController.cs (GetStartedCommands), src/Sonarr.Api.V3/System/Tasks/TaskController.cs (lastExecution/lastStartTime/nextExecution), src/Sonarr.Api.V3/Queue/QueueController.cs; Radarr develop equivalents.",
+      "classification": "Supported"
+    },
+    {
+      "claim": "Library and file reads are full, unpaged list endpoints; bulk selection by repeated IDs exists for the file resources.",
+      "source": "Sonarr SeriesController.AllSeries(tvdbId, includeSeasonImages); EpisodeController.GetEpisodes(seriesId, seasonNumber, episodeIds[], episodeFileId, includeSeries, includeEpisodeFile, includeImages) (400 if no selector); EpisodeFileController.GetEpisodeFiles(seriesId, episodeFileIds[]) (400 if neither). Radarr MovieController.AllMovie(tmdbId, excludeLocalCovers, languageId); MovieFileController.GetMovieFiles(movieId[], movieFileIds[]) (400 if neither). None use PagingRequestResource.",
+      "classification": "Supported"
+    },
+    {
+      "claim": "No documented response-size limit was found; the Kestrel request body limit is disabled, and paging defaults are Page=1/PageSize=10 with no maximum clamp in PagingSpec.",
+      "source": "Sonarr/Radarr src/NzbDrone.Host/Bootstrap.cs (serverOptions.Limits.MaxRequestBodySize = null); Sonarr.Http/PagingResource.cs (PagingRequestResource defaults); NzbDrone.Core/Datastore/PagingSpec.cs (no max). Practical bounds are client-side (ArrTags ProviderResponseLimitBytes).",
+      "classification": "Supported with caveats"
+    },
+    {
+      "claim": "There is no inbound API rate limiter, no 429 in the API error pipeline, and no documented polling interval. The RateLimitService is used only for outbound requests (indexers, import lists, download clients).",
+      "source": "Sonarr/Radarr ErrorManagement/*ErrorPipeline.cs (no 429 mapping); grep for RateLimit/RateLimiter/Throttle/429 finds only outbound NzbDrone.Core.Http/Indexers/ImportLists/Download code. Reverse proxies may impose their own limits.",
+      "classification": "Supported with caveats"
+    },
+    {
+      "claim": "The only push mechanisms are the outbound webhook and the authenticated SignalR hub at /signalr/messages (broadcast method receiveMessage, SignalRMessage { Name, Body }); there is no SSE or long-poll.",
+      "source": "Sonarr/Radarr NzbDrone.Host/Startup.cs (app.UseWebSockets(); x.MapHub<MessageHub>(\"/signalr/messages\").RequireAuthorization(\"SignalR\")); src/NzbDrone.SignalR/MessageHub.cs; src/Sonarr.Http/REST/RestControllerWithSignalR.cs (broadcasts resource changes). SignalR message schemas are an internal UI contract, not a documented stable external API.",
+      "classification": "Public but unstable"
+    }
+  ],
+  "provider": "both",
+  "applicable_versions": "Sonarr 3.x (Nancy, v3.0.9.1549 verified) and Sonarr 4.x (ASP.NET Core, v4.0.0.741 and develop verified); Radarr 3.x (Nancy, v3.2.2.5080 verified) and Radarr 4.x-6.x (ASP.NET Core, v4.0.0.5745 and develop verified). ADR-013 ranges unchanged.",
+  "risks": [
+    "The literal header key Headers[\"IfModifiedSince\"] used by the v4 middleware was not executed against a live ASP.NET Core host; if it does not match the wire header If-Modified-Since, the conditional middleware is effectively dead code. This does not change the API-read conclusion, since API paths are non-cacheable and never reach the middleware.",
+    "Adding ?h= to an API read would make it cacheable and could return an unconditional 304 or pin a stale body for a year behind an intermediary cache; ArrTags must never do this.",
+    "history/since is not a complete library revision and would itself require a provider poll, so it cannot by itself satisfy ADR-018's request-reduction goal.",
+    "No live Sonarr/Radarr instance is available in this environment (limitations V1), so all findings are source-derived; a production-build capture would confirm observed headers."
+  ],
+  "documentation_impact": [
+    "docs/research/sonarr-api.md (new section 'Conditional requests and inventory caching'; sharpened the existing stale ETag/conditional-GET paragraph; extended Primary sources)",
+    "docs/research/radarr-api.md (new section 'Conditional requests and inventory caching'; extended References)",
+    "docs/limitations.md F1 and ADR-018 (consumer only; not modified here)"
+  ],
+  "unresolved": [
+    "Exact ASP.NET Core header-dictionary matching for the literal key Headers[\"IfModifiedSince\"] versus the wire header If-Modified-Since (requires a live production-build capture or a focused ASP.NET Core harness).",
+    "Whether any provider release outside the verified tags (Sonarr 4.x minors, Radarr 4.x-6.x minors) changed the cacheable rule; the file history shows the /api rule stable since the ASP.NET Core conversion and the v3 Nancy line.",
+    "No live provider instance exists to capture actual response headers on the supported release lines (limitations V1)."
+  ]
+}

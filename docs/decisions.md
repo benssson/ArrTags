@@ -767,7 +767,10 @@ already required for ambiguous, missing, virtual, remote, and unsupported cases.
 
 ## ADR-009: V1 Badge Rendering Specification
 
-**Status:** Accepted
+**Status:** Accepted (the geometry and placement clauses are superseded by
+ADR-019: badge position and size are now configurable. Fields, selector order,
+colors, text limits, output format, scaling model, and failure behavior remain in
+force.)
 
 **Date:** 2026-09-18
 
@@ -1020,7 +1023,8 @@ not to ArrTags rendering identity.
 choice, bundled font, PNG/color handling, host/source boundary, configuration,
 and testing strategy remain in force; the decisions that the plugin package must
 carry the managed `SkiaSharp.dll` and native `libSkiaSharp.so` and must not load
-a system Skia library are superseded by ADR-015)
+a system Skia library are superseded by ADR-015; the renderer-configuration
+clauses that keep geometry and placement code-owned are superseded by ADR-019)
 
 **Date:** 2026-09-18
 
@@ -2009,4 +2013,550 @@ it removes that pin without changing runtime behavior.
   `tests/ArrTags.Tests/PluginPackagingTests.cs`
 - `docs/architecture.md`, section 9
 - ADR-010: V1 Renderer Implementation Contract
+
+## ADR-016: Dashboard Settings UI and Runtime Configuration Activation
+
+**Status:** Accepted (v1.1)
+
+**Date:** 2026-09-23
+
+### Context
+
+V1 has no web configuration UI. `README.md` states this explicitly, and
+`docs/limitations.md` F2 records the consequence: the plugin reads
+`plugins/configurations/ArrTags.xml` only at startup, so a saved webhook secret,
+provider enable/disable, badge/selector change, or limit change is not observed
+until the process restarts. `ConfigurationSnapshotService.TryReplace` already
+implements validated, last-valid-retaining replacement, but it is not connected
+to Jellyfin's configuration-save path.
+
+The supported Jellyfin 12 contracts are confirmed in
+`docs/research/jellyfin-12-architecture.md` section 9 and
+`docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json`:
+
+- A plugin exposes a dashboard page by implementing
+  `MediaBrowser.Model.Plugins.IHasWebPages.GetPages()` and returning
+  `PluginPageInfo` values. `Jellyfin.Api.Controllers.DashboardController` serves
+  `web/ConfigurationPages` and `web/ConfigurationPage?name=` from the page's
+  embedded assembly resource; the server injects nothing.
+- Configuration is read and written through
+  `Jellyfin.Api.Controllers.PluginsController` `GET`/`POST {pluginId}/Configuration`,
+  which is class-level `[Authorize(Policy = Policies.RequiresElevation)]` (an
+  authenticated administrator). The POST deserializes to the plugin's
+  `ConfigurationType` using `JsonDefaults.Options` (PascalCase) and calls
+  `IHasPluginConfiguration.UpdateConfiguration`.
+- `BasePlugin<TConfigurationType>.UpdateConfiguration` is `virtual`: it assigns
+  `Configuration`, calls `SaveConfiguration` (XML to the existing
+  `plugins/configurations/ArrTags.xml`), and raises `ConfigurationChanged`. It
+  does **not** refresh any plugin runtime state.
+
+In the pinned source the static page-resource action carries no `[Authorize]`
+and there is no fallback authorization policy, so the page resource itself is
+reachable without authentication. It is static HTML/JS only and reflects no data;
+all configuration data endpoints are administrator-gated. The jellyfin-web client
+contract used by in-tree pages (`ApiClient`, `Dashboard`,
+`Dashboard.processPluginConfigurationUpdateResult`, `data-require`, `pageshow`)
+is public but potentially unstable and is not pinned by the server repository.
+
+One behavior is not yet verified in this repository: whether `System.Text.Json`
+populates ArrTags' get-only `Collection<T>` configuration properties
+(`PluginConfiguration.EnabledLibraries`, `RendererConfiguration.Selectors`) on
+the POST round-trip.
+
+### Decision
+
+ArrTags adds a dashboard settings page and wires runtime configuration
+activation.
+
+1. The `Plugin` entry point implements `IHasWebPages` and returns one
+   `PluginPageInfo` (name `ArrTags`, `EnableInMainMenu = false`) whose
+   `EmbeddedResourcePath` is an embedded `Configuration/config.html` with the
+   explicit logical name `ArrTags.Configuration.config.html`, following the
+   in-tree Jellyfin page pattern.
+2. The page is read/write for the user-adjustable settings only: provider
+   connections and their secrets, the webhook secret, poster/library scope,
+   renderer selectors/templates/palette, the v1.1 allowlist/placement/verbosity
+   settings, and the operational limits. The page embeds no secret and exposes no
+   secret value beyond what Jellyfin's existing administrator configuration API
+   already returns.
+3. Configuration is saved only through the supported elevation-gated
+   `PluginsController` path. ArrTags adds no custom configuration-save route.
+4. `Plugin` overrides `BasePlugin<T>.UpdateConfiguration`: it calls
+   `base.UpdateConfiguration(configuration)` and then
+   `ConfigurationSnapshotService.TryReplace((PluginConfiguration)configuration,
+   out errors)`. An invalid candidate is rejected, the last valid snapshot and
+   private secrets are retained, and the bounded validation failure is surfaced
+   to the administrator. The override never throws into the host.
+5. Runtime activation has two parts:
+   - **Live snapshot replacement.** Services resolve limits, provider/render
+     concurrency, freshness, retention, badge definitions, and the renderer
+     output policy from the current snapshot per operation, so a replaced
+     snapshot takes effect without a host restart.
+   - **Bounded re-render trigger.** A successful replacement also enqueues a
+     bounded, non-blocking reconciliation through the existing work-hint /
+     reconciliation boundary, so saved settings re-render existing posters
+     promptly. The trigger is a bounded enqueue, never a synchronous
+     full-library scan, and it never throws into the host or blocks the save
+     response. It is required because a work item whose `ConfigurationVersion`
+     is older than the current snapshot is skipped
+     (`ArtworkPublishingWorkItemProcessor`), so without a trigger existing
+     posters would not update until the next library event, webhook, post-scan,
+     or scheduled run.
+   Together these resolve limitation F2.
+6. The anonymous static page-resource endpoint is accepted as a non-data surface;
+   no secret or item data is placed in the page.
+7. The following are required before this ADR's implementation is complete:
+   - **Blocking prerequisite:** a test proving the POST round-trip populates the
+     get-only `Collection<T>` configuration properties. If it does not, the
+     configuration shape must change (for example settable collection
+     properties) before the settings page is built, so a save cannot silently
+     drop `EnabledLibraries` or `Renderer.Selectors`.
+   - An explicit decision or live-host confirmation of the page-resource
+     authorization behavior on the pinned host.
+
+### Consequences
+
+- Limitation F2 is resolved: a saved configuration change is observed without a
+  restart, and a successful save triggers a bounded reconciliation so existing
+  posters re-render with the new settings rather than waiting for the next
+  scheduled run.
+- Operators configure ArrTags from the dashboard instead of editing XML.
+- The plugin now depends on a public-but-unstable web-client contract; a future
+  jellyfin-web change may require the page to be updated.
+- The page and the `UpdateConfiguration` override become a new security-relevant
+  surface: the page must remain secret-free and the save path must remain the
+  administrator-gated supported one.
+- Configuration validation failures must be surfaced safely without exposing
+  secret values.
+
+### Rejected alternatives
+
+- A plugin-owned custom configuration-save route was rejected: it would bypass
+  the elevation boundary and is an unsupported workaround.
+- A read-only display page was rejected: it would not resolve F2.
+- Relying on `ConfigurationChanged` alone (without overriding
+  `UpdateConfiguration`) was rejected as the primary mechanism because the
+  override makes activation explicit and testable; the event remains an
+  acceptable alternative.
+- Keeping the XML-only, restart-required workflow was rejected: it is the
+  documented limitation this ADR exists to remove.
+
+### References
+
+- `docs/research/jellyfin-12-architecture.md`, section 9
+- `docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json`
+- `docs/limitations.md` F2
+- `docs/planning/v1.1.md` (Goal A, DG-10)
+- `src/ArrTags/Plugin.cs`,
+  `src/ArrTags/Configuration/ConfigurationSnapshotService.cs`
+- `docs/architecture.md`, section 6
+- ADR-004 (operational limits), ADR-005 (secret boundary)
+
+## ADR-017: Badge Value Allowlist
+
+**Status:** Accepted (v1.1)
+
+**Date:** 2026-09-23
+
+### Context
+
+ADR-009 fixes the V1 selector vocabulary and resolution order, and ADR-010 /
+task 4.10 expose per-selector enablement and one bounded `{value}` template. A
+selector can be enabled or disabled as a whole, but there is no way to suppress
+specific values — for example, to render a dynamic-range badge only for
+HDR-family values and not `SDR`, or to show only selected quality labels.
+Operators must currently disable the whole selector to suppress one value.
+
+Canonical `BadgeMetadata` already distinguishes confirmed values from
+unknown/absent values (task 2.6), and `BadgeSelectorResolver` /
+`BadgeDefinitionResolver` omit unknown values. The allowlist is a policy filter
+over confirmed values, not a change to unknown-value semantics.
+
+Decision gate DG-11 required the allowlist scope, matching/normalization, bound,
+and unknown/custom-value interaction.
+
+### Decision
+
+ArrTags adds a per-selector value allowlist.
+
+1. **Scope: per selector.** `BadgeSelectorConfiguration` gains a bounded
+   `AllowedValues` string list. Each selector filters independently. An empty
+   list means no restriction (every confirmed value passes); the setting is a
+   whitelist, not a blocklist. The resolved `BadgeDefinition` snapshot gains the
+   same resolved allowlist (for example an `AllowedValues` property), and
+   `RendererConfigurationResolver.ResolveDefinitions` maps the persisted value
+   into it, because the renderer only ever receives
+   `IReadOnlyList<BadgeDefinition>`.
+2. **Match: case-insensitive ordinal exact match against the resolved
+   pre-template value.** The comparison value is the canonical display text
+   produced by `BadgeSelectorResolver` before the definition template is applied,
+   with surrounding whitespace trimmed. No substring, wildcard, prefix, or
+   regular-expression matching is supported in v1.1.
+   - For `CustomBadge`, the allowlist is applied to each retained custom value
+     independently.
+   - For `Audio`, the resolved value is the composite (features, then codec, then
+     channel count); the allowlist matches the full composite string.
+   - For `UpgradePending`, the only possible value is the fixed status text;
+     allowlisting it is equivalent to enabling the selector and is permitted for
+     uniformity.
+3. **Order.** Value resolution → allowlist filter → definition template → text
+   normalization/truncation → layout. An allowlisted value that cannot fit still
+   follows the existing shorten/omit behavior.
+4. **Unknown and absent values.** Unchanged: they are omitted and never
+   inferred. The allowlist only removes already-confirmed values and never widens
+   an omission.
+5. **Bounds and validation.** At most 32 entries per selector; each entry at most
+   64 characters; entries are trimmed, control characters are rejected, blank
+   entries are rejected, and duplicates (after case-insensitive comparison) are
+   rejected. Validation runs in `RendererConfiguration.Validate` with secret-free
+   messages.
+6. **Output-affecting identity.** The resolved allowlists are included in
+   `RendererConfigurationFingerprint`. Because the renderer-configuration schema
+   and rendering behavior change, `RendererConfiguration.CurrentSchemaVersion`
+   advances from 1 to 2 and `RenderVersion.CurrentRendererVersion` advances from
+   2 to 3; committed goldens are regenerated.
+7. **No provider coupling.** The allowlist is provider-neutral and matches only
+   canonical resolved values; it never references a provider DTO path, record
+   identifier, quality profile, credential, or extension value.
+
+### Consequences
+
+- Operators can suppress individual values (for example `SDR`) without disabling
+  the whole selector.
+- The allowlist is bounded, validated, and secret-free, and it cannot widen an
+  omission.
+- Changing the allowlist is output-affecting and republishes affected artwork,
+  exactly like a selector or palette change.
+- Whole-composite matching for the audio selector is coarse and is documented;
+  token-level audio filtering is a possible future refinement.
+
+### Rejected alternatives
+
+- A global single allowlist was rejected: the same string means different things
+  across selectors and could suppress unrelated badges.
+- Substring, wildcard, prefix, or regular-expression matching was rejected: it is
+  less predictable and can re-include values unexpectedly.
+- A blocklist/denylist was rejected: it was not requested, and a whitelist with
+  an empty default is simpler and safer.
+- Per-item or per-library allowlists were rejected as out of v1.1 scope; v1.1 is
+  one global renderer policy.
+
+### References
+
+- `docs/planning/v1.1.md` (Goal B, DG-11)
+- `docs/data-model.md`, sections 3.6 and 3.12
+- `src/ArrTags/Configuration/BadgeSelectorConfiguration.cs`,
+  `RendererConfiguration.cs`, `RendererConfigurationFingerprint.cs`
+- `src/ArrTags/Rendering/BadgeSelectorResolver.cs`, `BadgeDefinitionResolver.cs`
+- ADR-009 (selector vocabulary and order), ADR-010 (renderer configuration)
+
+## ADR-018: Provider Inventory Cache and Library-Refresh-Driven Reconciliation
+
+**Status:** Accepted (v1.1)
+
+**Date:** 2026-09-23
+
+### Context
+
+`docs/limitations.md` F1 records that every reconciliation work item still
+re-reads the whole provider library (`/api/v3/movie`, `/api/v3/series`) and then
+the per-record file resource (`/api/v3/moviefile?movieId=`,
+`/api/v3/episode?…&includeEpisodeFile=true`, `/api/v3/episodeFile?seriesId=`).
+Each scheduled, post-scan, and manual reconciliation enqueues up to
+`QueueCapacity` work hints, and each hint performs its own provider read, so a
+large library performs one full provider-library read per work item. The
+`GOALS.md` Reliability/Performance goal "avoid unnecessary API requests to Sonarr
+and Radarr" is therefore only partially met for provider fetches.
+
+This is a reconciliation fetch-volume problem, not a request-time problem. Per
+ADR-001, badges are rendered asynchronously and published as persisted Jellyfin
+item images; Jellyfin's normal image routes serve them, so no Arr call occurs per
+poster request.
+
+Research in `docs/research/sonarr-api.md` and `docs/research/radarr-api.md`
+("Conditional requests and inventory caching"), with the structured report
+`docs/research/arr-api-researcher/conditional-requests-and-inventory-caching.json`,
+confirms:
+
+- Neither provider generates `ETag`, reads `If-None-Match`, or emits
+  `Last-Modified` for `/api/**`; `/api/**` is explicitly non-cacheable and
+  `If-Modified-Since` is ignored. The undocumented `?h=` query bypass makes a
+  path cacheable and must never be used.
+- There is no bulk library revision token. `GET /api/v3/history/since?date=` is a
+  durable but incomplete file-mutation log (grab/import/failed/delete/rename
+  only) and itself requires a provider poll. `/system/status`, `/command`,
+  `/system/task`, and `/queue` are not library revision tokens.
+- Neither provider applies an inbound API rate limiter or documents a polling
+  interval.
+- Bulk selection is available: Radarr `/moviefile?movieId=` accepts a repeatable
+  `movieId`, and Sonarr accepts repeated `episodeIds`/`episodeFileIds`.
+
+### Decision
+
+ArrTags adds a bounded provider inventory/catalogue cache at the provider-client
+boundary.
+
+1. **Scope.** The cache holds, per `ArrConnection`, the provider library list
+   (Sonarr `/series`, Radarr `/movie`) and the per-record file resources needed
+   for badge metadata, as canonical, secret-free observations.
+2. **Reuse.** One library read per connection serves all work items in a
+   reconciliation window instead of one read per item.
+3. **Invalidation is ArrTags-side.** Invalidation sources are provider webhook
+   events (ADR-012), Jellyfin library refresh/post-scan, scheduled/manual
+   reconciliation, and a bounded TTL fallback. No provider conditional request,
+   revision token, `history/since` watermark, or SignalR dependency is used. The
+   complete trigger set is retained: v1.1 is **not** refresh-only, and periodic
+   scheduled reconciliation continues alongside the webhook, post-scan, manual,
+   and TTL sources.
+4. **Bulk reads.** Where multiple records are needed, ArrTags uses the bulk
+   selection endpoints (Radarr `moviefile?movieId=` repeated ids; Sonarr
+   episode/episodeFile id selection) to avoid per-item reads.
+5. **Bounds.** The inventory TTL and cache entry/size bounds are added to
+   `OperationalLimits` and `docs/architecture.md` section 12, validated at
+   configuration load. The cache is non-authoritative: on provider failure the
+   existing bounded last-known-good semantics apply, and the cache never holds a
+   credential or other secret. The inventory cache is in-memory and rebuilt on
+   restart; it is not persisted authoritative state.
+6. **Relationship to existing cache model.** The inventory cache is distinct from
+   the per-item `MetadataCacheEntry` (`docs/data-model.md` 3.9): the inventory
+   cache holds raw canonical provider observations for reuse, while
+   `MetadataCacheEntry` remains the per-item match/metadata freshness record. The
+   data model documents it as its own subsection under section 6, not as a
+   `MetadataCacheEntry` variant.
+7. Provider `ETag`/revision tokens remain optional observations only if a future
+   provider contract supplies them; they are never assumed.
+
+### Consequences
+
+- Provider reads drop from O(work items) to O(connections) per TTL/refresh
+  window, directly addressing F1.
+- Staleness is bounded by the configured TTL and by event-based invalidation.
+- New configuration and section 12 limit rows are required, and the
+  `docs/data-model.md` cache model gains an inventory-cache description.
+- The cache is bounded and secret-free and cannot evict authoritative provenance
+  or non-terminal artwork operations.
+- No dependency is introduced on provider caching internals or on an unstable
+  push channel.
+
+### Rejected alternatives
+
+- Conditional `GET`/`ETag`/`If-None-Match` was rejected: neither provider
+  supports it for `/api/**`.
+- `history/since` as the primary invalidation signal was rejected: it is
+  incomplete and still requires a provider poll.
+- SignalR was rejected: it is an internal UI contract, not a stable external API.
+- Per-request render caching was rejected: ADR-001 already publishes persisted
+  images, so there is no per-request Arr call to cache.
+- An unbounded or long-lived cache was rejected: it would present stale metadata
+  as current.
+- The `?h=` cacheable bypass was rejected: undocumented, unintended for API
+  reads, and capable of returning an unconditional `304`.
+
+### References
+
+- `docs/research/sonarr-api.md`, "Conditional requests and inventory caching"
+- `docs/research/radarr-api.md`, section 16
+- `docs/research/arr-api-researcher/conditional-requests-and-inventory-caching.json`
+- `docs/limitations.md` F1
+- `docs/planning/v1.1.md` (Goal C, DG-12)
+- `docs/architecture.md` sections 8 and 12
+- ADR-001 (persisted derived artwork), ADR-004 (limits), ADR-012 (webhooks)
+
+## ADR-019: Configurable Badge Size and Placement
+
+**Status:** Accepted (v1.1; supersedes the code-owned geometry and placement
+clauses of ADR-009 and the corresponding renderer-configuration clauses of
+ADR-010)
+
+**Date:** 2026-09-23
+
+### Context
+
+ADR-009 fixes the badge layout as a bottom-left technical rail (at most two
+rows, three pills per row) with an independent top-right `UPGRADE` status pill,
+at a reference geometry defined for a 1000-pixel poster width and scaled by
+`clamp(width / 1000, 0.5, 4.0)`. ADR-010 and task 4.10 deliberately kept
+geometry, placement, scale, and font code-owned and not representable in
+configuration; `RendererConfiguration` exposes only selector enablement,
+templates, and the four palette colors.
+
+Operators want to choose the badge size and place the badge in a corner or the
+center. This requires superseding the ADR-009/ADR-010 clauses that make placement
+and geometry code-owned, while preserving the safe-area, text, contrast, and
+determinism guarantees.
+
+Decision gate DG-13 required the size semantics, the corner/center anchors, rail
+packing, and status-pill placement.
+
+### Decision
+
+ArrTags adds a global badge size and position setting.
+
+1. **Position.** `RendererConfiguration` gains `BadgePosition`, an enum with
+   `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`, and `Center`. It positions
+   the technical rail. The default is `BottomLeft`, which reproduces the V1
+   output.
+2. **Status pill.** The `UPGRADE` status pill remains top-right, except when the
+   rail anchor is `TopRight`, in which case the status pill is placed top-left so
+   the two never overlap. No separate status-position setting is added in v1.1.
+3. **Size.** `RendererConfiguration` gains `BadgeSize`, an enum with `Small`,
+   `Medium`, and `Large`; the default is `Medium`, which reproduces the V1
+   geometry. The size multiplies the existing width-based scale:
+   `effectiveScale = clamp(width / 1000, 0.5, 4.0) * sizeFactor`, where the
+   code-owned factors are `Small = 0.75`, `Medium = 1.0`, and `Large = 1.5`. The
+   effective scale is clamped so the badge still fits the safe area.
+4. **Rail packing.** Rows stack away from the anchored edge: downward for top
+   anchors, upward for bottom anchors (current behavior), and vertically centered
+   for `Center`. Rows align to the anchored side: left-aligned for left anchors,
+   right-aligned for right anchors, and centered for `Center`. Pills pack in the
+   ADR-009 priority order within the available rows; the existing at-most-two-
+   rows / three-pills-per-row limit, shortening, and omission behavior is
+   unchanged.
+5. **Safe area.** The 24-pixel scaled inset and all ADR-009 safe-area, text-limit,
+   contrast, opacity, and determinism guarantees are unchanged. No pill may paint
+   outside the safe area; a size or position that cannot fit falls back to the
+   existing shorten/omit behavior rather than overflowing.
+6. **Output-affecting identity and resolved snapshot.** The configured position
+   and size are carried on the resolved `RenderOutputPolicy` (the object passed
+   into `BadgeLayoutEngine.Build`), so the layout engine and renderer read them
+   from the same immutable snapshot as the rest of the output policy. They are
+   included in both `RendererConfigurationFingerprint` and
+   `RenderFingerprint.ComputeOutputFingerprint` (which enumerates the policy
+   fields explicitly). The renderer-configuration schema version and
+   `RenderVersion.CurrentRendererVersion` advance (shared with ADR-017), and
+   committed goldens are regenerated.
+7. **No per-selector placement.** Placement and size are global renderer policy
+   in v1.1; per-selector placement is not representable.
+
+### Consequences
+
+- Operators can place the badge in any corner or the center and choose a preset
+  size.
+- The V1 default (`BottomLeft`, `Medium`) reproduces the existing output for
+  unchanged configuration.
+- The change is output-affecting and republishes affected artwork.
+- The derived status-pill rule keeps the two badge groups from overlapping
+  without a second setting.
+- Center and right anchors add new layout cases and goldens, covered by tests.
+
+### Rejected alternatives
+
+- A numeric size multiplier was rejected: presets are friendlier for a simple
+  settings UI and are sufficient for v1.1.
+- An independent status-pill position was rejected: more UI and more overlap
+  combinations to validate.
+- Keeping the status pill fixed at top-right with the rail reserving space
+  (current behavior) was rejected: it is awkward when the rail is anchored
+  top-right and does not express a true top-right rail.
+- Always-left-aligned rows were rejected: they misalign at right anchors.
+- Per-selector placement or size was rejected as out of v1.1 scope.
+
+### References
+
+- `docs/planning/v1.1.md` (Goal E, DG-13)
+- `docs/data-model.md`, sections 3.6 and 3.12
+- `src/ArrTags/Rendering/BadgeGeometry.cs`, `BadgeLayoutEngine.cs`,
+  `SkiaBadgeRenderer.cs`
+- `src/ArrTags/Configuration/RendererConfiguration.cs`,
+  `RendererConfigurationFingerprint.cs`
+- ADR-009 (superseded geometry/placement clauses), ADR-010 (renderer
+  configuration)
+
+## ADR-020: Plugin Logging and Configurable Verbosity
+
+**Status:** Accepted (v1.1)
+
+**Date:** 2026-09-23
+
+### Context
+
+The plugin currently has zero logging call sites. `docs/limitations.md` SEC-5
+documents that fact as the reason no plugin log path can leak a secret:
+"the plugin has no logging call sites, so no plugin log path can leak a secret."
+
+The supported Jellyfin 12 logging contract is confirmed in
+`docs/research/jellyfin-12-architecture.md` section 10 and
+`docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json`:
+
+- `ILogger<T>`/`ILoggerFactory` resolve through plugin DI and write to the host
+  Serilog pipeline with `{SourceContext}` set to the logger category.
+- Per-plugin verbosity is supported only as **plugin-owned gating** from the
+  plugin's own configuration. The host's Serilog `MinimumLevel.Override` is host
+  configuration, not a plugin API, and `ServerConfiguration` has no log-level
+  field; the dashboard controls log viewing, not level.
+- A plugin-registered `ILoggerProvider`/sink is ineffective on the pinned host:
+  Jellyfin calls the no-argument `UseSerilog()` with no `LoggerProviderCollection`,
+  so `SerilogLoggerFactory.AddProvider` ignores providers and `CreateLogger`
+  always returns a Serilog-backed logger. Replacing the host `ILoggerFactory` is
+  not a supported plugin contract.
+
+Adding logging creates a new secret-exposure path. `PluginConfiguration` holds
+`Sonarr.ApiKey`, `Radarr.ApiKey`, and `WebhookSecret`; provider requests carry the
+`X-Api-Key` header and the webhook route authenticates the
+`X-ArrTags-Webhook-Secret` header. The current SEC-5 negative result does not
+cover any log path.
+
+### Decision
+
+1. ArrTags logs through `Microsoft.Extensions.Logging`
+   `ILogger<T>`/`ILoggerFactory` resolved via DI. Logger categories are prefixed
+   `ArrTags.*` (for example `ArrTags.Providers.Radarr`) so host per-category
+   overrides are predictable.
+2. A bounded, secret-free verbosity setting is added to `PluginConfiguration` as
+   an explicit level enum (`Off`, `Error`, `Warning`, `Information`, `Debug`,
+   `Trace`), validated at configuration load and exposed through the ADR-016
+   settings UI and the XML configuration. The default is `Warning`.
+3. Log calls are gated by the plugin's own verbosity, read from the current
+   configuration snapshot. ArrTags does **not** register a custom
+   `ILoggerProvider`/sink and does **not** replace the host `ILoggerFactory`.
+4. **Redaction contract.** No log call may emit an API key, the webhook secret, a
+   `SecretLease` value, an `X-Api-Key`/`X-ArrTags-Webhook-Secret` header, a raw
+   request/response body, a full provider payload, or the mutable
+   `PluginConfiguration`. Logging uses only types already proven bounded and
+   redacted (`ArrProviderError`, safe `SecretReference`, connection identity,
+   configuration version, and bounded reason codes). Raising verbosity must not
+   expand a redacted value into a secret-bearing one.
+5. Verbosity is **not** output-affecting: it is excluded from the renderer and
+   configuration output fingerprints and does not change `RenderVersion`, so
+   changing it never republishes artwork.
+6. Log volume is bounded: high-frequency messages are rate-limited or
+   repetition-suppressed, and a `docs/architecture.md` section 12 limit row
+   records the bound.
+7. Logging is a diagnostic mechanism, not a metrics/status surface; limitation
+   F3 remains open.
+8. `docs/limitations.md` SEC-5 is rewritten from "no logging call sites" to the
+   redaction contract above, and the new logging path is covered by a security
+   review.
+
+### Consequences
+
+- Operators can diagnose ArrTags behavior and raise or lower its verbosity
+  without changing the global host log level or restarting (the setting applies
+  through ADR-016's runtime activation).
+- A new secret-exposure path exists and is mitigated by the redaction contract
+  and by redaction tests at every verbosity level.
+- SEC-5 changes from a negative result to a positive, reviewed contract.
+- The `Warning` default keeps normal operation quiet while surfacing errors and
+  warnings.
+- No custom sink means log output goes only to the host's existing sinks; a
+  future need for a plugin-owned sink would require a new decision.
+
+### Rejected alternatives
+
+- Registering a custom `ILoggerProvider`/sink was rejected: it is ineffective on
+  the pinned host and not a supported contract.
+- Relying solely on the host `MinimumLevel.Override` was rejected: it is host
+  configuration, not a plugin-controlled setting.
+- Logging everything at `Information` by default was rejected: unnecessary noise
+  and a larger secret-exposure surface.
+- Adding no logging was rejected: it leaves operators blind and does not address
+  the diagnostics gap.
+
+### References
+
+- `docs/research/jellyfin-12-architecture.md`, section 10
+- `docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json`
+- `docs/limitations.md` SEC-5 and F3
+- `docs/planning/v1.1.md` (Goal F, DG-14)
+- ADR-005 (secret boundary), ADR-016 (settings UI activation)
 

@@ -3356,6 +3356,12 @@ These items are deferred until the V1 gates are complete. They remain within the
 existing goals or are explicitly identified as future schema work; they do not
 expand V1 scope by themselves.
 
+**v1.1 promotion:** The provider catalogue/inventory cache (F1) and the runtime
+configuration replacement wiring (F2) are promoted into v1.1 and are now tracked
+in [`docs/planning/v1.1.md`](docs/planning/v1.1.md) (Goals C and A, resolved by
+ADR-018 and ADR-016). The remaining open items below stay deferred unless a
+later decision promotes them.
+
 - Add additional normalized badge metadata already identified in the data model,
   such as bit depth, frame rate, scan type, language, subtitles, release group,
   edition, custom-format score, certification, stream count, or provider
@@ -3378,21 +3384,23 @@ reviews).** These remain open and are not presented as solved. They are
 consolidated, with their evidence and criteria status, in `docs/limitations.md`
 (Phase 7 task 7.6):
 
-- Provider catalogue/inventory cache. Every reconciliation work item still
+- **Promoted to v1.1 (ADR-018):** provider catalogue/inventory cache. Every
+  reconciliation work item still
   re-reads the whole provider library and then the per-record file resource, so
   a large library scan performs one full provider-library read per event. The
   Phase 6 acceptance criterion "unchanged metadata and source state do not
   repeatedly fetch ... work unnecessarily" is therefore only partially met for
-  provider fetches; render and publication are correctly fingerprint-gated. A
-  bounded, short-TTL provider inventory/catalogue cache and/or a provider
-  revision-token fetch skip is deferred.
-- Runtime configuration replacement wiring. `ConfigurationSnapshotService.TryReplace`
+  provider fetches; render and publication are correctly fingerprint-gated. v1.1
+  adds a bounded, short-TTL provider inventory/catalogue cache with ArrTags-side
+  invalidation.
+- **Promoted to v1.1 (ADR-016):** runtime configuration replacement wiring. `ConfigurationSnapshotService.TryReplace`
   is implemented and validated but is not wired to Jellyfin's configuration-update
   mechanism, so a saved webhook secret, provider enable/disable, badge/selector
   change, or DG-6 limit change is not observed until the process restarts. The
   bounded work queue, provider/render concurrency limiters, freshness window,
   and retention interval all already resolve their values from the current
-  snapshot per operation, so wiring the replacement is the remaining step.
+  snapshot per operation; v1.1 adds the dashboard settings UI, wires the
+  replacement, and adds a bounded re-render trigger.
 - Safe metrics/diagnostic-status surface. Queue depth, provider health, matching,
   cache, rendering, and stale-data counters exist internally but there is no
   bounded, secret-free user-facing or diagnostic status surface. Architecture

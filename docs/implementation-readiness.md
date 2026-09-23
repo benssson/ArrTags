@@ -410,8 +410,8 @@ that introduce them.
   initial supported provider-version matrix is resolved by ADR-013: Sonarr
   3.x-4.x and Radarr 3.x-6.x on `/api/v3`, with absent optional fields mapped to
   explicit unknowns and a malformed required field failing closed as
-  `ProviderIncompatible`. The provider catalogue/inventory cache remains an open
-  item consolidated in `docs/limitations.md`, and the cross-provider
+  `ProviderIncompatible`. The provider catalogue/inventory cache is promoted to
+  v1.1 (ADR-018) and tracked in `docs/planning/v1.1.md`, and the cross-provider
   normalization strategy remains a post-V1 consideration.
 - Decide whether stale metadata retains the active derived artwork, restores the
   source, or publishes an unbadged source image.
@@ -493,15 +493,22 @@ that introduce them.
 **Open items carried out of Phase 7 (from the Phase 6 review and the Phase 7
 reviews; consolidated in `docs/limitations.md` and not presented as solved):**
 
-- Provider catalogue/inventory cache: every reconciliation work item still
-  re-reads the whole provider library and the per-record file resource, so the
-  "avoid unnecessary API requests" goal is only partially met for provider
-  fetches. A bounded, short-TTL inventory/catalogue cache and/or a provider
-  revision-token fetch skip is deferred.
-- Runtime configuration replacement wiring: `ConfigurationSnapshotService.TryReplace`
-  is implemented and validated but not wired to Jellyfin's configuration-update
-  mechanism, so a saved webhook secret, provider enable/disable, badge/selector
-  change, or DG-6 limit change is not observed until restart.
+**v1.1 promotion:** the provider inventory cache and the runtime configuration
+replacement wiring are promoted into v1.1 and tracked in
+[`docs/planning/v1.1.md`](planning/v1.1.md) (Goals C and A, resolved by ADR-018
+and ADR-016). They are no longer deferred V1 items.
+
+- **Promoted to v1.1 (ADR-018):** provider catalogue/inventory cache. Every
+  reconciliation work item still re-reads the whole provider library and the
+  per-record file resource, so the "avoid unnecessary API requests" goal is only
+  partially met for provider fetches; v1.1 adds a bounded, short-TTL
+  inventory/catalogue cache with ArrTags-side invalidation.
+- **Promoted to v1.1 (ADR-016):** runtime configuration replacement wiring.
+  `ConfigurationSnapshotService.TryReplace` is implemented and validated but not
+  wired to Jellyfin's configuration-update mechanism, so a saved webhook secret,
+  provider enable/disable, badge/selector change, or DG-6 limit change is not
+  observed until restart; v1.1 adds the dashboard settings UI, wires the
+  replacement, and adds a bounded re-render trigger.
 - Safe metrics/diagnostic-status surface: bounded queue, provider-health,
   matching, cache, render, and stale-data counters exist internally but no
   bounded, secret-free user-facing or diagnostic status surface exists yet.

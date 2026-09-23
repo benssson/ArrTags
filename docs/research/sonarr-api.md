@@ -315,9 +315,11 @@ Jellyfin scan. Cache series/episode inventories briefly and reconcile in a
 bounded background task. API keys must be redacted from all URLs, headers,
 exceptions and telemetry.
 
-There is no confirmed Sonarr server-side ETag/conditional-GET contract to rely
-on for these resources. **Validate** any observed cache headers before making
-them part of state correctness.
+**Confirmed:** there is no Sonarr server-side `ETag`/`If-None-Match` contract
+for these resources, and `/api/**` reads are explicitly classified as
+non-cacheable, so they carry no `Last-Modified` and ignore `If-Modified-Since`.
+Do not treat any observed cache header on an API read as a freshness signal; see
+[Conditional requests and inventory caching](#conditional-requests-and-inventory-caching).
 
 ## Keeping badges current: webhook and SignalR options
 
@@ -389,6 +391,130 @@ Preferred order:
 - Pin the supported Sonarr version range in the plugin README/config UI and
   add contract tests using retained sanitized fixtures.
 
+## Conditional requests and inventory caching
+
+**Researched 2026-09-23** against Sonarr `develop` (the v4 line; `main` and
+`develop` resolve to the same commit) and the `v3.0.9.1549` tag (the Nancy-based
+v3 line). This section answers whether ArrTags can avoid a provider read with an
+HTTP cache validator or a provider revision token, for the ADR-018
+inventory/catalogue-cache question. It does not change ADR-013 or V1 scope.
+
+### Verdict
+
+Neither Sonarr v3 nor v4 offers a usable conditional-request or bulk
+revision-token mechanism for the library/per-record reads ArrTags performs
+(`/api/v3/series`, `/api/v3/episode`, `/api/v3/episodeFile`, and their
+`/api/v3/{id}` forms). There is no `ETag` and no `If-None-Match` handling in the
+response path, and `/api/**` is explicitly classified as non-cacheable, so no
+`Last-Modified` is emitted and `If-Modified-Since` is ignored. An inventory cache
+must be invalidated by an ArrTags-side signal (webhook, Jellyfin library refresh,
+or a bounded TTL), not by a Sonarr validator or revision token.
+
+### 1. Conditional requests (`ETag`, `Last-Modified`, `If-None-Match`, `If-Modified-Since`)
+
+| Item | Finding | Label |
+| --- | --- | --- |
+| `ETag` response header | Never generated for API resources (no `ETag` assignment anywhere in the response path). | **Confirmed** |
+| `If-None-Match` | Never read; the only conditional request header referenced is `If-Modified-Since`. | **Confirmed** |
+| `Last-Modified` on `/api/**` | Not emitted. `/api/**` is non-cacheable, so `DisableCache()` applies and (v4) removes `Last-Modified`. | **Confirmed** |
+| `If-Modified-Since` on `/api/**` | Ignored; the conditional middleware only runs for cacheable requests, and `/api/**` is not cacheable. | **Confirmed** |
+| `EnableCache()` semantics | For cacheable paths only: `Cache-Control: max-age=31536000, public` plus `Last-Modified` = the Sonarr **build time** (`BuildInfo.BuildDateTime`), a per-install constant — not a resource timestamp. | **Confirmed** |
+| `304` semantics | For cacheable paths, the middleware returns `304` whenever `If-Modified-Since` is present, **without comparing its value** to any timestamp. This is a static-asset/MediaCover optimisation, not a validator. | **Supported with caveats** |
+| `?h=` query bypass | A query key `h` makes **any** path cacheable before the `/api` check, including `/api/v3/series`; the response then gains a one-year `Cache-Control` and a build-time `Last-Modified`, and an `If-Modified-Since` request may receive an unconditional `304`. Undocumented, unintended for API reads; **never use it**. | **Public but unstable** |
+| Non-production builds | `IsCacheable` returns false when `RuntimeInfo.IsProduction` is false, so debug instances emit no cache headers at all. | **Confirmed** |
+| v3 vs v4 | v3 (Nancy) and v4 (ASP.NET Core) apply the same cacheable rule. v3 reads the strongly-typed `Request.Headers.IfModifiedSince`; v4 reads the literal dictionary key `Headers["IfModifiedSince"]`. | **Confirmed** |
+| Sonarr vs Radarr | Sonarr treats `/api/**/MediaCover` images as cacheable; Radarr never treats `/api` or `/MediaCover` as cacheable. The library/file reads are non-cacheable in both. | **Confirmed** |
+
+Pipeline detail:
+
+- v4 (`develop`): `Startup.Configure` registers `CacheHeaderMiddleware` then
+  `IfModifiedMiddleware`. `CacheableSpecification.IsCacheable` returns false for
+  any `/api` path except one containing `/MediaCover`; `CacheHeaderMiddleware`
+  then calls `DisableCache()` (`Cache-Control: no-cache, no-store`,
+  `Expires: -1`, `Pragma: no-cache`, `Last-Modified` removed).
+- v3 (`v3.0.9.1549`): the Nancy `CacheHeaderPipeline` (AfterRequest) and
+  `IfModifiedPipeline` (BeforeRequest) implement the same rule; JSON responses
+  also call `DisableCache()` from `ReqResExtensions.AsResponse`.
+
+**Unable to verify:** whether ASP.NET Core's case-insensitive header dictionary
+matches the literal key `Headers["IfModifiedSince"]` (no hyphens) against the
+wire header `If-Modified-Since`. It does not affect the conclusion, because API
+reads never reach the middleware; a live capture on a production build would
+settle it.
+
+### 2. Revision/version tokens
+
+No bulk "library changed" token exists. The candidates and their real value:
+
+| Candidate | What it changes on | Reliable "library changed" signal? | Poll cost |
+| --- | --- | --- | --- |
+| `GET /api/v3/system/status` | `version`, `buildTime`, `startTime`, `migrationVersion` change only on upgrade/restart/schema migration. | **No.** | One small GET. |
+| `GET /api/v3/history/since?date=` | `HistoryResource[]` where `Date >= date`, joined and unpaged. Records grab/import/failed/delete/rename. | **Partial.** File-level mutations only; not every library change. | DB query plus a response proportional to events since `date`. |
+| `GET /api/v3/history?page=1&pageSize=1&sortKey=date&sortDirection=descending` | Newest history row. | **Partial** (same coverage). | One paged GET (default `pageSize` 10). |
+| `GET /api/v3/command` | Started/queued commands. | **No.** | One GET. |
+| `GET /api/v3/system/task` | `lastExecution`, `lastStartTime`, `nextExecution`, `interval`. | **No.** Scheduler metadata. | One GET. |
+| `GET /api/v3/queue` | Download queue state. | **No.** Downloads, not the library. | Paged GET. |
+| Per-item `added` / `statistics` | One record. | **No.** Requires the full list anyway. | Full list. |
+
+`history/since` event types (`EpisodeHistoryEventType`): `grabbed`,
+`seriesFolderImported`, `downloadFolderImported`, `downloadFailed`,
+`episodeFileDeleted`, `episodeFileRenamed`, `downloadIgnored`. It does **not**
+record adding a series, a metadata refresh, a quality-profile edit, a monitor
+toggle, or a file `quality` change that occurs without an import/delete/rename
+event. History is house-kept only for orphaned items
+(`CleanupOrphanedHistoryItems`), not age-pruned, so a `since` watermark is
+durable but still incomplete. It is at best a coarse accelerator and would
+itself require a provider poll.
+
+### 3. Bulk reads
+
+- `GET /api/v3/series` returns the whole library as one unpaged
+  `List<SeriesResource>`; `tvdbId` narrows it to zero-or-one.
+- `GET /api/v3/episode?seriesId=...&includeEpisodeFile=true` returns all
+  episodes for a series, unpaged, with the current file embedded; `seasonNumber`
+  narrows it. `episodeIds` (repeated) selects explicit episodes; a request with
+  none of `seriesId`/`episodeIds`/`episodeFileId` is `400 Bad Request`.
+- `GET /api/v3/episodeFile?seriesId=...` returns the series file inventory,
+  unpaged; `episodeFileIds` (repeated) selects explicit files; a request with
+  neither selector is `400 Bad Request`.
+- None of these endpoints use `PagingRequestResource`, and `PagingSpec` applies
+  no maximum page size. There is no documented response-size limit; the Kestrel
+  request-body limit is disabled (`MaxRequestBodySize = null`). The only practical
+  bound is client-side (`ProviderResponseLimitBytes` in ArrTags).
+- The per-record `GET /api/v3/{resource}/{id}` reads are the only way to
+  revalidate a single known record, and they share the same non-cacheable
+  response behavior.
+
+### 4. Rate limiting and request discipline
+
+- **Confirmed:** no inbound API rate limiter, no `429` mapping in
+  `SonarrErrorPipeline`, and no documented polling interval. `RateLimitService`
+  is used only for **outbound** requests (indexers, import lists, download
+  clients). A reverse proxy may still rate-limit.
+- The existing ArrTags discipline still applies: bounded concurrency, single
+  `HttpClient` via Jellyfin DI, cancellation, bounded backoff/jitter, honor
+  `Retry-After` if a proxy supplies it, and never poll every item during a scan.
+
+### 5. Push mechanisms beyond webhooks
+
+- **Confirmed:** the only push channels are the outbound Sonarr Webhook
+  connection (already covered above) and the SignalR hub at
+  `/signalr/messages` (broadcast method `receiveMessage`, payload
+  `SignalRMessage { Name, Body }`, gated by the `SignalR` authorization policy).
+  There is **no** SSE or long-poll endpoint.
+- **Source-inferred / public but unstable:** SignalR messages are an internal UI
+  contract (`RestControllerWithSignalR` broadcasts resource changes; the hub
+  sends a `version` message on connect). They are not documented as a stable
+  external integration API, so ArrTags must not make cache correctness depend on
+  them.
+
+**ADR-018 implication (research only, no decision made here):** because no
+provider validator or revision token exists, an inventory cache must be
+invalidated by ArrTags-side signals — the webhook, a Jellyfin library-refresh
+trigger, and/or a bounded TTL — and cannot rely on a conditional GET or a
+provider change token. Any use of `history/since` would add a provider poll and
+still not cover all mutations.
+
 ## Primary sources
 
 - [Sonarr API Docs (v3)](https://sonarr.tv/docs/api/?api=v3)
@@ -400,3 +526,22 @@ Preferred order:
 - [Quality and QualityModel implementation](https://github.com/Sonarr/Sonarr/tree/develop/src/NzbDrone.Core/Qualities)
 - [Webhook notification implementation](https://github.com/Sonarr/Sonarr/blob/develop/src/NzbDrone.Core/Notifications/Webhook/Webhook.cs)
 - [API error pipeline](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Http/ErrorManagement/SonarrErrorPipeline.cs)
+
+Conditional requests, inventory caching, and change signals (researched
+2026-09-23; v4 = `develop`, v3 = tag `v3.0.9.1549`):
+
+- [v4 middleware pipeline registration](https://github.com/Sonarr/Sonarr/blob/develop/src/NzbDrone.Host/Startup.cs)
+- [v4 CacheHeaderMiddleware](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Http/Middleware/CacheHeaderMiddleware.cs),
+  [IfModifiedMiddleware](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Http/Middleware/IfModifiedMiddleware.cs),
+  [CacheableSpecification](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Http/Middleware/CacheableSpecification.cs),
+  [EnableCache/DisableCache](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Http/Extensions/RequestExtensions.cs)
+- [v3 Nancy IfModifiedPipeline](https://github.com/Sonarr/Sonarr/blob/v3.0.9.1549/src/Sonarr.Http/Extensions/Pipelines/IfModifiedPipeline.cs),
+  [CacheHeaderPipeline](https://github.com/Sonarr/Sonarr/blob/v3.0.9.1549/src/Sonarr.Http/Extensions/Pipelines/CacheHeaderPipeline.cs),
+  [CacheableSpecification](https://github.com/Sonarr/Sonarr/blob/v3.0.9.1549/src/Sonarr.Http/Frontend/CacheableSpecification.cs),
+  [EnableCache/DisableCache](https://github.com/Sonarr/Sonarr/blob/v3.0.9.1549/src/Sonarr.Http/Extensions/ReqResExtensions.cs)
+- [v4 History controller (`history/since`)](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Api.V3/History/HistoryController.cs),
+  [History repository `Since`](https://github.com/Sonarr/Sonarr/blob/develop/src/NzbDrone.Core/History/HistoryRepository.cs)
+- [v4 System controller/resource](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Api.V3/System/SystemController.cs),
+  [Task controller](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Api.V3/System/Tasks/TaskController.cs)
+- [v4 SignalR MessageHub](https://github.com/Sonarr/Sonarr/blob/develop/src/NzbDrone.SignalR/MessageHub.cs),
+  [resource-change broadcasting](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Http/REST/RestControllerWithSignalR.cs)
