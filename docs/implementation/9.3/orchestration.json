@@ -3,7 +3,7 @@
   "title": "Elevation-gated save path and runtime activation",
   "phase": 9,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "c3cc5f3",
   "subagents": [
     {
       "role": "implementation-worker",
