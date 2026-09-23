@@ -193,7 +193,9 @@ integration-test level, Gate 9 is met (the Phase 9 review is approved in
 `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.
 Phase 10 is in progress: tasks 10.1 (logging foundation, verbosity
 configuration, and fingerprint exclusion) and 10.2 (bounded, redacted log call
-sites and volume bounds) are complete; task 10.3 remains. V1.1-1 (this
+sites and volume bounds) are complete, and task 10.3's SEC-5 rewrite and
+documentation reconciliation are complete; the task 10.3 logging security review
+remains to be recorded. V1.1-1 (this
 plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
 pointers) is already complete at commit `5ec8ae2` and is not re-planned as open
 work.
@@ -232,7 +234,7 @@ work.
 | 7 | Testing & release | Complete (tasks 7.1-7.8 complete; all five Phase 7 acceptance criteria are met; task 7.7 relocates the state root outside `PluginsPath` by ADR-014 and the re-run live verification passes, so Phase 7 acceptance criterion 2 is met; task 7.8 resolves the task 7.3 release blocker 7.3-F1 by ADR-015 and the re-run live end-to-end verification passes, so `GOALS.md` criteria 5 and 8 are met as shipped, with criterion 6 met for render and publication but only partial for provider fetches (`docs/limitations.md` F1), and Phase 7 acceptance criteria 3 and 4 are met; task 7.4 complete (the logs/diagnostics/HTTP/persisted-state secret-leakage and unbounded-data review found no credential leakage or unbounded path); task 7.5 complete - the release package builds byte-reproducibly from a clean checkout and its commands, inputs, artifact identity, and supported version ranges are recorded in `docs/release/build-and-release.md`, so Phase 7 acceptance criterion 5 is met; task 7.6 complete - the known limitations and deferred decisions are consolidated in `docs/limitations.md`; Gate 7 is met (Phase 7 review approved; tag `v0.1.0-phase7`)) | Required unit/integration/acceptance checks pass and the plugin can be built and packaged reproducibly. |
 | 8 | Release distribution | Complete (tasks 8.1-8.6 complete; all seven Phase 8 acceptance criteria are met; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 is met - Phase 8 review approved in `docs/implementation/phase-8/phase-review.json`) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 | 9 | Dashboard settings UI and runtime configuration activation (v1.1) | Complete (Phase 9 tasks 9.1-9.5 complete: the get-only `Collection<T>` round-trip was proven to fail under the pinned `JsonDefaults.Options`, so `EnabledLibraries`/`Renderer.Selectors` are now settable and round-trip; `Plugin` implements `IHasWebPages` with an embedded secret-free settings page; `Plugin.UpdateConfiguration` validates and activates a saved candidate at runtime without a restart with last-valid snapshot and private-secret retention; a successful replacement requests a bounded, non-blocking post-save reconciliation so existing posters re-render promptly; and `GoalAIntegrationTests` verifies the composed save -> activate -> bounded-reconcile flow, so limitation F2 is resolved. The Goal A acceptance criteria are met at the integration-test level; Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`) and the `v1.1.0-phase9` tag is created; the live Goal A confirmation is owned by task 14.3) | A dashboard settings page loads and saves through the elevation-gated path, a valid change applies without restart with last-valid retention, and a successful save triggers a bounded reconciliation; the get-only `Collection<T>` round-trip is proven. Phase tag `v1.1.0-phase9`. |
-| 10 | Logging with configurable verbosity (v1.1) | In progress (tasks 10.1-10.2 complete; task 10.3 remains) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
+| 10 | Logging with configurable verbosity (v1.1) | In progress (tasks 10.1-10.2 complete; task 10.3 SEC-5 rewrite and documentation complete, logging security review pending) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
 | 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | Not started (Phase 11 tasks 11.1-11.4; resolves limitation F1) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
 | 12 | Badge value allowlist and badge size/position (v1.1) | Not started (Phase 12 tasks 12.1-12.4; Goals B and E; ADR-017 and ADR-019) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
 | 13 | README and documentation pass (v1.1) | Not started (Phase 13 tasks 13.1-13.2; Goal D) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
@@ -4049,7 +4051,16 @@ recorded.
 
 #### 10.3 SEC-5 rewrite, documentation, and logging security review
 
-**Status:** Not started.
+**Status:** Documentation complete; the logging security review remains.
+`docs/limitations.md` SEC-5 is rewritten from the "no logging call sites"
+negative result to the ADR-020 redaction contract and reconciled with SEC-9;
+`docs/architecture.md` sections 6, 11, and 12, `docs/data-model.md` 3.12, and
+`README.md` consistently describe the shipped Goal F behavior; and the task 10.2
+informational finding that section 12 listed "durations" among emitted value
+kinds (none is logged) is corrected. The logging security review (ADR-020
+clause 8) is run by the orchestrator after the documentation change and recorded
+at `docs/implementation/10.3/security-review.json`; the verdict is not recorded
+here.
 
 **Objective:** Rewrite `docs/limitations.md` SEC-5 to the redaction contract and
 obtain a fresh security review of the new logging path (ADR-020 clause 8).

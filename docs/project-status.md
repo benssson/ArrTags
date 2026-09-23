@@ -5,7 +5,9 @@
 **Current milestone:** Phase 10 — Logging with configurable verbosity (v1.1) is
 in progress (task 10.1, logging foundation, verbosity configuration, and
 fingerprint exclusion, and task 10.2, bounded, redacted log call sites and volume
-bounds, are complete; task 10.3 remains). Phase 9 —
+bounds, are complete, and task 10.3's SEC-5 rewrite and documentation
+reconciliation are complete; the task 10.3 logging security review remains to be
+recorded). Phase 9 —
 Dashboard settings UI and runtime configuration activation (v1.1) is complete:
 tasks 9.1-9.5 are complete, all six Phase 9 acceptance criteria (including the
 v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 is
@@ -661,7 +663,12 @@ Next tasks:
   already-redacted values, and the code-owned `LogThrottle` bounds volume at 5
   records per category/event per minute with one bounded suppression summary per
   window and a 256-key tracking cap. Task 10.3 (SEC-5 rewrite and logging
-  security review) remains.
+  security review) is documentation-complete: `docs/limitations.md` SEC-5 is
+  rewritten to the ADR-020 redaction contract and reconciled with SEC-9, and the
+  named documents (`docs/architecture.md` sections 6/11/12, `docs/data-model.md`
+  3.12, and `README.md`) describe the shipped Goal F behavior; the logging
+  security review remains to be recorded at
+  `docs/implementation/10.3/security-review.json`.
 - Phase 9 — Dashboard settings UI and runtime configuration activation (v1.1) is
   complete: tasks 9.1 (configuration round-trip spike, blocking
   prerequisite), 9.2 (dashboard settings page and embedded page resource), 9.3

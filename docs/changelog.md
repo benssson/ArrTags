@@ -2990,3 +2990,35 @@ Documentation: `docs/architecture.md` sections 6 (logging and verbosity) and 12
 `./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
 0, Passed 1363, Skipped 63, Total 1426 (baseline Failed 0, Passed 1298, Skipped
 63, Total 1361; +65 passed, +65 total, 0 new skips).
+
+### Task 10.3 - SEC-5 rewrite, documentation, and logging security review
+
+**Status:** Documentation complete; the logging security review is run by the
+orchestrator and recorded at `docs/implementation/10.3/security-review.json`.
+
+Rewrites `docs/limitations.md` SEC-5 from the pre-logging negative result ("the
+plugin has no logging call sites, so no plugin log path can leak a secret") to
+the ADR-020 redaction contract (ADR-020 clause 8). The rewritten SEC-5 records
+that ArrTags logs through the host `ILogger<T>`/`ILoggerFactory` pipeline at the
+bounded, validated, secret-free `LogVerbosity`; that every log call emits only
+bounded, already-redacted values per the ADR-020 clause 4 allowlist; that log
+volume is bounded by the code-owned `LogThrottle`; that verbosity is not
+output-affecting; and that the logging path is covered by a dedicated security
+review. SEC-5 is reconciled with SEC-9 (the ADR-021 configuration-rejection
+activity-log entry) so the two plugin-initiated outbound surfaces are recorded
+consistently.
+
+Documentation: `docs/architecture.md` sections 6 (logging and verbosity), 11
+(the failure/security policy now states that authentication failures and
+secret-bearing values are never logged and that log output is bounded and
+redacted), and 12 (the redaction-contract paragraph now lists only the value
+kinds actually emitted; the stale "durations" wording from task 10.2's
+informational finding is corrected). `docs/data-model.md` 3.12 records the
+shipped log call sites and the redaction contract, and `README.md` states that
+ArrTags logs only bounded, secret-free diagnostics.
+
+The logging security review (ADR-020 clause 8) is run by the orchestrator after
+this documentation change; the verdict is recorded in
+`docs/implementation/10.3/security-review.json` and is not asserted here. No
+production code or test changed, so the build/test counts are unchanged: build 0
+warnings / 0 errors; default suite Failed 0, Passed 1363, Skipped 63, Total 1426.

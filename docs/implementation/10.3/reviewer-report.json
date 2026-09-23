@@ -1,0 +1,120 @@
+{
+  "task": "10.3",
+  "attempt": 1,
+  "reviewer": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "ready_for_next_task": true,
+  "summary": "APPROVED. Task 10.3 is complete: the documentation rewrite is correct and the ADR-020 clause 8 logging security review is recorded and passing. The working-tree change is documentation-only (`git diff --name-only -- src tests` empty; only 9 named/canonical docs plus docs/implementation/10.3/). `docs/limitations.md` SEC-5 is genuinely rewritten from the false pre-logging negative result ('no logging call sites, so no plugin log path can leak a secret') to the shipped ADR-020 redaction contract and reconciled with SEC-9. I independently verified every material SEC-5 claim against the shipped source (unchanged since 8407964): logging goes through the host `ILogger<T>` via the plugin-owned `IArrTagsLog<T>`/`ArrTagsLog<T>` facade; the bounded `LogVerbosity` enum (Off/Error/Warning/Information/Debug/Trace, default Warning) is validated by `PluginConfigurationValidator` and read from the current snapshot without restart (`LogVerbosityGate`); all 21 instrumented call sites emit only bounded, already-redacted values matching the ADR-020 clause 4 allowlist and never a key, webhook secret, SecretLease value, secret header, raw body, provider payload, or mutable PluginConfiguration; the emitted shape is level-independent (`ArrTagsLog.Write` has no level-conditional branch); volume is bounded by the code-owned `LogThrottle` (5/category/event/minute, one suppression summary, 256-key cap); verbosity is excluded from the renderer fingerprint; and no custom ILoggerProvider/sink or ILoggerFactory replacement exists. The 10.2-F2 'durations' overclaim is corrected (no duration is emitted; 'duration' no longer appears in docs/architecture.md). The ADR-020 implementation note adds a shipped-design note only and rewrites no clause. Stale-claim grep over the named documents found no now-false current-state claim. Build is 0 warnings / 0 errors and the suite is Failed 0, Passed 1363, Skipped 63, Total 1426 (independently reproduced). The security review (`docs/implementation/10.3/security-review.json`) was recorded during this review: PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM, and I independently corroborated its key assertions (21 call sites; no alternate logging path; no custom provider/factory; implementation byte-identical to 8407964; SEC-5 accuracy). Both acceptance criteria ('SEC-5 is rewritten'; 'the logging path is security-reviewed') and the Tests criterion ('the security-review report is recorded with no open BLOCKER/HIGH/MEDIUM') are satisfied. Remaining items are non-blocking LOW/INFORMATIONAL: the pre-existing stale docs/project-status.md v1.1 suite count (owned by Phase 13), the stale docs/planning/v1.1.md 'zero logging call sites' line (security-review SEC-10.3-2, routed to Phase 13), and the security review's noted residuals (ArrProviderError.Message producer invariant; live host sink deferred to task 14.3; pre-existing base-URL userinfo gap).",
+  "findings": [
+    {
+      "id": "10.3-F1",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "acceptance criteria / validation",
+      "summary": "ADR-020 clause 8 logging security review is recorded and passes with 0 open BLOCKER/HIGH/MEDIUM",
+      "detail": "`docs/implementation/10.3/security-review.json` was not present when this review began but was recorded during it. It reports reviewer_status PASS_WITH_FINDINGS with open_blocker_high_medium 0, and its SEC-5 assessment confirms the rewritten SEC-5 accurately states the shipped redaction contract. I independently corroborated its key claims: the logging implementation is byte-identical to commit 8407964 (`git diff --stat 8407964 -- src tests` empty); 21 `_log.Write(` call sites exist; no alternate logging path (no Console/Debug/Trace.Write, EventLog, File.AppendAllText, StreamWriter) exists in src; and no custom ILoggerProvider/sink or ILoggerFactory replacement is registered (only a NullLogger<T> fallback). The task Tests criterion ('the security-review report is recorded with no open BLOCKER/HIGH/MEDIUM or with accepted limitations recorded in docs/limitations.md') and acceptance criterion ('the logging path is security-reviewed') are therefore satisfied.",
+      "evidence": [
+        "docs/implementation/10.3/security-review.json (reviewer_status PASS_WITH_FINDINGS; open_blocker_high_medium 0)",
+        "git diff --stat 8407964 -- src tests -> empty",
+        "grep -rn '_log.Write(' src/ArrTags -> 21 matches; grep for alternate logging paths -> none in src",
+        "grep -rnE 'AddProvider|ILoggerProvider|ILoggerFactory|UseSerilog|AddLogging' src/ArrTags -> comments and NullLogger fallback only"
+      ],
+      "recommended_action": "No action required."
+    },
+    {
+      "id": "10.3-F2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation consistency",
+      "summary": "docs/project-status.md retains a pre-existing stale v1.1 suite count",
+      "detail": "docs/project-status.md lines 615-616 still state the current v1.1 working suite is 'Failed 0, Passed 1,272, Skipped 63, Total 1,335', while the actual v1.1 suite is Failed 0, Passed 1363, Skipped 63, Total 1426 (independently reproduced). This is pre-existing and already tracked (task 10.2 finding 10.2-F1, LOW, owned by the Phase 13 documentation reconciliation). Task 10.3 did not introduce it, did not touch that paragraph, and the stale count does not affect the SEC-5 rewrite or the logging review. The worker's known_limitations discloses it accurately.",
+      "evidence": [
+        "docs/project-status.md:615-616",
+        ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426",
+        "docs/implementation/10.2/orchestration.json notes: 10.2-F1 (LOW, stale docs/project-status.md suite count - pre-existing)"
+      ],
+      "recommended_action": "No action for task 10.3; leave the count to the Phase 13 documentation reconciliation."
+    },
+    {
+      "id": "10.3-F3",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation consistency",
+      "summary": "Present-tense references to the security review are now accurate",
+      "detail": "SEC-5, the architecture status line, and the ADR-020 implementation note reference the security review at docs/implementation/10.3/security-review.json. While the report was briefly absent during this review, it is now recorded, so these statements are accurate and consistent with PLANS.md/changelog/project-status. No wording change is required.",
+      "evidence": [
+        "docs/limitations.md SEC-5 (line 537)",
+        "docs/architecture.md status line (task 10.3 clause)",
+        "docs/decisions.md ADR-020 implementation note",
+        "docs/implementation/10.3/security-review.json now present"
+      ],
+      "recommended_action": "No action required."
+    },
+    {
+      "id": "10.3-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation consistency",
+      "summary": "Historical pre-logging statements remain only in out-of-scope documents",
+      "detail": "Pre-logging statements remain in docs/planning/v1.1.md ('Current state: The plugin has zero logging call sites', lines 146-147), docs/research/jellyfin-12-architecture.md section 10.4 (a dated research snapshot), and ADR-020's Context (a historical rationale). These are not current-state claims in the named documents and the task directed that dated research snapshots not be changed. The stale docs/planning/v1.1.md line is also recorded as security-review finding SEC-10.3-2 (LOW, routed to the Phase 13 reconciliation). No now-false current-state claim remains in docs/limitations.md, docs/architecture.md, docs/data-model.md, README.md, PLANS.md, docs/changelog.md, docs/project-status.md, or docs/implementation-readiness.md.",
+      "evidence": [
+        "grep -rniE 'no logging call sites|no diagnostic log|no plugin log path|zero logging|has no logging|no plugin log|no log path' docs -> matches only docs/planning/v1.1.md:146-147, docs/changelog.md:3000 (quotes old wording while describing the rewrite), docs/decisions.md:2496-2498,2550 (ADR-020 Context / clause 8), docs/research/jellyfin-12-architecture.md:1075 (dated snapshot)",
+        "docs/implementation/10.3/security-review.json finding SEC-10.3-2"
+      ],
+      "recommended_action": "No action required for task 10.3; the planning line is routed to Phase 13."
+    },
+    {
+      "id": "10.3-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "security review residuals",
+      "summary": "Security-review accepted limitations are non-blocking and require no docs/limitations.md entry",
+      "detail": "The security review records four accepted limitations: (1) SEC-10.3-1 LOW/noted - SEC-5's absolute 'cannot leak a secret' wording depends on the ArrProviderError.Message producer invariant (fields are bounded but not control-character-stripped); all current producers were re-verified as fixed code-owned strings and the residual is already tracked in the task 10.2 security review, so no SEC-5 edit is required. (2) SEC-10.3-2 LOW/open - the stale docs/planning/v1.1.md line (see 10.3-F4). (3) SEC-10.3-3 INFORMATIONAL - live pinned-host sink emission is deferred to task 14.3. (4) SEC-10.3-4 INFORMATIONAL - pre-existing base-URL userinfo validation gap outside the plugin's instrumented call sites. None is BLOCKER/HIGH/MEDIUM; the task's test allows the review to be recorded with no open BLOCKER/HIGH/MEDIUM, so no accepted limitation must be added to docs/limitations.md.",
+      "evidence": [
+        "docs/implementation/10.3/security-review.json findings SEC-10.3-1..SEC-10.3-4 and accepted_limitations",
+        "docs/implementation/10.2/security-review.json findings SEC-10.2-2 and SEC-10.2-3"
+      ],
+      "recommended_action": "No action required for task 10.3."
+    }
+  ],
+  "required_changes": [],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s).' (independently re-run)",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426' (independently re-run; matches the worker claim; no src/tests change so no count delta expected)",
+    "git diff --name-only -- src tests -> empty; git status --porcelain -> 9 modified documentation files plus untracked docs/implementation/10.3/ only (documentation-only confirmed)",
+    "Inspected all 21 IArrTagsLog Write call sites (ArrTagsLifecycleService, WebhookIntakeService, WebhookAuthenticationFilter, MetadataReconciliationProcessor, ConcurrencyLimitedArrMetadataReader, LibraryReconciliationService, LibraryWorkWorker, SonarrMetadataReader, RadarrMetadataReader, ArtworkGenerationCoordinator) and confirmed every emitted field is within the ADR-020 clause 4 allowlist and that no duration is logged",
+    "Inspected src/ArrTags/Logging/ArrTagsLog.cs (level-independent message shape, gate + throttle) and src/ArrTags/Logging/LogThrottle.cs (5/category/event/minute, one suppression summary, 256-key cap) against the SEC-5 and architecture section 12 claims",
+    "Inspected src/ArrTags/Configuration/RendererConfigurationFingerprint.cs and src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (closed IArrTagsLog<T> registrations, NullLogger fallback, no custom provider/sink/factory)",
+    "Verified no alternate logging path exists in src/ArrTags (no Console/Debug/Trace.Write, EventLog, File.AppendAllText, StreamWriter) and the logging implementation is byte-identical to commit 8407964",
+    "Stale-claim grep over the named documents -> no now-false current-state claim in the named documents",
+    "Verified docs/implementation/10.3/security-review.json is recorded with open_blocker_high_medium 0 (PASS_WITH_FINDINGS)"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-020 clauses 1-8 (verbatim) compared against the rewritten SEC-5, architecture sections 6/11/12, data-model 3.12, and README claims",
+    "ADR-020 clause 4 allowlist reconciled against the actual emitted values at all 21 log call sites in src/ArrTags",
+    "ADR-020 implementation note diff confirmed to add a note only; no clause text was modified",
+    "Task 10.2's informational finding 10.2-F2 ('durations') confirmed corrected: no duration is emitted by any log call site and docs/architecture.md no longer contains 'duration'",
+    "Independently corroborated the recorded security review's key assertions against the source (call-site count, no alternate logging path, no custom provider/factory, implementation unchanged since 8407964)"
+  ],
+  "documentation_checked": [
+    "docs/limitations.md (SEC-5 rewritten, SEC-9 reconciliation)",
+    "docs/architecture.md (section 6 logging/verbosity, section 11 failure/security policy, section 12 redaction-contract paragraph, status line)",
+    "docs/data-model.md 3.12 (logging verbosity/call sites)",
+    "README.md (LogVerbosity row)",
+    "docs/decisions.md (ADR-020 implementation note; clauses unchanged)",
+    "PLANS.md (Project Status paragraph, Milestone 10 row, task 10.3 status)",
+    "docs/changelog.md (task 10.3 entry)",
+    "docs/project-status.md (current milestone + Next tasks; stale suite count noted as 10.3-F2)",
+    "docs/implementation-readiness.md (status line)",
+    "docs/implementation/10.3/security-review.json (recorded review, PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM)"
+  ],
+  "rework_log": [],
+  "validation": [
+    "Build: '. /config/arrtags-env.sh && ./build.sh build' -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    "Tests: '. /config/arrtags-env.sh && ./build.sh test' -> Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426.",
+    "Scope: git diff --name-only -- src tests empty; only documentation files changed.",
+    "Security review: docs/implementation/10.3/security-review.json recorded (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM); its key claims independently corroborated.",
+    "Acceptance: SEC-5 rewritten (verified against shipped source); logging path security-reviewed (report recorded and passing)."
+  ]
+}

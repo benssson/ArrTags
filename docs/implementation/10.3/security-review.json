@@ -1,0 +1,117 @@
+{
+  "task": "10.3",
+  "reviewer": "security-reviewer",
+  "subject": "Task 10.3 - SEC-5 rewrite to the ADR-020 redaction contract and independent logging-path security review (ADR-020 clause 8)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "open_blocker_high_medium": 0,
+  "findings": [
+    {
+      "id": "SEC-10.3-1",
+      "severity": "LOW",
+      "area": "secret/logging",
+      "issue": "SEC-5's absolute wording that the logging path 'cannot leak a secret' rests on the producer invariant for ArrProviderError.Message (and, transitively, WorkProcessingResult.Reason and MediaMatch.AmbiguityReason) rather than on boundary redaction: those fields are length-bounded/trimmed but not control-character-stripped. All current producers were re-verified as fixed, code-owned strings (no URL, key, header, or provider response text), so the claim holds and CR/LF log-forging is not exploitable today. This is a future-regression risk only.",
+      "description": "SEC-5's absolute 'cannot leak a secret' wording rests on the ArrProviderError.Message producer invariant, not boundary redaction; the field is bounded but not control-character-stripped.",
+      "evidence": [
+        "docs/limitations.md:509-547 (rewritten SEC-5)",
+        "src/ArrTags/Providers/ArrProviderError.cs:55-64 (Bound trims/truncates only)",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:304-341 and src/ArrTags/Providers/Sonarr/SonarrClient.cs (ClassifyStatus and error constructors use fixed code-owned strings)",
+        "src/ArrTags/Matching/MediaMatcher.cs:58,71,121,133,145,158,170 and src/ArrTags/Media/MediaLocationEligibility.cs:22-37 (all fixed reason constants)",
+        "src/ArrTags/Matching/MediaMatchPolicy.cs:87-92 (ambiguous reason is a fixed string plus a count)",
+        "src/ArrTags/Updates/WorkProcessingResult.cs:96-105 (Bound trims/truncates only)",
+        "src/ArrTags/Artwork/ArtworkOperationErrors.cs (contrast: Sanitize strips control characters; ArtworkRecoveryGateResult.Create sanitizes its reason at line 99)",
+        "docs/implementation/10.2/security-review.json findings SEC-10.2-2 and SEC-10.2-3 (same residual, previously adjudicated LOW/noted)"
+      ],
+      "status": "noted",
+      "recommended_action": "No SEC-5 edit is required and no action is required for task 10.3: the residual is already tracked in the task 10.2 security review. If the project wants register traceability, add one line under SEC-5 recording that the ArrProviderError.Message redaction depends on the code-owned producer invariant, and (optional hardening) route log-bound reason strings through a control-character-stripping sanitizer at the boundary."
+    },
+    {
+      "id": "SEC-10.3-2",
+      "severity": "LOW",
+      "area": "documentation/assurance",
+      "issue": "docs/planning/v1.1.md still states 'Current state: The plugin has zero logging call sites' (Goal F section), a now-false current-state claim. It is outside the task 10.3 named-document scope (docs/limitations.md SEC-5, docs/architecture.md sections 6/11/12, docs/data-model.md 3.12, README.md), and the worker report discloses it, but it remains a stale assurance statement elsewhere in the tree.",
+      "description": "docs/planning/v1.1.md still carries the pre-logging 'zero logging call sites' current-state claim outside the named-document scope.",
+      "evidence": [
+        "docs/planning/v1.1.md:146-147 ('Current state: The plugin has zero logging call sites; docs/limitations.md SEC-5 relies on that...')",
+        "docs/implementation/10.3/worker-report.json known_limitations[3] (worker discloses the planning/ADR-context/research residual and assigns it outside the named-document scope)",
+        "grep over the named documents for the stale phrase returns only intentional historical references (ADR-020 Context, PLANS.md work descriptions, changelog describing the rewrite), not current-state claims"
+      ],
+      "status": "open",
+      "recommended_action": "Route the docs/planning/v1.1.md Goal F 'Current state' line to the Phase 13 documentation reconciliation (or correct it now). This is documentation debt, not a security defect, and it does not affect the task 10.3 named-document acceptance or Gate 10."
+    },
+    {
+      "id": "SEC-10.3-3",
+      "severity": "INFORMATIONAL",
+      "area": "boundary/assurance",
+      "issue": "Live pinned-host logging emission and sink formatting were not exercised (ARRTAGS_JELLYFIN_HOST_DIR unset, 63 host-guarded facts skipped). Category prefixing, verbosity gating, redaction, the volume bound, and the no-custom-provider wiring are proven over a capturing ILoggerProvider in unit/integration tests, but the real host Serilog sink output is not confirmed here.",
+      "description": "Live host Serilog emission and sink output are not exercised in this environment.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:370-402 (DI/category/fallback tests over a capturing ILoggerProvider)",
+        ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1363, Skipped 63, Total 1426 (63 host-guarded facts skipped)",
+        "docs/implementation/10.2/worker-report.json known_limitations[2] and docs/implementation/10.3/worker-report.json known_limitations[4]"
+      ],
+      "status": "noted",
+      "recommended_action": "Confirm host sink emission in the consolidated pinned-host verification (task 14.3); no action for task 10.3."
+    },
+    {
+      "id": "SEC-10.3-4",
+      "severity": "INFORMATIONAL",
+      "area": "secret/url",
+      "issue": "Configuration validation accepts an absolute http/https base URL without rejecting embedded user information. ArrTags' own connection identity (ArrConnectionId) derives only scheme/host/port/path and excludes userinfo and the API key, and ArrTags never logs the request URI, so the plugin's instrumented call sites cannot emit a URL credential. However, if an administrator embedded credentials in the base URL, framework-level HttpClient logging (host category, not gated by LogVerbosity) could include them in the request URI. This is pre-existing (not introduced by Goal F), requires admin misconfiguration, and is outside the instrumented logging call sites.",
+      "description": "Base-URL userinfo is not rejected by config validation; ArrTags' own identity/logging excludes it, but framework HttpClient logging could include it. Pre-existing and out of the Goal F call-site scope.",
+      "evidence": [
+        "src/ArrTags/Configuration/PluginConfigurationValidator.cs:59,72-74 (IsAbsoluteHttpUrl accepts any absolute http/https URI, including userinfo)",
+        "src/ArrTags/Providers/ArrConnectionId.cs:74-87 (identity uses UriComponents.SchemeAndServer only; API key and userinfo excluded)",
+        "src/ArrTags/Providers/ArrHttpClientFactory.cs:41-49 and src/ArrTags/Providers/Radarr/RadarrClient.cs:298-302 (base URL is used as the client base address/request URI)",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs (X-Api-Key is applied as a header via the secret lease, never the URL)"
+      ],
+      "status": "noted",
+      "recommended_action": "Optional post-V1 hardening: reject user information in the configured base URL at validation. No action for task 10.3; this is not a Goal F regression."
+    }
+  ],
+  "sec5_assessment": "The rewritten SEC-5 (docs/limitations.md:509-547) accurately and completely states the shipped redaction contract and is consistent with ADR-020. It records: (1) ArrTags logs through the host ILogger<T>/ILoggerFactory pipeline (clause 1); (2) at the bounded, validated, secret-free LogVerbosity (Off/Error/Warning/Information/Debug/Trace, default Warning) read from the current configuration snapshot and applied without restart (clauses 2-3); (3) every log call emits only bounded, already-redacted values per the clause 4 allowlist (ArrProviderError code/retryability/message, non-secret connection identity, configuration version, bounded reason codes/enums, item/record identifiers, counts) and never an API key, webhook secret, SecretLease value, X-Api-Key/X-ArrTags-Webhook-Secret header, raw request/response body, full provider payload, or mutable PluginConfiguration; (4) the emitted data shape is identical at every verbosity level, so raising verbosity cannot expand a redacted value; (5) volume is bounded by the code-owned LogThrottle (clause 6, architecture section 12); (6) verbosity is not output-affecting (clause 5); and (7) the logging path is covered by a dedicated security review (clause 8, this report). The pre-10.2 false assurance ('the plugin has no logging call sites, so no plugin log path can leak a secret') is gone from every named document (grep-verified; remaining matches are intentional historical/work-description references in ADR-020 Context, PLANS.md, and the changelog). SEC-5 and SEC-9 are mutually consistent: both plugin-initiated outbound surfaces are bounded and secret-free, neither expands with verbosity, SEC-9 remains the only administrator-visible notification, and logging is a diagnostic mechanism (clause 7). One nuance, recorded as SEC-10.3-1, is that SEC-5's absolute 'cannot leak a secret' wording depends on the ArrProviderError.Message producer invariant rather than boundary redaction; all current producers were re-verified as fixed code-owned strings, so the statement holds for the shipped code. The named companion documents (architecture sections 11 and 12, data-model 3.12, README) were also checked and match the implementation, and the stale 'durations' wording was corrected.",
+  "accepted_limitations": [
+    "The ArrProviderError.Message (and transitive WorkProcessingResult.Reason / MediaMatch.AmbiguityReason) redaction depends on the code-owned producer invariant; the fields are length-bounded but not control-character-stripped. All current producers are fixed strings, so this is a future-regression risk only and is tracked in docs/implementation/10.2/security-review.json. No docs/limitations.md entry is strictly required.",
+    "Live pinned-host logging emission and sink formatting are not exercised in this environment; confirmation is deferred to the consolidated pinned-host verification (task 14.3).",
+    "Base-URL user information is not rejected by configuration validation; ArrTags' own identity and log call sites exclude it, but framework HttpClient logging is outside the plugin's verbosity gate. Pre-existing and not a Goal F regression; optional post-V1 hardening.",
+    "docs/planning/v1.1.md retains the stale 'zero logging call sites' current-state line outside the task 10.3 named-document scope; routed to the Phase 13 documentation reconciliation."
+  ],
+  "secret_paths_checked": [
+    "src/ArrTags/Logging/ArrTagsLog.cs (facade emits only the caller-supplied bounded message; constant templates '{ArrTagsMessage}' and the suppression template; no level-conditional payload expansion)",
+    "src/ArrTags/Logging/IArrTagsLog.cs (boundary documents that it never adds a body/header/credential/payload/PluginConfiguration)",
+    "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs:73-107 (logs connection identity, provider kind, ArrProviderError code/retryability/message only)",
+    "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:147-160 and src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:220-233 (logs item id, provider kind, status, method, bounded ambiguity reason only)",
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:157-256,333-345 (logs item id, provider kind, ArrProviderError, bounded state/config version, exception type name only)",
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:56-102 (candidate header value and configured secret never logged; fixed rejection strings)",
+    "src/ArrTags/Webhooks/WebhookIntakeService.cs:146-199 (logs bounded event kind/provider/count and exception type name only)",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:163-194 (resolves host ILogger<T>; NullLogger fallback; registers no custom ILoggerProvider/sink and does not replace the host ILoggerFactory)",
+    "src/ArrTags/Configuration/config.html (static page carries field ids only; secret values are read/written only through the elevation-gated configuration API)",
+    "src/ArrTags/Providers/ArrProviderError.cs:55-64 and src/ArrTags/Updates/WorkProcessingResult.cs:96-105 (bounded but not control-character-stripped; producer invariant verified)"
+  ],
+  "auth_paths_checked": [
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:56-81 (authenticates first, uniform UnauthorizedResult before any body read; fixed rejection message with no header/body/secret reflected)",
+    "tests/ArrTags.Tests/LogRedactionTests.cs:211-225 (Trace raise does not expose the webhook header or body) and :404-430 (MVC TypeFilter construction receives the registered log boundary)"
+  ],
+  "state_paths_checked": [
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:238-256 (MetadataStateEntry.State/ProviderKind/config version only; no path/credential)",
+    "src/ArrTags/Updates/WorkItemKey.cs (ToString carries item id + non-secret connection id + surface)",
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:120-138 (bounded outcome and sanitized reason only)",
+    "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:218-239 (bounded summary counts/reason only)"
+  ],
+  "input_paths_checked": [
+    "src/ArrTags/Logging/LogThrottle.cs (bounded tracking set capped at 256 keys with Clear; key is category|event, both code-owned; per-bucket lock; code-owned constants)",
+    "src/ArrTags/Logging/ArrTagsLogEvent.cs (finite, code-owned event identity set)",
+    "src/ArrTags/PluginLifecycle/LogVerbosityGate.cs (undefined verbosity falls back to Warning; IsEnabled(false) for LogLevel.None)",
+    "src/ArrTags/Configuration/PluginConfigurationValidator.cs:96-101 (LogVerbosity validated by Enum.IsDefined)",
+    "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs (fingerprint covers only selectors/templates/palette; LogVerbosity excluded)"
+  ],
+  "reproductions": [
+    "Code-unchanged check: git diff --stat 8407964 -- src tests -> empty; git diff --stat -- src tests -> empty; git log --oneline 8407964..HEAD -- src tests -> empty. The logging implementation is byte-identical to the task 10.2 commit 8407964, so the task 10.2 audit applies; the 21 call sites were re-read and match.",
+    "Build: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Full suite: . /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1363, Skipped 63, Total 1426 (matches the task 10.2 baseline; 63 host-guarded facts skipped because ARRTAGS_JELLYFIN_HOST_DIR is unset).",
+    "Redaction suite: dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\" -> Failed 0, Passed 65, Skipped 0, Total 65.",
+    "Stale-claim grep: rg -n \"no logging call sites|no diagnostic log|no plugin log path|zero logging call sites|has no logging|no plugin log|no log path\" docs/limitations.md docs/architecture.md docs/data-model.md README.md docs/decisions.md docs/project-status.md PLANS.md docs/changelog.md docs/implementation-readiness.md -> only intentional historical/work-description references remain (ADR-020 Context at docs/decisions.md:2496-2498,2550; PLANS.md:3882,4055,4077; changelog:3000); no current-state claim remains in the named documents. docs/planning/v1.1.md:146-147 still carries one, recorded as SEC-10.3-2.",
+    "No other logging path: rg -n \"ILogger|ILoggerFactory\" src/ArrTags (excluding src/ArrTags/Logging) -> only documentation comments and the CreateLog factory; rg for Console.Write/Debug.Write/Trace.Write/EventLog/File.AppendAllText/StreamWriter in src/ArrTags -> no matches. No custom ILoggerProvider/sink and no ILoggerFactory replacement exist."
+  ],
+  "summary": "Task 10.3's documentation rewrite and the current HEAD logging path pass the independent security review. The rewritten docs/limitations.md SEC-5 accurately and completely states the ADR-020 redaction contract (bounded secret-free LogVerbosity, the clause 4 allowlist and the explicit never-emitted values, identical data shape at every level, code-owned LogThrottle volume bound, verbosity not output-affecting, and the dedicated security review), and it no longer carries the false 'no logging call sites' assurance; SEC-5 and SEC-9 are consistent. The implementation is unchanged since commit 8407964, and a fresh spot-check of all 21 instrumented call sites, the facade, the throttle, the DI wiring, and the verbosity gate confirms: no secret-bearing value reaches a log line, no level-conditional payload expansion exists, there is no custom ILoggerProvider/sink and no host ILoggerFactory replacement, and the volume bound holds (5 per category/event per minute, one suppression summary per window rollover, 256-key cap over a code-owned key space). Build is clean (0 warnings/0 errors) and the suite is Failed 0, Passed 1363, Skipped 63, Total 1426 with the 65-case LogRedactionTests all passing. There are 0 open BLOCKER/HIGH/MEDIUM findings. Two LOW documentation/defense-in-depth residuals are recorded (the ArrProviderError.Message producer invariant, already tracked in the 10.2 review; and the stale docs/planning/v1.1.md current-state line), plus two INFORMATIONAL observations (live host sink verification deferred to task 14.3; pre-existing base-URL userinfo validation gap). None blocks Gate 10's security criterion, which requires the review recorded with no open BLOCKER/HIGH. Verdict: PASS_WITH_FINDINGS.",
+  "validation": "Independent verification performed on branch v1.1 at HEAD 9f3ec01: (1) confirmed the logging implementation is byte-identical to the reviewed task 10.2 commit 8407964 (git diff --stat 8407964 -- src tests empty); (2) re-read all 21 instrumented log call sites and the plugin-owned Logging/ facade, LogThrottle, LogVerbosityGate, and ArrTagsServiceRegistrator registration; (3) confirmed no custom ILoggerProvider/sink and no ILoggerFactory replacement and no alternate logging path; (4) confirmed LogVerbosity is validated, snapshot-read per call, and excluded from the renderer/configuration fingerprint; (5) verified all ArrProviderError.Message and MediaMatch ambiguity-reason producers are fixed code-owned strings; (6) built clean and ran the full suite and the 65-case LogRedactionTests; (7) grep-verified the stale 'no logging call sites' assurance is gone from the named documents; (8) reviewed the SEC-5 rewrite against ADR-020 clause 4/5/6/7/8 and ADR-021/SEC-9. No production or test code was modified and no commit was created; this report is the only artifact added."
+}

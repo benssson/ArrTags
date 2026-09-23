@@ -2564,6 +2564,22 @@ cover any log path.
 - No custom sink means log output goes only to the host's existing sinks; a
   future need for a plugin-owned sink would require a new decision.
 
+### Implementation note (v1.1, tasks 10.1-10.3)
+
+The decision shipped as specified. Task 10.1 added the bounded `LogVerbosity`
+enum and the plugin-owned `ILogVerbosityGate` (clauses 1, 2, 3, and 5); task
+10.2 added the plugin-owned `IArrTagsLog<T>`/`ArrTagsLog<T>` facade and the
+code-owned `LogThrottle`, with secret-free call sites at the provider, matching,
+metadata, artwork, queue, reconciliation, webhook, and lifecycle boundaries
+(clauses 4 and 6); task 10.3 rewrote `docs/limitations.md` SEC-5 from the "no
+logging call sites" negative result to the clause 4 redaction contract and
+reconciled it with SEC-9, and covers the logging path with a dedicated security
+review recorded at `docs/implementation/10.3/security-review.json` (clause 8).
+`LogRedactionTests` (65 cases) proves the redaction at every verbosity level and
+the volume bound, and the emitted data shape is identical at every level, so a
+Debug/Trace raise cannot expand a redacted value. This note records the shipped
+design; no clause above is rewritten.
+
 ### Rejected alternatives
 
 - Registering a custom `ILoggerProvider`/sink was rejected: it is ineffective on

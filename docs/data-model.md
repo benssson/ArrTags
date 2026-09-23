@@ -844,7 +844,7 @@ ADR-008 and are not part of the V1 snapshot. The Jellyfin Enhanced coexistence
 policy (ADR-011) is realized by the existing poster and renderer selector enable
 flags; it adds no snapshot field and no automatic duplicate/overlap suppression.
 
-**Logging verbosity (task 10.1).** `PluginConfiguration.LogVerbosity` is the
+**Logging verbosity (tasks 10.1-10.2).** `PluginConfiguration.LogVerbosity` is the
 bounded per-plugin log verbosity (`Off`/`Error`/`Warning`/`Information`/`Debug`/
 `Trace`, default `Warning`). It is validated at configuration load by
 `PluginConfigurationValidator` (an undefined level rejects the candidate and the
@@ -856,7 +856,14 @@ whether a `Microsoft.Extensions.Logging.LogLevel` is enabled, so a replaced
 configuration applies without a host restart; ArrTags registers no custom
 `ILoggerProvider`/sink and does not replace the host `ILoggerFactory`. The value
 is not output-affecting: it is excluded from the renderer/configuration
-fingerprint and never changes `RenderVersion`.
+fingerprint and never changes `RenderVersion`. Task 10.2 instruments the
+provider, matching, metadata, artwork, queue, reconciliation, webhook, and
+lifecycle boundaries through the plugin-owned `IArrTagsLog<T>` facade, which
+emits only bounded, already-redacted values under the ADR-020 clause 4 redaction
+contract and bounds volume with the code-owned `LogThrottle`; no API key, webhook
+secret, `SecretLease` value, secret header, raw request/response body, provider
+payload, or mutable `PluginConfiguration` is logged (see
+`docs/limitations.md` SEC-5).
 
 **Runtime activation (task 9.3).** The persisted `PluginConfiguration` is the
 candidate supplied to `Plugin.UpdateConfiguration`. The override validates the

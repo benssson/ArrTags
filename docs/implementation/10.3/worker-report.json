@@ -1,0 +1,38 @@
+{
+  "task": "10.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation-only rewrite for v1.1 Phase 10 task 10.3 (Goal F, ADR-020 clause 8). Rewrote docs/limitations.md SEC-5 from the pre-logging negative result ('the plugin has no logging call sites, so no plugin log path can leak a secret') to the ADR-020 redaction contract: SEC-5 now records that ArrTags logs through the host ILogger<T>/ILoggerFactory pipeline at the bounded, validated, secret-free LogVerbosity (default Warning, applied without restart); that every log call emits only bounded, already-redacted values per the clause 4 allowlist (ArrProviderError code/retryability/message, non-secret connection identity, configuration version, bounded reason codes/enums, item/record identifiers, and counts) and never an API key, webhook secret, SecretLease value, X-Api-Key/X-ArrTags-Webhook-Secret header, raw body, provider payload, or mutable PluginConfiguration; that the emitted shape is identical at every level; that volume is bounded by the code-owned LogThrottle; that verbosity is not output-affecting; and that the logging path is covered by a dedicated security review (docs/implementation/10.3/security-review.json). SEC-5 is reconciled with SEC-9 (the ADR-021 configuration-rejection activity-log entry) and keeps its INFORMATIONAL/noted marker. Updated docs/architecture.md section 11 (failure/security policy now states authentication failures and secret-bearing values are never logged and that log output is bounded/redacted), section 12 (removed the stale 'durations' from the emitted-value list, correcting task 10.2's informational finding 10.2-F2 since no duration is logged), and the architecture status line (task 10.3). Updated docs/data-model.md 3.12 to record the shipped log call sites and redaction contract, and README.md to state ArrTags logs only bounded, secret-free diagnostics. Added the optional ADR-020 implementation note (tasks 10.1-10.3) in docs/decisions.md without rewriting any clause. Reconciled the canonical current-state surfaces (PLANS.md Project Status/milestone row/task 10.3 status, docs/changelog.md, docs/project-status.md, docs/implementation-readiness.md) to reflect that the SEC-5 rewrite and documentation are complete and the logging security review remains an orchestrator-run step. No production code, tests, build scripts, artifacts, or ADR clauses were changed.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! - Failed: 0, Passed: 1363, Skipped: 63, Total: 1426 (unchanged from the task 10.2 baseline 1363/63/1426; no production code or tests changed, so no test-count change was expected).",
+    "Stale-claim grep over the named documents: grep -nE \"no logging call sites|no diagnostic log|no plugin log path|zero logging call sites|has no logging|no plugin log|no log path\" docs/limitations.md docs/architecture.md docs/data-model.md README.md -> no matches (the pre-rewrite SEC-5 negative claim is gone from every named document).",
+    "git status/diff inspection: git diff --name-only -- src tests is empty; the only working-tree changes are the 9 canonical documentation files (PLANS.md, README.md, docs/architecture.md, docs/changelog.md, docs/data-model.md, docs/decisions.md, docs/implementation-readiness.md, docs/limitations.md, docs/project-status.md) plus this report."
+  ],
+  "changed_files": [
+    "docs/limitations.md",
+    "docs/architecture.md",
+    "docs/data-model.md",
+    "README.md",
+    "docs/decisions.md",
+    "PLANS.md",
+    "docs/changelog.md",
+    "docs/project-status.md",
+    "docs/implementation-readiness.md",
+    "docs/implementation/10.3/worker-report.json"
+  ],
+  "known_limitations": [
+    "The logging security review (ADR-020 clause 8) is not run by this worker. Exact behaviour: task 10.3's independent security review is run by the orchestrator via the security-reviewer subagent after this documentation change and recorded at docs/implementation/10.3/security-review.json; this worker did not run it and asserts no verdict. Precondition: the review is an orchestrator-run gate, per the task instruction. Consequence: task 10.3's 'the logging path is security-reviewed' acceptance criterion and the Phase 10 gate are not satisfied until that report is recorded with no open BLOCKER/HIGH/MEDIUM (or any accepted limitation is recorded in docs/limitations.md); if the review raises a finding, this documentation may need a rework attempt.",
+    "SEC-5's classification is retained as INFORMATIONAL/noted. Exact behaviour: SEC-5 is recorded as an accepted design rather than an open defect. Precondition: the new logging-path security review finds no BLOCKER/HIGH/MEDIUM. Consequence: if the review classifies the logging path as a defect, SEC-5's marker and text would need updating.",
+    "docs/project-status.md still carries the stale v1.1 suite count. Exact behaviour: the file states the current v1.1 working suite is 'Failed 0, Passed 1,272, Skipped 63, Total 1,335' (and the 1.0.1.0 release-matrix counts), while the actual v1.1 suite after task 10.2 is Failed 0, Passed 1,363, Skipped 63, Total 1,426. Precondition: this stale count is explicitly out of task 10.3's named-document scope and is owned by the Phase 13 documentation reconciliation. Consequence: the stale count remains until Phase 13; this task deliberately did not fix it and did not touch that paragraph.",
+    "Pre-logging zero-call-site statements remain in historical/scope documents outside the named-document scope. Exact behaviour: docs/planning/v1.1.md ('Current state: The plugin has zero logging call sites', lines 146-147), ADR-020's Context in docs/decisions.md, and the dated research snapshot docs/research/jellyfin-12-architecture.md section 10.4 still describe the state before Goal F. Precondition: the task named only docs/limitations.md SEC-5, docs/architecture.md sections 6/11/12, docs/data-model.md 3.12, and README.md, and directed that dated research snapshots not be changed; the ADR context is a historical record of why the decision was made. Consequence: those statements are historical rather than current-state claims; a reviewer may want the orchestrator to route the docs/planning/v1.1.md 'Current state' line to a later reconciliation, but no now-false current-state claim remains in the named documents.",
+    "No live pinned-host logging verification was performed. Exact behaviour: host ILogger<T> resolution, ArrTags.* categories, verbosity gating, redaction, and the log-volume bound are established by the task 10.1/10.2 unit/integration tests; no live Jellyfin host was started here. Precondition: ARRTAGS_JELLYFIN_HOST_DIR is unset, so the 63 host-guarded facts are skipped. Consequence: a host-specific emission or sink-format issue would not be caught by this task; live confirmation remains owned by the consolidated pinned-host verification (task 14.3).",
+    "The task 10.2 reliance on ArrProviderError.Message being redacted is inherited, not re-verified. Exact behaviour: the provider/matching boundaries log ArrProviderError.Message, which ArrProviderError bounds and documents as secret-free. Precondition: the provider clients that construct that message were not modified by this documentation-only task. Consequence: a future upstream construction defect could place a credential in that message; the redaction tests exercise the boundary with a fixed redacted message and cannot detect that upstream defect."
+  ],
+  "ready_for_next_task": true
+}

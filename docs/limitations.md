@@ -506,23 +506,44 @@ detail is reflected.
   ProblemDetails body remains the already-recorded `D1` body-versus-ADR-012
   wording gap. Accepted for V1; optional post-V1 hardening is to normalise it.
 
-### SEC-5. Secrets are stored at rest only in Jellyfin's plugin configuration XML (INFORMATIONAL, noted)
+### SEC-5. Secrets persist at rest only in Jellyfin's plugin configuration XML, and ArrTags logging is bounded and redacted (INFORMATIONAL, noted)
 
 The Sonarr/Radarr API keys and the inbound webhook shared secret are persisted
 only in Jellyfin's plugin configuration XML and returned by Jellyfin's
 authenticated, elevation-gated plugin-configuration API to administrators. This
-is the accepted ADR-005 single-source-of-truth design; the plugin has no logging
-call sites, so no plugin log path can leak a secret. As of v1.1 task 9.3 the
-plugin still has no diagnostic log (`ILogger`/Serilog) call sites; the only
-plugin-initiated outbound administrator-visible surface is the bounded,
-secret-free configuration-rejection activity-log entry recorded in SEC-9
-(ADR-021). This is a scoping note only; the full SEC-5 rewrite that reconciles
-SEC-9 is Phase 10 task 10.3.
+is the accepted ADR-005 single-source-of-truth design.
 
-- Evidence: security-review finding SEC-5; `docs/decisions.md` ADR-005 and
-  ADR-021; this file's SEC-9.
-- Consequence: none. This is the accepted ADR-005 design, and the plugin has no
-  log path that could leak a secret. The SEC-9 activity-log surface is bounded
+Since v1.1 task 10.2 ArrTags logs through the host's
+`Microsoft.Extensions.Logging` `ILogger<T>`/`ILoggerFactory` pipeline
+(ADR-020 clause 1) at the bounded, validated, secret-free `LogVerbosity` setting
+(`Off`/`Error`/`Warning`/`Information`/`Debug`/`Trace`, default `Warning`), read
+from the current configuration snapshot and applied without a restart (ADR-020
+clauses 2 and 3). Every log call emits only bounded, already-redacted values per
+the ADR-020 clause 4 allowlist (`ArrProviderError` code/retryability/message, the
+non-secret connection identity, configuration version, bounded reason codes and
+enums, item/record identifiers, and counts); it never emits an API key, the
+webhook secret, a `SecretLease` value, an `X-Api-Key`/`X-ArrTags-Webhook-Secret`
+header, a raw request/response body, a full provider payload, or the mutable
+`PluginConfiguration`. The emitted data shape is identical at every verbosity
+level, so raising verbosity cannot expand a redacted value into a secret-bearing
+one. Log volume is bounded by the code-owned `LogThrottle` (ADR-020 clause 6;
+`docs/architecture.md` section 12), and verbosity is not output-affecting
+(ADR-020 clause 5). The logging path is covered by a dedicated security review
+(task 10.3; report at `docs/implementation/10.3/security-review.json`).
+
+The two plugin-initiated outbound surfaces are consistent: the host logging
+pipeline (above) and the bounded, secret-free configuration-rejection
+activity-log entry recorded in SEC-9 (ADR-021). Neither emits a secret or a
+configuration candidate value, and neither expands with verbosity. SEC-9 remains
+the only plugin-initiated administrator-visible *notification*; logging is a
+diagnostic mechanism (ADR-020 clause 7).
+
+- Evidence: security-review finding SEC-5 (rewritten by v1.1 task 10.3);
+  `docs/decisions.md` ADR-005, ADR-020, and ADR-021; `src/ArrTags/Logging/`;
+  `docs/architecture.md` sections 6, 11, and 12; this file's SEC-9.
+- Consequence: secrets remain confined to Jellyfin's plugin configuration XML at
+  rest, and the diagnostic logging path is a bounded, redacted, reviewed surface
+  that cannot leak a secret. The SEC-9 activity-log surface is likewise bounded
   and secret-free.
 
 ### SEC-6. The `ArtworkSubjectGate` process-lifetime bound (INFORMATIONAL, noted)
@@ -608,8 +629,8 @@ divergent.
   `tests/ArrTags.Tests/ConfigurationActivationTests.cs`.
 - Consequence: a new, reviewed, bounded, secret-free outbound surface; the
   activity-log entry is the only plugin-initiated administrator-visible
-  notification and it carries no candidate value or secret. SEC-5 is scoped by
-  this entry and is reconciled fully by Phase 10 task 10.3.
+  notification and it carries no candidate value or secret. SEC-5 records this
+  entry's scope alongside the v1.1 task 10.3 logging redaction contract.
 
 ## Deliberate V1 scope exclusions
 
