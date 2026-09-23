@@ -1,0 +1,72 @@
+{
+  "phase": 10,
+  "title": "Logging with configurable verbosity",
+  "release": "v1.1.0",
+  "phase_tag": "v1.1.0-phase10",
+  "status": "TASKS_COMPLETE_PENDING_PHASE_REVIEW",
+  "authoritative_execution_order": ["10.1", "10.2", "10.3"],
+  "tasks": [
+    {
+      "task": "10.1",
+      "title": "Logging foundation, verbosity configuration, and fingerprint exclusion",
+      "status": "COMPLETE",
+      "commit": "ae7f5c9",
+      "state_commit": "99aabdb",
+      "orchestration": "docs/implementation/10.1/orchestration.json",
+      "subagent_invocations": 6,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: test-quality-reviewer MEDIUM TQ-10.1-01 (the renderer-output-fingerprint exclusion test was non-independent and would stay green if verbosity entered the fingerprint); the worker replaced it with a production-path ArtworkRegenerationPlanner test and closed TQ-10.1-02/TQ-10.1-04 plus the reviewer's LOW 10.1-F1 documentation-completeness item."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "test_quality_reviewer": "PASS (attempt 2; TQ-10.1-01 closed)"
+      }
+    },
+    {
+      "task": "10.2",
+      "title": "Bounded, redacted log call sites and volume bounds",
+      "status": "COMPLETE",
+      "commit": "8407964",
+      "state_commit": "9f3ec01",
+      "orchestration": "docs/implementation/10.2/orchestration.json",
+      "subagent_invocations": 3,
+      "rework_rounds": 0,
+      "final_gates": {
+        "implementation_reviewer": "APPROVED",
+        "security_reviewer": "PASS_WITH_FINDINGS (0 open BLOCKER/HIGH/MEDIUM)"
+      }
+    },
+    {
+      "task": "10.3",
+      "title": "SEC-5 rewrite, documentation, and logging security review",
+      "status": "COMPLETE",
+      "commit": "7333980",
+      "state_commit": "a667ee2",
+      "orchestration": "docs/implementation/10.3/orchestration.json",
+      "subagent_invocations": 3,
+      "rework_rounds": 0,
+      "final_gates": {
+        "implementation_reviewer": "APPROVED",
+        "security_reviewer": "PASS_WITH_FINDINGS (0 open BLOCKER/HIGH/MEDIUM; SEC-5 rewrite assessed accurate and complete)"
+      }
+    }
+  ],
+  "related_commits": [
+    "61dd895 Reconcile Phase 9 completion across canonical documentation surfaces (post-Phase-9 state reconciliation; not a Phase 10 task)"
+  ],
+  "summary": {
+    "total_task_subagent_invocations": 12,
+    "total_rework_rounds": 1,
+    "tasks_complete": 3,
+    "tasks_total": 3,
+    "user_decisions_required": []
+  },
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null in the per-task records; no estimation was performed.",
+    "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and rework entries.",
+    "Phase tag v1.1.0-phase10 is created only after the phase-reviewer gate passes.",
+    "Tracked non-blocking findings carried forward: 10.1 TQ-10.1-03/TQ-10.1-05 (noted), 10.2-F1 (stale project-status suite count), 10.2-F2 (fixed in 10.3), SEC-10.2-1 (fixed in 10.3), 10.3-F2/SEC-10.3-2 (stale suite count in docs/project-status.md and the 'zero logging call sites' line in docs/planning/v1.1.md - routed to the Phase 13 reconciliation), SEC-10.3-1/-3/-4 (informational).",
+    "Live pinned-host logging verification (sink emission, category, level) remains owned by task 14.3; ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the 63 host-guarded facts skip."
+  ]
+}
