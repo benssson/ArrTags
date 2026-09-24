@@ -1,7 +1,7 @@
 ---
 description: Orchestrates implementation tasks sequentially with independent review and completion gates
 model: opencode-go/deepseek-v4.1-flash
-variant: low
+variant: high
 mode: primary
 ---
 

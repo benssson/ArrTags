@@ -3,7 +3,7 @@
 description: Independently audits the whole completed project and its release artifact for release readiness
 mode: subagent
 model: opencode-go/deepseek-v4.1-flash
-variant: high
+variant: max
 ---
 
 # Release Reviewer

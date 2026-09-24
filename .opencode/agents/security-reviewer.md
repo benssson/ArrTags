@@ -3,7 +3,7 @@
 description: Performs an independent adversarial security audit of secrets, authentication, state integrity, and bounded-input boundaries
 mode: subagent
 model: opencode-go/deepseek-v4.1-flash
-variant: high
+variant: max
 ---
 
 # Security Reviewer
