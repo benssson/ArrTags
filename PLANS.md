@@ -4887,7 +4887,7 @@ complete.
 
 #### 13.2 Canonical current-state reconciliation sweep
 
-**Status:** Complete. Reconciles the canonical current-state surfaces with the
+**Status:** Complete (commit `50103a7`). Reconciles the canonical current-state surfaces with the
 v1.1 state. `docs/project-status.md` frames Phase 13 (tasks 13.1 and 13.2 complete
 at the documentation level; Gate 13 not yet met; the phase review and
 `v1.1.0-phase13` tag owned by the orchestrator) as the current milestone, records
