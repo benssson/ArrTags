@@ -1,0 +1,187 @@
+{
+  "task": "v1.1 Phase 12, task 12.1 - Allowlist configuration, bounds, validation, and fingerprint (ADR-017 clauses 1, 5, first half of 6, 7)",
+  "reviewer_role": "test-quality-reviewer",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "subject": "Per-selector BadgeSelectorConfiguration.AllowedValues (bounded, settable), RendererConfiguration.Validate bounds/secret-free messages, resolved BadgeDefinition.AllowedValues, RendererConfigurationFingerprint inclusion with case/order normalization and empty-allowlist identity-neutrality, and settings-page exposure.",
+  "revision_tested": "c56d228 (the task 12.1 implementation commit). Audited in a clean detached worktree at /tmp/final-review/test-quality/arrtags-c56d228 so the task 12.2 working-tree changes in /workspace/ArrTags were not in scope. Worktree verified clean (git status --short empty) after all mutations were reverted.",
+  "findings": [
+    {
+      "id": "TQ-12.1-1",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage / meaningfulness",
+      "summary": "The documented 'empty allowlist is identity-neutral, so the default configuration fingerprint is unchanged' claim is not pinned by any test. Removing the empty-allowlist early return in RendererConfigurationFingerprint.AppendAllowedValues (so an empty allowlist contributes a zero count) passes the entire 1499-test suite.",
+      "evidence": [
+        "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs AppendAllowedValues returns early for allowedValues.Count == 0 with the comment that the default configuration fingerprint is unchanged.",
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs:532-535 RendererFingerprintIsSensitiveToAllowedValuesAndNormalizesCaseAndOrder asserts Assert.Equal(original, Fingerprint(empty)) where both 'original' (no selector entry) and 'empty' (a Quality entry with an empty AllowedValues) flow through the same empty-list code path, so the assertion is satisfied regardless of the early return.",
+        "Mutation M3 (early return removed, empty contributes 'selectorAllowedValueCount=0') -> full suite Failed 0, Passed 1436, Skipped 63, Total 1499: no test failed.",
+        "No hardcoded renderer-configuration fingerprint constant exists in tests/ (grep for 64-hex literals found only BundledFontTests hashes), so 'byte-identical to the pre-task value' is not otherwise observable."
+      ],
+      "recommended_action": "Either add a pinned default-fingerprint constant assertion (which task 12.4 will have to update when CurrentSchemaVersion advances to 2 and RenderVersion to 3), or narrow the documented claim to the property the tests actually establish (an explicit empty allowlist is equivalent to an absent allowlist), or explicitly record in docs that the pre-task identity is a deliberate implementation decision not covered by a regression test."
+    },
+    {
+      "id": "TQ-12.1-2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage / meaningfulness",
+      "summary": "BadgeDefinitionTests.DefinitionRejectsUnusableAllowedValues does not isolate the BadgeDefinition entry-count bound: its too-many input is 33 identical 'value' entries, so the assertion passes via the case-insensitive duplicate rule. Removing the count guard in BadgeDefinition.NormalizeAllowedValues passes all BadgeDefinitionTests.",
+      "evidence": [
+        "tests/ArrTags.Tests/BadgeDefinitionTests.cs DefinitionRejectsUnusableAllowedValues builds tooMany = Enumerable.Repeat(\"value\", BadgeDefinition.MaximumAllowedValues + 1), i.e. 33 identical entries.",
+        "src/ArrTags/Rendering/BadgeDefinition.cs NormalizeAllowedValues throws on the second 'value' via seen.Add before the count bound is relevant.",
+        "Mutation M5 (entry-count bound removed from NormalizeAllowedValues) -> BadgeDefinitionTests Failed 0, Passed 10, Total 10: no test failed.",
+        "The same bound is still genuinely covered at configuration load by ValidatorRejectsTooManyAllowedValues, which uses unique 'value-{index}' entries; mutation M1 (allowlist validation removed) failed that test."
+      ],
+      "recommended_action": "Use distinct entries for the too-many case (for example value-{index}) so the assertion exercises the count bound rather than the duplicate rule. Low impact: the config-load path and the bound are already covered by ValidatorRejectsTooManyAllowedValues."
+    },
+    {
+      "id": "TQ-12.1-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips / matrix honesty",
+      "summary": "The reported full-suite counts (Failed 0, Passed 1436, Skipped 63, Total 1499) are reproducible only when a package artifact exists under artifacts/. From a clean checkout the same revision reports Failed 0, Passed 1433, Skipped 66, Total 1499 because the three PackagedPluginFact packaging facts skip.",
+      "evidence": [
+        "Clean worktree at c56d228 with no artifacts/ directory -> Failed 0, Passed 1433, Skipped 66, Total 1499.",
+        "After copying artifacts/ArrTags_1.0.1.0.zip into the worktree -> Failed 0, Passed 1436, Skipped 63, Total 1499, exactly the reported counts.",
+        "The three additional skips are PluginPackagingTests.PackageContainsTheRequiredPluginRootFiles, PackageHoldsEveryArtifactNamedInTheBuildManifest, and PackageDoesNotContainTheDuplicateSkiaSharpRuntime, guarded by PackagedPluginFactAttribute via PluginPackagingPaths.TryFindPackageArchive()."
+      ],
+      "recommended_action": "None required for task 12.1; the reported counts are accurate for the workspace environment and the guard is documented. Optionally state the artifacts/ArrTags_*.zip precondition alongside the count so a clean-checkout reproduction is not surprising."
+    },
+    {
+      "id": "TQ-12.1-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage / substitutes",
+      "summary": "The settings-page exposure is verified by static substring assertions over the embedded resource, not by a functional populate/save round-trip; the pinned elevation-gated JSON POST deserialization of AllowedValues is not exercised. This matches the pre-existing page-test pattern and the implementation-reviewer 12.1-F4 note.",
+      "evidence": [
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs PageExposesAndRoundTripsThePerSelectorAllowlist asserts the eight 'selector-<name>-allowedValues' input ids, 'configured.AllowedValues', and 'AllowedValues: parseAllowedValues' substrings only.",
+        "src/ArrTags/Configuration/config.html populateSelectors reads configured.AllowedValues and submit builds AllowedValues: parseAllowedValues(...); parseAllowedValues splits on ',' and trims.",
+        "The two host-guarded DashboardSettingsPageTests facts that serve the real pinned DashboardController are skipped without ARRTAGS_JELLYFIN_HOST_DIR; they do not assert allowlist behavior.",
+        "Mutation M6 (removing the UpgradePending allowlist input from config.html) failed PageExposesAndRoundTripsThePerSelectorAllowlist, so the static check is non-vacuous for input presence."
+      ],
+      "recommended_action": "None required for 12.1. The XML round-trip (RendererConfigurationRoundTripsThroughXmlSerializer) covers persistence, and the live POST/page behavior remains owned by task 14.3."
+    },
+    {
+      "id": "TQ-12.1-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "Boundary tests are reject-side only: there is no accepted-at-exactly-32-entries or accepted-at-exactly-64-characters case, and the assertions compare against the BadgeDefinition constants rather than a literal, so the exact numeric bound values are not pinned.",
+      "evidence": [
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs ValidatorRejectsTooManyAllowedValues adds index <= BadgeDefinition.MaximumAllowedValues entries (33) and asserts the error contains the constant; ValidatorRejectsTooLongAllowedValue uses MaximumAllowedValueLength + 1 (65).",
+        "No test constructs a definition/configuration with exactly 32 valid unique entries or exactly 64 characters and asserts it is accepted."
+      ],
+      "recommended_action": "None required. This is the common constant-referencing pattern and the bound direction (over-bound rejected) is established; noted only for completeness."
+    }
+  ],
+  "mutation_or_non_vacuity_evidence": {
+    "method": "Created a clean detached worktree at c56d228 (/tmp/final-review/test-quality/arrtags-c56d228), restored/built with '. /config/arrtags-env.sh && ./build.sh restore && ./build.sh build', and applied six independent source mutations one at a time, rebuilding and re-running the focused filter (and the full suite for M3). Every mutation was reverted with 'git checkout -- <file>'; the worktree was clean before writing this report. The /workspace/ArrTags working tree was never modified.",
+    "baseline_focused": "RendererConfigurationTests|BadgeDefinitionTests|DashboardSettingsPageTests: Failed 0, Passed 50, Skipped 2, Total 52 (matches the reported task 12.1 focused result).",
+    "baseline_full_clean_checkout": "Failed 0, Passed 1433, Skipped 66, Total 1499 (no artifacts/ArrTags_*.zip).",
+    "baseline_full_with_package_artifact": "Failed 0, Passed 1436, Skipped 63, Total 1499 (matches the reported task 12.1 full-suite result).",
+    "mutations": [
+      {
+        "id": "M1",
+        "mutation": "RendererConfiguration.Validate: removed the ValidateAllowedValues(entry.Selector, entry.AllowedValues, errors) call (allowlist validation rule removed).",
+        "result": "RendererConfigurationTests|BadgeDefinitionTests: Failed 9, Passed 34, Skipped 0, Total 43.",
+        "killed_by": [
+          "RendererConfigurationTests.ValidatorRejectsTooManyAllowedValues",
+          "RendererConfigurationTests.ValidatorRejectsTooLongAllowedValue",
+          "RendererConfigurationTests.ValidatorRejectsBlankAllowedValue (all 3 theory cases)",
+          "RendererConfigurationTests.ValidatorRejectsControlCharacterAllowedValue",
+          "RendererConfigurationTests.ValidatorRejectsCaseInsensitiveDuplicateAllowedValues",
+          "RendererConfigurationTests.AllowedValuesValidationMessagesAreSecretFree",
+          "RendererConfigurationTests.SnapshotServiceRetainsLastValidRendererConfigurationOnInvalidAllowlist"
+        ],
+        "conclusion": "The bounds/validation and last-valid-retention tests are non-vacuous."
+      },
+      {
+        "id": "M2",
+        "mutation": "RendererConfigurationFingerprint.Compute: removed the AppendAllowedValues(builder, definition.AllowedValues) call (allowlists omitted from the fingerprint).",
+        "result": "RendererConfigurationTests: Failed 1, Passed 32, Skipped 0, Total 33.",
+        "killed_by": [
+          "RendererConfigurationTests.RendererFingerprintIsSensitiveToAllowedValuesAndNormalizesCaseAndOrder"
+        ],
+        "conclusion": "Fingerprint sensitivity to a non-empty allowlist is non-vacuous."
+      },
+      {
+        "id": "M3",
+        "mutation": "RendererConfigurationFingerprint.AppendAllowedValues: removed the empty-allowlist early return so an empty allowlist contributes 'selectorAllowedValueCount=0'.",
+        "result": "Full suite: Failed 0, Passed 1436, Skipped 63, Total 1499 (SURVIVED).",
+        "killed_by": [],
+        "conclusion": "The 'empty allowlist is identity-neutral / default fingerprint unchanged' claim is not pinned by any test. See TQ-12.1-1."
+      },
+      {
+        "id": "M4",
+        "mutation": "RendererConfigurationFingerprint.AppendAllowedValues: removed the ToUpperInvariant case normalization and the Ordinal Array.Sort order normalization.",
+        "result": "RendererConfigurationTests: Failed 1, Passed 32, Skipped 0, Total 33.",
+        "killed_by": [
+          "RendererConfigurationTests.RendererFingerprintIsSensitiveToAllowedValuesAndNormalizesCaseAndOrder"
+        ],
+        "conclusion": "Case/entry-order normalization assertions are non-vacuous."
+      },
+      {
+        "id": "M5",
+        "mutation": "BadgeDefinition.NormalizeAllowedValues: removed the allowedValues.Count > MaximumAllowedValues guard.",
+        "result": "BadgeDefinitionTests: Failed 0, Passed 10, Skipped 0, Total 10 (SURVIVED).",
+        "killed_by": [],
+        "conclusion": "The definition-level entry-count bound is masked by the duplicate rule in the test's input. See TQ-12.1-2; the same bound is covered at config load by ValidatorRejectsTooManyAllowedValues."
+      },
+      {
+        "id": "M6",
+        "mutation": "src/ArrTags/Configuration/config.html: removed the selector-UpgradePending-allowedValues input.",
+        "result": "DashboardSettingsPageTests: Failed 1, Passed 6, Skipped 2, Total 9.",
+        "killed_by": [
+          "DashboardSettingsPageTests.PageExposesAndRoundTripsThePerSelectorAllowlist"
+        ],
+        "conclusion": "The settings-page exposure check is non-vacuous for per-selector input presence."
+      }
+    ],
+    "restored": "All mutated files reverted with git checkout; worktree at c56d228 reported clean (git status --short empty) and rebuilt successfully after the audit."
+  },
+  "validation": {
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1, LD_LIBRARY_PATH=/config/sysroot/usr/lib); .NET SDK 10.0.401.",
+    "commands": [
+      "git worktree add --detach /tmp/final-review/test-quality/arrtags-c56d228 c56d228",
+      ". /config/arrtags-env.sh && ./build.sh restore && ./build.sh build",
+      "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~BadgeDefinitionTests|FullyQualifiedName~DashboardSettingsPageTests\"",
+      "dotnet test ArrTags.slnx --configuration Release --no-build   # clean checkout (no artifacts/)",
+      "cp /workspace/ArrTags/artifacts/ArrTags_1.0.1.0.zip artifacts/ && dotnet test ArrTags.slnx --configuration Release --no-build   # reproduced reported counts",
+      "six mutation runs (M1-M6) with rebuild and focused/full re-runs, then git checkout -- <file>"
+    ],
+    "results": {
+      "build": "Build succeeded. 0 Warning(s), 0 Error(s).",
+      "focused_12.1": "Failed 0, Passed 50, Skipped 2, Total 52 (the 2 skips are the pre-existing ARRTAGS_JELLYFIN_HOST_DIR-guarded DashboardSettingsPageTests facts).",
+      "full_clean_checkout": "Failed 0, Passed 1433, Skipped 66, Total 1499.",
+      "full_with_package_artifact": "Failed 0, Passed 1436, Skipped 63, Total 1499 (matches the task 12.1 report).",
+      "revision_constants": "RendererConfiguration.CurrentSchemaVersion = 1; RenderVersion.CurrentRendererVersion = 2 (confirmed in the c56d228 tree; no golden under tests/ArrTags.Tests/Goldens/ changed)."
+    },
+    "not_verified": [
+      "No host-guarded run: ARRTAGS_JELLYFIN_HOST_DIR is unset and no pinned Jellyfin.Api.dll is present in the container, so the 2 pre-existing host-guarded DashboardSettingsPageTests facts skipped. They do not assert allowlist behavior; the live confirmation is owned by task 14.3.",
+      "No forced-native run: ARRTAGS_SKIA_COMPAT=1 was not exercised (native runtime not usable here); task 12.1 changes no rendering/pixel path, so this does not affect the audited behavior."
+    ]
+  },
+  "matrix_observed": {
+    "default": "Failed 0, Passed 1436, Skipped 63, Total 1499 (with artifacts/ArrTags_1.0.1.0.zip present, reproducing the reported counts); Failed 0, Passed 1433, Skipped 66, Total 1499 from a clean checkout without the package artifact",
+    "host_guarded": "not run in this audit (ARRTAGS_JELLYFIN_HOST_DIR unset, no pinned host assembly present); the 2 host-guarded DashboardSettingsPageTests facts skipped as expected and are pre-existing",
+    "forced_native": "not run in this audit (ARRTAGS_SKIA_COMPAT=1 native runtime not usable in this container); not relevant to task 12.1, which changes no rendering path"
+  },
+  "substitutes_checked": [
+    "No substitutes or doubles are used by the task 12.1 tests: they construct real PluginConfiguration/BadgeSelectorConfiguration/BadgeDefinition objects and call the real PluginConfigurationValidator, PluginConfigurationSnapshot.From, RendererConfigurationResolver, and RendererConfigurationFingerprint.",
+    "DashboardSettingsPageTests.PageExposesAndRoundTripsThePerSelectorAllowlist reads the real embedded config.html resource through typeof(Plugin).Assembly.GetManifestResourceStream, so the assertion is against the shipped page bytes, not a fixture.",
+    "The settings-page coverage is static (substring over the embedded page) rather than a functional DOM/HTTP round-trip; the pinned POST deserialization remains unexercised (TQ-12.1-4)."
+  ],
+  "skips_checked": [
+    "No new skips were introduced by task 12.1: the pre-task baseline is 63 skips and the post-task full suite is 63 skips with the package artifact present. The 12.1 test diff added only unguarded [Fact] tests (12 in RendererConfigurationTests, 2 in BadgeDefinitionTests, 1 in DashboardSettingsPageTests).",
+    "The two skipped focused tests are DashboardSettingsPageTests.PinnedDashboardControllerServesTheArrTagsSettingsPage and PinnedDashboardControllerPageResourceIsAnonymousAndTheListIsElevationGated, both pre-existing [JellyfinHostFact] facts guarded by ARRTAGS_JELLYFIN_HOST_DIR (JellyfinHostFactAttribute sets Skip when the variable is unset). Neither asserts allowlist behavior, so skipping them hides no task 12.1 behavior.",
+    "Default-matrix skip decomposition with the package artifact present (63): ARRTAGS_SKIA_COMPAT-guarded SkiaNative facts/theories (46), ARRTAGS_JELLYFIN_HOST_DIR-guarded JellyfinHost facts (16), and one ARRTAGS_NONCANONICAL_GOLDENS-guarded fact (1). Without the package artifact, 3 additional PackagedPluginFact packaging facts skip (66 total).",
+    "All 63/66 skipped facts are genuinely environment-guarded and none covers allowlist configuration, bounds, validation, fingerprint, or settings-page exposure."
+  ],
+  "determinism_checked": [
+    "The task 12.1 tests use no wall-clock time, randomness, network, filesystem order, or process state; they build fresh objects per test and call pure static functions.",
+    "Culture independence: the fingerprint and validator use ToUpperInvariant, StringComparer.Ordinal/OrdinalIgnoreCase, and explicit CultureInfo.InvariantCulture; the test environment sets DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1.",
+    "The focused filter produced identical results across repeated runs (Failed 0, Passed 50, Skipped 2, Total 52); the full suite produced identical counts across runs at the same artifact state (1436/63/1499 and 1433/66/1499).",
+    "No order dependence or shared mutable state: BadgeDefinition.V1Default is an immutable static readonly Array.AsReadOnly list, and the new AllowedValues lists are defensively copied (tested by DefinitionAllowedValuesAreBoundedNormalizedAndDefensivelyCopied)."
+  ],
+  "ready_for_next_task": true,
+  "summary": "The task 12.1 tests genuinely establish the allowlist configuration, bounds, validation, resolved definition allowlist, fingerprint inclusion, and settings-page exposure. Independent mutation testing on a clean c56d228 worktree confirms non-vacuousness: removing the allowlist validation call fails 9 focused tests; omitting allowlists from the fingerprint or removing case/order normalization each fails RendererFingerprintIsSensitiveToAllowedValuesAndNormalizesCaseAndOrder; removing a settings-page allowlist input fails the page-exposure fact. The focused matrix (50 passed / 2 skipped / 52) and the full default matrix (Failed 0, Passed 1436, Skipped 63, Total 1499) reproduce the reported counts once the package artifact is present; from a clean checkout the same revision is 1433/66/1499 because three unrelated packaging facts skip. No new skips were introduced and the two host-guarded DashboardSettingsPageTests facts are pre-existing and hide no allowlist behavior. Two LOW findings remain, both narrow: the 'empty allowlist is identity-neutral / default fingerprint unchanged' claim survives a full-suite mutation (M3) because the test compares two configurations that share the same empty-list code path, and the BadgeDefinition entry-count assertion is masked by its duplicate input (M5). Neither affects the task 12.1 acceptance criteria (bounded, validated, secret-free allowlist whose change alters the fingerprint), which are established. PASS_WITH_FINDINGS; ready for the next task."
+}
