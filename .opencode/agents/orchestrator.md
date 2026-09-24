@@ -191,9 +191,40 @@ This applies to:
 * `release-reviewer`
 * Any other subagent delegated by the orchestrator.
 
-The metadata must be obtained from the authoritative OpenCode/runtime session information when available.
+The metadata must be obtained from the authoritative OpenCode/runtime session information when available (see "How to obtain the metadata").
 
 Do not ask the subagent to calculate or estimate its own usage.
+
+### How to obtain the metadata
+
+Every delegated subagent runs in its own OpenCode session. The orchestrator
+reads usage from the running OpenCode server, keyed by that session id — it is
+never taken from the subagent's own report.
+
+The subagent tool returns the child session id. Record it, and after the
+subagent session ends run, from the repository root:
+
+```bash
+.opencode/scripts/collect-session-usage.sh <session-id> [<session-id> ...]
+```
+
+It prints one JSON object per session containing the fields below (`agent`,
+`model`, `variant`, `input_tokens`, `output_tokens`, `reasoning_tokens`,
+`cache_read_tokens`, `cache_write_tokens`, `total_tokens`, `cost_usd`,
+`duration_seconds`). Map those values onto the `execution` object in the task's
+`orchestration.json`. The script resolves the server automatically; it exits
+non-zero only when the server cannot be reached at all.
+
+Rules:
+
+* The runtime figures are authoritative. Use the reported `cost_usd` as-is; do
+  not recompute cost from token counts.
+* Record the `model` and `variant` the runtime reports for that session, not the
+  values from this agent's own configuration.
+* If the script cannot reach the server, or a session cannot be fetched (an
+  `error` object is printed for it), record the affected fields as `null` and
+  add a note explaining the unavailability. Never estimate or reconstruct a
+  value.
 
 ### Required metadata
 
@@ -425,6 +456,34 @@ are visible. This file is committed with the phase review.
 
 Do not delegate the collection of this metadata to a subagent. It is the
 orchestrator's own accounting.
+
+### Orchestrator session reports
+
+Per-task and per-phase records cover delegated subagents only. The orchestrator
+itself is the primary agent, not a subagent, so its own usage is recorded
+separately, one report per orchestrator session. Per-session files keep each
+session's cost isolated and make deltas trivial.
+
+After completing the requested work (at the end of every work cycle), run:
+
+```bash
+.opencode/scripts/record-orchestrator-session.sh --note "<what was completed>"
+```
+
+It identifies the currently running orchestrator session, writes or updates
+`docs/implementation/orchestrator-sessions/<session-id>.json` with that session's
+cumulative tokens, cost, and duration, and appends a snapshot to the report's
+`updates` array. Commit the report with the work it covers.
+
+Rules:
+
+* Keep these separate from the per-task `subagents` entries and the phase
+  aggregates; they are the orchestrator's own sessions, not delegated subagents.
+* The report is updated in place each cycle. The `updates` array preserves the
+  cumulative figures at each update, so the cost of a work cycle is the
+  difference between consecutive entries.
+* Record the values as reported. If the script cannot resolve the server or the
+  session, record a note and do not estimate.
 
 ## Worker Completion Gate
 
