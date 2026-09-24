@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Phase 14 kickoff",
   "tokens": {
-    "input": 603813,
-    "output": 59310,
-    "reasoning": 66909,
+    "input": 636660,
+    "output": 63540,
+    "reasoning": 83382,
     "cache": {
-      "read": 22503168,
+      "read": 26491776,
       "write": 0
     }
   },
-  "total_tokens": 23233200,
-  "cost_usd": 0.233786154,
-  "duration_seconds": 17782,
+  "total_tokens": 27275358,
+  "cost_usd": 0.26310082799999995,
+  "duration_seconds": 18375,
   "first_recorded_at": "2026-09-24T19:57:13Z",
-  "last_updated_at": "2026-09-24T21:05:05Z",
+  "last_updated_at": "2026-09-24T22:09:04Z",
   "updates": [
     {
       "at": "2026-09-24T19:57:13Z",
@@ -32,6 +32,13 @@
       "total_tokens": 23233200,
       "duration_seconds": 17782,
       "note": "Post-release tooling fix requested by the user: patched scripts/publish-release.sh so --release-only reads the GitHub release notes from the committed manifest.json entry for the version (jq, with a sed fallback and the write-manifest.cs --print-changelog path retained only as a fallback), removing the unconditional dotnet dependency that caused 'dotnet: command not found'; updated docs/release/build-and-release.md; ran worker -> independent implementation-reviewer (APPROVED, 0 blockers) and committed d85e211; re-ran ./scripts/publish-release.sh --release-only --no-push and confirmed it now passes the changelog step and stops only at the expected missing gh/token error. The v1.1.0 tag remains on bbeb557; no push or GitHub release performed."
+    },
+    {
+      "at": "2026-09-24T22:09:04Z",
+      "cost_usd": 0.26310082799999995,
+      "total_tokens": 27275358,
+      "duration_seconds": 18375,
+      "note": "User asked to merge v1.1 into main. Fast-forwarded local main 79c71d5 -> fb997f4 (linear history, 73 commits; working tree clean). Discovered and surfaced a release-tag inconsistency: refs/tags/v1.1.0 had been overwritten (by a forced tag fetch from origin, which carries a stray lightweight v1.1.0 at the old main tip 79c71d5) from the recorded annotated release tag at bbeb557; the original annotated tag object 6ec3956 was left dangling. Per user approval (restore tag + force-push), recreated the annotated tag v1.1.0 at bbeb557 locally (new tag object 8cb4a89). The tag force-push to origin failed: no GitHub credentials in this environment (could not read Username for https://github.com; no credential.helper, no GITHUB_TOKEN/GH_TOKEN). Per user decision, main was not pushed. Remote remains: main=79c71d5, v1.1=fb997f4, v1.1.0=79c71d5 (lightweight). Handed the tag push to the user."
     }
   ]
 }
