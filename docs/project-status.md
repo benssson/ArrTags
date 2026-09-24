@@ -2,7 +2,34 @@
 
 ## Project Status
 
-**Current milestone:** Phase 13 — README and documentation pass (v1.1) is
+**Current milestone:** Phase 14 — v1.1 release is in progress: tasks 14.1
+(version bump and release metadata), 14.2 (release build, full suite,
+reproducible artifact, and release documentation), 14.3 (live pinned-host
+verification), and 14.4 (release security review) are complete, and task 14.5's
+`docs/changelog.md`/`docs/project-status.md` v1.1 reconciliation and
+release-readiness verification are complete. The committed `manifest.json` and
+the annotated release tag `v1.1.0` (plugin version `1.1.0.0`) are created by the
+orchestrator only after the `release-reviewer` gate, and the push, the GitHub
+release, and the `ArrTags_1.1.0.0.zip` asset upload remain the user's manual step
+with `scripts/publish-release.sh`, so catalog installation of `1.1.0.0` is
+prepared but not yet live. The v1.1 release adds the dashboard settings page with
+runtime activation without a host restart, the per-selector badge value
+allowlist, configurable badge size and position, bounded configurable log
+verbosity with the ADR-020 secret-redaction contract, and the bounded provider
+inventory cache (limitation F1 resolved). The current `1.1.0.0` suite counts are
+default Failed 0 / Passed 1,494 / Skipped 63 / Total 1,557 with the archive
+present (1,491/66/1,557 from a clean test-before-package checkout), host-guarded
+Failed 0 / Passed 1,513 / Skipped 44 / Total 1,557, and forced-native Failed 0 /
+Passed 1,575 / Skipped 20 / Total 1,595; the release artifact is
+`artifacts/ArrTags_1.1.0.0.zip` (594,931 bytes, SHA-256
+`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`, MD5
+`547beb2f7d83cd256d3a3ce7bb7e7620`, 7 entries); task 14.3 ran the eight-row v1.1
+live matrix on the pinned Jellyfin `12.0.0` amd64-musl host, all rows passing
+(`docs/implementation/14.3/live-verification.json`); and task 14.4's fresh
+release security review is `PASS_WITH_FINDINGS` with 0 open BLOCKER/HIGH (3 LOW,
+7 INFORMATIONAL), with the accepted limitations SEC-10/SEC-11/SEC-12 recorded in
+`docs/limitations.md` and the open LOW documentation carry-over SEC-14.4-03
+corrected by task 14.5. Phase 13 — README and documentation pass (v1.1) is
 complete: tasks 13.1 (README palette documentation and v1.1 feature
 documentation) and 13.2 (canonical current-state reconciliation sweep) are
 complete; all three Phase 13 acceptance criteria are met; Gate 13 is met (the
@@ -72,9 +99,9 @@ v1.1 Goal A acceptance criteria) are met at the integration-test level, Gate 9 i
 met (the Phase 9 review is approved in
 `docs/implementation/phase-9/phase-review.json`), and the annotated tag
 `v1.1.0-phase9` is created; the live Goal A confirmation is owned by task 14.3.
-The previously gated milestone Phase 8 — Release
-distribution is **complete** (tasks
-8.1-8.6 complete): the `v1.0.1` release is prepared as plugin version `1.0.1.0`
+The preceding release, Phase 8 — Release
+distribution, is **complete** and now historical (tasks
+8.1-8.6 complete): the `v1.0.1` release was prepared as plugin version `1.0.1.0`
 with the annotated tag `v1.0.1` (tag commit `8cba85b`) and the committed
 repository `manifest.json` for the public repository `benssson/ArrTags`, with an
 end-user `README.md`, corrected `build.yaml` metadata at version `1.0.1.0`, the
@@ -663,20 +690,20 @@ The plugin:
 - Targets Jellyfin 12.0.0 (`net10.0`).
 - Builds successfully with 0 warnings.
 - Loads successfully on Jellyfin 12.0.0.
-- Passes the `1.0.1.0` release test matrix: 1,288 automated tests. The default
-  `./build.sh test` run passes 1,228 with 60 environment-guarded skips (the
-  native Skia round trip and render cases, the host route/response and
-  plugin-discovery cases, the package-content cases, and the ADR-010
-  non-canonical-runtime placeholder); the host-guarded run with
-  `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244 with 44
-  skips, and running `./build.sh package` first unskips the package-content
-  cases. These are the `1.0.1.0` release-matrix counts, not current v1.1 truth:
-  the current v1.1 working suite is Failed 0, Passed 1,494, Skipped 63, Total
-  1,557 (Failed 0, Passed 1,575, Skipped 20, Total 1,595 with the pinned native
-  SkiaSharp runtime forced; see the Project Status above and `docs/limitations.md`
-  V6, which the
-  v1.1 release task refreshes). The `1.0.1.0` counts reflect the suite after the
-  SEC-1 webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
+- Passes the current `1.1.0.0` release test matrix: default Failed 0, Passed
+  1,494, Skipped 63, Total 1,557 with the `artifacts/ArrTags_1.1.0.0.zip` archive
+  present (Failed 0, Passed 1,491, Skipped 66, Total 1,557 from a clean
+  test-before-package checkout); host-guarded
+  (`ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host) Failed 0, Passed
+  1,513, Skipped 44, Total 1,557; and forced-native (`ARRTAGS_SKIA_COMPAT=1` with
+  the pinned native dependency directory on `LD_LIBRARY_PATH`) Failed 0, Passed
+  1,575, Skipped 20, Total 1,595. The skip taxonomy (19 pinned-host facts, 43
+  native-render/decode facts, 1 non-canonical cross-runtime comparison, and 3
+  package-content facts when the archive is absent) is recorded in
+  `docs/limitations.md` V6. The prior `1.0.1.0` release matrix (default 1,228
+  passed / 60 skipped / 1,288 total; host-guarded 1,244 passed / 44 skipped /
+  1,288 total, after the SEC-1 webhook-boundary fix that added the 10
+  `WebhookBindingBoundaryTests`) is historical.
 
 ## Release build
 
@@ -691,14 +718,18 @@ The reproducible release build is documented in
 ./build.sh package                # artifacts/ArrTags_<version>.zip
 ```
 
-The package (`artifacts/ArrTags_1.0.1.0.zip`, 568,248 bytes, SHA-256
-`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
-`16baa5a7324b8e14fdb113d84b944d09`) is
-byte-reproducible: repeated clean builds produce an identical archive, and the
-task 7.5 clean-checkout evidence and the current identity are recorded in
-`docs/release/build-and-release.md`. (Phase 8 task 8.3 bumped the version from
-`0.1.0.0` to `1.0.1.0`, and the release security fix SEC-1 changed the earlier
-`0.1.0.0` identity; see `docs/changelog.md`.) The MSBuild `PackagePlugin` target stages the
+The current release package is `artifacts/ArrTags_1.1.0.0.zip` (594,931 bytes,
+SHA-256
+`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`, MD5
+`547beb2f7d83cd256d3a3ce7bb7e7620`, 7 entries). It is
+byte-reproducible: repeated clean builds produce an identical archive (the task
+14.2 clean-build evidence and the current identity are recorded in
+`docs/release/build-and-release.md`; the task 7.5 clean-checkout evidence covers
+the `0.1.0.0` build). (Phase 8 task 8.3 bumped the version from `0.1.0.0` to
+`1.0.1.0` and the release security fix SEC-1 changed the earlier `0.1.0.0`
+identity; Phase 14 tasks 14.1 and 14.2 then bumped to `1.1.0.0`, changing only
+version/release metadata; the prior `1.0.1.0` artifact was 568,248 bytes with MD5
+`16baa5a7324b8e14fdb113d84b944d09`; see `docs/changelog.md`.) The MSBuild `PackagePlugin` target stages the
 release files and `scripts/pack-release.cs` writes the archive with entries in
 ordinal order and a fixed timestamp; `PathMap`,
 `IncludeSourceRevisionInInformationalVersion=false`, and
@@ -708,8 +739,18 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 (ADR-015). Supported versions: Jellyfin `12.0.0` (`targetAbi: 12.0.0.0`,
 `net10.0`), Sonarr `3.x`-`4.x`, and Radarr `3.x`-`6.x` on `/api/v3` (ADR-013).
 
-Next tasks:
+Release status and next tasks:
 
+- Phase 14 — v1.1 release is in progress: tasks 14.1 (version bump and release
+  metadata), 14.2 (release build, full suite, reproducible artifact, and release
+  documentation), 14.3 (live pinned-host verification), and 14.4 (release
+  security review) are complete, and task 14.5's `docs/changelog.md`/
+  `docs/project-status.md` reconciliation and release-readiness verification are
+  complete. The committed `manifest.json` and the annotated tag `v1.1.0` are the
+  orchestrator's step after the `release-reviewer` gate, and the push, the GitHub
+  release, and the `ArrTags_1.1.0.0.zip` asset upload remain the user's manual
+  step (`scripts/publish-release.sh`); no catalog install of `1.1.0.0` is live
+  yet.
 - Phase 13 — README and documentation pass (v1.1) is complete: tasks 13.1
   (README palette documentation and v1.1 feature documentation) and 13.2
   (canonical current-state reconciliation sweep) are complete; all three Phase 13
@@ -720,10 +761,10 @@ Next tasks:
   colors, and the 4.5:1 contrast rule, the
   v1.1 features (settings UI, allowlist, placement/size, verbosity, and inventory
   cache) are documented in the README, and the canonical current-state
-  documents reconciled by this task (PLANS.md, `docs/project-status.md`,
+  documents reconciled by that task (PLANS.md, `docs/project-status.md`,
   `docs/changelog.md`, `docs/implementation-readiness.md`, and
-  `docs/architecture.md`) carry no stale claim. The live pinned-host confirmation
-  remains owned by task 14.3.
+  `docs/architecture.md`) carry no stale claim. The live pinned-host
+  confirmation it referenced is now complete (task 14.3).
 - Phase 12 — Badge value allowlist and badge size/position (v1.1) is complete:
   tasks 12.1 (allowlist configuration, bounds, validation, and fingerprint), 12.2
   (allowlist resolution and renderer filtering order), 12.3 (badge size/position
@@ -854,18 +895,18 @@ Next tasks:
   service, and the real artwork publishing pipeline), so all six Phase 9
   acceptance criteria are met at the integration-test level and limitation F2 is
   recorded as resolved.
-- Phase 8 — Release distribution is **complete** (tasks 8.1-8.6): 8.1 (end-user
+- Phase 8 — Release distribution is **complete** and historical (tasks 8.1-8.6;
+  superseded by the v1.1 release above): 8.1 (end-user
   `README.md` and preserved `docs/project-status.md`), 8.2 (agent current-state
   reference repoint), 8.3 (`build.yaml` metadata fix and `1.0.1.0` version bump),
   8.4 (Jellyfin plugin-repository manifest tooling and `scripts/publish-release.sh`),
   8.5 (release and canonical current-state documentation for `1.0.1.0`), and 8.6
   (release-readiness verification, the committed `manifest.json` at `8cba85b`,
   and the annotated tag `v1.0.1`) are complete. No Phase 8 implementation task
-  remains. The `v1.0.1` commit, tag, and manifest are local and unpushed; the
-  GitHub release publication, the asset upload, and the manifest push remain the
-  user's manual step with `scripts/publish-release.sh`, so catalog install is
-  prepared but not yet live. Gate 8 is not declared here; it is covered by the
-  separate phase review.
+  remains. That release's `v1.0.1` commit, tag, and manifest are local and
+  unpushed; its GitHub release publication, asset upload, and manifest push
+  remain the user's manual step with `scripts/publish-release.sh`. Gate 8 is not
+  declared here; it is covered by the separate phase review.
 - Phase 7 — Testing & release is complete (tasks 7.1-7.8); all five Phase 7
   acceptance criteria are met. No Phase 7 implementation task remains; Gate 7 is
   not declared here and is covered by the separate phase review.
@@ -891,10 +932,14 @@ resolved by task 11.4, with the residual Sonarr O(series) episode-read and
 sparse-invalidation-window bounds recorded in `docs/limitations.md`); and
 criterion 7 is met only at the
 contract level. The main open items are the absent bounded
-metrics/diagnostic-status surface, the `QueueCapacity`-bounded
-reconciliation prefix, and the limited live-verification coverage (no real
-Sonarr/Radarr instance, no live Jellyfin Enhanced install, manual-only live
-image read-back, and the unexercised live uninstall drain). The prepared
-`v1.0.1` release is not yet published (the manifest commit and annotated tag are
-local only), so no catalog-install or download-from-Releases claim holds until
-the user runs the publish step (`docs/limitations.md` P6).
+metrics/diagnostic-status surface, the `QueueCapacity`-bounded reconciliation
+prefix, the v1.1 accepted security residuals SEC-10/SEC-11/SEC-12, and the
+remaining verification-coverage limitations (no real Sonarr/Radarr instance, no
+live Jellyfin Enhanced install, manual-only live image read-back, and the
+non-canonical cross-runtime comparison). Task 14.3 live-verified the
+install/restart/uninstall drain on the pinned host, so an unexercised live
+uninstall drain is no longer an open item. The prepared `v1.1.0` release is not
+yet published (the committed `manifest.json` and the annotated tag `v1.1.0` are
+the orchestrator's pending step after the `release-reviewer` gate), so no
+catalog-install or download-from-Releases claim holds until the user runs the
+publish step (`docs/limitations.md` P6).

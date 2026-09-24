@@ -3628,3 +3628,104 @@ the historical V1 wording) and the Phase 13 task framing was appended to that
 status line, and the `docs/project-status.md` Next-tasks claim was narrowed to
 the documents actually reconciled. This is a documentation-only change with no
 production or test code change and no suite rerun.
+
+## Phase 14 - v1.1 release
+
+**Status:** v1.1 release prepared. Tasks 14.1-14.4 are complete and task 14.5's
+`docs/changelog.md`/`docs/project-status.md` v1.1 reconciliation and
+release-readiness verification are complete; the committed `manifest.json` and
+the annotated release tag `v1.1.0` are created by the orchestrator only after the
+`release-reviewer` gate, and the push, the GitHub release, and the
+`ArrTags_1.1.0.0.zip` asset upload remain the user's manual step with
+`scripts/publish-release.sh`, so catalog installation of `1.1.0.0` is prepared
+but not yet live. This is the release phase (outline task V1.1-8) of the accepted
+`docs/planning/v1.1.md` scope; the release identity is plugin version `1.1.0.0`
+and release tag `v1.1.0`. No V1 behavior is changed beyond the additive v1.1
+features below.
+
+**Release identity:** plugin version `1.1.0.0` (`build.yaml`,
+`Directory.Build.props`); release tag `v1.1.0`; repository manifest
+`manifest.json` `versions[0]` with `targetAbi` `12.0.0.0` and `sourceUrl`
+`https://github.com/benssson/ArrTags/releases/download/v1.1.0/ArrTags_1.1.0.0.zip`.
+The `manifest.json` `checksum` equals the artifact MD5 and the manifest
+`changelog` matches the `build.yaml` `changelog`; the manifest was regenerated at
+`1.1.0.0` by task 14.2 (commit `2b0351c`), retaining the prior `1.0.1.0` entry
+newest-last.
+
+**What v1.1 adds:** the dashboard settings page with runtime activation without a
+host restart (a valid change is applied immediately; an invalid change is
+rejected with the last valid configuration retained and exactly one bounded,
+secret-free activity-log entry), the per-selector badge value allowlist,
+configurable badge size and position, bounded configurable log verbosity with the
+ADR-020 secret-redaction contract, and the bounded provider inventory cache that
+serves one library read per connection per reconciliation window with
+ArrTags-side invalidation (limitation F1 resolved). These build on the V1
+read-only Sonarr and Radarr metadata integration, media matching, deterministic
+badge rendering, and Jellyfin item-image publication.
+
+**Release artifact:** `artifacts/ArrTags_1.1.0.0.zip` - 594,931 bytes, SHA-256
+`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`, MD5
+`547beb2f7d83cd256d3a3ce7bb7e7620`, 7 entries (`ArrTags.dll`,
+`ArrTags.deps.json`, `build.yaml`, `THIRD-PARTY-NOTICES.md`, and the three
+`licenses/` notices; no bundled SkiaSharp runtime per ADR-015). The archive is
+byte-stable across repeated clean builds (task 14.2), and this identity is
+recorded in `docs/release/build-and-release.md` and in the committed
+`manifest.json`.
+
+**Build and test results (task 14.2):** `./build.sh build` reports 0 warnings /
+0 errors. The current `1.1.0.0` matrix is: default suite with the archive present
+Failed 0, Passed 1,494, Skipped 63, Total 1,557 (Failed 0, Passed 1,491, Skipped
+66, Total 1,557 from a clean checkout that tests before packaging); host-guarded
+suite (`ARRTAGS_JELLYFIN_HOST_DIR` set) Failed 0, Passed 1,513, Skipped 44, Total
+1,557; and forced-native (`ARRTAGS_SKIA_COMPAT=1` with the pinned native
+dependency directory on `LD_LIBRARY_PATH`) Failed 0, Passed 1,575, Skipped 20,
+Total 1,595. The skip taxonomy (19 pinned-host facts, 43 native-render/decode
+facts, 1 non-canonical cross-runtime comparison, and 3 package-content facts when
+the archive is absent) is recorded in `docs/limitations.md` V6. The prior
+`1.0.1.0` release matrix (1,288 total) remains historical.
+
+**Live pinned-host verification (task 14.3):** the `live-host-verifier`
+provisioned a fresh pinned Jellyfin `12.0.0` amd64-musl host and ran the eight-row
+v1.1 matrix recorded in `docs/implementation/14.3/live-verification.json`; all
+eight rows pass (`overall_verdict` `PASS`): install/load at `1.1.0.0` with
+`targetAbi` `12.0.0.0`, no plugin-folder SkiaSharp, and 0 `[FTL]`; the settings
+page resource serves and the configuration load/save is elevation-gated
+(anonymous save `401`, admin `GET 200`/`POST 204`); a valid save activates the
+running plugin and re-renders existing posters with no host restart; a rejected
+save writes exactly one bounded, secret-free `ArrTagsConfigurationRejected`
+Warning activity-log entry, is not persisted, and a valid save writes none (the
+ADR-021 live confirmation); the provider inventory cache serves one
+`/api/v3/movie` and one `/api/v3/series` per reconciliation window with post-save
+and library-refresh invalidations forcing fresh reads; configurable log verbosity
+(`Warning` 0 / `Information` 4 / `Off` 0 new lines) applies without a restart and
+is secret-free; and the image-route readback equals `ActiveImageIdentity` with
+the original media byte-unchanged, a safe provider outage, and a clean
+install/restart/uninstall drain. This discharges the live confirmations for Goals
+A, C, and F owned by the task. LOW finding F-14.3-1 (`SaveLocalMetadata` must stay
+`false` for the source-preservation check) is addressed by the
+`docs/testing/jellyfin-12-musl-test-host.md` v1.1 section; F-14.3-2/3/4 are
+informational. The independent review is approved
+(`docs/implementation/14.3/reviewer-report.json`, APPROVED, 0 BLOCKER/HIGH).
+
+**Release security review (task 14.4):** the fresh audit on the `1.1.0.0`
+candidate is recorded at `docs/implementation/14.4/security-review.json`:
+`PASS_WITH_FINDINGS`, 0 open BLOCKER/HIGH (3 LOW, 7 INFORMATIONAL), covering the
+ADR-020 logging path and the SEC-5 rewrite, the ADR-016 embedded settings page
+and elevation-gated administrator save path, the ADR-021 rejection activity log,
+and release breadth (ADR-005 secret boundary, ADR-012 webhook boundary, state
+integrity, bounded inputs, and the packaged artifact), with every prior finding
+re-checked with no regression. Three accepted limitations were recorded in
+`docs/limitations.md` (SEC-10, SEC-11, SEC-12). The one open LOW documentation
+carry-over (SEC-14.4-03: the `docs/planning/v1.1.md` pre-logging "zero logging
+call sites" line) was corrected by task 14.5. The independent implementation
+review is approved (`docs/implementation/14.4/reviewer-report.json`, APPROVED, 0
+BLOCKER/HIGH).
+
+**Release-readiness and tag (task 14.5):** `docs/changelog.md` and
+`docs/project-status.md` are reconciled to the v1.1 state, and the artifact
+identity, the task 14.3 live matrix, and the task 14.4 security outcome were
+re-verified. The committed `manifest.json` and the annotated tag `v1.1.0` are the
+orchestrator's step after the `release-reviewer` gate; the GitHub publish remains
+the user's manual step. The remaining task 14.5 acceptance criteria (the
+release-review report with no open BLOCKER/HIGH and the `v1.1.0` tag) are
+completed by that orchestrator/reviewer step.

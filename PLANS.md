@@ -241,11 +241,11 @@ met (the Phase 13 review is approved in
 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase13` is created. Phase
 14 (v1.1 release) is in progress: tasks 14.1 (version bump and release metadata),
 14.2 (reproducible artifact and release documentation), 14.3 (live pinned-host
-verification), and 14.4 (release security review) are complete and task
-14.5 (the changelog/manifest commit plus the
-release-reviewer gate for the annotated `v1.1.0` tag) remains; the release tag
-`v1.1.0` is created only
-after the `release-reviewer` gate and the GitHub publish remains the user's
+verification), and 14.4 (release security review) are complete, and task 14.5's
+`docs/changelog.md`/`docs/project-status.md` v1.1 reconciliation and
+release-readiness verification are complete; the committed `manifest.json`, the
+`release-reviewer` gate, and the annotated tag `v1.1.0` remain the orchestrator's
+step, and the GitHub publish remains the user's
 manual step. V1.1-1 (this
 plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
 pointers) is already complete at commit `5ec8ae2` and is not re-planned as open
@@ -289,7 +289,7 @@ work.
 | 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | Complete at the integration-test level (tasks 11.1-11.4 complete: the canonical, secret-free, in-memory per-connection inventory cache shape and the inventory TTL and record/byte limits are defined, validated at configuration load, and documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12; the provider metadata readers populate and consume the cache at the provider-client boundary so one library read per connection serves a reconciliation window, using the Radarr repeatable `movieId` and Sonarr repeatable `episodeFileIds` bulk selectors instead of per-item file reads; the ArrTags-side invalidation surface is wired to the provider webhook, Jellyfin library refresh/post-scan, scheduled/manual and post-save reconciliation, and the bounded TTL fallback, with no provider conditional request, revision token, `history/since`, or SignalR dependency, and the periodic scheduled reconciliation continues on its unchanged interval; task 11.4 records limitation F1 as resolved and adds the Goal C integration coverage for the one-read-per-window, invalidation-source, bounds, and last-known-good facets, so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`) and the annotated tag `v1.1.0-phase11` is created) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
 | 12 | Badge value allowlist and badge size/position (v1.1) | Complete (Phase 12 tasks 12.1-12.4 complete; Goals B and E; ADR-017 and ADR-019; the single coordinated schema/`RenderVersion` advance is applied and the goldens are regenerated; all six Phase 12 acceptance criteria are met at the implementation and test level; Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
 | 13 | README and documentation pass (v1.1) | Complete (Phase 13 tasks 13.1 and 13.2 complete; all three Phase 13 acceptance criteria are met; Gate 13 is met (the Phase 13 review is approved in `docs/implementation/phase-13/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase13` is created) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
-| 14 | v1.1 release | In progress (Phase 14 tasks 14.1, 14.2, 14.3, and 14.4 complete; task 14.5 pending) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
+| 14 | v1.1 release | In progress (Phase 14 tasks 14.1, 14.2, 14.3, and 14.4 complete; task 14.5 documentation and release-readiness verification complete, with the committed `manifest.json`, the release-reviewer gate, and the annotated `v1.1.0` tag remaining) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
 
 ## Milestones
 
@@ -5209,7 +5209,29 @@ BLOCKER/HIGH.
 
 #### 14.5 Changelog, release-readiness verification, manifest commit, and the annotated v1.1.0 tag
 
-**Status:** Not started.
+**Status:** In progress; the documentation and release-readiness portion is
+complete and the commit/tag/gate portion is owned by the orchestrator. The
+documentation portion adds the Phase 14 v1.1 release entry to
+`docs/changelog.md` and reconciles `docs/project-status.md` to the
+`1.1.0.0`/`v1.1.0` current state (v1.1 features, current suite counts, the task
+14.3 live matrix, and the task 14.4 security outcome), preserving the Phase 8
+`1.0.1.0` material as history. The open LOW documentation carry-over SEC-14.4-03
+is corrected in `docs/planning/v1.1.md` (the pre-logging "zero logging call
+sites" line is framed as the v1.1 planning-time state, superseded by the Phase 10
+ADR-020 logging implementation and the task 10.3 SEC-5 rewrite). Release
+readiness was verified: `artifacts/ArrTags_1.1.0.0.zip` exists with the recorded
+identity (594,931 bytes, SHA-256
+`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`, MD5
+`547beb2f7d83cd256d3a3ce7bb7e7620`, 7 entries); `manifest.json` `versions[0]`
+has `version` `1.1.0.0`, `targetAbi` `12.0.0.0`, a `checksum` equal to the
+artifact MD5, and a `changelog` matching `build.yaml`;
+`docs/implementation/14.3/live-verification.json` (`overall_verdict` `PASS`) and
+`docs/implementation/14.4/security-review.json` (`PASS_WITH_FINDINGS`, 0 open
+BLOCKER/HIGH) are present; and `docs/implementation/final-review/` holds no
+current `v1.1.0` release-review report (the next gate). The committed
+`manifest.json` and the annotated tag `v1.1.0` remain the orchestrator's step
+after the `release-reviewer` gate, and the push, GitHub release, and asset upload
+remain the user's manual step, so this task is not yet complete.
 
 **Objective:** Complete the changelog/project-status, verify release readiness,
 commit the manifest, and create the annotated `v1.1.0` tag after the
@@ -5220,10 +5242,12 @@ commit the manifest, and create the annotated `v1.1.0` tag after the
 **Dependencies:** 14.4.
 
 **Affected files/components:** `docs/changelog.md`, `docs/project-status.md`,
-`manifest.json`, the annotated tag `v1.1.0`.
+`docs/planning/v1.1.md` (SEC-14.4-03 correction), `PLANS.md`, `manifest.json`,
+the annotated tag `v1.1.0`.
 
-**Work:** Update `docs/changelog.md` and `docs/project-status.md`; commit
-`manifest.json`; run the `release-reviewer` gate; create the annotated tag
+**Work:** Update `docs/changelog.md` and `docs/project-status.md`; correct the
+stale `docs/planning/v1.1.md` pre-logging current-state line (SEC-14.4-03);
+commit `manifest.json`; run the `release-reviewer` gate; create the annotated tag
 `v1.1.0`; leave the push and GitHub release to the user (consistent with V1
 limitation P6).
 
@@ -5241,7 +5265,8 @@ GitHub publish remains the user's manual step.
 **Review:** `release-reviewer` (gate).
 
 **Documentation impact:** `docs/changelog.md`, `docs/project-status.md`,
-committed `manifest.json`, the annotated tag.
+`docs/planning/v1.1.md` (SEC-14.4-03 correction), committed `manifest.json`, the
+annotated tag.
 
 **Definition of done:** The v1.1 release is prepared, reviewed, and tagged; the
 publish remains the user's manual step.
