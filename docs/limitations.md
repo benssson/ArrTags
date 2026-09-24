@@ -33,7 +33,7 @@ against the committed mock Sonarr/Radarr fixture.
 | 3 | Jellyfin movie/TV item matched to its Arr item | Met | — |
 | 4 | Metadata (e.g. quality) retrieved through the API | Met | — |
 | 5 | Metadata rendered as a badge on the poster | Met as shipped | Requires the host to supply a compatible SkiaSharp (item F5); no bundled fallback. |
-| 6 | Poster updates occur without unnecessary repeated processing | Met for render/publication; partial for provider fetches | The bounded provider inventory cache is implemented with ArrTags-side invalidation (item F1); render and publication are fingerprint-gated. |
+| 6 | Poster updates occur without unnecessary repeated processing | Met for render/publication and for the provider library read within a window | One provider library read per connection serves every work item in the reconciliation window, and the ArrTags-side invalidation trigger set is wired (item F1 resolved, task 11.4); render and publication are fingerprint-gated. Remaining bounds: Sonarr per-series episode reads are O(series) per window and a sparse invalidation window repopulates the whole library (item F1). |
 | 7 | Operates correctly alongside Jellyfin Enhanced | Met at the contract level only | Jellyfin Enhanced is not installed on the pinned host (item V3). |
 | 8 | Failures do not adversely affect Jellyfin | Met as shipped | — |
 | 9 | Buildable and testable reproducibly | Met | Reproducibility is guaranteed only for the pinned SDK (item P1). |
@@ -54,43 +54,6 @@ All five Phase 7 acceptance criteria are met. Gate 7 and the Phase 7 phase
 review are separate and are not declared by this document.
 
 ## Functional and operational limitations (deferred, not implemented)
-
-### F1. Provider inventory/catalogue cache is not implemented
-
-Every reconciliation work item still re-reads the whole provider library
-(`/api/v3/movie`, `/api/v3/series`) and then the per-record file resource
-(`/api/v3/moviefile?movieId=`, `/api/v3/episode?…&includeEpisodeFile=true`,
-`/api/v3/episodeFile?seriesId=`); there is no shared, short-TTL provider
-inventory cache and no provider revision-token fetch skip. Each scheduled,
-post-scan, and manual reconciliation enqueues up to `QueueCapacity` work hints
-(default 512, ADR-004), and each hint performs its own provider read.
-
-**Partial progress (tasks 11.2 and 11.3):** the bounded provider inventory cache
-is populated and consumed at the provider-client boundary. On a cache miss one
-library read per connection (`/api/v3/movie` or `/api/v3/series`) plus the bulk
-file reads populate the cache; every work item in the window is served from the
-canonical observations without another library read, and the Radarr repeatable
-`moviefile?movieId=` and Sonarr repeatable `episodeFile?episodeFileIds=`
-selectors replace per-item file reads. The ArrTags-side invalidation sources are
-now wired (task 11.3): an accepted provider webhook invalidates the event's
-connection, a reconciliation (Jellyfin library refresh/post-scan, scheduled,
-manual, or post-save) invalidates the retained sets, and the bounded inventory
-TTL remains the fallback. F1 is not recorded as resolved until task 11.4 verifies
-the complete Goal C behavior. No provider revision-token fetch skip is added or
-planned, because neither provider supplies a usable token (ADR-018 clause 7).
-
-- Evidence: Phase 6 review MEDIUM item; `PLANS.md` Phase 6 acceptance criterion
-  1 (accepted as partially met) and Post-V1 Backlog; `docs/architecture.md`
-  section 12; task 7.4 review (`LibraryWorkQueue` capacity 512); task 11.2
-  provider integration tests (`ProviderInventoryCacheIntegrationTests`); task
-  11.3 invalidation tests (`InventoryCacheInvalidationTests`).
-- Consequence: with the invalidation sources wired, a provider change is noticed
-  on the next webhook or reconciliation instead of only after the bounded
-  inventory TTL, and the `GOALS.md` Reliability/Performance goal "avoid
-  unnecessary API requests to Sonarr and Radarr" is met for provider fetches
-  within a window and for event-driven refresh, pending the task 11.4 integration
-  verification that records F1 resolved. Render and publication are
-  fingerprint-gated and are not affected.
 
 ### F3. No bounded, secret-free metrics/diagnostic-status surface
 
@@ -139,6 +102,65 @@ These items were previously recorded here as open limitations and are now
 resolved. They are retained with their evidence and the resolving change so the
 current-state record stays traceable; the shipped behaviour is authoritative in
 `docs/architecture.md`, `docs/data-model.md`, and `docs/decisions.md`.
+
+### F1. Provider inventory/catalogue cache
+
+**Status:** Resolved (v1.1 Phase 11, task 11.4), at the integration-test level.
+One provider library read per connection serves every work item in a
+reconciliation window, the ArrTags-side invalidation trigger set is wired, and
+the Goal C integration verification is recorded. The live pinned-host
+confirmation remains owned by task 14.3.
+
+The bounded per-connection provider inventory cache (ADR-018) is defined (task
+11.1), populated and consumed at the provider-client boundary (task 11.2), and
+invalidated by the documented ArrTags-side trigger set (task 11.3): a
+scheduled/manual or post-scan full reconciliation clears the whole cache before it
+enqueues work, a provider webhook removes only the advertised connection's
+inventory before its hint is enqueued, and the bounded TTL is the fallback source,
+with no provider conditional request, revision token, `history/since` watermark,
+or SignalR dependency. On a cache miss the Radarr and Sonarr metadata readers
+perform one library read (`/api/v3/movie`, `/api/v3/series`) plus the bulk file
+reads, map the whole library to canonical observations, and serve every work item
+in the configured TTL window from the cache without another provider request; the
+bulk selection endpoints (Radarr `/api/v3/moviefile?movieId=` repeated ids;
+Sonarr `/api/v3/episodeFile?episodeFileIds=`, with the embedded per-series episode
+file preferred) replace per-item file reads. Concurrent cold readers for one
+connection coalesce through a per-connection single-flight population gate, so one
+library read serves all of them. Task 11.4 reconciles `docs/architecture.md`
+sections 8 and 12 and `docs/data-model.md` section 6 with the shipped behavior,
+adds the Goal C integration coverage for the one-read-per-window,
+invalidation-source, bounds, and last-known-good facets, and records F1 resolved.
+
+The resolution does not overstate the remaining bounds, which are recorded in
+`docs/architecture.md` sections 8 and 12 and `docs/data-model.md` section 6:
+cache population is eager whole-library on a miss; for Sonarr the per-series
+episode read is one request per series per window (Sonarr exposes no whole-library
+episode endpoint), so that provider's episode reads are O(series) rather than
+O(connections) per window; a sparse (webhook/single-item) invalidation window
+removes the whole connection inventory and repopulates the whole library, so on a
+large Sonarr library the per-window request volume can exceed the pre-11.2
+per-item read for a sparse window (per-record/per-series invalidation scoping is a
+possible future optimization); an observation set that exceeds the configured
+record or byte bound is not cached, so subsequent work items use the direct read
+until the next successful store; a library read failure during a population fails
+the whole window (the reader returns the bounded failure and caches nothing, and
+waiting work items re-attempt the population), while a failed bulk/sub-read falls
+back to the unchanged direct read rather than failing the window; a
+full-reconciliation clear removes every cached connection inventory, including a
+disabled connection's entry; and the TTL is never extended by a provider read
+failure.
+
+- Evidence: `PLANS.md` Phase 11 tasks 11.1-11.4; `docs/architecture.md` sections
+  8 and 12; `docs/data-model.md` section 6; ADR-018; task 11.1-11.4 worker
+  reports; `ProviderInventoryCacheIntegrationTests`,
+  `InventoryCacheInvalidationTests`, `ArrInventoryCacheTests`,
+  `ReconciliationTriggerTests`, and `WebhookResolutionTests`.
+- Resolved consequence: on a large library, one full provider-library read occurs
+  per connection per TTL window or per invalidating trigger instead of one per
+  work item, so the `GOALS.md` Reliability/Performance goal "avoid unnecessary API
+  requests to Sonarr and Radarr" is met for the provider library read within a
+  window and for event-driven refresh. Render and publication remain
+  fingerprint-gated. The live pinned-host confirmation is owned by task 14.3.
 
 ### F2. A saved configuration change is activated at runtime and re-renders existing posters via the bounded post-save trigger
 
@@ -290,7 +312,7 @@ for package content, `./build.sh package` has been run). The counts below are th
 `1.0.1.0` release matrix and are not current v1.1 truth: the `1.0.1.0` default
 suite was 1,228 passed / 60 skipped / 1,288 total and the `1.0.1.0` host-guarded
 suite was 1,244 passed / 44 skipped / 1,288 total. The current v1.1 working suite
-is Failed 0, Passed 1,407, Skipped 63, Total 1,470; the v1.1 release task
+is Failed 0, Passed 1,421, Skipped 63, Total 1,484; the v1.1 release task
 refreshes this matrix (test-quality review finding TQ-8).
 
 - Evidence: tasks 7.5/7.8 worker reports; `docs/release/build-and-release.md`.

@@ -1,0 +1,103 @@
+{
+  "task": "11.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "11.4-F1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation accuracy - architecture section 8 / ADR-018 Consequences failure blast-radius bound",
+      "summary": "The comparative phrase 'the failure blast radius is wider than the pre-11.2 per-item library read' is not strictly demonstrated; the concrete bound it describes is accurate.",
+      "detail": "Architecture section 8 (working tree) and ADR-018 Consequences correctly record the shipped bound: a library read failure during a population caches nothing, returns the bounded failure, and each work item that waited on the per-connection gate re-checks the empty cache and re-attempts the population. That part matches RadarrMetadataReader.PopulateAsync (lines 176-180) and SonarrMetadataReader.PopulateAsync (lines 213-217). The closing comparative clause, however, is not quantified: pre-11.2 each work item already performed its own library read and failed independently, and post-11.2 each work item also re-attempts independently, so the failure count is not demonstrably wider. The one concrete way the impact widens is latency/queue serialization (same-connection readers block on the population gate behind a slow/failing library read), which the sentence does not name. The integration test for this path (RadarrLibraryReadFailureOnACacheMiss...) uses a single work item, so it does not exercise a multi-item window. The claim is conservative (it overstates rather than understates risk), so it is not an overclaim and does not affect acceptance.",
+      "evidence": [
+        "docs/architecture.md section 8 (git diff hunk around line 696: 'so the failure blast radius is wider than the pre-11.2 per-item library read')",
+        "docs/decisions.md ADR-018 Consequences: 'A library read failure during a population caches nothing and returns the bounded failure...'",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs lines 176-180, 212-217",
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs lines 213-217, 233-239, 268-272",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs lines 194-271 (single WorkItem)"
+      ],
+      "recommended_action": "Optional rewording only: state the concrete bound (a failed population leaves the connection window unpopulated and same-connection readers serialize behind the population gate) without the unquantified 'wider than pre-11.2' comparison. Not required for acceptance."
+    },
+    {
+      "id": "11.4-F2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation consistency - ADR-018 clause 5 vs ADR-018 Consequences",
+      "summary": "ADR-018 Decision clause 5 still reads 'on provider failure the existing bounded last-known-good semantics apply' while the updated Consequences states a library read failure caches nothing; the two are only reconciled by reading 'existing semantics' as the per-item metadata state.",
+      "detail": "Task 11.4 correctly corrected the shipped-behavior sentences in architecture sections 8 and 12, data-model section 6, and the ArrInventoryCache* XML docs, and added ADR-018 Consequences clauses stating that failure-driven *inventory* last-known-good retention is not realized. ADR-018 clause 5 itself is left unchanged ('on provider failure the existing bounded last-known-good semantics apply'). A reader can reconcile this only by interpreting 'the existing ... semantics' as the pre-existing per-item MetadataStateEntry last-known-good retention, which the integration test does confirm (MetadataReconciliationProcessor.KeepLastKnownGoodAsStale). The worker did not rewrite a historical decision clause, which is the correct treatment; no acceptance criterion requires changing the clause. This overlaps the parallel documentation-maintainer finding D-11.4-3 (status: recorded). Not a correctness defect in the shipped behavior or the tests.",
+      "evidence": [
+        "docs/decisions.md ADR-018 clause 5 (unchanged) vs Consequences (changed)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs lines 187-194, 347-380 (KeepLastKnownGoodAsStale)",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs lines 254-262 (asserts retained per-item stale state)",
+        "docs/implementation/11.4/documentation-review.json finding D-11.4-3"
+      ],
+      "recommended_action": "No change required. Optionally add one clause/note clarifying that the ADR-018 clause-5 'existing bounded last-known-good semantics' is realized by the per-item metadata state, not by the inventory cache."
+    },
+    {
+      "id": "11.4-F3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation consistency - historical failure-retention claims annotated inconsistently",
+      "summary": "The task 11.1 changelog sentence was annotated 'superseded by task 11.4', but the sibling task 11.2 changelog entry (lines 3129-3130) and the PLANS.md task 11.1/11.2 status blocks retain the same false 'a provider failure keeps the bounded last-known-good observation set until the TTL' claim without annotation.",
+      "detail": "The orchestrator's task 11.4 verification item 4 required only that the task 11.1 changelog sentence be honestly annotated, and it is (with an accurate statement that the fired-path is unreachable in production). The same behavioral claim also appears unannotated in docs/changelog.md task 11.2 (line 3129-3130) and in the PLANS.md task 11.1/11.2 status blocks; these are point-in-time historical records, and every surface presented as current (Project Status, milestone row 11, task 11.4 block, limitations F1, project-status, architecture, data-model, decisions, README, implementation-readiness) is reconciled and accurate. The inconsistency is a LOW documentation-hygiene note and does not make any current-state surface wrong. This matches the parallel documentation-maintainer findings D-11.4-1/D-11.4-2.",
+      "evidence": [
+        "docs/changelog.md lines 3129-3130 'a provider failure keeps the bounded last-known-good observation set until the TTL without extending the window' (no annotation)",
+        "docs/changelog.md task 11.1 entry (annotated 'Superseded by task 11.4')",
+        "PLANS.md historical task 11.1/11.2 status blocks (lines ~4191, ~4259-4260)",
+        "docs/implementation/11.4/documentation-review.json findings D-11.4-1 and D-11.4-2"
+      ],
+      "recommended_action": "No change required for acceptance. Optionally annotate the task 11.2 changelog sentence and the PLANS.md task 11.1/11.2 status blocks with a one-line 'superseded by task 11.4' pointer for consistency, or record a house rule that historical task entries are left unannotated."
+    },
+    {
+      "id": "11.4-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation history convention",
+      "summary": "The point-in-time task 11.1/11.2/11.3 status blocks in PLANS.md still contain 'limitation F1 is not yet resolved' wording; this is the project's intended historical-record convention and the current-state surfaces are updated.",
+      "detail": "PLANS.md lines 4193, 4264, 4323 (task 11.1/11.2/11.3 status blocks) retain their at-the-time 'F1 is not yet resolved' statements, while the PLANS.md Project Status paragraph, milestone row 11, task 11.4 checkbox/status, Gate 11 paragraph, docs/project-status.md, docs/limitations.md, docs/architecture.md, docs/data-model.md, docs/decisions.md, README.md, and docs/implementation-readiness.md all record F1 resolved and Phase 11 complete at the integration-test level. This matches the established 'do not rewrite historical records' rule used for prior tasks (e.g. 11.2/11.3 counts).",
+      "evidence": [
+        "grep -n 'F1 is not yet resolved' PLANS.md -> lines 4193, 4264, 4323 (historical task blocks)",
+        "PLANS.md line 19 Project Status and line 264 milestone row 11 (updated)",
+        "docs/project-status.md, docs/limitations.md F1, README.md (updated)"
+      ],
+      "recommended_action": "None; retain as historical point-in-time records."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently re-run).",
+    "./build.sh test -> Failed 0, Passed 1421, Skipped 63, Total 1484 (independently re-run; matches worker report).",
+    "dotnet test --no-build --filter FullyQualifiedName~ProviderInventoryCacheIntegrationTests -> Passed 25/25, 0 skipped (twice: before mutation and after restore).",
+    "Temporary mutation check (in-place, restored afterwards, md5-verified): (a) made Radarr PopulateAsync cache an empty set before returning the library failure; (b) made the Radarr bulk movie-file failure return InventoryPopulation.Failed; (c) made the Sonarr per-series episode failure return InventoryPopulation.Failed. All three corresponding tests failed (3 failed / 0 passed), and the production files were restored byte-identically (md5 match against backup; git diff empty).",
+    "Source inspection: RadarrMetadataReader.ReadAsync/PopulateAsync/ReadDirectAsync; SonarrMetadataReader.ReadAsync/PopulateAsync/ReadDirectAsync; ArrInventoryCache.TryStore/TryGet/Invalidate; ArrInventoryCacheEntry.ComputeFreshnessWindow/EvaluateState/WithFailure; MetadataReconciliationProcessor.ReconcileAsync/KeepLastKnownGoodAsStale.",
+    "grep: WithFailure has no production caller (only tests/ArrTags.Tests/ArrInventoryCacheTests.cs:270); TryStore(..., lastError:) with a value only in tests (ArrInventoryCacheTests.cs:304); both production TryStore calls (RadarrMetadataReader.cs:250, SonarrMetadataReader.cs:317) omit lastError; ArrInventoryCacheEntry.LastError never read in production."
+  ],
+  "research_checked": [
+    "ADR-018 full text (clauses 1-7 + Consequences + rejected alternatives) in docs/decisions.md - decision clauses consistent with code; Consequences now accurately record the failure blast radius, sparse-window amplification, and the Sonarr O(series) bound.",
+    "docs/planning/v1.1.md Goal C and V1.1-4 row (documentation surfaces architecture section 8/12, data-model section 6, limitations F1, decisions ADR-018).",
+    "PLANS.md Phase 11 objective/deliverables/tasks, task 11.4 acceptance criteria, Phase 11 acceptance criteria, and Gate 11.",
+    "Verified the Sonarr sparse-window amplification claim against SonarrMetadataReader.PopulateAsync (one GetEpisodesAsync per series; no whole-library episode endpoint) and the webhook/InvalidateAll invalidation semantics."
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, milestone table row 11, task 11.4 status/checkbox, Phase 11 acceptance-criteria checkboxes, and Gate 11 paragraph.",
+    "docs/changelog.md Phase 11 header, task 11.1 superseded annotation, and new task 11.4 entry.",
+    "docs/project-status.md current-milestone prose, current-suite count (1,421/63/1,484), and Next tasks.",
+    "docs/architecture.md status line, section 8 (cache boundary and provider-client integration), and section 12 (limits/defaults).",
+    "docs/implementation-readiness.md status line, DG-6 row, and Phase 7 open-items header/annotations.",
+    "docs/limitations.md F1 (resolved section, remaining bounds), GOALS criterion 6 row, and V6 current-suite count.",
+    "docs/data-model.md section 6 inventory cache.",
+    "docs/decisions.md ADR-018 Consequences.",
+    "README.md limitations section.",
+    "docs/implementation/11.4/worker-report.json (reviewed against the tree; claims independently reproduced) and docs/implementation/11.4/documentation-review.json (parallel documentation-maintainer review; PASS_WITH_FINDINGS, no BLOCKER/HIGH/MEDIUM)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "notes": "No rework required. Three non-blocking LOW findings recorded (architecture blast-radius phrasing; ADR-018 clause-5 divergence; unannotated historical task 11.2 changelog / PLANS status-block failure-retention claims) plus one INFORMATIONAL history-convention note. All three task acceptance criteria verified."
+    }
+  ],
+  "ready_for_next_task": true
+}

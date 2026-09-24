@@ -51,7 +51,7 @@ public sealed class ArrInventoryCacheEntry
     /// <param name="observedAt">When the observation set was captured.</param>
     /// <param name="ttl">The total bounded lifetime of the observation set.</param>
     /// <param name="records">The canonical record and file observations.</param>
-    /// <param name="lastError">A bounded, redacted, non-secret failure summary when a refresh failed but last-known-good was retained.</param>
+    /// <param name="lastError">An optional bounded, redacted, non-secret failure summary. The shipped readers never supply one: they cache nothing on a failed library read and fall back to the direct read on a failed sub-read, so the failure-driven last-known-good retention it describes is not realized.</param>
     /// <exception cref="ArgumentNullException">A required value is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The provider kind is undefined or the TTL is not positive.</exception>
     public ArrInventoryCacheEntry(
@@ -126,9 +126,11 @@ public sealed class ArrInventoryCacheEntry
     public IReadOnlyList<ArrInventoryRecordObservation> Records { get; }
 
     /// <summary>
-    /// Gets a bounded, redacted, non-secret failure summary when a refresh failed
-    /// but the last-known-good observation set was retained; otherwise
-    /// <see langword="null"/>.
+    /// Gets the optional bounded, redacted, non-secret failure summary supplied
+    /// at construction. The shipped readers never supply one (they cache nothing
+    /// on a failed library read and fall back to the direct read on a failed
+    /// sub-read), so it is <see langword="null"/> in production; the
+    /// failure-driven last-known-good retention it describes is not realized.
     /// </summary>
     public ArrProviderError? LastError { get; }
 
@@ -242,8 +244,11 @@ public sealed class ArrInventoryCacheEntry
     /// <summary>
     /// Creates a copy of this entry that records a bounded, redacted provider
     /// failure while preserving the observation set and its computed boundaries
-    /// unchanged, so a temporary outage can keep the last-known-good inventory
-    /// but can never extend the bounded window.
+    /// unchanged, so a failure annotation could never extend the bounded window.
+    /// It has no production caller in the shipped code: the readers cache nothing
+    /// on a failed library read and fall back to the direct read on a failed
+    /// sub-read, so no failure-driven last-known-good inventory retention is
+    /// realized. It is retained as a test-facing helper only.
     /// </summary>
     /// <param name="error">The bounded, redacted provider failure.</param>
     /// <returns>The last-known-good entry annotated with the failure.</returns>

@@ -3032,8 +3032,8 @@ warnings / 0 errors; default suite Failed 0, Passed 1363, Skipped 63, Total 1426
 
 ## Phase 11 - Provider inventory cache and library-refresh-driven refresh (v1.1)
 
-**Status:** In progress. Tasks 11.1, 11.2, and 11.3 are complete; task 11.4
-remains, so limitation F1 is not yet resolved.
+**Status:** Complete at the integration-test level. Tasks 11.1, 11.2, 11.3, and
+11.4 are complete; limitation F1 is recorded as resolved.
 
 ### Task 11.1 - Inventory cache model, bounds, and limits
 
@@ -3053,7 +3053,15 @@ artwork operation. The configured inventory TTL is the total bounded lifetime of
 one observation set: fresh for the first half, explicit bounded last-known-good
 for the remaining half, and expired and unusable as current at or after the TTL,
 so a provider failure keeps the bounded last-known-good inventory without
-extending the window. An observation set that exceeds the per-connection record
+extending the window. *(Superseded by task 11.4: this sentence is retained as the
+historical point-in-time record of the task 11.1 wording. The shipped readers
+cache nothing on a failed library read and fall back to the direct read on a
+failed sub-read, so failure-driven inventory last-known-good retention is not
+realized (`ArrInventoryCacheEntry.WithFailure` has no production caller); the
+bounded last-known-good serving is the TTL second half, and the existing per-item
+bounded last-known-good metadata state is what retains last-known-good metadata.
+See the task 11.4 entry below and `docs/limitations.md` F1.)* An observation set
+that exceeds the per-connection record
 or byte bound is rejected and the caller keeps the direct provider read
 unchanged. No provider `ETag`, `If-None-Match`, revision token, or `history/since`
 watermark is assumed; such a token remains an optional future observation. The
@@ -3237,3 +3245,54 @@ covers the webhook invalidation scoped to the event's connection.
 `./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
 0, Passed 1418, Skipped 63, Total 1481 (pre-task baseline Failed 0, Passed 1407,
 Skipped 63, Total 1470; +11 passed, +11 total, 0 new skips).
+
+### Task 11.4 - Goal C documentation and integration verification
+
+**Status:** Complete. Limitation F1 is recorded as resolved.
+
+Reconciles the Goal C documents with the shipped provider inventory cache
+behavior and adds the integration-level coverage the 11.2/11.3 tests did not
+provide. `docs/architecture.md` sections 8 and 12, `docs/data-model.md` section
+6, and the `ArrInventoryCache`/`ArrInventoryCacheEntry`/`ArrInventoryCacheState`
+XML documentation no longer state or imply that a provider failure retains the
+inventory as bounded last-known-good: that failure-driven behavior is not
+realized (`ArrInventoryCacheEntry.WithFailure` and `LastError` have no production
+caller), so the documents now state that a stored observation set is served as
+bounded last-known-good through the TTL second half and the TTL is never
+extended, that a library read failure during a population caches nothing and
+returns the bounded failure, and that the existing per-item bounded last-known-good
+metadata state is what retains last-known-good metadata. The documents also
+record that a failed bulk/sub-read falls back to the unchanged direct read. No
+production code behavior changed; `WithFailure` was not wired.
+
+`docs/limitations.md` records F1 as resolved at the integration-test level (the
+live pinned-host confirmation remains owned by task 14.3) and states the
+remaining bounds honestly: Sonarr per-series episode reads are O(series) per
+window (no whole-library episode endpoint) and a sparse invalidation window
+removes the whole connection inventory and repopulates the whole library, which
+on a large Sonarr library can exceed the pre-11.2 per-item read for a sparse
+window; cache population is eager whole-library on a miss; an observation set
+that exceeds the configured record or byte bound is not cached, so subsequent
+work items use the direct read; a library read failure fails the whole window
+while a failed bulk/sub-read falls back to the direct read; a full-reconciliation
+clear removes every cached connection inventory, including a disabled
+connection's entry; and concurrent cold readers coalesce through the
+per-connection single-flight gate. ADR-018 Consequences records the Sonarr
+O(series) bound and the sparse-window amplification, and the task 11.1 changelog
+sentence is annotated as superseded. `README.md`, `PLANS.md`,
+`docs/project-status.md`, and `docs/implementation-readiness.md` are reconciled.
+
+`ProviderInventoryCacheIntegrationTests` gains three cases (25 total): a composed
+real-reader/real-cache/real-`MetadataReconciliationProcessor` Radarr library-read
+failure on a cache miss returns a bounded retryable failure, caches no inventory,
+and retains the per-item bounded last-known-good metadata state as explicit
+`stale` with an unchanged fingerprint, `expiresAt`, and `staleUntil`; a Radarr
+bulk `moviefile?movieId=` failure falls back to the per-record direct read
+instead of failing the window; and a Sonarr per-series `/episode?seriesId=`
+failure for a non-matched series falls back to the direct read for the matched
+series. The existing one-read-per-window, bulk-selector, canonical/secret-free,
+invalidation-source, stale-served, and expired-evicted cases remain.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1421, Skipped 63, Total 1484 (pre-task baseline Failed 0, Passed 1418,
+Skipped 63, Total 1481; +3 passed, +3 total, 0 new skips).

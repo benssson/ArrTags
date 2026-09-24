@@ -6,7 +6,11 @@ namespace ArrTags.Providers;
 /// freshness and bounded last-known-good boundaries, so a consumer can never
 /// mistake a bounded stale observation set for a current provider read. Only
 /// <see cref="Fresh"/> and <see cref="Stale"/> are usable as current inventory;
-/// <see cref="Expired"/> is the bounded last-known-good window ending.
+/// <see cref="Expired"/> is the bounded last-known-good window ending. The
+/// <see cref="Stale"/> value is produced by the elapsed TTL second half, not by a
+/// provider failure: the shipped readers cache nothing on a failed library read,
+/// and the per-item bounded last-known-good metadata state is what retains
+/// last-known-good metadata.
 /// </summary>
 public enum ArrInventoryCacheState
 {
@@ -17,7 +21,8 @@ public enum ArrInventoryCacheState
 
     /// <summary>
     /// A bounded last-known-good observation set that is no longer current but is
-    /// still usable as current until its stale boundary.
+    /// still usable as current until its stale boundary. It is the TTL second-half
+    /// state, not a failure marker.
     /// </summary>
     Stale,
 

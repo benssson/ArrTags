@@ -166,15 +166,17 @@ instead (`docs/limitations.md`).
 The canonical record of what ArrTags does not yet do or has not yet verified is
 `docs/limitations.md`. In short:
 
-- **Provider inventory cache is implemented; F1 close-out pending.** The
-  bounded, in-memory inventory cache serves one provider library read per
-  connection across a reconciliation window (with bulk file reads replacing
-  per-item reads), and the ArrTags-side invalidation sources are wired: a
-  provider webhook invalidates its connection, and a reconciliation (library
-  refresh/post-scan, scheduled, manual, or post-save) invalidates the retained
-  sets, with the bounded inventory TTL as the fallback. `docs/limitations.md` F1
-  is recorded as resolved by task 11.4 after the Goal C integration verification.
-  Rendering and publication are fingerprint-gated.
+- **Provider inventory cache is implemented and F1 is resolved (at the
+  integration-test level).** The bounded, in-memory inventory cache serves one
+  provider library read per connection across a reconciliation window (with bulk
+  file reads replacing per-item reads), and the ArrTags-side invalidation sources
+  are wired: a provider webhook invalidates its connection, and a reconciliation
+  (library refresh/post-scan, scheduled, manual, or post-save) invalidates the
+  retained sets, with the bounded inventory TTL as the fallback. Remaining bounds
+  are recorded in `docs/limitations.md` F1 (Sonarr per-series episode reads are
+  O(series) per window and a sparse invalidation window repopulates the whole
+  library); rendering and publication are fingerprint-gated. The live pinned-host
+  confirmation is owned by task 14.3.
 - **Jellyfin Enhanced coexistence is verified at the contract level only**;
   Enhanced is not installed on the pinned host (V3).
 - **Live-verification gaps.** There is no live Sonarr/Radarr instance, the live

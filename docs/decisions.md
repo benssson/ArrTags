@@ -2351,8 +2351,23 @@ boundary.
 
 ### Consequences
 
-- Provider reads drop from O(work items) to O(connections) per TTL/refresh
-  window, directly addressing F1.
+- Provider library reads drop from O(work items) to O(connections) per
+  TTL/refresh window, and the Radarr bulk file read replaces the per-item file
+  read, directly addressing F1 (implemented in v1.1 Phase 11 tasks 11.1-11.4;
+  F1 is recorded as resolved, with the remaining bounds stated in
+  `docs/limitations.md` F1). For Sonarr the per-series episode read remains
+  O(series) per window, because Sonarr exposes no whole-library episode endpoint.
+- A sparse (webhook/single-item) window can issue more provider requests than the
+  pre-11.2 per-item read for Sonarr: a webhook invalidation removes the advertised
+  connection's whole inventory, so the resulting (often single-item) window
+  repopulates the whole library at one `/episode?seriesId=` per series plus the
+  bulk `/episodeFile?episodeFileIds=`. Per-record/per-series invalidation scoping
+  is a possible future optimization.
+- A library read failure during a population caches nothing and returns the
+  bounded failure, so the inventory cache never serves a failed read as current;
+  the existing per-item bounded last-known-good metadata state is what retains
+  last-known-good metadata through the outage. A failed bulk/sub-read falls back
+  to the direct read unchanged.
 - Staleness is bounded by the configured TTL and by event-based invalidation.
 - New configuration and section 12 limit rows are required, and the
   `docs/data-model.md` cache model gains an inventory-cache description.

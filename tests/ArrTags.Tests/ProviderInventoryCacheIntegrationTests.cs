@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ArrTags.Artwork;
 using ArrTags.Configuration;
 using ArrTags.Matching;
 using ArrTags.Media;
@@ -15,19 +17,23 @@ using ArrTags.Providers;
 using ArrTags.Providers.Radarr;
 using ArrTags.Providers.Sonarr;
 using ArrTags.Reconciliation;
+using ArrTags.State;
+using ArrTags.Updates;
 using Xunit;
 
 namespace ArrTags.Tests;
 
 /// <summary>
-/// Task 11.2 integration checks for the provider inventory cache at the
-/// provider-client boundary (ADR-018 clauses 2 and 4): one library read per
+/// Goal C integration checks for the provider inventory cache at the
+/// provider-client boundary (ADR-018 clauses 2, 4, and 5): one library read per
 /// connection serves multiple work items in a reconciliation window (including
 /// concurrent cold readers), the bulk selection endpoints are used instead of
 /// per-item file reads and are chunked into bounded requests, an over-bound
-/// observation set keeps the direct read, provider failure keeps the bounded
-/// last-known-good observation set, and the cached observations stay canonical
-/// and secret-free. These tests require no live Jellyfin or Arr instance.
+/// observation set keeps the direct read, a provider library read failure fails
+/// the window while the per-item bounded last-known-good metadata state is
+/// retained, a sub-read failure falls back to the unchanged direct read, and the
+/// cached observations stay canonical and secret-free. These tests require no
+/// live Jellyfin or Arr instance.
 /// </summary>
 public sealed class ProviderInventoryCacheIntegrationTests
 {
@@ -145,6 +151,31 @@ public sealed class ProviderInventoryCacheIntegrationTests
     }
 
     [Fact]
+    public async Task RadarrBulkFileReadFailureFallsBackToTheDirectReadInsteadOfFailingTheWindow()
+    {
+        // The library read succeeds but the population's bulk movie-file read
+        // fails. The bulk read is an optimization, so the reader falls back to
+        // the unchanged direct read (reusing the library read it already made
+        // and reading the matched movie's file per record) rather than failing
+        // the window; the observation set is not cached.
+        var (configuration, radarr, _) = BuildConfiguration(limits => limits.TransientRetryCount = 0);
+        var handler = new RecordingHandler(RadarrBulkFileFailureResponder);
+        var (reader, inventory) = BuildRadarrReader(configuration, handler);
+
+        var result = await reader.ReadAsync(MovieIdentity(603), radarr, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Bluray-1080p", result.Metadata!.Quality!.Label);
+        Assert.Equal(0, inventory.Current.Count);
+        Assert.Equal(1, CountRequests(handler, "/api/v3/movie"));
+
+        // One failed bulk request plus the per-record direct read; the direct
+        // read never issues the bulk (multi-id) form.
+        Assert.Equal(2, RequestsFor(handler, "/api/v3/moviefile").Count);
+        Assert.Equal("/api/v3/moviefile?movieId=7", handler.Requests.Last().PathAndQuery);
+    }
+
+    [Fact]
     public async Task RadarrProviderFailureWithNoCacheReturnsTheBoundedFailure()
     {
         var (configuration, radarr, _) = BuildConfiguration(limits => limits.TransientRetryCount = 0);
@@ -158,6 +189,85 @@ public sealed class ProviderInventoryCacheIntegrationTests
         Assert.Equal(ArrErrorRetryability.Later, result.Error.Retryability);
         Assert.Equal(1, CountRequests(handler, "/api/v3/movie"));
         Assert.Equal(0, inventory.Current.Count);
+    }
+
+    [Fact]
+    public async Task RadarrLibraryReadFailureOnACacheMissFailsTheWindowAndKeepsBoundedLastKnownGoodMetadata()
+    {
+        // The library read (`/api/v3/movie`) is the population's first read, so
+        // a failure there fails the whole window: the reader returns a bounded
+        // failure, caches nothing, and every work item in the window fails and
+        // re-attempts the population. Compose the real reader and bounded cache
+        // with the real reconciliation processor and durable metadata store to
+        // pin the end-to-end behavior, including the existing per-item bounded
+        // last-known-good metadata state.
+        var root = Path.Combine(Path.GetTempPath(), "arrtags-inventory-window-failure-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var fail = false;
+            var (configuration, radarr, _) = BuildConfiguration(limits => limits.TransientRetryCount = 0);
+            var handler = new RecordingHandler(uri => RadarrResponder(uri, fail));
+            var inventory = new ArrInventoryCacheProvider(configuration);
+            var reader = new RadarrMetadataReader(BuildFactory(configuration, handler), log: null, inventory: inventory);
+
+            var resolver = new ReconciliationLibraryResolver();
+            resolver.LibraryIds[ReconciliationFixtures.ItemId] = ReconciliationFixtures.LibraryId;
+            resolver.Items[ReconciliationFixtures.ItemId] =
+                ReconciliationFixtures.Movie(ReconciliationFixtures.ItemId, ReconciliationFixtures.LibraryId);
+
+            var store = new MetadataStateStore(new StateRepository(root, configuration.Current.Limits));
+            var processor = new MetadataReconciliationProcessor(
+                configuration,
+                resolver,
+                new IArrMetadataReader[] { reader },
+                store);
+            var workItem = new LibraryWorkItem(
+                new WorkItemKey(ReconciliationFixtures.ItemId, null, ArtworkImageSurface.Primary),
+                LibraryWorkReason.Updated,
+                configuration.Current.ConfigurationVersion);
+
+            // First run: a cache miss performs one library read plus the bulk
+            // file read, caches the whole library, and publishes a fresh
+            // per-item metadata state.
+            var published = await processor.ProcessAsync(workItem, CancellationToken.None);
+
+            Assert.True(published.IsSuccess, published.Reason);
+            Assert.Equal(1, CountRequests(handler, "/api/v3/movie"));
+            Assert.Equal(1, inventory.Current.Count);
+            var fresh = store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Value!;
+            Assert.Equal(MetadataStateKind.Fresh, fresh.State);
+
+            // The window is invalidated and the library read then fails: the
+            // whole window fails and caches nothing.
+            inventory.Invalidate(radarr.ConnectionId);
+            fail = true;
+
+            var failed = await processor.ProcessAsync(workItem, CancellationToken.None);
+
+            Assert.False(failed.IsSuccess);
+            Assert.True(failed.IsRetryable);
+            Assert.Equal(2, CountRequests(handler, "/api/v3/movie"));
+            Assert.Equal(0, inventory.Current.Count);
+            Assert.False(inventory.Current.TryGet(radarr.ConnectionId, DateTimeOffset.UtcNow, out _));
+
+            // The existing per-item bounded last-known-good metadata state is
+            // retained as explicit stale with an unchanged fingerprint and
+            // bounded window; it is not a stale inventory snapshot.
+            var kept = store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Value!;
+            Assert.Equal(MetadataStateKind.Stale, kept.State);
+            Assert.Equal(fresh.MetadataFingerprint, kept.MetadataFingerprint);
+            Assert.Equal(fresh.ExpiresAt, kept.ExpiresAt);
+            Assert.Equal(fresh.StaleUntil, kept.StaleUntil);
+            Assert.True(kept.IsUsableAsCurrent(DateTimeOffset.UtcNow));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
     }
 
     [Fact]
@@ -297,6 +407,32 @@ public sealed class ProviderInventoryCacheIntegrationTests
         Assert.Equal(1, CountRequests(handler, "/api/v3/series"));
         Assert.Equal(2, CountRequests(handler, "/api/v3/episode"));
         Assert.Empty(RequestsFor(handler, "/api/v3/episodeFile"));
+    }
+
+    [Fact]
+    public async Task SonarrEpisodeReadFailureFallsBackToTheDirectReadInsteadOfFailingTheWindow()
+    {
+        // The series library read succeeds, but the population's per-series
+        // episode read for a non-matched series fails. The episode read is part
+        // of the inventory, so the population stores nothing, but the reader
+        // falls back to the unchanged direct read for the matched series rather
+        // than failing the work item.
+        var (configuration, _, sonarr) = BuildConfiguration(limits => limits.TransientRetryCount = 0);
+        var handler = new RecordingHandler(SonarrEpisodeReadFailureResponder);
+        var (reader, inventory) = BuildSonarrReader(configuration, handler);
+
+        var result = await reader.ReadAsync(EpisodeIdentity(12345, 9001), sonarr, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("WEBDL-1080p", result.Metadata!.Quality!.Label);
+        Assert.Equal(0, inventory.Current.Count);
+        Assert.Equal(1, CountRequests(handler, "/api/v3/series"));
+
+        // The population read series 12 (matched) then series 13 (failed), and
+        // the direct fallback read series 12 again; no per-series inventory is
+        // retained.
+        Assert.Equal(3, CountRequests(handler, "/api/v3/episode"));
+        Assert.DoesNotContain(handler.Requests, uri => uri.PathAndQuery == "/api/v3/episodeFile?seriesId=12");
     }
 
     [Fact]
@@ -797,6 +933,69 @@ public sealed class ProviderInventoryCacheIntegrationTests
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     }
 
+    /// <summary>
+    /// Serves the Radarr library and the matched movie's file per record, but
+    /// fails the population's bulk (multi-id) movie-file request so the direct
+    /// fallback can be observed.
+    /// </summary>
+    private static HttpResponseMessage RadarrBulkFileFailureResponder(Uri uri)
+    {
+        if (uri.AbsolutePath.EndsWith("/api/v3/movie", StringComparison.Ordinal))
+        {
+            return Json("""
+                [
+                  {"id":7,"title":"Example","tmdbId":603,"movieFileId":42},
+                  {"id":8,"title":"Other","tmdbId":604,"movieFileId":43}
+                ]
+                """);
+        }
+
+        if (uri.AbsolutePath.EndsWith("/api/v3/moviefile", StringComparison.Ordinal))
+        {
+            if (QueryValues(uri, "movieId").Count != 1)
+            {
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
+
+            return Json("""
+                [
+                  {"id":42,"movieId":7,"quality":{"quality":{"id":7,"name":"Bluray-1080p","source":"bluray","resolution":1080}},"mediaInfo":{"videoCodec":"h264","width":1920,"height":1080}}
+                ]
+                """);
+        }
+
+        return new HttpResponseMessage(HttpStatusCode.NotFound);
+    }
+
+    /// <summary>
+    /// Serves a two-series Sonarr library where the non-matched series' episode
+    /// read fails, so the population stores nothing and the direct fallback for
+    /// the matched series can be observed.
+    /// </summary>
+    private static HttpResponseMessage SonarrEpisodeReadFailureResponder(Uri uri)
+    {
+        if (uri.AbsolutePath.EndsWith("/api/v3/series", StringComparison.Ordinal))
+        {
+            return Json("""[{"id":12,"title":"Example","tvdbId":12345},{"id":13,"title":"Other","tvdbId":54321}]""");
+        }
+
+        if (uri.AbsolutePath.EndsWith("/api/v3/episode", StringComparison.Ordinal))
+        {
+            if (GetQueryValue(uri, "seriesId") == "13")
+            {
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
+
+            return Json($$"""
+                [
+                  {"id":73,"seriesId":12,"tvdbId":9001,"seasonNumber":2,"episodeNumber":4,"episodeFileId":418,"hasFile":true{{EmbeddedEpisodeFile(418)}}}
+                ]
+                """);
+        }
+
+        return new HttpResponseMessage(HttpStatusCode.NotFound);
+    }
+
     private static HttpResponseMessage SonarrResponder(Uri uri, bool embeddedFile)
     {
         if (uri.AbsolutePath.EndsWith("/api/v3/series", StringComparison.Ordinal))
@@ -869,6 +1068,27 @@ public sealed class ProviderInventoryCacheIntegrationTests
         }
 
         return null;
+    }
+
+    private static IReadOnlyList<string> QueryValues(Uri uri, string key)
+    {
+        var query = uri.Query;
+        if (query.StartsWith('?'))
+        {
+            query = query[1..];
+        }
+
+        var values = new List<string>();
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=', StringComparison.Ordinal);
+            if (separator > 0 && pair[..separator] == key)
+            {
+                values.Add(pair[(separator + 1)..]);
+            }
+        }
+
+        return values;
     }
 
     private static HttpResponseMessage Json(string body)

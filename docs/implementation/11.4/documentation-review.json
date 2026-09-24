@@ -1,0 +1,157 @@
+{
+  "task": "11.4",
+  "title": "Goal C documentation and integration verification",
+  "reviewer": "documentation-maintainer",
+  "scope": "Independent documentation review of v1.1 task 11.4 (provider inventory cache, Goal C, ADR-018). Branch v1.1 at HEAD 1ed4bf7, working tree uncommitted.",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "surfaces_checked": [
+    "PLANS.md (Project Status paragraph, Milestone Status table row 11, Phase 11 task 11.1-11.4 status blocks, Phase 11 acceptance-criteria checkboxes, Gate 11 line, Post-V1 Backlog open-item wording)",
+    "docs/project-status.md (Current milestone line, Phase 11 summary paragraph, test-count statement, Next tasks list)",
+    "docs/changelog.md (Phase 11 status header, task 11.1-11.4 entries, task 11.1 superseded annotation)",
+    "docs/architecture.md (status line, section 8 cache/reconciliation flow, section 12 limit rows and cache paragraph)",
+    "docs/data-model.md (section 6 inventory-cache paragraphs)",
+    "docs/limitations.md (success-criterion row 6, F1 removed from deferred and recorded under Resolved limitations, V6 test-count paragraph)",
+    "docs/decisions.md (ADR-018 Context/Decision/Consequences)",
+    "docs/implementation-readiness.md (status line Phase 11 clause)",
+    "README.md (Known limitations provider-inventory-cache bullet)",
+    "src/ArrTags/Providers/ArrInventoryCache.cs XML docs",
+    "src/ArrTags/Providers/ArrInventoryCacheEntry.cs XML docs",
+    "src/ArrTags/Providers/ArrInventoryCacheState.cs XML docs",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs",
+    "git diff and repository state (src, tests, docs)"
+  ],
+  "changes": [],
+  "verified_reconciliations": [
+    {
+      "claim": "F1 resolved at the integration-test level",
+      "evidence": [
+        "docs/limitations.md F1 Status: Resolved (v1.1 Phase 11, task 11.4), at the integration-test level",
+        "PLANS.md milestone row 11 'Complete at the integration-test level' and task 11.4 status",
+        "docs/project-status.md Current milestone line",
+        "docs/changelog.md Phase 11 header 'Complete at the integration-test level'",
+        "docs/architecture.md status line and docs/implementation-readiness.md status line",
+        "README.md 'F1 is resolved (at the integration-test level)'"
+      ],
+      "result": "CONSISTENT"
+    },
+    {
+      "claim": "No provider conditional request, revision token, history/since, or SignalR dependency; invalidation is ArrTags-side (webhook, refresh/post-scan, scheduled/manual, post-save, bounded TTL); periodic scheduled reconciliation continues on its unchanged interval",
+      "evidence": [
+        "src has no ETag/If-None-Match/revision-token/history-since/SignalR dependency (only doc comments stating none is assumed; the sole ETag reference is Jellyfin source-image state in MediaIdentityFactory)",
+        "WebhookIntakeService.Invalidate/InvalidateAll; LibraryReconciliationService.ReconcileAsync calls InvalidateAll; ArrTagsPostScanTask/ArrTagsReconciliationTask/ConfigurationReconciliationTrigger route through ReconcileAsync",
+        "docs/architecture.md section 8, docs/project-status.md, PLANS.md, docs/limitations.md F1, README.md all state the trigger set and 'v1.1 is not refresh-only'"
+      ],
+      "result": "CONSISTENT"
+    },
+    {
+      "claim": "Cache bounded and secret-free with three validated limits (TTL 15 min 1-1440; records 10000 1-100000; bytes 32 MiB 1 MiB-256 MiB)",
+      "evidence": [
+        "src/ArrTags/Configuration/OperationalLimits.cs defaults and Validate ranges match",
+        "docs/architecture.md section 12 rows 1314-1316 match the code exactly",
+        "docs/data-model.md section 6 and docs/limitations.md F1 state the bounds"
+      ],
+      "result": "CONSISTENT"
+    },
+    {
+      "claim": "Remaining bounds stated honestly (Sonarr O(series) per window, sparse-window amplification, eager whole-library population on a miss, over-bound direct-read fallback, library-read-failure blast radius vs sub-read fallback, whole-cache clear, per-connection single-flight coalescing)",
+      "evidence": [
+        "docs/limitations.md F1 remaining-bounds paragraph lists every one",
+        "docs/architecture.md section 8 states the failure blast radius and single-flight",
+        "docs/decisions.md ADR-018 Consequences adds the Sonarr O(series), sparse-window, and failure-blast-radius clauses",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs and Sonarr/SonarrMetadataReader.cs: library failure -> InventoryPopulation.Failed (caches nothing); over-bound/failed bulk/sub-read -> NotStored -> direct read; AcquirePopulationAsync single-flight gate",
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs ComputeFreshnessWindow halves the TTL; EvaluateState yields Stale only in the second half"
+      ],
+      "result": "CONSISTENT"
+    },
+    {
+      "claim": "ArrInventoryCache* XML docs match shipped behavior (WithFailure/TryStore lastError unwired; Stale is the TTL second-half state; cold library-read failure caches nothing; sub-read fallback)",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs constructor/LastError/WithFailure XML docs now state no production caller and no realized failure-driven retention",
+        "src/ArrTags/Providers/ArrInventoryCacheState.cs Stale doc now states 'TTL second-half state, not a failure marker'",
+        "src/ArrTags/Providers/ArrInventoryCache.cs remarks corrected for library-read failure and sub-read fallback",
+        "Production callers TryStore(connection, observedAt, observations) in RadarrMetadataReader.cs:250 and SonarrMetadataReader.cs:317 omit lastError; WithFailure only in tests/ArrTags.Tests/ArrInventoryCacheTests.cs; LastError only read in tests"
+      ],
+      "result": "CONSISTENT"
+    },
+    {
+      "claim": "Phase 11 acceptance-criteria checkboxes and Gate 11 line accurate; Gate 11 not claimed met",
+      "evidence": [
+        "PLANS.md Phase 11 criteria 11.1-11.4 all checked at the integration-test level",
+        "PLANS.md Gate 11 line: 'Met when ... the phase review is approved, and the tag v1.1.0-phase11 is created ... the phase review and the tag v1.1.0-phase11 remain the outstanding Gate 11 steps'",
+        "docs/project-status.md and docs/implementation-readiness.md both phrase Gate 11 conditionally"
+      ],
+      "result": "CONSISTENT (not overclaimed)"
+    },
+    {
+      "claim": "Test-count and integration coverage statements",
+      "evidence": [
+        "grep '[Fact]' tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs = 25 (matches the documented '25 total')",
+        "Independent './build.sh build' -> 0 warnings/0 errors",
+        "Independent './build.sh test' -> Failed 0, Passed 1421, Skipped 63, Total 1484 (matches docs/limitations.md V6, docs/project-status.md, PLANS.md task 11.4, docs/changelog.md task 11.4)",
+        "Independent focused run (ProviderInventoryCacheIntegrationTests|InventoryCacheInvalidationTests|ArrInventoryCacheTests) -> Failed 0, Passed 55, Total 55 (matches the worker's Goal C count)"
+      ],
+      "result": "VERIFIED"
+    },
+    {
+      "claim": "No production behavior changed (XML documentation only)",
+      "evidence": [
+        "git diff for the three src/ArrTags/Providers files touches only /// XML-doc comment lines",
+        "No non-comment source changes in src/"
+      ],
+      "result": "CONSISTENT"
+    },
+    {
+      "claim": "Terminology/cross-reference consistency (ArrInventoryCache* distinct from per-item MetadataCacheEntry/MetadataStateEntry)",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs references the per-item record as MetadataCacheEntry (docs/data-model.md 3.9 heading); the code type is MetadataStateEntry",
+        "This heading-vs-type naming mismatch is pre-existing and was already recorded as INFORMATIONAL by the task 11.1 reviewer; not introduced by 11.4"
+      ],
+      "result": "CONSISTENT with pre-existing convention (see observation)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "D-11.4-1",
+      "severity": "LOW",
+      "summary": "PLANS.md task 11.1 and 11.2 status blocks retain the superseded 'provider failure keeps the bounded last-known-good ... without extending the window' claim (lines ~4191 and ~4259-4260) without a superseded annotation, while the sibling task 11.1 changelog sentence was annotated.",
+      "detail": "The current-state surfaces (Project Status paragraph, milestone row 11, task 11.4 block, changelog Phase 11 header, docs/project-status.md, docs/limitations.md F1) are correctly reconciled, and the surrounding text is a point-in-time task record. However, the provider-failure sentence is a behavioral claim that is false for the shipped readers (they cache nothing on a library-read failure), and PLANS.md does not annotate it as superseded the way docs/changelog.md's task 11.1 entry does.",
+      "status": "open",
+      "recommended_action": "Add a one-line '(superseded by task 11.4)' pointer to the task 11.1/11.2 status blocks, or record the deliberate decision to leave all task-scoped historical blocks unannotated and rely on the task 11.4 block."
+    },
+    {
+      "id": "D-11.4-2",
+      "severity": "LOW",
+      "summary": "docs/changelog.md task 11.2 completed-work entry (lines 3129-3130) retains the same false 'a provider failure keeps the bounded last-known-good observation set until the TTL without extending the window' claim without a superseded annotation, unlike the task 11.1 entry immediately above it.",
+      "detail": "Historically the task 11.2 reader never wired WithFailure and never stores lastError, so the sentence was inaccurate at the time it was written. The task 11.1 changelog sentence was annotated as superseded by task 11.4; the task 11.2 sentence was not, producing an inconsistent treatment of the same class of claim on the changelog completed-work surface.",
+      "status": "open",
+      "recommended_action": "Annotate the task 11.2 changelog sentence as superseded by task 11.4 (mirroring the task 11.1 annotation), or state explicitly in the task 11.4 entry that only the task 11.1 sentence is annotated."
+    },
+    {
+      "id": "D-11.4-3",
+      "severity": "LOW",
+      "summary": "ADR-018 Decision clause 5 still reads 'on provider failure the existing bounded last-known-good semantics apply' in the paragraph about the inventory cache, a divergence from the shipped behavior (a library-read failure caches nothing; the per-item metadata state retains last-known-good). The added Consequences clauses record the correct behavior, but the Decision text itself is unannotated.",
+      "detail": "The instruction is to record a divergence between an ADR and behavior, not silently rewrite ADR decision text. The worker edited only the Consequences (adding the Sonarr O(series), sparse-window amplification, and failure-blast-radius clauses), which does record the divergence. Decision clause 5 remains literally divergent and could still be read as inventory failure retention.",
+      "status": "recorded",
+      "recommended_action": "Optionally add a one-line pointer in Decision clause 5 or a Divergence note tying it to the Consequences/library-read-failure behavior; treat as a recorded divergence, not a rewrite."
+    },
+    {
+      "id": "D-11.4-4",
+      "severity": "INFO",
+      "summary": "docs/data-model.md 3.9 is headed 'MetadataCacheEntry' and ADR-018 clause 6 / the ArrInventoryCacheEntry XML doc reference that name, while the implementing code type is MetadataStateEntry.",
+      "detail": "Pre-existing heading-vs-type naming mismatch, already recorded INFORMATIONAL by the task 11.1 reviewers; task 11.4 introduces no new reference to the inconsistent name and the new section 6 text follows the authoritative docs/ADR wording.",
+      "status": "noted",
+      "recommended_action": "No action for task 11.4; consider a later documentation pass (e.g. Phase 13) to align the data-model heading with the code type name."
+    }
+  ],
+  "ambiguous_or_deferred": [
+    {
+      "claim": "Whether historical task-scoped status blocks in PLANS.md and historical changelog task entries must carry an explicit 'superseded' annotation when their behavioral description is later corrected.",
+      "recommended_action": "Decide a house rule for historical-entry annotation. Task 11.4 annotated only the task 11.1 changelog sentence; if annotations are required, apply them consistently to the task 11.2/11.3 entries and the PLANS.md task 11.1/11.2 blocks."
+    },
+    {
+      "claim": "Phase 11 criterion 4 ('Provider failure keeps the existing bounded last-known-good behavior') is checked under the clarified interpretation that it refers to the pre-existing per-item bounded last-known-good metadata state rather than failure-driven inventory retention.",
+      "recommended_action": "The interpretation is documented in docs/limitations.md F1 and docs/architecture.md section 8/12 and is verified by the new composed test; confirm the orchestrator/phase-reviewer accepts this reading before Gate 11, since the criterion wording is unchanged from its task 11.1 form."
+    }
+  ],
+  "summary": "Task 11.4 correctly reconciles the canonical current-state documentation for the v1.1 provider inventory cache (Goal C, ADR-018). F1 is consistently recorded as resolved at the integration-test level across docs/limitations.md, docs/project-status.md, PLANS.md (Project Status, milestone row 11, task 11.4, acceptance checkboxes), docs/changelog.md (Phase 11 header), docs/architecture.md (status line, sections 8 and 12), docs/data-model.md section 6, docs/implementation-readiness.md, and README.md; the remaining bounds are stated honestly and ADR-018 Consequences records them. Gate 11 is correctly NOT claimed met (the phase review and tag v1.1.0-phase11 are called out as outstanding). The ArrInventoryCache* XML docs match the shipped behavior (WithFailure/TryStore lastError unwired, Stale is the TTL second-half state, cold library-read failure caches nothing, sub-read fallback), verified against the readers and cache source. Independent './build.sh build' (0 warnings/0 errors), the full suite (Failed 0, Passed 1421, Skipped 63, Total 1484), and the focused Goal C suite (55 passed) reproduce the worker's validation. No production behavior changed (XML-doc-only src diff). Three LOW findings remain: the PLANS.md task 11.1/11.2 status blocks and the docs/changelog.md task 11.2 entry retain the false 'provider failure keeps bounded last-known-good inventory' wording without the superseded annotation applied to the task 11.1 changelog sentence (D-11.4-1, D-11.4-2), and ADR-018 Decision clause 5 still reads as failure-driven inventory retention although the Consequences now record the divergence (D-11.4-3, status recorded). None of these is a current-state overclaim: every surface presented as current is accurate and no unverified capability is presented as available. Verdict: PASS_WITH_FINDINGS."
+}

@@ -1201,9 +1201,11 @@ provider DTO. One `ArrInventoryCacheEntry` per connection carries
 canonical `BadgeMetadata` mapped from the record's current file). The configured
 inventory TTL (`OperationalLimits.InventoryCacheTtlMinutes`) is the total bounded
 lifetime of one observation set: the set is fresh for the first half and may be
-served as explicit bounded last-known-good for the remaining half, so a provider
-failure keeps the bounded last-known-good inventory without extending the
-window. The per-connection record and byte bounds
+served as explicit bounded last-known-good for the remaining half, and the TTL is
+never extended; a library read failure during a population caches nothing and
+returns the bounded failure, while the existing per-item bounded last-known-good
+metadata state retains last-known-good metadata. The per-connection record and
+byte bounds
 (`OperationalLimits.InventoryCacheMaxRecords` and
 `InventoryCacheMaxBytes`) reject an over-bound observation set and the caller
 keeps the direct provider read unchanged. The entry's only free-text field is a
@@ -1224,9 +1226,10 @@ endpoints — Radarr `moviefile?movieId=` with a repeatable `movieId` and Sonarr
 per-series episode file is preferred) — in bounded chunks, then maps them to
 canonical observations and stores them. Every work item in the cache window is
 served from the retained observations without another library read; an absent or
-expired set is re-read, an over-bound set or a failed bulk read keeps the
-existing direct read unchanged, and a provider failure keeps the bounded
-last-known-good observation set until the TTL.
+expired set is re-read, an over-bound set or a failed bulk/sub-read keeps the
+existing direct read unchanged, and a library read failure during a population
+caches nothing and returns the bounded failure (the per-item bounded
+last-known-good metadata state is what retains last-known-good metadata).
 
 The observation set's `ObservedAt` is the population time, so on a cache hit the
 canonical file observation's `ObservedAt` is the population time rather than the

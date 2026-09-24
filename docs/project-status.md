@@ -3,9 +3,10 @@
 ## Project Status
 
 **Current milestone:** Phase 11 — Provider inventory cache and
-library-refresh-driven refresh (v1.1) is in progress: task 11.1 (inventory cache
-model, bounds, and limits), task 11.2 (provider-client integration and bulk
-reads), and task 11.3 (ArrTags-side invalidation) are complete. Task 11.1 defines
+library-refresh-driven refresh (v1.1) is complete at the integration-test level:
+tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
+integration and bulk reads), 11.3 (ArrTags-side invalidation), and 11.4 (Goal C
+documentation and integration verification) are complete. Task 11.1 defines
 the canonical, secret-free, in-memory per-connection inventory cache shape
 (`ArrInventoryCache`/`ArrInventoryCacheEntry`/`ArrInventoryRecordObservation`) and
 the inventory TTL and record/byte limits in `OperationalLimits`, validated at
@@ -18,9 +19,11 @@ readers perform one library read per connection on a miss and serve every work
 item in the cache window from the retained canonical observations without
 another library read; the Radarr repeatable `moviefile?movieId=` selector and the
 Sonarr repeatable `episodeFile?episodeFileIds=` selector replace per-item file
-reads; an over-bound observation set or a failed bulk read keeps the existing
-direct read unchanged; and a provider failure keeps the bounded last-known-good
-observation set until the TTL. Task 11.3 adds the bounded, thread-safe,
+reads; an over-bound observation set or a failed bulk/sub-read keeps the existing
+direct read unchanged; and a library read failure during a population caches
+nothing and returns the bounded failure, with the existing per-item bounded
+last-known-good metadata state retaining last-known-good metadata. Task 11.3 adds
+the bounded, thread-safe,
 secret-free ArrTags-side invalidation surface (`ArrInventoryCache.Invalidate`/
 `InvalidateAll` and the `ArrInventoryCacheProvider` equivalents) and wires every
 source: an accepted provider webhook invalidates its connection, and Jellyfin
@@ -28,8 +31,14 @@ library refresh/post-scan, scheduled/manual, and post-save reconciliation
 invalidate at the start of `LibraryReconciliationService.ReconcileAsync`, with the
 bounded inventory TTL as the fallback; the periodic scheduled reconciliation
 continues on its unchanged interval and no provider conditional request, revision
-token, `history/since`, or SignalR dependency is used. Task 11.4 remains, so
-limitation F1 is not yet resolved.
+token, `history/since`, or SignalR dependency is used. Task 11.4 reconciles
+`docs/architecture.md` sections 8 and 12 and `docs/data-model.md` section 6 with
+the shipped cache behavior, records limitation F1 as resolved, and adds the Goal C
+integration coverage for the one-read-per-window, invalidation-source, bounds, and
+last-known-good facets, so all four Phase 11 acceptance criteria are met at the
+integration-test level; Gate 11 is met once the phase review is approved and the
+tag `v1.1.0-phase11` is created, and the live pinned-host confirmation is owned by
+task 14.3.
 Phase 10 — Logging with configurable verbosity (v1.1) is
 complete: tasks 10.1 (logging foundation, verbosity configuration, and
 fingerprint exclusion), 10.2 (bounded, redacted log call sites and volume
@@ -645,8 +654,8 @@ The plugin:
   `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244 with 44
   skips, and running `./build.sh package` first unskips the package-content
   cases. These are the `1.0.1.0` release-matrix counts, not current v1.1 truth:
-  the current v1.1 working suite is Failed 0, Passed 1,407, Skipped 63, Total
-  1,470 (see the Project Status above and `docs/limitations.md` V6, which the
+  the current v1.1 working suite is Failed 0, Passed 1,421, Skipped 63, Total
+  1,484 (see the Project Status above and `docs/limitations.md` V6, which the
   v1.1 release task refreshes). The `1.0.1.0` counts reflect the suite after the
   SEC-1 webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
 
@@ -684,7 +693,9 @@ Next tasks:
 
 - Phase 11 — Provider inventory cache and library-refresh-driven refresh (v1.1)
   tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
-  integration and bulk reads), and 11.3 (ArrTags-side invalidation) are complete:
+  integration and bulk reads), 11.3 (ArrTags-side invalidation), and 11.4 (Goal C
+  documentation and integration verification) are complete at the
+  integration-test level:
   the canonical, secret-free, in-memory
   per-connection inventory cache boundary
   (`ArrInventoryCache`/`ArrInventoryCacheEntry`/`ArrInventoryRecordObservation`)
@@ -703,7 +714,12 @@ Next tasks:
   scheduled/manual and post-save reconciliation, and the bounded TTL fallback,
   with no provider conditional request, revision token, `history/since`, or
   SignalR dependency, and the periodic scheduled reconciliation continues on its
-  unchanged interval. Task 11.4 remains, so limitation F1 is not yet resolved.
+  unchanged interval. Task 11.4 reconciles the named Goal C documents, records
+  limitation F1 as resolved, and adds the Goal C integration coverage for the
+  one-read-per-window, invalidation-source, bounds, and last-known-good facets, so
+  all four Phase 11 acceptance criteria are met at the integration-test level;
+  Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is
+  created, and the live pinned-host confirmation is owned by task 14.3.
 - Phase 10 — Logging with configurable verbosity (v1.1) task 10.1 (logging
   foundation, verbosity configuration, and fingerprint exclusion) is complete:
   the bounded `LogVerbosity` setting (default `Warning`) is validated and

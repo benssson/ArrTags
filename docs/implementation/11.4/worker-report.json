@@ -1,0 +1,42 @@
+{
+  "task": "11.4",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Completed Goal C documentation and integration verification for the ArrTags provider inventory cache. Reconciled docs/architecture.md sections 8 and 12, docs/data-model.md section 6, the ArrInventoryCache/ArrInventoryCacheEntry/ArrInventoryCacheState XML docs, ADR-018 Consequences, README.md, PLANS.md, docs/project-status.md, docs/changelog.md, docs/implementation-readiness.md, and docs/limitations.md with the shipped behavior. Corrected the previously implied failure-driven inventory last-known-good retention (ArrInventoryCacheEntry.WithFailure and LastError have no production caller; TryStore is never called with lastError in production) so the docs now state that a stored observation set is served as bounded last-known-good through the TTL second half (ArrInventoryCacheState.Stale is the TTL second-half state produced by EvaluateState and served by TryGet, not a failure marker), that a library read failure during a population caches nothing and returns the bounded failure, and that a failed bulk/sub-read falls back to the unchanged direct read. Recorded docs/limitations.md F1 as resolved at the integration-test level with the remaining bounds stated honestly (Sonarr O(series) per window and sparse-window amplification, eager whole-library population on a miss, size-bound rejection via the direct read, library-read-failure blast radius vs sub-read fallback, whole-cache clear on a full reconciliation, per-connection single-flight coalescing present), and noted the live pinned-host confirmation remains owned by task 14.3. Added ADR-018 Consequences clauses for the Sonarr O(series) bound, the sparse-window amplification, and the failure blast radius. Annotated the task 11.1 changelog sentence as superseded by task 11.4 and reworded the two Phase 7 open-items headers to note the v1.1-promoted bullets are closed. Added three integration tests to ProviderInventoryCacheIntegrationTests (25 total): a composed real-reader/real-cache/real-MetadataReconciliationProcessor Radarr library-read failure on a cache miss fails the window, caches nothing, and retains the per-item bounded last-known-good metadata state as explicit stale with unchanged fingerprint/expiresAt/staleUntil; a Radarr bulk moviefile?movieId= failure falls back to the per-record direct read; and a Sonarr per-series /episode?seriesId= failure for a non-matched series falls back to the direct read for the matched series. No production behavior changed (XML documentation only).",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1421, Skipped 63, Total 1484 (pre-task baseline Failed 0, Passed 1418, Skipped 63, Total 1481; +3 passed, +3 total, 0 new skips).",
+    "dotnet test --no-build --filter \"FullyQualifiedName~ProviderInventoryCacheIntegrationTests|FullyQualifiedName~InventoryCacheInvalidationTests|FullyQualifiedName~ArrInventoryCacheTests\" -> Failed 0, Passed 55, Skipped 0, Total 55 (Goal C integration/cache/invalidation tests).",
+    "dotnet test --no-build --filter \"FullyQualifiedName~ReconciliationTriggerTests|FullyQualifiedName~WebhookResolutionTests\" -> Failed 0, Passed 42, Skipped 0, Total 42 (invalidation-source trigger/webhook tests).",
+    "Searched src/ for WithFailure/LastError/TryStore(lastError:) callers: WithFailure has no production caller (only tests/ArrTags.Tests/ArrInventoryCacheTests.cs); LastError is never read in production; both production TryStore calls (RadarrMetadataReader, SonarrMetadataReader) omit lastError.",
+    "Inspected the full git diff for unrelated changes; all 13 modified/added paths are task-scoped."
+  ],
+  "changed_files": [
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/decisions.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md",
+    "src/ArrTags/Providers/ArrInventoryCache.cs",
+    "src/ArrTags/Providers/ArrInventoryCacheEntry.cs",
+    "src/ArrTags/Providers/ArrInventoryCacheState.cs",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs",
+    "docs/implementation/11.4/worker-report.json"
+  ],
+  "known_limitations": [
+    "F1 is resolved at the integration-test level only; the live pinned-host confirmation is owned by task 14.3 and was not performed here (no live Jellyfin/Sonarr/Radarr instance).",
+    "Gate 11 is not claimed met: the phase review and the v1.1.0-phase11 tag are the orchestrator/reviewer's remaining steps. All four Phase 11 acceptance criteria are met at the integration-test level and their checkboxes are marked accordingly.",
+    "The documented remaining behavior bounds are: Sonarr per-series episode reads are O(series) per window (no whole-library episode endpoint); a sparse webhook/single-item invalidation window removes the whole connection inventory and repopulates the whole library (which can exceed the pre-11.2 per-item read on a large Sonarr library); cache population is eager whole-library on a miss; an over-bound observation set is not cached and falls back to the direct read; a library read failure fails the whole window while a sub-read failure falls back to the direct read; a full-reconciliation clear removes every cached connection entry; and concurrent cold readers coalesce through the per-connection single-flight gate.",
+    "Per the 'do not rewrite historical records' rule, the point-in-time task 11.1/11.2/11.3 status blocks in PLANS.md and the historical task 11.1/11.2 changelog entries still contain their original 'F1 is not yet resolved' / 'a provider failure keeps...' wording; the task 11.1 changelog sentence is annotated as superseded by task 11.4, and the current-state surfaces (Project Status, milestone row 11, docs/project-status.md, docs/limitations.md, docs/architecture.md, docs/data-model.md, docs/decisions.md, README.md, docs/implementation-readiness.md) are reconciled."
+  ],
+  "ready_for_next_task": true
+}

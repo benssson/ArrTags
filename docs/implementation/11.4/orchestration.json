@@ -1,0 +1,77 @@
+{
+  "task": "11.4",
+  "title": "Goal C documentation and integration verification",
+  "phase": 11,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2d74d42affexiueadf5Nv3Mi5"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2d650c53ffe4E6ln0nx7T9C7X"
+      }
+    },
+    {
+      "role": "documentation-maintainer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "documentation-maintainer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2d650c51ffeSJ1BqH1EEXNYpz"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null; no estimation was performed.",
+    "Final gates: implementation-reviewer APPROVED (no blockers, no required changes); documentation-maintainer PASS_WITH_FINDINGS (0 BLOCKER/HIGH/MEDIUM).",
+    "Validation: build 0 warnings / 0 errors; full default suite Failed 0, Passed 1421, Skipped 63, Total 1484 (pre-task baseline 1418/63/1481; +3 passed/+3 total, 0 new skips); focused Goal C suite 55/0/55.",
+    "The src/ArrTags diff is XML-documentation-comment-only; no production behavior changed. The worker also folded in the applicable gaps from the sibling Phase 11 implementation's independent review and its Phase 11A corrective work, adapted to this branch's actual behavior (our implementation has per-connection single-flight population coalescing and falls back to the direct read on sub-read failures; only a library-read failure fails the window).",
+    "New integration tests (ProviderInventoryCacheIntegrationTests, now 25 cases): a Radarr library-read failure on a cache miss fails the window, caches nothing, and retains the per-item bounded last-known-good metadata state with unchanged fingerprint/ExpiresAt/StaleUntil; a Radarr bulk moviefile?movieId= failure falls back to the per-record direct read; a Sonarr per-series /episode?seriesId= failure for a non-matched series falls back to the direct read for the matched series. Non-vacuousness independently reproduced by the implementation-reviewer with a three-path mutation.",
+    "Tracked non-blocking findings: 11.4-F1 (LOW, architecture section 8 'wider than the pre-11.2 per-item library read' framing not quantified), 11.4-F2 / D-11.4-3 (LOW, ADR-018 Decision clause 5 still reads as failure-driven inventory retention while Consequences record the shipped behavior; reconciled by reading clause 5 as the per-item metadata state), 11.4-F3 / D-11.4-1 / D-11.4-2 (LOW, historical PLANS task 11.1/11.2 status blocks and the task 11.2 changelog entry retain the original failure-retention wording without the superseded annotation applied to the task 11.1 changelog sentence; historical-record convention), D-11.4-4 (INFO, pre-existing MetadataCacheEntry heading vs MetadataStateEntry code-type mismatch).",
+    "Gate 11 is not claimed met by this task; the Phase 11 phase review and the v1.1.0-phase11 tag remain the orchestrator's steps.",
+    "The sibling Phase 11 lineage and its Phase 11A corrective work were inspected read-only for gaps; the sibling tag v1.1.0-phase11 is to be re-pointed to this branch's Phase 11 completion after the phase review, and the sibling worktree removed."
+  ]
+}

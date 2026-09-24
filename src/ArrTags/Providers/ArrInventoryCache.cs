@@ -14,9 +14,12 @@ namespace ArrTags.Providers;
 /// The cache is non-authoritative: it is never persisted, is rebuilt empty on
 /// restart, and never contains a credential or secret lease. An observation set
 /// that exceeds the configured record or byte bound is rejected and the caller
-/// falls back to the direct provider read unchanged. A provider failure keeps
-/// the bounded last-known-good observation set until the configured TTL and
-/// never extends it. The only free-text carrier is the bounded
+/// falls back to the direct provider read unchanged, as does a failed bulk
+/// sub-read. A stored observation set is served as bounded last-known-good
+/// through the second half of the configured TTL, and the TTL is never extended;
+/// a library read failure during a population caches nothing and returns the
+/// bounded failure (the per-item bounded last-known-good metadata state is what
+/// retains last-known-good metadata). The only free-text carrier is the bounded
 /// <see cref="ArrProviderError"/> supplied as <c>lastError</c>; the boundary does
 /// not add value-level redaction and relies on that producer contract
 /// (<see cref="ArrProviderError"/> is documented as bounded and redacted,
