@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Phase 12 kickoff",
   "tokens": {
-    "input": 103912,
-    "output": 9189,
-    "reasoning": 5255,
+    "input": 139540,
+    "output": 20330,
+    "reasoning": 12786,
     "cache": {
-      "read": 2129408,
+      "read": 4737920,
       "write": 0
     }
   },
-  "total_tokens": 2247764,
-  "cost_usd": 0.030614724000000006,
+  "total_tokens": 4910576,
+  "cost_usd": 0.054987659999999994,
   "duration_seconds": 1,
   "first_recorded_at": "2026-09-24T11:30:19Z",
-  "last_updated_at": "2026-09-24T11:30:19Z",
+  "last_updated_at": "2026-09-24T12:14:11Z",
   "updates": [
     {
       "at": "2026-09-24T11:30:19Z",
@@ -25,6 +25,13 @@
       "total_tokens": 2247764,
       "duration_seconds": 1,
       "note": "Completed v1.1 Phase 12 task 12.1 (allowlist configuration, bounds, validation, and fingerprint): worker attempt 1 -> reviewer CHANGES_REQUIRED (12.1-F1 missing changelog entry) -> worker attempt 2 -> reviewer APPROVED; committed c56d228 + state 50b372c. Continuing to task 12.2."
+    },
+    {
+      "at": "2026-09-24T12:14:11Z",
+      "cost_usd": 0.054987659999999994,
+      "total_tokens": 4910576,
+      "duration_seconds": 1,
+      "note": "Completed v1.1 Phase 12 task 12.2 (allowlist resolution and renderer filtering order): worker->reviewer required 2 documentation correction rounds (current-state reconciliation, then a 64->32 bound typo) then APPROVED; test-quality-reviewer PASS_WITH_FINDINGS (0 BLOCKER/HIGH/MEDIUM); committed b404448 + state 34b8ca5. Also recorded the 12.1 test-quality review (d1b80fb). Continuing to task 12.3."
     }
   ]
 }
