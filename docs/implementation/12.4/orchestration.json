@@ -3,7 +3,7 @@
   "title": "Coordinated schema/RenderVersion advance, golden regeneration, and documentation",
   "phase": 12,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "2db0b47",
   "subagents": [
     {
       "role": "implementation-worker",
