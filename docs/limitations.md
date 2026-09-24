@@ -778,6 +778,119 @@ SEC-10.3-4) and requires an administrator to embed credentials in the base URL.
 - Consequence: accepted for v1.1. Post-V1 hardening is to reject a base URL whose
   user-information component is non-empty.
 
+## v1.1 release-review accepted limitations (Phase 14)
+
+The v1.1 release audit
+(`docs/implementation/final-review/release-review.json`) returned
+`SHIP_WITH_ACCEPTED_LIMITATIONS`. In addition to the V1 and security residuals
+above, the following phase-review and release-process items are accepted for
+v1.1. Each names its evidence and its disposition; none is a correctness defect
+or a capability overclaim.
+
+### P12R-F1. The absolute default output-fingerprint pin lives only in the forced-native golden path (MEDIUM, accepted)
+
+The committed absolute default output/configuration-fingerprint pin is asserted
+only by the `ARRTAGS_SKIA_COMPAT`-gated golden run (Phase 12 finding P12R-F1, ==
+TQ-12.3-02 == TQ-12.4-01), so an unconditional default-fingerprint regression
+would not fail the default `./build.sh test` suite. Production is
+identity-neutral by construction for the V1 default position/size, and the
+forced-native matrix leg (Failed 0, Passed 1,575, Skipped 20, Total 1,595) pins
+the committed golden/manifest fingerprints and is recorded in
+`docs/release/build-and-release.md` and this file's V6.
+
+- Evidence: `docs/implementation/phase-12/phase-review.json` P12R-F1;
+  `docs/implementation/phase-12/orchestration.json`; the forced-native matrix leg
+  reproduced by this release audit.
+- Consequence: a default-suite test-strength gap, not a correctness defect (the
+  release-matrix forced-native run and the live task 14.3 run cover the shipped
+  output).
+- Disposition: accepted for v1.1. Post-V1 hardening: add an unguarded
+  default-fingerprint pin test so the default suite guards it directly, and/or
+  keep the forced-native run as an explicit release-checklist step.
+
+### V11-G1. The badge value allowlist (Goal B) was not exercised live (LOW, accepted)
+
+The task 14.3 pinned-host matrix live-verified the settings page, runtime
+activation, post-save re-render, inventory cache, logging, and the
+install/restart/uninstall invariants, including a live `Renderer.Position`/
+`Renderer.Size` change; it did not post a configured `AllowedValues` allowlist
+(recorded as task 14.3 reviewer finding 14.3-R3 and phase-12 finding P12R-F6).
+The allowlist is implementation- and test-verified (Phase 12 review: all six
+acceptance criteria MET; `BadgeAllowlistFilterTests`), and its settings-page
+round-trip uses the same elevation-gated POST path that was live-verified for the
+other renderer settings.
+
+- Evidence: `docs/implementation/14.3/reviewer-report.json` 14.3-R3;
+  `docs/implementation/phase-12/phase-review.json` P12R-F6 and the six MET
+  criteria; `tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs`.
+- Consequence: the Goal B live confirmation remains an unexercised live facet.
+- Disposition: accepted for v1.1; optional post-V1: extend the pinned-host
+  matrix with one allowlist save/re-render row.
+
+### V11-G2. Phase-review LOW residuals (accepted, tracked)
+
+The Phase 9-13 reviews carry the following non-blocking LOW/INFORMATIONAL
+residuals, each tracked in its phase review/orchestration record: P9-F2 (a save
+that changes only a non-output-affecting value caused a bounded full-library
+provider sweep before the Phase 11 inventory cache landed; superseded by the
+cache), P9-F3 (cleared numeric page inputs can produce an opaque host
+deserialization error instead of the bounded rejection; no state corruption),
+P9-F4 (two task 9.1 test-quality items: host-guarded fact strength and the
+never-unregistered ALC resolver), P10-F5 (a future instrumented type omitted from
+`RegisterArrTagsLogs` would fail silently; all eleven current types are
+registered), P11R-F7 (unwired `ArrInventoryCacheEntry.WithFailure`/`LastError`/
+`EvaluateState` members, docs honest), P11R-F8 (no DI-composition test for the
+shared inventory singleton), P11R-F9 (the inventory byte bound is a conservative
+estimate; the record cap is the hard bound), P11R-F10 (bulk-id chunk size reuses
+`ReconciliationBatchSize` rather than a request-line bound), P12R-F2/P13-F3
+(stale source XML doc comments on the private `AppendBadgePlacement` helpers),
+P12R-F5 (no single end-to-end allowlist/position/size composition test; seams
+covered separately), and P13-F4/P13-F5 (record/wording nits in the 13.2
+orchestration and the changelog/PLANS scope wording).
+
+- Evidence: `docs/implementation/phase-{9,10,11,12,13}/phase-review.json` and
+  `orchestration.json`.
+- Consequence: bounded test-strength, record-keeping, or UX-polish debt; no
+  correctness, security, or capability impact.
+- Disposition: accepted for v1.1; post-V1 cleanup as opportunities arise.
+
+### V11-G3. Carried release LOWs from the `1.0.1.0` audit (accepted)
+
+RR101-1: `README.md` presents the catalog and manual install paths without a
+pre-publication caveat, while this file's P6 records that the `v1.1.0` manifest,
+tag, and GitHub release are the user's pending manual step; the README becomes
+accurate once the user publishes. RR101-2: `scripts/publish-release.sh
+--release-only` checks the manifest and local tag but does not pre-verify that
+the local artifact exists and its MD5 equals the manifest checksum (the
+post-upload verification still rejects a mismatch), and the jq-less checksum
+fallback selects the first manifest checksum.
+
+- Evidence: `docs/implementation/final-review/release-review.1.0.1.json`
+  RR101-1/RR101-2; `scripts/publish-release.sh`; this file's P6.
+- Consequence: a documentation-honesty gap and a manual-publish-step
+  fail-slow gap; neither affects the built artifact.
+- Disposition: accepted for v1.1 as carried history; optional post-V1: add a
+  README caveat note and fail-fast artifact/checksum pre-checks to the publish
+  script.
+
+### V11-G4. Stale "owned by task 14.3" pending phrasing in a few current-state surfaces (LOW, accepted)
+
+`README.md` (known-limitations bullet) and this file's F1 status/consequence
+lines still present the task 14.3 live pinned-host confirmation as pending, and
+some Phase 11/12/13 sentences in `docs/project-status.md`,
+`docs/architecture.md`, and `docs/implementation-readiness.md` retain the same
+pre-14.3 framing, while task 14.3 is complete and passed all eight matrix rows.
+
+- Evidence: `README.md:201`; `docs/limitations.md` F1 (the "owned by task 14.3"
+  lines); `docs/implementation/14.3/live-verification.json`
+  (`overall_verdict` `PASS`); the v1.1 release audit's independent live re-run of
+  the same pinned host (install/load, publication, readback identity, source
+  preservation, provider outage, restart persistence, uninstall drain; all
+  PASS).
+- Consequence: those sentences understate completed verification; no claim is
+  overstated. Correct in the next documentation-only pass; no code or rebuild
+  impact.
+
 ## Deliberate V1 scope exclusions
 
 These are recorded in `GOALS.md` (Initially out of scope), ADR-006, ADR-008, and
