@@ -1,0 +1,54 @@
+{
+  "task": "publish-release-changelog",
+  "title": "publish-release.sh --release-only reads the changelog from manifest.json (no dotnet)",
+  "phase": "post-release tooling fix",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 49168,
+        "output_tokens": 8232,
+        "reasoning_tokens": 9217,
+        "cache_read_tokens": 923392,
+        "cache_write_tokens": 0,
+        "total_tokens": 990009,
+        "cost_usd": 0.020614776,
+        "duration_seconds": 176,
+        "session_id": "ses_f2ac98c62ffe7RXrOvaiJL8Lmo"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 26322,
+        "output_tokens": 9671,
+        "reasoning_tokens": 14708,
+        "cache_read_tokens": 655360,
+        "cache_write_tokens": 0,
+        "total_tokens": 706061,
+        "cost_usd": 0.02054178,
+        "duration_seconds": 139,
+        "session_id": "ses_f2ac67c88ffeAcMu8gjDKyDKKl"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "User-requested post-release tooling fix: `./scripts/publish-release.sh --release-only --no-push` failed with `dotnet: command not found` because the release-only path unconditionally computed the GitHub release-notes body via `dotnet run scripts/write-manifest.cs -- --print-changelog`. The changelog for the version is already present in the committed manifest.json entry (which --release-only already requires for the checksum), so the script now reads it from there.",
+    "Change: added an `extract_changelog` helper next to `extract_checksum` (jq with the same $guid/$version selection style when available; otherwise a sed fallback consistent with the existing no-jq checksum fallback, with best-effort unescaping of \\\" and \\\\). The `dotnet ... --print-changelog` invocation is now only a fallback when the manifest value is empty and dotnet is available; if nothing yields a changelog the script fails with a clear error naming manifest.json and the version. docs/release/build-and-release.md was updated to describe this. No other publish-release behavior changed (checksum, push, gh/REST publish, upload, MD5 verification, --dry-run/--prepare-only/default modes and the write-manifest.cs write path are untouched).",
+    "Independent review APPROVED with no blockers/required changes. The reviewer independently reproduced the no-dotnet run (env file temporarily moved with a trap restore; `env PATH=/usr/bin:/bin ./scripts/publish-release.sh --release-only --no-push`) and confirmed it gets past the changelog step with no `command not found`, stopping only at the expected 'neither gh nor GITHUB_TOKEN/GH_TOKEN' error, that jq and the sed fallback produce the same 803-byte changelog equal to the manifest 1.1.0.0 entry, and that /config/arrtags-env.sh was restored.",
+    "Tracked LOW findings (non-blocking): PRC-R1 (pre-existing: the `extract_checksum` no-jq `sed | head` fallback can exit 141 (SIGPIPE) under `set -euo pipefail` when jq is absent; jq 1.8.2 is present in the release environment, so unaffected), PRC-R2 (a jq `null` for a missing changelog field would be non-empty; unreachable because write-manifest.cs requires changelog), PRC-R3 (the sed fallback takes the first changelog line without a version filter, consistent with the existing newest-first checksum fallback).",
+    "This is a post-release tooling fix committed after the v1.1.0 tag (which stays on bbeb557). It does not alter the plugin, the artifact, manifest.json, build metadata, or the tag. No push or GitHub release was performed.",
+    "Runtime figures are authoritative from the OpenCode session usage endpoint (.opencode/scripts/collect-session-usage.sh); no values were estimated."
+  ]
+}

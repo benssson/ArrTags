@@ -248,13 +248,39 @@ if [ "$do_release" -eq 1 ]; then
         fi
     }
 
+    extract_changelog() {
+        if command -v jq >/dev/null 2>&1; then
+            jq -r --arg guid "$guid" --arg version "$version" \
+                '.[] | select(.guid==$guid) | .versions[] | select(.version==$version) | .changelog' \
+                manifest.json | head -n1
+        else
+            # Versions are written newest-first with one property per line, so the
+            # first "changelog" line is the current version's entry. Unescape the
+            # common JSON escapes as a best effort.
+            sed -n 's/.*"changelog":[[:space:]]*"\(.*\)".*/\1/p' manifest.json \
+                | head -n1 \
+                | sed -e 's/\\\\/\\/g' -e 's/\\"/"/g'
+        fi
+    }
+
     manifest_checksum="$(extract_checksum)"
     if [ -z "$manifest_checksum" ]; then
         echo "ERROR: manifest.json has no checksum for version ${version}." >&2
         exit 1
     fi
 
-    changelog="$(dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml)"
+    # The committed manifest.json already carries the release-notes body for
+    # this version, so --release-only does not require the .NET SDK. Fall back to
+    # the file-based app only when the manifest has no changelog entry.
+    changelog="$(extract_changelog)"
+    if [ -z "$changelog" ] && command -v dotnet >/dev/null 2>&1; then
+        changelog="$(dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml)" || changelog=""
+    fi
+    if [ -z "$changelog" ]; then
+        echo "ERROR: manifest.json has no changelog for version ${version}, and the 'dotnet' fallback is unavailable or produced nothing." >&2
+        echo "       Re-run --prepare-only (or the default mode) with the .NET SDK to write the manifest entry." >&2
+        exit 1
+    fi
 
     tmp_dir="$(mktemp -d)"
     trap 'rm -rf "$tmp_dir"' EXIT

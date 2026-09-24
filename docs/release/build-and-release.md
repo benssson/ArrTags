@@ -280,8 +280,10 @@ the current version (replacing an existing same-version entry), preserves any
 other plugin and version entries, and writes stable indented JSON (2-space
 indent, UTF-8 without BOM, one trailing newline), so identical inputs produce
 byte-identical output. It also supports `--print-changelog` to print the
-`build.yaml` `changelog` value for the GitHub release notes. It is not part of
-the solution and adds no plugin dependency.
+`build.yaml` `changelog` value; this is used only as a fallback for the GitHub
+release notes, because the normal release path reads the changelog from the
+committed `manifest.json` entry instead. It is not part of the solution and adds
+no plugin dependency.
 
 `scripts/publish-release.sh` is the release orchestrator over
 `./build.sh restore/build/test/package`, SHA-256/MD5 computation, manifest
@@ -298,7 +300,10 @@ post-upload MD5 verification. It has three modes:
   then creates/refreshes the GitHub release and uploads the asset with a
   post-upload MD5 verification. It performs no build, manifest, commit, or tag;
   the local tag must already exist (created by `--prepare-only`), and the script
-  fails if it does not.
+  fails if it does not. The release notes are read from the committed
+  `manifest.json` entry for the version, so no .NET SDK is required when that
+  entry exists; `dotnet run scripts/write-manifest.cs -- --print-changelog` is
+  used only as a fallback when the manifest has no changelog entry.
 
 The default mode (no mode flag) prepares the manifest/tag and publishes the
 GitHub release in one run. Other flags are `--skip-build`, `--skip-tests`,

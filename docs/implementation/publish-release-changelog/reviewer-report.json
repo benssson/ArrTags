@@ -1,0 +1,125 @@
+{
+  "task": "publish-release-changelog",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "findings": [
+    {
+      "id": "PRC-R1",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "correctness / pre-existing no-jq path",
+      "summary": "The new no-jq sed fallback for the changelog is unreachable end-to-end because the pre-existing extract_checksum sed|head pipeline exits 141 (SIGPIPE) under set -euo pipefail when jq is absent.",
+      "detail": "The added changelog sed fallback is correct in isolation (identical to the manifest value), but when jq is absent the script dies before reaching it: extract_checksum's pre-existing `sed ... manifest.json | head -n1` pipeline (line ~247, unchanged from HEAD 4cb625a) deterministically returns 141 because pipefail propagates sed's SIGPIPE/EPIPE after head -n1 closes the pipe. Reproduced with `env PATH=<farm-without-jq> ./scripts/publish-release.sh --release-only --no-push` -> exit 141, output ending after the banner. Not introduced by this task; the assigned no-dotnet path uses jq (present at /usr/bin/jq), so the acceptance criteria are unaffected. Noted so the fallback's practical reachability is not overstated.",
+      "evidence": [
+        "git show HEAD:scripts/publish-release.sh -> extract_checksum block byte-identical to working tree",
+        "set -euo pipefail; x=\"$(sed -n 's/.*\"checksum\":.../p' manifest.json | head -n1)\" -> exit 141 (no echo)",
+        "env PATH=<symlink-farm without jq> ./scripts/publish-release.sh --release-only --no-push -> rc=141 x3"
+      ],
+      "recommended_action": "No action required for this task (pre-existing, out of diff scope, jq present in the release environment). Optionally, if a jq-free path is ever a goal, make extract_checksum robust to SIGPIPE (e.g. drop head -n1 or ignore the pipeline status)."
+    },
+    {
+      "id": "PRC-R2",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "correctness / edge case",
+      "summary": "With jq present, a version entry that lacks a changelog field yields the literal string \"null\" from `jq -r`, which is non-empty, so the emptiness guard would not trigger the fallback/error path.",
+      "detail": "`jq -r ... | .changelog` prints `null` when the field is absent, so `[ -z \"$changelog\" ]` is false and the script would use the literal text 'null' as the release notes. This mirrors the pre-existing extract_checksum behavior (same pattern for `checksum`) and is not reachable in practice because scripts/write-manifest.cs treats changelog as a required field (`Required(\"changelog\")` -> usage error if missing), so every generated manifest entry carries a changelog. The sed fallback avoids this by only matching a quoted `\"changelog\"` line.",
+      "evidence": [
+        "scripts/publish-release.sh lines 251-283",
+        "scripts/write-manifest.cs line 116/119: changelog is Required; error if missing"
+      ],
+      "recommended_action": "No action required (theoretical; matches existing style). If desired, guard against the literal 'null'."
+    },
+    {
+      "id": "PRC-R3",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "correctness / sed fallback fidelity",
+      "summary": "The changelog sed fallback selects the first `\"changelog\"` line regardless of guid/version (as does the pre-existing checksum fallback); it is only correct because manifest.json currently lists the target version first.",
+      "detail": "The sed branch takes `head -n1` of all changelog lines rather than filtering by version. On the current manifest.json the 1.1.0.0 entry (the script's version) is first, so the result is byte-identical to the jq/manifest value. If a future manifest listed a different version first while build.yaml targeted another version, and jq were absent, the sed fallback would silently return the wrong notes. This matches the established best-effort style of extract_checksum's no-jq branch and the worker documented it as a known limitation. The jq branch (used whenever jq is available, i.e. the normal release environment) selects by guid+version correctly.",
+      "evidence": [
+        "manifest.json lists 1.1.0.0 first, then 1.0.1.0",
+        "extract_changelog sed branch uses `head -n1` with no version filter",
+        "worker-report known_limitations documents the newest-first assumption"
+      ],
+      "recommended_action": "No action required; acceptable for the current format and consistent with the existing checksum fallback."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "release-only derives the changelog from manifest.json without requiring dotnet",
+      "met": true,
+      "evidence": "New extract_changelog helper (jq by guid/version, else sed) is invoked at line 275; the dotnet invocation is now conditional (line 276: only when the manifest value is empty AND command -v dotnet succeeds). Ran `env PATH=/usr/bin:/bin ./scripts/publish-release.sh --release-only --no-push` (dotnet absent) -> passed the changelog step, exit 1 only at 'neither the gh CLI nor GITHUB_TOKEN/GH_TOKEN is available', with zero 'command not found' occurrences."
+    },
+    {
+      "criterion": "jq branch selects the current guid/version changelog with the same style as extract_checksum",
+      "met": true,
+      "evidence": "jq -r --arg guid --arg version '.[] | select(.guid==$guid) | .versions[] | select(.version==$version) | .changelog' manifest.json | head -n1; bash -x trace of the real script shows changelog='<value>' matching the manifest 1.1.0.0 entry exactly (802 chars)."
+    },
+    {
+      "criterion": "pure-shell sed fallback yields the same changelog value",
+      "met": true,
+      "evidence": "Independent run of `sed -n 's/.*\"changelog\":[[:space:]]*\"\\(.*\\)\".*/\\1/p' manifest.json | head -n1 | sed -e 's/\\\\\\\\/\\\\/g' -e 's/\\\\\"/\"/g'` produced 803 bytes (incl. trailing newline), byte-identical (diff clean) to the jq output for the 1.1.0.0 entry."
+    },
+    {
+      "criterion": "clear error naming manifest.json and the version when nothing yields a changelog",
+      "met": true,
+      "evidence": "Lines 279-283 print \"ERROR: manifest.json has no changelog for version ${version}, and the 'dotnet' fallback is unavailable or produced nothing.\" and exit 1; dotnet fallback failure is swallowed via `|| changelog=\"\"` so the message path is reached."
+    },
+    {
+      "criterion": "dotnet is only a fallback when the manifest value is empty and dotnet is available",
+      "met": true,
+      "evidence": "Line 276: `if [ -z \"$changelog\" ] && command -v dotnet >/dev/null 2>&1; then`; the unconditional dotnet --print-changelog call was removed. The only other dotnet use (line 174, manifest write path) is unchanged and inside the prepare branch."
+    },
+    {
+      "criterion": "no other publish-release behavior changed",
+      "met": true,
+      "evidence": "Diff touches only the two script hunks (new extract_changelog + changelog sourcing) and two docs hunks. `git diff --name-only HEAD` = scripts/publish-release.sh, docs/release/build-and-release.md. extract_checksum is byte-identical to HEAD; checksum validation, RELEASE_ONLY tag/push logic, gh/REST publish, asset upload, post-upload MD5 verification, and the dry-run/prepare-only/default mode branches are unchanged."
+    },
+    {
+      "criterion": "bash -n passes and set -euo pipefail/quoting safety preserved",
+      "met": true,
+      "evidence": "`bash -n scripts/publish-release.sh` -> SYNTAX_OK. New code uses quoted expansions (`\"$changelog\"`, `\"$guid\"`, `\"$version\"`) and `command -v`, matches the existing helper style, and does not require dotnet."
+    },
+    {
+      "criterion": "normal dotnet-on-PATH run behaves identically",
+      "met": true,
+      "evidence": "`. /config/arrtags-env.sh && ./scripts/publish-release.sh --release-only --no-push` -> dotnet=/config/.dotnet/dotnet, passed the changelog step, exit 1 at the same gh/token error, no 'command not found'."
+    },
+    {
+      "criterion": "scope: no plugin/tests/build.yaml/manifest.json/props/artifacts/tag/commit changed; docs accurate",
+      "met": true,
+      "evidence": "build.yaml, manifest.json, Directory.Build.props all 'unchanged' vs HEAD; HEAD still 4cb625a; no new tags; git status shows only the 2 modified files plus the untracked implementation dir. docs/release/build-and-release.md now states release notes come from the committed manifest.json entry (no .NET SDK needed when present) and --print-changelog is only a fallback; it does not claim --release-only works without GitHub credentials."
+    }
+  ],
+  "validation_reproduced": [
+    "bash -n scripts/publish-release.sh -> SYNTAX_OK",
+    "No-dotnet: moved /config/arrtags-env.sh aside with trap restore; `env PATH=/usr/bin:/bin ./scripts/publish-release.sh --release-only --no-push` -> exit 1, output ends at 'ERROR: cannot publish the GitHub release: neither the gh CLI nor GITHUB_TOKEN/GH_TOKEN is available.'; 0 occurrences of 'command not found'; /config/arrtags-env.sh restored (size 325, mtime Sep 21 14:23) and no .arrtags-bak leftover.",
+    "Normal: `. /config/arrtags-env.sh && ./scripts/publish-release.sh --release-only --no-push` -> dotnet=/config/.dotnet/dotnet, exit 1 at identical gh/token error.",
+    "Changelog equality: jq query output (803 bytes incl newline) diff-equal to sed fallback output; bash -x trace of the real script shows changelog=... whose value (802 chars) equals the manifest 1.1.0.0 changelog with newline stripped.",
+    "No-jq real-script run (symlink-farm PATH without jq, env file aside) -> rc=141 x3, before the changelog step; traced to the pre-existing extract_checksum sed|head SIGPIPE (PRC-R1), not the new code.",
+    "Isolated extract_changelog fn under set -euo pipefail -> 10/10 rc=0, 802-char value."
+  ],
+  "tests_checked": [
+    "bash -n syntax check on scripts/publish-release.sh",
+    "End-to-end --release-only --no-push with dotnet absent (jq present)",
+    "End-to-end --release-only --no-push with dotnet present",
+    "jq vs sed changelog extraction equality against manifest.json 1.1.0.0",
+    "bash -x trace of the real script's changelog assignment",
+    "No-jq end-to-end run (symlink farm), isolating pre-existing extract_checksum SIGPIPE"
+  ],
+  "research_checked": [
+    "scripts/write-manifest.cs --print-changelog source (reads build.yaml changelog; not manifest) to confirm fallback semantics",
+    "manifest.json structure and version ordering (1.1.0.0 first)",
+    "git show HEAD:scripts/publish-release.sh to establish extract_checksum is pre-existing and unchanged"
+  ],
+  "documentation_checked": [
+    "docs/release/build-and-release.md (write-manifest.cs --print-changelog description and --release-only bullet) - accurate, no credential overclaim",
+    "docs/implementation/publish-release-changelog/worker-report.json - claims verified against implementation"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

@@ -1,0 +1,31 @@
+{
+  "task": "publish-release-changelog",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Made scripts/publish-release.sh --release-only derive the GitHub release-notes body from the committed manifest.json entry for the current guid/version instead of unconditionally invoking `dotnet run scripts/write-manifest.cs -- --print-changelog`. Added an extract_changelog helper next to extract_checksum: it uses jq (same query style as extract_checksum) when available, otherwise a pure-shell sed fallback consistent with extract_checksum's no-jq fallback (first `\"changelog\"` line, since versions are newest-first and one property per line, with best-effort unescaping of \\\" and \\\\)). The dotnet --print-changelog invocation is now only a fallback, used when the manifest-derived value is empty and dotnet is on PATH; if the value is still empty the script fails with a clear error naming manifest.json and the version. No other behaviour changed (checksum extraction, push logic, gh/REST publish, asset upload, MD5 verification, --dry-run/--prepare-only/default modes, and the write-manifest.cs write path are untouched). Updated docs/release/build-and-release.md so the write-manifest.cs --print-changelog description and the --release-only bullet state that release notes come from manifest.json (no .NET SDK needed when the entry exists) and that --print-changelog is only a fallback.",
+  "validation": [
+    "bash -n scripts/publish-release.sh -> syntax OK.",
+    "shellcheck: not installed in this environment (command -v shellcheck: not found); per instructions it was not installed and lint was skipped.",
+    "No-dotnet path: temporarily renamed /config/arrtags-env.sh to /config/arrtags-env.sh.arrtags-bak (restored via trap and explicit restore, verified with ls -l), ran `env PATH=/usr/bin:/bin ./scripts/publish-release.sh --release-only --no-push` (PATH=/usr/bin:/bin has jq/git/sed/md5sum/sha256sum/mktemp/awk but not dotnet and not gh). Exit code 1; output shows it passed the changelog step and ended only at `ERROR: cannot publish the GitHub release: neither the 'gh' CLI nor GITHUB_TOKEN/GH_TOKEN is available.` No `dotnet: command not found`. /config/arrtags-env.sh restored (size 325, mtime Sep 21 14:23) and no .arrtags-bak left behind.",
+    "No-dotnet changelog value: ran the same no-dotnet scenario with a temporary debug print (added after the changelog check, then removed); extracted value was 803 bytes and `diff` against `jq -r '.[] | select(.guid==$guid) | .versions[] | select(.version==$version) | .changelog' manifest.json` was an exact match (MATCH: script-derived changelog == manifest 1.1.0.0 changelog entry). A bash -x trace of the no-dotnet run also showed the changelog assignment and contained no `dotnet: command not found`.",
+    "No-jq fallback: `sed -n 's/.*\"changelog\":[[:space:]]*\"\\(.*\\)\".*/\\1/p' manifest.json | head -n1 | sed -e 's/\\\\\\\\/\\\\/g' -e 's/\\\\\"/\"/g'` diffed equal to the manifest jq changelog (MATCH).",
+    "Normal run: `. /config/arrtags-env.sh && ./scripts/publish-release.sh --release-only --no-push` -> dotnet resolved at /config/.dotnet/dotnet; passed the changelog step and stopped at the same gh/token error with exit code 1 (identical end state).",
+    "git status --short / git diff --stat after implementation: only `docs/release/build-and-release.md` and `scripts/publish-release.sh` are modified (2 files changed, 35 insertions, 4 deletions); no stray/debug lines remain and the temporary debug edit was fully removed."
+  ],
+  "changed_files": [
+    "scripts/publish-release.sh",
+    "docs/release/build-and-release.md",
+    "docs/implementation/publish-release-changelog/worker-report.json"
+  ],
+  "known_limitations": [
+    "shellcheck is not installed in this environment, so automated shell lint of scripts/publish-release.sh could not be run (bash -n syntax check passed and the script was executed successfully).",
+    "In this environment there is no gh CLI and no GITHUB_TOKEN/GH_TOKEN, so --release-only necessarily ends at the 'cannot publish the GitHub release' error (exit 1) in both the no-dotnet and normal runs; the gh/REST publish, asset upload, and post-upload MD5 verification were not exercised (unchanged by this task and out of scope).",
+    "The no-jq sed fallback is best-effort: it takes the first `\"changelog\"` line (correct for the newest-first, one-property-per-line manifest.json format) and unescapes only `\\\"` and `\\\\`; other JSON escapes (for example \\n or \\uXXXX) are not decoded. It was verified to match the jq output on the current manifest.json."
+  ],
+  "ready_for_next_task": true
+}
