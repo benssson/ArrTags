@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
@@ -211,6 +212,41 @@ public sealed class WebhookResolutionTests : IDisposable
         await Task.Delay(50);
 
         Assert.Equal(1, queue.Count);
+
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ServiceInvalidatesTheEventConnectionInventoryScopedToThatConnection()
+    {
+        var configuration = CreateConfiguration(radarrEnabled: true, sonarrEnabled: true, batchSize: 100);
+        var inventory = new ArrInventoryCacheProvider(configuration);
+        var connections = ArrConnectionCatalog.FromSnapshot(configuration.Current);
+        var radarr = connections.Single(connection => connection.Provider.Kind == ArrProviderKind.Radarr);
+        var sonarr = connections.Single(connection => connection.Provider.Kind == ArrProviderKind.Sonarr);
+        var now = DateTimeOffset.UtcNow;
+
+        Assert.True(inventory.Current.TryStore(radarr, now, Array.Empty<ArrInventoryRecordObservation>()));
+        Assert.True(inventory.Current.TryStore(sonarr, now, Array.Empty<ArrInventoryRecordObservation>()));
+        Assert.Equal(2, inventory.Current.Count);
+
+        using var intake = new WebhookIntake(8);
+        using var service = new WebhookIntakeService(
+            intake,
+            new WebhookReconciliationResolver(_store),
+            new RecordingWorkHintSink(),
+            configuration,
+            inventory: inventory);
+
+        await service.StartAsync(CancellationToken.None);
+        Assert.True(intake.TrySubmit(new WebhookEvent(ArrProviderKind.Radarr, WebhookEventType.Download, movieId: 42)));
+
+        // An accepted event invalidates its own connection's retained set (even
+        // when it resolves to no known item) and leaves the other connection's set
+        // intact, so the invalidation is bounded to the event's scope.
+        await WaitUntilAsync(() => inventory.Current.Count == 1);
+        Assert.False(inventory.Current.TryGet(radarr.ConnectionId, now, out _));
+        Assert.True(inventory.Current.TryGet(sonarr.ConnectionId, now, out _));
 
         await service.StopAsync(CancellationToken.None);
     }

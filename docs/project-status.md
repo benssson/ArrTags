@@ -4,9 +4,9 @@
 
 **Current milestone:** Phase 11 — Provider inventory cache and
 library-refresh-driven refresh (v1.1) is in progress: task 11.1 (inventory cache
-model, bounds, and limits) and task 11.2 (provider-client integration and bulk
-reads) are complete. Task 11.1 defines the canonical, secret-free, in-memory
-per-connection inventory cache shape
+model, bounds, and limits), task 11.2 (provider-client integration and bulk
+reads), and task 11.3 (ArrTags-side invalidation) are complete. Task 11.1 defines
+the canonical, secret-free, in-memory per-connection inventory cache shape
 (`ArrInventoryCache`/`ArrInventoryCacheEntry`/`ArrInventoryRecordObservation`) and
 the inventory TTL and record/byte limits in `OperationalLimits`, validated at
 configuration load and documented in `docs/data-model.md` section 6 and
@@ -20,7 +20,15 @@ another library read; the Radarr repeatable `moviefile?movieId=` selector and th
 Sonarr repeatable `episodeFile?episodeFileIds=` selector replace per-item file
 reads; an over-bound observation set or a failed bulk read keeps the existing
 direct read unchanged; and a provider failure keeps the bounded last-known-good
-observation set until the TTL. ArrTags-side invalidation (11.3) remains, so
+observation set until the TTL. Task 11.3 adds the bounded, thread-safe,
+secret-free ArrTags-side invalidation surface (`ArrInventoryCache.Invalidate`/
+`InvalidateAll` and the `ArrInventoryCacheProvider` equivalents) and wires every
+source: an accepted provider webhook invalidates its connection, and Jellyfin
+library refresh/post-scan, scheduled/manual, and post-save reconciliation
+invalidate at the start of `LibraryReconciliationService.ReconcileAsync`, with the
+bounded inventory TTL as the fallback; the periodic scheduled reconciliation
+continues on its unchanged interval and no provider conditional request, revision
+token, `history/since`, or SignalR dependency is used. Task 11.4 remains, so
 limitation F1 is not yet resolved.
 Phase 10 — Logging with configurable verbosity (v1.1) is
 complete: tasks 10.1 (logging foundation, verbosity configuration, and
@@ -675,8 +683,9 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 Next tasks:
 
 - Phase 11 — Provider inventory cache and library-refresh-driven refresh (v1.1)
-  tasks 11.1 (inventory cache model, bounds, and limits) and 11.2 (provider-client
-  integration and bulk reads) are complete: the canonical, secret-free, in-memory
+  tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
+  integration and bulk reads), and 11.3 (ArrTags-side invalidation) are complete:
+  the canonical, secret-free, in-memory
   per-connection inventory cache boundary
   (`ArrInventoryCache`/`ArrInventoryCacheEntry`/`ArrInventoryRecordObservation`)
   and the inventory TTL and per-connection record/byte limits
@@ -689,8 +698,12 @@ Next tasks:
   consume the cache at the provider-client boundary so one library read per
   connection serves a reconciliation window, using the Radarr repeatable
   `moviefile?movieId=` and Sonarr repeatable `episodeFile?episodeFileIds=`
-  selectors instead of per-item file reads. ArrTags-side invalidation (11.3)
-  remains, so limitation F1 is not yet resolved.
+  selectors instead of per-item file reads; the ArrTags-side invalidation surface
+  is wired to the provider webhook, Jellyfin library refresh/post-scan,
+  scheduled/manual and post-save reconciliation, and the bounded TTL fallback,
+  with no provider conditional request, revision token, `history/since`, or
+  SignalR dependency, and the periodic scheduled reconciliation continues on its
+  unchanged interval. Task 11.4 remains, so limitation F1 is not yet resolved.
 - Phase 10 — Logging with configurable verbosity (v1.1) task 10.1 (logging
   foundation, verbosity configuration, and fingerprint exclusion) is complete:
   the bounded `LogVerbosity` setting (default `Warning`) is validated and

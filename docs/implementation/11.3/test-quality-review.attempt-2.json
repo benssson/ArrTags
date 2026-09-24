@@ -1,0 +1,123 @@
+{
+  "subject": "v1.1 task 11.3 — ArrTags-side provider inventory cache invalidation (test-quality review attempt 2, correction round)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "attempt": 2,
+  "findings": [
+    {
+      "id": "TQ-11.3-1",
+      "severity": "MEDIUM",
+      "status": "closed",
+      "closure": "resolved — independently reproduced",
+      "area": "coverage",
+      "description": "CLOSED. The negative-dependency test now pins both the permitted provider endpoint paths and the permitted query-parameter names in addition to the conditional-header and literal 'history/since'/'h=' exclusions. ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark asserts Assert.Contains(request.Uri.AbsolutePath, AllowedProviderEndpointPaths) and Assert.Contains(key, AllowedProviderQueryKeys) for every captured request. I independently reproduced sensitivity in a throwaway copy under /tmp/final-review/test-quality/arrtags-mut by injecting an unlisted request into the production Radarr read path (RadarrClient.ReadJsonAsync): /api/v3/history?page=1 (avoids the literal markers) failed the test with 'Not found: \"/api/v3/history\"' at line 574, and /api/v3/movie?since=123 (allowed path, unlisted query key) failed with 'Not found: \"since\"' at line 582. The repo was never modified; the throwaway copy was the only mutated tree.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:36-63 (AllowedProviderEndpointPaths, AllowedProviderQueryKeys)",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:562-585 (Assert.NotEmpty + header, path and query-key assertions)",
+        "Throwaway mutation A: injected GET api/v3/history?page=1 in src/ArrTags/Providers/Radarr/RadarrClient.cs ReadJsonAsync -> Failed 1, Passed 0, Total 1; 'Assert.Contains() Failure: Item not found in collection ... Not found: \"/api/v3/history\"' (line 574)",
+        "Throwaway mutation B: injected GET api/v3/movie?since=123 -> Failed 1, Passed 0, Total 1; 'Assert.Contains() Failure: Item not found in set ... Not found: \"since\"' (line 582)",
+        "Repo unchanged after mutations: git status --porcelain matches the pre-review uncommitted set; repo source re-inspected pristine (no MUTATION markers, unmutated SendAsync and InvalidateInventory call)"
+      ],
+      "recommended_action": "None required; TQ-11.3-1 is closed. Optional precision cleanup is recorded as TQ-11.3-6."
+    },
+    {
+      "id": "TQ-11.3-2",
+      "severity": "LOW",
+      "status": "closed",
+      "closure": "resolved — independently reproduced",
+      "area": "meaningfulness",
+      "description": "CLOSED. ReconciliationInvalidatesTheInventoryForEverySource now seeds a set, asserts it is actually served before the reconciliation (TryStore true, Count 1, TryGet(radarr.ConnectionId, now, out retained) true), runs ReconcileAsync for each of PostScan, Scheduled, and PostSave, then asserts it is no longer served (TryGet false) as well as Count 0. I independently reproduced sensitivity in the throwaway copy by commenting out the InvalidateInventory() call in LibraryReconciliationService.ReconcileAsync: the test failed at line 288 ('Assert.False() Failure. Expected: False, Actual: True'). Re-population remains covered by ProviderInventoryCacheIntegrationTests.InvalidatedObservationSetIsRePopulatedOnTheNextRead. The three sources tested are the complete production trigger set: they are exactly the three ReconcileAsync(LibraryReconciliationSource, ...) call sites (ArrTagsReconciliationTask=Scheduled which also covers manual, ArrTagsPostScanTask=PostScan, ConfigurationReconciliationTrigger=PostSave).",
+      "evidence": [
+        "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:252-291 (served-before / not-served-after per source)",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:524-547 (InvalidatedObservationSetIsRePopulatedOnTheNextRead)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationSource.cs (Scheduled covers periodic and manual)",
+        "Throwaway mutation C: commented out InvalidateInventory() in src/ArrTags/Reconciliation/LibraryReconciliationService.cs -> Failed 1, Passed 0, Total 1 (line 288)"
+      ],
+      "recommended_action": "None required; TQ-11.3-2 is closed."
+    },
+    {
+      "id": "TQ-11.3-3",
+      "severity": "LOW",
+      "status": "open",
+      "closure": "unchanged — not in the correction round scope",
+      "area": "coverage",
+      "description": "UNCHANGED. ServiceInvalidatesTheEventConnectionInventoryScopedToThatConnection still constructs WebhookIntakeService directly and passes the ArrInventoryCacheProvider through the optional 'inventory' constructor argument, so it verifies the service logic but not that the production composition root injects the cache. No committed test resolves the hosted WebhookIntakeService from the service registrator and asserts its inventory dependency is present: RegistratorRegistersTheBoundedWebhookIntake only asserts the IHostedService descriptor, and the constructor dependency remains optional (ArrInventoryCacheProvider? inventory = null). A wiring regression would silently disable the shipped webhook invalidation without failing this test. Mitigations remain: ArrInventoryCacheProvider is registered at ArrTagsServiceRegistrator.cs:80 and CreateLibraryReconciliationService uses GetRequiredService<ArrInventoryCacheProvider>() at line 246, so removing the registration fails ConfigurationReconciliationTriggerTests.RegistratorRegistersThePostSaveTriggerAsAHostedService. I independently confirmed the webhook invalidation test is behaviorally sensitive (throwaway mutation D: commenting out InvalidateInventory(webhookEvent, snapshot) failed the test at line 248) and scoped (radarr set invalidated, sonarr set retained).",
+      "evidence": [
+        "tests/ArrTags.Tests/WebhookResolutionTests.cs:219-252 (constructs WebhookIntakeService directly; inventory passed explicitly)",
+        "tests/ArrTags.Tests/WebhookBoundaryTests.cs:427-445 (descriptor-only registrator assertion; no inventory dependency assertion)",
+        "src/ArrTags/Webhooks/WebhookIntakeService.cs constructor (ArrInventoryCacheProvider? inventory = null)",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:80,166,246",
+        "Throwaway mutation D: commented out InvalidateInventory(webhookEvent, snapshot) -> Failed 1 (line 248), confirming test sensitivity"
+      ],
+      "recommended_action": "Optional: add a committed test that resolves the hosted WebhookIntakeService from the registrator and asserts its inventory dependency is present, or make the constructor dependency non-optional so a missing registration fails composition. Carried forward; no 11.3 acceptance criterion depends on it."
+    },
+    {
+      "id": "TQ-11.3-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "closure": "unchanged",
+      "area": "coverage",
+      "description": "UNCHANGED. The else branch in WebhookIntakeService.InvalidateInventory (bounded InvalidateAll when the event's connection cannot be resolved) still has no test. I independently confirmed the branch is unreachable with the current catalog shape: ArrConnectionCatalog.FromSnapshot always returns exactly the Sonarr and Radarr connections (ArrConnectionCatalog.cs returns a fixed two-element array), so ResolveConnection never returns null. The worker report records this as defensive and unreachable; the gap is documented, not hidden.",
+      "evidence": [
+        "src/ArrTags/Webhooks/WebhookIntakeService.cs InvalidateInventory (else -> InvalidateAll) and ResolveConnection",
+        "src/ArrTags/Providers/ArrConnectionCatalog.cs:21-44 (always returns both connections)",
+        "docs/implementation/11.3/worker-report.json known_limitations[2]"
+      ],
+      "recommended_action": "None required while the catalog shape guarantees both connections; revisit if the catalog can omit a connection."
+    },
+    {
+      "id": "TQ-11.3-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "closure": "unchanged",
+      "area": "meaningfulness",
+      "description": "UNCHANGED. InvalidationApiTakesOnlyTheNonSecretConnectionIdentifier is a structural reflection assertion (parameter type ArrConnectionId, bool/void return, exactly 4 declared methods), not behavioral. It supports the secret-free-surface claim but is brittle to any additional public Invalidate/InvalidateAll method and observes no behavior. Acceptable for an API-shape claim.",
+      "evidence": [
+        "tests/ArrTags.Tests/InventoryCacheInvalidationTests.cs:127-157"
+      ],
+      "recommended_action": "None required."
+    },
+    {
+      "id": "TQ-11.3-6",
+      "severity": "LOW",
+      "status": "noted",
+      "closure": "new — independently confirmed; matches implementation-review 11.3-F6",
+      "area": "coverage",
+      "description": "NEW. AllowedProviderEndpointPaths admits /api/v3/system/status, but that path is only used by RadarrClient/SonarrClient.ProbeAsync (private SystemStatusPath constant) and ProbeAsync has no caller anywhere in src; the reconciliation reads exercised by the test never issue it. The allowlist therefore widens the pin beyond the read set, so an injected request to /api/v3/system/status would not fail the negative test, and the test's XML doc calls the six paths 'the complete set of provider endpoints ArrTags is permitted to call for reconciliation reads', which is inaccurate for the probe-only path. This does not undermine the stated negative-dependency claim: ADR-018's research explicitly classifies /system/status as not a library revision token, and the query-key allowlist would still catch a revision/history query on any path. No false confidence for the 'no revision token / history/since / conditional request' acceptance criterion results.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:36-50 (allowlist includes /api/v3/system/status), :52-63 (query-key allowlist), :570-584 (assertions)",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:24,73-77 (SystemStatusPath only in ProbeAsync)",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:24,74-78 (same)",
+        "grep: no .ProbeAsync( caller in src/ArrTags (excluding bin/obj); readers/factory never probe",
+        "docs/decisions.md:2310-2312 (ADR-018 research: /system/status is not a library revision token)",
+        "docs/implementation/11.3/reviewer-report.attempt-2.json 11.3-F6 (same observation)"
+      ],
+      "recommended_action": "Optional cleanup: drop '/api/v3/system/status' from AllowedProviderEndpointPaths so the pin is exactly the read/negotiation set the readers issue, or correct the XML doc to say the pin is the read set plus the probe path. No acceptance criterion depends on this."
+    }
+  ],
+  "matrix_observed": {
+    "default": "1418 passed / 63 skipped / 1481 total (independently re-run: source /config/arrtags-env.sh && ./build.sh test; build 0 warnings / 0 errors; matches the worker report and the changelog)",
+    "host_guarded": "not run — ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment and no /tmp/jf host exists; docs/release/build-and-release.md records only 1.0.1.0-era counts (default 1228/60/1288, host-guarded 1244/44/1288) and states the v1.1 release task refreshes the matrix (limitation V6)",
+    "forced_native": "not run — ARRTAGS_SKIA_COMPAT is unset; the ADR-010 forced-native mode is documented in PLANS.md (e.g. 655 passed / 1 skipped / 656 total for the Phase 4 run) but is not part of the release matrix in docs/release/build-and-release.md",
+    "focused_11_3_classes": "70 passed / 0 skipped / 70 total (InventoryCacheInvalidationTests + ProviderInventoryCacheIntegrationTests + ReconciliationTriggerTests + WebhookResolutionTests; independently re-run twice with identical results)"
+  },
+  "substitutes_checked": [
+    "HTTP boundary: RecordingHandler / CapturingHandler / BlockingLibraryHandler are fake HttpMessageHandlers; the real RadarrClient/SonarrClient, ArrReadClientFactory, RadarrMetadataReader/SonarrMetadataReader, ArrInventoryCache and ArrInventoryCacheProvider are exercised. Only the network is doubled. The 11.3 negative-dependency test captures the real requests the production readers issue.",
+    "Jellyfin boundaries in ReconciliationTriggerTests: FakeMediaLibraryEnumerator, ReconciliationLibraryResolver, RecordingWorkHintSink, RecordingProgress. The real LibraryReconciliationService, ArrTagsReconciliationTask and ArrTagsPostScanTask are exercised; the test's invalidation is observed on the real ArrInventoryCacheProvider/ArrInventoryCache the service calls.",
+    "Webhook path: real WebhookIntake, WebhookReconciliationResolver, ConfigurationSnapshotService, ArrInventoryCacheProvider and the hosted WebhookIntakeService loop are exercised; only IWorkHintSink is a recording double. The inventory dependency is passed explicitly (see TQ-11.3-3).",
+    "Gap versus the real host: no live Jellyfin or Arr host was run for this task; live pinned-host verification remains task 14.3. No substitute is presented as live verification."
+  ],
+  "skips_checked": [
+    "No task 11.3 test is skipped: the four focused classes ran 70 passed / 0 skipped / 70 total in both independent runs, and a targeted scan of the skipped list shows no InventoryCacheInvalidationTests, ProviderInventoryCacheIntegrationTests, ReconciliationTriggerTests, or WebhookResolutionTests entry.",
+    "The 63 default-suite skips are pre-existing environment guards unrelated to 11.3: JellyfinHostFactAttribute (ARRTAGS_JELLYFIN_HOST_DIR), NonCanonicalRuntimeFactAttribute (ARRTAGS_NONCANONICAL_GOLDENS), SkiaNativeTheory/Fact (ARRTAGS_SKIA_COMPAT), PackagedPluginFactAttribute (no package archive), and the Skia/native render, golden, and Jellyfin image-response tests. The task 11.3 classes use only plain [Fact].",
+    "The guards fail (not silently pass) when their environment variable is set but the required input is missing, per their attribute XML docs."
+  ],
+  "determinism_checked": [
+    "Focused suite re-run twice: 70/0/70 both times. Full default suite: 1418/63/1481, matching the worker report.",
+    "No wall-clock dependence in the 11.3 assertions: TTL tests use fixed observation offsets (observedAt +/- fixed seconds) rather than elapsed real time; the webhook and reconciliation tests use bounded polling with a 5 s deadline and then assert, so a timeout surfaces as a failure (the not-served-after assertion fails) rather than a silent pass.",
+    "InvalidationIsSafeConcurrentlyWithReadsPopulationsAndInvalidations uses Parallel.For but asserts only that no exception escaped, which is an order-independent outcome.",
+    "No shared mutable static state: the only static fields are an immutable string[]/HashSet and a Type[]; each test creates its own cache/configuration/repository/temp root.",
+    "ReconciliationInvalidatesTheInventoryForEverySource re-seeds the cache each iteration and is independent of iteration order; the three sources share no state beyond the harness queue/sink, which the test does not assert on.",
+    "Mutation sensitivity (throwaway copy under /tmp/final-review/test-quality/arrtags-mut, all mutations reverted and the repo left unchanged): unlisted path /api/v3/history?page=1 -> Failed 1; unlisted query key since -> Failed 1; reconciliation InvalidateInventory removed -> Failed 1; webhook InvalidateInventory removed -> Failed 1. Every required 11.3 claim remains falsifiable."
+  ],
+  "summary": "Attempt-2 correction round verified. TQ-11.3-1 is CLOSED: the negative-dependency test now pins the provider endpoint path allowlist and the query-key allowlist, and I independently reproduced sensitivity with two throwaway-copy mutations (unlisted /api/v3/history?page=1 fails at the path assertion; allowed path with an unlisted 'since' query key fails at the query-key assertion). TQ-11.3-2 is CLOSED: the per-source reconciliation test now observes the seeded set served before and no longer served after, and removing InvalidateInventory() fails it. TQ-11.3-3 remains open (LOW, unchanged): the webhook invalidation is still verified off the production composition root with an optional dependency, though the webhook test is behaviorally sensitive and scoped and the registration removal is caught by another test. TQ-11.3-4 and TQ-11.3-5 are unchanged informational notes. One new LOW (TQ-11.3-6, matching implementation-review 11.3-F6): the endpoint allowlist admits the probe-only /api/v3/system/status, which the reads never call, so the pin is slightly wider than the read set and the test's XML doc overstates it; this does not undermine the revision-token/history claim because ADR-018 classifies system/status as not a library revision token. Independently re-run: build 0 warnings/0 errors; focused classes 70 passed / 0 skipped / 70 total (twice); full default suite 1418 passed / 63 skipped / 1481 total. No 11.3 test is skipped, determinism is sound, and the tests exercise the real production types with only the network and the Jellyfin enumeration boundary doubled. No BLOCKER or HIGH remains; PASS_WITH_FINDINGS."
+}

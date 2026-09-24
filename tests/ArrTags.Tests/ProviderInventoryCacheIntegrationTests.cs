@@ -33,6 +33,35 @@ public sealed class ProviderInventoryCacheIntegrationTests
 {
     private const string ApiKey = "inventory-super-secret";
 
+    /// <summary>
+    /// The complete set of provider endpoints ArrTags is permitted to call for
+    /// reconciliation reads. A revision-token poll, a <c>history/since</c>
+    /// watermark, the <c>?h=</c> cacheable bypass, or any other unlisted path
+    /// fails the negative-dependency test by not being a member of this set.
+    /// </summary>
+    private static readonly string[] AllowedProviderEndpointPaths =
+    {
+        "/api/v3/system/status",
+        "/api/v3/movie",
+        "/api/v3/moviefile",
+        "/api/v3/series",
+        "/api/v3/episode",
+        "/api/v3/episodeFile",
+    };
+
+    /// <summary>
+    /// The complete set of query-parameter names the documented reconciliation
+    /// endpoints may carry. A cacheable-bypass or history watermark parameter
+    /// fails by not being a member of this set.
+    /// </summary>
+    private static readonly HashSet<string> AllowedProviderQueryKeys = new(StringComparer.Ordinal)
+    {
+        "movieId",
+        "seriesId",
+        "includeEpisodeFile",
+        "episodeFileIds",
+    };
+
     [Fact]
     public async Task RadarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow()
     {
@@ -492,6 +521,95 @@ public sealed class ProviderInventoryCacheIntegrationTests
         Assert.Empty(handler.Requests);
     }
 
+    [Fact]
+    public async Task InvalidatedObservationSetIsRePopulatedOnTheNextRead()
+    {
+        var (configuration, radarr, _) = BuildConfiguration();
+        var handler = new RecordingHandler(uri => RadarrResponder(uri, fail: false));
+        var (reader, inventory) = BuildRadarrReader(configuration, handler);
+
+        await reader.ReadAsync(MovieIdentity(603), radarr, CancellationToken.None);
+        Assert.Equal(1, inventory.Current.Count);
+        Assert.Equal(1, CountRequests(handler, "/api/v3/movie"));
+
+        // An ArrTags-side invalidation source (webhook, library refresh/post-scan,
+        // or scheduled/manual reconciliation) discards the retained set; the next
+        // read must re-populate from the provider instead of serving the prior set.
+        Assert.True(inventory.Invalidate(radarr.ConnectionId));
+        Assert.Equal(0, inventory.Current.Count);
+
+        var result = await reader.ReadAsync(MovieIdentity(603), radarr, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Bluray-1080p", result.Metadata!.Quality!.Label);
+        Assert.Equal(2, CountRequests(handler, "/api/v3/movie"));
+        Assert.Equal(1, inventory.Current.Count);
+    }
+
+    [Fact]
+    public async Task ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark()
+    {
+        var (configuration, radarr, sonarr) = BuildConfiguration();
+        var handler = new CapturingHandler(CombinedResponder);
+        var radarrReader = new RadarrMetadataReader(
+            BuildFactory(configuration, handler), log: null, inventory: new ArrInventoryCacheProvider(configuration));
+        var sonarrReader = new SonarrMetadataReader(
+            BuildFactory(configuration, handler), log: null, inventory: new ArrInventoryCacheProvider(configuration));
+
+        await radarrReader.ReadAsync(MovieIdentity(603), radarr, CancellationToken.None);
+        await sonarrReader.ReadAsync(EpisodeIdentity(12345, 9001), sonarr, CancellationToken.None);
+
+        Assert.NotEmpty(handler.Requests);
+        foreach (var request in handler.Requests)
+        {
+            // No provider conditional request: the reads never send a validator.
+            Assert.DoesNotContain("If-None-Match", request.HeaderNames, StringComparer.OrdinalIgnoreCase);
+            Assert.DoesNotContain("If-Modified-Since", request.HeaderNames, StringComparer.OrdinalIgnoreCase);
+            Assert.DoesNotContain("If-Match", request.HeaderNames, StringComparer.OrdinalIgnoreCase);
+
+            // The request set is pinned: every request must target a documented
+            // reconciliation endpoint, so an unnamed revision-token or
+            // history/since fetch (or any other unlisted path) fails the test
+            // rather than passing because it avoided the literal markers.
+            Assert.Contains(request.Uri.AbsolutePath, AllowedProviderEndpointPaths);
+
+            // The query is pinned too: no history watermark or cacheable-bypass
+            // parameter, and no parameter outside the documented selectors.
+            Assert.DoesNotContain("history/since", request.Uri.PathAndQuery, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("h=", request.Uri.PathAndQuery, StringComparison.OrdinalIgnoreCase);
+            foreach (var key in QueryKeys(request.Uri))
+            {
+                Assert.Contains(key, AllowedProviderQueryKeys);
+            }
+        }
+    }
+
+    private static IEnumerable<string> QueryKeys(Uri uri)
+    {
+        var query = uri.Query;
+        if (query.StartsWith('?'))
+        {
+            query = query[1..];
+        }
+
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=', StringComparison.Ordinal);
+            if (separator > 0)
+            {
+                yield return pair[..separator];
+            }
+        }
+    }
+
+    private static HttpResponseMessage CombinedResponder(Uri uri)
+    {
+        var response = RadarrResponder(uri, fail: false);
+        return response.StatusCode == HttpStatusCode.NotFound
+            ? SonarrResponder(uri, embeddedFile: true)
+            : response;
+    }
+
     private static IEnumerable<string> ObservationStrings(ArrInventoryRecordObservation observation)
     {
         var candidate = observation.Candidate;
@@ -793,6 +911,33 @@ public sealed class ProviderInventoryCacheIntegrationTests
             return Task.FromResult(_responder(request.RequestUri!));
         }
     }
+
+    /// <summary>
+    /// Records the request URI and header names so a test can assert the provider
+    /// reads send no conditional validator or revision-token poll. It snapshots
+    /// the values at send time rather than retaining the (possibly disposed)
+    /// request message.
+    /// </summary>
+    private sealed class CapturingHandler : HttpMessageHandler
+    {
+        private readonly Func<Uri, HttpResponseMessage> _responder;
+
+        public CapturingHandler(Func<Uri, HttpResponseMessage> responder)
+        {
+            _responder = responder;
+        }
+
+        public List<CapturedRequest> Requests { get; } = new();
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var headerNames = request.Headers.Select(header => header.Key).ToArray();
+            Requests.Add(new CapturedRequest(request.RequestUri!, headerNames));
+            return Task.FromResult(_responder(request.RequestUri!));
+        }
+    }
+
+    private sealed record CapturedRequest(Uri Uri, IReadOnlyList<string> HeaderNames);
 
     /// <summary>
     /// Records requests and holds the first library request open so a concurrent

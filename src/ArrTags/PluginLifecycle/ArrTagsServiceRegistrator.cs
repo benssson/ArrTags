@@ -242,7 +242,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<IMediaLibraryEnumerator>(),
             serviceProvider.GetRequiredService<IWorkHintSink>(),
             serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>(),
-            serviceProvider.GetRequiredService<IArrTagsLog<LibraryReconciliationService>>());
+            serviceProvider.GetRequiredService<IArrTagsLog<LibraryReconciliationService>>(),
+            serviceProvider.GetRequiredService<ArrInventoryCacheProvider>());
     }
 
     private static ConfigurationSnapshotService CreateConfigurationSnapshotService(IServiceProvider serviceProvider)

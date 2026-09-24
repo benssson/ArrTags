@@ -1,0 +1,46 @@
+{
+  "task": "11.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented ArrTags-side provider inventory cache invalidation (ADR-018 clause 3). ArrInventoryCache gained a bounded, thread-safe Invalidate(ArrConnectionId)/InvalidateAll() surface that removes retained observation sets under the same gate as TryStore/TryGet (no lock held across provider I/O, safe concurrently with reads and populations); ArrInventoryCacheProvider exposes the same surface against the cache resolved from the current configuration snapshot. An accepted provider webhook (ADR-012) invalidates the event's provider/connection from the hosted WebhookIntakeService loop before any hint is enqueued (bounded invalidate-all when the connection cannot be resolved), never blocking or throwing into the Jellyfin request. Jellyfin library refresh/post-scan, manual and periodic scheduled, and post-save reconciliation all invalidate at the start of LibraryReconciliationService.ReconcileAsync so their work begins a fresh provider-read window; the periodic scheduled reconciliation keeps its unchanged 12-hour default interval and still enqueues work (v1.1 is not refresh-only). The bounded TTL fallback remains in TryGet. No provider conditional request, ETag/If-None-Match, revision token, history/since watermark, or SignalR dependency was added; the invalidation API carries only the non-secret connection identifier. The in-flight population interaction is documented: a population that completes after an invalidation may store the read it took before it, bounded by the configured TTL and repaired by the next webhook/refresh/scheduled/manual reconciliation.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~InventoryCacheInvalidationTests|FullyQualifiedName~ProviderInventoryCacheIntegrationTests|FullyQualifiedName~ReconciliationTriggerTests|FullyQualifiedName~WebhookResolutionTests\" -> Failed: 0, Passed: 70, Skipped: 0, Total: 70",
+    ". /config/arrtags-env.sh && ./build.sh test -> Failed: 0, Passed: 1418, Skipped: 63, Total: 1481 (pre-task baseline Failed: 0, Passed: 1407, Skipped: 63, Total: 1470; +11 passed, +11 total, 0 new skips); re-run after the final test-only edit confirmed the same totals",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~ReconciliationTriggerTests\" -> Failed: 0, Passed: 30, Skipped: 0, Total: 30 (after adding the PostSave source to the reconciliation invalidation test)",
+    "git diff inspected for accidental/unrelated changes (source, tests, and documentation only)"
+  ],
+  "changed_files": [
+    "src/ArrTags/Providers/ArrInventoryCache.cs",
+    "src/ArrTags/Providers/ArrInventoryCacheProvider.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationService.cs",
+    "src/ArrTags/Webhooks/WebhookIntakeService.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/InventoryCacheInvalidationTests.cs",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs",
+    "tests/ArrTags.Tests/ReconciliationTriggerTests.cs",
+    "tests/ArrTags.Tests/WebhookResolutionTests.cs",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md",
+    "README.md",
+    "docs/implementation/11.3/worker-report.json"
+  ],
+  "known_limitations": [
+    "In-flight population interaction: a single-flight population already in flight when an invalidation runs may complete afterwards and store the provider read it took before the invalidation. Consequence: that observation set can be served until its configured inventory TTL (StaleUntil), and it is discarded by the next webhook, refresh/post-scan, or scheduled/manual reconciliation; the cache is non-authoritative so correctness does not depend on it. This is the bounded behavior the task asked to document rather than fence with a generation counter.",
+    "Reconciliation invalidation runs after the no-enabled-provider and lifecycle-fence guards in ReconcileAsync, so a run that is skipped for no enabled provider or a raised fence does not invalidate. Consequence: no observation set is discarded for a run that enqueues no work; the next actual reconciliation, webhook, or the TTL still invalidates.",
+    "Webhook connection resolution uses ArrConnectionCatalog.FromSnapshot(current snapshot) by provider kind; because the catalog always returns both provider connections, the bounded invalidate-all fallback is defensive and is not exercised by the current catalog shape.",
+    "Limitation F1 is deliberately not recorded as resolved by this task; task 11.4 records it resolved after the Goal C integration verification. The live pinned-host verification of this behavior remains owned by task 14.3 per the project plan.",
+    "Validation is at the unit/integration-test level (no live Jellyfin or Arr host was run for this task)."
+  ],
+  "ready_for_next_task": true
+}

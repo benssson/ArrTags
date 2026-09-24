@@ -1,0 +1,101 @@
+{
+  "subject": "v1.1 task 11.3 — ArrTags-side provider inventory cache invalidation",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "TQ-11.3-1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "summary": "The 'no provider revision token' part of the negative dependency claim is only partially established.",
+      "description": "ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark behaviorally asserts the absence of conditional headers (If-None-Match/If-Modified-Since/If-Match) and of the literal markers 'history/since' and 'h=' on the captured request URIs, but it does not pin the set of endpoints the reads are allowed to call. A revision/history fetch under any other name (for example /api/v3/system/status or /api/v3/history?page=1) would satisfy the test. Conditional-request coverage and the SignalR assembly guard are non-vacuous (both mutation-confirmed below), so this is a coverage-completeness gap rather than a live defect; the shipped code currently issues only the documented library and bulk-selection endpoints.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:520-547 (ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark)",
+        "Mutation (throwaway copy): adding request.Headers.TryAddWithoutValidation(\"If-None-Match\", ...) in RadarrClient.SendAsync made the test fail (Failed 1) — the conditional-header assertion is sensitive",
+        "The endpoint set is not asserted; only the two excluded substrings are checked, so an unnamed revision/history endpoint is not caught"
+      ],
+      "recommended_action": "Assert that every captured request path is a member of the documented provider endpoint set (/api/v3/movie, /api/v3/moviefile, /api/v3/series, /api/v3/episode, /api/v3/episodeFile). That subsumes the revision-token and history/since exclusions non-vacuously."
+    },
+    {
+      "id": "TQ-11.3-2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "meaningfulness",
+      "summary": "Per-source reconciliation invalidation is observed via Count rather than 'prior set no longer served / next read re-populates'.",
+      "description": "ReconciliationInvalidatesTheInventoryForEverySource observes the effect as ArrInventoryCache.Count dropping to 0 instead of asserting that the prior observation set is no longer served and a subsequent read re-populates. Count is a public observable and the provider-level test InvalidatedObservationSetIsRePopulatedOnTheNextRead does prove the re-read behavior for the cache surface, so the required behavior is established overall; the per-source test is simply weaker than it could be. No false confidence results because InvalidateAll clears the dictionary under the same gate as TryGet.",
+      "evidence": [
+        "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:253-281",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:496-518 (InvalidatedObservationSetIsRePopulatedOnTheNextRead)",
+        "Mutation (throwaway copy): removing the InvalidateInventory() call in LibraryReconciliationService.ReconcileAsync made ReconciliationInvalidatesTheInventoryForEverySource fail (Failed 1, line 279) — the test is sensitive"
+      ],
+      "recommended_action": "Optional strengthening: in the per-source loop assert TryGet(...) returns false (prior set not served) and/or that a subsequent provider read issues a second library request."
+    },
+    {
+      "id": "TQ-11.3-3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "Webhook invalidation is verified off the production composition root; the optional dependency makes a wiring regression silent.",
+      "description": "ServiceInvalidatesTheEventConnectionInventoryScopedToThatConnection constructs WebhookIntakeService directly and passes the ArrInventoryCacheProvider through the optional 'inventory' constructor argument, so it verifies the service logic but not that the production composition root injects the cache. Because that dependency is optional (default null), a wiring regression would silently disable the shipped webhook invalidation without failing this test. This is mitigated: removing the ArrInventoryCacheProvider registration makes the existing ConfigurationReconciliationTriggerTests.RegistratorRegistersThePostSaveTriggerAsAHostedService fail, and a throwaway reflection probe confirmed the DI-composed WebhookIntakeService receives a non-null inventory. The test itself is still behaviorally strong: it proves invalidation is scoped to the event connection (the other connection's set is retained) and happens even when the event resolves to no known item.",
+      "evidence": [
+        "tests/ArrTags.Tests/WebhookResolutionTests.cs:219-252",
+        "src/ArrTags/Webhooks/WebhookIntakeService.cs constructor (inventory parameter optional, default null)",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:80,166",
+        "Mutation (throwaway copy): removing TryAddSingleton<ArrInventoryCacheProvider>() -> RegistratorRegistersThePostSaveTriggerAsAHostedService fails with 'No service for type ArrTags.Providers.ArrInventoryCacheProvider has been registered'",
+        "Throwaway reflection probe: DI-composed WebhookIntakeService._inventory is non-null",
+        "Mutation (throwaway copy): removing the webhook InvalidateInventory(webhookEvent, snapshot) call made ServiceInvalidatesTheEventConnectionInventoryScopedToThatConnection fail (Failed 1, line 248)"
+      ],
+      "recommended_action": "Optional: add a committed test that resolves the hosted WebhookIntakeService from the registrator and asserts its inventory dependency is present, or make the constructor dependency non-optional so a missing registration fails composition."
+    },
+    {
+      "id": "TQ-11.3-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "The webhook bounded invalidate-all fallback for an unresolvable connection is not exercised; honestly documented.",
+      "description": "The else branch in WebhookIntakeService.InvalidateInventory (bounded InvalidateAll when the event's connection cannot be resolved) has no test. The worker report records this explicitly as defensive and unreachable with the current ArrConnectionCatalog shape, which always returns both connections. This is a documented gap, not hidden.",
+      "evidence": [
+        "src/ArrTags/Webhooks/WebhookIntakeService.cs InvalidateInventory (else -> InvalidateAll)",
+        "docs/implementation/11.3/worker-report.json known_limitations[2]"
+      ],
+      "recommended_action": "None required while the catalog shape guarantees both connections; revisit if the catalog can omit a connection."
+    },
+    {
+      "id": "TQ-11.3-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "summary": "InvalidationApiTakesOnlyTheNonSecretConnectionIdentifier is a structural reflection assertion, not behavioral.",
+      "description": "The test reflects over the declared Invalidate/InvalidateAll methods and asserts the parameter type is ArrConnectionId, the return type is bool/void, and exactly 4 such methods exist. It supports the secret-free-surface claim but is brittle to any additional public method and observes no behavior. Acceptable for an API-shape claim.",
+      "evidence": [
+        "tests/ArrTags.Tests/InventoryCacheInvalidationTests.cs:127-157"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "matrix_observed": {
+    "default": "1418 passed / 63 skipped / 1481 total (./build.sh test, observed; matches the worker report exactly)",
+    "focused_11_3_classes": "70 passed / 0 skipped / 70 total (InventoryCacheInvalidationTests + ProviderInventoryCacheIntegrationTests + ReconciliationTriggerTests + WebhookResolutionTests)",
+    "host_guarded": "not run — ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment; the host-guarded counts in docs/release/build-and-release.md are 1.0.1.0-era and were not re-verified against this v1.1 tree",
+    "forced_native": "not documented and not run in this repository/environment"
+  },
+  "substitutes_checked": [
+    "HTTP boundary: RecordingHandler / CapturingHandler / BlockingLibraryHandler are fake HttpMessageHandlers; the real RadarrClient/SonarrClient, ArrReadClientFactory, RadarrMetadataReader/SonarrMetadataReader, ArrInventoryCache and ArrInventoryCacheProvider are exercised. Only the network is doubled.",
+    "Jellyfin boundaries in ReconciliationTriggerTests: FakeMediaLibraryEnumerator, ReconciliationLibraryResolver, RecordingWorkHintSink, RecordingProgress. The real LibraryReconciliationService, ArrTagsReconciliationTask and ArrTagsPostScanTask are exercised.",
+    "Webhook path: real WebhookIntake, WebhookReconciliationResolver, ConfigurationSnapshotService, ArrInventoryCacheProvider and WebhookIntakeService hosted loop are exercised; only IWorkHintSink is a recording double.",
+    "Gap versus the real host: the worker report records 'Validation is at the unit/integration-test level (no live Jellyfin or Arr host was run for this task)' and assigns live pinned-host verification to task 14.3. No substitute is presented as live verification."
+  ],
+  "skips_checked": [
+    "No task 11.3 test is skipped: all 70 focused tests ran in the default configuration (0 skipped).",
+    "The 63 default-suite skips are pre-existing environment guards unrelated to 11.3: JellyfinHostFactAttribute (ARRTAGS_JELLYFIN_HOST_DIR), NonCanonicalRuntimeFactAttribute (ARRTAGS_NONCANONICAL_GOLDENS), PackagedPluginFactAttribute (no package archive), and the Skia/native render, golden and Jellyfin image-response tests.",
+    "The guards are honest: JellyfinHostFact and NonCanonicalRuntimeFact fail (not silently pass) when their environment variable is set but the required input is missing, as documented in their attribute XML docs."
+  ],
+  "determinism_checked": [
+    "No wall-clock dependence in the 11.3 assertions: TTL tests use fixed observation offsets (observedAt + 1 minute) rather than elapsed real time; the webhook and reconciliation tests use bounded polling with generous timeouts (WaitUntilAsync, 5 s) and then assert, so a timeout surfaces as a failure rather than a silent pass.",
+    "InvalidationIsSafeConcurrentlyWithReadsPopulationsAndInvalidations uses Parallel.For but asserts only that no exception escaped, which is an order-independent outcome.",
+    "No shared mutable static state: the only static field is an immutable Type[]; each test creates its own cache/configuration/repository.",
+    "The focused suite produced the same 70/0/70 result in the repository and in the throwaway copy; the full suite produced 1418/63/1481, matching the worker report.",
+    "Mutation sensitivity (throwaway copy, all reverted; src+tests md5-identical to the working tree afterwards): webhook invalidation removed -> WebhookResolutionTests failed 1; reconciliation invalidation removed -> ReconciliationTriggerTests failed 1; TTL eviction disabled -> both TTL tests failed; If-None-Match added -> conditional-request test failed 1; SignalR-named type added -> assembly guard failed 1; inventory DI registration removed -> existing registrator test failed 1. Every required claim has at least one test that fails when the behavior is removed."
+  ],
+  "summary": "The 11.3 test suite genuinely establishes the required behaviors. Each invalidation source is covered by a real behavioral test: the webhook via the hosted WebhookIntakeService loop (scoped per connection, retained other connection, invalidates even with no resolved item), and post-scan/scheduled/manual/post-save via ReconcileAsync with real cache state, plus TTL expiry in ArrInventoryCache. 'Periodic scheduled reconciliation continues' is tested meaningfully (pinned 12-hour DefaultInterval, interval trigger wiring, and execution still enqueuing bounded work), and the 'no SignalR / no conditional request' claims are backed by a real assembly guard and behaviorally sensitive request assertions. Mutation testing confirmed every required claim is falsifiable: removing either the webhook or reconciliation invalidation, disabling the TTL, adding a conditional header, or adding a SignalR type each fails a test. Determinism is sound and no 11.3 test is skipped. Findings are limited to one MEDIUM coverage-completeness gap (the revision-token aspect of the negative dependency claim is only partially exercised; the endpoint set is not pinned) and three LOW/INFORMATIONAL observations (per-source invalidation observed via Count, webhook test off the DI composition root, and the untested-but-documented invalidate-all fallback). No BLOCKER or HIGH remains, so the documented matrix accurately reflects what the suite establishes."
+}

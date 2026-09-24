@@ -1238,6 +1238,19 @@ per-item state exposes only publish-time freshness. The bound that prevents a
 cached read from being presented as current beyond its lifetime is the cache
 entry's bounded reuse window (`ExpiresAt`/`StaleUntil`), not the fingerprint.
 
+The inventory cache is invalidated ArrTags-side (ADR-018 clause 3, task 11.3): an
+accepted provider webhook invalidates the event's provider/connection, and a
+reconciliation (Jellyfin library refresh/post-scan, scheduled, manual, or
+post-save) invalidates the retained sets so its work begins a fresh provider-read
+window; the inventory TTL remains the bounded fallback. The invalidation surface
+(`ArrInventoryCache.Invalidate`/`InvalidateAll` and the `ArrInventoryCacheProvider`
+equivalents) is bounded, thread-safe, and secret-free, removes only retained sets
+under the cache gate, and never holds a lock across provider I/O. A population
+already in flight when an invalidation runs may still store the read it took
+before it, which is bounded by the configured TTL and repaired by the next
+invalidation source. No provider `ETag`/`If-None-Match`, revision token,
+`history/since` watermark, or SignalR channel participates.
+
 ### Cache keys and fingerprints
 
 | Cache/object | Key or fingerprint inputs |
@@ -1261,7 +1274,10 @@ Metadata expiration triggers refresh; it does not necessarily immediately delete
 last-known-good data. Artwork entries are invalidated when any render-key input
 changes, when the metadata fingerprint changes, when configuration or renderer
 version changes, or when the source image changes. All entries are invalidated
-when the relevant cache version changes.
+when the relevant cache version changes. The inventory cache is invalidated per
+connection by the provider webhook and in full by a reconciliation
+(refresh/post-scan, scheduled, manual, or post-save), with the inventory TTL as
+the bounded fallback (ADR-018 clause 3); see "Inventory cache".
 
 ## 7. Event Model
 

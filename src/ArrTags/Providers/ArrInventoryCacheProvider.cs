@@ -68,6 +68,37 @@ public sealed class ArrInventoryCacheProvider
     }
 
     /// <summary>
+    /// Discards the retained observation set for one connection on the cache
+    /// bound to the current configuration snapshot (ADR-018 clause 3). The cache
+    /// is resolved from the current snapshot exactly as <see cref="Current"/>, so
+    /// a replaced snapshot's rebuilt cache is invalidated rather than a captured
+    /// one. It is the ArrTags-side webhook invalidation surface: it is bounded
+    /// (one dictionary removal), secret-free (the connection identifier carries
+    /// no credential), and never holds a lock across provider I/O.
+    /// </summary>
+    /// <param name="connectionId">The non-secret connection scope to discard.</param>
+    /// <returns><see langword="true"/> when a retained set was removed.</returns>
+    /// <exception cref="ArgumentNullException">The connection identifier is <see langword="null"/>.</exception>
+    public bool Invalidate(ArrConnectionId connectionId)
+    {
+        ArgumentNullException.ThrowIfNull(connectionId);
+        return Current.Invalidate(connectionId);
+    }
+
+    /// <summary>
+    /// Discards every retained observation set on the cache bound to the current
+    /// configuration snapshot (ADR-018 clause 3). It is the bounded
+    /// invalidate-all used by the reconciliation sources (Jellyfin library
+    /// refresh/post-scan and scheduled/manual reconciliation) and by a webhook
+    /// whose connection cannot be resolved; it resolves the current snapshot's
+    /// cache and never captures the bounds once at registration.
+    /// </summary>
+    public void InvalidateAll()
+    {
+        Current.InvalidateAll();
+    }
+
+    /// <summary>
     /// Acquires the per-connection single-flight population gate. Concurrent cold
     /// readers for the same connection serialize here so one population serves
     /// all of them; a caller that waited re-checks the cache and only populates

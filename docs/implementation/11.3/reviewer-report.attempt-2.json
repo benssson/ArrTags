@@ -1,0 +1,152 @@
+{
+  "task": "11.3",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "11.3-F6",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "testing/negative-dependency pin scope",
+      "summary": "The RC1 endpoint allowlist admits /api/v3/system/status, a ProbeAsync-only path the reads under test never call, so a provider request to it would not fail the negative test; it is however not a library revision token per ADR-018 research, so the stated TQ-11.3-1 purpose is met.",
+      "detail": "RC1 added AllowedProviderEndpointPaths (six paths, including /api/v3/system/status) and AllowedProviderQueryKeys to ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark, and the test now asserts Assert.Contains(request.Uri.AbsolutePath, AllowedProviderEndpointPaths) plus a query-key allowlist. Independent throwaway-copy mutations in /tmp/11.3/repo establish both halves: (a) injecting a request to the unlisted path /api/v3/history?page=1 in RadarrClient.GetMoviesAsync makes the test fail (Failed 1, 'Not found: \"/api/v3/history\"'), so genuinely unlisted revision/history endpoints are caught and the pin is live/non-vacuous; (b) removing \"/api/v3/system/status\" from the allowlist keeps the test green, proving the reconciliation reads under test never issue it, and re-adding it while injecting a ProbeAsync system/status request into RadarrMetadataReader.ReadAsync keeps the test green. /api/v3/system/status is only used by RadarrClient/SonarrClient.ProbeAsync (a private SystemStatusPath constant); no caller of ProbeAsync exists in src, and RadarrMetadataReader/SonarrMetadataReader/ArrReadClientFactory never probe. So the entry widens the pin beyond the reconciliation read set. Mitigation that makes this non-material to the acceptance criterion: ADR-018 ('Conditional requests and inventory caching') explicitly records that /system/status, /command, /system/task, and /queue are NOT library revision tokens, so admitting system/status does not let a revision-token or history/since mechanism evade the negative-dependency claim. The only residual is that an injected probe request is not caught, and that the allowlist's XML doc calls the six paths 'the complete set of provider endpoints ArrTags is permitted to call for reconciliation reads' while system/status is a probe endpoint.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:42-63,570-584",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:24,73-77 (SystemStatusPath only in ProbeAsync)",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:24,74-78",
+        "grep: no .ProbeAsync( caller in src; readers/factory do not probe",
+        "docs/decisions.md:2310-2312 (ADR-018 research: /system/status is not a library revision token)",
+        "/tmp/11.3/repo mutation A: unlisted /api/v3/history injected -> Failed 1",
+        "/tmp/11.3/repo mutation B: system/status removed from allowlist -> Passed 1, 0 failed",
+        "/tmp/11.3/repo mutation C: system/status injected via ProbeAsync with allowlist intact -> Passed 1, 0 failed"
+      ],
+      "recommended_action": "Optional cleanup: drop \"/api/v3/system/status\" from AllowedProviderEndpointPaths so the pin is exactly the negotiation/read set the readers issue (it is only the ProbeAsync path, which the reads do not call), or correct the XML doc to say the pin is the read set plus the probe path. No acceptance criterion depends on this."
+    },
+    {
+      "id": "11.3-F3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation/changelog test description",
+      "summary": "RC2 closed attempt-1 11.3-F3: the task 11.3 changelog entry now names the PostScan, Scheduled, and PostSave reconciliation invalidation sources.",
+      "detail": "docs/changelog.md now reads 'covers the PostScan, Scheduled, and PostSave reconciliation invalidation and the unchanged periodic scheduled trigger that still enqueues', matching ReconciliationInvalidatesTheInventoryForEverySource, which iterates {PostScan, Scheduled, PostSave}. Closed.",
+      "evidence": [
+        "docs/changelog.md:3232-3233",
+        "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:264-290"
+      ],
+      "recommended_action": "None; closed by RC2."
+    },
+    {
+      "id": "11.3-F7",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "testing/per-source invalidation observation",
+      "summary": "RC3 closed attempt-1 test-quality TQ-11.3-2: the per-source reconciliation test now asserts the seeded set is served before and no longer served after, not only that Count drops to 0.",
+      "detail": "ReconciliationInvalidatesTheInventoryForEverySource seeds a set, asserts TryStore true and Count 1, asserts TryGet(connectionId, now, out retained) true (served before), runs ReconcileAsync, then asserts TryGet(...) false (not served after) and Count 0. Re-population remains covered by ProviderInventoryCacheIntegrationTests.InvalidatedObservationSetIsRePopulatedOnTheNextRead. Closed.",
+      "evidence": [
+        "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:271-289",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:525-547"
+      ],
+      "recommended_action": "None; closed by RC3."
+    },
+    {
+      "id": "TQ-11.3-1",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "testing/negative-dependency closure",
+      "summary": "TQ-11.3-1 is closed for its stated purpose: an unlisted revision/history endpoint now fails the test, and the conditional-header assertion was already sensitive.",
+      "detail": "The request set and query keys are pinned, and independent mutation shows an unlisted /api/v3/history?page=1 request fails (Failed 1). The one residual admission (/api/v3/system/status) is recorded as 11.3-F6 and is explicitly not a library revision token per ADR-018 research, so the negative-dependency claim is established.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:42-63,564-585",
+        "/tmp/11.3/repo mutation A"
+      ],
+      "recommended_action": "None required; optional cleanup recorded as 11.3-F6."
+    },
+    {
+      "id": "11.3-F1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/architecture section 8 wording",
+      "summary": "Carried from attempt 1: the new 'The same trigger set is the ArrTags-side provider inventory cache invalidation set' sentence remains imprecise because the preceding refresh-trigger list includes per-item Jellyfin events that do not invalidate the inventory cache.",
+      "detail": "Unchanged from attempt 1. The functional invalidation set (webhook + post-scan + scheduled/manual + post-save + bounded TTL) matches ADR-018 clause 3; per-item Jellyfin library events enqueue hints without invalidating. Wording precision only; task 11.4's documentation pass owns it.",
+      "evidence": [
+        "docs/architecture.md:599-602",
+        "docs/decisions.md:2327-2333 (ADR-018 clause 3)",
+        "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs OnLibraryItemChanged"
+      ],
+      "recommended_action": "Optional wording clarification in the task 11.4 documentation pass."
+    },
+    {
+      "id": "11.3-F2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/limitations F1 heading",
+      "summary": "Carried from attempt 1: docs/limitations.md section heading 'F1. Provider inventory/catalogue cache is not implemented' remains factually stale while the body states partial progress; pre-existing and owned by task 11.4.",
+      "detail": "Unchanged by the correction round. The heading predates task 11.3 and is a pre-existing defect not introduced here; it does not overclaim F1 resolution (every canonical surface states F1 is open). Task 11.4 retitles it when it records F1 resolved.",
+      "evidence": [
+        "docs/limitations.md:58,68-93"
+      ],
+      "recommended_action": "Task 11.4 should retitle it when recording F1 resolved; no change required for 11.3."
+    },
+    {
+      "id": "11.3-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/in-flight population race",
+      "summary": "Carried from attempt 1: the documented in-flight single-flight population race is real, honestly stated, and bounded by the TTL and next invalidation.",
+      "detail": "Unchanged; ADR-018 does not require coalescing or a generation counter and the task asked for the behavior to be documented. No action.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs:82-99",
+        "docs/implementation/11.3/worker-report.json known_limitations[0]"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "TQ-11.3-3-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/remaining test-quality findings",
+      "summary": "The attempt-1 test-quality findings TQ-11.3-3 (webhook invalidation verified off the production composition root), TQ-11.3-4 (webhook invalidate-all fallback untested), and TQ-11.3-5 (structural secret-free API shape assertion) remain unchanged and were not in the RC1-RC3 correction scope.",
+      "detail": "These are recorded in docs/implementation/11.3/test-quality-review.json as LOW/INFORMATIONAL with mitigations; the correction round did not claim them, and none affects task 11.3 acceptance criteria. The production DI registration of ArrInventoryCacheProvider is present (src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs) and the invalidate-all fallback is documented as defensive.",
+      "evidence": [
+        "docs/implementation/11.3/test-quality-review.json TQ-11.3-3, TQ-11.3-4, TQ-11.3-5",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently re-run)",
+    "./build.sh test -> Failed: 0, Passed: 1418, Skipped: 63, Total: 1481 (independently re-run; matches the worker report exactly)",
+    "dotnet test --filter InventoryCacheInvalidationTests|ProviderInventoryCacheIntegrationTests|ReconciliationTriggerTests|WebhookResolutionTests -> Failed: 0, Passed: 70, Skipped: 0, Total: 70",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:524-603 (pinned endpoint/query allowlist, unlisted-path assertion)",
+    "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:252-291 (served-before/not-served-after per source, PostScan/Scheduled/PostSave)",
+    "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:293-314 (periodic 12h scheduled trigger unchanged and still enqueues)",
+    "/tmp/11.3/repo throwaway-copy mutations (all reverted in the working tree; the working tree was never modified): baseline negative test Passed 1; unlisted /api/v3/history?page=1 injected -> Failed 1; /api/v3/system/status removed from allowlist -> Passed 1; ProbeAsync system/status injected with allowlist intact -> Passed 1"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-018 (clause 3 invalidation sources and no conditional/revision/history/SignalR; clause 7) and its research bullet (docs/decisions.md:2310-2312) that /system/status, /command, /system/task, and /queue are not library revision tokens",
+    "docs/decisions.md ADR-012 - webhook is an off-request-path bounded hint",
+    "docs/planning/v1.1.md Goal C / DG-12 acceptance criteria",
+    "docs/research/arr-api-researcher/conditional-requests-and-inventory-caching.json (ArrTags-side invalidation only; no usable provider revision token)"
+  ],
+  "documentation_checked": [
+    "PLANS.md (Project Status paragraph, Milestone 11 table row, task 11.3 checkbox and block, Phase 11 objective)",
+    "docs/changelog.md (Phase 11 status line 3035, Task 11.3 entry 3182-3239 including the RC2 PostSave wording and the 1418/63/1481 count)",
+    "docs/project-status.md (Current milestone and Next tasks)",
+    "docs/architecture.md (status line, section 8, section 12)",
+    "docs/data-model.md (section 6 inventory-cache invalidation paragraph and expiration/invalidation subsection)",
+    "docs/implementation-readiness.md (status line)",
+    "docs/limitations.md (F1 body/consequence and GOALS criterion 6 row; F1 explicitly open until 11.4)",
+    "README.md (limitations summary)"
+  ],
+  "required_changes": [],
+  "rework_log": [
+    "Attempt 2 re-review after the correction round on top of attempt-1 APPROVED. Correction round claims: RC1 (TQ-11.3-1 endpoint/query pin), RC2 (11.3-F3 changelog PostSave wording), RC3 (TQ-11.3-2 served-before/not-served-after assertions), with no production behavior change.",
+    "Scope verified: the only files modified after the attempt-1/TQ review timestamps are tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs (07:50:36), tests/ArrTags.Tests/ReconciliationTriggerTests.cs (07:49:47), and docs/changelog.md (07:49:52); all src/ArrTags production files remain at 07:22-07:23, corroborating the 'no production source change in this round' claim (everything is uncommitted, so round isolation relies on mtimes plus the unchanged production behavior, which was independently re-inspected).",
+    "RC1: verified live and sensitive for /api/v3/history?page=1 (fails); residual /api/v3/system/status admission recorded as LOW 11.3-F6, non-material because ADR-018 research classifies system/status as not a library revision token.",
+    "RC2: closed (changelog names PostSave). RC3: closed (TryGet true before / false after). All task 11.3 acceptance criteria re-confirmed; limitation F1 remains open (task 11.4 records it resolved); periodic scheduled reconciliation still 12h and still enqueues; no conditional/revision/history-since/SignalR dependency.",
+    "Outcome: APPROVED."
+  ],
+  "ready_for_next_task": true
+}

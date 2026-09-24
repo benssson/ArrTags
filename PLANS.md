@@ -201,8 +201,9 @@ BLOCKER/HIGH/MEDIUM); Gate 10 is met (the Phase 10 review is approved in
 `docs/implementation/phase-10/phase-review.json`) and the annotated tag
 `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by
 task 14.3. Phase 11 (Provider inventory cache and library-refresh-driven refresh)
-is in progress: task 11.1 (inventory cache model, bounds, and limits) and task
-11.2 (provider-client integration and bulk reads) are complete. The canonical,
+is in progress: task 11.1 (inventory cache model, bounds, and limits), task
+11.2 (provider-client integration and bulk reads), and task 11.3 (ArrTags-side
+invalidation) are complete. The canonical,
 secret-free, in-memory per-connection cache shape and the inventory TTL and
 record/byte limits are defined, validated at configuration load, and documented
 in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12;
@@ -210,8 +211,13 @@ the provider metadata readers now populate and consume the cache at the
 provider-client boundary, so one library read per connection serves a
 reconciliation window, and the Radarr `moviefile?movieId=` repeatable selector
 and the Sonarr `episodeFile?episodeFileIds=` repeatable selector replace
-per-item file reads. ArrTags-side invalidation (11.3) remains, so limitation F1
-is not yet resolved. V1.1-1 (this
+per-item file reads. The ArrTags-side invalidation surface is now wired to every
+source (provider webhook, Jellyfin library refresh/post-scan, scheduled/manual
+and post-save reconciliation, and the bounded TTL fallback), so a provider change
+is noticed promptly without a provider conditional request, revision token,
+`history/since` watermark, or SignalR dependency, and the periodic scheduled
+reconciliation still runs on its unchanged interval. Task 11.4 remains, so
+limitation F1 is not yet resolved. V1.1-1 (this
 plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
 pointers) is already complete at commit `5ec8ae2` and is not re-planned as open
 work.
@@ -251,7 +257,7 @@ work.
 | 8 | Release distribution | Complete (tasks 8.1-8.6 complete; all seven Phase 8 acceptance criteria are met; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 is met - Phase 8 review approved in `docs/implementation/phase-8/phase-review.json`) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 | 9 | Dashboard settings UI and runtime configuration activation (v1.1) | Complete (Phase 9 tasks 9.1-9.5 complete: the get-only `Collection<T>` round-trip was proven to fail under the pinned `JsonDefaults.Options`, so `EnabledLibraries`/`Renderer.Selectors` are now settable and round-trip; `Plugin` implements `IHasWebPages` with an embedded secret-free settings page; `Plugin.UpdateConfiguration` validates and activates a saved candidate at runtime without a restart with last-valid snapshot and private-secret retention; a successful replacement requests a bounded, non-blocking post-save reconciliation so existing posters re-render promptly; and `GoalAIntegrationTests` verifies the composed save -> activate -> bounded-reconcile flow, so limitation F2 is resolved. The Goal A acceptance criteria are met at the integration-test level; Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`) and the `v1.1.0-phase9` tag is created; the live Goal A confirmation is owned by task 14.3) | A dashboard settings page loads and saves through the elevation-gated path, a valid change applies without restart with last-valid retention, and a successful save triggers a bounded reconciliation; the get-only `Collection<T>` round-trip is proven. Phase tag `v1.1.0-phase9`. |
 | 10 | Logging with configurable verbosity (v1.1) | Complete (tasks 10.1-10.3 complete; all five Phase 10 acceptance criteria are met at the integration-test level; the logging security review is recorded at `docs/implementation/10.3/security-review.json` with 0 open BLOCKER/HIGH/MEDIUM; Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
-| 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | In progress (tasks 11.1 and 11.2 complete: the canonical, secret-free, in-memory per-connection inventory cache shape and the inventory TTL and record/byte limits are defined, validated at configuration load, and documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12; the provider metadata readers populate and consume the cache at the provider-client boundary so one library read per connection serves a reconciliation window, using the Radarr repeatable `movieId` and Sonarr repeatable `episodeFileIds` bulk selectors instead of per-item file reads; ArrTags-side invalidation 11.3 remains; resolves limitation F1 when 11.1-11.4 complete) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
+| 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | In progress (tasks 11.1, 11.2, and 11.3 complete: the canonical, secret-free, in-memory per-connection inventory cache shape and the inventory TTL and record/byte limits are defined, validated at configuration load, and documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12; the provider metadata readers populate and consume the cache at the provider-client boundary so one library read per connection serves a reconciliation window, using the Radarr repeatable `movieId` and Sonarr repeatable `episodeFileIds` bulk selectors instead of per-item file reads; the ArrTags-side invalidation surface is wired to the provider webhook, Jellyfin library refresh/post-scan, scheduled/manual and post-save reconciliation, and the bounded TTL fallback, with no provider conditional request, revision token, `history/since`, or SignalR dependency, and the periodic scheduled reconciliation continues on its unchanged interval; task 11.4 remains; resolves limitation F1 when 11.1-11.4 complete) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
 | 12 | Badge value allowlist and badge size/position (v1.1) | Not started (Phase 12 tasks 12.1-12.4; Goals B and E; ADR-017 and ADR-019) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
 | 13 | README and documentation pass (v1.1) | Not started (Phase 13 tasks 13.1-13.2; Goal D) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
 | 14 | v1.1 release | Not started (Phase 14 tasks 14.1-14.5) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
@@ -4154,7 +4160,7 @@ reconciliation, and a bounded TTL fallback). This resolves limitation F1.
 
 - [x] 11.1 Inventory cache model, bounds, and limits.
 - [x] 11.2 Provider-client integration and bulk reads.
-- [ ] 11.3 ArrTags-side invalidation.
+- [x] 11.3 ArrTags-side invalidation.
 - [ ] 11.4 Goal C documentation and integration verification.
 
 **Authoritative Phase 11 execution order:** 11.1, 11.2, 11.3, 11.4. Task IDs are
@@ -4288,7 +4294,30 @@ window and bulk reads are used.
 
 #### 11.3 ArrTags-side invalidation
 
-**Status:** Not started.
+**Status:** Complete. The ArrTags-side invalidation surface (ADR-018 clause 3) is
+wired to every invalidation source. `ArrInventoryCache` gains a bounded,
+thread-safe `Invalidate(ArrConnectionId)`/`InvalidateAll()` surface that removes
+retained observation sets under the same gate as `TryStore`/`TryGet` (no lock is
+held across provider I/O, and it is safe concurrently with reads and
+populations); an in-flight single-flight population that completes after an
+invalidation may still store the read it took before it, which is bounded by the
+configured TTL and repaired by the next webhook, refresh/post-scan, or
+scheduled/manual reconciliation. `ArrInventoryCacheProvider` exposes the same
+surface against the cache bound to the current configuration snapshot, so a
+replaced snapshot's rebuilt cache is invalidated rather than a captured one. An
+accepted provider webhook (ADR-012) invalidates the event's provider/connection
+from the hosted intake loop before any hint is enqueued (a bounded
+invalidate-all when the connection cannot be resolved), and it never blocks or
+throws into the Jellyfin request. Jellyfin library refresh/post-scan, manual and
+periodic scheduled, and post-save reconciliation all invalidate at the start of
+`LibraryReconciliationService.ReconcileAsync`, so the work they enqueue begins a
+fresh provider-read window; the periodic scheduled reconciliation still runs on
+its unchanged 12-hour default interval and enqueues work as before, so v1.1 is
+not refresh-only. The bounded TTL fallback remains in `TryGet` (an expired set is
+evicted). No provider conditional request, revision token, `history/since`
+watermark, or SignalR dependency is added, and the invalidation API carries only
+the non-secret connection identifier. Limitation F1 is not yet resolved; task
+11.4 records it resolved after the Goal C integration verification.
 
 **Objective:** Invalidate the cache on provider webhook events (ADR-012), Jellyfin
 library refresh/post-scan, scheduled/manual reconciliation, and a bounded TTL

@@ -166,12 +166,14 @@ instead (`docs/limitations.md`).
 The canonical record of what ArrTags does not yet do or has not yet verified is
 `docs/limitations.md`. In short:
 
-- **Provider inventory cache is partially complete.** The bounded, in-memory
-  inventory cache now serves one provider library read per connection across a
-  reconciliation window (with bulk file reads replacing per-item reads), but the
-  ArrTags-side invalidation sources (webhook, library refresh/post-scan,
-  scheduled/manual reconciliation) are not yet wired, so a provider change is
-  noticed only after the bounded inventory TTL; F1 stays open until that lands.
+- **Provider inventory cache is implemented; F1 close-out pending.** The
+  bounded, in-memory inventory cache serves one provider library read per
+  connection across a reconciliation window (with bulk file reads replacing
+  per-item reads), and the ArrTags-side invalidation sources are wired: a
+  provider webhook invalidates its connection, and a reconciliation (library
+  refresh/post-scan, scheduled, manual, or post-save) invalidates the retained
+  sets, with the bounded inventory TTL as the fallback. `docs/limitations.md` F1
+  is recorded as resolved by task 11.4 after the Goal C integration verification.
   Rendering and publication are fingerprint-gated.
 - **Jellyfin Enhanced coexistence is verified at the contract level only**;
   Enhanced is not installed on the pinned host (V3).

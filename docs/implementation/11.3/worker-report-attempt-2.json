@@ -1,0 +1,49 @@
+{
+  "task": "11.3",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction round on top of attempt 1 (no production behavior changed). RC1 (TQ-11.3-1): strengthened ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark so the provider request set is pinned to an explicit allowlist of permitted reconciliation endpoint paths (/api/v3/system/status, /api/v3/movie, /api/v3/moviefile, /api/v3/series, /api/v3/episode, /api/v3/episodeFile) and permitted query-parameter names (movieId, seriesId, includeEpisodeFile, episodeFileIds), in addition to the existing conditional-header and literal history/since and h= exclusions, so an unnamed revision-token or history fetch fails the test. Sensitivity was proven with a temporary unlisted /api/v3/history?page=1 request that made the test fail (Failed 1), then reverted. RC2 (11.3-F3): corrected the task 11.3 changelog wording to say the reconciliation test covers PostScan, Scheduled, and PostSave (it iterates all three). RC3 (TQ-11.3-2): strengthened ReconciliationInvalidatesTheInventoryForEverySource to assert the seeded observation set is actually served before the reconciliation (TryGet true) and is no longer served after it (TryGet false), not only that Count drops to 0; the provider-level InvalidatedObservationSetIsRePopulatedOnTheNextRead test continues to cover re-population. Attempt 1's implementation is otherwise unchanged: the ArrTags-side invalidation surface (ArrInventoryCache.Invalidate/InvalidateAll and the ArrInventoryCacheProvider equivalents), the webhook, refresh/post-scan, scheduled/manual, and post-save reconciliation sources, the bounded TTL fallback, the unchanged periodic scheduled reconciliation, and the no-conditional-request/no-revision-token/no-history-since/no-SignalR constraint are all preserved; limitation F1 remains open (task 11.4 records it resolved).",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~InventoryCacheInvalidationTests|FullyQualifiedName~ProviderInventoryCacheIntegrationTests|FullyQualifiedName~ReconciliationTriggerTests|FullyQualifiedName~WebhookResolutionTests\" -> Failed: 0, Passed: 70, Skipped: 0, Total: 70",
+    ". /config/arrtags-env.sh && ./build.sh test -> Failed: 0, Passed: 1418, Skipped: 63, Total: 1481 (pre-task baseline Failed: 0, Passed: 1407, Skipped: 63, Total: 1470; +11 passed, +11 total, 0 new skips; unchanged from attempt 1 because RC1-RC3 added assertions to existing tests rather than new test methods)",
+    "RC1 sensitivity (temporary mutation, reverted): injected a direct request to the unlisted endpoint /api/v3/history?page=1 in ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark -> Failed: 1, Passed: 0, Total: 1 ('Assert.Contains() Failure: Item not found in collection ... Not found: /api/v3/history'); after reverting the mutation the focused classes passed 70/0/70 and the full suite passed 1418/63/1481",
+    "git diff inspected for accidental/unrelated changes: this round changed only tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs, tests/ArrTags.Tests/ReconciliationTriggerTests.cs, and docs/changelog.md; no production source changed"
+  ],
+  "changed_files": [
+    "src/ArrTags/Providers/ArrInventoryCache.cs",
+    "src/ArrTags/Providers/ArrInventoryCacheProvider.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationService.cs",
+    "src/ArrTags/Webhooks/WebhookIntakeService.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/InventoryCacheInvalidationTests.cs",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs",
+    "tests/ArrTags.Tests/ReconciliationTriggerTests.cs",
+    "tests/ArrTags.Tests/WebhookResolutionTests.cs",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md",
+    "README.md",
+    "docs/implementation/11.3/worker-report.json",
+    "docs/implementation/11.3/worker-report-attempt-1.json",
+    "docs/implementation/11.3/worker-report-attempt-2.json"
+  ],
+  "known_limitations": [
+    "In-flight population interaction: a single-flight population already in flight when an invalidation runs may complete afterwards and store the provider read it took before the invalidation. Consequence: that observation set can be served until its configured inventory TTL (StaleUntil), and it is discarded by the next webhook, refresh/post-scan, or scheduled/manual reconciliation; the cache is non-authoritative so correctness does not depend on it. This is the bounded behavior the task asked to document rather than fence with a generation counter.",
+    "Reconciliation invalidation runs after the no-enabled-provider and lifecycle-fence guards in ReconcileAsync, so a run that is skipped for no enabled provider or a raised fence does not invalidate. Consequence: no observation set is discarded for a run that enqueues no work; the next actual reconciliation, webhook, or the TTL still invalidates.",
+    "Webhook connection resolution uses ArrConnectionCatalog.FromSnapshot(current snapshot) by provider kind; because the catalog always returns both provider connections, the bounded invalidate-all fallback is defensive and is not exercised by the current catalog shape.",
+    "Limitation F1 is deliberately not recorded as resolved by this task; task 11.4 records it resolved after the Goal C integration verification. The live pinned-host verification of this behavior remains owned by task 14.3 per the project plan.",
+    "Validation is at the unit/integration-test level (no live Jellyfin or Arr host was run for this task).",
+    "The endpoint allowlist in the RC1 test pins the six documented reconciliation endpoints and the four documented selector query keys; a future legitimate provider endpoint added to the reads must be added to the allowlist, which is the intended behavior of the pin."
+  ],
+  "ready_for_next_task": true
+}

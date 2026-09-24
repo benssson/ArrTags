@@ -33,7 +33,7 @@ against the committed mock Sonarr/Radarr fixture.
 | 3 | Jellyfin movie/TV item matched to its Arr item | Met | — |
 | 4 | Metadata (e.g. quality) retrieved through the API | Met | — |
 | 5 | Metadata rendered as a badge on the poster | Met as shipped | Requires the host to supply a compatible SkiaSharp (item F5); no bundled fallback. |
-| 6 | Poster updates occur without unnecessary repeated processing | Met for render/publication; partial for provider fetches | No provider inventory/catalogue cache (item F1); render and publication are fingerprint-gated. |
+| 6 | Poster updates occur without unnecessary repeated processing | Met for render/publication; partial for provider fetches | The bounded provider inventory cache is implemented with ArrTags-side invalidation (item F1); render and publication are fingerprint-gated. |
 | 7 | Operates correctly alongside Jellyfin Enhanced | Met at the contract level only | Jellyfin Enhanced is not installed on the pinned host (item V3). |
 | 8 | Failures do not adversely affect Jellyfin | Met as shipped | — |
 | 9 | Buildable and testable reproducibly | Met | Reproducibility is guaranteed only for the pinned SDK (item P1). |
@@ -65,29 +65,32 @@ inventory cache and no provider revision-token fetch skip. Each scheduled,
 post-scan, and manual reconciliation enqueues up to `QueueCapacity` work hints
 (default 512, ADR-004), and each hint performs its own provider read.
 
-**Partial progress (task 11.2):** the bounded provider inventory cache is now
-populated and consumed at the provider-client boundary. On a cache miss one
+**Partial progress (tasks 11.2 and 11.3):** the bounded provider inventory cache
+is populated and consumed at the provider-client boundary. On a cache miss one
 library read per connection (`/api/v3/movie` or `/api/v3/series`) plus the bulk
-file reads populate the cache; every work item in the TTL window is served from
-the canonical observations without another library read, and the Radarr
-repeatable `moviefile?movieId=` and Sonarr repeatable
-`episodeFile?episodeFileIds=` selectors replace per-item file reads. The cache is
-still only TTL-invalidated: the ArrTags-side invalidation sources (webhook,
-Jellyfin library refresh/post-scan, scheduled/manual reconciliation) are not yet
-wired (task 11.3), and F1 is not recorded as resolved until task 11.4 verifies
+file reads populate the cache; every work item in the window is served from the
+canonical observations without another library read, and the Radarr repeatable
+`moviefile?movieId=` and Sonarr repeatable `episodeFile?episodeFileIds=`
+selectors replace per-item file reads. The ArrTags-side invalidation sources are
+now wired (task 11.3): an accepted provider webhook invalidates the event's
+connection, a reconciliation (Jellyfin library refresh/post-scan, scheduled,
+manual, or post-save) invalidates the retained sets, and the bounded inventory
+TTL remains the fallback. F1 is not recorded as resolved until task 11.4 verifies
 the complete Goal C behavior. No provider revision-token fetch skip is added or
 planned, because neither provider supplies a usable token (ADR-018 clause 7).
 
 - Evidence: Phase 6 review MEDIUM item; `PLANS.md` Phase 6 acceptance criterion
   1 (accepted as partially met) and Post-V1 Backlog; `docs/architecture.md`
   section 12; task 7.4 review (`LibraryWorkQueue` capacity 512); task 11.2
-  provider integration tests (`ProviderInventoryCacheIntegrationTests`).
-- Consequence: without the wired ArrTags-side invalidation sources, a provider
-  change is still noticed only after the bounded inventory TTL (or a cache miss),
-  and the `GOALS.md` Reliability/Performance goal "avoid unnecessary API requests
-  to Sonarr and Radarr" is now met for provider fetches within a TTL window but
-  not yet for event-driven refresh. Render and publication are fingerprint-gated
-  and are not affected.
+  provider integration tests (`ProviderInventoryCacheIntegrationTests`); task
+  11.3 invalidation tests (`InventoryCacheInvalidationTests`).
+- Consequence: with the invalidation sources wired, a provider change is noticed
+  on the next webhook or reconciliation instead of only after the bounded
+  inventory TTL, and the `GOALS.md` Reliability/Performance goal "avoid
+  unnecessary API requests to Sonarr and Radarr" is met for provider fetches
+  within a window and for event-driven refresh, pending the task 11.4 integration
+  verification that records F1 resolved. Render and publication are
+  fingerprint-gated and are not affected.
 
 ### F3. No bounded, secret-free metrics/diagnostic-status surface
 

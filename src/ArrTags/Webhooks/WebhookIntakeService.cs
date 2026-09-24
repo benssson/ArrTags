@@ -33,6 +33,7 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
     private readonly IWorkHintSink _workHints;
     private readonly ConfigurationSnapshotService _configuration;
     private readonly IArrTagsLog<WebhookIntakeService>? _log;
+    private readonly ArrInventoryCacheProvider? _inventory;
     private readonly TimeSpan _shutdownTimeout;
     private CancellationTokenSource? _cts;
     private Task? _loop;
@@ -47,6 +48,7 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
     /// <param name="configuration">The current public configuration snapshot.</param>
     /// <param name="boundedShutdownTimeout">The optional bounded shutdown timeout.</param>
     /// <param name="log">The optional bounded, secret-free webhook-boundary log.</param>
+    /// <param name="inventory">The optional bounded provider inventory cache (ADR-018); when present, an accepted event invalidates the event's connection so its work begins a fresh provider-read window.</param>
     /// <exception cref="ArgumentNullException">A required dependency is <see langword="null"/>.</exception>
     public WebhookIntakeService(
         WebhookIntake intake,
@@ -54,7 +56,8 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
         IWorkHintSink workHints,
         ConfigurationSnapshotService configuration,
         TimeSpan? boundedShutdownTimeout = null,
-        IArrTagsLog<WebhookIntakeService>? log = null)
+        IArrTagsLog<WebhookIntakeService>? log = null,
+        ArrInventoryCacheProvider? inventory = null)
     {
         _intake = intake ?? throw new ArgumentNullException(nameof(intake));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
@@ -62,6 +65,7 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _shutdownTimeout = boundedShutdownTimeout ?? BoundedShutdownTimeout;
         _log = log;
+        _inventory = inventory;
     }
 
     /// <inheritdoc />
@@ -180,6 +184,16 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
     {
         var snapshot = _configuration.Current;
         var itemIds = _resolver.Resolve(webhookEvent, snapshot);
+
+        // ADR-018 clause 3: an accepted provider webhook is an ArrTags-side
+        // invalidation source. Invalidate before any hint is enqueued so the
+        // work this event produces begins a fresh provider-read window instead of
+        // serving an observation set taken before the event. The invalidation is
+        // scoped to the event's provider/connection where resolvable and is a
+        // bounded invalidate-all otherwise; it is best-effort and never blocks or
+        // throws into the request or the loop.
+        InvalidateInventory(webhookEvent, snapshot);
+
         for (var index = 0; index < itemIds.Count; index++)
         {
             var hint = new LibraryWorkHint(itemIds[index], LibraryWorkReason.Updated, snapshot.ConfigurationVersion);
@@ -197,5 +211,52 @@ public sealed class WebhookIntakeService : IHostedService, IDisposable
                 FormattableString.Invariant(
                     $"Webhook event {webhookEvent.EventType} ({webhookEvent.ProviderKind.ToApiName()}) resolved to {itemIds.Count} item hint(s)."));
         }
+    }
+
+    /// <summary>
+    /// Discards the inventory observation set the accepted event affects
+    /// (ADR-018 clause 3). The set is scoped to the event's provider/connection
+    /// when the connection can be resolved from the current snapshot, and every
+    /// retained set is discarded as a bounded fallback otherwise. It is
+    /// best-effort: a failure is contained and repaired by the authoritative
+    /// reconciliation, and it never blocks or throws into the Jellyfin request.
+    /// </summary>
+    private void InvalidateInventory(WebhookEvent webhookEvent, PluginConfigurationSnapshot snapshot)
+    {
+        if (_inventory is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var connection = ResolveConnection(snapshot, webhookEvent.ProviderKind);
+            if (connection is not null)
+            {
+                _inventory.Invalidate(connection.ConnectionId);
+            }
+            else
+            {
+                _inventory.InvalidateAll();
+            }
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // A webhook is a best-effort accelerator; an invalidation failure is
+            // contained and repaired by the authoritative reconciliation.
+        }
+    }
+
+    private static ArrConnection? ResolveConnection(PluginConfigurationSnapshot snapshot, ArrProviderKind kind)
+    {
+        foreach (var connection in ArrConnectionCatalog.FromSnapshot(snapshot))
+        {
+            if (connection.Provider.Kind == kind)
+            {
+                return connection;
+            }
+        }
+
+        return null;
     }
 }

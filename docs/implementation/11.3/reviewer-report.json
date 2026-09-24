@@ -1,0 +1,108 @@
+{
+  "task": "11.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "11.3-F1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/architecture section 8 accuracy",
+      "summary": "The new sentence 'The same trigger set is the ArrTags-side provider inventory cache invalidation set' is imprecise because the preceding refresh-trigger list includes Jellyfin ItemAdded/ItemUpdated/ItemRemoved events, which are not wired to invalidate the inventory cache.",
+      "detail": "docs/architecture.md section 8 lists refresh triggers as (1) Jellyfin ItemAdded/relevant ItemUpdated/ItemRemoved events, (2) post-scan, (3) manual/periodic scheduled, (4) webhooks. The worker added 'The same trigger set is the ArrTags-side provider inventory cache invalidation set (ADR-018 clause 3): an accepted webhook invalidates its connection, and a reconciliation (post-scan, manual/periodic scheduled, or post-save) invalidates the retained observation sets...'. Per ADR-018 clause 3 the complete invalidation set is webhook, Jellyfin library refresh/post-scan, scheduled/manual reconciliation, and the bounded TTL fallback (the ADR's own 'complete trigger set' sentence enumerates webhook, post-scan, manual, TTL and does not include per-item Jellyfin events). The implementation wires webhook + post-scan + scheduled/manual + post-save + TTL, which matches the ADR. Per-item Jellyfin library events (src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.OnLibraryItemChanged) enqueue work hints directly and do not invalidate; that is consistent with the ADR, but the 'same trigger set' wording could be read as claiming they do. This is a wording precision issue only; the functional invalidation set is correct.",
+      "evidence": [
+        "docs/architecture.md:588-602",
+        "docs/decisions.md:2327-2333 (ADR-018 clause 3)",
+        "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs:158-168 (library event path enqueues without invalidation)"
+      ],
+      "recommended_action": "Optionally clarify in the task 11.4 documentation pass that the invalidation set is webhook + library refresh/post-scan + scheduled/manual reconciliation + bounded TTL (and post-save), and that per-item Jellyfin library events do not invalidate the provider inventory cache."
+    },
+    {
+      "id": "11.3-F2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/limitations F1 canonical surface",
+      "summary": "docs/limitations.md section heading 'F1. Provider inventory/catalogue cache is not implemented' is now factually stale while the body states partial progress; it predates task 11.3 and is owned by task 11.4.",
+      "detail": "The F1 body (updated by this task) says the bounded inventory cache is populated/consumed and invalidation is wired, with F1 not recorded resolved until task 11.4. The section heading still says 'is not implemented'. `git show HEAD:docs/limitations.md` confirms the stale heading already existed after task 11.2, so it is a pre-existing defect not introduced by 11.3. It does not affect the 11.3 acceptance criteria or overclaim resolution (F1 is explicitly stated open in every canonical surface). Task 11.4 owns F1 close-out and should correct the heading.",
+      "evidence": [
+        "docs/limitations.md:58",
+        "docs/limitations.md:68-93",
+        "git show HEAD:docs/limitations.md (heading unchanged by 11.3)"
+      ],
+      "recommended_action": "Task 11.4 should retitle the F1 section when it records F1 resolved; no change required for task 11.3."
+    },
+    {
+      "id": "11.3-F3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/changelog test description",
+      "summary": "The 11.3 changelog entry says ReconciliationTriggerTests '(covers) the PostScan and Scheduled reconciliation invalidation', but the new test also covers PostSave (three sources).",
+      "detail": "tests/ArrTags.Tests/ReconciliationTriggerTests.cs ReconciliationInvalidatesTheInventoryForEverySource iterates {PostScan, Scheduled, PostSave}. The changelog wording understates the covered sources. Cosmetic documentation imprecision; no functional impact and no overclaim.",
+      "evidence": [
+        "docs/changelog.md:3222-3227 (task 11.3 entry)",
+        "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:252-280"
+      ],
+      "recommended_action": "Optionally correct the changelog wording in a later documentation pass."
+    },
+    {
+      "id": "11.3-F4",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "testing/negative-dependency coverage completeness",
+      "summary": "The 'no revision token / history-since' negative test excludes two literal markers but does not pin the allowed provider endpoint set, so a differently named revision/history fetch would not be caught.",
+      "detail": "ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark asserts the absence of If-None-Match/If-Modified-Since/If-Match and of the literal substrings 'history/since' and 'h=' on the captured URIs. Source inspection independently confirms the shipped reads issue only the documented library and bulk-selection endpoints and add no revision/history/conditional mechanism, so the acceptance criterion is met by the implementation; this is a coverage-completeness observation, not a live defect. This corroborates the separate test-quality review (docs/implementation/11.3/test-quality-review.json, TQ-11.3-1, MEDIUM, open).",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:520-547",
+        "grep of changed source for If-None-Match/If-Modified-Since/history/since/SignalR -> only a doc comment in ArrInventoryCache.cs",
+        "docs/implementation/11.3/test-quality-review.json TQ-11.3-1"
+      ],
+      "recommended_action": "Optional: assert every captured request path is in the documented provider endpoint set. Not required to satisfy the 11.3 acceptance criteria."
+    },
+    {
+      "id": "11.3-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/in-flight population race",
+      "summary": "The documented in-flight single-flight population race is real, honestly stated, and its bounded consequence is acceptable for a non-authoritative accelerator.",
+      "detail": "ArrInventoryCacheProvider.Invalidate/InvalidateAll do not acquire the per-connection population gate, so a population that started before an invalidation and completes after it can store the provider read it took before the invalidation (reader: Radarr/SonarrMetadataReader reads cache -> acquires gate -> re-checks -> reads provider -> TryStore). The stored pre-invalidation set can then be served until its configured TTL (OperationalLimits.InventoryCacheTtlMinutes default 15, validated range 1-1440) or the next invalidation. The cache is explicitly non-authoritative and the consequence is bounded and repaired; ADR-018 does not require single-flight coalescing or a generation counter, and the task asked for this behavior to be documented rather than fenced. The worker documents it in the cache XML docs, PLANS.md 11.3, docs/architecture.md section 8, docs/data-model.md section 6, docs/changelog.md, and the worker report, and does not overstate the guarantee.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs:82-99",
+        "src/ArrTags/Providers/ArrInventoryCache.cs:187-230",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:70-95,250",
+        "src/ArrTags/Configuration/OperationalLimits.cs:40,153,196"
+      ],
+      "recommended_action": "No action; keep the bounded consequence documented as-is."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently re-run)",
+    "./build.sh test -> Failed: 0, Passed: 1418, Skipped: 63, Total: 1481 (independently re-run; matches the worker's count; +11 vs the recorded 11.2 baseline 1407/63/1470, 0 new skips)",
+    "dotnet test --filter InventoryCacheInvalidationTests|ReconciliationTriggerTests -> Failed: 0, Passed: 36, Skipped: 0",
+    "tests/ArrTags.Tests/InventoryCacheInvalidationTests.cs (6 new [Fact]: targeted removal, invalidate-all idempotence, TTL eviction, concurrent reads/populations/invalidations, secret-free API shape, no-SignalR assembly guard)",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs (+2: invalidated set re-populated on next read; no conditional validator/revision-token/history-since/?h= in provider reads)",
+    "tests/ArrTags.Tests/ReconciliationTriggerTests.cs (+2: PostScan/Scheduled/PostSave invalidation; periodic scheduled 12h trigger unchanged and still enqueues)",
+    "tests/ArrTags.Tests/WebhookResolutionTests.cs (+1: accepted webhook invalidates only the event connection)",
+    "Empirical DI check (temporary /tmp/11.3/dicheck console probe, removed): ActivatorUtilities.CreateInstance<WebhookIntakeService>(provider) resolves _inventory non-null with ArrTagsServiceRegistrator registration, confirming production injection of ArrInventoryCacheProvider"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-018 (clauses 2, 3, 5) - invalidation sources, no conditional request/revision token/history-since/SignalR, not refresh-only",
+    "docs/decisions.md ADR-012 - webhook is an off-request-path bounded hint; never blocks a Jellyfin request",
+    "docs/planning/v1.1.md Goal C / DG-12 - acceptance criteria match the task",
+    "docs/research/radarr-api.md section 16 and docs/research/sonarr-api.md 'Conditional requests and inventory caching' - no provider ETag/If-None-Match/Last-Modified; ?h= bypass must never be used; history/since is incomplete; SignalR is an internal UI contract",
+    "docs/research/arr-api-researcher/conditional-requests-and-inventory-caching.json - ArrTags-side invalidation only"
+  ],
+  "documentation_checked": [
+    "PLANS.md (Project Status paragraph, Milestone 11 row, task 11.3 checkbox and block, Phase 11 objective)",
+    "docs/changelog.md (Phase 11 status and Task 11.3 entry)",
+    "docs/project-status.md (Current milestone and Next tasks)",
+    "docs/architecture.md (status line, section 8, section 12)",
+    "docs/implementation-readiness.md (status line)",
+    "docs/limitations.md (F1 body/evidence/consequence and GOALS criterion 6 row)",
+    "README.md (limitations summary)",
+    "docs/data-model.md (section 6 inventory-cache invalidation paragraph and expiration/invalidation subsection)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

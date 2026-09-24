@@ -5,6 +5,7 @@ using ArrTags.Artwork;
 using ArrTags.Configuration;
 using ArrTags.Logging;
 using ArrTags.Media;
+using ArrTags.Providers;
 using ArrTags.Updates;
 using Microsoft.Extensions.Logging;
 
@@ -35,6 +36,7 @@ public sealed class LibraryReconciliationService
     private readonly IWorkHintSink _workHints;
     private readonly ArtworkLifecycleFenceStore _fences;
     private readonly IArrTagsLog<LibraryReconciliationService>? _log;
+    private readonly ArrInventoryCacheProvider? _inventory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LibraryReconciliationService"/> class.
@@ -45,6 +47,7 @@ public sealed class LibraryReconciliationService
     /// <param name="workHints">The bounded, non-blocking enqueue boundary.</param>
     /// <param name="fences">The durable active lifecycle fence store.</param>
     /// <param name="log">The optional bounded, secret-free reconciliation-boundary log.</param>
+    /// <param name="inventory">The optional bounded provider inventory cache (ADR-018); when present, a reconciliation invalidates it so the work it enqueues begins a fresh provider-read window.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public LibraryReconciliationService(
         ConfigurationSnapshotService configuration,
@@ -52,7 +55,8 @@ public sealed class LibraryReconciliationService
         IMediaLibraryEnumerator library,
         IWorkHintSink workHints,
         ArtworkLifecycleFenceStore fences,
-        IArrTagsLog<LibraryReconciliationService>? log = null)
+        IArrTagsLog<LibraryReconciliationService>? log = null,
+        ArrInventoryCacheProvider? inventory = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
@@ -60,6 +64,7 @@ public sealed class LibraryReconciliationService
         _workHints = workHints ?? throw new ArgumentNullException(nameof(workHints));
         _fences = fences ?? throw new ArgumentNullException(nameof(fences));
         _log = log;
+        _inventory = inventory;
     }
 
     /// <summary>
@@ -100,6 +105,17 @@ public sealed class LibraryReconciliationService
                 0,
                 "The lifecycle fence refuses new publication work."));
         }
+
+        // ADR-018 clause 3: a reconciliation is an ArrTags-side invalidation
+        // source. Post-scan (Jellyfin library refresh), manual and periodic
+        // scheduled, and post-save all run through this path, so discarding the
+        // retained observation sets here makes the work enqueued below begin a
+        // fresh provider-read window instead of serving a set observed before
+        // the trigger. The cache is non-authoritative; the next read simply
+        // re-populates it. The periodic scheduled reconciliation is not replaced
+        // by this: it still runs on its interval and enqueues work as before,
+        // with the cache as an accelerator rather than the source of truth.
+        InvalidateInventory();
 
         var batchSize = snapshot.Limits.ReconciliationBatchSize;
         if (batchSize < 1)
@@ -248,6 +264,31 @@ public sealed class LibraryReconciliationService
         {
             // A fence that cannot be read fails closed rather than enqueueing work.
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Discards every retained provider inventory observation set (ADR-018
+    /// clause 3) so the work this reconciliation enqueues begins a fresh
+    /// provider-read window. The invalidation is bounded and best-effort: a
+    /// failure is contained and never aborts the reconciliation, and the cache is
+    /// non-authoritative so the next read simply re-populates it.
+    /// </summary>
+    private void InvalidateInventory()
+    {
+        if (_inventory is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _inventory.InvalidateAll();
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Invalidation is an accelerator; the reconciliation remains
+            // authoritative for the bounded work it enqueues.
         }
     }
 

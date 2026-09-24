@@ -1,0 +1,137 @@
+{
+  "task": "11.3",
+  "title": "ArrTags-side invalidation",
+  "phase": 11,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2db903ceffe9VwBlpFCom08Vu"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2dab5774ffeqtrncw7mhv2W6E"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2dab5772ffecejvDsC7JmaLJE"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2db903ceffe9VwBlpFCom08Vu"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2d992046ffe0GcQBAw238dJV7"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 2,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2d992044ffejQ5GDaQQnJwIzF"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "test-quality-reviewer attempt 1 raised MEDIUM TQ-11.3-1 (the 'no provider revision token / no history-since' negative claim only checked conditional headers and literal substrings, so an unnamed revision/history endpoint would pass), LOW TQ-11.3-2 (per-source reconciliation invalidation observed only via Count == 0), and the implementation-reviewer LOW 11.3-F3 (changelog wording omitted PostSave). The worker pinned the provider request endpoint-path and query-key allowlist in the negative-dependency test (mutation-proven with an injected /api/v3/history request), observed per-source invalidation via served-before/not-served-after, and corrected the changelog wording. No production behavior changed. All attempt-1 findings were independently confirmed closed in attempt 2."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null; no estimation was performed.",
+    "Final gates: implementation-reviewer APPROVED (attempt 2, no blockers); test-quality-reviewer PASS_WITH_FINDINGS (attempt 2, MEDIUM TQ-11.3-1 closed; no open BLOCKER/HIGH/MEDIUM).",
+    "Validation: build 0 warnings / 0 errors; focused 11.3 classes 70/0/70; full default suite Failed 0, Passed 1418, Skipped 63, Total 1481 (pre-task baseline 1407/63/1470; +11 passed/+11 total, 0 new skips).",
+    "Non-vacuousness independently reproduced by the test-quality-reviewer with throwaway-copy mutations (remove webhook invalidation; remove reconciliation invalidation; disable TTL eviction; add If-None-Match; add a SignalR-named type; inject an unlisted /api/v3/history request; inject an unlisted query key), each failing the corresponding test and reverted.",
+    "Tracked non-blocking findings: TQ-11.3-3/11.3-F6 (LOW, the webhook path is verified on a directly-constructed WebhookIntakeService rather than the DI-composed instance, and the endpoint allowlist admits the probe-only /api/v3/system/status), TQ-11.3-4 (INFO, the bounded webhook invalidate-all fallback is unreachable with the current catalog and is documented rather than exercised), TQ-11.3-5 (INFO, structural API-shape assertion), 11.3-F1/F2 (LOW docs precision, owned by task 11.4).",
+    "Limitation F1 remains open: task 11.4 records it resolved after the Goal C integration verification; the live pinned-host confirmation remains owned by task 14.3."
+  ]
+}

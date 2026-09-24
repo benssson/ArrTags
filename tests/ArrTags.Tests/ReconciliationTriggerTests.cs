@@ -9,6 +9,7 @@ using ArrTags.Concurrency;
 using ArrTags.Configuration;
 using ArrTags.Media;
 using ArrTags.PluginLifecycle;
+using ArrTags.Providers;
 using ArrTags.Reconciliation;
 using ArrTags.State;
 using ArrTags.Updates;
@@ -249,6 +250,70 @@ public sealed class ReconciliationTriggerTests
     }
 
     [Fact]
+    public async Task ReconciliationInvalidatesTheInventoryForEverySource()
+    {
+        using var harness = new ReconciliationHarness(batchSize: 100);
+        harness.AddMovie();
+        var radarr = ArrConnectionCatalog.FromSnapshot(harness.Configuration.Current)
+            .Single(connection => connection.Provider.Kind == ArrProviderKind.Radarr);
+
+        // ADR-018 clause 3: Jellyfin library refresh/post-scan, scheduled/manual,
+        // and post-save reconciliation all run through ReconcileAsync and all
+        // invalidate the retained observation sets so their work begins a fresh
+        // provider-read window.
+        foreach (var source in new[]
+        {
+            LibraryReconciliationSource.PostScan,
+            LibraryReconciliationSource.Scheduled,
+            LibraryReconciliationSource.PostSave,
+        })
+        {
+            var now = DateTimeOffset.UtcNow;
+            Assert.True(harness.Inventory.Current.TryStore(
+                radarr, now, Array.Empty<ArrInventoryRecordObservation>()));
+            Assert.Equal(1, harness.Inventory.Current.Count);
+
+            // The seeded set is actually served before the reconciliation, so the
+            // post-run observation is not vacuous.
+            Assert.True(harness.Inventory.Current.TryGet(radarr.ConnectionId, now, out var retained));
+            Assert.NotNull(retained);
+
+            var result = await harness.Service.ReconcileAsync(source, progress: null, CancellationToken.None);
+
+            Assert.Equal(LibraryReconciliationOutcome.Completed, result.Outcome);
+            Assert.Equal(1, result.Enqueued);
+
+            // The prior set is no longer served (not merely absent from the
+            // count); the provider-level re-population test covers the re-read.
+            Assert.False(harness.Inventory.Current.TryGet(radarr.ConnectionId, now, out _));
+            Assert.Equal(0, harness.Inventory.Current.Count);
+        }
+    }
+
+    [Fact]
+    public async Task PeriodicScheduledReconciliationIsUnchangedAndStillEnqueues()
+    {
+        // ADR-018 clause 3: v1.1 is not refresh-only. The periodic scheduled
+        // reconciliation keeps its 12-hour default interval and enqueues the same
+        // bounded work as before; the cache is an accelerator, not the source of
+        // truth.
+        Assert.Equal(TimeSpan.FromHours(12), ArrTagsReconciliationTask.DefaultInterval);
+
+        using var harness = new ReconciliationHarness(batchSize: 100);
+        harness.AddMovie();
+        var task = new ArrTagsReconciliationTask(harness.Service);
+
+        var trigger = Assert.Single(task.GetDefaultTriggers());
+        Assert.Equal(TaskTriggerInfoType.IntervalTrigger, trigger.Type);
+        Assert.Equal(ArrTagsReconciliationTask.DefaultInterval.Ticks, trigger.IntervalTicks);
+
+        await task.ExecuteAsync(new RecordingProgress(), CancellationToken.None);
+
+        Assert.Single(harness.Sink.Hints);
+        Assert.Equal(LibraryWorkReason.Reconciliation, harness.Sink.Hints[0].Reason);
+    }
+
+    [Fact]
     public void ScheduledTaskExposesPeriodicTriggerAndManualSurface()
     {
         using var harness = new ReconciliationHarness(batchSize: 100);
@@ -414,13 +479,16 @@ public sealed class ReconciliationTriggerTests
             Enumerator = new FakeMediaLibraryEnumerator();
             Sink = new RecordingWorkHintSink();
             Queue = new LibraryWorkQueue(() => Configuration.Current.Limits);
+            Inventory = new ArrInventoryCacheProvider(Configuration);
 
             Service = new LibraryReconciliationService(
                 Configuration,
                 Resolver,
                 Enumerator,
                 Sink,
-                Fences);
+                Fences,
+                log: null,
+                inventory: Inventory);
         }
 
         public ConfigurationSnapshotService Configuration { get; }
@@ -436,6 +504,8 @@ public sealed class ReconciliationTriggerTests
         public RecordingWorkHintSink Sink { get; }
 
         public LibraryWorkQueue Queue { get; }
+
+        public ArrInventoryCacheProvider Inventory { get; }
 
         public LibraryReconciliationService Service { get; }
 

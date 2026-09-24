@@ -21,9 +21,12 @@ namespace ArrTags.Providers;
 /// not add value-level redaction and relies on that producer contract
 /// (<see cref="ArrProviderError"/> is documented as bounded and redacted,
 /// ADR-020 clause 4), consistent with the per-item metadata record's last-error
-/// summary. The provider clients, metadata readers, and invalidation sources are
-/// wired in later work; this boundary defines and enforces only the shape and its
-/// bounds.
+/// summary. The provider clients and metadata readers populate and consume it
+/// (task 11.2), and the ArrTags-side invalidation surface
+/// (<see cref="Invalidate(ArrConnectionId)"/>/<see cref="InvalidateAll"/>) is
+/// wired to the provider webhook, Jellyfin library refresh/post-scan, and
+/// scheduled/manual reconciliation sources plus the bounded TTL fallback
+/// (task 11.3, ADR-018 clause 3).
 /// </remarks>
 public sealed class ArrInventoryCache
 {
@@ -178,6 +181,51 @@ public sealed class ArrInventoryCache
 
             entry = stored;
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Discards the retained observation set for one connection (ADR-018 clause
+    /// 3). Invalidation is ArrTags-side: it is driven by the provider webhook,
+    /// Jellyfin library refresh/post-scan, and scheduled/manual reconciliation
+    /// sources plus the bounded TTL fallback, never by a provider conditional
+    /// request, revision token, <c>history/since</c> watermark, or push channel.
+    /// The removal is atomic under the same gate as <see cref="TryStore"/> and
+    /// <see cref="TryGet"/>, so it never observes a partially written entry and
+    /// never holds a lock across provider I/O. A population that was already in
+    /// flight when the invalidation ran may still store the read it took before
+    /// the invalidation; that set is bounded by the configured TTL and is
+    /// repaired by the next webhook, refresh/post-scan, or scheduled/manual
+    /// reconciliation, so the cache stays a non-authoritative accelerator rather
+    /// than the source of truth.
+    /// </summary>
+    /// <param name="connectionId">The non-secret connection scope to discard.</param>
+    /// <returns><see langword="true"/> when a retained set was removed.</returns>
+    /// <exception cref="ArgumentNullException">The connection identifier is <see langword="null"/>.</exception>
+    public bool Invalidate(ArrConnectionId connectionId)
+    {
+        ArgumentNullException.ThrowIfNull(connectionId);
+
+        lock (_gate)
+        {
+            return _entries.Remove(connectionId);
+        }
+    }
+
+    /// <summary>
+    /// Discards every retained observation set (ADR-018 clause 3). It is the
+    /// bounded invalidate-all used by the reconciliation sources (Jellyfin
+    /// library refresh/post-scan and scheduled/manual reconciliation), which
+    /// cover every enabled connection, and by a webhook whose connection cannot
+    /// be resolved. It is atomic and non-blocking under the cache gate and never
+    /// holds a lock across provider I/O; the in-flight population note on
+    /// <see cref="Invalidate(ArrConnectionId)"/> applies unchanged.
+    /// </summary>
+    public void InvalidateAll()
+    {
+        lock (_gate)
+        {
+            _entries.Clear();
         }
     }
 }

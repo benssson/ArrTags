@@ -3032,8 +3032,8 @@ warnings / 0 errors; default suite Failed 0, Passed 1363, Skipped 63, Total 1426
 
 ## Phase 11 - Provider inventory cache and library-refresh-driven refresh (v1.1)
 
-**Status:** In progress. Tasks 11.1 and 11.2 are complete; tasks 11.3-11.4
-remain, so limitation F1 is not yet resolved.
+**Status:** In progress. Tasks 11.1, 11.2, and 11.3 are complete; task 11.4
+remains, so limitation F1 is not yet resolved.
 
 ### Task 11.1 - Inventory cache model, bounds, and limits
 
@@ -3178,3 +3178,62 @@ empty/invalid bulk-identifier boundaries.
 `./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
 0, Passed 1407, Skipped 63, Total 1470 (pre-task baseline Failed 0, Passed 1387,
 Skipped 63, Total 1450; +20 passed, +20 total, 0 new skips).
+
+### Task 11.3 - ArrTags-side invalidation
+
+**Status:** Complete.
+
+Wires the ArrTags-side provider inventory cache invalidation (ADR-018 clause 3)
+to every source, with no provider conditional request, revision token,
+`history/since` watermark, or SignalR dependency, and with the periodic
+scheduled reconciliation retained (v1.1 is not refresh-only).
+
+`ArrInventoryCache` gains a bounded, thread-safe `Invalidate(ArrConnectionId)`
+and `InvalidateAll()` that remove retained observation sets under the same gate
+as `TryStore`/`TryGet`; the removal is atomic, never holds a lock across provider
+I/O, and is safe concurrently with reads and populations.
+`ArrInventoryCacheProvider` exposes the same surface against the cache bound to
+the current configuration snapshot, so a replaced snapshot's rebuilt cache is
+invalidated rather than a captured one. A single-flight population that completes
+after an invalidation may still store the read it took before it; the consequence
+is bounded by the configured TTL and repaired by the next webhook,
+refresh/post-scan, or scheduled/manual reconciliation, so the cache stays a
+non-authoritative accelerator. The invalidation API carries only the non-secret
+connection identifier.
+
+An accepted provider webhook (ADR-012) invalidates the event's
+provider/connection from the hosted `WebhookIntakeService` loop before any hint
+is enqueued, scoped via `ArrConnectionCatalog` from the current snapshot and
+falling back to a bounded invalidate-all when the connection cannot be resolved;
+the invalidation is best-effort and never blocks or throws into the Jellyfin
+request. Jellyfin library refresh/post-scan, manual and periodic scheduled, and
+post-save reconciliation all run through
+`LibraryReconciliationService.ReconcileAsync`, which now invalidates the retained
+sets at the start of a reconciliation so the work it enqueues begins a fresh
+provider-read window; the periodic scheduled reconciliation still runs on its
+unchanged 12-hour default interval and enqueues work as before. The bounded TTL
+fallback remains in `TryGet` (an expired set is evicted).
+
+Documentation: `docs/architecture.md` section 8 (the wired invalidation sources
+in the refresh-trigger list and cache paragraph) and section 12 (the invalidation
+semantics), `docs/data-model.md` section 6 (the inventory-cache invalidation
+paragraph and the expiration/invalidation subsection), `docs/limitations.md` F1
+(partial progress; still open until 11.4), `PLANS.md`, `docs/project-status.md`,
+`docs/implementation-readiness.md`, and `README.md`.
+
+New tests (11 cases): `tests/ArrTags.Tests/InventoryCacheInvalidationTests.cs` (6
+cases) covers the per-connection and invalidate-all removal, the bounded TTL
+fallback eviction, thread-safety of concurrent reads/populations/invalidations,
+the secret-free/bounded invalidation API shape, and the no-SignalR assembly
+guard; `tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs` (+2)
+covers an invalidated observation set being re-populated by the next read and the
+absence of any conditional-request validator, revision-token poll, or
+`history/since`/`?h=` query in the provider reads;
+`tests/ArrTags.Tests/ReconciliationTriggerTests.cs` (+2) covers the PostScan,
+Scheduled, and PostSave reconciliation invalidation and the unchanged periodic
+scheduled trigger that still enqueues; `tests/ArrTags.Tests/WebhookResolutionTests.cs` (+1)
+covers the webhook invalidation scoped to the event's connection.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1418, Skipped 63, Total 1481 (pre-task baseline Failed 0, Passed 1407,
+Skipped 63, Total 1470; +11 passed, +11 total, 0 new skips).
