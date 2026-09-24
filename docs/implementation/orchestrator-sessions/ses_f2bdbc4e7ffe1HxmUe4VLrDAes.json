@@ -1,0 +1,30 @@
+{
+  "session_id": "ses_f2bdbc4e7ffe1HxmUe4VLrDAes",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "default",
+  "title": "Phase 14 kickoff",
+  "tokens": {
+    "input": 569106,
+    "output": 51705,
+    "reasoning": 51027,
+    "cache": {
+      "read": 17993856,
+      "write": 0
+    }
+  },
+  "total_tokens": 18665694,
+  "cost_usd": 0.20095996800000004,
+  "duration_seconds": 4652,
+  "first_recorded_at": "2026-09-24T19:57:13Z",
+  "last_updated_at": "2026-09-24T19:57:13Z",
+  "updates": [
+    {
+      "at": "2026-09-24T19:57:13Z",
+      "cost_usd": 0.20095996800000004,
+      "total_tokens": 18665694,
+      "duration_seconds": 4652,
+      "note": "Completed ArrTags v1.1 Phase 14 end to end: tasks 14.1 (version bump/release metadata, 45634f1/8ab27f7), 14.2 (reproducible 1.1.0.0 artifact + release documentation, 2b0351c/7d8c72f, one doc-accuracy correction round), 14.3 (live pinned-host matrix, 21ee625/c7d2a3a), 14.4 (release security review, c89a10d/120b5bf), and 14.5 (changelog/project-status/release-readiness, 672e0ab; release-review gate e74c054) through worker + independent reviewer gates; ran the release-reviewer gate (APPROVED_WITH_ACCEPTED_LIMITATIONS / SHIP_WITH_ACCEPTED_LIMITATIONS, 0 open BLOCKER/HIGH); recorded Gate 14 met and created the annotated tag v1.1.0 at closure commit bbeb557 with explicit user approval. No push or GitHub release performed (user's manual step)."
+    }
+  ]
+}
