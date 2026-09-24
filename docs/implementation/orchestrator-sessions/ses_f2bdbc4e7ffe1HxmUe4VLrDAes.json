@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Phase 14 kickoff",
   "tokens": {
-    "input": 569106,
-    "output": 51705,
-    "reasoning": 51027,
+    "input": 603813,
+    "output": 59310,
+    "reasoning": 66909,
     "cache": {
-      "read": 17993856,
+      "read": 22503168,
       "write": 0
     }
   },
-  "total_tokens": 18665694,
-  "cost_usd": 0.20095996800000004,
-  "duration_seconds": 4652,
+  "total_tokens": 23233200,
+  "cost_usd": 0.233786154,
+  "duration_seconds": 17782,
   "first_recorded_at": "2026-09-24T19:57:13Z",
-  "last_updated_at": "2026-09-24T19:57:13Z",
+  "last_updated_at": "2026-09-24T21:05:05Z",
   "updates": [
     {
       "at": "2026-09-24T19:57:13Z",
@@ -25,6 +25,13 @@
       "total_tokens": 18665694,
       "duration_seconds": 4652,
       "note": "Completed ArrTags v1.1 Phase 14 end to end: tasks 14.1 (version bump/release metadata, 45634f1/8ab27f7), 14.2 (reproducible 1.1.0.0 artifact + release documentation, 2b0351c/7d8c72f, one doc-accuracy correction round), 14.3 (live pinned-host matrix, 21ee625/c7d2a3a), 14.4 (release security review, c89a10d/120b5bf), and 14.5 (changelog/project-status/release-readiness, 672e0ab; release-review gate e74c054) through worker + independent reviewer gates; ran the release-reviewer gate (APPROVED_WITH_ACCEPTED_LIMITATIONS / SHIP_WITH_ACCEPTED_LIMITATIONS, 0 open BLOCKER/HIGH); recorded Gate 14 met and created the annotated tag v1.1.0 at closure commit bbeb557 with explicit user approval. No push or GitHub release performed (user's manual step)."
+    },
+    {
+      "at": "2026-09-24T21:05:05Z",
+      "cost_usd": 0.233786154,
+      "total_tokens": 23233200,
+      "duration_seconds": 17782,
+      "note": "Post-release tooling fix requested by the user: patched scripts/publish-release.sh so --release-only reads the GitHub release notes from the committed manifest.json entry for the version (jq, with a sed fallback and the write-manifest.cs --print-changelog path retained only as a fallback), removing the unconditional dotnet dependency that caused 'dotnet: command not found'; updated docs/release/build-and-release.md; ran worker -> independent implementation-reviewer (APPROVED, 0 blockers) and committed d85e211; re-ran ./scripts/publish-release.sh --release-only --no-push and confirmed it now passes the changelog step and stops only at the expected missing gh/token error. The v1.1.0 tag remains on bbeb557; no push or GitHub release performed."
     }
   ]
 }
