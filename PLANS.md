@@ -4824,7 +4824,7 @@ execution order and task numbering conflict, the execution order wins.
 
 #### 13.1 README palette documentation and v1.1 feature documentation
 
-**Status:** Complete. `README.md` now explains the four palette override fields
+**Status:** Complete (commit `2e4db16`). `README.md` now explains the four palette override fields
 (`TechnicalBackground`, `TechnicalText`, `StatusBackground`, and `StatusText`)
 with their meaning (the technical badge rail's background/text and the `UPGRADE`
 status pill's background/text), their default colors (`#111827`, `#FFFFFF`,
