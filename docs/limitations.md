@@ -65,13 +65,29 @@ inventory cache and no provider revision-token fetch skip. Each scheduled,
 post-scan, and manual reconciliation enqueues up to `QueueCapacity` work hints
 (default 512, ADR-004), and each hint performs its own provider read.
 
+**Partial progress (task 11.2):** the bounded provider inventory cache is now
+populated and consumed at the provider-client boundary. On a cache miss one
+library read per connection (`/api/v3/movie` or `/api/v3/series`) plus the bulk
+file reads populate the cache; every work item in the TTL window is served from
+the canonical observations without another library read, and the Radarr
+repeatable `moviefile?movieId=` and Sonarr repeatable
+`episodeFile?episodeFileIds=` selectors replace per-item file reads. The cache is
+still only TTL-invalidated: the ArrTags-side invalidation sources (webhook,
+Jellyfin library refresh/post-scan, scheduled/manual reconciliation) are not yet
+wired (task 11.3), and F1 is not recorded as resolved until task 11.4 verifies
+the complete Goal C behavior. No provider revision-token fetch skip is added or
+planned, because neither provider supplies a usable token (ADR-018 clause 7).
+
 - Evidence: Phase 6 review MEDIUM item; `PLANS.md` Phase 6 acceptance criterion
   1 (accepted as partially met) and Post-V1 Backlog; `docs/architecture.md`
-  section 12; task 7.4 review (`LibraryWorkQueue` capacity 512).
-- Consequence: on a large library, one full provider-library read occurs per
-  work item, so the `GOALS.md` Reliability/Performance goal "avoid unnecessary
-  API requests to Sonarr and Radarr" is only partially met for provider
-  fetches. Render and publication are fingerprint-gated and are not affected.
+  section 12; task 7.4 review (`LibraryWorkQueue` capacity 512); task 11.2
+  provider integration tests (`ProviderInventoryCacheIntegrationTests`).
+- Consequence: without the wired ArrTags-side invalidation sources, a provider
+  change is still noticed only after the bounded inventory TTL (or a cache miss),
+  and the `GOALS.md` Reliability/Performance goal "avoid unnecessary API requests
+  to Sonarr and Radarr" is now met for provider fetches within a TTL window but
+  not yet for event-driven refresh. Render and publication are fingerprint-gated
+  and are not affected.
 
 ### F3. No bounded, secret-free metrics/diagnostic-status surface
 
@@ -271,7 +287,7 @@ for package content, `./build.sh package` has been run). The counts below are th
 `1.0.1.0` release matrix and are not current v1.1 truth: the `1.0.1.0` default
 suite was 1,228 passed / 60 skipped / 1,288 total and the `1.0.1.0` host-guarded
 suite was 1,244 passed / 44 skipped / 1,288 total. The current v1.1 working suite
-is Failed 0, Passed 1,387, Skipped 63, Total 1,450; the v1.1 release task
+is Failed 0, Passed 1,407, Skipped 63, Total 1,470; the v1.1 release task
 refreshes this matrix (test-quality review finding TQ-8).
 
 - Evidence: tasks 7.5/7.8 worker reports; `docs/release/build-and-release.md`.

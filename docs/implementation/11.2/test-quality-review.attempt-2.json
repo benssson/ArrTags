@@ -1,0 +1,184 @@
+{
+  "subject": "v1.1 task 11.2 - Provider-client integration and bulk reads - test-quality re-review (attempt 2) of the correction round for TQ-11.2-1..6 and RC8 chunking, tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs (20 cases)",
+  "reviewer_status": "PASS",
+  "attempt_1_status": "PASS_WITH_FINDINGS (MEDIUM TQ-11.2-1..4; LOW TQ-11.2-5/6)",
+  "assessment": "Independent re-review after the correction round. I rebuilt the working tree, reproduced the full default suite (Failed 0, Passed 1407, Skipped 63, Total 1470) and the focused class (Passed 20, Skipped 0, Total 20), then verified every attempt-1 finding with mutation testing in a throwaway copy under /tmp (never in the repo). Every closure is genuine and mutation-sensitive: the provider-failure boundary now drives a real stale-but-usable entry and a real expired entry through the production reader (both directions fail under mutation); the Sonarr over-bound fallback test now fails when the fallback is disabled; the whole-library-retention tests fail when only one observation is retained (Radarr and Sonarr); the per-connection single-flight test fails deterministically (3/3) when the shared gate is removed; the repeated Sonarr episodeFileIds selector fails when only the first id is emitted; and the new chunking test fails when chunking is bypassed. The documented current-suite counts are refreshed and match my run. All 20 cases are unguarded [Fact]s that run in the shipping default configuration; no new skips. No BLOCKER, HIGH, MEDIUM, or LOW finding remains open. Only informational notes are recorded (the stale-case provider failure is inherently never contacted because the reader does not refresh while an entry is usable; the concurrency test is timing-based but stable; Sonarr concurrency is covered by the provider-level shared gate rather than a Sonarr-specific test). Reviewer status: PASS.",
+  "findings": [
+    {
+      "id": "TQ-11.2-1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "coverage/provider-failure",
+      "summary": "CLOSED and mutation-verified: the stale-but-usable boundary is now served as bounded last-known-good with the provider failing and no request, and the expired boundary is evicted with the provider actually read and a bounded failure returned.",
+      "description": "RadarrStaleObservationSetIsServedWithoutAProviderCallWhenTheProviderFails stores an observation 45s old under a 1-minute TTL (fresh for 30s, stale-usable until 60s), points the responder at failure, and reads the identity: it asserts success, the quality label, no request, and one retained connection. RadarrExpiredObservationSetIsEvictedAndTheProviderFailureIsBounded stores an observation 90s old (> StaleUntil), and the reader actually issues one /api/v3/movie request, returns the ProviderUnavailable/Later failure, and retains nothing. Both were driven through the real reader/cache boundary (no injected clock needed; the entry is constructed at a chosen observation time).",
+      "closure_verified": true,
+      "verification": [
+        "Mutation M1a (throwaway): ArrInventoryCacheEntry.IsExpired -> always false. Expected failure observed: RadarrExpiredObservationSetIsEvictedAndTheProviderFailureIsBounded FAIL, 1 failed / 19 passed.",
+        "Mutation M1b (throwaway): RadarrMetadataReader serves only fresh entries (requires now < ExpiresAt on both cache-hit checks). Expected failure observed: RadarrStaleObservationSetIsServedWithoutAProviderCallWhenTheProviderFails FAIL, 1 failed / 19 passed.",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:134-180; src/ArrTags/Providers/ArrInventoryCacheEntry.cs:182-240 (fresh for TTL/2, stale-usable until TTL)."
+      ],
+      "recommended_action": "None; closed. The residual nuance (a usable entry means the reader never contacts the provider, so the failing responder is only ever 'not called') is recorded as informational TQ-11.2-A2-1."
+    },
+    {
+      "id": "TQ-11.2-2",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "meaningfulness/Sonarr-fallback",
+      "summary": "CLOSED and mutation-verified: the Sonarr over-bound fallback test now asserts the direct-read request shape and fails when the fallback is disabled.",
+      "description": "SonarrOverBoundObservationSetFallsBackToTheDirectRead (MaxRecords=1 rejects the 3-record series+2-episode set) now asserts one /api/v3/series request, exactly two /api/v3/episode requests (population per-series read plus the direct fallback read), no /api/v3/episodeFile request, and an empty cache. Serving the over-bound set from the cache would produce one episode request and zero direct read, so ignoring the TryStore result fails the test.",
+      "closure_verified": true,
+      "verification": [
+        "Mutation M2 (throwaway): SonarrMetadataReader.PopulateAsync ignores the TryStore result (`cache.TryStore(...); return Stored;`). Expected failure observed: SonarrOverBoundObservationSetFallsBackToTheDirectRead FAIL, 1 failed / 19 passed.",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:251-271; src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:317-319; src/ArrTags/Providers/ArrInventoryCache.cs:125-148 (bound rejection)."
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-3",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "coverage/whole-library-retention",
+      "summary": "CLOSED and mutation-verified: the one-read-per-window tests read two distinct identities and assert whole-library retention; a single-record cache fails both.",
+      "description": "RadarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow reads MovieIdentity(603) then MovieIdentity(604), asserts one /api/v3/movie request, two total requests, and entry.Records.Count == 2. SonarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow reads EpisodeIdentity(12345,9001) then (12345,9002), asserts one /api/v3/series and one /api/v3/episode request, and entry.Records.Count == 3 (series plus both episodes).",
+      "closure_verified": true,
+      "verification": [
+        "Mutation M3a (throwaway): Radarr stores only observations[0] before TryStore. Expected failure observed: RadarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow FAIL, 1 failed / 19 passed.",
+        "Mutation M3b (throwaway): Sonarr stores only observations[0] before TryStore. Observed: SonarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow and SonarrCacheHitAvoidsAnyProviderCall and SonarrOverBoundObservationSetFallsBackToTheDirectRead FAIL, 3 failed / 17 passed.",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:36-62 (Radarr) and 182-213 (Sonarr); src/ArrTags/Providers/ArrInventoryCache.cs:142-147 (per-connection whole-set storage)."
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-4",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "coverage/concurrency",
+      "summary": "CLOSED and mutation-verified: per-connection single-flight coalescing is implemented and tested under a real concurrent cold start; removing the shared gate fails the test deterministically.",
+      "description": "ArrInventoryCacheProvider owns a per-connection SemaphoreSlim(1,1) population gate; the readers acquire it on a cold cache, re-check the cache inside it, then populate once. ConcurrentColdReadersShareOneLibraryRead launches four cold readers against a blocking handler and asserts LibraryRequestCount == 1; ProviderFailureReleasesThePopulationGateForALaterAttempt drives a failed population then a successful later attempt. The gate is an async semaphore (no monitor lock across provider I/O), cancellation-aware, and lease-disposed on every path.",
+      "closure_verified": true,
+      "verification": [
+        "Mutation M4 (throwaway): AcquirePopulationAsync returns a fresh per-call semaphore instead of the shared per-connection gate. Expected failure observed: ConcurrentColdReadersShareOneLibraryRead FAIL in 3/3 consecutive runs (19 passed each run).",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:327-374; src/ArrTags/Providers/ArrInventoryCacheProvider.cs:70-105."
+      ],
+      "recommended_action": "None; closed. The timing-based detection mechanism is noted as informational TQ-11.2-A2-2."
+    },
+    {
+      "id": "TQ-11.2-5",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "coverage/bulk-selector",
+      "summary": "CLOSED and mutation-verified: the Sonarr fixture now has two unresolved file ids and the bulk test pins the repeated episodeFileIds selector.",
+      "description": "The Sonarr fixture serves two episodes with unresolved file ids 418 and 419; SonarrBulkEpisodeFileReadUsesRepeatedEpisodeFileIdsInsteadOfPerSeriesReads asserts the exact URI /api/v3/episodeFile?episodeFileIds=418&episodeFileIds=419 and that no per-series /api/v3/episodeFile?seriesId=12 is issued.",
+      "closure_verified": true,
+      "verification": [
+        "Mutation M5 (throwaway): SonarrClient.BuildEpisodeFilesPath emits only the first id. Expected failure observed: SonarrBulkEpisodeFileReadUsesRepeatedEpisodeFileIdsInsteadOfPerSeriesReads FAIL, 1 failed / 19 passed.",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:215-232 and 689-717; src/ArrTags/Providers/Sonarr/SonarrClient.cs:216-234."
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-6",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "skips/matrix-accuracy",
+      "summary": "CLOSED: the documented current-suite counts are refreshed to 1,407 passed / 63 skipped / 1,470 total and match my independent reproduction.",
+      "description": "docs/limitations.md V6 (line 290) and docs/project-status.md (lines 640-641) now state the current v1.1 working suite as Failed 0, Passed 1,407, Skipped 63, Total 1,470. docs/changelog.md records the same count with the correct +20 over the 1,387/1,450 pre-task baseline. The dated 1,387/1,450 references that remain are historical (11.1 changelog entry, prior reports) and are permitted to keep their at-the-time counts.",
+      "closure_verified": true,
+      "verification": [
+        "./build.sh test -> Failed 0, Passed 1407, Skipped 63, Total 1470 (independently reproduced).",
+        "docs/limitations.md:290; docs/project-status.md:640-641; docs/changelog.md:3179-3180."
+      ],
+      "recommended_action": "None; closed. The separate 1.0.1.0 release matrix in docs/release/build-and-release.md is explicitly labelled historical and remains owned by the v1.1 release task."
+    },
+    {
+      "id": "RC8/chunking",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "coverage/bulk-bounds",
+      "summary": "CLOSED and mutation-verified: the bulk id list is chunked by OperationalLimits.ReconciliationBatchSize and the new test is sensitive to chunking being bypassed.",
+      "description": "Both RadarrClient.GetMovieFilesAsync(IReadOnlyList<int>) and SonarrClient.GetEpisodeFilesAsync(IReadOnlyList<int>) chunk the id list by ReconciliationBatchSize and merge the chunk results. BulkReadsChunkTheIdListIntoBoundedRequests sets ReconciliationBatchSize=1 and asserts one request per id with the expected single-id query values and the merged result count.",
+      "closure_verified": true,
+      "verification": [
+        "Mutation M6 (throwaway): both clients set batchSize = int.MaxValue (chunking bypassed). Expected failure observed: BulkReadsChunkTheIdListIntoBoundedRequests FAIL, 1 failed / 19 passed.",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:376-401; src/ArrTags/Providers/Radarr/RadarrClient.cs:164-192; src/ArrTags/Providers/Sonarr/SonarrClient.cs:181-210."
+      ],
+      "recommended_action": "None; closed. A partial-final-chunk fixture (e.g. 3 ids at batch size 2) is not covered, but the chunk boundary is pinned by the batch-size=1 case and no requirement for partial chunks is documented."
+    },
+    {
+      "id": "TQ-11.2-A2-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage/provider-failure",
+      "summary": "The stale-case failing responder is never contacted, by design: while a usable entry exists the reader does not consult the provider at all.",
+      "description": "The reader has no code path that attempts a refresh and then falls back to a retained entry on failure; bounded last-known-good is preserved precisely because no provider call is made while the entry is usable. The stale test therefore establishes 'a stale-but-usable entry is served without contacting the provider (even when it is failing)', and the expired test establishes the actual read-attempt-and-bounded-failure path. Together they fully account for the documented behavior; the test name mentions the failing provider as the condition, which is accurate but could be read as implying a refresh attempt.",
+      "evidence": [
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:83-88 (usable entry returns before any client call); no WithFailure call site in either reader.",
+        "docs/architecture.md:690-693; docs/data-model.md:1226-1229."
+      ],
+      "recommended_action": "None required. The behavior is accurately documented and both boundaries are mutation-sensitive."
+    },
+    {
+      "id": "TQ-11.2-A2-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism/concurrency",
+      "summary": "The concurrent cold-start test is timing-based but stable and mutation-sensitive on this environment.",
+      "description": "ConcurrentColdReadersShareOneLibraryRead waits for the first library request and then Task.Delay(250) before releasing the blocking handler, so a non-coalesced implementation has time to issue redundant reads. It ran green 5/5 focused-class runs and 10/10 targeted runs, and the M4 no-coalescing mutation failed 3/3 runs. No false-pass or flake was observed. This is inherent to concurrency testing and does not undermine the verdict; on an extremely slow host the delay could theoretically mask a broken gate only in the mutant, not in the shipped suite.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:327-349, 797-837.",
+        "M4: 3/3 mutant runs failed; pristine 5x focused + 10x targeted all green."
+      ],
+      "recommended_action": "None required for 11.2."
+    },
+    {
+      "id": "TQ-11.2-A2-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage/concurrency",
+      "summary": "Concurrent cold-start coalescing is tested through the Radarr reader only; the Sonarr reader relies on the same provider-level gate.",
+      "description": "The single-flight gate is owned by ArrInventoryCacheProvider and is provider-agnostic; both readers call the same AcquirePopulationAsync and perform the same re-check. The concurrency test uses Radarr, and the Sonarr reader's use of the gate is exercised indirectly by the sequential Sonarr cache/retention tests. A Sonarr-specific concurrent cold-start test would duplicate the same provider code path.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs:83-105; src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:90-101; src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:108-119."
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "mutation_evidence": [
+    {"id": "M1a", "mutation": "ArrInventoryCacheEntry.IsExpired always false (expiry disabled)", "expected_failure": "RadarrExpiredObservationSetIsEvictedAndTheProviderFailureIsBounded", "observed": "Failed 1, Passed 19 (20 total)"},
+    {"id": "M1b", "mutation": "RadarrMetadataReader serves only fresh entries (stale-usable rejected on both cache-hit checks)", "expected_failure": "RadarrStaleObservationSetIsServedWithoutAProviderCallWhenTheProviderFails", "observed": "Failed 1, Passed 19"},
+    {"id": "M2", "mutation": "SonarrMetadataReader ignores the TryStore result (over-bound fallback disabled)", "expected_failure": "SonarrOverBoundObservationSetFallsBackToTheDirectRead", "observed": "Failed 1, Passed 19"},
+    {"id": "M3a", "mutation": "Radarr caches only observations[0] (single-record cache)", "expected_failure": "RadarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow", "observed": "Failed 1, Passed 19"},
+    {"id": "M3b", "mutation": "Sonarr caches only observations[0] (single-record cache)", "expected_failure": "SonarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow", "observed": "Failed 3, Passed 17 (also SonarrCacheHitAvoidsAnyProviderCall and SonarrOverBoundObservationSetFallsBackToTheDirectRead)"},
+    {"id": "M4", "mutation": "AcquirePopulationAsync returns a fresh per-call semaphore (shared per-connection single-flight removed)", "expected_failure": "ConcurrentColdReadersShareOneLibraryRead", "observed": "Failed 1, Passed 19 in 3/3 consecutive runs"},
+    {"id": "M5", "mutation": "SonarrClient.BuildEpisodeFilesPath emits only the first episodeFileId", "expected_failure": "SonarrBulkEpisodeFileReadUsesRepeatedEpisodeFileIdsInsteadOfPerSeriesReads", "observed": "Failed 1, Passed 19"},
+    {"id": "M6", "mutation": "Both bulk clients bypass ReconciliationBatchSize chunking (batchSize = int.MaxValue)", "expected_failure": "BulkReadsChunkTheIdListIntoBoundedRequests", "observed": "Failed 1, Passed 19"}
+  ],
+  "matrix_observed": {
+    "default": "1407 passed / 63 skipped / 1470 total (Failed 0), independently reproduced with `source /config/arrtags-env.sh && ./build.sh test`",
+    "host_guarded": "not run - ARRTAGS_JELLYFIN_HOST_DIR unset and no pinned Jellyfin 12.0.0 host present in this environment (pre-existing documented guard, limitations V6); docs record the historical 1.0.1.0 host-guarded 1244 passed / 44 skipped / 1288 total",
+    "forced_native": "not run - ARRTAGS_SKIA_COMPAT=1 requires the pinned SkiaSharp native runtime/sysroot, absent in this environment (pre-existing documented guard); the native theories skip in the default run",
+    "task_11_2_filtered": "20 passed / 0 skipped / 20 total (independent re-run, 5 consecutive focused-class runs identical)"
+  },
+  "substitutes_checked": [
+    "Only the HTTP transport is doubled: RecordingHandler / BlockingLibraryHandler (custom HttpMessageHandler that records request URIs, returns fixture JSON, and can hold the first library request open) plus StubHttpClientFactory; the logging dependency is passed as null.",
+    "The production types under test are real: RadarrMetadataReader, SonarrMetadataReader, RadarrClient, SonarrClient, ArrReadClientFactory, ArrHttpClientFactory, ArrInventoryCacheProvider, ArrInventoryCache, ArrInventoryCacheEntry, ConfigurationSnapshotService, ArrConnectionCatalog, and the production matchers/mappers.",
+    "Gap versus a real host: no real HTTP/TLS and no real Sonarr/Radarr release payload variance beyond the committed fixtures - the pre-existing, documented limitation V1 (no live Sonarr/Radarr instance). The 11.2 required behaviors are provider-boundary behaviors and are exercised on the real in-process path.",
+    "MetadataReaderTests.cs and LogRedactionTests.cs only add the new bulk interface members to existing fakes (returning the existing Files field); the readers in those tests are constructed without the inventory provider, so the direct path they cover is unchanged and the stubs do not mask any 11.2 cached-path behavior."
+  ],
+  "skips_checked": [
+    "ProviderInventoryCacheIntegrationTests.cs contains 20 [Fact] methods and no [Fact(Skip=...)], JellyfinHostFact, SkiaNativeTheory, or other guard; the filtered run reports 20 passed / 0 skipped.",
+    "The default suite skips 63 tests, all in pre-existing guarded classes (SkiaBadgeRendererRenderTests, JellyfinImageResponseTests, RenderPngContractTests, RendererBehaviorDimensionTests, RenderDeterminismTests, JellyfinImageRouteTests, RendererCrossRuntimeTests, RendererBehaviorFormatTests, and others) - unchanged by this task, 0 new skips.",
+    "No task 11.2 behavior is masked by a skip: all 20 new tests run in the shipping default configuration. The host-guarded and forced-native suites are not runnable here, but the task's provider-boundary behavior does not depend on host or native facts."
+  ],
+  "determinism_checked": [
+    "Each test constructs its own ConfigurationSnapshotService, RecordingHandler/BlockingLibraryHandler, ArrInventoryCacheProvider, and readers; there is no shared mutable state and no order dependence.",
+    "The HTTP doubles return fixed in-memory JSON; there is no network, filesystem, process-state, or fixture-order dependence.",
+    "The stale/expired boundaries use wide margins (stale at -45s under a 60s TTL, a 15s margin; expired at -90s, a 30s margin), so they are not sensitive to sub-second scheduling jitter.",
+    "Focused class ran 5 consecutive times with identical 20/20 results (629-641 ms); the concurrency + gate-release pair ran 10 consecutive times green; the M4 no-coalescing mutant failed 3/3 runs. All command-line mutation runs were deterministic.",
+    "No assertion depends on wall-clock time in the shipped behavior: the cache TTL (default 15 minutes, or the test-configured value) is not compared against an asserted timestamp, and DateTimeOffset.UtcNow is used internally by the reader/cache but is not asserted against."
+  ],
+  "summary": "The correction round genuinely closes all six attempt-1 test-quality findings, independently confirmed by mutation testing in a throwaway /tmp copy: TQ-11.2-1 (both stale-served and expired-evicted provider-boundary directions fail under their respective mutations), TQ-11.2-2 (Sonarr fallback disabled fails), TQ-11.2-3 (single-record cache fails Radarr and Sonarr whole-library retention), TQ-11.2-4 (shared gate removed fails concurrent cold-start deterministically 3/3), TQ-11.2-5 (single-id Sonarr selector fails), and TQ-11.2-6 (current-suite counts refreshed to 1,407/63/1,470, matching my reproduction). The new RC8 chunking behavior is implemented in both bulk clients and its test is mutation-sensitive. The suite is 20 unguarded [Fact]s with 0 skips; the default suite is 1,407/63/1,470 with 0 failures; the host-guarded and forced-native suites remain not runnable in this environment under pre-existing documented guards. No open BLOCKER, HIGH, MEDIUM, or LOW finding remains; three informational notes record that the stale-case provider is inherently never contacted, that the concurrency test is timing-based but stable and mutation-sensitive, and that Sonarr concurrency is covered by the shared provider-level gate. Reviewer status: PASS.",
+  "repo_hygiene": [
+    "All mutation testing was performed in an isolated copy at /tmp/final-review/test-quality/mut; the repository working tree was not modified (git status identical before and after; git diff --check clean; no MUTATION marker in src/ or tests/)."
+  ]
+}

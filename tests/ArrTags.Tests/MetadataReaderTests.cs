@@ -289,6 +289,13 @@ public sealed class MetadataReaderTests
         {
             return Task.FromResult(Files);
         }
+
+        public Task<ArrProviderReadResult<IReadOnlyList<RadarrMovieFileResource>>> GetMovieFilesAsync(
+            IReadOnlyList<int> movieIds,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Files);
+        }
     }
 
     private sealed class FakeSonarrReadClient : ISonarrReadClient
@@ -327,6 +334,13 @@ public sealed class MetadataReaderTests
         }
 
         public Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>>> GetEpisodeFilesAsync(int seriesId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Files);
+        }
+
+        public Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>>> GetEpisodeFilesAsync(
+            IReadOnlyList<int> episodeFileIds,
+            CancellationToken cancellationToken)
         {
             return Task.FromResult(Files);
         }

@@ -883,6 +883,13 @@ public sealed class LogRedactionTests
         {
             return Task.FromResult(Files);
         }
+
+        public Task<ArrProviderReadResult<IReadOnlyList<RadarrMovieFileResource>>> GetMovieFilesAsync(
+            IReadOnlyList<int> movieIds,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Files);
+        }
     }
 
     private sealed class CapturingLoggerProvider : ILoggerProvider

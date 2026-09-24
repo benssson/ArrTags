@@ -1214,6 +1214,30 @@ last-error summary, and the cache itself stores no credential. The cache assumes
 no provider `ETag` or revision token; such a token remains an optional
 observation only (see "ETags and provider versions").
 
+The cache is populated and consumed at the provider-client boundary (task 11.2).
+Concurrent cold readers for one connection serialize through the provider's
+per-connection single-flight gate, so one library read (`/movie` or `/series`)
+plus the bulk file reads populates the cache for all of them. On a miss the
+reader reads the per-record file resources through the provider's bulk selection
+endpoints — Radarr `moviefile?movieId=` with a repeatable `movieId` and Sonarr
+`episodeFile?episodeFileIds=` with a repeatable `episodeFileId` (the embedded
+per-series episode file is preferred) — in bounded chunks, then maps them to
+canonical observations and stores them. Every work item in the cache window is
+served from the retained observations without another library read; an absent or
+expired set is re-read, an over-bound set or a failed bulk read keeps the
+existing direct read unchanged, and a provider failure keeps the bounded
+last-known-good observation set until the TTL.
+
+The observation set's `ObservedAt` is the population time, so on a cache hit the
+canonical file observation's `ObservedAt` is the population time rather than the
+work item's time. This does not change per-item freshness: the published
+`MetadataStateEntry` freshness is derived from the publish time
+(`DateTimeOffset.UtcNow`), `MetadataSnapshot` does not carry the canonical
+observation timestamp, and the metadata fingerprint excludes it, so the published
+per-item state exposes only publish-time freshness. The bound that prevents a
+cached read from being presented as current beyond its lifetime is the cache
+entry's bounded reuse window (`ExpiresAt`/`StaleUntil`), not the fingerprint.
+
 ### Cache keys and fingerprints
 
 | Cache/object | Key or fingerprint inputs |

@@ -1,0 +1,139 @@
+{
+  "task": "11.2",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "summary": "Task 11.2 is functionally correct and the two acceptance criteria are met: the bounded inventory cache is populated at the provider-client boundary by one library read per connection (Radarr api/v3/movie / Sonarr api/v3/series) plus the bulk file reads, a populated set serves every subsequent work item in the window with no provider call, the Radarr repeatable moviefile?movieId= and Sonarr repeatable episodeFile?episodeFileIds= selectors replace per-item file reads, and the over-bound / failed-bulk-read / provider-failure paths preserve the existing bounded direct read and last-known-good semantics. No ETag/conditional-request/revision-token/history-since/SignalR dependency is added, the cache stays canonical and secret-free, the MetadataReconciliationProcessor is untouched, and the ArrInventoryCacheProvider rebuilds on a replaced limits snapshot. I independently rebuilt (0 warnings / 0 errors), ran the focused class (16/16) and the full default suite (Failed 0, Passed 1403, Skipped 63, Total 1466), confirming the worker's counts. Two adjudications requested by the orchestrator are resolved as non-blocking: the missing single-flight coalescing is a bounded cold-start deviation, and the Sonarr per-series episode read is not a per-item read. One required change: two canonical current-state surfaces still state the pre-11.2 v1.1 working-suite count (1,387/63/1,450) instead of the current 1,403/63/1,466, which the 11.1 precedent (and the project's current-state-documentation workflow) requires to be refreshed.",
+  "findings": [
+    {
+      "id": "11.2-F1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "documentation/current-state",
+      "summary": "docs/limitations.md V6 and docs/project-status.md still claim the current v1.1 working suite is 1,387/63/1,450; the task added 16 tests so it is now 1,403/63/1,466.",
+      "detail": "docs/limitations.md V6 (line 290) states 'The current v1.1 working suite is Failed 0, Passed 1,387, Skipped 63, Total 1,450' and docs/project-status.md (line 640) states 'the current v1.1 working suite is Failed 0, Passed 1,387, Skipped 63, Total 1,450'. Both are current-state claims (project-status is explicitly the 'current build/test' surface) and both are now wrong: the task added ProviderInventoryCacheIntegrationTests (16 cases), so the suite is 1,403/63/1,466, as the worker's own docs/changelog.md 11.2 entry records and as I independently reproduced with ./build.sh test. The 11.1 worker and reviewer treated exactly these two lines as current-state surfaces and refreshed them (to 1,387/1,450) mid-phase, so leaving them stale breaks the established convention and the worker's claim that the canonical surfaces were reconciled. The worker did update the Phase 11 milestone/next-task prose and the F1 partial-progress text; only the two numeric count lines were missed.",
+      "evidence": [
+        "docs/limitations.md:289-291",
+        "docs/project-status.md:639-643",
+        "docs/changelog.md:3166-3167 (11.2 entry records 1403/63/1466)",
+        "docs/implementation/11.1/reviewer-report.attempt-2.json:81,85 (11.1 refreshed these same two surfaces to 1387/1450)",
+        "./build.sh test -> Passed! Failed 0, Passed 1403, Skipped 63, Total 1466 (independent re-run)"
+      ],
+      "recommended_action": "Update docs/limitations.md V6 and docs/project-status.md to state the current v1.1 working suite as Failed 0, Passed 1,403, Skipped 63, Total 1,466."
+    },
+    {
+      "id": "11.2-F2",
+      "severity": "MEDIUM",
+      "status": "noted",
+      "area": "concurrency/acceptance-criterion",
+      "summary": "No single-flight coalescing of concurrent cold-cache populations; up to the per-connection provider concurrency limit of work items can each perform the one-library-read population. Verdict: a bounded cold-start deviation, not a 11.2 blocker; record as a follow-up.",
+      "detail": "Adjudication of the worker's limitation #5. ADR-018 clause 2 ('One library read per connection serves all work items in a reconciliation window instead of one read per item') and the task acceptance criterion are authoritative. The implementation checks the cache, and only on a miss reads the library and populates; ArrInventoryCache has no in-flight tracking, and ProviderConcurrencyLimiter permits up to ProviderConcurrencyPerConnection concurrent reads (default 4, validated range 1-16). On a simultaneous cold start, up to that many work items can each miss and each perform the population before the first TryStore lands, so the literal 'one library read' invariant is not guaranteed. However, the criterion's intent is met: once populated, every work item in the window is served without a library read, so reads are O(concurrency-bounded) rather than O(work items), and the redundant work is bounded by the configured per-connection concurrency limit, not the item count. The cache is explicitly non-authoritative, so a redundant population is safe. Nothing in ADR-018, the 11.2 work items, or the task's tests/definition-of-done requires single-flight coalescing; the tests prove the reuse semantics. Verdict: it need not be fixed in 11.2; it should be recorded as a bounded follow-up. Note for that follow-up: for Sonarr the population reads episodes for every series, so a cold-start stampede amplifies to (concurrency x series) episode requests in the worst case, which is why tracking the follow-up matters for large libraries. The Sonarr research (docs/research/sonarr-api.md:311-314) does recommend 'per-connection single-flight/cache coalescing', which supports the follow-up but is guidance, not a codified 11.2 requirement.",
+      "evidence": [
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:70-97",
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:88-114",
+        "src/ArrTags/Providers/ArrInventoryCache.cs:125-182 (no in-flight/coalescing state)",
+        "src/ArrTags/Configuration/OperationalLimits.cs:55,177 (ProviderConcurrencyPerConnection default 4, range 1-16)",
+        "src/ArrTags/Concurrency/ProviderConcurrencyLimiter.cs:55-75",
+        "docs/decisions.md ADR-018 clause 2",
+        "docs/research/sonarr-api.md:311-314",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:36-56,155-179 (sequential reuse only)"
+      ],
+      "recommended_action": "Record a bounded follow-up (e.g., Phase 11 follow-up or 11.3 scope note) for per-connection single-flight population; do not block 11.2."
+    },
+    {
+      "id": "11.2-F3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness/robustness",
+      "summary": "The repeatable-id bulk request has no bound on the number of ids; for a large library the query string can exceed provider/proxy request-line limits and silently fall back to per-item file reads.",
+      "detail": "GetMovieFilesAsync(IReadOnlyList<int>) / GetEpisodeFilesAsync(IReadOnlyList<int>) append one query parameter per id with no chunking, so the request line grows with the number of records/files. InventoryCacheMaxRecords defaults to 10,000, so the Radarr bulk URL can carry up to that many movieId parameters (tens of KB). Kestrel's default MaxRequestLineSize (~8 KB) and common reverse-proxy header buffers can reject such a request (414 or 400), which ClassifyStatus maps to InvalidResponse/Never, causing PopulateAsync to return null and the reader to fall back to the direct read (per-item Radarr movie-file read). The research only confirms the request-body limit is disabled (MaxRequestBodySize = null); it does not establish that the request-line/query limit is unbounded. The fallback is safe (correctness is preserved), so this is not a blocker, but for large libraries it undermines the 'bulk reads avoid per-item reads' criterion. The 11.2 tests use only two ids, so they do not exercise this.",
+      "evidence": [
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:139-193",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:156-210",
+        "src/ArrTags/Configuration/OperationalLimits.cs:159 (InventoryCacheMaxRecords default 10000)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:185-191 (bulk-read failure -> direct read)",
+        "docs/research/radarr-api.md:887-906 (no documented response-size limit; Kestrel request-body limit disabled - request line not addressed)",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:58-73 (two ids only)"
+      ],
+      "recommended_action": "Consider bounding/chunking the number of ids per bulk request (or documenting the practical library-size limit) as a bounded follow-up; not required to approve 11.2."
+    },
+    {
+      "id": "11.2-F4",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/precision",
+      "summary": "Two new doc sentences slightly overstate the guarantee: 'per-item file reads are not used' ignores the direct fallback, and the freshness claim is justified by the fingerprint rather than the cache TTL.",
+      "detail": "docs/architecture.md:694 states '... so per-item file reads are not used.' The direct-read fallback (over-bound set or failed bulk read) still performs a per-item Radarr GetMovieFilesAsync(record.MovieId) and a per-series Sonarr GetEpisodeFilesAsync(seriesId), so the statement is true only for the cache-population path, which the surrounding sentences do describe. docs/data-model.md:1230-1233 states 'the metadata fingerprint excludes the observation timestamp, so a cached read is never presented as a fresh observation beyond the configured inventory TTL.' The fingerprint fact is verified (BadgeMetadata.ComputeFingerprint excludes ObservedAt), but the guarantee actually comes from ArrInventoryCacheEntry.StaleUntil bounding reuse, not from the fingerprint. Also, MetadataSnapshot.From drops BadgeMetadata.ObservedAt, so the published per-item MetadataStateEntry carries only publish-time freshness and cannot expose the observation age. These are wording-precision issues, not correctness defects; the task explicitly accepts the publish-time freshness semantics.",
+      "evidence": [
+        "docs/architecture.md:688-696",
+        "docs/data-model.md:1217-1233",
+        "src/ArrTags/Metadata/BadgeMetadata.cs:207-239 (fingerprint excludes ObservedAt)",
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:74-121,237-240 (StaleUntil bounds reuse)",
+        "src/ArrTags/Reconciliation/MetadataSnapshot.cs:214-244 (ObservedAt not carried)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:238-245 (fetchedAt = publish time)"
+      ],
+      "recommended_action": "Optional wording tightening; not required for 11.2."
+    },
+    {
+      "id": "11.2-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/requirements",
+      "summary": "Sonarr per-series episode reads satisfy 'bulk reads avoid per-item reads'; no per-item read remains in the cached path.",
+      "detail": "Adjudication of the worker's limitation #1. SonarrMetadataReader.PopulateAsync issues one GET /api/v3/series (library read) plus one GET /api/v3/episode?seriesId=&includeEpisodeFile=true per series (a bulk per-series read, not a per-item read) and one repeatable episodeFile?episodeFileIds= read only for the files the embedded episode resource does not resolve; the repeated episodeIds selector is not used because episode ids are only discoverable via the per-series read (docs/research/sonarr-api.md:473-479 confirms there is no all-episodes endpoint and that seriesId is the required selector). Radarr uses one repeatable moviefile?movieId= read. The worker's limitation #1 is accurate and the criterion is satisfied.",
+      "evidence": [
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:189-294",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:119-136 (includeEpisodeFile=true)",
+        "docs/research/sonarr-api.md:469-486",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:181-198 (repeated episodeFileIds; no seriesId episodeFile read)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "11.2-F6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing",
+      "summary": "No test exercises concurrent cold-start population or reader-level TTL expiry; the cache-model TTL is covered by the 11.1 tests.",
+      "detail": "The 11.2 integration tests cover sequential reuse, bulk request URIs, cache-hit avoidance, over-bound fallback, bounded provider failure, last-known-good reuse while the provider fails, canonical/secret-free observations, no-file metadata, and snapshot-replacement rebuild. They do not cover concurrent cold-start population (the F2 single-flight gap) or TTL expiry through the reader (the worker's limitation #2: the readers use DateTimeOffset.UtcNow with no injectable clock). The bounded Fresh/Stale/Expired window itself is covered by the 11.1 ArrInventoryCacheTests. These gaps are honestly disclosed and are not acceptance-criterion blockers.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs (16 cases, no concurrency/clock injection)",
+        "docs/implementation/11.2/worker-report.json known_limitations[1],[4]",
+        "docs/implementation/11.1/reviewer-report.attempt-2.json (cache-model TTL covered by ArrInventoryCacheTests)"
+      ],
+      "recommended_action": "None for 11.2; the test-quality reviewer owns test-depth adjudication."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independent re-run)",
+    "./build.sh test -> Passed! Failed 0, Passed 1403, Skipped 63, Total 1466, Duration 17 s (independent re-run; confirms worker counts and the +16 over the 1387/1450 pre-task baseline)",
+    "dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~ProviderInventoryCacheIntegrationTests -> Failed 0, Passed 16, Skipped 0, Total 16 (independent re-run)",
+    "Inspected tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs (16 cases) - exercises real readers/clients over a recording HttpMessageHandler, asserts request paths/counts and outcomes",
+    "Inspected tests/ArrTags.Tests/MetadataReaderTests.cs and LogRedactionTests.cs diffs - only add the new bulk interface members to existing fakes",
+    "Confirmed DI composition tests (e.g. MetadataReconciliationProcessorTests, ReconciliationTriggerTests, ProviderBoundaryTests) build the provider with ArrInventoryCacheProvider registered and pass"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-018 clauses 2, 3, 4, 5, 7 (reuse, ArrTags-side invalidation, bulk reads, bounds/LKG/secret-free, no assumed ETag/revision token)",
+    "docs/planning/v1.1.md Goal C acceptance criteria and DG-12",
+    "PLANS.md Phase 11 task 11.2 block (objective, work, tests, acceptance criteria) and the 11.1 cache model",
+    "docs/research/radarr-api.md section 16.3 (repeatable moviefile?movieId=; request-body limit disabled; no documented response-size limit)",
+    "docs/research/sonarr-api.md 'Conditional requests and inventory caching' section 3 (seriesId episodes, repeatable episodeIds/episodeFileIds; no all-episodes endpoint) and lines 311-314 (per-connection single-flight recommendation)",
+    "docs/research/arr-api-researcher/conditional-requests-and-inventory-caching.json (bulk selection availability)",
+    "Verified ArrConnectionId.For excludes user info and the API key from the cache key (src/ArrTags/Providers/ArrConnectionId.cs)"
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, Milestone 11 status row, task 11.2 checkbox and status block - consistent with the implementation",
+    "docs/changelog.md 11.2 entry - records 1403/1466 and correct scope",
+    "docs/project-status.md milestone/next-task prose - updated; but line 640 still states the stale 1,387/1,450 working-suite count (finding 11.2-F1)",
+    "docs/architecture.md status line and sections 8/12 - installation, bulk selectors, observation-time semantics; minor overstatement at line 694 (finding 11.2-F4)",
+    "docs/implementation-readiness.md status line - 11.1 and 11.2 complete; no stale count",
+    "docs/limitations.md F1 - partial progress recorded and F1 correctly left open until 11.4; V6 line 290 still states the stale 1,387/1,450 working-suite count (finding 11.2-F1)",
+    "README.md Known limitations - 'Provider inventory cache is partially complete', F1 stays open; no overclaim",
+    "docs/data-model.md section 6 - population/bulk-read/observation-time paragraph; minor non-sequitur (finding 11.2-F4)"
+  ],
+  "required_changes": [
+    "Update docs/limitations.md V6 and docs/project-status.md so the current v1.1 working-suite count reads Failed 0, Passed 1,403, Skipped 63, Total 1,466 (it still reads 1,387/63/1,450)."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

@@ -166,10 +166,13 @@ instead (`docs/limitations.md`).
 The canonical record of what ArrTags does not yet do or has not yet verified is
 `docs/limitations.md`. In short:
 
-- **No provider inventory/catalogue cache.** Every reconciliation work item
-  re-reads the provider library, so the "avoid unnecessary provider requests"
-  goal is only partially met for provider fetches; rendering and publication are
-  fingerprint-gated (F1).
+- **Provider inventory cache is partially complete.** The bounded, in-memory
+  inventory cache now serves one provider library read per connection across a
+  reconciliation window (with bulk file reads replacing per-item reads), but the
+  ArrTags-side invalidation sources (webhook, library refresh/post-scan,
+  scheduled/manual reconciliation) are not yet wired, so a provider change is
+  noticed only after the bounded inventory TTL; F1 stays open until that lands.
+  Rendering and publication are fingerprint-gated.
 - **Jellyfin Enhanced coexistence is verified at the contract level only**;
   Enhanced is not installed on the pinned host (V3).
 - **Live-verification gaps.** There is no live Sonarr/Radarr instance, the live

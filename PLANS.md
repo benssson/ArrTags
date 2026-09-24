@@ -201,12 +201,17 @@ BLOCKER/HIGH/MEDIUM); Gate 10 is met (the Phase 10 review is approved in
 `docs/implementation/phase-10/phase-review.json`) and the annotated tag
 `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by
 task 14.3. Phase 11 (Provider inventory cache and library-refresh-driven refresh)
-is in progress: task 11.1 (inventory cache model, bounds, and limits) is complete
-and defines the canonical, secret-free, in-memory per-connection cache shape and
-the inventory TTL and record/byte limits, validated at configuration load and
-documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections
-8 and 12; provider-client integration (11.2) and ArrTags-side invalidation (11.3)
-remain, so limitation F1 is not yet resolved. V1.1-1 (this
+is in progress: task 11.1 (inventory cache model, bounds, and limits) and task
+11.2 (provider-client integration and bulk reads) are complete. The canonical,
+secret-free, in-memory per-connection cache shape and the inventory TTL and
+record/byte limits are defined, validated at configuration load, and documented
+in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12;
+the provider metadata readers now populate and consume the cache at the
+provider-client boundary, so one library read per connection serves a
+reconciliation window, and the Radarr `moviefile?movieId=` repeatable selector
+and the Sonarr `episodeFile?episodeFileIds=` repeatable selector replace
+per-item file reads. ArrTags-side invalidation (11.3) remains, so limitation F1
+is not yet resolved. V1.1-1 (this
 plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
 pointers) is already complete at commit `5ec8ae2` and is not re-planned as open
 work.
@@ -246,7 +251,7 @@ work.
 | 8 | Release distribution | Complete (tasks 8.1-8.6 complete; all seven Phase 8 acceptance criteria are met; the annotated tag `v1.0.1` exists at commit `8cba85b` with the committed repository `manifest.json`; the GitHub release and asset upload remain the user's manual step; Gate 8 is met - Phase 8 review approved in `docs/implementation/phase-8/phase-review.json`) | `README.md` is end-user-facing, the repository `manifest.json` is committed with the annotated `v1.0.1` tag, the plugin metadata and version are correct, and the GitHub release publication is left to the user. |
 | 9 | Dashboard settings UI and runtime configuration activation (v1.1) | Complete (Phase 9 tasks 9.1-9.5 complete: the get-only `Collection<T>` round-trip was proven to fail under the pinned `JsonDefaults.Options`, so `EnabledLibraries`/`Renderer.Selectors` are now settable and round-trip; `Plugin` implements `IHasWebPages` with an embedded secret-free settings page; `Plugin.UpdateConfiguration` validates and activates a saved candidate at runtime without a restart with last-valid snapshot and private-secret retention; a successful replacement requests a bounded, non-blocking post-save reconciliation so existing posters re-render promptly; and `GoalAIntegrationTests` verifies the composed save -> activate -> bounded-reconcile flow, so limitation F2 is resolved. The Goal A acceptance criteria are met at the integration-test level; Gate 9 is met (the Phase 9 review is approved in `docs/implementation/phase-9/phase-review.json`) and the `v1.1.0-phase9` tag is created; the live Goal A confirmation is owned by task 14.3) | A dashboard settings page loads and saves through the elevation-gated path, a valid change applies without restart with last-valid retention, and a successful save triggers a bounded reconciliation; the get-only `Collection<T>` round-trip is proven. Phase tag `v1.1.0-phase9`. |
 | 10 | Logging with configurable verbosity (v1.1) | Complete (tasks 10.1-10.3 complete; all five Phase 10 acceptance criteria are met at the integration-test level; the logging security review is recorded at `docs/implementation/10.3/security-review.json` with 0 open BLOCKER/HIGH/MEDIUM; Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
-| 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | In progress (task 11.1 complete: the canonical, secret-free, in-memory per-connection inventory cache shape and the inventory TTL and record/byte limits are defined, validated at configuration load, and documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12; provider-client integration 11.2 and ArrTags-side invalidation 11.3 remain; resolves limitation F1 when 11.1-11.4 complete) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
+| 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | In progress (tasks 11.1 and 11.2 complete: the canonical, secret-free, in-memory per-connection inventory cache shape and the inventory TTL and record/byte limits are defined, validated at configuration load, and documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12; the provider metadata readers populate and consume the cache at the provider-client boundary so one library read per connection serves a reconciliation window, using the Radarr repeatable `movieId` and Sonarr repeatable `episodeFileIds` bulk selectors instead of per-item file reads; ArrTags-side invalidation 11.3 remains; resolves limitation F1 when 11.1-11.4 complete) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
 | 12 | Badge value allowlist and badge size/position (v1.1) | Not started (Phase 12 tasks 12.1-12.4; Goals B and E; ADR-017 and ADR-019) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
 | 13 | README and documentation pass (v1.1) | Not started (Phase 13 tasks 13.1-13.2; Goal D) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
 | 14 | v1.1 release | Not started (Phase 14 tasks 14.1-14.5) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
@@ -4148,7 +4153,7 @@ reconciliation, and a bounded TTL fallback). This resolves limitation F1.
 **Tasks:**
 
 - [x] 11.1 Inventory cache model, bounds, and limits.
-- [ ] 11.2 Provider-client integration and bulk reads.
+- [x] 11.2 Provider-client integration and bulk reads.
 - [ ] 11.3 ArrTags-side invalidation.
 - [ ] 11.4 Goal C documentation and integration verification.
 
@@ -4225,7 +4230,28 @@ documented.
 
 #### 11.2 Provider-client integration and bulk reads
 
-**Status:** Not started.
+**Status:** Complete. The bounded provider inventory cache (ADR-018 clauses 2
+and 4) is integrated at the provider-client boundary. `ArrInventoryCacheProvider`
+resolves the cache from the current configuration snapshot, rebuilding it with
+the new validated bounds when the snapshot is replaced, and owns the
+per-connection single-flight population gate so concurrent cold readers for one
+connection share one library read (and one set of bulk file reads) instead of one
+population each. `RadarrMetadataReader` and `SonarrMetadataReader` populate the
+cache on a miss (one `api/v3/movie` / `api/v3/series` library read plus the bulk
+file reads), serve every work item in the cache window from the canonical
+observations without a provider library read, and fall back to the existing
+direct read unchanged when the observation set exceeds the record or byte bound
+or a bulk file read fails. `RadarrClient` gains the repeatable
+`moviefile?movieId=` bulk read and `SonarrClient` gains the repeatable
+`episodeFile?episodeFileIds=` bulk read, so per-item file reads are replaced by
+bounded bulk requests (chunked by `ReconciliationBatchSize` so a large id list
+cannot overflow a request line). The cache stays canonical and secret-free, uses
+no provider conditional request or revision token, and a provider failure keeps
+the bounded last-known-good observation set until the TTL. The
+`MetadataReconciliationProcessor` freshness semantics are unchanged (the
+published `MetadataStateEntry` freshness remains the publish time, and the cache
+entry's bounded reuse window limits how long an observation set may be reused).
+ArrTags-side invalidation (11.3) remains, so limitation F1 is not yet resolved.
 
 **Objective:** Populate and consume the cache at the provider-client boundary so
 one library read per connection serves all work items in a reconciliation window,

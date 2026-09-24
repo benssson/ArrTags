@@ -1,0 +1,157 @@
+{
+  "task": "11.2",
+  "title": "Provider-client integration and bulk reads",
+  "phase": 11,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fb5be8fffecHpbtRW4iKymYG"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fa09569ffeDIjEytNyjr17xF"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fa09568ffeX4plwTqcjEKx0V"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2fb5be8fffecHpbtRW4iKymYG"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2f842d0affeQSQ16FqoDU24xK"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 2,
+      "outcome": "ABORTED",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2f842d09ffef60wF60lXhe6FD"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 2,
+      "outcome": "PASS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": "ses_f2dc9cdf1ffeIFWpqhzR1d0Yku"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "implementation-reviewer attempt 1 returned CHANGES_REQUIRED with MEDIUM 11.2-F1 (stale current v1.1 suite counts in docs/limitations.md V6 and docs/project-status.md) plus LOW 11.2-F3 (unbounded bulk id list) and 11.2-F4 (architecture overclaim about per-item file reads); test-quality-reviewer attempt 1 returned PASS_WITH_FINDINGS with MEDIUM TQ-11.2-1 (the provider-failure test was inert because the fresh cache short-circuited before any provider call), TQ-11.2-2 (the Sonarr over-bound fallback test was insensitive), TQ-11.2-3 (one-read-per-window reused a single identity and passed with a single-record cache), and TQ-11.2-4 (no single-flight coalescing of concurrent cold-cache populations, so the one-read-per-window criterion was unverified under a cold-start race), plus LOW TQ-11.2-5/-6. The worker added per-connection single-flight population coalescing, made the provider-failure and Sonarr fallback tests mutation-sensitive, added whole-library retention and distinct-identity coverage, exercised multiple Sonarr episodeFileIds, chunked the bulk id list by ReconciliationBatchSize, corrected the architecture/data-model wording, and refreshed the stale counts. All attempt-1 findings were independently confirmed closed in attempt 2."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null; no estimation was performed.",
+    "The first test-quality-reviewer attempt-2 invocation (ses_f2f842d09ffef60wF60lXhe6FD) was aborted by an environment interruption before it persisted a report; it was re-run in a fresh session (ses_f2dc9cdf1ffeIFWpqhzR1d0Yku). No rework resulted from the aborted invocation.",
+    "Final gates: implementation-reviewer APPROVED (attempt 2, no blockers; 11.2-F1 and all attempt-1 findings closed); test-quality-reviewer PASS (attempt 2, no open BLOCKER/HIGH/MEDIUM/LOW).",
+    "Validation: build 0 warnings / 0 errors; focused ProviderInventoryCacheIntegrationTests 20/0/20; full default suite Failed 0, Passed 1407, Skipped 63, Total 1470 (attempt-1 baseline 1403/63/1466; pre-task baseline 1387/63/1450; +20 passed/+20 total, 0 new skips).",
+    "Non-vacuousness independently reproduced by the test-quality-reviewer with six throwaway-copy mutations (remove single-flight; disable the Sonarr fallback; disable expiry; retain only the first observation; non-repeatable Sonarr id; bypass chunking), each failing the corresponding test and reverted.",
+    "Tracked non-blocking findings: 11.2-F3 (LOW, bulk id list chunking is bounded but a maximal batch still approaches request-line limits), TQ-11.2-A2-1..3 (INFORMATIONAL: stale-case responder intentionally unhit; timing-based concurrency test stable and mutation-sensitive; concurrency exercised via the Radarr reader, Sonarr shares the same provider-level gate).",
+    "Limitation F1 remains open: the ArrTags-side invalidation sources are task 11.3; the cache is TTL-invalidated only until then, so a provider change is noticed no sooner than the bounded inventory TTL."
+  ]
+}

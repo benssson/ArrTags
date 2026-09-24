@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -133,6 +134,85 @@ public sealed class RadarrClient : IRadarrReadClient
         return result.IsSuccess
             ? ArrProviderResults.Success<IReadOnlyList<RadarrMovieFileResource>>(result.Value!)
             : ArrProviderResults.Failure<IReadOnlyList<RadarrMovieFileResource>>(result.Error!);
+    }
+
+    /// <inheritdoc />
+    public async Task<ArrProviderReadResult<IReadOnlyList<RadarrMovieFileResource>>> GetMovieFilesAsync(
+        IReadOnlyList<int> movieIds,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(movieIds);
+
+        if (movieIds.Count == 0)
+        {
+            return ArrProviderResults.Success<IReadOnlyList<RadarrMovieFileResource>>(
+                Array.Empty<RadarrMovieFileResource>());
+        }
+
+        foreach (var movieId in movieIds)
+        {
+            if (movieId <= 0)
+            {
+                return ArrProviderResults.Failure<IReadOnlyList<RadarrMovieFileResource>>(
+                    new ArrProviderError(
+                        ArrProviderErrorCode.InvalidResponse,
+                        ArrErrorRetryability.Never,
+                        "A positive Radarr movie identifier is required."));
+            }
+        }
+
+        // The repeatable movieId selector grows the request line with the number
+        // of ids, so the ids are chunked into bounded requests rather than one
+        // unbounded query that a request-line limit could reject. Each chunk is
+        // still a single bulk request; the caller's list is never split per item.
+        var batchSize = _limits.ReconciliationBatchSize < 1 ? 1 : _limits.ReconciliationBatchSize;
+        var files = new List<RadarrMovieFileResource>(movieIds.Count);
+        for (var offset = 0; offset < movieIds.Count; offset += batchSize)
+        {
+            var count = Math.Min(batchSize, movieIds.Count - offset);
+            var batch = new int[count];
+            for (var index = 0; index < count; index++)
+            {
+                batch[index] = movieIds[offset + index];
+            }
+
+            var result = await ReadJsonAsync<List<RadarrMovieFileResource>>(
+                BuildRequestUri(BuildMovieFilesPath(batch)!),
+                cancellationToken).ConfigureAwait(false);
+
+            if (!result.IsSuccess || result.Value is null)
+            {
+                return ArrProviderResults.Failure<IReadOnlyList<RadarrMovieFileResource>>(result.Error!);
+            }
+
+            files.AddRange(result.Value!);
+        }
+
+        return ArrProviderResults.Success<IReadOnlyList<RadarrMovieFileResource>>(files);
+    }
+
+    /// <summary>
+    /// Builds the repeatable <c>movieId</c> query for the bulk movie-file read,
+    /// or <see langword="null"/> when any identifier is not positive.
+    /// </summary>
+    private static string? BuildMovieFilesPath(IReadOnlyList<int> movieIds)
+    {
+        var builder = new StringBuilder(MovieFilesPath);
+        for (var index = 0; index < movieIds.Count; index++)
+        {
+            var movieId = movieIds[index];
+            if (movieId <= 0)
+            {
+                return null;
+            }
+
+            builder
+                .Append(index == 0 ? '?' : '&')
+                .Append("movieId=")
+                .Append(movieId.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return builder.ToString();
     }
 
     private async Task<ArrProviderReadResult<T>> ReadJsonAsync<T>(Uri requestUri, CancellationToken cancellationToken)

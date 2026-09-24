@@ -1,0 +1,53 @@
+{
+  "task": "11.2",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction round for v1.1 task 11.2 addressing the implementation-reviewer finding 11.2-F1 and the test-quality-reviewer findings TQ-11.2-1..6, plus the architecture/data-model precision finding 11.2-F4 and the bulk-id bound 11.2-F3. RC1: refreshed the two stale canonical current-state suite counts (docs/limitations.md V6 and docs/project-status.md) to the final reproduced 1,407/63/1,470 and updated the changelog 11.2 entry counts. RC2: added a per-connection single-flight population gate owned by ArrInventoryCacheProvider; on a cold cache the library read plus bulk file reads now run inside the gate, concurrent readers for one connection wait on an async semaphore and then re-check the cache, and the lease is released on every path (including provider failure or cancellation) so later attempts are not poisoned. RC3: the reader-level provider-failure boundary is now tested by directly constructing a stale-but-usable cache entry (served as bounded last-known-good with the provider failing and no request) and an expired entry (evicted, provider read, bounded failure returned); the inert fresh-cache test was replaced. RC4: the Sonarr over-bound fallback test now asserts the direct-read request shape (two per-series episode reads, no bulk episode-file read, empty cache), so disabling the fallback fails it. RC5: the one-read-per-window tests now read two distinct Jellyfin identities and assert whole-library retention (2 Radarr records, 3 Sonarr records). RC6: the Sonarr fixture has two episodes with two unresolved file ids, and the bulk test asserts episodeFileIds=418&episodeFileIds=419. RC7: corrected the architecture claim that per-item file reads are not used (the direct fallback still performs them) and reworded the data-model freshness justification so the bounded reuse window (StaleUntil), not the fingerprint, is the limiting guarantee, while noting MetadataSnapshot drops the observation timestamp. RC8: both bulk clients now chunk the id list by OperationalLimits.ReconciliationBatchSize into bounded requests and merge the results, with a test. All existing behavior, matching semantics, and the no-ETag/no-conditional/no-revision-token/no-history-since/no-SignalR constraint are preserved; task 11.3 invalidation is not implemented.",
+  "validation": [
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "source /config/arrtags-env.sh && ./build.sh test -> Passed! Failed 0, Passed 1407, Skipped 63, Total 1470 (attempt-1 baseline Failed 0, Passed 1403, Skipped 63, Total 1466; original pre-task baseline Failed 0, Passed 1387, Skipped 63, Total 1450; +4 passed, +4 total, 0 new skips)",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter FullyQualifiedName~ProviderInventoryCacheIntegrationTests -> Failed 0, Passed 20, Skipped 0, Total 20, run 3 consecutive times with identical results (648/630/636 ms)",
+    "Sensitivity mutation A (reverted): removed the single-flight wait in ArrInventoryCacheProvider.AcquirePopulationAsync -> ConcurrentColdReadersShareOneLibraryRead failed (library request count > 1); reverted and re-verified green",
+    "Sensitivity mutation B (reverted): made SonarrMetadataReader.PopulateAsync ignore the TryStore result -> SonarrOverBoundObservationSetFallsBackToTheDirectRead failed (Assert.Equal on the per-series episode read count); reverted and re-verified green",
+    "Sensitivity mutation C (reverted): made ArrInventoryCacheEntry.IsExpired always return false -> RadarrExpiredObservationSetIsEvictedAndTheProviderFailureIsBounded failed (Assert.False(IsSuccess)); reverted and re-verified green",
+    "Sensitivity mutation D (reverted): retained only the first Radarr observation before TryStore -> RadarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow failed (Assert.Equal on retained record count / second identity); reverted and re-verified green",
+    "Sensitivity mutation E (reverted): made SonarrClient.BuildEpisodeFilesPath emit only the first episodeFileId -> SonarrBulkEpisodeFileReadUsesRepeatedEpisodeFileIdsInsteadOfPerSeriesReads failed (Assert.Equal on the request URI); reverted and re-verified green",
+    "git diff --check -> clean (no whitespace errors); no MUTATION marker remains in src/ or tests/"
+  ],
+  "changed_files": [
+    "src/ArrTags/Providers/ArrInventoryCacheProvider.cs",
+    "src/ArrTags/Providers/Radarr/IRadarrReadClient.cs",
+    "src/ArrTags/Providers/Radarr/RadarrClient.cs",
+    "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs",
+    "src/ArrTags/Providers/Sonarr/ISonarrReadClient.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrClient.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs",
+    "tests/ArrTags.Tests/MetadataReaderTests.cs",
+    "tests/ArrTags.Tests/LogRedactionTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "Sonarr has no all-episodes endpoint, so the cache population still reads episodes per series (episode?seriesId=&includeEpisodeFile=true, a bulk per-series read) and uses the repeatable episodeFile?episodeFileIds= selector (chunked) for episode files the embedded resource does not resolve; the repeated episodeIds selector is not used because episode identifiers are only discoverable by the per-series read. The implementation-reviewer adjudicated this as satisfying 'bulk reads avoid per-item reads' (11.2-F5).",
+    "For Sonarr the over-bound record/byte fallback only becomes known after the per-series episode reads and observation mapping (the record count is series plus episodes), so an over-bound Sonarr library performs those reads and then falls back to the direct read; the Radarr record-bound case short-circuits before the bulk movie-file read.",
+    "A bulk file read that fails (for example a response larger than ProviderResponseLimitBytes) falls back to the existing direct read instead of failing the work; during a transient provider outage this can perform the matched record's file read in addition to the failed bulk read.",
+    "The per-connection single-flight gate serializes a cold-cache population, but it does not share a failure: if the in-flight population fails, each waiter acquires the gate in turn, re-checks the still-empty cache, and retries the population sequentially. This is bounded by the configured per-connection provider concurrency and is the intended 'release the slot and do not poison later attempts' behavior, not a redundant-success stampede.",
+    "ArrInventoryCacheProvider rebuilds the cache on any configuration-version change, not only when an inventory limit changes, so an unrelated valid configuration change discards the retained observation sets. This is safe because the cache is non-authoritative and repopulated on the next read, and it keeps the runtime-activation contract (a replaced limits snapshot is never silently ignored).",
+    "The readers still evaluate freshness with DateTimeOffset.UtcNow and expose no injectable clock; the stale-but-usable and expired reader boundaries are now exercised by directly constructing cache entries at chosen observation times (RC3), so reader-level expiry handling is covered without a production clock dependency.",
+    "Limitation F1 remains open: the ArrTags-side invalidation sources (webhook, Jellyfin library refresh/post-scan, scheduled/manual reconciliation) are task 11.3 and are not wired here, so the cache is TTL-invalidated only and a provider change is noticed no sooner than the bounded inventory TTL."
+  ],
+  "ready_for_next_task": true
+}

@@ -1,0 +1,49 @@
+{
+  "task": "11.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Integrated the bounded provider inventory cache (ADR-018 clauses 2 and 4) at the provider-client boundary. Added ArrInventoryCacheProvider, which resolves the cache from the current configuration snapshot and rebuilds it with the new validated TTL/record/byte bounds when the snapshot is replaced. RadarrMetadataReader and SonarrMetadataReader now populate the cache on a miss with one library read (api/v3/movie / api/v3/series) plus bulk file reads, store canonical ArrInventoryRecordObservation values, and serve every work item in the cache window from the retained observations without another library read. Added the repeatable bulk selectors to the read boundaries: RadarrClient.GetMovieFilesAsync(IReadOnlyList<int> movieIds) issues one moviefile?movieId=... request, and SonarrClient.GetEpisodeFilesAsync(IReadOnlyList<int> episodeFileIds) issues one episodeFile?episodeFileIds=... request for files the embedded per-series episode resource does not resolve. An over-bound observation set or a failed bulk read keeps the existing direct read unchanged; an absent or expired set is re-read; a provider failure keeps the bounded last-known-good observation set until the TTL. The cached path preserves the direct path's matched-with-metadata outcome for records without a file. No provider conditional request, ETag/If-None-Match, revision token, history/since watermark, or SignalR dependency is added. Observation-time semantics are documented: the observation set's ObservedAt is the population time, while the published MetadataStateEntry freshness remains derived from DateTimeOffset.UtcNow and the cache TTL bounds reuse.",
+  "validation": [
+    "source /config/arrtags-env.sh && ./build.sh restore (succeeded; locked-mode restore of both projects)",
+    "source /config/arrtags-env.sh && ./build.sh build (succeeded; 0 warnings, 0 errors)",
+    "source /config/arrtags-env.sh && ./build.sh test (Failed 0, Passed 1403, Skipped 63, Total 1466; pre-task baseline Failed 0, Passed 1387, Skipped 63, Total 1450; +16 passed, +16 total, 0 new skips)",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter FullyQualifiedName~ProviderInventoryCacheIntegrationTests (Failed 0, Passed 16, Skipped 0, Total 16)",
+    "git diff --check (clean; no whitespace errors)"
+  ],
+  "changed_files": [
+    "src/ArrTags/Providers/ArrInventoryCacheProvider.cs",
+    "src/ArrTags/Providers/Radarr/IRadarrReadClient.cs",
+    "src/ArrTags/Providers/Radarr/RadarrClient.cs",
+    "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs",
+    "src/ArrTags/Providers/Sonarr/ISonarrReadClient.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrClient.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs",
+    "tests/ArrTags.Tests/MetadataReaderTests.cs",
+    "tests/ArrTags.Tests/LogRedactionTests.cs",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "docs/data-model.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md"
+  ],
+  "known_limitations": [
+    "Sonarr has no all-episodes endpoint, so the cache population reads episodes per series (episode?seriesId=&includeEpisodeFile=true, a bulk per-series read) and uses the repeatable episodeFile?episodeFileIds= selector only for episode files the embedded resource does not resolve. The task text's 'Sonarr episode/episodeFile id selection' is therefore satisfied at the per-series level for episodes and via the repeated episodeFileIds selector for files; the repeated episodeIds selector is not used because the episode identifiers are only discoverable by the per-series read.",
+    "The readers evaluate cache freshness with DateTimeOffset.UtcNow and have no injectable clock, so TTL-expiry-through-the-reader is not covered by an 11.2 integration test. The bounded Fresh/Stale/Expired window itself is enforced by ArrInventoryCache.TryGet and is covered by the task 11.1 ArrInventoryCacheTests; the 11.2 tests prove that a retained (usable) observation set is served without a provider call while the provider fails, and that no usable set yields the bounded failure.",
+    "For Sonarr the over-bound record/byte fallback only becomes known after the per-series episode reads and observation mapping (the record count is series plus episodes), so an over-bound Sonarr library performs those reads and then falls back to the direct read; the Radarr record-bound case short-circuits before the bulk movie-file read.",
+    "A bulk file read that fails (for example a response larger than ProviderResponseLimitBytes) falls back to the existing direct read instead of failing the work; during a transient provider outage this can perform the matched record's file read in addition to the failed bulk read.",
+    "There is no single-flight coalescing of concurrent cold-cache populations. On a simultaneous cold start, up to the configured per-connection provider concurrency limit (default 4) of work items may each perform the one-library-read population before the cache is populated; the one-library-read-per-window acceptance is established for work items processed against a populated cache. Adding per-connection single-flight population is an open follow-up for the orchestrator to record if desired.",
+    "ArrInventoryCacheProvider rebuilds the cache on any configuration-version change, not only when an inventory limit changes, so an unrelated valid configuration change discards the retained observation sets. This is safe because the cache is non-authoritative and repopulated on the next read, and it keeps the runtime-activation contract (a replaced limits snapshot is never silently ignored).",
+    "Limitation F1 remains open: the ArrTags-side invalidation sources (webhook, Jellyfin library refresh/post-scan, scheduled/manual reconciliation) are task 11.3 and are not wired here, so the cache is TTL-invalidated only and a provider change is noticed no sooner than the bounded inventory TTL."
+  ],
+  "ready_for_next_task": true
+}

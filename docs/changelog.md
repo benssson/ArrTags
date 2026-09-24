@@ -3032,8 +3032,8 @@ warnings / 0 errors; default suite Failed 0, Passed 1363, Skipped 63, Total 1426
 
 ## Phase 11 - Provider inventory cache and library-refresh-driven refresh (v1.1)
 
-**Status:** In progress. Task 11.1 is complete; tasks 11.2-11.4 remain, so
-limitation F1 is not yet resolved.
+**Status:** In progress. Tasks 11.1 and 11.2 are complete; tasks 11.3-11.4
+remain, so limitation F1 is not yet resolved.
 
 ### Task 11.1 - Inventory cache model, bounds, and limits
 
@@ -3096,3 +3096,85 @@ to redact it.
 `./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
 0, Passed 1387, Skipped 63, Total 1450 (pre-task baseline Failed 0, Passed 1363,
 Skipped 63, Total 1426; +24 passed, +24 total, 0 new skips).
+
+### Task 11.2 - Provider-client integration and bulk reads
+
+**Status:** Complete.
+
+Integrates the bounded provider inventory cache (ADR-018 clauses 2 and 4) at the
+provider-client boundary. `src/ArrTags/Providers/ArrInventoryCacheProvider.cs`
+resolves the cache from the active configuration snapshot and rebuilds it with
+the new validated TTL/record/byte bounds when the snapshot is replaced, so a
+changed inventory limit takes effect without rebuilding the singleton (the cache
+is non-authoritative, so the discard is safe). It also owns the per-connection
+single-flight population gate: concurrent cold readers for one connection
+serialize on an async semaphore (no thread blocked, no lock held across provider
+I/O), one library read populates the cache for all of them, a reader that waited
+re-checks the cache instead of starting a second population, and a failed or
+cancelled population releases the gate for a later attempt. `RadarrMetadataReader`
+and `SonarrMetadataReader` now populate the cache on a miss with one library read
+(`api/v3/movie` / `api/v3/series`) plus the bulk file reads, map the resources to
+canonical `ArrInventoryRecordObservation` values, and store them; a cache hit
+serves the matching and metadata from the retained observations without calling
+the provider library endpoint again. An observation set over the record or byte
+bound, or a failed bulk file read, keeps the existing direct read unchanged; an
+absent or expired set is re-read; and a provider failure keeps the bounded
+last-known-good observation set until the TTL without extending the window. The
+reader's per-item `IArrMetadataReader` interface is unchanged; the cache is the
+cross-item mechanism, and the reader falls back to the existing direct read when
+it is unavailable.
+
+Bulk reads (ADR-018 clause 4): `IRadarrReadClient`/`RadarrClient` gain
+`GetMovieFilesAsync(IReadOnlyList<int> movieIds, ...)`, which issues bounded
+`api/v3/moviefile?movieId=…&movieId=…` requests with a repeatable `movieId` for
+the movies with a file, and `ISonarrReadClient`/`SonarrClient` gain
+`GetEpisodeFilesAsync(IReadOnlyList<int> episodeFileIds, ...)`, which issues
+bounded `api/v3/episodeFile?episodeFileIds=…&episodeFileIds=…` requests for the
+episode files the embedded per-series episode resource does not resolve. The id
+list is chunked by `OperationalLimits.ReconciliationBatchSize` so one unbounded
+query string cannot exceed a request-line limit and silently fall back; each
+chunk is still a single bulk request, and the chunk results are merged. An empty
+identifier list returns an empty success without a provider request, and a
+non-positive identifier is a bounded `InvalidResponse` failure without a request.
+The bulk reads respect `ProviderResponseLimitBytes`, the transient retry policy,
+the timeout, and the ADR-005 credential boundary exactly as the existing reads
+do. No provider conditional request, `ETag`/`If-None-Match`, revision token,
+`history/since` watermark, or SignalR dependency is added (ADR-018 clause 3).
+
+Observation-time semantics: the cache population captures `ObservedAt` as the
+population time, so on a cache hit the canonical file observation's `ObservedAt`
+is the population time rather than the work item's time. The published per-item
+`MetadataStateEntry` freshness is unaffected because it is derived from the
+publish time (`DateTimeOffset.UtcNow`), `MetadataSnapshot` does not carry the
+canonical observation timestamp, and the metadata fingerprint excludes it; the
+cache entry's bounded reuse window (`ExpiresAt`/`StaleUntil`) is what limits how
+long an observation set may be presented as current. The cache holds only
+canonical `MatchCandidate`/`BadgeMetadata` observations (no provider DTO,
+credential, or request URL).
+
+Documentation: `docs/architecture.md` section 8 (the installed provider-client
+integration, single-flight population, and bulk-read flow) and section 12 (the
+cache population, chunked bulk reads, and observation-time semantics),
+`docs/data-model.md` section 6 (the population, bulk-read, and observation-time
+paragraphs), `docs/limitations.md` F1 (partial progress; still open until 11.4),
+`PLANS.md`, `docs/project-status.md`, and `docs/implementation-readiness.md`.
+
+New tests (`tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs`, 20
+cases) cover one library read per connection serving multiple distinct work items
+within the window (Radarr and Sonarr, with whole-library retention asserted), the
+bulk `moviefile?movieId=` and `episodeFile?episodeFileIds=` request URIs
+replacing per-item reads (with a repeated `episodeFileIds` selector), the
+chunking of the id list into bounded requests, a cache hit avoiding any provider
+call, the over-bound record-set fallback preserving the direct read for both
+providers, a stale-but-usable observation set served as bounded last-known-good
+and an expired set evicted with the bounded provider failure returned, the
+bounded provider failure with no cache, concurrent cold readers sharing one
+library read (single-flight), a failed population releasing the gate for a later
+attempt, the canonical/secret-free cached observations, the matched-with-metadata
+outcome for a record without a file, the rebuild of the non-authoritative cache
+with the new bounds when the configuration snapshot is replaced, and the
+empty/invalid bulk-identifier boundaries.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1407, Skipped 63, Total 1470 (pre-task baseline Failed 0, Passed 1387,
+Skipped 63, Total 1450; +20 passed, +20 total, 0 new skips).

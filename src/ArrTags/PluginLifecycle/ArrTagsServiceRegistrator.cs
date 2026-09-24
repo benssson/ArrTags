@@ -72,6 +72,12 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton<IMediaLibraryEnumerator, JellyfinMediaLibraryEnumerator>();
         serviceCollection.TryAddSingleton(CreateMetadataStateStore);
         serviceCollection.TryAddSingleton<IArrReadClientFactory, ArrReadClientFactory>();
+
+        // ADR-018: the bounded provider inventory cache is resolved from the
+        // current configuration snapshot so a replaced limits snapshot takes
+        // effect without rebuilding the singleton; the provider-neutral metadata
+        // readers populate and consume it at the provider boundary.
+        serviceCollection.TryAddSingleton<ArrInventoryCacheProvider>();
         serviceCollection.TryAddSingleton<ProviderConcurrencyLimiter>();
         serviceCollection.TryAddSingleton<RadarrMetadataReader>();
         serviceCollection.TryAddSingleton<SonarrMetadataReader>();

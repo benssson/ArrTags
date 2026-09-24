@@ -4,13 +4,24 @@
 
 **Current milestone:** Phase 11 — Provider inventory cache and
 library-refresh-driven refresh (v1.1) is in progress: task 11.1 (inventory cache
-model, bounds, and limits) is complete and defines the canonical, secret-free,
-in-memory per-connection inventory cache shape
+model, bounds, and limits) and task 11.2 (provider-client integration and bulk
+reads) are complete. Task 11.1 defines the canonical, secret-free, in-memory
+per-connection inventory cache shape
 (`ArrInventoryCache`/`ArrInventoryCacheEntry`/`ArrInventoryRecordObservation`) and
 the inventory TTL and record/byte limits in `OperationalLimits`, validated at
 configuration load and documented in `docs/data-model.md` section 6 and
-`docs/architecture.md` sections 8 and 12; provider-client integration (11.2) and
-ArrTags-side invalidation (11.3) remain, so limitation F1 is not yet resolved.
+`docs/architecture.md` sections 8 and 12. Task 11.2 populates and consumes the
+cache at the provider-client boundary: `ArrInventoryCacheProvider` resolves the
+cache from the current configuration snapshot and rebuilds it with the new
+validated bounds when the snapshot is replaced; the Radarr and Sonarr metadata
+readers perform one library read per connection on a miss and serve every work
+item in the cache window from the retained canonical observations without
+another library read; the Radarr repeatable `moviefile?movieId=` selector and the
+Sonarr repeatable `episodeFile?episodeFileIds=` selector replace per-item file
+reads; an over-bound observation set or a failed bulk read keeps the existing
+direct read unchanged; and a provider failure keeps the bounded last-known-good
+observation set until the TTL. ArrTags-side invalidation (11.3) remains, so
+limitation F1 is not yet resolved.
 Phase 10 — Logging with configurable verbosity (v1.1) is
 complete: tasks 10.1 (logging foundation, verbosity configuration, and
 fingerprint exclusion), 10.2 (bounded, redacted log call sites and volume
@@ -626,8 +637,8 @@ The plugin:
   `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244 with 44
   skips, and running `./build.sh package` first unskips the package-content
   cases. These are the `1.0.1.0` release-matrix counts, not current v1.1 truth:
-  the current v1.1 working suite is Failed 0, Passed 1,387, Skipped 63, Total
-  1,450 (see the Project Status above and `docs/limitations.md` V6, which the
+  the current v1.1 working suite is Failed 0, Passed 1,407, Skipped 63, Total
+  1,470 (see the Project Status above and `docs/limitations.md` V6, which the
   v1.1 release task refreshes). The `1.0.1.0` counts reflect the suite after the
   SEC-1 webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
 
@@ -664,15 +675,22 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 Next tasks:
 
 - Phase 11 — Provider inventory cache and library-refresh-driven refresh (v1.1)
-  task 11.1 (inventory cache model, bounds, and limits) is complete: the
-  canonical, secret-free, in-memory per-connection inventory cache boundary
+  tasks 11.1 (inventory cache model, bounds, and limits) and 11.2 (provider-client
+  integration and bulk reads) are complete: the canonical, secret-free, in-memory
+  per-connection inventory cache boundary
   (`ArrInventoryCache`/`ArrInventoryCacheEntry`/`ArrInventoryRecordObservation`)
   and the inventory TTL and per-connection record/byte limits
   (`OperationalLimits.InventoryCacheTtlMinutes`/`InventoryCacheMaxRecords`/
   `InventoryCacheMaxBytes`) are defined, validated at configuration load, and
   documented in `docs/data-model.md` section 6 and `docs/architecture.md`
-  sections 8 and 12. Provider-client integration (11.2) and ArrTags-side
-  invalidation (11.3) remain, so limitation F1 is not yet resolved.
+  sections 8 and 12; `ArrInventoryCacheProvider` resolves the cache from the
+  current configuration snapshot and rebuilds it with the new bounds when the
+  snapshot is replaced, and the Radarr/Sonarr metadata readers populate and
+  consume the cache at the provider-client boundary so one library read per
+  connection serves a reconciliation window, using the Radarr repeatable
+  `moviefile?movieId=` and Sonarr repeatable `episodeFile?episodeFileIds=`
+  selectors instead of per-item file reads. ArrTags-side invalidation (11.3)
+  remains, so limitation F1 is not yet resolved.
 - Phase 10 — Logging with configurable verbosity (v1.1) task 10.1 (logging
   foundation, verbosity configuration, and fingerprint exclusion) is complete:
   the bounded `LogVerbosity` setting (default `Warning`) is validated and

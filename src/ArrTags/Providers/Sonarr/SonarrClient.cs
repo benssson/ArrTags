@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -150,6 +151,86 @@ public sealed class SonarrClient : ISonarrReadClient
         return result.IsSuccess
             ? ArrProviderResults.Success<IReadOnlyList<SonarrEpisodeFileResource>>(result.Value!)
             : ArrProviderResults.Failure<IReadOnlyList<SonarrEpisodeFileResource>>(result.Error!);
+    }
+
+    /// <inheritdoc />
+    public async Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>>> GetEpisodeFilesAsync(
+        IReadOnlyList<int> episodeFileIds,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(episodeFileIds);
+
+        if (episodeFileIds.Count == 0)
+        {
+            return ArrProviderResults.Success<IReadOnlyList<SonarrEpisodeFileResource>>(
+                Array.Empty<SonarrEpisodeFileResource>());
+        }
+
+        foreach (var episodeFileId in episodeFileIds)
+        {
+            if (episodeFileId <= 0)
+            {
+                return ArrProviderResults.Failure<IReadOnlyList<SonarrEpisodeFileResource>>(
+                    new ArrProviderError(
+                        ArrProviderErrorCode.InvalidResponse,
+                        ArrErrorRetryability.Never,
+                        "A positive Sonarr episode-file identifier is required."));
+            }
+        }
+
+        // The repeatable episodeFileIds selector grows the request line with the
+        // number of ids, so the ids are chunked into bounded requests rather than
+        // one unbounded query that a request-line limit could reject. Each chunk
+        // is still a single bulk request; the caller's list is never split per
+        // item.
+        var batchSize = _limits.ReconciliationBatchSize < 1 ? 1 : _limits.ReconciliationBatchSize;
+        var files = new List<SonarrEpisodeFileResource>(episodeFileIds.Count);
+        for (var offset = 0; offset < episodeFileIds.Count; offset += batchSize)
+        {
+            var count = Math.Min(batchSize, episodeFileIds.Count - offset);
+            var batch = new int[count];
+            for (var index = 0; index < count; index++)
+            {
+                batch[index] = episodeFileIds[offset + index];
+            }
+
+            var result = await ReadJsonAsync<List<SonarrEpisodeFileResource>>(
+                BuildRequestUri(BuildEpisodeFilesPath(batch)!),
+                cancellationToken).ConfigureAwait(false);
+
+            if (!result.IsSuccess || result.Value is null)
+            {
+                return ArrProviderResults.Failure<IReadOnlyList<SonarrEpisodeFileResource>>(result.Error!);
+            }
+
+            files.AddRange(result.Value!);
+        }
+
+        return ArrProviderResults.Success<IReadOnlyList<SonarrEpisodeFileResource>>(files);
+    }
+
+    /// <summary>
+    /// Builds the repeatable <c>episodeFileIds</c> query for the bulk episode-file
+    /// read, or <see langword="null"/> when any identifier is not positive.
+    /// </summary>
+    private static string? BuildEpisodeFilesPath(IReadOnlyList<int> episodeFileIds)
+    {
+        var builder = new StringBuilder(EpisodeFilesPath);
+        for (var index = 0; index < episodeFileIds.Count; index++)
+        {
+            var episodeFileId = episodeFileIds[index];
+            if (episodeFileId <= 0)
+            {
+                return null;
+            }
+
+            builder
+                .Append(index == 0 ? '?' : '&')
+                .Append("episodeFileIds=")
+                .Append(episodeFileId.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return builder.ToString();
     }
 
     private static ArrProviderReadResult<IReadOnlyList<T>> InvalidSeriesId<T>()

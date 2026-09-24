@@ -40,4 +40,17 @@ public interface ISonarrReadClient : IArrProviderClient
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The bounded list of episode files.</returns>
     Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>>> GetEpisodeFilesAsync(int seriesId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads many episode files through the single dedicated
+    /// <c>episodeFile?episodeFileIds=</c> endpoint using its repeatable
+    /// <c>episodeFileIds</c> selector (ADR-018 clause 4). An empty identifier
+    /// list returns an empty result without a provider request.
+    /// </summary>
+    /// <param name="episodeFileIds">The Sonarr-local episode-file identifiers.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The bounded list of episode files.</returns>
+    Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>>> GetEpisodeFilesAsync(
+        IReadOnlyList<int> episodeFileIds,
+        CancellationToken cancellationToken);
 }

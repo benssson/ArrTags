@@ -1,0 +1,150 @@
+{
+  "subject": "v1.1 task 11.2 - provider-client integration and bulk reads (tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs, plus interface-stub updates in MetadataReaderTests.cs and LogRedactionTests.cs)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "assessment": "The four required behaviors are exercised on the real production path (real RadarrMetadataReader/SonarrMetadataReader, real RadarrClient/SonarrClient, real ArrReadClientFactory/ArrHttpClientFactory, real ArrInventoryCacheProvider/ConfigurationSnapshotService, real matchers), with only the HTTP transport doubled (RecordingHandler/StubHttpClientFactory). The bulk-read claims are tested against the actual request URIs and are mutation-sensitive; the Radarr over-bound fallback is mutation-sensitive; the cache-hit-avoids-provider and canonical/secret-free claims are non-vacuous. Three meaningful gaps remain: (1) the test named for provider-failure last-known-good never exercises a provider failure because the fresh cache short-circuits before any HTTP call, and the stale/expired reader boundary is untested (no injectable clock, worker limitation #2); (2) the Sonarr over-bound fallback test is not sensitive to the fallback being disabled (mutation kept all 16 green) because it does not assert the direct-read request shape; (3) the 'one library read serves multiple work items' tests read one identity twice and never assert whole-library retention, so a single-record/per-identity cache passes all 16 (mutation-confirmed). The worker's disclosed no-single-flight gap (limitation #5) leaves the one-read-per-window acceptance criterion unverified under concurrent cold start. No BLOCKER and no HIGH. Reviewer status: PASS_WITH_FINDINGS.",
+  "findings": [
+    {
+      "id": "TQ-11.2-1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "summary": "The provider-failure last-known-good test never exercises a provider failure, and no test drives a stale-usable or expired entry through the reader (no injectable clock).",
+      "description": "RadarrRetainedObservationSetIsServedWithoutAProviderCallWhenTheProviderFails populates the cache with a successful read, sets `fail = true`, clears the handler, then reads the same identity again. Because the just-populated entry is fresh, the reader's cache-hit branch (RadarrMetadataReader.ReadAsync lines 70-77) returns from the retained observations before `_clients.CreateRadarr(...)` is used, so the RecordingHandler is never invoked and the `fail` flag is inert. The test asserts `Assert.Empty(handler.Requests)`, which is exactly the fresh cache-hit assertion already made by RadarrCacheHitAvoidsAnyProviderCall. It therefore establishes 'a populated cache is served without a provider call', not 'a provider failure retains bounded last-known-good'. The genuinely distinct part of the claim (serving a stale-but-usable entry, and re-reading an expired entry) is not reachable in the test because the readers evaluate freshness with DateTimeOffset.UtcNow and expose no injectable time source (worker limitation #2). The cache-model window itself (Fresh/Stale/Expired, WithFailure, eviction) is covered by task 11.1 ArrInventoryCacheTests, so the residual risk is reader-integration depth rather than an unverified model.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:127-152 - `fail = true; handler.Clear();` then second ReadAsync asserts IsSuccess and `Assert.Empty(handler.Requests)`; the responder (which reads `fail`) is only reached via an HTTP request, and no request is issued.",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:70-77 - the cache-hit branch returns before any client call; a usable entry always short-circuits, so a provider failure is never observed while an entry is usable.",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:71 and src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:89 - freshness uses DateTimeOffset.UtcNow with no injected clock.",
+        "docs/implementation/11.2/worker-report.json known_limitations[1] (line 41) discloses that TTL-expiry-through-the-reader is not covered by an 11.2 integration test.",
+        "docs/changelog.md:3158-3159 claims the 16 cases cover 'the bounded last-known-good observation set served when the provider fails within the TTL', which this test does not establish."
+      ],
+      "recommended_action": "Add an injectable time source (or an internal observation-time seam) to the readers and cover: (a) a stale-but-usable entry with a failing provider is still served, and (b) an expired entry causes a re-read (and, on provider failure with no usable entry, the bounded failure). At minimum rename the test to state that a populated cache hit avoids the provider, so the name does not overstate the failure coverage."
+    },
+    {
+      "id": "TQ-11.2-2",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "meaningfulness",
+      "summary": "The Sonarr over-bound fallback test is not sensitive to the fallback being disabled; it would pass with the over-bound set served from the cache.",
+      "description": "SonarrOverBoundObservationSetFallsBackToTheDirectRead asserts only success, the metadata label, and `inventory.Current.Count == 0`. Those three assertions are equally satisfied by the cached path when an over-bound observation set is (incorrectly) served, because ReadFromObservations also produces a Matched result with the same quality label and does not store anything in the cache. Unlike the Radarr counterpart (which asserts the direct read's single `moviefile?movieId=7` request and no bulk read), the Sonarr test never asserts the direct-read request shape. Mutation confirmed the gap: changing SonarrMetadataReader.PopulateAsync to ignore the `TryStore` result (`cache.TryStore(...); return observations;`) so the over-bound set is served left all 16 tests passing.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:217-229 - assertions are IsSuccess, quality label, and inventory count only.",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:92-110 - the Radarr over-bound test additionally asserts one library read, `Assert.Single(RequestsFor(handler, \"/api/v3/moviefile\"))`, and the per-record URI.",
+        "Mutation (throwaway, reverted): src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:293 changed to `cache.TryStore(connection, observedAt, observations); return observations;` -> focused run `Passed 16, Failed 0`."
+      ],
+      "recommended_action": "Mirror the Radarr assertions on the Sonarr over-bound test: assert the direct-read request shape (one `/api/v3/episodeFile?seriesId=` or the embedded-file path as appropriate), assert no bulk `episodeFileIds=` request, and assert the cache holds nothing for the connection."
+    },
+    {
+      "id": "TQ-11.2-3",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "summary": "The 'one library read serves multiple work items' tests read one identity twice and never assert whole-library retention, so a single-record or per-identity cache passes all 16 tests.",
+      "description": "RadarrLibraryReadServesMultipleWorkItemsWithinTheWindow and SonarrLibraryReadServesMultipleWorkItemsWithinTheWindow call ReadAsync twice with the same identity (MovieIdentity(603) / EpisodeIdentity(12345, 9001)) and assert one library request. They verify that a repeated work item is served from the cache, but not that a *different* work item from the same library is served from the same single read, and they never assert the retained record count (only the per-connection entry count via `inventory.Current.Count == 1`). A cache keyed or scoped per matched record would satisfy both tests while violating 'one library read per connection serves all work items'. Mutation confirmed: retaining only the first observation in RadarrMetadataReader.PopulateAsync (`stored.Add(observations[0])` before TryStore) left all 16 tests passing, even though the cache then could not serve a second distinct record.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:36-56 (Radarr) and 155-179 (Sonarr) - the same identity is passed to both ReadAsync calls.",
+        "No test in the file issues two ReadAsync calls for two distinct identities against one populated cache; the bulk tests issue only one ReadAsync each.",
+        "Mutation (throwaway, reverted): src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:224 stores only `observations[0]` -> focused run `Passed 16, Failed 0`.",
+        "src/ArrTags/Providers/ArrInventoryCache.cs:144 keys entries only by ConnectionId, so whole-library retention is the mechanism the tests should pin."
+      ],
+      "recommended_action": "After the first read, read a second distinct identity from the same connection (for example MovieIdentity(604) for the other movie already in the fixture) and assert the library request count is still 1; also assert the retained record count (e.g. `entry.Records.Count == 2` for the two-movie fixture) so a single-record cache fails."
+    },
+    {
+      "id": "TQ-11.2-4",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "summary": "No single-flight coalescing of concurrent cold-cache populations (worker limitation #5), and no test covers concurrent reads, so the one-read-per-window criterion is unverified under a cold-start race.",
+      "description": "The acceptance criterion 'one provider library read per connection serves a reconciliation window' is only established for work items processed against a populated cache. The readers check-and-populate without per-connection single-flight, so on a simultaneous cold start up to the configured per-connection provider concurrency limit (default 4) of work items can each perform the one-library-read population. The 16 integration tests are entirely sequential and contain no concurrency assertion, so this behavior is neither implemented nor tested. The worker disclosed it as an open follow-up (known_limitations[4], line 44), which is honest, but the criterion remains unverified in that scenario.",
+      "evidence": [
+        "docs/implementation/11.2/worker-report.json known_limitations[4] (line 44) - 'There is no single-flight coalescing of concurrent cold-cache populations... up to the configured per-connection provider concurrency limit (default 4) of work items may each perform the one-library-read population'.",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:70-96 and src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:88-114 - an unlocked TryGet-then-populate sequence with no coalescing primitive.",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs - all 16 cases call ReadAsync sequentially; no concurrency test."
+      ],
+      "recommended_action": "Either add per-connection single-flight population (a shared task/async lock keyed by ConnectionId) and a test that launches concurrent ReadAsync calls against a cold cache and asserts the library read count is bounded, or record explicitly that the one-read-per-window guarantee is scoped to a populated cache and is not concurrency-coalesced."
+    },
+    {
+      "id": "TQ-11.2-5",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage",
+      "summary": "The Sonarr bulk test only ever supplies one episode-file id, so it does not exercise the repeatable `episodeFileIds` selector.",
+      "description": "SonarrBulkEpisodeFileReadUsesRepeatedEpisodeFileIdsInsteadOfPerSeriesReads asserts the exact URI `/api/v3/episodeFile?episodeFileIds=418`. With a single id the URI is identical whether or not the client supports repetition, so a non-repeatable single-id implementation would pass. The Radarr bulk test does exercise repetition (`movieId=7&movieId=8`). This is a low-severity precision gap: the selector is wired and the test pins the endpoint and parameter name, but not the repetition.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:181-198 - fixture yields one episode with one unresolved episodeFileId (418).",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:69-72 - the Radarr counterpart asserts the repeated `movieId=7&movieId=8` form."
+      ],
+      "recommended_action": "Add a second episode with a distinct unresolved episodeFileId to the Sonarr fixture and assert `episodeFileIds=418&episodeFileIds=419` in one request."
+    },
+    {
+      "id": "TQ-11.2-6",
+      "severity": "LOW",
+      "status": "open",
+      "area": "skips",
+      "summary": "The documented current-suite counts are stale and internally inconsistent after this task.",
+      "description": "The independently reproduced default suite is 1,403 passed / 63 skipped / 1,466 total (0 failed), matching the worker report and the changelog 11.2 entry. However docs/project-status.md:640 and docs/limitations.md V6 (lines 286-295) still state that 'the current v1.1 working suite is Failed 0, Passed 1,387, Skipped 63, Total 1,450'. That is the pre-11.2 baseline and now contradicts the changelog. This is a documentation/matrix-accuracy issue, not a test defect, and the docs already say the v1.1 release task refreshes the matrix.",
+      "evidence": [
+        "./build.sh test => Failed 0, Passed 1403, Skipped 63, Total 1466.",
+        "docs/changelog.md:3165-3167 records the same 1403/63/1466 and the 1387/63/1450 pre-task baseline.",
+        "docs/project-status.md:640 and docs/limitations.md:286-295 still cite 1,387 / 63 / 1,450 as the current v1.1 working suite."
+      ],
+      "recommended_action": "Refresh the current-suite counts in docs/project-status.md and docs/limitations.md V6 at task 11.4 / the phase review, or point them at the changelog entry for the authoritative number."
+    },
+    {
+      "id": "TQ-11.2-7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "summary": "The 11.2 canonical/secret-free test is a value-level check over selected string carriers; the structural no-credential-member guarantee lives in the 11.1 tests.",
+      "description": "CachedObservationsAreCanonicalAndSecretFree asserts the cached Candidate is a MatchCandidate (a real structural type check) and that the strings reachable from Candidate.Title/PrimaryPath/ProviderIds and the BadgeMetadata fields do not contain the API key (with `Assert.NotEmpty(strings)`, so the check is non-vacuous). It does not itself assert that the entry object graph contains no ArrConnection/SecretReference/SecretLease member; that structural guarantee is carried by ArrInventoryCacheTests.InventoryCacheTypesExposeNoCredentialBearingMembers (11.1). Together the claims are covered; noted so the basis of the 'secret-free' claim is explicit and not mistaken for a whole-object-graph check in 11.2.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:285-307 and 377-421 - ObservationStrings enumerates only the known canonical string carriers.",
+        "tests/ArrTags.Tests/ArrInventoryCacheTests.cs:141-171 - InventoryCacheTypesExposeNoCredentialBearingMembers checks member *types* against a credential-bearing denylist."
+      ],
+      "recommended_action": "None required; optionally extend the 11.2 test to assert the entry exposes no credential-bearing member type, reusing the 11.1 denylist, so the integration-level claim is self-contained."
+    },
+    {
+      "id": "TQ-11.2-8",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "Sonarr population reads episodes per series rather than via a repeated `episodeIds` selector (worker limitation #1); no per-item read remains on the cached path.",
+      "description": "SonarrMetadataReader.PopulateAsync issues one `episode?seriesId=&includeEpisodeFile=true` read per series (a per-series bulk read) and one repeatable `episodeFile?episodeFileIds=` read for files the embedded resource does not resolve; the repeated `episodeIds` selector is not used because episode identifiers are only discoverable from the per-series read. This is disclosed (worker known_limitations[0]) and is not a per-work-item read: the cached path ReadFromObservations makes no provider call, and the single-series fixtures do not exercise the multi-series per-series read cost. Not a required 11.2 test; noted for completeness and for the 11.4 integration verification.",
+      "evidence": [
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:202-239 - per-series `GetEpisodesAsync` loop, then one `GetEpisodeFilesAsync(gapFileIds)` bulk read.",
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs:123-178 - ReadFromObservations performs no provider call.",
+        "docs/implementation/11.2/worker-report.json known_limitations[0] (line 40)."
+      ],
+      "recommended_action": "None required for 11.2; if desired, cover the multi-series population cost (one episode read per series, no per-work-item read) at 11.4."
+    }
+  ],
+  "mutation_evidence": [
+    {"mutation": "A: force a library read per work item (disable the Radarr cache-hit branch)", "expected_failure": "RadarrLibraryReadServesMultipleWorkItemsWithinTheWindow, RadarrCacheHitAvoidsAnyProviderCall, RadarrRetainedObservationSetIsServedWithoutAProviderCallWhenTheProviderFails", "observed": "Failed 3, Passed 13 (16 total)"},
+    {"mutation": "B: replace the Radarr repeatable bulk read with per-id reads in RadarrClient.GetMovieFilesAsync(IReadOnlyList<int>)", "expected_failure": "RadarrBulkMovieFileReadUsesRepeatedMovieIdsInsteadOfPerItemReads (and the library-read count)", "observed": "Failed 2, Passed 14"},
+    {"mutation": "C: ignore the Radarr over-bound rejection (skip the early record-bound check and return observations regardless of TryStore)", "expected_failure": "RadarrOverBoundObservationSetFallsBackToTheDirectRead", "observed": "Failed 1, Passed 15"},
+    {"mutation": "C1: ignore only the Radarr TryStore result (early record-bound check retained)", "expected_failure": "(demonstrates the early guard is the effective one for Radarr)", "observed": "Passed 16, Failed 0"},
+    {"mutation": "D: ignore the Sonarr over-bound rejection (return observations regardless of TryStore)", "expected_failure": "SonarrOverBoundObservationSetFallsBackToTheDirectRead (expected, but not observed)", "observed": "Passed 16, Failed 0 - confirms finding TQ-11.2-2"},
+    {"mutation": "E: retain only the first observation in the Radarr cache", "expected_failure": "the one-read-serves-multiple-work-items claim (expected, but not observed)", "observed": "Passed 16, Failed 0 - confirms finding TQ-11.2-3"}
+  ],
+  "matrix_observed": {
+    "default": "1403 passed / 63 skipped / 1466 total (0 failed), independently reproduced with ./build.sh test",
+    "host_guarded": "not run - ARRTAGS_JELLYFIN_HOST_DIR unset and no pinned Jellyfin 12.0.0 host present in this environment (pre-existing documented guard, limitations V6); docs record the historical 1.0.1.0 host-guarded 1244 passed / 44 skipped / 1288 total",
+    "forced_native": "not run - ARRTAGS_SKIA_COMPAT=1 requires the pinned SkiaSharp native runtime/sysroot, absent in this environment (pre-existing documented guard); the native theories skip in the default run",
+    "task_11_2_filtered": "16 passed / 0 skipped / 16 total"
+  },
+  "substitutes_checked": [
+    "Only the HTTP transport is doubled: RecordingHandler (a custom HttpMessageHandler that records request URIs and returns fixture JSON) plus StubHttpClientFactory; the logging dependency is passed as null. The production types under test are real: RadarrMetadataReader, SonarrMetadataReader, RadarrClient, SonarrClient, ArrReadClientFactory, ArrHttpClientFactory, ArrInventoryCacheProvider, ArrInventoryCache, ConfigurationSnapshotService, ArrConnectionCatalog, and the production matchers/mappers.",
+    "Gap versus a real host: no real HTTP/TLS and no real Sonarr/Radarr release payload variance beyond the committed fixtures - the pre-existing, documented limitation V1 (no live Sonarr/Radarr instance). The task's required behaviors are provider-boundary behaviors and are exercised on the real in-process path."
+  ],
+  "skips_checked": [
+    "ProviderInventoryCacheIntegrationTests.cs uses only [Fact]; it contains no [Fact(Skip=...)], JellyfinHostFact, SkiaNativeTheory, or other guard, and the filtered run reports 16 passed / 0 skipped.",
+    "The default suite skips 63 tests, all in pre-existing guarded classes (SkiaBadgeRendererRenderTests 9, JellyfinImageResponseTests 9, RenderPngContractTests 7, RendererBehaviorDimensionTests 5, RenderDeterminismTests 5, JellyfinImageRouteTests 5, RendererCrossRuntimeTests 4, RendererBehaviorFormatTests 4, and others) - unchanged by this task, 0 new skips.",
+    "No task 11.2 behavior is masked by a skip: the new integration tests run in the shipping default configuration. The host-guarded and forced-native suites were not runnable here, but the task does not depend on host or native facts."
+  ],
+  "determinism_checked": [
+    "Each test constructs its own ConfigurationSnapshotService, RecordingHandler, ArrInventoryCacheProvider, and readers; there is no shared mutable state and no order dependence.",
+    "The HTTP double returns fixed in-memory JSON; there is no network, filesystem, process-state, or fixture-order dependence.",
+    "No assertion depends on wall-clock time: the cache TTL (default 15 minutes, or the configured value) far exceeds the sub-second test duration, and the tests only rely on the entry being fresh at assertion time. DateTimeOffset.UtcNow is used internally by the reader/cache but is not asserted against.",
+    "Repeated focused and full-suite runs produced identical results; all mutation runs were deterministic."
+  ],
+  "summary": "Task 11.2's required behaviors are substantially, but not completely, established. The bulk-read claims are pinned to real request URIs and are mutation-sensitive (Radarr repeatable movieId, Sonarr episodeFileIds, and the Radarr over-bound fallback all fail when broken). The one-read-per-window mechanism is exercised on the real reader path, and the cache-hit and canonical/secret-free checks are non-vacuous. No BLOCKER or HIGH. Open MEDIUM findings: the provider-failure last-known-good test never triggers a provider call (and the stale/expired reader boundary is untested for lack of an injectable clock, worker limitation #2); the Sonarr over-bound fallback test is insensitive (a disabled fallback still passes 16/16); the 'multiple work items' tests use one repeated identity and do not assert whole-library retention (a single-record cache still passes 16/16); and the disclosed absence of single-flight population (worker limitation #5) leaves the one-read-per-window criterion unverified under concurrent cold start. LOW: the Sonarr repeatable selector is not exercised with more than one id, and the documented current-suite counts (1,387/63/1,450) are stale versus the reproduced 1,403/63/1,466. Matrix independently reproduced: default 1,403/63/1,466; focused 16/16; host-guarded and forced-native not runnable in this environment (pre-existing guards). Reviewer status: PASS_WITH_FINDINGS."
+}

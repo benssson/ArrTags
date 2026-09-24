@@ -29,4 +29,17 @@ public interface IRadarrReadClient : IArrProviderClient
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The bounded list of current movie files.</returns>
     Task<ArrProviderReadResult<IReadOnlyList<RadarrMovieFileResource>>> GetMovieFilesAsync(int movieId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads the fully populated movie files for many movies through the single
+    /// dedicated <c>moviefile?movieId=</c> endpoint using its repeatable
+    /// <c>movieId</c> selector (ADR-018 clause 4). An empty identifier list
+    /// returns an empty result without a provider request.
+    /// </summary>
+    /// <param name="movieIds">The Radarr-local movie identifiers.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The bounded list of current movie files.</returns>
+    Task<ArrProviderReadResult<IReadOnlyList<RadarrMovieFileResource>>> GetMovieFilesAsync(
+        IReadOnlyList<int> movieIds,
+        CancellationToken cancellationToken);
 }

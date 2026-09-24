@@ -1,0 +1,217 @@
+{
+  "task": "11.2",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Independent re-review of the correction round for v1.1 task 11.2 after attempt-1 CHANGES_REQUIRED (11.2-F1 MEDIUM) and test-quality findings TQ-11.2-1..6. I rebuilt (Build succeeded, 0 warnings / 0 errors), re-ran the full default suite (Failed 0, Passed 1407, Skipped 63, Total 1470) and the focused class (20/20), and repeated the concurrency/gate/stale-entry tests 8 times with identical results. The full diff contains only task 11.2 changes. All attempt-1 findings are closed: 11.2-F1 (stale current suite count) is fixed on both canonical surfaces (docs/limitations.md V6 and docs/project-status.md now state 1,407/1,470), matching my independent reproduction; the architecture/data-model overclaims (11.2-F4) are reworded accurately; and the bulk id list is now bounded/chunked (11.2-F3, with a residual configurable-max note). The per-connection single-flight population gate is implemented correctly (async semaphore, no monitor lock held across provider I/O, cancellation-aware, failure releases the gate, no deadlock) and is covered by a real concurrent cold-start test. The two acceptance criteria — one provider library read per connection serves a reconciliation window (now literally true under concurrent cold start), and bulk reads avoid per-item reads — are satisfied. Matching/metadata/failure/freshness semantics and the no-ETag/no-conditional/no-revision-token/no-history-since/no-SignalR constraint are preserved. F1 remains open until 11.4, correctly.",
+  "findings": [
+    {
+      "id": "11.2-F1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "documentation/current-state",
+      "summary": "CLOSED: the two stale current-suite-count surfaces now state 1,407/63/1,470, matching my independent reproduction.",
+      "detail": "docs/limitations.md V6 (lines 289-291) and docs/project-status.md (lines 640-641) now read 'the current v1.1 working suite is Failed 0, Passed 1,407, Skipped 63, Total 1,470'. I independently reproduced that exact count with ./build.sh test (Failed 0, Passed 1407, Skipped 63, Total 1470), and the worker's docs/changelog.md 11.2 entry records the same count with the correct +20 over the 1,387/1,450 pre-task baseline. A repo-wide scan found no remaining stale *current* count on any canonical current-state surface; the only 1,387/1,450 references left are the historical 11.1 changelog entry and implementation reports, which are permitted to keep their at-the-time counts.",
+      "evidence": [
+        "docs/limitations.md:289-291",
+        "docs/project-status.md:640-641",
+        "docs/changelog.md 11.2 entry (1,407/63/1,470; pre-task 1,387/1,450)",
+        "./build.sh test -> Failed 0, Passed 1407, Skipped 63, Total 1470 (independent re-run)"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "coverage/provider-failure",
+      "summary": "CLOSED: the provider-failure test now exercises a real failure; stale-usable and expired reader boundaries are covered.",
+      "detail": "The inert fresh-cache test was replaced/renamed. RadarrCacheHitAvoidsAnyProviderCall covers the fresh hit; RadarrStaleObservationSetIsServedWithoutAProviderCallWhenTheProviderFails stores an entry observed 45s ago under a 1-minute TTL (fresh for 30s, stale-but-usable until 60s per ArrInventoryCacheEntry.ComputeFreshnessWindow) with a failing responder and asserts success, the quality label, an empty request list, and count 1 — so a provider failure is present while a usable entry is served as bounded last-known-good. RadarrExpiredObservationSetIsEvictedAndTheProviderFailureIsBounded stores at -90s (>TTL), asserts the provider was actually read once, the bounded ProviderUnavailable/Later failure is returned, and the expired entry is not retained. The direct construction at chosen observation times supplies the missing clock seam (worker limitation #2) at the reader boundary. Both are mutation-sensitive: making IsExpired always false fails the expired test.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:134-180",
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:182-240 (freshness window; IsExpired)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs cache-hit branch returns before any client call",
+        "Worker sensitivity mutation C (reverted): IsExpired always false -> RadarrExpired... failed"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-2",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "meaningfulness/Sonarr fallback",
+      "summary": "CLOSED: the Sonarr over-bound fallback test now asserts the direct-read request shape and is sensitive to the fallback being disabled.",
+      "detail": "SonarrOverBoundObservationSetFallsBackToTheDirectRead now asserts MaxRecords=1 rejects the 3-record set (series + 2 episodes), exactly one /api/v3/series request, exactly two /api/v3/episode requests (the population per-series read plus the direct read), and no /api/v3/episodeFile request. A cache-served over-bound set would produce one episode request and zero direct read, so ignoring the TryStore result fails the test (worker sensitivity mutation B). The cache count is asserted 0. The Radarr counterpart already asserts the single per-record moviefile?movieId=7 request and no bulk read.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:251-271 (Sonarr), 98-116 (Radarr)",
+        "src/ArrTags/Providers/ArrInventoryCache.cs:125-148 (TryStore bound rejection)",
+        "Worker sensitivity mutation B (reverted): ignore TryStore result -> SonarrOverBound... failed"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-3",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "coverage/whole-library retention",
+      "summary": "CLOSED: the one-read-per-window tests now read two distinct identities and assert whole-library retention.",
+      "detail": "RadarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow reads MovieIdentity(603) then MovieIdentity(604), asserts exactly one /api/v3/movie request and two total requests, and asserts entry.Records.Count == 2. SonarrLibraryReadServesMultipleDistinctWorkItemsWithinTheWindow reads EpisodeIdentity(12345,9001) then (12345,9002), asserts one /api/v3/series and one /api/v3/episode request and entry.Records.Count == 3 (series + both episodes). A single-record/per-identity cache therefore fails both (worker sensitivity mutation D); the retained set is what serves the distinct second work item.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:36-62 (Radarr), 182-213 (Sonarr)",
+        "src/ArrTags/Providers/ArrInventoryCache.cs:142-147 (per-connection whole-set storage)",
+        "Worker sensitivity mutation D (reverted): retain only first Radarr observation -> test failed"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-4",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "concurrency/acceptance-criterion",
+      "summary": "CLOSED: per-connection single-flight coalescing is implemented and verified under a real concurrent cold start.",
+      "detail": "ArrInventoryCacheProvider owns a per-connection SemaphoreSlim(1,1) population gate. On a cold cache the readers acquire the gate, re-check the cache inside it, and only then read the library, so concurrent readers for the connection share one library read; a waiter re-checks and serves from the populated set. The gate is an async semaphore, so no thread is blocked and no monitor lock is held across provider I/O; WaitAsync is cancellation-aware; the lease is disposed on every path via using so a provider failure or cancellation releases the gate and does not poison later attempts; a failed population does not share failure but later attempts retry (documented). ConcurrentColdReadersShareOneLibraryRead launches four cold readers against a blocking handler and asserts LibraryRequestCount == 1; ProviderFailureReleasesThePopulationGateForALaterAttempt drives a failed population then a successful later attempt. I ran both plus the stale-entry test 8 consecutive times (all green), so the concurrency coverage is deterministic here. With the gate, the declaration 'one provider library read per connection serves a reconciliation window' is now literally true under concurrent cold start, not only against a populated cache.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs:70-105 (AcquirePopulationAsync + PopulationLease)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs ReadAsync cold-cache gate + re-check",
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs ReadAsync cold-cache gate + re-check",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:327-374",
+        "8x focused run of ConcurrentColdReadersShareOneLibraryRead + ProviderFailureReleasesThePopulationGateForALaterAttempt + RadarrStaleObservationSet... -> Passed 3/3 each time"
+      ],
+      "recommended_action": "None; closed. (The earlier 11.2-F2 adjudication that this was an acceptable bounded deviation is superseded by this implementation.)"
+    },
+    {
+      "id": "TQ-11.2-5",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "coverage/bulk selector",
+      "summary": "CLOSED: the Sonarr fixture now has two unresolved file ids and the bulk test pins the repeated selector.",
+      "detail": "The Sonarr fixture now serves two episodes (episodeFileId 418 and 419) and SonarrBulkEpisodeFileReadUsesRepeatedEpisodeFileIdsInsteadOfPerSeriesReads asserts the exact URI /api/v3/episodeFile?episodeFileIds=418&episodeFileIds=419 and that no per-series /api/v3/episodeFile?seriesId=12 is issued. A non-repeatable single-id implementation fails the URI assertion (worker sensitivity mutation E). The Radarr counterpart already pins the repeated movieId form.",
+      "evidence": [
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:215-232, 689-717",
+        "Worker sensitivity mutation E (reverted): emit only first episodeFileId -> test failed"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "TQ-11.2-6",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation/skips-matrix",
+      "summary": "CLOSED: duplicate of 11.2-F1; the documented current-suite counts are now consistent.",
+      "detail": "The stale 1,387/63/1,450 current-suite count is fixed on docs/project-status.md and docs/limitations.md V6 (now 1,407/63/1,470), matching docs/changelog.md and my independent ./build.sh test run. No new skips were introduced (63 unchanged).",
+      "evidence": [
+        "docs/project-status.md:640-641",
+        "docs/limitations.md:289-291",
+        "./build.sh test -> Failed 0, Passed 1407, Skipped 63, Total 1470"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "11.2-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "concurrency/acceptance-criterion",
+      "summary": "The attempt-1 'bounded cold-start follow-up' is now implemented; the earlier note is superseded.",
+      "detail": "The per-connection single-flight gate described in TQ-11.2-4 resolves the cold-start gap that attempt 1 recorded as a bounded follow-up. No further action.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:327-374"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "11.2-F3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness/robustness",
+      "summary": "Bulk id lists are now chunked into bounded requests; a residual theoretical bound remains at the maximum configurable batch size.",
+      "detail": "RadarrClient.GetMovieFilesAsync(IReadOnlyList<int>) and SonarrClient.GetEpisodeFilesAsync(IReadOnlyList<int>) now chunk the id list by OperationalLimits.ReconciliationBatchSize (default 100, validated 1-1000) and merge the chunk results, so the default request line stays well under typical limits and a large library no longer emits one unbounded query. BulkReadsChunkTheIdListIntoBoundedRequests sets ReconciliationBatchSize=1 and asserts one request per id with the expected query values. Residual, non-blocking: at the maximum validated ReconciliationBatchSize=1000 an id query is ~12 KB, which could still exceed a proxy/server request-line limit; correctness is preserved by the existing direct-read fallback. This was a LOW, explicitly non-blocking follow-up in attempt 1, and the correction addressed it as claimed.",
+      "evidence": [
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:139-202",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:156-219",
+        "src/ArrTags/Configuration/OperationalLimits.cs:121,190 (default 100, range 1-1000)",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs:376-401"
+      ],
+      "recommended_action": "None required for 11.2; if desired, record the maximum-batch request-line residual as a bounded follow-up."
+    },
+    {
+      "id": "11.2-F4",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation/precision",
+      "summary": "CLOSED: the architecture and data-model wording is now accurate.",
+      "detail": "docs/architecture.md now says 'the cached path does not issue per-item file reads' and explicitly states that the direct-read fallback (over-bound sets and failed bulk reads) still performs the per-record file read unchanged. docs/data-model.md now states that the bound preventing a cached read from being presented as current beyond its lifetime is the cache entry's bounded reuse window (ExpiresAt/StaleUntil), not the fingerprint, and notes that MetadataSnapshot does not carry the canonical observation timestamp. This matches ArrInventoryCacheEntry.StaleUntil bounding reuse and MetadataSnapshot/MetadataStateEntry publish-time freshness. One loose residual in PLANS.md/changelog ('per-item file reads are replaced') is qualified by the immediately surrounding fallback description and is not a correctness overclaim on the canonical architecture/data-model surfaces.",
+      "evidence": [
+        "docs/architecture.md:688-707",
+        "docs/data-model.md:1217-1240",
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:237-240 (IsExpired)",
+        "src/ArrTags/Reconciliation/MetadataSnapshot.cs (ObservedAt not carried)"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "11.2-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/requirements",
+      "summary": "Sonarr per-series episode reads satisfy 'bulk reads avoid per-item reads'; no per-item read remains on the cached path.",
+      "detail": "Unchanged from attempt 1 and still accurate: Sonarr issues one /api/v3/series library read plus one /api/v3/episode?seriesId=&includeEpisodeFile=true per series (a per-series bulk read, not per item) and one repeated episodeFile?episodeFileIds= read for files the embedded episode resource does not resolve; Radarr issues one repeated moviefile?movieId= read. The cached path makes no provider call for a hit.",
+      "evidence": [
+        "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs PopulateAsync",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:153-219",
+        "docs/research/sonarr-api.md (no all-episodes endpoint)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "11.2-F6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "architecture/single-flight-mechanics",
+      "summary": "The single-flight gate is an async semaphore intentionally held across provider I/O; the per-connection gate dictionary is bounded by configured connections.",
+      "detail": "The reviewer constraint 'no lock held across provider I/O' is satisfied: the only monitor lock (ArrInventoryCacheProvider._gate) guards cache resolution and is never held across I/O; the SemaphoreSlim is the intended single-flight lease and is necessarily held across the population. WaitAsync is cancellation-aware and the lease is released on every path. _populationGates is a ConcurrentDictionary keyed by ArrConnectionId and grows only with the configured connection count, not per request. No deadlock path exists because the population path never re-acquires the gate.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs:52-105"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independent re-run)",
+    "./build.sh test -> Failed 0, Passed 1407, Skipped 63, Total 1470, Duration 16 s (independent re-run; matches docs and worker report)",
+    "dotnet test --filter FullyQualifiedName~ProviderInventoryCacheIntegrationTests -> Failed 0, Passed 20, Skipped 0, Total 20 (independent re-run)",
+    "8x focused repeat of ConcurrentColdReadersShareOneLibraryRead + ProviderFailureReleasesThePopulationGateForALaterAttempt + RadarrStaleObservationSetIsServedWithoutAProviderCallWhenTheProviderFails -> 3/3 passed every run (deterministic)",
+    "git diff --check -> clean; no MUTATION marker remains in src/ or tests/",
+    "Inspected all 20 [Fact] cases in ProviderInventoryCacheIntegrationTests.cs against the mutations they must catch (single-flight, Sonarr fallback, whole-library retention, expired entry, repeated episodeFileIds)",
+    "MetadataReaderTests.cs and LogRedactionTests.cs diffs only add the new bulk interface members to existing fakes; readers in those tests are constructed without inventory so the direct path is unchanged"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-018 clauses 2, 3, 4, 5, 7 (one library read per window; ArrTags-side invalidation; bulk selectors; state consistency; no assumed token)",
+    "PLANS.md Phase 11 Goal/objective and task 11.2 objective, work, tests, acceptance criteria, definition of done",
+    "docs/planning/v1.1.md Goal C / DG-12 (via task/PLANS references)",
+    "docs/research/radarr-api.md (repeatable moviefile?movieId=, request-body limit disabled) and docs/research/sonarr-api.md (no all-episodes endpoint; repeatable episodeFileIds; per-connection single-flight recommendation)",
+    "OperationalLimits bounds: InventoryCacheTtlMinutes default 15 (1-1440), InventoryCacheMaxRecords default 10000 (1-100000), InventoryCacheMaxBytes default 32MiB (1-256MiB), ReconciliationBatchSize default 100 (1-1000)",
+    "ArrInventoryCacheEntry.ComputeFreshnessWindow: fresh for TTL/2, stale-usable until TTL, expired at/after StaleUntil",
+    "MediaMatcher.MatchEpisode filters episode candidates to the matched series, so passing all-series episode observations in the cached path is equivalent to the direct path"
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, Milestone 11 row, task 11.2 checkbox and status block - consistent with the implementation, F1 left open until 11.4",
+    "docs/changelog.md Phase 11 status and the new 11.2 entry (20 cases; 1407/63/1470; historical 11.1 entry retains its 1387/1450 at-the-time count)",
+    "docs/project-status.md current-milestone prose, current-suite count (1,407/1,470) and Next tasks - consistent",
+    "docs/architecture.md status line, section 8 and section 12 - installed integration, single-flight, chunked bulk reads, accurate fallback wording; invalidation (11.3) remains",
+    "docs/data-model.md section 6 - population/bulk/observation-time semantics with StaleUntil as the limiting guarantee (not the fingerprint)",
+    "docs/limitations.md F1 partial progress (still open until 11.4) and V6 current-suite count",
+    "docs/implementation-readiness.md status line - 11.1 and 11.2 complete",
+    "README.md Known limitations - 'Provider inventory cache is partially complete', F1 stays open, no overclaim"
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "reviewer_status": "CHANGES_REQUIRED",
+      "driver": "11.2-F1 (MEDIUM, docs/current-state): docs/limitations.md V6 and docs/project-status.md still stated the pre-11.2 current suite count 1,387/63/1,450. Also TQ-11.2-1..6 from the test-quality reviewer.",
+      "attempt_2_resolution": "RC1 refreshed both current-state surfaces to 1,407/63/1,470 (independently reproduced). RC2 added per-connection single-flight coalescing with a concurrent cold-start test and a failure-releases-gate test. RC3 replaced the inert provider-failure test with real stale-usable and expired reader-boundary tests. RC4 made the Sonarr over-bound fallback test assert the direct-read request shape. RC5 added whole-library-retention and distinct-identity coverage. RC6 exercised two Sonarr episodeFileIds. RC7 corrected the architecture/data-model wording. RC8 bounded/chunked the bulk id list. All verified independently; APPROVED."
+    }
+  ],
+  "ready_for_next_task": true
+}
