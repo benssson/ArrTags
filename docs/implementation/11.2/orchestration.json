@@ -3,7 +3,7 @@
   "title": "Provider-client integration and bulk reads",
   "phase": 11,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "9e53480",
   "subagents": [
     {
       "role": "implementation-worker",
