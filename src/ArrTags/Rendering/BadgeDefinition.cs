@@ -29,6 +29,20 @@ public sealed class BadgeDefinition
     /// </summary>
     public const int MaximumTemplateLength = 128;
 
+    /// <summary>
+    /// The maximum number of allowlist entries a definition may carry. A longer
+    /// allowlist is rejected so an unbounded filter cannot flow into rendering.
+    /// </summary>
+    public const int MaximumAllowedValues = 32;
+
+    /// <summary>
+    /// The maximum allowlist entry length in characters. A longer entry is
+    /// rejected so an unbounded filter cannot flow into rendering.
+    /// </summary>
+    public const int MaximumAllowedValueLength = 64;
+
+    private static readonly IReadOnlyList<string> EmptyAllowedValues = Array.Empty<string>();
+
     private static readonly IReadOnlyList<BadgeDefinition> DefaultDefinitions = BuildDefaults();
 
     /// <summary>
@@ -41,6 +55,29 @@ public sealed class BadgeDefinition
     /// <exception cref="ArgumentNullException">The template is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">The template is empty, too long, or contains more than one placeholder.</exception>
     public BadgeDefinition(BadgeSelector selector, bool enabled, string template)
+        : this(selector, enabled, template, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BadgeDefinition"/> class with
+    /// a resolved value allowlist.
+    /// </summary>
+    /// <param name="selector">The provider-neutral canonical field selector.</param>
+    /// <param name="enabled">Whether the selector participates in rendering.</param>
+    /// <param name="template">The bounded display template, for example <c>{value}</c>.</param>
+    /// <param name="allowedValues">
+    /// The resolved allowlist, or <see langword="null"/> / an empty list for no
+    /// restriction. Entries are trimmed and defensively copied.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">The selector is not defined.</exception>
+    /// <exception cref="ArgumentNullException">The template is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// The template is unusable, or the allowlist exceeds the entry/length bound,
+    /// contains a blank or control-character entry, or contains a duplicate after
+    /// case-insensitive comparison.
+    /// </exception>
+    public BadgeDefinition(BadgeSelector selector, bool enabled, string template, IReadOnlyList<string>? allowedValues)
     {
         if (!Enum.IsDefined(selector))
         {
@@ -66,6 +103,7 @@ public sealed class BadgeDefinition
         Selector = selector;
         Enabled = enabled;
         Template = template;
+        AllowedValues = NormalizeAllowedValues(allowedValues);
     }
 
     /// <summary>
@@ -96,6 +134,14 @@ public sealed class BadgeDefinition
     public string Template { get; }
 
     /// <summary>
+    /// Gets the resolved, immutable, provider-neutral value allowlist
+    /// (ADR-017). An empty list means no restriction. Entries are trimmed and
+    /// preserve the configured order and case; matching is case-insensitive and
+    /// order-independent.
+    /// </summary>
+    public IReadOnlyList<string> AllowedValues { get; }
+
+    /// <summary>
     /// Applies the definition template to one confirmed canonical value. The
     /// result is still subject to the normalizer and layout text limits.
     /// </summary>
@@ -122,6 +168,80 @@ public sealed class BadgeDefinition
         }
 
         return count;
+    }
+
+    private static IReadOnlyList<string> NormalizeAllowedValues(IReadOnlyList<string>? allowedValues)
+    {
+        if (allowedValues is null || allowedValues.Count == 0)
+        {
+            return EmptyAllowedValues;
+        }
+
+        if (allowedValues.Count > MaximumAllowedValues)
+        {
+            throw new ArgumentException(
+                $"A badge allowlist must not exceed {MaximumAllowedValues} entries.",
+                nameof(allowedValues));
+        }
+
+        var normalized = new string[allowedValues.Count];
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < allowedValues.Count; index++)
+        {
+            var value = allowedValues[index];
+            if (value is null)
+            {
+                throw new ArgumentException(
+                    "A badge allowlist entry must not be null.",
+                    nameof(allowedValues));
+            }
+
+            var trimmed = value.Trim();
+            if (trimmed.Length == 0)
+            {
+                throw new ArgumentException(
+                    "A badge allowlist entry must not be blank.",
+                    nameof(allowedValues));
+            }
+
+            if (trimmed.Length > MaximumAllowedValueLength)
+            {
+                throw new ArgumentException(
+                    $"A badge allowlist entry must not exceed {MaximumAllowedValueLength} characters.",
+                    nameof(allowedValues));
+            }
+
+            if (ContainsControlCharacter(trimmed))
+            {
+                throw new ArgumentException(
+                    "A badge allowlist entry must not contain control characters.",
+                    nameof(allowedValues));
+            }
+
+            if (!seen.Add(trimmed))
+            {
+                throw new ArgumentException(
+                    "A badge allowlist entry must be unique (case-insensitive).",
+                    nameof(allowedValues));
+            }
+
+            normalized[index] = trimmed;
+        }
+
+        return Array.AsReadOnly(normalized);
+    }
+
+    private static bool ContainsControlCharacter(string value)
+    {
+        foreach (var character in value)
+        {
+            if (char.IsControl(character))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static IReadOnlyList<BadgeDefinition> BuildDefaults()

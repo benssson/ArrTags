@@ -4485,7 +4485,7 @@ own gate, so they are one phase with one bump and one golden regeneration.
 
 **Tasks:**
 
-- [ ] 12.1 Allowlist configuration, bounds, validation, and fingerprint.
+- [x] 12.1 Allowlist configuration, bounds, validation, and fingerprint.
 - [ ] 12.2 Allowlist resolution and renderer filtering order.
 - [ ] 12.3 Badge size/position configuration and layout engine.
 - [ ] 12.4 Coordinated schema/`RenderVersion` advance, golden regeneration, and
@@ -4504,7 +4504,17 @@ execution order and task numbering conflict, the execution order wins.
 
 #### 12.1 Allowlist configuration, bounds, validation, and fingerprint
 
-**Status:** Not started.
+**Status:** Complete. `BadgeSelectorConfiguration.AllowedValues` (bounded, settable
+for the ADR-016 POST round-trip) is validated in `RendererConfiguration.Validate`
+with secret-free messages (at most 32 entries per selector, each at most 64
+characters, trimmed, no blank or control-character entry, no case-insensitive
+duplicate), mapped into `BadgeDefinition.AllowedValues` by
+`RendererConfigurationResolver.ResolveDefinitions`, and included in
+`RendererConfigurationFingerprint` (case- and order-normalized; an empty
+allowlist is identity-neutral, so the default configuration fingerprint is
+unchanged). The setting is exposed per selector on the ADR-016 settings page. The
+renderer filtering behavior, the schema/`RenderVersion` advance, and the golden
+regeneration remain tasks 12.2/12.4.
 
 **Objective:** Add the per-selector allowlist configuration, its bounds and
 validation, the resolved `BadgeDefinition` allowlist, and the fingerprint

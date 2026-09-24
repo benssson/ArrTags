@@ -7,18 +7,19 @@ namespace ArrTags.Configuration;
 
 /// <summary>
 /// Persisted, user-adjustable V1 renderer configuration. It contains only the
-/// enabled/disabled badge selectors and their bounded provider-neutral templates,
-/// plus optional contrast-validated palette overrides. Output format, color
-/// space, alpha policy, font identity, geometry, text limits, and the renderer
-/// version remain code-owned per ADR-010 and are not represented here.
+/// enabled/disabled badge selectors, their bounded provider-neutral templates,
+/// their optional bounded value allowlists, plus optional contrast-validated
+/// palette overrides. Output format, color space, alpha policy, font identity,
+/// geometry, text limits, and the renderer version remain code-owned per ADR-010
+/// and are not represented here.
 /// </summary>
 /// <remarks>
 /// A selector that is absent keeps the code-owned ADR-009 default. A template
 /// contains at most one <c>{value}</c> placeholder; it is a literal or
 /// placeholder substitution over the already provider-neutral resolved value and
 /// therefore cannot reference a provider DTO path, record identifier, quality
-/// profile, credential, or extension. An empty palette value keeps the ADR-009
-/// default color.
+/// profile, credential, or extension. An empty allowlist means no restriction.
+/// An empty palette value keeps the ADR-009 default color.
 /// </remarks>
 public sealed class RendererConfiguration
 {
@@ -76,9 +77,10 @@ public sealed class RendererConfiguration
     public string StatusText { get; set; } = string.Empty;
 
     /// <summary>
-    /// Validates the configured selectors, templates, colors, and contrast, and
-    /// appends a safe message for each violation. Messages never contain a
-    /// secret, a template value, or a configured color value.
+    /// Validates the configured selectors, templates, allowlists, colors, and
+    /// contrast, and appends a safe message for each violation. Messages never
+    /// contain a secret, a template value, an allowlist value, or a configured
+    /// color value.
     /// </summary>
     /// <param name="errors">The bounded error collection to append to.</param>
     public void Validate(ICollection<string> errors)
@@ -107,6 +109,7 @@ public sealed class RendererConfiguration
             }
 
             ValidateTemplate(entry.Selector, entry.Template, errors);
+            ValidateAllowedValues(entry.Selector, entry.AllowedValues, errors);
         }
 
         ValidatePalette(errors);
@@ -145,6 +148,70 @@ public sealed class RendererConfiguration
         }
 
         return count;
+    }
+
+    private static void ValidateAllowedValues(BadgeSelector selector, IReadOnlyList<string>? allowedValues, ICollection<string> errors)
+    {
+        if (allowedValues is null || allowedValues.Count == 0)
+        {
+            return;
+        }
+
+        if (allowedValues.Count > BadgeDefinition.MaximumAllowedValues)
+        {
+            errors.Add(FormattableString.Invariant(
+                $"Renderer allowlist for selector '{selector}' must not exceed {BadgeDefinition.MaximumAllowedValues} entries."));
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var value in allowedValues)
+        {
+            if (value is null)
+            {
+                errors.Add(FormattableString.Invariant(
+                    $"Renderer allowlist entries for selector '{selector}' must not be null."));
+                continue;
+            }
+
+            var trimmed = value.Trim();
+            if (trimmed.Length == 0)
+            {
+                errors.Add(FormattableString.Invariant(
+                    $"Renderer allowlist entries for selector '{selector}' must not be blank."));
+                continue;
+            }
+
+            if (trimmed.Length > BadgeDefinition.MaximumAllowedValueLength)
+            {
+                errors.Add(FormattableString.Invariant(
+                    $"Renderer allowlist entry for selector '{selector}' must not exceed {BadgeDefinition.MaximumAllowedValueLength} characters."));
+            }
+
+            if (ContainsControlCharacter(trimmed))
+            {
+                errors.Add(FormattableString.Invariant(
+                    $"Renderer allowlist entries for selector '{selector}' must not contain control characters."));
+            }
+
+            if (!seen.Add(trimmed))
+            {
+                errors.Add(FormattableString.Invariant(
+                    $"Renderer allowlist entries for selector '{selector}' must be unique (case-insensitive)."));
+            }
+        }
+    }
+
+    private static bool ContainsControlCharacter(string value)
+    {
+        foreach (var character in value)
+        {
+            if (char.IsControl(character))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ValidatePalette(ICollection<string> errors)

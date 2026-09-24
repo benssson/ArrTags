@@ -1,0 +1,127 @@
+{
+  "task": "12.1",
+  "attempt": 2,
+  "reviewer_role": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "findings": [
+    {
+      "id": "12.1-F1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "documentation / canonical current-state surfaces",
+      "summary": "RESOLVED in attempt 2: docs/changelog.md now has a task 12.1 entry under a Phase 12 section.",
+      "detail": "Attempt 1 required a docs/changelog.md task 12.1 entry because the documented per-task workflow (`.opencode/agents/implementation-worker.md` line 237) names docs/changelog.md as a canonical current-state surface and every prior task added one. Attempt 2 adds a `## Phase 12 - Badge value allowlist and badge size/position (v1.1)` section (after the Phase 11 task 11.4 entry) with an in-progress status paragraph and a `### Task 12.1 - Allowlist configuration, bounds, validation, and fingerprint` entry with `**Status:** Complete.`, matching the Phase 9/10/11 conventions (phase header + status paragraph, per-task heading + status, capability description, scope, documentation, new tests, and `./build.sh build`/`./build.sh test` evidence). The entry does not overclaim: it states that allowlist filtering/renderer filtering order is task 12.2, badge size/position is task 12.3, and the coordinated schema/`RenderVersion` advance plus golden regeneration is task 12.4; it states `RendererConfiguration.CurrentSchemaVersion` is still 1 and `RenderVersion.CurrentRendererVersion` is still 2 and no golden was regenerated. Source confirms CurrentSchemaVersion = 1 (RendererConfiguration.cs:32) and CurrentRendererVersion = 2 (RenderVersion.cs:20). The single grep hit for `12.1` outside the new section remains the unrelated `packages.lock.json` `12.1.x` version guard (line 67). No further action required.",
+      "evidence": [
+        "git diff docs/changelog.md -> +62 lines: new Phase 12 section and Task 12.1 entry",
+        "docs/changelog.md:3309 `## Phase 12 - ...`; :3317 `### Task 12.1 - ...`; scope paragraph names 12.2/12.3/12.4 and the unchanged 1/2 versions",
+        "src/ArrTags/Configuration/RendererConfiguration.cs:32 CurrentSchemaVersion = 1",
+        "src/ArrTags/Rendering/RenderVersion.cs:20 CurrentRendererVersion = 2",
+        "convention match: docs/changelog.md Phase 9/10/11 headers and task headings"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "12.1-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / overclaim risk",
+      "summary": "docs/data-model.md 3.6 states in the present tense that a non-empty allowlist 'restricts rendering', which is task 12.2 behaviour; adjacent notes clarify the filter is not yet applied.",
+      "detail": "Unchanged from attempt 1 and re-confirmed: the 3.6 paragraph describes the field's target semantics while 3.12 and docs/architecture.md section 9 explicitly state 12.1 only adds configuration/fingerprint and that task 12.2 applies the filter. No AllowedValues reference exists in BadgeSelectorResolver/BadgeDefinitionResolver/BadgeLayoutEngine. Not misleading overall; no correction required.",
+      "evidence": [
+        "docs/data-model.md 3.6 and 3.12 (git diff)",
+        "docs/architecture.md section 9",
+        "grep for AllowedValues under src/ArrTags/Rendering/ -> only BadgeDefinition.cs"
+      ],
+      "recommended_action": "None required; optionally phrase 3.6 as target semantics when task 12.2 lands."
+    },
+    {
+      "id": "12.1-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "architecture / fingerprint identity",
+      "summary": "The deliberate choice that an empty allowlist is fingerprint-identity-neutral remains consistent with ADR-017 and the 12.1 scope boundary.",
+      "detail": "Re-confirmed unchanged: RendererConfigurationFingerprint.AppendAllowedValues returns early for an empty list, so the default configuration fingerprint is byte-identical to its pre-task value. ADR-017 clause 6 pairs allowlist inclusion with a schema 1->2 / RenderVersion 2->3 advance and golden regeneration, which the phase plan assigns to task 12.4 and forbids 12.1 from performing. Non-empty allowlists are included, satisfying the 12.1 acceptance criterion. The changelog correctly cites 'ADR-017 clause 6 first half' for this reason.",
+      "evidence": [
+        "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs AppendAllowedValues early return",
+        "docs/decisions.md ADR-017 clause 6 (first half = fingerprint inclusion; second half = version advance/goldens)",
+        "docs/changelog.md Task 12.1 scope paragraph"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "12.1-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / configuration round-trip coverage",
+      "summary": "No test exercises the pinned elevation-gated JSON POST deserialization of AllowedValues; the XML round-trip and static page exposure are covered.",
+      "detail": "Unchanged from attempt 1. RendererConfigurationRoundTripsThroughXmlSerializer proves the persisted XML round-trip and PageExposesAndRoundTripsThePerSelectorAllowlist statically asserts page populate/write. The pinned JSON POST path is not directly exercised, but AllowedValues is a settable Collection<string> implemented like RendererConfiguration.Selectors (whose pinned POST round-trip was proven in task 9.1). The live POST confirmation remains owned by the phase/release verification (task 14.3). Not required for 12.1.",
+      "evidence": [
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs RendererConfigurationRoundTripsThroughXmlSerializer",
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs PageExposesAndRoundTripsThePerSelectorAllowlist",
+        "PLANS.md 9.1"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "acceptance_criteria_assessment": {
+    "allowlist_is_bounded": "MET. BadgeSelectorConfiguration.AllowedValues is validated in RendererConfiguration.Validate against BadgeDefinition.MaximumAllowedValues (32) and MaximumAllowedValueLength (64), and the resolved BadgeDefinition enforces the same bounds (throws ArgumentException). Tests: ValidatorRejectsTooManyAllowedValues, ValidatorRejectsTooLongAllowedValue, DefinitionRejectsUnusableAllowedValues.",
+    "allowlist_validated_at_configuration_load": "MET. RendererConfiguration.Validate calls ValidateAllowedValues per selector; PluginConfigurationValidator rejects invalid configs and ConfigurationSnapshotService.TryReplace retains the last valid snapshot (test: SnapshotServiceRetainsLastValidRendererConfigurationOnInvalidAllowlist). Rules verified in source: trim, blank rejected, control chars rejected, case-insensitive duplicates rejected.",
+    "allowlist_secret_free": "MET. Error messages contain only the selector enum name and numeric constants, never the configured value (test: AllowedValuesValidationMessagesAreSecretFree; source inspection of all six message strings).",
+    "fingerprint_changes_when_allowlist_changes": "MET. Non-empty resolved allowlists are appended to the fingerprint with case/order normalization (test: RendererFingerprintIsSensitiveToAllowedValuesAndNormalizesCaseAndOrder). Empty allowlist is deliberately identity-neutral (12.1-F3).",
+    "scope_no_filtering_behavior": "MET. AllowedValues is referenced only in BadgeSelectorConfiguration, RendererConfiguration.Validate, RendererConfigurationFingerprint, RendererConfigurationResolver, config.html, and BadgeDefinition; no allowlist logic in BadgeSelectorResolver/BadgeDefinitionResolver/BadgeLayoutEngine.",
+    "scope_no_size_position": "MET. No BadgePosition/BadgeSize or layout-engine change in the diff.",
+    "scope_no_version_or_golden_changes": "MET. RendererConfiguration.CurrentSchemaVersion = 1, RenderVersion.CurrentRendererVersion = 2, and tests/ArrTags.Tests/Goldens/ is unmodified (git status clean)."
+  },
+  "validation": {
+    "method": "Attempt 2 re-verified the correction and re-ran the project build and test entry points under the pinned environment; independently inspected the full working-tree diff, the changelog diff and its conventions, the source constants, and the test names.",
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1)",
+    "commands": [
+      ". /config/arrtags-env.sh && ./build.sh build",
+      ". /config/arrtags-env.sh && ./build.sh test",
+      ". /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~BadgeDefinitionTests|FullyQualifiedName~DashboardSettingsPageTests\""
+    ],
+    "results": {
+      "build": "Build succeeded. 0 Warning(s), 0 Error(s).",
+      "full_test_suite": "Failed 0, Passed 1436, Skipped 63, Total 1499 (reproduced independently; matches worker report attempt 1 and 2 exactly).",
+      "focused_filter": "Failed 0, Passed 50, Skipped 2, Total 52 (reproduced; the 2 skips are the pre-existing ARRTAGS_JELLYFIN_HOST_DIR-guarded DashboardSettingsPageTests facts).",
+      "correction_scope": "Only docs/changelog.md was added in attempt 2. Attempt 1 recorded 12 modified paths; the current tree has 13 modified paths (the extra is docs/changelog.md) plus the untracked docs/implementation/12.1/ directory. The src/ and tests/ diffs are byte-for-byte the attempt-1 implementation as described in the attempt-1 report; no source or test file changed.",
+      "version_constants": "RendererConfiguration.CurrentSchemaVersion = 1; RenderVersion.CurrentRendererVersion = 2.",
+      "goldens": "git status tests/ArrTags.Tests/Goldens/ is clean (no regeneration)."
+    },
+    "not_verified": [
+      "No live Jellyfin pinned-host run: the elevation-gated JSON POST deserialization of AllowedValues and the settings-page behavior on a real host were not exercised (ARRTAGS_JELLYFIN_HOST_DIR is unset; the 2 host-guarded tests skipped as expected). Not required by task 12.1."
+    ]
+  },
+  "rework_log": [
+    {
+      "attempt": 2,
+      "trigger": "Attempt 1 returned CHANGES_REQUIRED with required change 12.1-F1 (MEDIUM): docs/changelog.md had no task 12.1 entry.",
+      "resolution": "Worker added the Phase 12 section and Task 12.1 entry to docs/changelog.md and updated docs/implementation/12.1/worker-report.json to attempt 2. No source or test code changed.",
+      "verification": "Independently confirmed the new entry exists, matches the Phase 9/10/11 changelog conventions, does not overclaim (12.2/12.3/12.4 boundaries and unchanged versions 1/2 stated), and that only docs/changelog.md was added relative to attempt 1. Re-ran build (0/0), full suite (Failed 0, Passed 1436, Skipped 63, Total 1499), and focused filter (Failed 0, Passed 50, Skipped 2, Total 52)."
+    }
+  ],
+  "tests_checked": [
+    "Full suite via . /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1436, Skipped 63, Total 1499",
+    "Focused filter RendererConfigurationTests|BadgeDefinitionTests|DashboardSettingsPageTests -> Failed 0, Passed 50, Skipped 2, Total 52",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs: ValidatorAcceptsAndResolvesAllowedValues, ValidatorTrimsAllowedValueEntries, ValidatorRejectsTooManyAllowedValues, ValidatorRejectsTooLongAllowedValue, ValidatorRejectsBlankAllowedValue, ValidatorRejectsControlCharacterAllowedValue, ValidatorRejectsCaseInsensitiveDuplicateAllowedValues, AllowedValuesValidationMessagesAreSecretFree, RendererFingerprintIsSensitiveToAllowedValuesAndNormalizesCaseAndOrder, SnapshotServiceRetainsLastValidRendererConfigurationOnInvalidAllowlist",
+    "tests/ArrTags.Tests/BadgeDefinitionTests.cs: DefinitionAllowedValuesAreBoundedNormalizedAndDefensivelyCopied, DefinitionRejectsUnusableAllowedValues",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs: PageExposesAndRoundTripsThePerSelectorAllowlist"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-017 clauses 1, 2, 3, 5, 6, 7 (allowlist scope, matching, bounds, fingerprint/version coupling)",
+    "PLANS.md Phase 12 task 12.1/12.2/12.3/12.4 boundaries",
+    "Pinned Jellyfin 12 POST deserialization constraint (task 9.1) supporting the settable Collection<string> choice"
+  ],
+  "documentation_checked": [
+    "docs/changelog.md (new Phase 12 section and Task 12.1 entry; convention match; no overclaim)",
+    "PLANS.md (12.1 task-complete mark; 12.4 owns schema/RenderVersion/goldens)",
+    "docs/architecture.md section 9",
+    "docs/data-model.md 3.6 and 3.12",
+    "src/ArrTags/Configuration/RendererConfiguration.cs (CurrentSchemaVersion = 1)",
+    "src/ArrTags/Rendering/RenderVersion.cs (CurrentRendererVersion = 2)"
+  ],
+  "ready_for_next_task": true,
+  "summary": "Attempt 2 resolves the sole attempt-1 required change (12.1-F1): docs/changelog.md now carries a Phase 12 section and a Task 12.1 entry that match the existing changelog conventions and correctly scope out tasks 12.2 (filtering), 12.3 (size/position), and 12.4 (schema/RenderVersion advance and golden regeneration), with CurrentSchemaVersion still 1 and CurrentRendererVersion still 2. The correction touched documentation only; the src/ and tests/ tree is the unchanged attempt-1 implementation (12 modified paths in attempt 1, 13 now with only docs/changelog.md added). The attempt-1 functional conclusions are re-confirmed: bounded trimmed allowlist with blank/control-char/case-insensitive-duplicate rejection and secret-free messages validated at configuration load, resolved into BadgeDefinition.AllowedValues, non-empty allowlists included in the fingerprint with case/order normalization, settings-page exposure, and intact scope boundaries (no filtering, no size/position, no version or golden changes). Independent build (0 warnings/0 errors), full suite (Failed 0, Passed 1436, Skipped 63, Total 1499), and focused filter (Failed 0, Passed 50, Skipped 2, Total 52) reproduce the reported counts. No blockers or required changes remain; APPROVED."
+}

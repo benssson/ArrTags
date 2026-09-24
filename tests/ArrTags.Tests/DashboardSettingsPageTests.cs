@@ -141,6 +141,35 @@ public class DashboardSettingsPageTests
     }
 
     [Fact]
+    public void PageExposesAndRoundTripsThePerSelectorAllowlist()
+    {
+        var page = ReadEmbeddedPage();
+
+        // Every selector has its own allowlist input.
+        foreach (var selectorName in new[]
+        {
+            "Quality",
+            "Resolution",
+            "DynamicRange",
+            "Source",
+            "VideoCodec",
+            "Audio",
+            "CustomBadge",
+            "UpgradePending",
+        })
+        {
+            Assert.Contains(
+                "selector-" + selectorName + "-allowedValues",
+                page,
+                StringComparison.Ordinal);
+        }
+
+        // Populate reads the persisted allowlist and submit writes it back.
+        Assert.Contains("configured.AllowedValues", page, StringComparison.Ordinal);
+        Assert.Contains("AllowedValues: parseAllowedValues", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PageSourceContainsNoSecretOrCredentialLiteral()
     {
         var page = ReadEmbeddedPage();

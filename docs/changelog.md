@@ -3305,3 +3305,65 @@ invalidation-source, stale-served, and expired-evicted cases remain.
 `./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
 0, Passed 1421, Skipped 63, Total 1484 (pre-task baseline Failed 0, Passed 1418,
 Skipped 63, Total 1481; +3 passed, +3 total, 0 new skips).
+
+## Phase 12 - Badge value allowlist and badge size/position (v1.1)
+
+**Status:** In progress. Task 12.1 is complete; tasks 12.2 (allowlist resolution
+and renderer filtering order), 12.3 (badge size/position configuration and layout
+engine), and 12.4 (coordinated schema/`RenderVersion` advance, golden
+regeneration, and documentation) remain. Gate 12 is not yet met and the
+`v1.1.0-phase12` tag is not yet created.
+
+### Task 12.1 - Allowlist configuration, bounds, validation, and fingerprint
+
+**Status:** Complete.
+
+Adds the per-selector badge value allowlist configuration, its bounds and
+validation, the resolved `BadgeDefinition` allowlist, and the fingerprint
+inclusion (ADR-017 clauses 1, 5, 6 first half, and 7). `BadgeSelectorConfiguration`
+gains a bounded, settable `AllowedValues` string collection (empty means no
+restriction; settable so the elevation-gated ADR-016 POST round-trip can populate
+it). `RendererConfiguration.Validate` validates each selector's allowlist with
+bounded, secret-free messages: at most `BadgeDefinition.MaximumAllowedValues`
+(32) entries per selector, each entry at most
+`BadgeDefinition.MaximumAllowedValueLength` (64) characters after trimming, with
+blank entries, control-character entries, and case-insensitive duplicates
+rejected. `BadgeDefinition` gains `AllowedValues` (`IReadOnlyList<string>`, an
+immutable trimmed copy) through a new four-argument constructor; the existing
+three-argument constructor delegates to it with a null allowlist, so all existing
+callers and `BadgeDefinition.V1Default` keep the V1 "no restriction" default.
+`RendererConfigurationResolver.ResolveDefinitions` maps the persisted allowlist
+into the resolved definition. `RendererConfigurationFingerprint` now includes a
+non-empty resolved allowlist, normalizing case and entry order so case-only or
+order-only changes are identity-neutral; an empty allowlist contributes nothing,
+so the default configuration fingerprint is unchanged. The ADR-016 settings page
+(`src/ArrTags/Configuration/config.html`) exposes one comma-separated allowlist
+input per selector, populates it on `pageshow`, and writes it back on submit via
+a provider-neutral parse helper.
+
+Scope: the allowlist does not yet affect rendering. It is resolved into
+`BadgeDefinition.AllowedValues` and included in the fingerprint, but the
+renderer filtering order is task 12.2. `RendererConfiguration.CurrentSchemaVersion`
+is still 1 and `RenderVersion.CurrentRendererVersion` is still 2, and no golden
+under `tests/ArrTags.Tests/Goldens/` was regenerated; the coordinated
+schema/`RenderVersion` advance and golden regeneration are task 12.4. No badge
+size/position work is included (task 12.3).
+
+Documentation: `docs/data-model.md` 3.6/3.12, `docs/architecture.md` section 9,
+and `PLANS.md`.
+
+New tests (15 cases): `tests/ArrTags.Tests/RendererConfigurationTests.cs` (12
+cases) covers the accept-and-resolve path, trimming, the entry-count and
+entry-length bounds, the blank (empty/whitespace/tab), control-character, and
+case-insensitive-duplicate rejections, secret-free validation messages, the
+fingerprint sensitivity with case/entry-order normalization, and the
+snapshot-retains-last-valid behavior on an invalid allowlist;
+`tests/ArrTags.Tests/BadgeDefinitionTests.cs` (2 cases) covers the resolved
+allowlist shape and the constructor bound enforcement;
+`tests/ArrTags.Tests/DashboardSettingsPageTests.cs` (1 case) covers the
+settings-page allowlist exposure.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1436, Skipped 63, Total 1499 (pre-task baseline Failed 0, Passed 1421,
+Skipped 63, Total 1484; +15 passed, +15 total, 0 new skips). The focused
+renderer/definition/page filter was Failed 0, Passed 50, Skipped 2, Total 52.

@@ -79,7 +79,7 @@
 
                     <div class="verticalSection">
                         <h2>Renderer selectors</h2>
-                        <div class="fieldDescription" style="margin-bottom:1em;">Enable or disable each badge selector and edit its bounded display template. A template contains at most one {value} placeholder.</div>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Enable or disable each badge selector, edit its bounded display template, and optionally list allowed values. A template contains at most one {value} placeholder. Enter allowed values as comma-separated text; an empty list means no restriction. At most 32 values per selector, each at most 64 characters, unique ignoring case.</div>
 
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -87,6 +87,7 @@
                                 <span>Quality</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-Quality-template" label="Quality template" />
+                            <input is="emby-input" type="text" id="selector-Quality-allowedValues" label="Quality allowed values" />
                         </div>
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -94,6 +95,7 @@
                                 <span>Resolution</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-Resolution-template" label="Resolution template" />
+                            <input is="emby-input" type="text" id="selector-Resolution-allowedValues" label="Resolution allowed values" />
                         </div>
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -101,6 +103,7 @@
                                 <span>Dynamic range</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-DynamicRange-template" label="Dynamic range template" />
+                            <input is="emby-input" type="text" id="selector-DynamicRange-allowedValues" label="Dynamic range allowed values" />
                         </div>
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -108,6 +111,7 @@
                                 <span>Source</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-Source-template" label="Source template" />
+                            <input is="emby-input" type="text" id="selector-Source-allowedValues" label="Source allowed values" />
                         </div>
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -115,6 +119,7 @@
                                 <span>Video codec</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-VideoCodec-template" label="Video codec template" />
+                            <input is="emby-input" type="text" id="selector-VideoCodec-allowedValues" label="Video codec allowed values" />
                         </div>
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -122,6 +127,7 @@
                                 <span>Audio</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-Audio-template" label="Audio template" />
+                            <input is="emby-input" type="text" id="selector-Audio-allowedValues" label="Audio allowed values" />
                         </div>
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -129,6 +135,7 @@
                                 <span>Custom badge</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-CustomBadge-template" label="Custom badge template" />
+                            <input is="emby-input" type="text" id="selector-CustomBadge-allowedValues" label="Custom badge allowed values" />
                         </div>
                         <div class="inputContainer">
                             <label class="checkboxContainer">
@@ -136,6 +143,7 @@
                                 <span>Upgrade pending</span>
                             </label>
                             <input is="emby-input" type="text" id="selector-UpgradePending-template" label="Upgrade pending template" />
+                            <input is="emby-input" type="text" id="selector-UpgradePending-allowedValues" label="Upgrade pending allowed values" />
                         </div>
                     </div>
 
@@ -309,9 +317,24 @@
 
                     var enabled = configured ? configured.Enabled : true;
                     var template = configured && configured.Template ? configured.Template : '{value}';
+                    var allowedValues = configured && configured.AllowedValues ? configured.AllowedValues : [];
                     document.querySelector('#selector-' + selectorName + '-enabled').checked = enabled;
                     document.querySelector('#selector-' + selectorName + '-template').value = template;
+                    document.querySelector('#selector-' + selectorName + '-allowedValues').value = allowedValues.join(', ');
                 });
+            };
+
+            var parseAllowedValues = function (text) {
+                var values = [];
+                if (text) {
+                    text.split(',').forEach(function (part) {
+                        var trimmed = part.trim();
+                        if (trimmed.length > 0) {
+                            values.push(trimmed);
+                        }
+                    });
+                }
+                return values;
             };
 
             document.querySelector('#configPage')
@@ -411,7 +434,8 @@
                             selectorConfigs.push({
                                 Selector: selectorName,
                                 Enabled: document.querySelector('#selector-' + selectorName + '-enabled').checked,
-                                Template: document.querySelector('#selector-' + selectorName + '-template').value
+                                Template: document.querySelector('#selector-' + selectorName + '-template').value,
+                                AllowedValues: parseAllowedValues(document.querySelector('#selector-' + selectorName + '-allowedValues').value)
                             });
                         });
                         config.Renderer.Selectors = selectorConfigs;

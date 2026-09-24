@@ -1,0 +1,100 @@
+{
+  "task": "12.1",
+  "title": "Allowlist configuration, bounds, validation, and fingerprint",
+  "phase": 12,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 139240,
+        "output_tokens": 22345,
+        "reasoning_tokens": 20377,
+        "cache_read_tokens": 6235520,
+        "cache_write_tokens": 0,
+        "total_tokens": 6417482,
+        "cost_usd": 0.06522575999999998,
+        "duration_seconds": 628,
+        "session_id": "ses_f2ce884baffeBQ7CbZ5jShosGb"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 105852,
+        "output_tokens": 8203,
+        "reasoning_tokens": 18668,
+        "cache_read_tokens": 1698432,
+        "cache_write_tokens": 0,
+        "total_tokens": 1831155,
+        "cost_usd": 0.037095696000000004,
+        "duration_seconds": 524,
+        "session_id": "ses_f2cdeb5f3ffewlj3lQlVsuukTg"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 41452,
+        "output_tokens": 6609,
+        "reasoning_tokens": 5913,
+        "cache_read_tokens": 667264,
+        "cache_write_tokens": 0,
+        "total_tokens": 721238,
+        "cost_usd": 0.015732792,
+        "duration_seconds": 142,
+        "session_id": "ses_f2cd6826effeWFyYa3eKcYIGn7"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 34642,
+        "output_tokens": 6221,
+        "reasoning_tokens": 2120,
+        "cache_read_tokens": 317824,
+        "cache_write_tokens": 0,
+        "total_tokens": 360807,
+        "cost_usd": 0.011154372,
+        "duration_seconds": 112,
+        "session_id": "ses_f2cd42accffee1aGQNynwxwUdS"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "implementation-reviewer attempt 1 returned CHANGES_REQUIRED with one finding, 12.1-F1 (MEDIUM): docs/changelog.md had no task 12.1 entry although the per-task workflow names docs/changelog.md as a canonical current-state surface and every prior task (9.1-11.4) added a '### Task N.N - ...' entry. The worker (attempt 2) added the Phase 12 section and Task 12.1 entry and updated the attempt-2 worker report; no source or test code changed. The reviewer attempt 2 confirmed the finding resolved and re-ran the build and full suite."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields were read from the authoritative OpenCode session API via .opencode/scripts/collect-session-usage.sh using the recorded session ids; no estimation was performed.",
+    "Final gates: implementation-worker attempt 2 COMPLETE; implementation-reviewer attempt 2 APPROVED (reviewer_blockers [], required_changes [], ready_for_next_task true).",
+    "Validation (independently reproduced by the reviewer): build 0 warnings / 0 errors; full suite Failed 0, Passed 1436, Skipped 63, Total 1499 (pre-task baseline 1421/63/1484; +15 passed/+15 total, 0 new skips); focused RendererConfigurationTests|BadgeDefinitionTests|DashboardSettingsPageTests 50 passed / 2 skipped / 52.",
+    "Scope boundaries honored: no allowlist filtering behavior (task 12.2), no badge size/position (task 12.3), and no schema/RenderVersion advance or golden regeneration (task 12.4). RendererConfiguration.CurrentSchemaVersion remains 1; RenderVersion.CurrentRendererVersion remains 2; tests/ArrTags.Tests/Goldens/ is unmodified.",
+    "Deliberate implementation decision (reviewer-confirmed consistent with ADR-017 and the 12.1 boundary): a non-empty resolved allowlist is included in RendererConfigurationFingerprint with case/entry-order normalization, while an empty allowlist is identity-neutral so the default configuration fingerprint stays byte-identical to its pre-task value (the version advance that would accompany an unconditional identity change is task 12.4).",
+    "Non-blocking informational findings carried forward: 12.1-F2 (docs/data-model.md 3.6 present-tense 'restricts rendering' describes the task 12.2 target semantics, clarified by adjacent notes), 12.1-F4 (the pinned elevation-gated JSON POST round-trip of AllowedValues is not directly exercised; XML round-trip and static page exposure are covered, and the live POST confirmation remains owned by task 14.3).",
+    "No live pinned-host verification was performed for this task (ARRTAGS_JELLYFIN_HOST_DIR unset; the 2 host-guarded DashboardSettingsPageTests facts skipped as expected). Not required by task 12.1."
+  ]
+}

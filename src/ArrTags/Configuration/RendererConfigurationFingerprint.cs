@@ -10,18 +10,19 @@ namespace ArrTags.Configuration;
 /// <summary>
 /// Computes the secret-free, deterministic renderer configuration fingerprint.
 /// It covers every output-affecting renderer-configuration value: the ordered
-/// selector enablement and bounded templates, and the effective technical and
-/// status palette. It deliberately excludes credentials, the webhook secret,
-/// timestamps, correlation identifiers, and every code-owned output value that
-/// <see cref="RenderFingerprint"/> already covers. Credentials and the webhook
-/// secret are absent by construction, so rotating a secret cannot change the
-/// fingerprint.
+/// selector enablement, bounded templates, and non-empty resolved allowlists, and
+/// the effective technical and status palette. It deliberately excludes
+/// credentials, the webhook secret, timestamps, correlation identifiers, and
+/// every code-owned output value that <see cref="RenderFingerprint"/> already
+/// covers. Credentials and the webhook secret are absent by construction, so
+/// rotating a secret cannot change the fingerprint.
 /// </summary>
 public static class RendererConfigurationFingerprint
 {
     /// <summary>
     /// Computes the uppercase SHA-256 renderer configuration fingerprint over the
-    /// ordered definitions and the effective palette.
+    /// ordered definitions (selector, enablement, template, and any non-empty
+    /// allowlist) and the effective palette.
     /// </summary>
     /// <param name="definitions">The ordered resolved badge definitions.</param>
     /// <param name="outputPolicy">The effective output policy.</param>
@@ -41,6 +42,7 @@ public static class RendererConfigurationFingerprint
             Append(builder, "selector", definition.Selector.ToString());
             Append(builder, "selectorEnabled", definition.Enabled ? "true" : "false");
             Append(builder, "selectorTemplate", definition.Template);
+            AppendAllowedValues(builder, definition.AllowedValues);
         }
 
         Append(builder, "paletteTechnicalBackground", outputPolicy.TechnicalBackground);
@@ -59,5 +61,33 @@ public static class RendererConfigurationFingerprint
             .Append(':')
             .Append(value)
             .Append('\n');
+    }
+
+    private static void AppendAllowedValues(StringBuilder builder, IReadOnlyList<string> allowedValues)
+    {
+        if (allowedValues.Count == 0)
+        {
+            // An empty allowlist means no restriction, so it is identity-neutral:
+            // it contributes nothing and the default configuration's fingerprint
+            // is unchanged. Only a non-empty allowlist changes the fingerprint.
+            return;
+        }
+
+        Append(builder, "selectorAllowedValueCount", allowedValues.Count.ToString(CultureInfo.InvariantCulture));
+
+        // Matching is case-insensitive and order-independent, so normalize case
+        // and entry order before hashing: two configurations that differ only by
+        // allowlist case or entry order have the same fingerprint.
+        var normalized = new string[allowedValues.Count];
+        for (var index = 0; index < allowedValues.Count; index++)
+        {
+            normalized[index] = allowedValues[index].ToUpperInvariant();
+        }
+
+        Array.Sort(normalized, StringComparer.Ordinal);
+        foreach (var value in normalized)
+        {
+            Append(builder, "selectorAllowedValue", value);
+        }
     }
 }

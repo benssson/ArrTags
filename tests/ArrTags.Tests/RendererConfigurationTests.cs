@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
@@ -359,6 +360,200 @@ public class RendererConfigurationTests
     }
 
     [Fact]
+    public void ValidatorAcceptsAndResolvesAllowedValues()
+    {
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add("Remux-2160p");
+        entry.AllowedValues.Add("Bluray-1080p");
+        configuration.Renderer.Selectors.Add(entry);
+
+        Assert.True(PluginConfigurationValidator.Validate(configuration).IsValid);
+
+        var snapshot = PluginConfigurationSnapshot.From(configuration);
+        var quality = snapshot.BadgeDefinitions.Single(definition => definition.Selector == BadgeSelector.Quality);
+        Assert.Equal(new[] { "Remux-2160p", "Bluray-1080p" }, quality.AllowedValues);
+
+        // An absent allowlist keeps the code-owned "no restriction" default.
+        var resolution = snapshot.BadgeDefinitions.Single(definition => definition.Selector == BadgeSelector.Resolution);
+        Assert.Empty(resolution.AllowedValues);
+    }
+
+    [Fact]
+    public void ValidatorTrimsAllowedValueEntries()
+    {
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add("  SDR  ");
+        entry.AllowedValues.Add("\tHDR10\n");
+        configuration.Renderer.Selectors.Add(entry);
+
+        Assert.True(PluginConfigurationValidator.Validate(configuration).IsValid);
+
+        var snapshot = PluginConfigurationSnapshot.From(configuration);
+        var quality = snapshot.BadgeDefinitions.Single(definition => definition.Selector == BadgeSelector.Quality);
+        Assert.Equal(new[] { "SDR", "HDR10" }, quality.AllowedValues);
+    }
+
+    [Fact]
+    public void ValidatorRejectsTooManyAllowedValues()
+    {
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        for (var index = 0; index <= BadgeDefinition.MaximumAllowedValues; index++)
+        {
+            entry.AllowedValues.Add(FormattableString.Invariant($"value-{index}"));
+        }
+
+        configuration.Renderer.Selectors.Add(entry);
+
+        var result = PluginConfigurationValidator.Validate(configuration);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(
+            result.Errors,
+            error => error.Contains("must not exceed", StringComparison.Ordinal)
+                && error.Contains(
+                    BadgeDefinition.MaximumAllowedValues.ToString(CultureInfo.InvariantCulture),
+                    StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidatorRejectsTooLongAllowedValue()
+    {
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add(new string('a', BadgeDefinition.MaximumAllowedValueLength + 1));
+        configuration.Renderer.Selectors.Add(entry);
+
+        var result = PluginConfigurationValidator.Validate(configuration);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(
+            result.Errors,
+            error => error.Contains("must not exceed", StringComparison.Ordinal)
+                && error.Contains("characters", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void ValidatorRejectsBlankAllowedValue(string value)
+    {
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add(value);
+        configuration.Renderer.Selectors.Add(entry);
+
+        var result = PluginConfigurationValidator.Validate(configuration);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("blank", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidatorRejectsControlCharacterAllowedValue()
+    {
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add("SD\u0007R");
+        configuration.Renderer.Selectors.Add(entry);
+
+        var result = PluginConfigurationValidator.Validate(configuration);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("control characters", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidatorRejectsCaseInsensitiveDuplicateAllowedValues()
+    {
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add("SDR");
+        entry.AllowedValues.Add("sdr");
+        configuration.Renderer.Selectors.Add(entry);
+
+        var result = PluginConfigurationValidator.Validate(configuration);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("unique", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AllowedValuesValidationMessagesAreSecretFree()
+    {
+        const string secret = "sentinel-allowlist-secret-4a9b7e";
+        var configuration = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add(secret);
+        entry.AllowedValues.Add(secret.ToUpperInvariant());
+        entry.AllowedValues.Add(secret + new string('x', BadgeDefinition.MaximumAllowedValueLength));
+        configuration.Renderer.Selectors.Add(entry);
+
+        var result = PluginConfigurationValidator.Validate(configuration);
+
+        Assert.False(result.IsValid);
+        Assert.NotEmpty(result.Errors);
+        Assert.All(result.Errors, error =>
+        {
+            Assert.DoesNotContain(secret, error, StringComparison.Ordinal);
+            Assert.DoesNotContain(secret.ToUpperInvariant(), error, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void RendererFingerprintIsSensitiveToAllowedValuesAndNormalizesCaseAndOrder()
+    {
+        var original = Fingerprint(new PluginConfiguration());
+
+        var restricted = new PluginConfiguration();
+        restricted.Renderer.Selectors.Add(AllowedValuesEntry("SDR"));
+        Assert.NotEqual(original, Fingerprint(restricted));
+
+        // Case is normalized: matching is case-insensitive.
+        var lowerCase = new PluginConfiguration();
+        lowerCase.Renderer.Selectors.Add(AllowedValuesEntry("sdr"));
+        Assert.Equal(Fingerprint(restricted), Fingerprint(lowerCase));
+
+        // Entry order is normalized: matching is order-independent.
+        var ordered = new PluginConfiguration();
+        ordered.Renderer.Selectors.Add(AllowedValuesEntry("SDR", "HDR"));
+        var reordered = new PluginConfiguration();
+        reordered.Renderer.Selectors.Add(AllowedValuesEntry("HDR", "SDR"));
+        Assert.Equal(Fingerprint(ordered), Fingerprint(reordered));
+
+        // A different value changes the fingerprint.
+        var different = new PluginConfiguration();
+        different.Renderer.Selectors.Add(AllowedValuesEntry("HDR"));
+        Assert.NotEqual(Fingerprint(restricted), Fingerprint(different));
+
+        // An explicit empty allowlist means no restriction and is identity-neutral.
+        var empty = new PluginConfiguration();
+        empty.Renderer.Selectors.Add(new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality });
+        Assert.Equal(original, Fingerprint(empty));
+    }
+
+    [Fact]
+    public void SnapshotServiceRetainsLastValidRendererConfigurationOnInvalidAllowlist()
+    {
+        var initial = new PluginConfiguration();
+        var service = new ConfigurationSnapshotService(initial);
+        var previousFingerprint = service.Current.RendererConfigurationFingerprint;
+
+        var invalid = new PluginConfiguration();
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        entry.AllowedValues.Add("SDR");
+        entry.AllowedValues.Add("sdr");
+        invalid.Renderer.Selectors.Add(entry);
+
+        Assert.False(service.TryReplace(invalid, out var result));
+        Assert.False(result.IsValid);
+        Assert.Equal(previousFingerprint, service.Current.RendererConfigurationFingerprint);
+    }
+
+    [Fact]
     public void InvalidInitialRendererConfigurationFallsBackToDefaults()
     {
         var invalid = new PluginConfiguration();
@@ -375,12 +570,15 @@ public class RendererConfigurationTests
     public void RendererConfigurationRoundTripsThroughXmlSerializer()
     {
         var configuration = new PluginConfiguration();
-        configuration.Renderer.Selectors.Add(new BadgeSelectorConfiguration
+        var source = new BadgeSelectorConfiguration
         {
             Selector = BadgeSelector.Source,
             Enabled = false,
             Template = "SRC:{value}",
-        });
+        };
+        source.AllowedValues.Add("WEB-DL");
+        source.AllowedValues.Add("Blu-ray");
+        configuration.Renderer.Selectors.Add(source);
         configuration.Renderer.TechnicalBackground = "#000000";
 
         var serializer = new XmlSerializer(typeof(PluginConfiguration));
@@ -394,7 +592,19 @@ public class RendererConfigurationTests
         Assert.Equal(BadgeSelector.Source, entry.Selector);
         Assert.False(entry.Enabled);
         Assert.Equal("SRC:{value}", entry.Template);
+        Assert.Equal(new[] { "WEB-DL", "Blu-ray" }, entry.AllowedValues);
         Assert.Equal("#000000", restored.Renderer.TechnicalBackground);
+    }
+
+    private static BadgeSelectorConfiguration AllowedValuesEntry(params string[] values)
+    {
+        var entry = new BadgeSelectorConfiguration { Selector = BadgeSelector.Quality };
+        foreach (var value in values)
+        {
+            entry.AllowedValues.Add(value);
+        }
+
+        return entry;
     }
 
     private static string Fingerprint(PluginConfiguration configuration)

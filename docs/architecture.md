@@ -220,8 +220,8 @@ page.
 The page is read/write for the user-adjustable settings only: the Sonarr and
 Radarr connections and their API keys, the webhook secret, the Movie/Episode
 poster flags, the enabled-library scope, the renderer selectors/templates and
-palette overrides, the operational limits, and the bounded log verbosity. It
-reads and writes them through
+per-selector value allowlists, palette overrides, the operational limits, and
+the bounded log verbosity. It reads and writes them through
 the supported elevation-gated `PluginsController` `GET`/`POST
 {pluginId}/Configuration` path and adds no custom save route (ADR-016 clause 3).
 The three secret inputs are password fields with no embedded value; the page
@@ -1188,12 +1188,22 @@ unsupported embedded profile fails closed with a bounded reason instead of being
 guessed as sRGB.
 
 Renderer configuration is part of the immutable versioned plugin configuration
-snapshot and contains only enabled V1 selectors, bounded templates, and
-contrast-validated style overrides. Format, alpha/color policy, geometry/text
-limits, font identity, and renderer version remain code-owned and fingerprinted
-inputs. Renderer validation uses synthetic fixtures, decoded-pixel goldens,
-same-runtime byte determinism, and explicit cross-runtime anti-aliasing
-tolerances as defined by ADR-010.
+snapshot and contains only enabled V1 selectors, bounded templates, bounded
+per-selector value allowlists, and contrast-validated style overrides. Format,
+alpha/color policy, geometry/text limits, font identity, and renderer version
+remain code-owned and fingerprinted inputs. Each allowlist is validated in
+`RendererConfiguration.Validate` with bounded secret-free messages (at most 32
+entries per selector, each at most 64 characters, trimmed, no blank or
+control-character entry, no case-insensitive duplicate); a non-empty resolved
+allowlist is included in the renderer configuration fingerprint, normalized for
+case and entry order, while an empty allowlist means no restriction and is
+identity-neutral. The value filter is applied by the renderer in the documented
+ADR-017 order (value resolution → allowlist filter → template → normalization →
+layout); task 12.1 adds only the configuration, bounds/validation, resolved
+definition, fingerprint inclusion, and settings-page exposure, and task 12.2
+applies the filter. Renderer validation uses synthetic fixtures, decoded-pixel
+goldens, same-runtime byte determinism, and explicit cross-runtime
+anti-aliasing tolerances as defined by ADR-010.
 
 ## 10. Jellyfin Enhanced coexistence
 

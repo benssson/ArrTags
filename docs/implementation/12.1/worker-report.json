@@ -1,0 +1,47 @@
+{
+  "task": "12.1",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Attempt 2 is a review-driven correction of the attempt-1 implementation; no source or test code changed. The independent reviewer's sole required change (finding 12.1-F1, MEDIUM) was that docs/changelog.md had no task 12.1 entry. This attempt adds a new '## Phase 12 - Badge value allowlist and badge size/position (v1.1)' section with an in-progress status paragraph and a '### Task 12.1 - Allowlist configuration, bounds, validation, and fingerprint' entry, appended after the Phase 11 task 11.4 entry and matching the existing changelog conventions. The entry records the delivered capability (bounded per-selector BadgeSelectorConfiguration.AllowedValues with empty = no restriction; bounds/validation in RendererConfiguration.Validate at at most 32 entries per selector and at most 64 characters per trimmed entry with blank/control-character/case-insensitive-duplicate rejection and secret-free messages; the resolved BadgeDefinition.AllowedValues with a backward-compatible constructor and V1Default = no restriction; the RendererConfigurationResolver.ResolveDefinitions mapping; the RendererConfigurationFingerprint inclusion with case/entry-order normalization and an identity-neutral empty allowlist; and the ADR-016 settings-page exposure), the explicit scope boundary (the allowlist does not yet affect rendering, task 12.2; CurrentSchemaVersion is still 1 and CurrentRendererVersion is still 2 and no golden was regenerated, task 12.4; no size/position work, task 12.3), and the build/test evidence. The attempt-1 implementation is unchanged and is summarized here: it added the bounded, settable BadgeSelectorConfiguration.AllowedValues string list (empty = no restriction) validated in RendererConfiguration.Validate with bounded, secret-free messages (at most 32 entries per selector, each at most 64 characters, entries trimmed, blank and control-character entries rejected, case-insensitive duplicates rejected); BadgeDefinition.AllowedValues (IReadOnlyList<string>, immutable trimmed copy) with a new four-argument constructor overload while the existing three-argument constructor and all existing callers (BadgeDefinition.V1Default, tests) delegate to it and keep the V1 default 'no restriction'; RendererConfigurationResolver.ResolveDefinitions maps the persisted allowlist into the resolved definition; RendererConfigurationFingerprint includes non-empty resolved allowlists, normalizing case and entry order so case-only/order-only changes are identity-neutral, with an empty allowlist identity-neutral so the default configuration fingerprint is unchanged (required because task 12.1 must not regenerate goldens or advance the schema/RenderVersion, which remain task 12.4); and the ADR-016 settings page (src/ArrTags/Configuration/config.html) exposes one comma-separated allowlist input per selector, populates it on pageshow, and writes it back on submit via a provider-neutral parse helper. No allowlist filtering behavior was implemented (task 12.2). No badge size/position work (task 12.3). The attempt-1 documentation updates to docs/data-model.md 3.6/3.12, docs/architecture.md section 9, and the PLANS.md 12.1 task-complete mark are unchanged. Attempt 1 added 15 tests (12 validation/fingerprint in RendererConfigurationTests, 2 definition-allowlist in BadgeDefinitionTests, 1 settings-page exposure in DashboardSettingsPageTests).",
+  "validation": [
+    "Attempt 2: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Attempt 2: . /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1436, Skipped 63, Total 1499 (reconfirms the attempt-1 post-task result; the attempt-1 pre-task baseline was Failed 0, Passed 1421, Skipped 63, Total 1484; +15 passed, +15 total, 0 new skips).",
+    "Attempt 2: dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~BadgeDefinitionTests|FullyQualifiedName~DashboardSettingsPageTests\" -> Failed 0, Passed 50, Skipped 2, Total 52 (the 2 skips are the pre-existing ARRTAGS_JELLYFIN_HOST_DIR-guarded DashboardSettingsPageTests facts).",
+    "Attempt 2: inspected the git diff; the only attempt-2 change is docs/changelog.md (the new Phase 12 section and task 12.1 entry) plus this report. No source or test file changed in attempt 2.",
+    "Attempt 1: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (pre-task baseline and post-task).",
+    "Attempt 1: . /config/arrtags-env.sh && ./build.sh test -> pre-task baseline: Failed 0, Passed 1421, Skipped 63, Total 1484; post-task: Failed 0, Passed 1436, Skipped 63, Total 1499 (+15 passed, +15 total, 0 new skips).",
+    "Attempt 1: focused renderer/definition/page filter -> Failed 0, Passed 50, Skipped 2, Total 52.",
+    "Attempt 1: inspected the full git diff; all changed/added paths were task-scoped (PLANS.md, docs/architecture.md, docs/data-model.md, src/ArrTags/Configuration/BadgeSelectorConfiguration.cs, RendererConfiguration.cs, RendererConfigurationFingerprint.cs, RendererConfigurationResolver.cs, config.html, src/ArrTags/Rendering/BadgeDefinition.cs, tests/ArrTags.Tests/BadgeDefinitionTests.cs, DashboardSettingsPageTests.cs, RendererConfigurationTests.cs, docs/implementation/12.1/worker-report.json).",
+    "Attempt 1: confirmed RendererConfiguration.CurrentSchemaVersion is still 1 and RenderVersion.CurrentRendererVersion is still 2; no golden files were modified (tests/ArrTags.Tests/Goldens/ is unchanged)."
+  ],
+  "changed_files": [
+    "docs/changelog.md",
+    "PLANS.md",
+    "docs/architecture.md",
+    "docs/data-model.md",
+    "src/ArrTags/Configuration/BadgeSelectorConfiguration.cs",
+    "src/ArrTags/Configuration/RendererConfiguration.cs",
+    "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs",
+    "src/ArrTags/Configuration/RendererConfigurationResolver.cs",
+    "src/ArrTags/Configuration/config.html",
+    "src/ArrTags/Rendering/BadgeDefinition.cs",
+    "tests/ArrTags.Tests/BadgeDefinitionTests.cs",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs",
+    "docs/implementation/12.1/worker-report.json"
+  ],
+  "known_limitations": [
+    "Deliberate scope boundary: the allowlist does not yet affect rendering. It is resolved into BadgeDefinition.AllowedValues and included in the fingerprint, but BadgeSelectorResolver/BadgeDefinitionResolver still render every confirmed value. The filter order and semantics are task 12.2.",
+    "Deliberate scope boundary: RendererConfiguration.CurrentSchemaVersion remains 1 and RenderVersion.CurrentRendererVersion remains 2, and no golden under tests/ArrTags.Tests/Goldens/ was regenerated. The coordinated schema/RenderVersion advance and golden regeneration are task 12.4.",
+    "Fingerprint identity decision (implementation-level, derived from the task constraints): a non-empty resolved allowlist is appended to RendererConfigurationFingerprint, but an empty allowlist contributes nothing. This keeps the default configuration fingerprint byte-identical to its pre-task value, so the task changes no committed golden and forces no gratuitous republish for operators who set no allowlist. An alternative unconditional inclusion (always appending a zero-entry count) would have changed the default fingerprint; that was rejected because it would be an output-affecting identity change without the schema/RenderVersion advance that task 12.4 owns. This is documented in the RendererConfigurationFingerprint code comment and docs/data-model.md 3.12.",
+    "BadgeDefinition's four-argument constructor also enforces the allowlist bounds (throws ArgumentException), mirroring the existing template validation, so RendererConfigurationResolver.TryCreateDefinition falls back to the code-owned default definition for an unvalidated configuration with an invalid allowlist. The load path still rejects such a configuration in RendererConfiguration.Validate and keeps the last valid snapshot, so this tolerant fallback is only reachable through PluginConfigurationSnapshot.From on a configuration that has not passed validation.",
+    "The settings page represents each selector allowlist as one comma-separated text field; a value containing a literal comma cannot be expressed through the page (the server-side validator has no comma restriction). This matches the bounded text-field pattern of the existing page and is not a v1.1 requirement; noted for completeness.",
+    "No live Jellyfin host verification was performed; the settings-page coverage is the static embedded-resource assertion plus the pre-existing host-guarded facts (which are skipped without ARRTAGS_JELLYFIN_HOST_DIR)."
+  ],
+  "ready_for_next_task": true
+}

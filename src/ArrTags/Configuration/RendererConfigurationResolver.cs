@@ -98,7 +98,7 @@ public static class RendererConfigurationResolver
     {
         try
         {
-            definition = new BadgeDefinition(entry.Selector, entry.Enabled, entry.Template);
+            definition = new BadgeDefinition(entry.Selector, entry.Enabled, entry.Template, entry.AllowedValues);
             return true;
         }
         catch (ArgumentException)

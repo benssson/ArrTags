@@ -110,6 +110,47 @@ public class BadgeDefinitionTests
     }
 
     [Fact]
+    public void DefinitionAllowedValuesAreBoundedNormalizedAndDefensivelyCopied()
+    {
+        var source = new List<string> { "  SDR  ", "HDR" };
+        var definition = new BadgeDefinition(BadgeSelector.DynamicRange, true, BadgeDefinition.ValuePlaceholder, source);
+
+        Assert.Equal(new[] { "SDR", "HDR" }, definition.AllowedValues);
+
+        // Mutating the source list after construction must not change the definition.
+        source.Add("DV");
+        source[0] = "changed";
+        Assert.Equal(new[] { "SDR", "HDR" }, definition.AllowedValues);
+
+        // The exposed list is read-only.
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)definition.AllowedValues).Add("DV"));
+
+        // Absent or null allowlists mean no restriction.
+        Assert.Empty(new BadgeDefinition(BadgeSelector.DynamicRange, true, BadgeDefinition.ValuePlaceholder).AllowedValues);
+        Assert.Empty(new BadgeDefinition(BadgeSelector.DynamicRange, true, BadgeDefinition.ValuePlaceholder, null).AllowedValues);
+    }
+
+    [Fact]
+    public void DefinitionRejectsUnusableAllowedValues()
+    {
+        var tooMany = Enumerable.Repeat("value", BadgeDefinition.MaximumAllowedValues + 1).ToList();
+        Assert.Throws<ArgumentException>(
+            () => new BadgeDefinition(BadgeSelector.Quality, true, BadgeDefinition.ValuePlaceholder, tooMany));
+        Assert.Throws<ArgumentException>(
+            () => new BadgeDefinition(
+                BadgeSelector.Quality,
+                true,
+                BadgeDefinition.ValuePlaceholder,
+                new[] { new string('a', BadgeDefinition.MaximumAllowedValueLength + 1) }));
+        Assert.Throws<ArgumentException>(
+            () => new BadgeDefinition(BadgeSelector.Quality, true, BadgeDefinition.ValuePlaceholder, new[] { "   " }));
+        Assert.Throws<ArgumentException>(
+            () => new BadgeDefinition(BadgeSelector.Quality, true, BadgeDefinition.ValuePlaceholder, new[] { "SD\u0007R" }));
+        Assert.Throws<ArgumentException>(
+            () => new BadgeDefinition(BadgeSelector.Quality, true, BadgeDefinition.ValuePlaceholder, new[] { "SDR", "sdr" }));
+    }
+
+    [Fact]
     public void ResolverRejectsNullDefinitions()
     {
         Assert.Throws<ArgumentNullException>(

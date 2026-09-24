@@ -466,17 +466,21 @@ the current item's metadata.
 | `metadataSelector` | Provider-neutral selector | Yes | Configuration | Selects one ADR-009 V1 field: quality, resolution, dynamic range, audio, source, video codec, custom value, or upgrade-pending. |
 | `fallbackPolicy` | Hide in V1 | Yes | Configuration | Unknown and unavailable values are omitted; no placeholder or alternate selector is used in V1. |
 | `textTemplate` | Bounded display template | Optional | Configuration | Formatting rule after values are normalized; no provider DTO paths. |
+| `allowedValues` | Bounded string list | Optional | Configuration | Per-selector value allowlist (ADR-017); empty means no restriction. At most 32 entries, each at most 64 characters; entries are trimmed, blank entries and control characters are rejected, and case-insensitive duplicates are rejected. Matching is a case-insensitive ordinal exact match against the resolved pre-template value; no substring, wildcard, prefix, or regular-expression matching. |
 | `style` | Badge style value | Yes | Configuration | Opaque palette, text, font, and contrast policy; V1 geometry is defined by ADR-009. |
 | `placement` | Placement value | Yes | Configuration | V1 poster anchor, bounded rail packing, margins, and scale. |
 | `visibilityPolicy` | Image/item/client surface policy | Yes | Configuration | V1 is poster-oriented and not user-specific. |
 | `customValueRules` | Optional bounded rules | Optional | Configuration | Maps approved custom metadata to a visual value. |
 
 For V1, `metadataSelector` uses the selector vocabulary in section 3.5. A
-definition may disable a selector or provide one bounded provider-neutral
-`{value}` template. Definition order cannot override the ADR-009 priority;
-configuration controls visibility and bounded presentation, not semantic
-precedence. V1 definitions target the unindexed `Primary` poster surface of
-Movie and Episode items only.
+definition may disable a selector, provide one bounded provider-neutral
+`{value}` template, and carry a bounded per-selector value allowlist. Definition
+order cannot override the ADR-009 priority; configuration controls visibility
+and bounded presentation, not semantic precedence. An empty `allowedValues` list
+means no restriction; a non-empty list restricts rendering to the confirmed
+values it matches and never widens an unknown/absent omission (the filter itself
+is applied by the renderer per ADR-017 clause 3). V1 definitions target the
+unindexed `Primary` poster surface of Movie and Episode items only.
 
 The V1 style and placement values are bounded domain values rather than
 arbitrary markup:
@@ -553,6 +557,18 @@ adapter that supplies it remains Phase 5 work. `PluginConfigurationSnapshot`
 exposes the validated definitions, the effective `RenderOutputPolicy`, and the
 secret-free renderer configuration fingerprint that feeds
 `RenderRequest.configurationFingerprint`.
+
+**v1.1 task 12.1 implementation note:** `BadgeSelectorConfiguration` and the
+resolved `BadgeDefinition` carry the bounded `AllowedValues` allowlist (ADR-017).
+`RendererConfigurationResolver.ResolveDefinitions` maps the persisted
+`BadgeSelectorConfiguration.AllowedValues` into `BadgeDefinition.AllowedValues`,
+which is an immutable, trimmed copy. The value is bounded and validated in
+`RendererConfiguration.Validate` with secret-free messages. A non-empty resolved
+allowlist is included in `RendererConfigurationFingerprint`, which normalizes
+case and entry order so that case-only or order-only allowlist changes are
+identity-neutral; an empty allowlist means no restriction and is identity-neutral
+(so the default configuration fingerprint is unchanged). Task 12.1 does not yet
+apply the filter to rendering; the renderer filtering order is task 12.2.
 
 **Phase 5 implementation note:** The task 5.8
 `ArtworkGenerationCoordinator` composes the 3.7-3.8 request/result with the
@@ -864,6 +880,22 @@ contract and bounds volume with the code-owned `LogThrottle`; no API key, webhoo
 secret, `SecretLease` value, secret header, raw request/response body, provider
 payload, or mutable `PluginConfiguration` is logged (see
 `docs/limitations.md` SEC-5).
+
+**Badge value allowlist (v1.1 task 12.1).** Each `BadgeSelectorConfiguration`
+entry gains a bounded `AllowedValues` string list (ADR-017). It is persisted in
+the XML configuration as
+`<Renderer><Selectors><BadgeSelectorConfiguration><AllowedValues><string>…` and
+is exposed through the settings page per selector as comma-separated text. An
+empty list means no restriction. `RendererConfiguration.Validate` rejects more
+than 32 entries per selector, an entry longer than 64 characters, a blank entry,
+a control-character entry, or a duplicate after case-insensitive comparison, with
+bounded secret-free messages; the validator never includes a configured allowlist
+value. The resolved `BadgeDefinition` carries the allowlist, and a non-empty
+resolved allowlist is included in the renderer configuration fingerprint
+(case- and order-normalized); an empty allowlist is identity-neutral, so the
+default configuration fingerprint is unchanged. The value is provider-neutral and
+never references a provider DTO path, record identifier, quality profile,
+credential, or extension value.
 
 **Runtime activation (task 9.3).** The persisted `PluginConfiguration` is the
 candidate supplied to `Plugin.UpdateConfiguration`. The override validates the
