@@ -5000,7 +5000,7 @@ the execution order and task numbering conflict, the execution order wins.
 
 #### 14.1 Version bump and release metadata
 
-**Status:** Complete. The plugin version is `1.1.0.0` in `build.yaml` and in
+**Status:** Complete (commit `45634f1`). The plugin version is `1.1.0.0` in `build.yaml` and in
 `Directory.Build.props` (`<Version>`/`<AssemblyVersion>`/`<FileVersion>`);
 `guid`, `targetAbi` (`12.0.0.0`), `framework` (`net10.0`), `category`, `owner`,
 and the `artifacts` list are unchanged. The `build.yaml`
