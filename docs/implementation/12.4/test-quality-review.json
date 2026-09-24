@@ -1,0 +1,174 @@
+{
+  "task": "v1.1 Phase 12 task 12.4 - Coordinated schema/RenderVersion advance, golden regeneration, and documentation",
+  "subject": "v1.1 Phase 12 task 12.4 (working tree, uncommitted): RendererConfiguration.CurrentSchemaVersion 1->2, RenderVersion.CurrentRendererVersion 2->3, regenerated Goldens/manifest.json + 4 new anchor/size PNGs, version-pin and byte-determinism coverage",
+  "reviewer_role": "test-quality-reviewer",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "reviewer_blockers": [],
+  "open_findings": ["TQ-12.4-01"],
+  "findings": [
+    {
+      "id": "TQ-12.4-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage/meaningfulness (default output-fingerprint absolute pin)",
+      "description": "The identity-neutral default renderer-configuration and output fingerprints are pinned absolutely only by RenderGoldenTests.GoldenMatchesDecodedPixelsBytesDimensionsAndFingerprint, which is [SkiaNativeTheory]-guarded and therefore a single skip in the shipping/default configuration. No unguarded test pins an absolute fingerprint value (the unguarded fingerprint tests are relative: default == explicit-default through the same code path, and inclusion sensitivity). Task 12.4 regenerated the goldens and added the unguarded exact version pin, but did not add the pure (no-Skia) absolute default-fingerprint pin recommended when this residual was first raised as 12.3 TQ-12.3-02. I independently reproduced the residual on a throwaway copy: forcing AppendBadgePlacement to append unconditionally in both RenderFingerprint.cs and RendererConfigurationFingerprint.cs leaves the full default suite green (Failed 0, Passed 1491, Skipped 66, Total 1557; the 3 extra skips vs the workspace are the pre-existing PackagedPluginFact package-content tests, absent because the throwaway copy has no artifacts/ArrTags_1.0.1.0.zip). The documented matrix (docs/limitations.md V6) is accurate and the forced-native golden path does catch the mutation, so this is not a false-confidence hazard in the shipping verification matrix; it is a meaningful default-suite test-strength gap that should be tracked. The golden fixtures also use a fixed \"CONFIG-TEST\" ConfigurationFingerprint, so the golden render does not exercise RendererConfigurationFingerprint.Compute at all.",
+      "evidence": [
+        "Throwaway copy mutation F2 (unconditional AppendBadgePlacement in src/ArrTags/Rendering/RenderFingerprint.cs:71,76 and src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:68,73) -> full default suite Failed 0, Passed 1491, Skipped 66, Total 1557 (mutation_or_non_vacuity_evidence F2)",
+        "Same F2 mutant -> forced-native RenderGoldenTests Failed 11, Passed 4, Total 15 (the golden theory catches it at line 43)",
+        "grep -rEn '\"[0-9A-F]{64}\"' tests/ArrTags.Tests/*.cs -> no absolute renderer/output fingerprint literal in any test",
+        "tests/ArrTags.Tests/RenderGoldenTests.cs:32-75 ([SkiaNativeTheory]); tests/ArrTags.Tests/SkiaNativeTheoryAttribute.cs:25 (Skip unless ARRTAGS_SKIA_COMPAT=1)",
+        "tests/ArrTags.Tests/RenderFingerprintTests.cs:170-186 and tests/ArrTags.Tests/RendererConfigurationTests.cs:553-571 (relative default == explicit-default only)",
+        "tests/ArrTags.Tests/RenderTestFixtures.cs:99 (golden fixtures pass the literal \"CONFIG-TEST\" configuration fingerprint)",
+        "docs/implementation/12.3/test-quality-review.json TQ-12.3-02 (original MEDIUM finding, still materially open in the default configuration)",
+        "docs/limitations.md:307-321 (V6 documents the default suite skips the native golden path and records the current v1.1 counts)"
+      ],
+      "recommended_action": "Add the pure, unguarded test recommended by TQ-12.3-02: compute RenderFingerprint.ComputeOutputFingerprint (and/or RendererConfigurationFingerprint.Compute) for a committed golden fixture with the code-owned default policy and assert the exact committed Goldens/manifest.json OutputFingerprint value. It needs no native Skia. Alternatively, explicitly record the accepted residual in the 12.4 handoff and add the forced-native run to the documented release/verification checklist so it cannot be silently skipped."
+    },
+    {
+      "id": "TQ-12.4-02",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "determinism/commit integrity",
+      "description": "The four new golden PNGs (top-left.png, top-right-large.png, bottom-right-small.png, center.png) are currently untracked. They are required test inputs: RenderGoldenTests.CommittedGoldenManifestIsCompleteAndSelfConsistent fails if any manifest PngFile is missing, and the native golden theory renders them. If they are not included in the task commit, a clean checkout fails. This is a commit/process note, not a test defect; the working-tree suite is green as reported.",
+      "evidence": [
+        "git status --short -> ?? tests/ArrTags.Tests/Goldens/{bottom-right-small,center,top-left,top-right-large}.png",
+        "tests/ArrTags.Tests/RenderGoldenTests.cs:92-93 (File.Exists assertion per manifest entry)",
+        "tests/ArrTags.Tests/ArrTags.Tests.csproj:45-47 (Goldens/** copied to output)"
+      ],
+      "recommended_action": "Ensure the four PNGs (and the modified manifest.json) are included in the task 12.4 commit."
+    },
+    {
+      "id": "TQ-12.4-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/accuracy (source comments)",
+      "description": "The private AppendBadgePlacement XML doc comments still state the default configuration/output fingerprint is 'unchanged' and the committed goldens are 'unaffected' (src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:62-64 and src/ArrTags/Rendering/RenderFingerprint.cs:65-68). After the coordinated advance the default fingerprints do change (the helper adds no placement field, but the hashed schema/renderer versions advanced). This is a source-comment staleness only, matches implementation-reviewer finding 12.4-DOC-2, and has no test-quality impact.",
+      "evidence": [
+        "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:62-64",
+        "src/ArrTags/Rendering/RenderFingerprint.cs:65-68",
+        "docs/implementation/12.4/reviewer-report.attempt-2.json finding 12.4-DOC-2"
+      ],
+      "recommended_action": "None required for 12.4; optionally reword in a later documentation pass."
+    },
+    {
+      "id": "TQ-12.4-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage (pre-existing 12.3 layout residuals)",
+      "description": "The pre-existing 12.3 layout-engine residuals remain out of 12.4 scope and are unchanged: TQ-12.3-01 (top-anchor status-pill reservation not exercised by a committed collision case) and TQ-12.3-03 (Center-anchor short-poster row-reduction branch not exercised). The new 'center' golden uses a normal 500x750 poster and does not exercise the short-poster reduction branch. 12.4 is not responsible for these; they are tracked in docs/implementation/12.3/test-quality-review.json.",
+      "evidence": [
+        "docs/implementation/12.3/test-quality-review.json TQ-12.3-01 and TQ-12.3-03",
+        "tests/ArrTags.Tests/RenderGoldenFixtures.cs:135-138 (center fixture is 500x750, not a short poster)"
+      ],
+      "recommended_action": "None for 12.4; keep the 12.3 residual record."
+    }
+  ],
+  "matrix_observed": {
+    "default": "Failed 0, Passed 1494, Skipped 63, Total 1557",
+    "forced_native_focused": "Failed 0, Passed 35, Skipped 1, Total 36 (RenderGoldenTests|RenderDeterminismTests|RendererCrossRuntimeTests)",
+    "forced_native_full": "Failed 0, Passed 1575, Skipped 20, Total 1595",
+    "host_guarded": "NOT RUN in this environment (pinned host /tmp/jf/jellyfin is absent; ARRTAGS_JELLYFIN_HOST_DIR unset). Documented separately; not required for 12.4's golden/determinism scope."
+  },
+  "substitutes_checked": [
+    "Golden and determinism tests use the real pinned SkiaSharp 3.119.4 renderer (SkiaBadgeRenderer) - no renderer double or stub.",
+    "RenderDeterminismTests.SeparateProcessProducesTheSameArtifact spawns a real child `dotnet test` process (RenderDeterminismProcessProbe) and compares the independently written PNG bytes and SHA-256; the probe writes only to the ARRTAGS_DETERMINISM_PROBE_OUT path and never to Goldens/.",
+    "RenderGoldenTests reads the real committed manifest/PNGs from AppContext.BaseDirectory/Goldens; GoldenStore/GoldenManifestReader are read-only (no writer).",
+    "Gap: the golden request carries a fixed \"CONFIG-TEST\" configuration fingerprint (RenderTestFixtures.cs:99), so the golden render does not exercise RendererConfigurationFingerprint.Compute - relevant to TQ-12.4-01.",
+    "No golden/auto-approval substitute or environment flag writes or updates goldens: grep for File.Write*/StreamWriter/ARRTAGS_*GOLDEN/UPDATE_GOLDEN/AUTO_APPROVE in the test project found no golden writer or update/approve flag."
+  ],
+  "skips_checked": [
+    "Default 63 skips decompose into 43 ARRTAGS_SKIA_COMPAT-guarded tests (incl. the RenderGoldenTests theory as one skip), 19 ARRTAGS_JELLYFIN_HOST_DIR-guarded tests, and 1 ARRTAGS_NONCANONICAL_GOLDENS-guarded test.",
+    "Forced-native full 20 skips decompose into the same 19 host-guarded tests + the 1 non-canonical cross-runtime test; no other skip remains.",
+    "No new skip was introduced by 12.4: the test diff adds one unguarded [Fact] (RendererConfigurationTests.SchemaAndRendererVersionsAreTheSingleCoordinatedAdvance) and extends an existing [SkiaNativeFact] body; no skip attribute changed. Pre-task baseline 1493 passed / 63 skipped / 1556 total -> post-task 1494 / 63 / 1557 (0 new skips).",
+    "The non-canonical skip is an honest missing-second-runtime limitation, not a hidden failure: NonCanonicalRuntimeFactAttribute skips unless ARRTAGS_NONCANONICAL_GOLDENS=1, and the test asserts NonCanonicalGoldenStore.Exists so enabling it without the Goldens/non-canonical set fails loudly (RendererCrossRuntimeTests.cs:126-128). Recorded as docs/limitations.md V2."
+  ],
+  "determinism_checked": [
+    "RenderDeterminismTests.RepeatedRendersAreByteIdentical now renders both the V1 default (all-fields) and a non-default placement case (top-right-large) four times each, asserting Assert.Equal on raw PNG bytes, OutputHash, OutputFingerprint, and exact decoded pixel planes (CrossRuntimePixelComparator.Exact).",
+    "SkiaBadgeRenderer.Render creates a fresh SKBitmap and a fresh encoded byte[] per call (Encode -> data.ToArray()), so the repeated-render byte comparison cannot pass by aliasing a cached buffer.",
+    "PixelComparisonMode.Exact returns a failure on any non-zero channel difference (CrossRuntimePixelComparator.cs:115-118); the comparison primitive is mutation-verified: flipping one golden PNG byte fails the golden byte comparison at the exact position (mutation A).",
+    "The separate-process probe compares the parent render to a child-process render byte-for-byte and by SHA-256, and fails if the child produces no artifact.",
+    "No wall-clock, filesystem-order, network, or shared-mutable-state dependence found: source/image/metadata fixtures are deterministic, the probe output path is Guid-unique, and the observation-timestamp test explicitly proves timestamps are non-output-affecting."
+  ],
+  "mutation_or_non_vacuity_evidence": [
+    {
+      "id": "A",
+      "target": "Throwaway copy of the test output dir (tests/ArrTags.Tests/bin/Release/net10.0/Goldens), not the committed source; restored afterward",
+      "change": "Flipped one byte at offset 4000 of all-fields.png (0x88 -> 0x77)",
+      "run": "ARRTAGS_SKIA_COMPAT=1, filter RenderGoldenTests",
+      "result": "Failed 2, Passed 13, Total 15. GoldenMatchesDecodedPixelsBytesDimensionsAndFingerprint(name: all-fields) failed at RenderGoldenTests.cs:46 with 'Collections differ ... pos 4000: Expected 136, Actual 119' (byte comparison); CommittedGoldenManifestIsCompleteAndSelfConsistent failed with the sha256 mismatch. Restored from backup and re-verified green (Passed 35, Skipped 1, Total 36).",
+      "conclusion": "RenderGoldenTests fails closed on a single changed golden byte; no auto-approval."
+    },
+    {
+      "id": "B",
+      "target": "Throwaway copy of the test output manifest",
+      "change": "Replaced the all-fields OutputFingerprint (and, incidentally, opaque-jpeg's) with zeros",
+      "run": "ARRTAGS_SKIA_COMPAT=1, filter RenderGoldenTests",
+      "result": "Failed 2 (all-fields and opaque-jpeg) at RenderGoldenTests.cs:43 ('Strings differ'); restored and re-verified green.",
+      "conclusion": "The committed OutputFingerprint values are absolutely pinned by the native golden test; a bad/regenerated-wrong fingerprint fails."
+    },
+    {
+      "id": "V1",
+      "target": "Throwaway repo copy (git ls-files export + 4 untracked goldens), RendererConfiguration.CurrentSchemaVersion 2 -> 1 (only the renderer version advanced)",
+      "run": "dotnet test --filter SchemaAndRendererVersionsAreTheSingleCoordinatedAdvance",
+      "result": "Failed 1, Passed 0. 'Expected: 2, Actual: 1' at RendererConfigurationTests.cs:68.",
+      "conclusion": "The single-version-advance test is non-vacuous: it fails if the schema does not advance."
+    },
+    {
+      "id": "V2",
+      "target": "Throwaway repo copy, RenderVersion.CurrentRendererVersion 3 -> 2 (only the schema advanced)",
+      "run": "dotnet test --filter SchemaAndRendererVersionsAreTheSingleCoordinatedAdvance",
+      "result": "Failed 1, Passed 0. 'Expected: 3, Actual: 2' at RendererConfigurationTests.cs:69.",
+      "conclusion": "The single-version-advance test is non-vacuous: it fails if the renderer version does not advance."
+    },
+    {
+      "id": "F1",
+      "target": "Throwaway repo copy, AppendBadgePlacement made unconditional in RendererConfigurationFingerprint.cs only (render fingerprint uses 'policy', so the first sed missed it)",
+      "run": "Full default suite",
+      "result": "Failed 0, Passed 1491, Skipped 66, Total 1557 (green).",
+      "conclusion": "Config-fingerprint-only mutation is not caught by the default suite; it also does not reach the golden output fingerprint because the golden fixtures pass a fixed \"CONFIG-TEST\" configuration fingerprint."
+    },
+    {
+      "id": "F2",
+      "target": "Throwaway repo copy, AppendBadgePlacement made unconditional in BOTH RenderFingerprint.cs (policy.Position/policy.Size) and RendererConfigurationFingerprint.cs",
+      "run": "Full default suite, then ARRTAGS_SKIA_COMPAT=1 filter RenderGoldenTests",
+      "result": "Default suite Failed 0, Passed 1491, Skipped 66, Total 1557 (green); forced-native golden Failed 11, Passed 4, Total 15 (all default-placement goldens + top-left/center failed at line 43; bottom-right-small and top-right-large already appended both fields).",
+      "conclusion": "Confirms TQ-12.4-01: the absolute default-fingerprint pin lives only in the native-guarded golden path. The documented forced-native verification does catch it; the default ./build.sh test does not."
+    }
+  ],
+  "validation": [
+    {
+      "command": ". /config/arrtags-env.sh && ./build.sh test",
+      "result": "Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557, Duration 17 s - ArrTags.Tests.dll (net10.0). Matches the documented post-task default matrix exactly."
+    },
+    {
+      "command": "Forced-native focused: ARRTAGS_SKIA_COMPAT=1 with SYSROOT=/tmp/arrtags-skia-probe/sysroot, LD_LIBRARY_PATH including the pinned host jellyfin dir, FONTCONFIG_PATH, XDG_DATA_DIRS, XDG_CACHE_HOME; dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --filter 'FullyQualifiedName~RenderGoldenTests|FullyQualifiedName~RenderDeterminismTests|FullyQualifiedName~RendererCrossRuntimeTests'",
+      "result": "Passed! - Failed: 0, Passed: 35, Skipped: 1, Total: 36. Proves all 13 committed goldens render byte-, dimension-, color-type-, hash-, and fingerprint-identical to the manifest under the current renderer, plus the determinism and cross-runtime canonical cases; the 1 skip is the pre-existing non-canonical case."
+    },
+    {
+      "command": "Forced-native full: ARRTAGS_SKIA_COMPAT=1 (same env) dotnet test ArrTags.slnx -c Release --no-build",
+      "result": "Passed! - Failed: 0, Passed: 1575, Skipped: 20, Total: 1595. Matches the documented v1.1 forced-native matrix in docs/limitations.md V6 exactly."
+    },
+    {
+      "command": "Golden byte-identity vs HEAD: git hash-object for each of the 9 existing PNGs vs git rev-parse HEAD:<path>",
+      "result": "All 9 IDENTICAL. manifest.json diff: 0 removed OutputHash lines, 4 added OutputHash lines (the 4 new entries), exactly 9 removed + 9 added OutputFingerprint lines, plus 4 new entries. Confirms only OutputFingerprint changed for the 9 existing goldens."
+    },
+    {
+      "command": "sha256sum + IHDR parse of all 13 committed PNGs vs manifest OutputHash/Width/Height/PngColorType",
+      "result": "All 13 sha256 match manifest OutputHash; all 13 parse as valid PNG (signature 89504E470D0A1A0A, bit depth 8, color type 2, interlace 0); 500x750 for 12 entries and 750x500 for orientation; rgba-png is color type 6. 13/13 unique hashes, so the 4 new goldens are genuinely distinct outputs."
+    },
+    {
+      "command": "Non-vacuity: top-left.png (TopLeft/Medium) vs rgb-png.png (default BottomLeft/Medium, same source+metadata) cmp",
+      "result": "DIFFERENT, demonstrating position genuinely changes the committed output; the new anchor/size goldens pin the placement behavior at the pixel level."
+    },
+    {
+      "command": "Writer scan: grep for File.Write*/StreamWriter/WriteAllBytes/WriteAllText/File.Create/ARRTAGS_*GOLDEN/UPDATE_GOLDEN/AUTO_APPROVE across tests/ArrTags.Tests",
+      "result": "No write to the Goldens directory and no update/approve flag. The only write near the golden fixtures is RenderDeterminismProcessProbe.cs:34 writing to the env-provided ARRTAGS_DETERMINISM_PROBE_OUT temp path."
+    },
+    {
+      "command": "Throwaway-copy mutations V1/V2/F1/F2 (see mutation_or_non_vacuity_evidence)",
+      "result": "Version pin non-vacuous (V1/V2 fail); default fingerprint not absolutely pinned in the default suite (F2 green), caught only by the forced-native golden path."
+    }
+  ],
+  "ready_for_next_task": true,
+  "summary": "The task 12.4 golden regeneration is honest and well covered on its stated contract. The 9 existing default PNGs are byte-identical to HEAD and their manifest OutputHash is unchanged; only OutputFingerprint was regenerated, and all 13 committed OutputFingerprint values reproduce under the current renderer (forced-native 35/1/36 focused, 13/13 goldens exact). The 4 new anchor/size PNGs are valid, distinct, dimension/color-type/hash self-consistent, and reproduced byte-for-byte by the renderer. There is no writer, auto-update, or auto-approval path: mutating one golden PNG byte or one manifest OutputFingerprint makes RenderGoldenTests fail closed, and restoring returns it green. The single-version-advance test fails if either version alone advances (throwaway-copy V1/V2). Byte-determinism genuinely compares fresh PNG bytes, hashes, and exact pixel planes across repeats, across a non-default placement case, and across a real separate process. The skip matrix is honest and accurately documented: default 63 skips (43 native-guarded + 19 host-guarded + 1 non-canonical) and forced-native 20 skips (19 host-guarded + 1 non-canonical), with no new skips from 12.4 and the non-canonical skip a genuine missing-second-runtime limitation that fails loudly if enabled without its golden set. One MEDIUM finding remains: TQ-12.4-01, the residual absolute default output/configuration-fingerprint pin exists only in the native-guarded golden path, so an unconditional-append regression leaves the default suite green (independently reproduced) even though the forced-native run catches it and the documented matrix is accurate. That finding is a tracked default-suite test-strength gap, not a BLOCKER/HIGH, so the task is PASS_WITH_FINDINGS and ready for the next task; the four new PNGs must be included in the commit."
+}

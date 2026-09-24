@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
 using ArrTags.Configuration;
+using ArrTags.Metadata;
 using ArrTags.Rendering;
 using ArrTags.Secrets;
 using Xunit;
@@ -55,6 +56,19 @@ public class RendererConfigurationTests
 
         Assert.False(string.IsNullOrEmpty(snapshot.RendererConfigurationFingerprint));
         Assert.Matches("^[0-9A-F]{64}$", snapshot.RendererConfigurationFingerprint);
+    }
+
+    [Fact]
+    public void SchemaAndRendererVersionsAreTheSingleCoordinatedAdvance()
+    {
+        // ADR-017 clause 6 and ADR-019 clause 6 (Goals B and E) share one
+        // coordinated output-affecting advance. The renderer-configuration schema
+        // moves 1 -> 2 and the renderer version moves 2 -> 3, and these are the
+        // only advanced version values; the badge metadata schema is unchanged.
+        Assert.Equal(2, RendererConfiguration.CurrentSchemaVersion);
+        Assert.Equal(3, RenderVersion.CurrentRendererVersion);
+        Assert.Equal(2, RenderVersion.CurrentBadgeSchemaVersion);
+        Assert.Equal(BadgeMetadata.CurrentSchemaVersion, RenderVersion.CurrentBadgeSchemaVersion);
     }
 
     [Fact]

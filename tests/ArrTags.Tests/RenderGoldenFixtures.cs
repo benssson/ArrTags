@@ -45,6 +45,10 @@ internal static class RenderGoldenFixtures
         "missing-fields",
         "full-rail",
         "upgrade-status",
+        "top-left",
+        "top-right-large",
+        "bottom-right-small",
+        "center",
     };
 
     /// <summary>
@@ -113,8 +117,38 @@ internal static class RenderGoldenFixtures
             "upgrade-status" => RenderTestFixtures.BuildRequest(
                 RenderImageFixtures.CreateRgbPng(Width, Height),
                 metadata: RenderImageFixtures.BuildMetadata(upgradePending: true)),
+            "top-left" => RenderTestFixtures.BuildRequest(
+                RenderImageFixtures.CreateRgbPng(Width, Height),
+                metadata: TechnicalMetadata(),
+                policy: PositionPolicy(BadgePosition.TopLeft, BadgeSize.Medium)),
+            "top-right-large" => RenderTestFixtures.BuildRequest(
+                RenderImageFixtures.CreateRgbPng(Width, Height),
+                metadata: RenderImageFixtures.BuildMetadata(
+                    audioCodec: "EAC3",
+                    audioChannels: 6,
+                    upgradePending: true),
+                policy: PositionPolicy(BadgePosition.TopRight, BadgeSize.Large)),
+            "bottom-right-small" => RenderTestFixtures.BuildRequest(
+                RenderImageFixtures.CreateRgbPng(Width, Height),
+                metadata: FullRailMetadata(),
+                policy: PositionPolicy(BadgePosition.BottomRight, BadgeSize.Small)),
+            "center" => RenderTestFixtures.BuildRequest(
+                RenderImageFixtures.CreateRgbPng(Width, Height),
+                metadata: FullRailMetadata(),
+                policy: PositionPolicy(BadgePosition.Center, BadgeSize.Medium)),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown golden fixture."),
         };
+    }
+
+    /// <summary>
+    /// Builds a policy with a non-default global badge position and size
+    /// (ADR-019). The default (<see cref="BadgePosition.BottomLeft"/> and
+    /// <see cref="BadgeSize.Medium"/>) is covered by the original goldens, so
+    /// these cases pin the new anchor and size behavior at the pixel level.
+    /// </summary>
+    private static RenderOutputPolicy PositionPolicy(BadgePosition position, BadgeSize size)
+    {
+        return new RenderOutputPolicy { Position = position, Size = size };
     }
 
     /// <summary>

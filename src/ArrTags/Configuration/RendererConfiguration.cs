@@ -27,9 +27,11 @@ public sealed class RendererConfiguration
     /// The code-owned renderer configuration schema version from ADR-010. It is
     /// not user-selectable and changes only when the meaning or shape of the
     /// persisted renderer configuration changes; it participates in the renderer
-    /// configuration fingerprint.
+    /// configuration fingerprint. Version 2 is the v1.1 coordinated advance
+    /// (ADR-017 clause 6 and ADR-019 clause 6): it adds the per-selector value
+    /// allowlist and the global badge position and size.
     /// </summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     private Collection<BadgeSelectorConfiguration> _selectors = new Collection<BadgeSelectorConfiguration>();
 

@@ -1,0 +1,41 @@
+{
+  "task": "12.4",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Second attempt: a documentation-only review-driven correction of the reviewer's single MEDIUM finding 12.4-DOC-1 (docs/implementation/12.4/reviewer-report.json). The finding was that the named Goal B/E documents still presented the default configuration and output fingerprints as 'unchanged' / 'keeps the V1 identity' after the coordinated version advance (RendererConfiguration.CurrentSchemaVersion 1 -> 2 and RenderVersion.CurrentRendererVersion 2 -> 3), which is false. The functional implementation, source, tests, and goldens from attempt 1 are unchanged and remain in the working tree. This attempt qualifies every current-state 'identity-neutral' claim and replaces the false 'default fingerprints unchanged / keeps the V1 identity' claims with the accurate statement: the default position/size/allowlist values do not themselves alter the identity relative to other values, the default PNG bytes stay byte-identical because the default reproduces the V1 output, but the coordinated renderer/schema version advance changes the default configuration and output fingerprints. Edits: docs/architecture.md section 9 (the allowlist sentence at ~1206 now says an empty allowlist adds nothing to the fingerprint, identity-neutral relative to a non-empty allowlist; the position/size sentence at ~1230 now states the default placement values are identity-neutral relative to other placement values, the default PNG bytes are byte-identical, but the version advance changes the default configuration and output fingerprints) and the architecture status line; docs/data-model.md 3.6 task 12.1 note (~573) and 3.12 task 12.1 note (~926) drop the '(so the default configuration fingerprint is unchanged)' claim; docs/data-model.md 3.6 task 12.3 note (~594) and 3.12 task 12.3 note (~941) replace the false fingerprints-unchanged/keeps-the-V1-identity claims; docs/changelog.md Task 12.4 entry, PLANS.md Project Status and task 12.4 status, docs/project-status.md, and docs/implementation-readiness.md qualify their 'identity-neutral' phrases as relative to non-default values. The historically scoped Task 12.1/12.2/12.3 changelog entries and the PLANS 12.1/12.3 status sections retain their point-in-time 'unchanged' statements, which are correct for those states and are explicitly scoped by adjacent notes stating the advance remains task 12.4. No source, test, or golden file was modified by this attempt.",
+  "validation": [
+    "Attempt-1 (functional implementation, preserved in docs/implementation/12.4/worker-report-attempt-1.json): `. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s); post-task `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1494, Skipped 63, Total 1557 (pre-task baseline Failed 0, Passed 1493, Skipped 63, Total 1556; +1 passed, +1 total, 0 new skips).",
+    "Attempt-2 after the documentation correction: `. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s) (Time Elapsed 00:00:01.46).",
+    "Attempt-2 after the documentation correction: `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1494, Skipped 63, Total 1557, Duration 16 s - ArrTags.Tests.dll (net10.0). Matches the expected post-task count exactly.",
+    "Phrase scan: `grep -rn \"keeps the V1 identity\" docs/architecture.md docs/data-model.md docs/changelog.md PLANS.md docs/project-status.md docs/implementation-readiness.md` -> no matches. The false current-state phrasing is eliminated.",
+    "Phrase scan: `grep -rn \"default configuration fingerprint is unchanged|configuration and output fingerprints are unchanged\" docs/architecture.md docs/data-model.md docs/changelog.md PLANS.md docs/project-status.md docs/implementation-readiness.md` -> only docs/changelog.md:3341 (Task 12.1 entry) and docs/changelog.md:3447 (Task 12.3 entry), both historically scoped by an adjacent 'Scope:' paragraph stating the coordinated advance/golden regeneration remain task 12.4.",
+    "Phrase scan: `grep -rn \"is identity-neutral|default remains identity-neutral|default identity-neutral\" ...` -> only docs/changelog.md:3446 (Task 12.3 entry) and PLANS.md:4514 (task 12.1 status), both historically scoped. All current-state occurrences now read 'identity-neutral relative to non-default values' or 'identity-neutral relative to a non-empty allowlist'.",
+    "`git status --short` -> this attempt changed only documentation files (PLANS.md, docs/architecture.md, docs/data-model.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md) plus the 12.4 implementation-state report files; the src/ and tests/ changes and the Golden manifest/PNG changes are the pre-existing uncommitted task 12.4 functional implementation from attempt 1, untouched by this attempt.",
+    "`git status --short tests/ArrTags.Tests/Goldens/` -> still only M manifest.json and the four untracked attempt-1 PNGs (bottom-right-small.png, center.png, top-left.png, top-right-large.png); no golden artifact was changed by this attempt."
+  ],
+  "changed_files": [
+    "docs/architecture.md",
+    "docs/data-model.md",
+    "docs/changelog.md",
+    "docs/project-status.md",
+    "docs/implementation-readiness.md",
+    "PLANS.md",
+    "docs/implementation/12.4/worker-report.json",
+    "docs/implementation/12.4/worker-report-attempt-1.json"
+  ],
+  "known_limitations": [
+    "The src/ArrTags/Configuration/RendererConfiguration.cs, src/ArrTags/Rendering/RenderVersion.cs, tests/ArrTags.Tests/RenderDeterminismTests.cs, tests/ArrTags.Tests/RenderGoldenFixtures.cs, tests/ArrTags.Tests/RendererConfigurationTests.cs, tests/ArrTags.Tests/Goldens/manifest.json, and the four new golden PNGs are the pre-existing uncommitted attempt-1 implementation; this attempt did not modify them and re-verified only the documentation.",
+    "The Task 12.1 and Task 12.3 changelog entries (docs/changelog.md:3340-3341 and 3446-3447) and the PLANS task 12.1/12.3 status sections (PLANS.md:4514 and 4644) intentionally retain their unqualified 'default fingerprint is unchanged' / 'identity-neutral' wording; each is a point-in-time statement scoped by an adjacent note that the coordinated advance and golden regeneration remain task 12.4, so the statements are correct for those earlier states and were preserved per the instruction not to rewrite clearly scoped historical claims.",
+    "The throwaway golden generator wrote the four new PNGs and the manifest before being deleted; it is not part of the final diff, so the committed goldens were produced by a one-off process rather than a reproducible in-repo command. The no-writer/auto-approval property of the shipped tests is preserved (no File.Write* in the golden test code).",
+    "The new anchor/size goldens are produced and compared on the pinned canonical SkiaSharp runtime only; the tolerant non-canonical cross-runtime comparison remains an honest skip (RendererCrossRuntimeTests 1) as before this task (docs/limitations.md V2).",
+    "The live pinned-host end-to-end confirmation of the v1.1 allowlist and placement behavior is not part of this task and is owned by task 14.3.",
+    "Gate 12 is not met and the v1.1.0-phase12 tag is not created; the phase review and tag are owned by the orchestrator.",
+    "This attempt's documentation wording corrections are accurate to the shipped state and traceable, but were not separately reviewed before this report."
+  ],
+  "ready_for_next_task": true
+}

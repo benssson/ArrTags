@@ -46,7 +46,8 @@ loads the current configuration and saves it through Jellyfin's administrator-ga
 configuration API, so the plugin no longer has to be configured by editing XML by
 hand. The page covers the provider connections and their API keys, the webhook
 secret, the Movie/Episode poster flags, the enabled-library scope, the renderer
-selectors/templates and palette overrides, the operational limits, and the
+selectors/templates and their value allowlists, the badge position and size, the
+palette overrides, the operational limits, and the
 bounded log verbosity.
 
 The page itself embeds no secret and only shows a secret value that Jellyfin's
@@ -92,6 +93,8 @@ Other fields:
 | `EnabledLibraries` | The Jellyfin library identifiers eligible for badges. An empty set means no library restriction. |
 | `Renderer.Selectors` | The configured badge selectors (see below). |
 | `Renderer` palette overrides | Optional `TechnicalBackground`, `TechnicalText`, `StatusBackground`, and `StatusText` colors (see below). |
+| `Renderer.Position` | Where the technical badge rail is anchored: `BottomLeft` (default), `TopLeft`, `TopRight`, `BottomRight`, or `Center`. The `UPGRADE` status pill stays top-right except for a `TopRight` rail, where it moves top-left. |
+| `Renderer.Size` | The preset badge size: `Medium` (default), `Small`, or `Large`. The size multiplies the width-based badge scale. |
 | `Limits` | The operational bounds (queue capacity, concurrency, timeouts, payload and artifact sizes, cache and retention windows). Defaults are validated when the configuration loads. |
 
 `Renderer.Selectors` holds one entry per badge selector:
@@ -101,6 +104,7 @@ Other fields:
 | `Selector` | The provider-neutral selector name: `Quality`, `Resolution`, `DynamicRange`, `Source`, `VideoCodec`, `Audio`, `CustomBadge`, or `UpgradePending`. |
 | `Enabled` | Whether the selector participates in rendering. A disabled selector produces no badge even when its value is known. |
 | `Template` | A bounded display template containing at most one `{value}` placeholder; a template without a placeholder renders its literal text. |
+| `AllowedValues` | An optional per-selector value allowlist that restricts the selector to the listed values. An empty list (the default) means no restriction. Matching is a case-insensitive exact comparison of the resolved value, so it is not a substring/wildcard match; the allowlist only removes an already-confirmed value, never adds one. Bounded to at most 32 entries per selector, each at most 64 characters. |
 
 The optional `Renderer` palette overrides are `RRGGBB` hexadecimal colors. An
 empty value keeps the default color, and each text/background pair must reach at

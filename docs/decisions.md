@@ -767,9 +767,10 @@ already required for ambiguous, missing, virtual, remote, and unsupported cases.
 
 ## ADR-009: V1 Badge Rendering Specification
 
-**Status:** Accepted (the geometry and placement clauses are superseded by
-ADR-019: badge position and size are now configurable. Fields, selector order,
-colors, text limits, output format, scaling model, and failure behavior remain in
+**Status:** Accepted (the geometry, placement, and scaling-model clauses are
+superseded by ADR-019: badge position and size are now configurable and the
+width-based scale is multiplied by a code-owned size factor. Fields, selector
+order, colors, text limits, output format, and failure behavior remain in
 force.)
 
 **Date:** 2026-09-18
@@ -1024,7 +1025,8 @@ choice, bundled font, PNG/color handling, host/source boundary, configuration,
 and testing strategy remain in force; the decisions that the plugin package must
 carry the managed `SkiaSharp.dll` and native `libSkiaSharp.so` and must not load
 a system Skia library are superseded by ADR-015; the renderer-configuration
-clauses that keep geometry and placement code-owned are superseded by ADR-019)
+clauses that keep geometry, placement, and scale code-owned are superseded by
+ADR-019)
 
 **Date:** 2026-09-18
 
@@ -2412,7 +2414,10 @@ boundary.
 
 **Status:** Accepted (v1.1; supersedes the code-owned geometry and placement
 clauses of ADR-009 and the corresponding renderer-configuration clauses of
-ADR-010)
+ADR-010). Clause 6's shared coordinated advance is implemented by v1.1 task 12.4:
+`RendererConfiguration.CurrentSchemaVersion` is 2,
+`RenderVersion.CurrentRendererVersion` is 3, and the committed goldens are
+regenerated with no writer or auto-approval path.
 
 **Date:** 2026-09-23
 

@@ -27,11 +27,22 @@ public class RenderDeterminismTests
     [SkiaNativeFact]
     public async Task RepeatedRendersAreByteIdentical()
     {
-        var first = await RenderAsync();
+        // The V1 default and a non-default anchor/size case must both be
+        // byte-deterministic, so the committed anchor/size goldens are
+        // reproducible.
+        await AssertRepeatedRendersAreByteIdentical("all-fields");
+        await AssertRepeatedRendersAreByteIdentical("top-right-large");
+    }
+
+    private static async Task AssertRepeatedRendersAreByteIdentical(string name)
+    {
+        var request = RenderGoldenFixtures.BuildRequest(name);
+        var first = await Renderer.RenderAsync(request, CancellationToken.None);
+        Assert.Equal(RenderStatus.Rendered, first.Status);
 
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var next = await RenderAsync();
+            var next = await Renderer.RenderAsync(request, CancellationToken.None);
             Assert.Equal(first.PngBytes.ToArray(), next.PngBytes.ToArray());
             Assert.Equal(first.OutputHash, next.OutputHash);
             Assert.Equal(first.OutputFingerprint, next.OutputFingerprint);

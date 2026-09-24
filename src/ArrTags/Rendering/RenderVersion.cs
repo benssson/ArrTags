@@ -16,8 +16,11 @@ public static class RenderVersion
     /// drawing, typography, contrast, or encoding behavior changes. Version 2
     /// corrects the EXIF dimension-swapping orientation transforms so an opaque
     /// source is no longer clipped or made partly transparent (task 4.11).
+    /// Version 3 is the v1.1 coordinated advance (ADR-017 clause 6 and ADR-019
+    /// clause 6): the per-selector value allowlist and the configurable global
+    /// badge position and size change the rendered output.
     /// </summary>
-    public const int CurrentRendererVersion = 2;
+    public const int CurrentRendererVersion = 3;
 
     /// <summary>
     /// The current badge schema version, which is owned by

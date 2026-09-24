@@ -1,0 +1,120 @@
+{
+  "task": "12.4",
+  "title": "Coordinated schema/RenderVersion advance, golden regeneration, and documentation",
+  "phase": 12,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 393022,
+        "output_tokens": 27746,
+        "reasoning_tokens": 43212,
+        "cache_read_tokens": 16348416,
+        "cache_write_tokens": 0,
+        "total_tokens": 16812396,
+        "cost_usd": 0.15057334799999997,
+        "duration_seconds": 895,
+        "session_id": "ses_f2c5dbb98ffeEK6SavRTHIGkHF"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 89270,
+        "output_tokens": 12411,
+        "reasoning_tokens": 18208,
+        "cache_read_tokens": 2821632,
+        "cache_write_tokens": 0,
+        "total_tokens": 2941521,
+        "cost_usd": 0.04022679600000001,
+        "duration_seconds": 245,
+        "session_id": "ses_f2c4fb6ffffebi6a3UB6dKVSo2"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 197528,
+        "output_tokens": 10368,
+        "reasoning_tokens": 26689,
+        "cache_read_tokens": 1682560,
+        "cache_write_tokens": 0,
+        "total_tokens": 1917145,
+        "cost_usd": 0.05691107999999999,
+        "duration_seconds": 337,
+        "session_id": "ses_f2c4bc949ffeJhZWUFby1FsBXD"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 110898,
+        "output_tokens": 9153,
+        "reasoning_tokens": 5701,
+        "cache_read_tokens": 728704,
+        "cache_write_tokens": 0,
+        "total_tokens": 854456,
+        "cost_usd": 0.027733212000000007,
+        "duration_seconds": 182,
+        "session_id": "ses_f2c467badffe3lAY8VrQSjnaLH"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 312659,
+        "output_tokens": 19117,
+        "reasoning_tokens": 26676,
+        "cache_read_tokens": 6530816,
+        "cache_write_tokens": 0,
+        "total_tokens": 6889268,
+        "cost_usd": 0.09396709800000003,
+        "duration_seconds": 1053,
+        "session_id": "ses_f2c4385a1ffe4ESvnCrKTIPpNQ"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "implementation-reviewer attempt 1 returned CHANGES_REQUIRED (12.4-DOC-1, MEDIUM): the named Goal B/E docs (docs/architecture.md section 9/status line, docs/data-model.md 3.6/3.12) still claimed the default configuration/output fingerprints were 'unchanged' / 'keep the V1 identity', false after the 1->2 / 2->3 advance. Worker attempt 2 (documentation only) qualified every current-state identity-neutral claim and stated that the default placement values are identity-neutral relative to non-default values and the default PNG bytes stay byte-identical, while the coordinated version advance changes the default configuration and output fingerprints. Historically scoped task 12.1/12.3 entries were intentionally preserved."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields were read from the authoritative OpenCode session API via .opencode/scripts/collect-session-usage.sh using the recorded session ids; no estimation was performed.",
+    "Final gates: implementation-worker attempt 2 COMPLETE; implementation-reviewer attempt 2 APPROVED (reviewer_blockers [], required_changes [], ready_for_next_task true); test-quality-reviewer attempt 1 PASS_WITH_FINDINGS (0 BLOCKER/HIGH).",
+    "Single coordinated advance: RendererConfiguration.CurrentSchemaVersion 1 -> 2 and RenderVersion.CurrentRendererVersion 2 -> 3 are the only advanced version values (BadgeMetadata.CurrentSchemaVersion stays 2).",
+    "Golden regeneration: the 9 existing default-configuration PNGs are byte-identical to the pre-task HEAD (their OutputHash values are unchanged) and only their OutputFingerprint values changed with the renderer version; 4 new anchor/size goldens were added (top-left, top-right-large, bottom-right-small, center). Regeneration used a throwaway generator that was removed before completion, so the committed test code retains no writer or auto-approval path; RenderGoldenTests fails closed (independently reproduced by mutating a golden PNG byte and a manifest OutputFingerprint).",
+    "Validation (independently reproduced): default build 0 warnings / 0 errors; default suite Failed 0, Passed 1494, Skipped 63, Total 1557 (pre-task baseline 1493/63/1556; +1 passed, 0 new skips); forced-native focused golden/determinism/cross-runtime run Failed 0, Passed 35, Skipped 1, Total 36; full forced-native run Failed 0, Passed 1575, Skipped 20, Total 1595. The test-quality-reviewer independently reproduced the version-advance non-vacuity and the fail-closed property.",
+    "Documentation reconciled: docs/architecture.md section 9 + status line, docs/data-model.md 3.6/3.12, README.md, docs/decisions.md ADR-019 + the ADR-009/ADR-010 supersession notes, PLANS.md (12.4 checkbox/status, Phase 12 milestone row, Project Status), docs/changelog.md (Task 12.4 entry + Phase 12 status), and the current-state surfaces docs/project-status.md, docs/implementation-readiness.md, and docs/limitations.md V6 (suite count 1494/63/1557; forced-native 1575/20/1595).",
+    "Tracked non-blocking findings carried to the phase review: TQ-12.4-01 (MEDIUM test-strength residual, the absolute default output/configuration-fingerprint pin lives only in the native-guarded golden path; making AppendBadgePlacement unconditional leaves the default suite green while the forced-native golden run catches it - this is the unresolved task 12.3 TQ-12.3-02, recommended closure is a pure unguarded default-fingerprint pin or adding the forced-native run to the release checklist), 12.4-DOC-2 (INFO, two pre-existing source XML comments still say the default fingerprint is 'unchanged'), and TQ-12.4-02 (LOW, the 4 new PNGs must be committed with the task - they are included in this task's commit).",
+    "Gate 12 is not claimed met by this task; the phase review and the v1.1.0-phase12 tag remain the orchestrator/phase-reviewer's steps. The live pinned-host confirmation is owned by task 14.3."
+  ]
+}

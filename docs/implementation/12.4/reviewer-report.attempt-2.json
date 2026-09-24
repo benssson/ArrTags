@@ -1,0 +1,116 @@
+{
+  "task": "12.4",
+  "reviewer_role": "implementation-reviewer",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "prior_attempt": "docs/implementation/12.4/reviewer-report.json (attempt 1, CHANGES_REQUIRED, one open MEDIUM finding 12.4-DOC-1)",
+  "prior_required_change_resolution": {
+    "12.4-DOC-1": "RESOLVED. The named Goal B/E current-state documents no longer assert that the default configuration/output fingerprints or the V1 identity are unchanged. docs/architecture.md section 9 (~1227-1243) now states the default position and size are identity-neutral relative to other placement values, the default reproduces the V1 output so its PNG bytes stay byte-identical, but the coordinated version advance changes the default configuration and output fingerprints; it also records the schema 1 -> 2 / renderer 2 -> 3 advance and the golden regeneration. docs/data-model.md 3.6 (~592-605) and 3.12 (~939-955) carry the same qualified wording plus the coordinated-advance sentence. The allowlist identity-neutral claims in docs/architecture.md (~1204-1207) and docs/data-model.md 3.6 (~570-575) / 3.12 (~929-935) were rephrased to 'an empty allowlist adds nothing to the fingerprint (identity-neutral relative to a non-empty allowlist), though the coordinated v1.1 schema advance still changes the default configuration fingerprint'. A phrase scan of the current-state surfaces finds no remaining 'keeps the V1 identity', 'default configuration and output fingerprints are unchanged', or 'default configuration fingerprint is unchanged' claim."
+  },
+  "acceptance_criteria_assessment": {
+    "single_coordinated_output_affecting_advance": "MET (re-confirmed, unchanged from attempt 1). RendererConfiguration.CurrentSchemaVersion == 2 and RenderVersion.CurrentRendererVersion == 3 are the only advanced version values; RenderVersion.CurrentBadgeSchemaVersion == BadgeMetadata.CurrentSchemaVersion == 2 is unchanged. src diff is still exactly RendererConfiguration.cs and RenderVersion.cs.",
+    "renderer_configuration_fingerprint_changes": "MET. RendererConfigurationFingerprint.Compute hashes rendererConfigurationSchemaVersion (RendererConfigurationFingerprint.cs:38), now 2; every existing manifest OutputFingerprint changed while every existing OutputHash stayed identical (git diff manifest.json).",
+    "render_version_advances": "MET. RenderVersion.CurrentRendererVersion == 3 and RenderFingerprint.ComputeOutputFingerprint hashes rendererVersion (:34) and the configuration fingerprint (:40), so the default output fingerprint advances while the PNG bytes do not.",
+    "goldens_regenerated": "MET. manifest.json has 13 entries: the 9 existing entries changed only OutputFingerprint, and 4 new entries (top-left, top-right-large, bottom-right-small, center) carry self-consistent OutputHash/dimensions/color type. All 13 committed PNGs are present; sha256 of each equals its manifest OutputHash; the 9 existing PNGs are byte-identical to HEAD (git diff empty).",
+    "default_reproduces_v1_output": "MET. The 9 existing PNGs are byte-identical to HEAD and the forced-native golden theory renders each default-configuration request and asserts byte equality plus exact decoded-pixel equality for all 13 cases.",
+    "no_writer_or_auto_approval_path": "MET. No File.Write*/StreamWriter/update-or-approve flag exists in RenderGoldenTests.cs, RenderGoldenFixtures.cs, or RendererCrossRuntimeTests.cs; RenderDeterminismProcessProbe.cs writes only to the env-provided ARRTAGS_DETERMINISM_PROBE_OUT path, never to Goldens/.",
+    "documentation": "MET. 12.4-DOC-1 is resolved; the current-state surfaces (architecture.md status line/section 9, data-model.md 3.6/3.12, PLANS.md Project Status/Milestone row/task 12.4, changelog Task 12.4 entry, project-status.md, implementation-readiness.md) now accurately distinguish the identity-neutral default placement values and byte-identical default PNGs from the version advance that changes the default configuration and output fingerprints."
+  },
+  "validation": {
+    "method": "Independent inspection of the full working-tree diff, the corrected documentation, the golden manifest/PNG bytes, the source constants, the fingerprint code, and the golden/determinism/version-pin test code; independent build, default suite, and forced-native focused suite.",
+    "build": ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (Time Elapsed 00:00:01.39).",
+    "default_suite": ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1494, Skipped 63, Total 1557 (matches the expected post-task counts exactly; no new skips).",
+    "forced_native_focused": "ARRTAGS_SKIA_COMPAT=1 with SYSROOT=/tmp/arrtags-skia-probe/sysroot, LD_LIBRARY_PATH including /tmp/arrtags-host-dl/host/jellyfin, FONTCONFIG_PATH, XDG_DATA_DIRS, XDG_CACHE_HOME -> dotnet test --configuration Release --filter 'RenderGoldenTests|RenderDeterminismTests|RendererCrossRuntimeTests' -> Failed 0, Passed 35, Skipped 1, Total 36. This proves all 13 golden cases (9 unchanged defaults + 4 new anchor/size) render byte-identical to the committed PNGs and that all 13 committed manifest OutputFingerprint values equal what the current renderer produces. The 1 skip is the pre-existing non-canonical cross-runtime case.",
+    "golden_byte_identity": "git diff --stat HEAD -- 'tests/ArrTags.Tests/Goldens/*.png' is empty (9 existing PNGs unchanged); the 4 new PNGs are untracked and present. sha256 of all 13 PNGs match their manifest OutputHash; the 9 existing OutputHash values are unchanged from HEAD.",
+    "manifest_scope": "git diff HEAD -- manifest.json shows exactly 9 OutputFingerprint replacements (all other fields context) plus 4 appended entries.",
+    "version_scope": "RendererConfiguration.CurrentSchemaVersion == 2, RenderVersion.CurrentRendererVersion == 3, RenderVersion.CurrentBadgeSchemaVersion == BadgeMetadata.CurrentSchemaVersion == 2; src diff limited to the two constant files.",
+    "writer_scan": "grep for File.Write/StreamWriter/WriteAllBytes/WriteAllText/auto-approve/UpdateGolden/AcceptGolden in the golden test files -> only descriptive comments plus the determinism probe's env-path write.",
+    "doc_scope": "git status shows attempt-2 changes only in documentation (PLANS.md, docs/architecture.md, docs/data-model.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md) plus implementation-state reports; src/, tests/, and the golden artifacts are the attempt-1 state.",
+    "stale_phrase_scan": "grep of the current-state surfaces (architecture.md, data-model.md, project-status.md, implementation-readiness.md, limitations.md, README.md, PLANS.md) for 'keeps the V1 identity' / 'default configuration and output fingerprints are unchanged' / 'default configuration fingerprint is unchanged' -> only PLANS.md:4645, inside the point-in-time task 12.3 status section whose adjacent Scope text states the schema/renderer values are still 1/2 and the advance remains task 12.4. The only other occurrences are docs/changelog.md:3341 (Task 12.1 entry) and :3447 (Task 12.3 entry), both explicitly scoped by adjacent notes that the coordinated advance and golden regeneration remain task 12.4.",
+    "gate_and_tag": "`git tag -l '*phase12*'` empty; HEAD still 2fd312b; Phase 12 acceptance checkboxes (PLANS.md:4769-4780) remain unchecked; PLANS.md and docs state Gate 12 is not met and the tag is not created."
+  },
+  "findings": [
+    {
+      "id": "12.4-DOC-1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "documentation/accuracy (named Goal B/E docs)",
+      "summary": "RESOLVED. The named Goal B/E current-state documents no longer claim the default configuration/output fingerprints or the V1 identity are unchanged; the corrected wording is technically accurate.",
+      "detail": "docs/architecture.md section 9 and docs/data-model.md 3.6/3.12 now state that the default position/size values are identity-neutral relative to other placement values (the code confirms AppendBadgePlacement appends nothing for BottomLeft/Medium: RendererConfigurationFingerprint.cs:66-76, RenderFingerprint.cs:69-80), that the default reproduces the V1 output so its PNG bytes are byte-identical (git diff shows the 9 default PNGs unchanged), and that the coordinated schema 1 -> 2 / renderer 2 -> 3 advance changes the default configuration and output fingerprints (RendererConfigurationFingerprint.Compute hashes the schema version at :38; RenderFingerprint.ComputeOutputFingerprint hashes the renderer version at :34; every existing manifest OutputFingerprint changed). The allowlist identity-neutral claims were qualified the same way. The remaining 'unchanged'/'identity-neutral' phrases in docs/changelog.md Task 12.1/Task 12.3 entries and the PLANS task 12.1/12.3 status sections are point-in-time records explicitly scoped by adjacent notes that the advance and golden regeneration remain task 12.4, so they are historically accurate and correctly preserved.",
+      "evidence": [
+        "docs/architecture.md:1204-1207, 1227-1243 (qualified wording + coordinated-advance sentence)",
+        "docs/data-model.md:570-575, 592-605, 929-935, 939-955 (qualified wording + coordinated-advance sentence)",
+        "docs/changelog.md:3341, 3447 and PLANS.md:4645 (historically scoped, each with an adjacent 'advance remains task 12.4' note)",
+        "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:38,66-76",
+        "src/ArrTags/Rendering/RenderFingerprint.cs:34,40,69-80",
+        "git diff tests/ArrTags.Tests/Goldens/manifest.json (9 OutputFingerprint changes, 4 new entries)"
+      ],
+      "recommended_action": "None. Prior required change is satisfied."
+    },
+    {
+      "id": "12.4-DOC-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/accuracy (source XML doc comments)",
+      "summary": "Two pre-existing XML doc comments on the private AppendBadgePlacement helpers still say the default configuration/output fingerprint is 'unchanged' and the goldens are 'unaffected', a literally stale global claim, though the local helper is in fact identity-neutral for the defaults.",
+      "detail": "RendererConfigurationFingerprint.cs:66-69 and RenderFingerprint.cs:69-72 describe the helper's default case as 'the default configuration fingerprint is unchanged and the committed goldens are unaffected' / 'the default output fingerprint is unchanged and the committed goldens are unaffected'. After the 12.4 advance the default fingerprints do change (the helper adds no placement field, but the hashed schema/renderer versions advanced). This is source code, not one of the canonical documentation surfaces, it was present in the attempt-1 reviewed state, and it has no effect on functional correctness. Noted for transparency; not required for 12.4.",
+      "evidence": [
+        "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:66-69",
+        "src/ArrTags/Rendering/RenderFingerprint.cs:69-72"
+      ],
+      "recommended_action": "None required for 12.4. Optionally reword the two comments in a later documentation pass so they say the default placement adds nothing to the fingerprint (rather than the whole fingerprint being unchanged)."
+    },
+    {
+      "id": "12.4-TQ-ABS",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "testing/test-strength residual (TQ-12.3-02)",
+      "summary": "Deferred finding TQ-12.3-02 (no unguarded absolute default-fingerprint pin) remains a test-strength residual; closure rests on the native-guarded regenerated manifest.",
+      "detail": "The goldens were regenerated (one accepted closure path for TQ-12.3-02), but the absolute pin remains the native-Skia-guarded golden comparison; in the default suite the golden theory is reported as a single skip, so no unguarded test absolutely pins the default output/configuration fingerprint against a hardcoded value. The unguarded tests remain relative. This is a test-strength residual, not a functional defect (production is identity-neutral by construction), and it is legitimately owned by the native golden path.",
+      "evidence": [
+        "docs/implementation/12.3/test-quality-review.json TQ-12.3-02",
+        "tests/ArrTags.Tests/SkiaNativeTheoryAttribute.cs (Skip when ARRTAGS_SKIA_COMPAT != 1)",
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs:61-73 (SchemaAndRendererVersionsAreTheSingleCoordinatedAdvance, unguarded but version-only)"
+      ],
+      "recommended_action": "None required for 12.4. Optionally add an unguarded hardcoded-hex pin of the default configuration and output fingerprints to make TQ-12.3-02 unambiguously closed in the default suite."
+    }
+  ],
+  "tests_checked": [
+    "RendererConfigurationTests.SchemaAndRendererVersionsAreTheSingleCoordinatedAdvance (new, unguarded; passes in default suite; pins schema==2, renderer==3, badge schema==2)",
+    "RenderGoldenTests.GoldenMatchesDecodedPixelsBytesDimensionsAndFingerprint (13 rows; asserts bytes, dimensions, color type, OutputHash, OutputFingerprint, exact decoded pixels; passes forced-native)",
+    "RenderGoldenTests.CommittedGoldenManifestIsCompleteAndSelfConsistent (sha256 + IHDR vs manifest; passes)",
+    "RenderGoldenTests.AChangedGoldenPixelFailsTheExactGoldenComparison (passes)",
+    "RenderDeterminismTests.RepeatedRendersAreByteIdentical -> all-fields and top-right-large (new non-default case; passes forced-native)",
+    "RendererCrossRuntimeTests (canonical set passes forced-native; 1 non-canonical skip unchanged)",
+    "Default suite: Failed 0, Passed 1494, Skipped 63, Total 1557",
+    "Forced-native focused filter: Failed 0, Passed 35, Skipped 1, Total 36",
+    "Build: 0 warnings / 0 errors"
+  ],
+  "research_checked": [
+    "Re-confirmed attempt-1 research conclusions are consistent with the unchanged source: docs/decisions.md ADR-017 clause 6 and ADR-019 clause 6 (shared coordinated advance + golden regeneration); the implementation matches.",
+    "Re-confirmed the fingerprint code hashes the schema and renderer versions, supporting the corrected documentation wording."
+  ],
+  "documentation_checked": [
+    "docs/architecture.md (status line and section 9) - corrected; no stale current-state claim",
+    "docs/data-model.md 3.6/3.12 - corrected; no stale current-state claim",
+    "PLANS.md (Project Status paragraph, Milestone Status row 12, task 12.4 status; task 12.1/12.3 status sections are historically scoped) - accurate",
+    "docs/changelog.md (Task 12.4 entry accurate; Task 12.1/12.3 entries historically scoped and acceptable)",
+    "docs/project-status.md (Current milestone and 12.4 paragraph) - accurate",
+    "docs/implementation-readiness.md (status line Phase 12 clause) - accurate",
+    "docs/limitations.md - no stale fingerprint/identity claim",
+    "README.md - no stale fingerprint/identity claim"
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "from_attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "issue": "12.4-DOC-1 (MEDIUM): named Goal B/E docs claimed the default configuration/output fingerprints / V1 identity were unchanged.",
+      "resolution_in_attempt": 2,
+      "resolution": "RESOLVED. The worker qualified every current-state identity-neutral claim and replaced the false unchanged-fingerprint statements with the accurate default-placement-values-are-relative-identity-neutral / default-PNG-bytes-byte-identical / version-advance-changes-the-default-fingerprints wording in docs/architecture.md section 9 and status line, docs/data-model.md 3.6/3.12, PLANS.md, docs/changelog.md Task 12.4, docs/project-status.md, and docs/implementation-readiness.md. Historically scoped Task 12.1/12.3 entries were correctly preserved."
+    }
+  ],
+  "ready_for_next_task": true,
+  "summary": "APPROVED. Attempt 2 is a documentation-only correction; the source, tests, and golden artifacts are the already-reviewed attempt-1 state (versions still 2/3, badge schema 2, 9 existing PNGs byte-identical to HEAD with unchanged OutputHash, 4 new PNGs present with matching sha256, manifest consistent, no writer path). The single MEDIUM finding 12.4-DOC-1 is resolved: no current-state surface claims the default configuration/output fingerprints or the V1 identity are unchanged, and the corrected wording is technically accurate (default placement values add nothing to the fingerprints; default PNG bytes are byte-identical; the schema 1->2 / renderer 2->3 advance changes the default configuration and output fingerprints). The only remaining 'unchanged' phrases are point-in-time Task 12.1/12.3 entries explicitly scoped by adjacent notes that the advance remains task 12.4, which are historically accurate and acceptable. Independent re-validation: build 0 warnings/0 errors; default suite Failed 0, Passed 1494, Skipped 63, Total 1557; forced-native focused suite Failed 0, Passed 35, Skipped 1, Total 36. All attempt-1 conclusions re-confirmed; Gate 12 is not claimed met and no v1.1.0-phase12 tag exists. One informational source-comment note (12.4-DOC-2) and one LOW test-strength residual (12.4-TQ-ABS) are noted but require no action."
+}

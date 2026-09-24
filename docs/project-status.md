@@ -3,12 +3,13 @@
 ## Project Status
 
 **Current milestone:** Phase 12 — Badge value allowlist and badge size/position
-(v1.1) is in progress: tasks 12.1 (allowlist configuration, bounds, validation,
-and fingerprint), 12.2 (allowlist resolution and renderer filtering order), and
-12.3 (badge size/position configuration and layout engine) are complete, and task
-12.4 (coordinated schema/`RenderVersion` advance, golden regeneration, and
-documentation) remains, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is
-not yet created. Phase 11 — Provider inventory cache and
+(v1.1) tasks 12.1 (allowlist configuration, bounds, validation, and fingerprint),
+12.2 (allowlist resolution and renderer filtering order), 12.3 (badge
+size/position configuration and layout engine), and 12.4 (coordinated
+schema/`RenderVersion` advance, golden regeneration, and documentation) are
+complete at the integration-test level, so Gate 12 is not yet met and the
+`v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the
+orchestrator). Phase 11 — Provider inventory cache and
 library-refresh-driven refresh (v1.1) is complete at the integration-test level:
 tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
 integration and bulk reads), 11.3 (ArrTags-side invalidation), and 11.4 (Goal C
@@ -661,8 +662,10 @@ The plugin:
   `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244 with 44
   skips, and running `./build.sh package` first unskips the package-content
   cases. These are the `1.0.1.0` release-matrix counts, not current v1.1 truth:
-  the current v1.1 working suite is Failed 0, Passed 1,493, Skipped 63, Total
-  1,556 (see the Project Status above and `docs/limitations.md` V6, which the
+  the current v1.1 working suite is Failed 0, Passed 1,494, Skipped 63, Total
+  1,557 (Failed 0, Passed 1,575, Skipped 20, Total 1,595 with the pinned native
+  SkiaSharp runtime forced; see the Project Status above and `docs/limitations.md`
+  V6, which the
   v1.1 release task refreshes). The `1.0.1.0` counts reflect the suite after the
   SEC-1 webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
 
@@ -700,11 +703,12 @@ Next tasks:
 
 - Phase 12 — Badge value allowlist and badge size/position (v1.1) tasks 12.1
   (allowlist configuration, bounds, validation, and fingerprint), 12.2
-  (allowlist resolution and renderer filtering order), and 12.3 (badge
-  size/position configuration and layout engine) are complete, and task 12.4
-  (coordinated schema/`RenderVersion` advance, golden regeneration, and
-  documentation) remains, so Gate 12 is not yet met and the `v1.1.0-phase12` tag
-  is not yet created. Task 12.1 defines the bounded per-selector allowlist (at
+  (allowlist resolution and renderer filtering order), 12.3 (badge
+  size/position configuration and layout engine), and 12.4 (coordinated
+  schema/`RenderVersion` advance, golden regeneration, and documentation) are
+  complete at the integration-test level, so Gate 12 is not yet met and the
+  `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by
+  the orchestrator). Task 12.1 defines the bounded per-selector allowlist (at
   most 32 entries per selector, each at most 64 characters, trimmed, with no
   blank or control-character entry and no case-insensitive duplicate), validates
   it at configuration load, includes a non-empty resolved allowlist in the
@@ -727,11 +731,16 @@ Next tasks:
   top-left), computes `effectiveScale = clamp(width / 1000, 0.5, 4.0) *
   sizeFactor` clamped so the badge still fits the safe area, and includes a
   non-default position or size in both the renderer configuration fingerprint and
-  the render fingerprint while keeping the V1 default identity-neutral.
-  `RendererConfiguration.CurrentSchemaVersion` is still 1,
-  `RenderVersion.CurrentRendererVersion` is still 2, and no golden under
-  `tests/ArrTags.Tests/Goldens/` was regenerated; the coordinated
-  schema/`RenderVersion` advance and golden regeneration are task 12.4.
+  the render fingerprint while the default position and size remain
+  identity-neutral relative to non-default values.
+  Task 12.4 performs the single coordinated advance
+  (`RendererConfiguration.CurrentSchemaVersion` 1 -> 2 and
+  `RenderVersion.CurrentRendererVersion` 2 -> 3, the only advanced values) and
+  regenerates the committed goldens with no writer or auto-approval path (the
+  nine default-configuration PNGs are byte-unchanged because the default
+  reproduces the V1 output while their output fingerprints change with the
+  renderer version, and four anchor/size goldens are added: `top-left`,
+  `top-right-large`, `bottom-right-small`, and `center`).
 - Phase 11 — Provider inventory cache and library-refresh-driven refresh (v1.1)
   tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
   integration and bulk reads), 11.3 (ArrTags-side invalidation), and 11.4 (Goal C

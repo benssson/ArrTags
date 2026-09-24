@@ -570,9 +570,11 @@ which is an immutable, trimmed copy. The value is bounded and validated in
 `RendererConfiguration.Validate` with secret-free messages. A non-empty resolved
 allowlist is included in `RendererConfigurationFingerprint`, which normalizes
 case and entry order so that case-only or order-only allowlist changes are
-identity-neutral; an empty allowlist means no restriction and is identity-neutral
-(so the default configuration fingerprint is unchanged). Task 12.1 does not yet
-apply the filter to rendering; the renderer filtering order is task 12.2.
+identity-neutral; an empty allowlist means no restriction and adds nothing to
+the fingerprint (identity-neutral relative to a non-empty allowlist), though the
+coordinated v1.1 schema advance still changes the default configuration
+fingerprint. Task 12.1 does not yet apply the filter to rendering; the renderer
+filtering order is task 12.2.
 
 **v1.1 task 12.3 implementation note:** `RendererConfiguration` gains the global
 `Position` (`BadgePosition`: `BottomLeft` default, `TopLeft`, `TopRight`,
@@ -591,13 +593,17 @@ top-right except when the anchor is `TopRight`, then top-left. The 24-pixel
 scaled inset and all ADR-009 safe-area, text-limit, contrast, opacity, and
 determinism guarantees are unchanged. A non-default position or size is included
 in both `RendererConfigurationFingerprint` and
-`RenderFingerprint.ComputeOutputFingerprint`; the V1 default is identity-neutral,
-so the default configuration and output fingerprints are unchanged and the
-committed goldens are unaffected. Placement and size are global only; there is
-no per-selector placement. `RendererConfiguration.CurrentSchemaVersion` is still
-1 and `RenderVersion.CurrentRendererVersion` is still 2, and no golden under
-`tests/ArrTags.Tests/Goldens/` was regenerated (the coordinated advance and
-golden regeneration are task 12.4).
+`RenderFingerprint.ComputeOutputFingerprint`; the default position and size are
+identity-neutral relative to other placement values (the default reproduces the
+V1 output, so the default PNG bytes are unchanged), but the coordinated v1.1
+version advance changes the default configuration and output fingerprints.
+Placement and size are global only; there is no per-selector placement. The v1.1
+allowlist and placement changes share one
+coordinated advance: `RendererConfiguration.CurrentSchemaVersion` advanced from 1
+to 2 and `RenderVersion.CurrentRendererVersion` advanced from 2 to 3, and the
+committed goldens were regenerated with no writer or auto-approval path (the nine
+default-configuration PNGs are byte-unchanged while their output fingerprints
+advance with the renderer version, and anchor/size goldens were added).
 
 **Phase 5 implementation note:** The task 5.8
 `ArtworkGenerationCoordinator` composes the 3.7-3.8 request/result with the
@@ -921,10 +927,11 @@ a control-character entry, or a duplicate after case-insensitive comparison, wit
 bounded secret-free messages; the validator never includes a configured allowlist
 value. The resolved `BadgeDefinition` carries the allowlist, and a non-empty
 resolved allowlist is included in the renderer configuration fingerprint
-(case- and order-normalized); an empty allowlist is identity-neutral, so the
-default configuration fingerprint is unchanged. The value is provider-neutral and
-never references a provider DTO path, record identifier, quality profile,
-credential, or extension value.
+(case- and order-normalized); an empty allowlist adds nothing to the fingerprint
+(identity-neutral relative to a non-empty allowlist), though the coordinated v1.1
+schema advance still changes the default configuration fingerprint. The value is
+provider-neutral and never references a provider DTO path, record identifier,
+quality profile, credential, or extension value.
 
 **Badge position and size (v1.1 task 12.3).** `RendererConfiguration` gains the
 global `Position` and `Size` enums (ADR-019). They are persisted in the XML
@@ -936,12 +943,17 @@ rejects an undefined enum value with a bounded, secret-free message, and the
 resolver carries the value onto the resolved `RenderOutputPolicy` (defaulting a
 tolerantly read undefined value). The value is output-affecting: a non-default
 position or size is included in both the renderer configuration fingerprint and
-the render fingerprint, while the V1 default is identity-neutral so an unchanged
-configuration keeps the V1 identity. Placement and size are global renderer
-policy only; they are not per selector. `RendererConfiguration.CurrentSchemaVersion`
-is still 1 and `RenderVersion.CurrentRendererVersion` is still 2, and the
-committed goldens were not regenerated (the coordinated advance and golden
-regeneration are task 12.4).
+the render fingerprint, while the default position and size are identity-neutral
+relative to other placement values (the default reproduces the V1 output, so its
+PNG bytes are unchanged), but the coordinated v1.1 version advance changes the
+default configuration and output fingerprints. Placement and size are global
+renderer policy only; they are not per selector. The v1.1 allowlist and placement
+changes share one coordinated advance: `RendererConfiguration.CurrentSchemaVersion`
+advanced from 1 to 2 and `RenderVersion.CurrentRendererVersion` advanced from 2 to
+3, and the committed goldens were regenerated with no writer or auto-approval
+path (the nine default-configuration PNGs are byte-unchanged while their output
+fingerprints advance with the renderer version, and anchor/size goldens were
+added).
 
 **Runtime activation (task 9.3).** The persisted `PluginConfiguration` is the
 candidate supplied to `Plugin.UpdateConfiguration`. The override validates the

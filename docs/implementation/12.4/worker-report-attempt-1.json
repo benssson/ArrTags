@@ -1,0 +1,51 @@
+{
+  "task": "12.4",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented v1.1 Phase 12 task 12.4 (ADR-017 clause 6 and ADR-019 clause 6): the single coordinated output-affecting version advance, the committed-golden regeneration with no writer/auto-approval path, new anchor/size goldens, and the Goal B/E documentation reconciliation. `RendererConfiguration.CurrentSchemaVersion` advanced from 1 to 2 and `RenderVersion.CurrentRendererVersion` advanced from 2 to 3; these are the only advanced version values (`RenderVersion.CurrentBadgeSchemaVersion` stays 2, owned by `BadgeMetadata.CurrentSchemaVersion`). The nine existing default-configuration goldens (BottomLeft/Medium/empty allowlist) keep byte-identical PNGs (git shows no modification to any existing PNG; their OutputHash values in the manifest are unchanged) because the default reproduces the V1 output, while their OutputFingerprint values change with the renderer version. Four new anchor/size goldens with PNGs and manifest entries were added: `top-left` (TopLeft/Medium), `top-right-large` (TopRight/Large with the status pill moved top-left), `bottom-right-small` (BottomRight/Small), and `center` (Center/Medium). Regeneration was performed by a throwaway test-class generator (writes only when ARRTAGS_GOLDEN_REGEN_DIR is set) that was deleted and the project rebuilt before completion, so the committed test code remains read-only over the goldens (no File.Write* to the Goldens directory and no auto-update/auto-approve flag); RenderGoldenTests still fails closed on any golden or render change. A non-native test pins the single coordinated advance, and the existing native byte-determinism fact now also renders a non-default placement case repeatedly (no new default skip). The existing fingerprint tests already cover position/size/allowlist sensitivity. Documentation updated: docs/architecture.md section 9 and its status line, docs/data-model.md 3.6/3.12, README.md, docs/decisions.md (ADR-019 plus the ADR-009/ADR-010 supersession notes), PLANS.md (12.4 checkbox/status, Phase 12 milestone row, Project Status), docs/changelog.md (Task 12.4 entry and Phase 12 status), and the current-state surfaces docs/project-status.md, docs/implementation-readiness.md, and docs/limitations.md V6 with the exact post-task suite counts. Gate 12 is not claimed met and the v1.1.0-phase12 tag was not created.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1494, Skipped 63, Total 1557 (pre-task baseline Failed 0, Passed 1493, Skipped 63, Total 1556; +1 passed, +1 total, 0 new skips).",
+    "Forced-native full suite: ARRTAGS_SKIA_COMPAT=1 with SYSROOT=/tmp/arrtags-skia-probe/sysroot, LD_LIBRARY_PATH including the pinned /tmp/arrtags-host-dl/host/jellyfin libSkiaSharp.so, FONTCONFIG_PATH, XDG_DATA_DIRS, XDG_CACHE_HOME -> dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release -> Failed 0, Passed 1575, Skipped 20, Total 1595 (pre-task baseline Failed 0, Passed 1566, Skipped 20, Total 1586; +9 passed, +9 total). The 20 skips are the pinned-host guards (ARRTAGS_JELLYFIN_HOST_DIR unset: PluginDiscoveryHostTests 2, ConfigurationRoundTripTests 1, DashboardSettingsPageTests 2, JellyfinImageRouteTests 5, JellyfinImageResponseTests 9) plus the pre-existing non-canonical cross-runtime golden set (RendererCrossRuntimeTests 1).",
+    "Forced-native pre-change golden baseline: dotnet test ... --filter FullyQualifiedName~RenderGoldenTests -> Failed 0, Passed 11, Skipped 0, Total 11. Post-change focused filter (RenderGoldenTests + RendererCrossRuntimeTests + RenderDeterminismTests): Failed 0, Passed 35, Skipped 1, Total 36 (15 golden cases [13 theory rows + 2 facts] + 15 canonical cross-runtime cases + 5 determinism cases passed; 1 pre-existing non-canonical cross-runtime skip).",
+    "Version constants confirmed by grep: src/ArrTags/Configuration/RendererConfiguration.cs:34 CurrentSchemaVersion = 2; src/ArrTags/Rendering/RenderVersion.cs:23 CurrentRendererVersion = 3; RenderVersion.CurrentBadgeSchemaVersion stays 2 (BadgeMetadata.CurrentSchemaVersion).",
+    "Default-PNG-unchanged confirmed: git status --short tests/ArrTags.Tests/Goldens/ lists only M manifest.json and the four new untracked PNGs; no existing PNG is modified, and the nine existing manifest OutputHash values are unchanged.",
+    "No-writer-path confirmed: grep for File.Write in RenderGoldenFixtures.cs/RenderGoldenTests.cs/RendererCrossRuntimeTests.cs -> no matches; the throwaway GoldenRegenerator.cs was deleted and the project rebuilt (build succeeded with it absent).",
+    "git diff inspection: all changed paths are task-scoped; the only pre-existing working-tree modification not made by this task is docs/implementation/orchestrator-sessions/ses_f2ceb81bbffeETLMm2sVKrNn1n.json."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/RendererConfiguration.cs",
+    "src/ArrTags/Rendering/RenderVersion.cs",
+    "tests/ArrTags.Tests/Goldens/manifest.json",
+    "tests/ArrTags.Tests/Goldens/top-left.png",
+    "tests/ArrTags.Tests/Goldens/top-right-large.png",
+    "tests/ArrTags.Tests/Goldens/bottom-right-small.png",
+    "tests/ArrTags.Tests/Goldens/center.png",
+    "tests/ArrTags.Tests/RenderGoldenFixtures.cs",
+    "tests/ArrTags.Tests/RenderDeterminismTests.cs",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs",
+    "docs/architecture.md",
+    "docs/data-model.md",
+    "docs/decisions.md",
+    "docs/changelog.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/project-status.md",
+    "README.md",
+    "PLANS.md",
+    "docs/implementation/12.4/worker-report.json"
+  ],
+  "known_limitations": [
+    "The throwaway golden generator wrote the four new PNGs and the manifest before being deleted; it is not part of the final diff, but it means the committed goldens were produced by a one-off process rather than a reproducible in-repo command. The no-writer/auto-approval property of the shipped tests is preserved and independently verifiable (grep for File.Write in the golden test code).",
+    "The new anchor/size goldens are produced and compared on the pinned canonical SkiaSharp runtime only. The non-canonical cross-runtime set (Goldens/non-canonical) is absent, so the tolerant cross-runtime comparison remains an honest skip (RendererCrossRuntimeTests 1) as it was before this task; this is pre-existing and recorded in docs/limitations.md V2.",
+    "The v1.1 allowlist and placement behavior is verified at the integration-test and forced-native golden level; the live pinned-host end-to-end confirmation is not part of this task and is owned by task 14.3.",
+    "The ADR-019 status-line implementation note and the ADR-009/ADR-010 supersession-note wording are documentation wording decisions made under this task; they are accurate to the shipped state and traceable but were not separately reviewed before this report.",
+    "docs/implementation/orchestrator-sessions/ses_f2ceb81bbffeETLMm2sVKrNn1n.json was already modified in the working tree before this task started and was not touched by it."
+  ],
+  "ready_for_next_task": true
+}
