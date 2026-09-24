@@ -3,7 +3,7 @@
   "title": "Badge size/position configuration and layout engine",
   "phase": 12,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "b8ed851",
   "subagents": [
     {
       "role": "implementation-worker",
