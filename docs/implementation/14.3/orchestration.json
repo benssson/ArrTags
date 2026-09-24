@@ -1,0 +1,54 @@
+{
+  "task": "14.3",
+  "title": "Live pinned-host verification",
+  "phase": "14",
+  "subagents": [
+    {
+      "role": "live-host-verifier",
+      "attempt": 1,
+      "outcome": "VERIFIED",
+      "execution": {
+        "agent": "live-host-verifier",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 410777,
+        "output_tokens": 50130,
+        "reasoning_tokens": 52636,
+        "cache_read_tokens": 17205760,
+        "cache_write_tokens": 0,
+        "total_tokens": 17719303,
+        "cost_usd": 0.17489343,
+        "duration_seconds": 1620,
+        "session_id": "ses_f2b5f2effffe5oMFqhcLQWXAzu"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 94285,
+        "output_tokens": 7323,
+        "reasoning_tokens": 15858,
+        "cache_read_tokens": 1474176,
+        "cache_write_tokens": 0,
+        "total_tokens": 1591642,
+        "cost_usd": 0.032473878,
+        "duration_seconds": 489,
+        "session_id": "ses_f2b45dddbffexuTk1WjBQNiGHK"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "The live-host-verifier provisioned a fresh pinned Jellyfin 12.0.0 amd64-musl host (/tmp/arrtags-14.3; the cached server archive /tmp/arrtags-host-dl/jellyfin_12.0.tar.gz was reused to skip the ~119 MB download), installed artifacts/ArrTags_1.1.0.0.zip, and ran the v1.1 matrix. It also completed the startup wizard and created a throwaway local admin to authenticate the elevation-gated calls; the plugin was configured only through the elevation-gated PluginsController POST path.",
+    "All eight matrix rows passed: L1 install/load (1.1.0.0, targetAbi 12.0.0.0, no plugin-folder SkiaSharp, 0 [FTL]); L2 settings page served anonymously + elevation-gated GET/POST (anonymous save 401); L3 runtime activation without restart; L4 post-save re-render with a Renderer.Position/Size change (item tags and served bytes changed, no restart); L5 ADR-021 rejection entry (exactly +1 bounded, secret-free ArrTagsConfigurationRejected Warning entry, candidate not persisted, no entry for a valid save); L6 inventory cache (one /api/v3/movie and one /api/v3/series per reconciliation window with 3 work items; post-save and library-refresh invalidations force fresh reads); L7 configurable log verbosity (Warning 0 / Information 4 / Off 0 lines, applied without restart, secret-free); L8 invariants (image-route readback == ActiveImageIdentity, source media byte-unchanged, provider outage safe with 10/10 HTTP 200 and stale state, clean restart/uninstall drain).",
+    "This is the first live confirmation of the ADR-021 IActivityManager/ActivityLog path (Phase 9 finding P9-F1), and it discharges the live confirmations for Goals A (settings page/runtime activation/post-save re-render), C (inventory cache), and F (logging verbosity) owned by task 14.3.",
+    "Findings: F-14.3-1 LOW (testing doc did not previously warn that SaveLocalMetadata=true has the host rewrite media sidecars; the finding is addressed by the appended docs/testing/jellyfin-12-musl-test-host.md v1.1 section), F-14.3-2/3/4 INFORMATIONAL (documented OwnershipLost fail-closed behavior; two pre-existing pinned-host [ERR] lines; the host-managed ArrTags.xml retained across uninstall). The independent implementation review additionally noted informational points: Goal B (allowlist) is not exercised live (outside the task's Goals A/C/F traceability), the L7/L8 verbosity-reset row ordering is a minor reproducibility gap, and a wording clarification about the throwaway admin password. No BLOCKER/HIGH.",
+    "Scope: the only tracked-file change is the docs/testing/jellyfin-12-musl-test-host.md v1.1 appendix; the two result files are new under docs/implementation/14.3/. No product code, test, build metadata, manifest, or release artifact changed; no git commit/tag was created; no secret was written into the repository.",
+    "Runtime figures are authoritative from the OpenCode session usage endpoint (.opencode/scripts/collect-session-usage.sh); no values were estimated."
+  ]
+}

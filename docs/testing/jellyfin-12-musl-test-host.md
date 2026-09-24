@@ -231,3 +231,73 @@ standard image route serves the published bytes matching the persisted
 metadata republishes and unchanged metadata does not, and a provider outage
 leaves the host up with the current artwork unchanged. See `PLANS.md` task 7.8,
 `docs/decisions.md` ADR-015, and `docs/implementation/7.8/worker-report.json`.
+
+## v1.1 live matrix (Phase 14 task 14.3)
+
+Task 14.3 re-ran the pinned-host end-to-end verification for the v1.1 release
+candidate (`artifacts/ArrTags_1.1.0.0.zip`, 594,931 bytes, SHA-256
+`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`) against a
+fresh prefix (`/tmp/arrtags-14.3`). The machine-readable matrix is
+`docs/implementation/14.3/live-verification.json`; the completion report is
+`docs/implementation/14.3/worker-report.json`. The V1 sections above remain the
+record for Phase 7.
+
+The v1.1 matrix adds the Goal A/F/C settings-page, runtime-activation, post-save
+re-render, configuration-rejection activity-log, inventory-cache, and logging
+checks on top of the Phase 7 install/load, publication, source-preservation,
+outage, restart, and uninstall checks. Reuse the task 7.3/7.8 reproduction as the
+base and add the following.
+
+### v1.1 procedure additions
+
+1. Complete the startup wizard. `GET /Startup/User` creates the default first
+   user; `POST /Startup/User` then sets the name/password (posting `User` before
+   the `GET` returns `404` on this host), followed by `POST /Startup/Configuration`,
+   `POST /Startup/RemoteAccess`, and `POST /Startup/Complete`.
+2. Authenticate as the admin. On Jellyfin 12 the client header is
+   `Authorization: MediaBrowser Client="...", Device="...", DeviceId="...", Version="..."`
+   (not `X-Emby-Authorization`); `POST /Users/AuthenticateByName` with the
+   `Username`/`Pw` body returns the access token.
+3. The dashboard page routes are `GET /web/ConfigurationPage?name=ArrTags`
+   (anonymous static resource) and `GET /web/ConfigurationPages`
+   (elevation-gated). The configuration round-trip is `GET`/`POST
+   /Plugins/40322d52-5680-449f-b33e-e01836ee2f46/Configuration`; an anonymous
+   save is rejected with `401`.
+4. Add the libraries with `EnableInternetProviders=false` **and
+   `SaveLocalMetadata=false`**. `SaveLocalMetadata=true` makes Jellyfin's own
+   local image saver rewrite the media folder (it writes the published badge as
+   `folder.png`/`-thumb.png` and removes the original `poster.jpg`/`S01E01.jpg`
+   sidecars), which invalidates the source-preservation check. This is host
+   behavior, not ArrTags behavior, but it must stay disabled for the check to be
+   meaningful.
+5. Exercise the v1.1 rows: settings page load/save through the elevation-gated
+   path; a valid save applying at runtime with no restart; a post-save re-render
+   after a `Renderer.Position`/`Renderer.Size` change; the ADR-021 rejection
+   (`POST` an invalid candidate such as `Sonarr.BaseUrl="not-a-url"`, then
+   `GET /System/ActivityLog/Entries` and confirm exactly one bounded, secret-free
+   Warning entry of Type `ArrTagsConfigurationRejected` and none for a valid
+   save); inventory-cache counts in the mock request log (one `/api/v3/movie`
+   and one `/api/v3/series` per reconciliation window with multiple work items);
+   and configurable log verbosity observed in the host log at `Warning`,
+   `Information`, and `Off` with no restart.
+
+### v1.1 result
+
+The v1.1 matrix passed: the `1.1.0.0` package installs and loads (`targetAbi`
+`12.0.0.0`, no plugin-folder SkiaSharp, `0 [FTL]`), the settings page loads and
+saves only through the elevation-gated path, a valid save activates at runtime
+and re-renders existing posters without a restart, a rejected save writes
+exactly one bounded secret-free activity-log entry and is not persisted, the
+provider inventory cache serves one library read per connection per
+reconciliation window and is invalidated by the post-save and library-refresh
+triggers, the configurable log verbosity is honored and secret-free, and the
+image-route readback equals `ActiveImageIdentity` with the original source
+artwork byte-unchanged, a safe provider outage, and a clean
+install/restart/uninstall.
+
+One documented fail-closed observation: a full library scan that re-adopts the
+local sidecar poster as the Primary image is detected as `OwnershipLost`, and
+ArrTags then intentionally does not auto-republish (see `docs/data-model.md`
+section 3.10.4 and `docs/architecture.md`); the readback serves the host image
+until an explicit administrative action starts a new session. See findings
+F-14.3-1 through F-14.3-4 in `docs/implementation/14.3/live-verification.json`.

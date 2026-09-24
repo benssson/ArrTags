@@ -1,0 +1,150 @@
+{
+  "task": "14.3",
+  "release": "v1.1.0",
+  "package": {
+    "path": "artifacts/ArrTags_1.1.0.0.zip",
+    "version": "1.1.0.0",
+    "sha256": "85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1",
+    "md5": "547beb2f7d83cd256d3a3ce7bb7e7620",
+    "bytes": 594931,
+    "entries": 7,
+    "identity_matches": "docs/release/build-and-release.md (594,931 bytes; SHA-256 85730fe7...; MD5 547beb2f...)"
+  },
+  "host": {
+    "version": "12.0.0",
+    "product": "Jellyfin Server (Jellyfin.Server 12.0.0.0)",
+    "prefix": "/tmp/arrtags-14.3",
+    "runtime": "amd64-musl",
+    "base_url": "http://127.0.0.1:8096",
+    "provision": "scripts/provision-jellyfin-test-host.sh /tmp/arrtags-14.3 (server archive pre-extracted from the cached /tmp/arrtags-host-dl/jellyfin_12.0.tar.gz so the ~119 MB download was skipped)",
+    "plugin_install_path": "/tmp/arrtags-14.3/data/plugins/ArrTags_1.1.0.0"
+  },
+  "started_utc": "2026-09-24T18:16:00Z",
+  "finished_utc": "2026-09-24T18:38:42Z",
+  "matrix": [
+    {
+      "id": "L1",
+      "goal": "install/load",
+      "description": "Install artifacts/ArrTags_1.1.0.0.zip into the versioned plugin folder, start the pinned host, confirm discovery/load, version, targetAbi, no plugin-folder SkiaSharp load, and no fatal log entries.",
+      "command": "mkdir -p /tmp/arrtags-14.3/data/plugins/ArrTags_1.1.0.0 && unzip -q artifacts/ArrTags_1.1.0.0.zip -d /tmp/arrtags-14.3/data/plugins/ArrTags_1.1.0.0 && scripts/provision-jellyfin-test-host.sh /tmp/arrtags-14.3; grep -E 'Loaded plugin|Loaded assembly|\\[ERR\\]|\\[FTL\\]' /tmp/arrtags-14.3/console.log; cat /tmp/arrtags-14.3/data/plugins/ArrTags_1.1.0.0/meta.json",
+      "observed": "Installed file tree: ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt (7 files). Console: 'Loaded assembly ArrTags, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null from /tmp/arrtags-14.3/data/plugins/ArrTags_1.1.0.0/ArrTags.dll' and 'Loaded plugin: ArrTags 1.1.0.0'. meta.json: version=1.1.0.0, targetAbi=12.0.0.0, status=Active, guid=40322d52-5680-449f-b33e-e01836ee2f46. Plugin-folder SkiaSharp.dll/libSkiaSharp.so files: 0. 'Loaded assembly SkiaSharp' lines: 0. [FTL]: 0. [ERR]: 2, both host-internal and pre-existing (a cancelled-library-scan OperationCanceledException in LimitedConcurrencyLibraryScheduler, and CollectionFolderMetadataService/SkiaSharp.HarfBuzz SKShaper 'typeface' null for the generated collection-folder collage); no ArrTags [ERR].",
+      "verdict": "PASS"
+    },
+    {
+      "id": "L2",
+      "goal": "A",
+      "description": "Settings page resource served; elevation-gated GET/POST /Plugins/{guid}/Configuration; anonymous save rejected.",
+      "command": "curl anon 'http://127.0.0.1:8096/web/ConfigurationPage?name=ArrTags'; curl anon 'http://127.0.0.1:8096/web/ConfigurationPages'; curl anon 'http://127.0.0.1:8096/Plugins/40322d52-5680-449f-b33e-e01836ee2f46/Configuration'; curl -X POST anon .../Configuration; then the same with -H 'Authorization: MediaBrowser Token=\"<admin-token>\"'",
+      "observed": "anon GET /web/ConfigurationPage?name=ArrTags -> HTTP 200 Content-Type text/html; charset=UTF-8, 37,180 bytes (page embeds pluginId 40322d52-5680-449f-b33e-e01836ee2f46). anon GET /web/ConfigurationPages -> 401. anon GET /Plugins/{guid}/Configuration -> 401. anon POST /Plugins/{guid}/Configuration -> 401. admin GET /Plugins -> [{\"Name\":\"ArrTags\",\"Version\":\"1.1.0.0\",\"Status\":\"Active\"}]. admin GET /web/ConfigurationPages -> [{\"Name\":\"ArrTags\",\"EnableInMainMenu\":false,\"DisplayName\":\"ArrTags\",\"PluginId\":\"40322d525680449fb33ee01836ee2f46\"}]. admin GET config -> 200 JSON (defaults: Sonarr.Enabled=false, Radarr.Enabled=false, LogVerbosity=Warning, Renderer={Selectors:[],Position:BottomLeft,Size:Medium}). admin POST valid config -> 204.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "L3",
+      "goal": "A",
+      "description": "Runtime activation without a host restart: a valid save enables both providers and is applied to the running plugin immediately.",
+      "command": "curl -sS -X POST -H 'Authorization: MediaBrowser Token=\"<admin-token>\"' -H 'Content-Type: application/json' --data-binary @config-valid.json 'http://127.0.0.1:8096/Plugins/40322d52-5680-449f-b33e-e01836ee2f46/Configuration'; then POST /ScheduledTasks/Running/0e96fc3004bcd22db45dd641e63e2666 and read /tmp/final-review/live-host/mock.log",
+      "observed": "HTTP 204; persisted /tmp/arrtags-14.3/data/plugins/configurations/ArrTags.xml now carries <Enabled>true</Enabled> and the Sonarr/Radarr base URLs. With no restart, the post-save bounded reconciliation (Reconciliation (PostSave)) immediately read both providers: GET /api/v3/series, GET /api/v3/movie, GET /api/v3/moviefile?movieId=1, GET /api/v3/episode?seriesId=1&includeEpisodeFile=true, GET /api/v3/episode?seriesId=2&includeEpisodeFile=true, GET /api/v3/episodeFile?episodeFileIds=201. Log verbosity was also changed at runtime with no restart (see L7). Host startup count stayed 1.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "L4",
+      "goal": "A",
+      "description": "Post-save re-render: a valid save with a changed badge option re-renders existing posters without a restart.",
+      "command": "curl -sS -X POST ... --data-binary @config-render-change.json (Renderer.Position=TopRight, Renderer.Size=Large); compare GET /Items/{id}/Images/Primary before/after and item ImageTags.Primary",
+      "observed": "First publication (default config): movie tag 4eaebb1e4251b30a6745068569942bce / served 5,971 bytes SHA-256 85f12abb8db0f26618e45401d2481196be0f62bd4686ea2a668f53338772c5db == ActiveImageIdentity; episode tag e30720eb20375d080cae02c2ce3b13d6 / served 8,220 bytes SHA-256 71050c945b12a339ca137ad37bb70b22501f863b185e85decc96e0014394f470 == ActiveImageIdentity. After POST 204 of Position=TopRight/Size=Large (no restart): movie tag -> a6ac44e87d8386a7f3715eff78eaf0b3, served -> 7,952 bytes SHA-256 0a834c3594e1032b49fb97486ea6181ac0d4ce6659472c04926e5a871f132acf; episode tag -> 20142a17a17a91c195d0fae4375dceb0, served -> 6,626 bytes SHA-256 445735fb828ae6971251cd7b9f2be542d788739f2b9ef5501cc0694a60421756. The post-save reconciliation ran the provider reads and both posters re-rendered with the new settings.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "L5",
+      "goal": "ADR-021",
+      "description": "A rejected configuration save writes exactly one bounded, secret-free administrator-visible activity-log entry (Type ArrTagsConfigurationRejected, Severity Warning); a valid save writes none. The rejected candidate is not persisted and the last valid config stays active.",
+      "command": "curl -X POST ... --data-binary @config-invalid.json (Sonarr.BaseUrl=\"not-a-url\"); curl -H 'Authorization: MediaBrowser Token=\"<admin-token>\"' 'http://127.0.0.1:8096/System/ActivityLog/Entries?startIndex=0&limit=100'; sha256sum /tmp/arrtags-14.3/data/plugins/configurations/ArrTags.xml",
+      "observed": "POST invalid candidate -> HTTP 204 (host save path semantics). Activity-log TotalRecordCount 3 -> 4 (exactly +1). Newest entry: {Name:\"ArrTags configuration rejected\" (30 chars), Type:\"ArrTagsConfigurationRejected\" (28 chars), Overview:\"The saved ArrTags configuration was rejected; the last valid configuration remains active. Reasons: Sonarr base URL must be an absolute http or https URL.\" (154 chars), ShortOverview:\"ArrTags configuration rejected (1 validation error(s)): Sonarr base URL must be an absolute http or https URL.\" (110 chars), UserId:\"00000000000000000000000000000000\", Severity:\"Warning\"}. Field lengths are within the ActivityLog bounds (Name/Overview/ShortOverview <= 512, Type <= 256). Candidate value/secret leak check (regex 'not-a-url|radarrkey123|sonarrkey456|arrtagsverify1' over Name+Type+Overview+ShortOverview): 0 matches. Persisted ArrTags.xml SHA-256 6e72445c7f25d896d6664f8b1a019ef34d5f7983ebc0ccfaf55dbb25fba7b9d0 was unchanged (candidate not persisted; last valid Position=TopRight retained). A subsequent valid save returned 204 and left the activity count at 4 (no entry).",
+      "verdict": "PASS"
+    },
+    {
+      "id": "L6",
+      "goal": "C",
+      "description": "Provider inventory cache: one provider library read per connection serves a reconciliation window with multiple work items; an ArrTags-side invalidation causes a fresh read.",
+      "command": "POST /ScheduledTasks/Running/0e96fc3004bcd22db45dd641e63e2666 (manual reconciliation); count /api/v3/movie and /api/v3/series lines in /tmp/final-review/live-host/mock.log for the window; POST /Library/Refresh and post-save saves for invalidation",
+      "observed": "Window with 3 eligible work items (2 Jellyfin movies + 1 episode): GET /api/v3/movie count = 1 and GET /api/v3/series count = 1 (not one per work item); per-record resources were GET /api/v3/moviefile?movieId=1 and GET /api/v3/episodeFile?episodeFileIds=201 (the second movie has hasFile=false). This held across the post-save window (L3/L4) and the manual window. Invalidation side: every reconciliation discards the retained observation sets (LibraryReconciliationService.InvalidateInventory), and the post-save (POST save) and library-refresh (POST /Library/Refresh) windows each produced fresh /api/v3/movie and /api/v3/series reads.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "L7",
+      "goal": "F",
+      "description": "Configurable log verbosity through the host pipeline, applied without restart, and secret-free.",
+      "command": "POST LogVerbosity=Warning|Information|Off via /Plugins/{guid}/Configuration, then POST the reconciliation task and count new 'ArrTags.' lines in /tmp/arrtags-14.3/console.log; grep for radarrkey123/sonarrkey456/arrtagsverify1 over console.log and log/",
+      "observed": "Warning: 0 new ArrTags log lines. Information: 4 new lines, e.g. '[INF] ArrTags.Reconciliation.LibraryReconciliationService: Reconciliation (Scheduled) Completed: inspected 3, eligible 3, enqueued 3. The bounded reconciliation completed.' and MetadataReconciliationProcessor / ArtworkGenerationCoordinator lines. Off: 0 new lines. All toggles took effect with no host restart (host startups in console.log = 1) and GET /System/Info/Public stayed HTTP 200. Secret scan over console.log and the log directory: 0 occurrences of the mock API keys or the local test admin password. Log templates carry only the item GUID and bounded counts (no paths, credentials, or provider payloads).",
+      "verdict": "PASS"
+    },
+    {
+      "id": "L8",
+      "goal": "invariants",
+      "description": "Image-route readback == persisted ActiveImageIdentity; original source artwork byte-unchanged; provider outage leaves the host up with artwork unchanged; install/restart/uninstall is clean.",
+      "command": "curl 'http://127.0.0.1:8096/Items/{id}/Images/Primary' | sha256sum; sha256sum the media sidecars/nfo; touch fixtures/{radarr,sonarr}/failure + reconcile; scripts/provision-jellyfin-test-host.sh restart; curl -X DELETE 'http://127.0.0.1:8096/Plugins/40322d52-5680-449f-b33e-e01836ee2f46/1.1.0.0'",
+      "observed": "Readback after a fresh publication (config Position=BottomRight): movie served 5,988 bytes SHA-256 e7e1a22cad8d356c8b6a541343e0980382d9890b28177229c386cb466f5bc896 == ActiveImageIdentity e7e1a22c...; episode served 8,210 bytes SHA-256 5c926d777774614b4f2a82a21d3227bdb3b8585f57a8ad509e8a786f1208ef7c == ActiveImageIdentity 5c926d77.... Source preservation: media/movies/ArrTagsTestMovie2020/poster.jpg SHA-256 93237bc3446150da0ce7d6c26aaa5b03da9c4f757e1babbabf6f2b08bbdf138a, media/tv/ArrTagsTestShow/Season 01/ArrTagsTestShow.S01E01.jpg SHA-256 cf4c625e497e5005976e9c685a593aaf6f4d7f93eb6f9fc8b4748704843e1edc and the three .nfo files were byte-identical before and after publication (the persisted SourceArtifactId equalled each original poster hash). Provider outage (radarr/failure + sonarr/failure -> both 503): host answered 10/10 HTTP 200 polls, the served movie/episode bytes and image tags were unchanged, all three metadata-state records became State=1 (stale) with no LastError, no [FTL], and only bounded WRN provider-unavailable lines. Restart with the plugin installed: exactly 1 'Loaded plugin: ArrTags 1.1.0.0', both artwork-state records preserved, no [ERR]/[FTL], and the image route still matched ActiveImageIdentity. Uninstall via DELETE /Plugins/{guid}/1.1.0.0 -> 204: the versioned install folder and the relocated state root /tmp/arrtags-14.3/data/ArrTags were removed after the bounded drain; a clean restart logged 0 'Loaded plugin: ArrTags', 1 'Startup complete', 0 [FTL] and 0 ArrTags [ERR]. Observed limitation: a host-side image replacement (a POST /Library/Refresh full scan re-adopting the local sidecar) is detected as OwnershipLost (artwork-state State=2, LastOwnershipObservation.Status=1 'The active image content hash changed.'); ArrTags then fails closed and does not auto-republish, per docs/data-model.md 3.10.4 and docs/architecture.md; the readback then serves the host image until an explicit administrative action starts a new session.",
+      "verdict": "PASS"
+    }
+  ],
+  "overall_verdict": "PASS",
+  "findings": [
+    {
+      "id": "F-14.3-1",
+      "severity": "LOW",
+      "area": "testing documentation",
+      "description": "The documented library-setup step says to disable the remote metadata/image fetchers but does not state that SaveLocalMetadata must remain disabled. Enabling SaveLocalMetadata=true makes Jellyfin's own local image saver rewrite the media folder (the badge is written as folder.png/-thumb.png and the original poster.jpg/S01E01.jpg sidecars are removed), which invalidates the source-preservation check. This is host behavior, not ArrTags behavior; the ArrTags SourceArtifactId still recorded the original poster hash at capture time.",
+      "evidence": [
+        "With SaveLocalMetadata=true: movie folder gained folder.png (7,952 bytes = the published badge) and backdrop.jpg, and poster.jpg was removed; the episode folder gained ArrTagsTestShow.S01E01-thumb.png (6,626 bytes = the published badge) and S01E01.jpg was removed.",
+        "With SaveLocalMetadata=false: poster.jpg, S01E01.jpg and all three .nfo files were byte-identical before and after publication."
+      ],
+      "recommended_action": "Add an explicit note to docs/testing/jellyfin-12-musl-test-host.md that SaveLocalMetadata must stay false for the source-preservation check."
+    },
+    {
+      "id": "F-14.3-2",
+      "severity": "INFORMATIONAL",
+      "area": "ownership",
+      "description": "After a full library scan re-adopted the local sidecar poster as the item Primary image, ArrTags observed the changed active-image identity, transitioned the artwork-state to OwnershipLost (State=2), and (by design) blocked automatic publication, so subsequent reconciliations did not re-assert the badge. This is the documented fail-closed decision (docs/data-model.md 3.10.4; docs/architecture.md lines 847-937); it is not a defect.",
+      "evidence": [
+        "artwork-state movie State=2, LastOwnershipObservation {Status:1, Reason:'The active image content hash changed.', Observed.ContentSha256:93237BC3...}",
+        "ArtworkRegenerationPlanner.IsPublicationBlocked returns true for OwnershipLost and the planner then Skips.",
+        "docs/data-model.md: 'Published' + current identity differs -> OwnershipLost -> 'Do not publish, restore, or remove automatically.'"
+      ],
+      "recommended_action": "None required; the behavior is intentional. An operator would start a new session through an explicit administrative action."
+    },
+    {
+      "id": "F-14.3-3",
+      "severity": "INFORMATIONAL",
+      "area": "host environment",
+      "description": "Two [ERR] lines appeared in the host console during the run; both are pre-existing host/internal conditions unrelated to ArrTags (0 [FTL]). One is an OperationCanceledException from a cancelled library scan; the other is the known CollectionFolderMetadataService dynamic-image 'typeface' null in SkiaSharp.HarfBuzz on this musl host (no usable system font for the generated collection-folder collage).",
+      "evidence": [
+        "[ERR] LimitedConcurrencyLibraryScheduler: Error while performing a library operation / System.OperationCanceledException",
+        "[ERR] CollectionFolderMetadataService: Error in Dynamic Image Provider for .../root/default/ArrTags Movies / System.ArgumentNullException: Value cannot be null. (Parameter 'typeface') at SkiaSharp.HarfBuzz.SKShaper..ctor"
+      ],
+      "recommended_action": "None required; documented as a pre-existing pinned-host condition (also recorded by task 7.3/7.8)."
+    },
+    {
+      "id": "F-14.3-4",
+      "severity": "INFORMATIONAL",
+      "area": "uninstall",
+      "description": "Uninstall removed the versioned install folder and the plugin-owned relocated state root (the bounded drain completed), but data/plugins/configurations/ArrTags.xml remains. That file is managed by the host PluginConfigurationManager and is retained across reinstall; it is not unmanaged plugin work.",
+      "evidence": [
+        "After DELETE /Plugins/{guid}/1.1.0.0 -> 204: plugin folder=no, state_root=no, config=yes; clean restart 0 loads."
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "notes": [
+    "Artifact identity was verified before install: 594,931 bytes, SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, MD5 547beb2f7d83cd256d3a3ce7bb7e7620, 7 entries, identical to docs/release/build-and-release.md.",
+    "The first provisioning attempt used the documented script with the cached host archive pre-extracted, avoiding the ~119 MB download. The plugin config was written only through the elevation-gated PluginsController POST path; the plugin was never configured by hand-editing ArrTags.xml.",
+    "The mock Arr fixture (scripts/mock-arr-fixture.cs + scripts/mock-arr-fixtures/) was run with the documented keys; for the outage test the fixture directory was copied to the verifier temp area so no committed file was added or modified.",
+    "The wizard was completed and a throwaway local admin (user 'arrtagsadmin') was created to authenticate the elevation-gated calls; the password is not recorded in the repository and is not present in any host log.",
+    "The repository working tree contained no tracked changes before this task's report files were created (git status --short was empty), and no release artifact, tracked file, or plugin was modified to make any step pass.",
+    "An initial setup iteration enabled SaveLocalMetadata=true on the libraries, which caused the host (not ArrTags) to rewrite the media sidecars; the run was reset to a fresh prefix with SaveLocalMetadata=false. See F-14.3-1.",
+    "ADR-021 live-verified: the IActivityManager/ActivityLog host ABI path produced exactly one bounded, secret-free Warning entry for a rejected save and none for a valid save."
+  ],
+  "artifacts_created": [
+    "docs/implementation/14.3/live-verification.json",
+    "docs/implementation/14.3/worker-report.json"
+  ]
+}

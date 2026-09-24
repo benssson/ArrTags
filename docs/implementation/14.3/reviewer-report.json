@@ -1,0 +1,116 @@
+{
+  "task": "14.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "findings": [
+    {
+      "id": "14.3-R1",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "testing documentation (finding F-14.3-1)",
+      "summary": "F-14.3-1 is addressed: the testing doc now explicitly requires SaveLocalMetadata=false so the source-preservation check stays meaningful.",
+      "detail": "The only tracked-file change is the appended v1.1 section in docs/testing/jellyfin-12-musl-test-host.md. Its procedure-addition step 4 states that libraries must be added with EnableInternetProviders=false AND SaveLocalMetadata=false, and explains that SaveLocalMetadata=true makes Jellyfin's own local image saver rewrite the media folder (badge written as folder.png/-thumb.png, original poster.jpg/S01E01.jpg removed). That is exactly the recommended_action recorded for F-14.3-1, so the finding is closed by the implementation.",
+      "evidence": [
+        "git diff -- docs/testing/jellyfin-12-musl-test-host.md (appended '## v1.1 live matrix (Phase 14 task 14.3)' section, procedure-addition step 4)",
+        "docs/implementation/14.3/live-verification.json findings[F-14.3-1].recommended_action"
+      ],
+      "recommended_action": "None; addressed."
+    },
+    {
+      "id": "14.3-R2",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "ADR-021 live evidence authenticity and constant match",
+      "summary": "L5 genuinely records the GET /System/ActivityLog/Entries observation, and the entry constants match the implementation exactly.",
+      "detail": "L5's command includes 'curl -H Authorization ... /System/ActivityLog/Entries?startIndex=0&limit=100' and the observed records TotalRecordCount 3 -> 4 (exactly +1), the newest entry with Name 'ArrTags configuration rejected' (30 chars), Type 'ArrTagsConfigurationRejected' (28 chars), UserId 00000000000000000000000000000000, Severity Warning, bounded Overview/ShortOverview (154/110 chars), 0 candidate/secret leak matches, an unchanged persisted ArrTags.xml SHA-256 6e72445c..., and no entry for a following valid save. Implementation match: JellyfinConfigurationRejectionNotifier.EntryName = 'ArrTags configuration rejected' (30), EntryType = 'ArrTagsConfigurationRejected' (28), UserId = Guid.Empty, LogSeverity = LogLevel.Warning, MaxFieldLength 512 / MaxReasonLength 256 (ADR-021 clause 3). I independently recomputed the two observed lengths from the implementation templates: 'The saved ArrTags configuration was rejected; the last valid configuration remains active. Reasons: ' + the reason = 154 chars, and 'ArrTags configuration rejected (1 validation error(s)): ' + the reason = 110 chars; both match exactly, which is strong evidence the observation is genuine rather than asserted. The unit suite tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs pins the same fixed Name/Type/Guid.Empty/Warning/bounds contract.",
+      "evidence": [
+        "docs/implementation/14.3/live-verification.json matrix[L5]",
+        "src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs:25,31,43-44,104-109",
+        "src/ArrTags/Plugin.cs:124-164 (rejection path only; TryNotifyRejected is called only when !result.IsValid)",
+        "docs/decisions.md ADR-021 clause 3",
+        "tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs:26-46",
+        "independent recomputation of the 154/110 char templates"
+      ],
+      "recommended_action": "None; the ADR-021 live confirmation is discharged."
+    },
+    {
+      "id": "14.3-R3",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "phase live-confirmation scope (Goal B)",
+      "summary": "Goal B (badge value allowlist) was not exercised live and remains the only Phase 9-13 live confirmation not covered by the 14.3 matrix; it is disclosed and outside 14.3's traceability.",
+      "detail": "The matrix covers Goal A (L2/L3/L4), Goal C (L6), Goal F (L7) and ADR-021 (L5), and exercises the Phase 12 output-affecting size/position option live (L4 changes Renderer.Position/Size and the served bytes). However, the per-selector badge value allowlist (Goal B) is not separately exercised; the worker discloses this in worker-report.known_limitations. Task 14.3's traceability is 'Goals A, C, and F' and its objective enumerates only settings page load/save, post-save re-render, the rejection activity-log entry, cache behavior, and log output/level, so Goal B is not a required 14.3 item. The PLANS.md Phase 12 milestone text ('the live pinned-host confirmation is owned by task 14.3') is broader than what 14.3 actually confirms, so a future status reconciliation should attribute only the size/position (Goal E) part to 14.3.",
+      "evidence": [
+        "docs/implementation/14.3/live-verification.json matrix[L4] (Renderer.Position/Size exercised)",
+        "docs/implementation/14.3/worker-report.json known_limitations[1]",
+        "PLANS.md:5108-5126 (14.3 objective/traceability: Goals A, C, F)",
+        "PLANS.md:287 (Phase 12 row: 'the live pinned-host confirmation is owned by task 14.3')"
+      ],
+      "recommended_action": "None required for 14.3; the orchestrator may narrow the Phase 12 live-confirmation wording to the size/position option when task 14.3 is marked complete."
+    },
+    {
+      "id": "14.3-R4",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "reproducibility of the recorded log-verbosity sequence",
+      "summary": "L7 ends at LogVerbosity=Off but L8 reports Warning-gated ArrTags 'provider-unavailable' lines without recording the verbosity reset or row execution order.",
+      "detail": "LogVerbosity.Off maps to LogLevel.None and every ArrTags call site is gated by ArrTagsLog.IsEnabled (for example ConcurrencyLimitedArrMetadataReader.cs:84-93 gates the provider-read-failed WRN line on LogLevel.Warning). L7's observed end state is Off (0 new lines), while L8's outage observation reports 'only bounded WRN provider-unavailable lines'. For L8 to emit those lines the verbosity must have been restored above Off before the outage step, or the matrix rows were not executed in L1-L8 order; neither the L8 command nor the observed text records which. This is a small reproducibility gap, not a correctness contradiction, and the L8 command fields are abbreviated throughout.",
+      "evidence": [
+        "docs/implementation/14.3/live-verification.json matrix[L7] ('Off: 0 new lines') and matrix[L8] ('only bounded WRN provider-unavailable lines')",
+        "src/ArrTags/PluginLifecycle/LogVerbosityGate.cs:56 (Off => LogLevel.None)",
+        "src/ArrTags/Logging/ArrTagsLog.cs:46-59 (gated on the verbosity gate)",
+        "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs:84-93 (Warning-gated ProviderReadFailed)"
+      ],
+      "recommended_action": "Optional: note the LogVerbosity value in effect (or the execution order) for the L8 step in a future report. Not required for acceptance."
+    },
+    {
+      "id": "14.3-R5",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "secret hygiene / report accuracy",
+      "summary": "The worker note says the admin password is 'not recorded in the repository', but the L7 command lists 'arrtagsverify1', a pre-existing throwaway test value; no real secret is exposed.",
+      "detail": "live-verification.json notes[] states the throwaway local admin password 'is not recorded in the repository and is not present in any host log', yet the L7 command string includes 'arrtagsverify1' as a grep pattern. That value is not a production secret: it was already committed as the disposable 7.8 test-host admin password (docs/implementation/7.8/worker-report.attempt-2.json:32) and the live-verification.json L7 observed records 0 occurrences in the host logs. The fixture API keys radarrkey123/sonarrkey456 are likewise documented test-only values. No credential was newly committed, but the note wording is slightly inaccurate and could be clarified.",
+      "evidence": [
+        "docs/implementation/14.3/live-verification.json notes[3] and matrix[L7].command",
+        "docs/implementation/7.8/worker-report.attempt-2.json:32 ('arrtagsverify1' throwaway test value)",
+        "docs/implementation/14.3/live-verification.json matrix[L7].observed (0 secret occurrences in console.log and log/)"
+      ],
+      "recommended_action": "Optional clarification only; no secret hygiene defect."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The live pinned-host verification is recorded",
+      "met": true,
+      "evidence": "docs/implementation/14.3/live-verification.json records the pinned Jellyfin 12.0.0 amd64-musl host, the artifact identity, the L1-L8 matrix with command/observed/verdict pairs, overall_verdict PASS, and findings F-14.3-1..4; docs/implementation/14.3/worker-report.json is the completion report; docs/testing/jellyfin-12-musl-test-host.md gains the v1.1 procedure and result section."
+    },
+    {
+      "criterion": "The live matrix passes",
+      "met": true,
+      "evidence": "All eight rows (L1 install/load, L2 settings load/save + elevation, L3 runtime activation without restart, L4 post-save re-render, L5 ADR-021 activity-log entry, L6 inventory cache, L7 log verbosity, L8 invariants incl. readback == ActiveImageIdentity, source preservation, provider outage, install/restart/uninstall) are verdict PASS with overall_verdict PASS; no BLOCKER/HIGH is hidden (F-14.3-1 LOW, F-14.3-2/3/4 INFORMATIONAL)."
+    }
+  ],
+  "validation_reproduced": [
+    "git status --short --untracked-files=all: only ' M docs/testing/jellyfin-12-musl-test-host.md' plus the two untracked docs/implementation/14.3/*.json files; no product code, test, build.yaml, manifest.json, Directory.Build.props, or release artifact modified.",
+    "git rev-parse HEAD == 7d8c72f (unchanged); git tag --list contains no v1.1.0 tag (no commit/tag created).",
+    "Artifact identity independently re-measured: artifacts/ArrTags_1.1.0.0.zip == 594,931 bytes, SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, MD5 547beb2f7d83cd256d3a3ce7bb7e7620, 7 entries; matches the recorded identity and docs/release/build-and-release.md:199-201 and manifest.json checksum.",
+    "Package/plugin version 1.1.0.0 confirmed in build.yaml:4, Directory.Build.props, and manifest.json versions[0].version.",
+    "Zip entry list matches L1's 7 files and contains no SkiaSharp.dll/libSkiaSharp.so (0), consistent with the L1 no-plugin-folder-SkiaSharp claim and ADR-015.",
+    "Embedded settings page src/ArrTags/Configuration/config.html is exactly 37,180 bytes and contains the pluginId 40322d52-5680-449f-b33e-e01836ee2f46, matching L2's 200 text/html 37,180-byte observation.",
+    "ADR-021 constants cross-checked against src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs (EntryName 30 chars, EntryType 28 chars, Guid.Empty, LogLevel.Warning, 512/256 bounds) and ADR-021 clause 3; observation field lengths recomputed independently (154 and 110 chars) and matched.",
+    "Rejection-only notification path confirmed in src/ArrTags/Plugin.cs:159-164 (TryNotifyRejected only when !result.IsValid) and tests/ArrTags.Tests/ConfigurationRejectionNotifierTests.cs (fixed Name/Type/Guid.Empty/Warning/bounds, never throws).",
+    "F-14.3-2 plausibility confirmed against docs/data-model.md:723,802-809 and docs/architecture.md:847-865 (OwnershipLost => do not publish/restore/remove automatically).",
+    "F-14.3-3 plausibility: the SkiaSharp.HarfBuzz 'typeface' null [ERR] is recorded as a pre-existing host condition in docs/implementation/7.3/worker-report.json:24,60.",
+    "F-14.3-4 plausibility and SEC-9 record confirmed in docs/limitations.md:656-698 (host-managed configuration file is not plugin-owned state; activity-log surface bounded/secret-free).",
+    "Scope review of the full task diff: the only tracked change is the appended v1.1 section of docs/testing/jellyfin-12-musl-test-host.md (documentation only)."
+  ],
+  "reviewed_head": "7d8c72f",
+  "reviewed_diff_scope": [
+    "docs/implementation/14.3/live-verification.json (new)",
+    "docs/implementation/14.3/worker-report.json (new)",
+    "docs/testing/jellyfin-12-musl-test-host.md (modified, appended v1.1 section)"
+  ],
+  "ready_for_next_task": true
+}
