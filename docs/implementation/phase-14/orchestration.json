@@ -1,0 +1,130 @@
+{
+  "phase": 14,
+  "title": "v1.1 release",
+  "release": "v1.1.0",
+  "phase_tag": null,
+  "release_tag": "v1.1.0",
+  "status": "COMPLETE",
+  "authoritative_execution_order": ["14.1", "14.2", "14.3", "14.4", "14.5"],
+  "tasks": [
+    {
+      "task": "14.1",
+      "title": "Version bump and release metadata",
+      "status": "COMPLETE",
+      "commit": "45634f1",
+      "state_commit": "8ab27f7",
+      "orchestration": "docs/implementation/14.1/orchestration.json",
+      "subagent_invocations": 2,
+      "rework_rounds": 0,
+      "final_gates": {"implementation_reviewer": "APPROVED"}
+    },
+    {
+      "task": "14.2",
+      "title": "Release build, full suite, reproducible artifact, and release documentation",
+      "status": "COMPLETE",
+      "commit": "2b0351c",
+      "state_commit": "7d8c72f",
+      "orchestration": "docs/implementation/14.2/orchestration.json",
+      "subagent_invocations": 6,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: the implementation-reviewer (14.2-R1, LOW) and the plan-specified test-quality-reviewer (TQ-14.2-01, MEDIUM) independently flagged the same newly-introduced documentation defect (the host-guarded-suite skip taxonomy was misattributed) plus a default-count precondition (TQ-14.2-02, LOW); the worker applied a documentation-only correction to docs/release/build-and-release.md and docs/limitations.md."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2, 14.2-R1 resolved)",
+        "test_quality_reviewer": "APPROVED (attempt 2, reproducibility ESTABLISHED, TQ-14.2-01/-02 resolved)"
+      }
+    },
+    {
+      "task": "14.3",
+      "title": "Live pinned-host verification",
+      "status": "COMPLETE",
+      "commit": "21ee625",
+      "state_commit": "c7d2a3a",
+      "orchestration": "docs/implementation/14.3/orchestration.json",
+      "subagent_invocations": 2,
+      "rework_rounds": 0,
+      "final_gates": {
+        "live_host_verifier": "VERIFIED (all 8 matrix rows PASS on the pinned Jellyfin 12.0.0 amd64-musl host)",
+        "implementation_reviewer": "APPROVED"
+      }
+    },
+    {
+      "task": "14.4",
+      "title": "Release security review",
+      "status": "COMPLETE",
+      "commit": "c89a10d",
+      "state_commit": "120b5bf",
+      "orchestration": "docs/implementation/14.4/orchestration.json",
+      "subagent_invocations": 2,
+      "rework_rounds": 0,
+      "final_gates": {
+        "security_reviewer": "PASS_WITH_FINDINGS (0 open BLOCKER/HIGH; accepted limitations SEC-10/SEC-11/SEC-12)",
+        "implementation_reviewer": "APPROVED"
+      }
+    },
+    {
+      "task": "14.5",
+      "title": "Changelog, release-readiness verification, manifest commit, and the annotated v1.1.0 tag",
+      "status": "COMPLETE",
+      "commit": "672e0ab",
+      "release_review_commit": "e74c054",
+      "closure_commit": "<this commit>",
+      "tag": "v1.1.0",
+      "orchestration": "docs/implementation/14.5/orchestration.json",
+      "subagent_invocations": 2,
+      "rework_rounds": 0,
+      "final_gates": {
+        "release_reviewer": "APPROVED_WITH_ACCEPTED_LIMITATIONS / SHIP_WITH_ACCEPTED_LIMITATIONS (0 open BLOCKER/HIGH)"
+      }
+    }
+  ],
+  "release_artifact": {
+    "path": "artifacts/ArrTags_1.1.0.0.zip",
+    "version": "1.1.0.0",
+    "size_bytes": 594931,
+    "sha256": "85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1",
+    "md5": "547beb2f7d83cd256d3a3ce7bb7e7620",
+    "entries": 7,
+    "reproducible": true,
+    "reproduced_by": ["implementation-worker (task 14.2)", "implementation-reviewer (task 14.2)", "test-quality-reviewer (task 14.2)", "release-reviewer (clean git-archive export)"]
+  },
+  "release_review": {
+    "report": "docs/implementation/final-review/release-review.json",
+    "reviewer_status": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
+    "release_decision": "SHIP_WITH_ACCEPTED_LIMITATIONS",
+    "open_blocker_or_high": 0,
+    "reviewed_head": "672e0ab"
+  },
+  "related_commits": [
+    "45634f1 Implement v1.1 task 14.1 version bump and release metadata",
+    "8ab27f7 Record v1.1 task 14.1 commit hash in implementation state",
+    "2b0351c Implement v1.1 task 14.2 release build, reproducible artifact, and release documentation",
+    "7d8c72f Record v1.1 task 14.2 commit hash in implementation state",
+    "21ee625 Implement v1.1 task 14.3 live pinned-host verification",
+    "c7d2a3a Record v1.1 task 14.3 commit hash in implementation state",
+    "c89a10d Implement v1.1 task 14.4 release security review",
+    "120b5bf Record v1.1 task 14.4 commit hash in implementation state",
+    "672e0ab Implement v1.1 task 14.5 changelog, project-status, and release-readiness documentation",
+    "e74c054 Record v1.1 release review (SHIP_WITH_ACCEPTED_LIMITATIONS) and accepted limitations"
+  ],
+  "summary": {
+    "total_task_subagent_invocations": 14,
+    "total_rework_rounds": 1,
+    "tasks_complete": 5,
+    "tasks_total": 5,
+    "phase_acceptance_criteria_met": 7,
+    "phase_acceptance_criteria_total": 7,
+    "gate_14": "MET",
+    "user_decisions_required": [
+      "Explicit user approval was obtained before creating the annotated release tag v1.1.0."
+    ]
+  },
+  "notes": [
+    "Phase 14 is the v1.1 release phase: it has no phase tag; it ends with the annotated release tag v1.1.0 on the closure commit.",
+    "All five Phase 14 acceptance criteria groups are met: the version is 1.1.0.0; ./build.sh package produces the byte-reproducible artifacts/ArrTags_1.1.0.0.zip with recorded identity; the default and host-guarded suites pass; the live pinned-host matrix passes; the release security review has 0 open BLOCKER/HIGH; docs/changelog.md and docs/project-status.md reflect v1.1; and the annotated tag v1.1.0 is created after the release-reviewer gate.",
+    "The release-reviewer gate returned APPROVED_WITH_ACCEPTED_LIMITATIONS / SHIP_WITH_ACCEPTED_LIMITATIONS with 0 open BLOCKER/HIGH; the accepted limitations are recorded in docs/limitations.md (V1 residuals, security SEC-2..SEC-12, and the v1.1 items P12R-F1, V11-G1, V11-G2, V11-G3, V11-G4).",
+    "The push, the GitHub release, and the release-asset upload remain the user's manual step via scripts/publish-release.sh; this phase does not push or publish.",
+    "Same-session repeated attempts report the OpenCode session's cumulative usage at collection time; both attempt snapshots are preserved in the per-task records. Runtime figures are authoritative from the session usage endpoint; no values were estimated."
+  ]
+}

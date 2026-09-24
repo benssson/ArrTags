@@ -1,0 +1,54 @@
+{
+  "task": "14.5",
+  "title": "Changelog, release-readiness verification, manifest commit, and the annotated v1.1.0 tag",
+  "phase": "14",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 143529,
+        "output_tokens": 17701,
+        "reasoning_tokens": 19176,
+        "cache_read_tokens": 5885824,
+        "cache_write_tokens": 0,
+        "total_tokens": 6066230,
+        "cost_usd": 0.061313022,
+        "duration_seconds": 275,
+        "session_id": "ses_f2b26ceb6ffepsudQ7jm7dLXf9"
+      }
+    },
+    {
+      "role": "release-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
+      "execution": {
+        "agent": "release-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 255866,
+        "output_tokens": 35260,
+        "reasoning_tokens": 39667,
+        "cache_read_tokens": 12743168,
+        "cache_write_tokens": 0,
+        "total_tokens": 13073961,
+        "cost_usd": 0.121565604,
+        "duration_seconds": 1091,
+        "session_id": "ses_f2b21d1d2ffeAo1RP43XMpiFzB"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Documentation portion: docs/changelog.md gained the Phase 14 v1.1 release entry (version 1.1.0.0, tag v1.1.0, features, artifact identity 594,931 bytes / SHA-256 85730fe7... / MD5 547beb2f... / 7 entries, the four suite counts, the task 14.3 live matrix result, and the task 14.4 security outcome with accepted limitations SEC-10/SEC-11/SEC-12); docs/project-status.md was reconciled to the 1.1.0.0/v1.1.0 current state (Phase 8 1.0.1.0 preserved as history); docs/architecture.md and docs/implementation-readiness.md status lines were reconciled and their Phase 8 text marked historical; the SEC-14.4-03 stale pre-logging 'zero logging call sites' current-state line in docs/planning/v1.1.md was framed as planning-time and superseded by Phase 10; PLANS.md task 14.5 and its Project Status paragraph/Milestone Status row were updated. manifest.json was verified current and was not modified (already committed at 2b0351c).",
+    "Release-reviewer gate: docs/implementation/final-review/release-review.json is reviewer_status APPROVED_WITH_ACCEPTED_LIMITATIONS, release_decision SHIP_WITH_ACCEPTED_LIMITATIONS, open_blocker_high 0. The prior 1.0.1.0 release review was preserved as release-review.1.0.1.json. The reviewer independently reproduced the artifact byte-identically from a clean git-archive export, re-ran the full test matrix (default 1491/66/1557 clean-export and 1494/63/1557 with the artifact, host-guarded 1513/44/1557, forced-native 1575/20/1595, all Failed 0), confirmed the Phases 9-13 phase reviews/tags, the security review (0 open BLOCKER/HIGH), the live matrix (all 8 rows PASS), and re-ran the live path itself on the pinned host.",
+    "Accepted limitations added to docs/limitations.md by the release reviewer: P12R-F1 (MEDIUM, default-fingerprint pin only in the forced-native golden path), V11-G1 (LOW, Goal B allowlist not live-exercised), V11-G2 (LOW, Phase 9-13 residuals), V11-G3 (LOW, carried 1.0.1.0-audit LOWs), and V11-G4 (LOW, stale pre-14.3 'owned by task 14.3' pending phrasing), alongside the V1 and security residuals.",
+    "The release tag v1.1.0 is created by the orchestrator at the Phase 14 closure commit, after this gate and with explicit user approval. Docs/changelog.md and docs/project-status.md remain the user's named publish surfaces; the push, GitHub release, and asset upload remain the user's manual step.",
+    "The implementation-worker ran at variant high; the release-reviewer ran at variant max. The orchestrator recorded the runtime-reported model/variant for each session.",
+    "Runtime figures are authoritative from the OpenCode session usage endpoint (.opencode/scripts/collect-session-usage.sh); no values were estimated."
+  ]
+}
