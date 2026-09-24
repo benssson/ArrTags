@@ -1,0 +1,87 @@
+{
+  "phase": 13,
+  "title": "README and documentation pass",
+  "release": "v1.1.0",
+  "phase_tag": "v1.1.0-phase13",
+  "status": "COMPLETE",
+  "phase_review": {
+    "report": "docs/implementation/phase-13/phase-review.json",
+    "reviewer_status": "APPROVED_WITH_FINDINGS",
+    "phase_complete": true,
+    "ready_for_next_phase": true,
+    "open_blocker_or_high": 0,
+    "open_medium": 0,
+    "reviewed_head": "c6f9573",
+    "findings": [
+      {"id": "P13-F1", "severity": "LOW", "status": "addressed", "summary": "The phase-level aggregate was absent; created by this closure as docs/implementation/phase-13/orchestration.json."},
+      {"id": "P13-F2", "severity": "LOW", "status": "addressed", "summary": "Gate 13 was not met at review time because the annotated tag v1.1.0-phase13 did not exist; the orchestrator created the tag at this closure and recorded Gate 13 as met."},
+      {"id": "P13-F3", "severity": "LOW", "status": "tracked", "summary": "Phase 12 carry P12R-F2: stale source XML doc comments on the private AppendBadgePlacement helpers (RenderFingerprint.cs / RendererConfigurationFingerprint.cs) still claim the default output fingerprint is 'unchanged'; reword in a later cleanup (Phase 14 or post-V1). No acceptance impact."},
+      {"id": "P13-F4", "severity": "LOW", "status": "tracked", "summary": "Record accuracy: docs/implementation/13.2/orchestration.json records the implementation-reviewer attempt-1 outcome as CHANGES_REQUIRED while the preserved attempt-1 reviewer report says APPROVED (informational R-01); the audit note discloses the orchestrator's combined disposition based on the documentation-maintainer MEDIUM finding. Non-blocking; optionally align when a future aggregate is produced."},
+      {"id": "P13-F5", "severity": "LOW", "status": "tracked", "summary": "Scope wording: the changelog Task 13.2 stale-claim-search sentence says 'the three named documents' and the PLANS.md task 13.2 affected-files list names only the three task-defined documents, while the correction round also reconciled docs/architecture.md and the PLANS.md current-state surfaces. Both remain accurate for the task-defined documents; optional tidy at Phase 14."}
+    ],
+    "tag_recommendation": "Create the annotated tag v1.1.0-phase13 at the Phase 13 closure commit."
+  },
+  "authoritative_execution_order": ["13.1", "13.2"],
+  "tasks": [
+    {
+      "task": "13.1",
+      "title": "README palette documentation and v1.1 feature documentation",
+      "status": "COMPLETE",
+      "commit": "2e4db16",
+      "state_commit": "3c86609",
+      "orchestration": "docs/implementation/13.1/orchestration.json",
+      "subagent_invocations": 5,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: the PLANS.md Milestone Status row 13 still read 'Not started' while the same file marked task 13.1 complete and the changelog recorded Phase 13 in progress (implementation-reviewer MEDIUM 13.1-R1 == documentation-maintainer DM-13.1-01); the worker updated the row to an in-progress form (documentation only)."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "documentation_maintainer": "PASS_WITH_FINDINGS (DM-13.1-01 MEDIUM resolved by the same correction; 2 LOW informational)"
+      }
+    },
+    {
+      "task": "13.2",
+      "title": "Canonical current-state reconciliation sweep",
+      "status": "COMPLETE",
+      "commit": "50103a7",
+      "state_commit": "c6f9573",
+      "orchestration": "docs/implementation/13.2/orchestration.json",
+      "subagent_invocations": 6,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: documentation-maintainer MEDIUM DM-13.2-01 (docs/architecture.md status line still presented limitation F1 as open, inconsistent with docs/limitations.md and the other canonical surfaces) plus LOW DM-13.2-02 (project-status blanket 'no stale claim' overstatement) and DM-13.2-03 (implementation-readiness Phase 6 deferral framing); the worker annotated the architecture.md status line, narrowed the project-status claim, and annotated the readiness sentence (documentation only)."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "documentation_maintainer": "CONSISTENT (attempt 2; all three findings resolved)"
+      }
+    }
+  ],
+  "related_commits": [
+    "2e4db16 Implement v1.1 task 13.1 README palette and v1.1 feature documentation",
+    "3c86609 Record v1.1 task 13.1 commit hash in implementation state",
+    "50103a7 Implement v1.1 task 13.2 canonical current-state reconciliation sweep",
+    "c6f9573 Record v1.1 task 13.2 commit hash in implementation state"
+  ],
+  "summary": {
+    "total_task_subagent_invocations": 11,
+    "total_rework_rounds": 2,
+    "tasks_complete": 2,
+    "tasks_total": 2,
+    "acceptance_criteria_met": 3,
+    "acceptance_criteria_total": 3,
+    "user_decisions_required": []
+  },
+  "notes": [
+    "Phase 13 is documentation-only: the phase diff touches README.md, PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md, and the task record directories; no src/ or tests/ file changed.",
+    "Runtime token/cost/duration fields were recorded from the authoritative OpenCode session usage API in the per-task records using the recorded session ids; no estimation was performed.",
+    "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and a visible rework entry; attempt-1 worker/reviewer evidence is preserved (worker-report-attempt-1.json, reviewer-report.attempt-1.json).",
+    "Phase 13 was implemented on the canonical v1.1 branch: 13.1 2e4db16/3c86609, 13.2 50103a7/c6f9573.",
+    "All three Phase 13 acceptance criteria are met (palette fields documented with meaning, exact code-owned defaults #111827/#FFFFFF/#B45309/#FFFFFF and the load-time 4.5:1 pair rule; README documents the v1.1 settings UI, allowlist, placement/size, verbosity, and inventory cache with the stale 'no web configuration UI'/restart-required claims removed; the canonical current-state surfaces are reconciled with no stale current-state claim, including the docs/architecture.md status line corrected in the task 13.2 rework).",
+    "Phase 13 phase-review gate: APPROVED_WITH_FINDINGS, phase_complete true, ready_for_next_phase true, 0 open BLOCKER/HIGH/MEDIUM. Gate 13 is met at this closure commit (the annotated tag v1.1.0-phase13 was created after the review; see P13-F2).",
+    "No test suite was required (documentation-only). The documented v1.1 suite counts (default Failed 0, Passed 1494, Skipped 63, Total 1557; forced-native Failed 0, Passed 1575, Skipped 20, Total 1595) were independently reproduced by the task 13.2 implementation reviewer and match docs/limitations.md V6; the release phase (tasks 14.2/14.3) owns refreshing the matrix.",
+    "Tracked non-blocking findings carried forward: P13-F3 (== P12R-F2, stale AppendBadgePlacement source comments), P13-F4 (13.2 orchestration attempt-1 outcome record note), P13-F5 (changelog/PLANS scope-wording nits).",
+    "The live pinned-host confirmations for Phases 9-13 remain owned by task 14.3; ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the host-guarded facts skip."
+  ]
+}

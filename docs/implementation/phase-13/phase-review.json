@@ -1,0 +1,229 @@
+{
+  "phase": "13",
+  "reviewer_role": "phase-reviewer",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "gate_13_status": "NOT_MET",
+  "reviewed_head": "c6f957340c12551efb389463cb08afe499b4b124",
+  "phase_title": "README and documentation pass (v1.1)",
+  "goals": ["D (README palette documentation gap)", "consolidated v1.1 documentation pass (V1.1-7)"],
+  "branch": "v1.1",
+  "gate_13_note": "Tasks 13.1 and 13.2 meet their acceptance criteria and this review is APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM, so the phase is complete and ready for the closure tag. gate_13_status is NOT_MET only because the annotated tag v1.1.0-phase13 does not yet exist; by definition Gate 13 is met when the review is approved AND the tag is created. The phase is recommended for the tag at the closure commit, matching the Phase 9-12 pre-tag review pattern (Phase 12 recorded gate_12_status NOT_MET in its phase-review.json while claiming gate met only after the tag was created).",
+  "acceptance_criteria_assessment": [
+    {
+      "criterion": "The four palette override fields are documented with their meaning, default colors, and the 4.5:1 contrast rule.",
+      "status": "MET",
+      "evidence": [
+        "README.md:109-129 adds the 'Renderer palette overrides' section: each of TechnicalBackground/TechnicalText (technical badge rail background/text) and StatusBackground/StatusText (UPGRADE status pill background/text) is documented with its meaning, its default (#111827, #FFFFFF, #B45309, #FFFFFF), the RRGGBB format with empty-keeps-default, and the 4.5:1 minimum pair contrast rule validated at configuration load.",
+        "Independently verified against shipped code: src/ArrTags/Rendering/RenderOutputPolicy.cs:45,50,55,60 (defaults match exactly); src/ArrTags/Rendering/BadgeContrast.cs:18 (MinimumRatio = 4.5) and :46-63 (per-pair validation); src/ArrTags/Rendering/RgbColor.cs:69-103 (accepts #RRGGBB/RRGGBB, length 6) and :112-117 (WCAG contrast ratio); src/ArrTags/Configuration/RendererConfiguration.cs:244-307 (ValidatePalette/ValidateStyle/TryValidateColor; empty keeps default; low ratio rejected); src/ArrTags/Configuration/RendererPalette.cs (empty/whitespace -> default).",
+        "PLANS.md:4841-4847 task 13.1 status records the same mapping (meaning, defaults from RenderOutputPolicy.Default, RRGGBB/empty-keeps-default, 4.5:1 from BadgeContrast/RendererConfiguration.Validate); docs/implementation/13.1/documentation-review.json verified_reconciliations records an independent confirmation."
+      ]
+    },
+    {
+      "criterion": "README.md documents the v1.1 settings UI, allowlist, placement/size, verbosity, and inventory cache behavior.",
+      "status": "MET",
+      "evidence": [
+        "Settings UI: README.md:44-71 documents the Dashboard -> Plugins -> ArrTags settings page, the elevation-gated save, runtime activation without restart for per-operation values, the construction-captured restart residual, last-valid retention + bounded secret-free activity-log rejection, and the bounded post-save reconciliation; independently confirmed by src/ArrTags/Plugin.cs:18 (IHasWebPages), :91 (GetPages), :124-172 (UpdateConfiguration validate -> persist -> activate -> notify -> post-save reconciliation) and src/ArrTags/Configuration/config.html:361-507.",
+        "Allowlist: README.md:107 documents case-insensitive exact match of the resolved value (not substring/wildcard), 'only removes an already-confirmed value', empty = no restriction, bound 32 entries/64 chars each; confirmed by src/ArrTags/Rendering/BadgeDefinition.cs:36,42 and BadgeSelectorResolver.IsAllowed.",
+        "Placement/size: README.md:96-97 documents Position (BottomLeft default; TopLeft/TopRight/BottomRight/Center) with the derived status-pill rule (top-right except TopRight -> top-left) and Size (Medium default; Small/Large multiplying the width-based scale); confirmed by src/ArrTags/Rendering/BadgePosition.cs, BadgeSize.cs and config.html:152-169.",
+        "Verbosity: README.md:90 documents LogVerbosity Off/Error/Warning(default)/Information/Debug/Trace, applies without restart, never changes the host log level or posters, bounded secret-free diagnostics; confirmed by src/ArrTags/Configuration/PluginConfiguration.cs:26 (default Warning) and docs/limitations.md SEC-5.",
+        "Inventory cache: README.md:191-201 documents one provider library read per connection across a reconciliation window, bulk file reads replacing per-item reads, webhook/reconciliation/TTL invalidation sources, remaining O(series)/sparse-window bounds, and that F1 is resolved at the integration-test level with live confirmation owned by task 14.3; matches docs/limitations.md:106-163 (F1 resolved).",
+        "Removed stale claims: targeted grep of README.md for 'no web configuration UI'/'restart required to apply'/'read only at startup' returned no match; the four restart mentions (README.md:31,40,173,175) are accurate plugin install/update steps only."
+      ]
+    },
+    {
+      "criterion": "docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md are reconciled with no stale claim.",
+      "status": "MET",
+      "evidence": [
+        "docs/project-status.md:5-10 now frames Phase 13 as the current milestone (tasks 13.1/13.2 complete at the documentation level; Gate 13 not yet met; the v1.1.0-phase13 tag not yet created); :178 annotates the Phase 7 criterion-6/F1 sentence as resolved by v1.1 task 11.4; :711-723 narrows the Next-tasks claim to the documents actually reconciled; :869-872 removes the provider inventory cache from the open follow-ups; :882-896 reconciles the Known-limitations summary with docs/limitations.md (F1 resolved, criterion 6 met for the provider library read within a window).",
+        "docs/changelog.md:3544-3550 adds the Phase 13 section with status 'In progress' and explicitly withholds Gate 13/tag; :3552-3582 (Task 13.1) and :3584-3628 (Task 13.2) record the reconciliation; the diff is +86/-0 (no earlier entry rewritten).",
+        "docs/implementation-readiness.md:5 (status line) appends the Phase 13 status segment, corrects the Phase 6 deferral sentence to note that the provider inventory cache and runtime configuration replacement were later completed in v1.1 (Phases 11/9) while the reconciliation coverage bound and metrics/status surface remain open, and annotates the Phase 7 criterion-6/F1 sentence as resolved by task 11.4.",
+        "Cross-surface scan: no canonical current-state status line presents F1 or F2 as open; surviving 'only partial for provider fetches' occurrences are historical Phase 7 records or annotated-resolved current-state lines (docs/architecture.md:3, docs/project-status.md:178, docs/implementation-readiness.md:5, PLANS.md:19/276).",
+        "docs/architecture.md:3 status line was corrected in the task 13.2 correction round (single-line +1/-1) to annotate the Phase 7 criterion-6 sentence as F1 resolved in v1.1 by task 11.4 (residual Sonarr O(series) per-window episode reads and sparse-invalidation-window bounds noted, historical V1 wording preserved) and to append the Phase 13 in-progress framing."
+      ]
+    }
+  ],
+  "phase_deliverables_assessment": [
+    {
+      "deliverable": "The four palette override fields documented with meaning, default colors, and the 4.5:1 contrast rule.",
+      "status": "MET",
+      "owner": "13.1"
+    },
+    {
+      "deliverable": "README documentation of the settings UI, allowlist, placement/size, verbosity, and provider inventory cache, with the stale F1/F2 restart limitation notes removed.",
+      "status": "MET",
+      "owner": "13.1"
+    },
+    {
+      "deliverable": "A consistency sweep of docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md (plus docs/architecture.md and the PLANS.md current-state surfaces).",
+      "status": "MET",
+      "owner": "13.2"
+    }
+  ],
+  "tasks_checked": [
+    {
+      "task": "13.1",
+      "title": "README palette documentation and v1.1 feature documentation",
+      "status": "COMPLETE",
+      "authoritative_order_index": 1,
+      "commit": "2e4db16",
+      "state_commit": "3c86609",
+      "worker_evidence": "docs/implementation/13.1/worker-report.json (attempt 2 COMPLETE) with attempt 1 preserved at worker-report-attempt-1.json",
+      "reviewer_evidence": "docs/implementation/13.1/reviewer-report.json (attempt 2 APPROVED, 0 blockers, 0 required changes) and docs/implementation/13.1/documentation-review.json (PASS_WITH_FINDINGS)",
+      "orchestration": "docs/implementation/13.1/orchestration.json (5 subagent invocations; rework entry for attempt 2)",
+      "note": "The single MEDIUM finding 13.1-R1/DM-13.1-01 (PLANS.md Milestone Status row 13 still 'Not started') was resolved in attempt 2; no open finding remains."
+    },
+    {
+      "task": "13.2",
+      "title": "Canonical current-state reconciliation sweep",
+      "status": "COMPLETE",
+      "authoritative_order_index": 2,
+      "commit": "50103a7",
+      "state_commit": "c6f9573",
+      "worker_evidence": "docs/implementation/13.2/worker-report.json (attempt 2 COMPLETE) with attempt 1 preserved at worker-report-attempt-1.json",
+      "reviewer_evidence": "docs/implementation/13.2/reviewer-report.json (attempt 2 APPROVED) with attempt 1 preserved at reviewer-report.attempt-1.json; docs/implementation/13.2/documentation-review.json (attempt 2 CONSISTENT)",
+      "orchestration": "docs/implementation/13.2/orchestration.json (6 subagent invocations; rework entry for attempt 2)",
+      "note": "The MEDIUM finding DM-13.2-01 (docs/architecture.md status line presented F1 as open) and LOW findings DM-13.2-02/-03 were resolved in attempt 2; no open finding remains."
+    }
+  ],
+  "commits_checked": [
+    {"commit": "2e4db16", "description": "task 13.1 implementation (README.md, PLANS.md, docs/changelog.md, task records)"},
+    {"commit": "3c86609", "description": "task 13.1 state commit (PLANS.md commit-hash record)"},
+    {"commit": "50103a7", "description": "task 13.2 implementation (PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md, task records)"},
+    {"commit": "c6f9573", "description": "task 13.2 state commit (PLANS.md commit-hash record)"}
+  ],
+  "requirements_checked": [
+    "Phase 13 authoritative execution order 13.1 -> 13.2, both complete",
+    "Phase 13 acceptance criteria 1-3 (all MET)",
+    "Gate 13 definition (tasks meet criteria + phase review approved + tag v1.1.0-phase13 created)",
+    "docs/planning/v1.1.md Goal D acceptance criterion (four palette fields documented)",
+    "docs/planning/v1.1.md section 6 outline V1.1-7 -> phase tasks 13.1, 13.2",
+    "docs/planning/v1.1.md section 7 documentation change checklist V1.1-7"
+  ],
+  "architecture_checked": [
+    "docs/architecture.md status line (Phase 7 F1 annotation + Phase 13 framing; historical V1 wording preserved)",
+    "docs/project-status.md Project Status / Next tasks / Known limitations",
+    "PLANS.md Project Status paragraph, Active Planning Scope paragraph, Milestone Status rows 7 and 13, Phase 6 residual annotation",
+    "docs/implementation-readiness.md status line and Phase 6/7 deferral annotations"
+  ],
+  "research_checked": [
+    "docs/limitations.md F1 (resolved, residual bounds), F2 (resolved with construction-captured residual), F5, V6 and the criterion-6 row",
+    "docs/implementation/13.2/reviewer-report.json research_checked: independent reproduction of the default suite (Failed 0/Passed 1494/Skipped 63/Total 1557) and the forced-native suite with the pinned fontconfig sysroot (Failed 0/Passed 1575/Skipped 20/Total 1595), both matching docs/limitations.md V6",
+    "git tag state: annotated v1.1.0-phase9/10/11/12 exist; v1.1.0-phase13 absent; v0.1.0 and v1.0.1 present"
+  ],
+  "documentation_checked": [
+    "README.md (palette overrides, settings UI, allowlist, position/size, verbosity, inventory cache, known limitations)",
+    "docs/project-status.md",
+    "docs/changelog.md (Phase 13 section)",
+    "docs/implementation-readiness.md",
+    "docs/architecture.md",
+    "PLANS.md (Milestone Status table, Phase 13 section, v1.1 status paragraph)",
+    "docs/limitations.md"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/13.1/orchestration.json: 5 invocations with per-invocation execution metadata (agent/model/variant/token/cost/duration/session_id), a visible rework entry for attempt 2, and the attempt-1 worker and reviewer evidence preserved (worker-report-attempt-1.json; reviewer rework_log)",
+    "docs/implementation/13.2/orchestration.json: 6 invocations with per-invocation execution metadata, a visible rework entry for attempt 2 (DM-13.2-01/-02/-03), and the attempt-1 reviewer report preserved (reviewer-report.attempt-1.json)",
+    "Phase-level aggregate docs/implementation/phase-13/orchestration.json is ABSENT; phases 7-12 each have one created at closure - see finding P13-F1"
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 11,
+    "total_attempts": 11,
+    "correction_rounds": 2,
+    "per_task": [
+      {"task": "13.1", "invocations": 5, "correction_rounds": 1, "final_gates": {"implementation_reviewer": "APPROVED (attempt 2)", "documentation_maintainer": "PASS_WITH_FINDINGS (MEDIUM resolved, 2 LOW informational)"}},
+      {"task": "13.2", "invocations": 6, "correction_rounds": 1, "final_gates": {"implementation_reviewer": "APPROVED (attempt 2)", "documentation_maintainer": "CONSISTENT (attempt 2)"}}
+    ]
+  },
+  "findings": [
+    {
+      "id": "P13-F1",
+      "severity": "LOW",
+      "status": "closure-action",
+      "area": "orchestration completeness / phase closure",
+      "summary": "The phase-level aggregate docs/implementation/phase-13/orchestration.json does not exist. Per the established convention every completed phase from 7 through 12 has a phase-level aggregate created at closure.",
+      "evidence": [
+        "ls docs/implementation/phase-13/ -> does not exist; docs/implementation/phase-10/-11/-12 each contain orchestration.json",
+        "docs/implementation/phase-12/orchestration.json (aggregate shape: phase/title/phase_tag/status, phase_review summary, tasks[], related_commits, summary, notes)"
+      ],
+      "recommended_action": "Create docs/implementation/phase-13/orchestration.json at phase closure (after the tag), aggregating the two task records (commits 2e4db16/3c86609 and 50103a7/c6f9573), the review outcome, and the carried findings, matching Phases 7-12."
+    },
+    {
+      "id": "P13-F2",
+      "severity": "LOW",
+      "status": "closure-action",
+      "area": "gate / phase tag",
+      "summary": "Gate 13 is not yet met because the annotated tag v1.1.0-phase13 has not been created; this is the expected pre-tag review state, not a task defect. All three Phase 13 acceptance criteria are met and the phase has 0 open BLOCKER/HIGH/MEDIUM.",
+      "evidence": [
+        "git tag -l '*phase13*' -> empty",
+        "PLANS.md:4940-4945 (Phase 13 acceptance-criteria checkboxes unchecked), PLANS.md:4947-4948 (Gate 13 a future condition)",
+        "docs/implementation/phase-12/phase-review.json:7 (gate_12_status NOT_MET at review time; tag created afterwards)"
+      ],
+      "recommended_action": "Orchestrator creates the annotated tag v1.1.0-phase13 at the Phase 13 closure commit after this review, then records Gate 13 as met and creates the phase aggregate (P13-F1)."
+    },
+    {
+      "id": "P13-F3",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "technical debt / documentation consistency",
+      "summary": "The Phase 12 tracked LOW finding P12R-F2 (stale source XML comments claiming the default output fingerprint is 'unchanged') remains unaddressed by this documentation pass; the comment is a production-source doc comment, not a canonical current-state document.",
+      "evidence": [
+        "src/ArrTags/Rendering/RenderFingerprint.cs:62-68 ('... the default output fingerprint is unchanged and the committed goldens are unaffected')",
+        "docs/implementation/phase-12/phase-review.json P12R-F2 (LOW, tracked, 'reword in a later documentation pass')"
+      ],
+      "recommended_action": "Reword the AppendBadgePlacement doc comment in a later cleanup (Phase 14 or post-V1) to state that the placement contribution is identity-neutral while the renderer-version bump changed the output fingerprint. No phase-13 acceptance-criteria impact."
+    },
+    {
+      "id": "P13-F4",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "orchestration record accuracy",
+      "summary": "docs/implementation/13.2/orchestration.json records the implementation-reviewer attempt-1 outcome as CHANGES_REQUIRED, while the preserved attempt-1 reviewer report records reviewer_status APPROVED (with the architecture.md sentence as informational finding R-01). The mismatch is explicitly disclosed in the record's audit note and does not affect the phase outcome.",
+      "evidence": [
+        "docs/implementation/13.2/orchestration.json subagents[1].outcome = CHANGES_REQUIRED",
+        "docs/implementation/13.2/reviewer-report.attempt-1.json:4 (\u0022reviewer_status\u0022: \u0022APPROVED\u0022)",
+        "docs/implementation/13.2/orchestration.json notes audit note explaining the orchestrator treated the combined review as CHANGES_REQUIRED on the strength of documentation-maintainer DM-13.2-01"
+      ],
+      "recommended_action": "Optionally align the attempt-1 subagent outcome field with the reviewer's own status (or label it as the combined orchestrator disposition) when the phase aggregate is created. Non-blocking."
+    },
+    {
+      "id": "P13-F5",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "documentation scope wording",
+      "summary": "Two provenance sentences understate the actual sweep reach: docs/changelog.md:3612 still says the stale-claim search was across 'the three named documents', and PLANS.md task 13.2's 'Affected files/components' list names only docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md, while the correction round also reconciled docs/architecture.md and the PLANS.md current-state surfaces. Both are disclosed as informational observations by the documentation maintainer and are accurate for the three task-defined documents.",
+      "evidence": [
+        "docs/changelog.md:3612-3617",
+        "PLANS.md:4917-4918 (task 13.2 Affected files/components)",
+        "docs/implementation/13.2/documentation-review.json observations DM-13.2-OBS-1 and DM-13.2-OBS-2"
+      ],
+      "recommended_action": "Optional wording tidy at closure/Phase 14; the stable task definition may be left as-is. No acceptance-criteria impact."
+    }
+  ],
+  "integration_assessment": {
+    "summary": "Phase 13 is documentation-only (the phase diff touches only README.md, PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md and the task record directory; no src/ or tests/ file changed). There are no new interfaces, state, concurrency, persistence, or configuration mechanisms to integrate. The phase-level integration risk is therefore cross-surface documentation consistency, which was independently checked across the canonical current-state surfaces.",
+    "checked": [
+      "Phase 13 deliverable/acceptance ownership across 13.1 and 13.2 with no gap",
+      "README palette defaults/format/contrast rule against RenderOutputPolicy/BadgeContrast/RgbColor/RendererConfiguration",
+      "README v1.1 feature claims (settings UI, allowlist bounds, position/size, verbosity, inventory cache) against Plugin.cs/config.html/BadgeDefinition/BadgePosition/BadgeSize/limitations.md",
+      "No stale 'no web UI', restart-required-for-saved-changes, 'no logging', or F1/F2-open current-state claim on any canonical surface",
+      "No Gate 13 / phase-complete / tag overclaim; Phase 13 acceptance checkboxes unchecked",
+      "V1 history preserved (changelog +86/-0; architecture.md/implementation-readiness.md status lines annotated rather than rewritten)",
+      "v1.1 phase map (PLANS.md V1.1-7 -> 13.1, 13.2; docs/planning/v1.1.md section 6) consistent with delivered work"
+    ]
+  },
+  "jellyfin_platform_assumptions": {
+    "summary": "No new Jellyfin API/lifecycle assumption was introduced by Phase 13. The documentation restates already-verified v1.1 behavior (IHasWebPages settings page, elevation-gated PluginsController save path, runtime snapshot activation, host logging pipeline, host-supplied SkiaSharp). The live pinned-host confirmations for Phases 9-13 remain owned by task 14.3 and are consistently stated as pending on every surface.",
+    "status": "no new assumption; documented pending live confirmations owned by task 14.3"
+  },
+  "test_suite_note": "Phase 13 is documentation-only, so no test suite is required for acceptance. The documented v1.1 suite counts (default Failed 0, Passed 1494, Skipped 63, Total 1557; forced-native Failed 0, Passed 1575, Skipped 20, Total 1595) were independently reproduced by the task 13.2 implementation reviewer (default run and forced-native run with the pinned fontconfig sysroot) and match docs/limitations.md V6; tasks 13.1/13.2 changed no code or tests, and the release phase (task 14.2/14.3) owns refreshing the matrix.",
+  "overclaim_check": {
+    "phase_13_acceptance_checkboxes": "unchecked (PLANS.md:4940-4945)",
+    "gate_13": "future condition only (PLANS.md:4947-4948)",
+    "v1.1.0-phase13_tag": "absent (git tag -l '*phase13*' empty)",
+    "v1_history": "preserved; no earlier changelog entry or phase status rewritten (docs/changelog.md diff +86/-0)"
+  },
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 13 (README and documentation pass, v1.1) is complete and independently approved with findings. The authoritative execution order (13.1 -> 13.2) was walked fully: both tasks are complete, each has worker (attempt-2 and preserved attempt-1) and reviewer/documentation-maintainer evidence, an implementation commit (2e4db16, 50103a7), a state commit (3c86609, c6f9573), and an orchestration.json with per-invocation execution metadata and a visible rework entry for its single correction round (13.1: PLANS.md milestone-row current-state contradiction; 13.2: stale docs/architecture.md F1 status line plus two LOW scope-wording items). All three Phase 13 acceptance criteria are met: the four palette fields are documented with meaning, exact code-owned defaults (#111827/#FFFFFF/#B45309/#FFFFFF) and the load-time 4.5:1 pair rule; README documents the v1.1 settings UI, allowlist (32/64 bounds), position/size, verbosity, and inventory cache with no stale 'no web configuration UI' or restart-required claim; and docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md (plus docs/architecture.md and the PLANS.md current-state surfaces) are reconciled with no stale current-state claim. No Gate 13, phase-complete, or tag overclaim exists, the acceptance checkboxes remain unchecked, no v1.1.0-phase13 tag exists, and V1 history is preserved. Five LOW findings were recorded: two closure actions (create the phase aggregate docs/implementation/phase-13/orchestration.json and create the annotated tag v1.1.0-phase13), one tracked Phase-12 carry (P12R-F2 stale source comment), and two informational record/wording notes. There are no BLOCKER/HIGH/MEDIUM findings. gate_13_status is NOT_MET only because the tag does not yet exist; the phase is ready for the closure tag and for Phase 14."
+}

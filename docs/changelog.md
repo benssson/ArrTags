@@ -3543,11 +3543,12 @@ non-canonical cross-runtime golden set.
 
 ## Phase 13 - README and documentation pass (v1.1)
 
-**Status:** In progress; tasks 13.1 (README palette documentation and v1.1
+**Status:** Complete; tasks 13.1 (README palette documentation and v1.1
 feature documentation) and 13.2 (canonical current-state reconciliation sweep)
-are complete at the documentation level, so Gate 13 is not yet met and the
-`v1.1.0-phase13` tag is not yet created. The phase review and the tag are owned
-by the orchestrator and are not claimed here.
+are complete; all three Phase 13 acceptance criteria are met; Gate 13 is met
+(the Phase 13 review is approved in
+`docs/implementation/phase-13/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase13` is created.
 
 ### Task 13.1 - README palette documentation and v1.1 feature documentation
 
@@ -3588,9 +3589,10 @@ shipped behavior.
 Reconciles `docs/project-status.md`, `docs/changelog.md`, and
 `docs/implementation-readiness.md` with the v1.1 state so no stale claim is
 presented as current. `docs/project-status.md` now names Phase 13 (README and
-documentation pass) as the current milestone with tasks 13.1 and 13.2 complete at
-the documentation level, Gate 13 not yet met, and the `v1.1.0-phase13` tag and
-phase review owned by the orchestrator; it records Phase 12 as complete with the
+documentation pass) as the current milestone with tasks 13.1 and 13.2 complete,
+Gate 13 met, and the annotated `v1.1.0-phase13` tag created (the phase review is
+approved in `docs/implementation/phase-13/phase-review.json`, APPROVED_WITH_FINDINGS
+with 0 open BLOCKER/HIGH/MEDIUM); it records Phase 12 as complete with the
 annotated tag `v1.1.0-phase12` and the live pinned-host confirmations for Phases
 9-12 owned by task 14.3; the Next-tasks framing leads with the completed Phase 13
 and its pending gate; the provider inventory/catalogue cache is removed from the

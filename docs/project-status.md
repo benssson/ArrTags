@@ -2,12 +2,13 @@
 
 ## Project Status
 
-**Current milestone:** Phase 13 — README and documentation pass (v1.1) is in
-progress: tasks 13.1 (README palette documentation and v1.1 feature
+**Current milestone:** Phase 13 — README and documentation pass (v1.1) is
+complete: tasks 13.1 (README palette documentation and v1.1 feature
 documentation) and 13.2 (canonical current-state reconciliation sweep) are
-complete at the documentation level, so Gate 13 is not yet met and the
-`v1.1.0-phase13` tag is not yet created (the phase review and tag are owned by
-the orchestrator). Phase 12 — Badge value allowlist and badge size/position
+complete; all three Phase 13 acceptance criteria are met; Gate 13 is met (the
+Phase 13 review is approved in `docs/implementation/phase-13/phase-review.json`,
+APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag
+`v1.1.0-phase13` is created. Phase 12 — Badge value allowlist and badge size/position
 (v1.1) is complete: tasks 12.1 (allowlist configuration, bounds, validation, and
 fingerprint), 12.2 (allowlist resolution and renderer filtering order), 12.3
 (badge size/position configuration and layout engine), and 12.4 (coordinated
@@ -709,17 +710,20 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 
 Next tasks:
 
-- Phase 13 — README and documentation pass (v1.1) tasks 13.1 (README palette
-  documentation and v1.1 feature documentation) and 13.2 (canonical current-state
-  reconciliation sweep) are complete at the documentation level, so Gate 13 is
-  not yet met and the `v1.1.0-phase13` tag is not yet created (the phase review
-  and tag are owned by the orchestrator): the four palette override fields are
-  documented with their meaning, default colors, and the 4.5:1 contrast rule, the
+- Phase 13 — README and documentation pass (v1.1) is complete: tasks 13.1
+  (README palette documentation and v1.1 feature documentation) and 13.2
+  (canonical current-state reconciliation sweep) are complete; all three Phase 13
+  acceptance criteria are met; Gate 13 is met (the Phase 13 review is approved in
+  `docs/implementation/phase-13/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+  open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase13` is created:
+  the four palette override fields are documented with their meaning, default
+  colors, and the 4.5:1 contrast rule, the
   v1.1 features (settings UI, allowlist, placement/size, verbosity, and inventory
   cache) are documented in the README, and the canonical current-state
   documents reconciled by this task (PLANS.md, `docs/project-status.md`,
   `docs/changelog.md`, `docs/implementation-readiness.md`, and
-  `docs/architecture.md`) carry no stale claim.
+  `docs/architecture.md`) carry no stale claim. The live pinned-host confirmation
+  remains owned by task 14.3.
 - Phase 12 — Badge value allowlist and badge size/position (v1.1) is complete:
   tasks 12.1 (allowlist configuration, bounds, validation, and fingerprint), 12.2
   (allowlist resolution and renderer filtering order), 12.3 (badge size/position
