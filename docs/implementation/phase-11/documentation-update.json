@@ -1,0 +1,187 @@
+{
+  "scope": "v1.1 Phase 11 - Provider inventory cache and library-refresh-driven refresh (Goal C, ADR-018), phase-completion reconciliation",
+  "phase_review": "docs/implementation/phase-11/phase-review.json (reviewer_status APPROVED_WITH_FINDINGS, phase_complete true, ready_for_next_phase true, 0 open BLOCKER/HIGH/MEDIUM, reviewed_head e685f84)",
+  "phase_aggregate": "docs/implementation/phase-11/orchestration.json (status COMPLETE; tasks 11.1-11.4; phase_review block embeds the approved review and the v1.1.0-phase11 tag action)",
+  "surfaces_checked": [
+    "PLANS.md (## Project Status paragraph, ## Active Planning Scope paragraph, Milestone Status row 11, Phase 11 task 11.1-11.4 status blocks, Phase 11 acceptance-criteria checkboxes, Gate 11 paragraph)",
+    "docs/project-status.md (Current milestone paragraph, Next tasks Phase 11 bullet)",
+    "docs/changelog.md (Phase 11 status header, task 11.1-11.4 entries)",
+    "docs/architecture.md (status line, section 8 cache/failure blast radius, section 12)",
+    "docs/implementation-readiness.md (status line Phase 11 clause, Post-V1 Backlog open-item wording)",
+    "docs/limitations.md (F1 resolved record, V1 success-criteria row 6, V6 count paragraph)",
+    "README.md (Known limitations provider-inventory-cache bullet)",
+    "docs/decisions.md (ADR-018 clause 5, Consequences)",
+    "docs/data-model.md (section 6 inventory-cache paragraphs)",
+    "docs/release/build-and-release.md (artifact identity / supported version ranges; no Phase 11 claim, unchanged)",
+    "docs/planning/v1.1.md (Goal C current-state line; deferred, see ambiguous_or_deferred)"
+  ],
+  "changes": [
+    {
+      "document": "PLANS.md",
+      "section": "## Project Status paragraph",
+      "before": "all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is created",
+      "after": "all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json (reviewer_status APPROVED_WITH_FINDINGS; phase_complete true; 0 open BLOCKER/HIGH/MEDIUM)",
+        "docs/implementation/phase-11/orchestration.json (phase_review block; tag action)",
+        "Convention: Phase 9/10 docs assert the phase tag is created (PLANS.md Phase 9/10 entries)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "## Active Planning Scope paragraph",
+      "before": "so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is created",
+      "after": "so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json",
+        "docs/implementation/phase-11/orchestration.json"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Milestone Status table, row 11",
+      "before": "so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is created)",
+      "after": "so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`) and the annotated tag `v1.1.0-phase11` is created)",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json",
+        "docs/implementation/phase-11/orchestration.json"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Phase 11 Gate 11 paragraph",
+      "before": "**Gate 11:** Met when tasks 11.1-11.4 meet their acceptance criteria, the phase review is approved, and the tag `v1.1.0-phase11` is created. ... the phase review and the tag `v1.1.0-phase11` remain the outstanding Gate 11 steps.",
+      "after": "**Gate 11:** Met. Tasks 11.1-11.4 meet their acceptance criteria, the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json` (APPROVED_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM), and the annotated tag `v1.1.0-phase11` is created. Phase 11 resolves limitation F1. All four Phase 11 acceptance criteria are met at the integration-test level.",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json (phase_complete true; ready_for_next_phase true)",
+        "docs/implementation/phase-11/orchestration.json"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "#### 11.1 status block",
+      "before": "keeps the bounded last-known-good semantics on provider failure without extending the window. No provider `ETag`/revision token is assumed.",
+      "after": "keeps the bounded last-known-good semantics on provider failure without extending the window. *(Superseded by task 11.4: this is the historical point-in-time task 11.1 wording. Inventory stale-serving on provider failure is not realized in production - a failed cold population caches nothing and the retained last-known-good is the per-item `MetadataStateEntry`; the bounded last-known-good serving is the TTL second half. See the task 11.4 status and `docs/limitations.md` F1.)* No provider `ETag`/revision token is assumed.",
+      "evidence": [
+        "docs/implementation/11.4/documentation-review.json finding D-11.4-1 (PLANS.md task 11.1/11.2 status blocks retain the superseded claim)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:250 and Sonarr/SonarrMetadataReader.cs:317 (TryStore without lastError)",
+        "docs/changelog.md task 11.1 superseded annotation (same treatment)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "#### 11.2 status block",
+      "before": "and a provider failure keeps the bounded last-known-good observation set until the TTL. The `MetadataReconciliationProcessor` freshness semantics are unchanged",
+      "after": "and a provider failure keeps the bounded last-known-good observation set until the TTL. *(Superseded by task 11.4: this is the historical point-in-time task 11.2 wording. Inventory stale-serving on provider failure is not realized in production - a failed cold population caches nothing and the retained last-known-good is the per-item `MetadataStateEntry`; the bounded last-known-good serving is the TTL second half. See the task 11.4 status and `docs/limitations.md` F1.)* The `MetadataReconciliationProcessor` freshness semantics are unchanged",
+      "evidence": [
+        "docs/implementation/11.4/documentation-review.json finding D-11.4-1",
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs (WithFailure has no production caller)"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Current milestone paragraph",
+      "before": "integration-test level; Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is created",
+      "after": "integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json",
+        "docs/implementation/phase-11/orchestration.json"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Next tasks, Phase 11 bullet",
+      "before": "all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is created",
+      "after": "all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json",
+        "docs/implementation/phase-11/orchestration.json"
+      ]
+    },
+    {
+      "document": "docs/changelog.md",
+      "section": "Phase 11 status header",
+      "before": "**Status:** Complete at the integration-test level. Tasks 11.1, 11.2, 11.3, and 11.4 are complete; limitation F1 is recorded as resolved.",
+      "after": "**Status:** Complete; the independent phase review is approved (Gate 11 met; see `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the `v1.1.0-phase11` tag is created (tasks 11.1, 11.2, 11.3, and 11.4 complete). Limitation F1 is recorded as resolved at the integration-test level.",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json",
+        "docs/implementation/phase-11/orchestration.json",
+        "Convention: docs/changelog.md Phase 9/10 status headers"
+      ]
+    },
+    {
+      "document": "docs/changelog.md",
+      "section": "### Task 11.2 entry",
+      "before": "and a provider failure keeps the bounded last-known-good observation set until the TTL without extending the window. The reader's per-item `IArrMetadataReader` interface is unchanged",
+      "after": "and a provider failure keeps the bounded last-known-good observation set until the TTL without extending the window. *(Superseded by task 11.4: this sentence is retained as the historical point-in-time record of the task 11.2 wording. Inventory stale-serving on provider failure is not realized in production - a failed cold population caches nothing and the retained last-known-good is the per-item `MetadataStateEntry`; the bounded last-known-good serving is the TTL second half. See the task 11.4 entry below and `docs/limitations.md` F1.)* The reader's per-item `IArrMetadataReader` interface is unchanged",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json finding P11R-F3",
+        "docs/changelog.md task 11.1 superseded annotation (same treatment)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:250 and Sonarr/SonarrMetadataReader.cs:317"
+      ]
+    },
+    {
+      "document": "docs/architecture.md",
+      "section": "Status line",
+      "before": "so all four Phase 11 acceptance criteria are met at the integration-test level and Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is created.",
+      "after": "so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created.",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json",
+        "docs/implementation/phase-11/orchestration.json"
+      ]
+    },
+    {
+      "document": "docs/architecture.md",
+      "section": "Section 8 (cache / failure blast radius)",
+      "before": "A library read failure during a population (`/api/v3/movie` or `/api/v3/series`) fails the whole reconciliation window: ... so the failure blast radius is wider than the pre-11.2 per-item library read.",
+      "after": "A library read failure during a population (`/api/v3/movie` or `/api/v3/series`) caches nothing and fails the work items in that window: the reader returns the bounded failure, and each work item that waited on the per-connection single-flight gate re-checks the still-empty cache and re-attempts the population. A sub-read failure (the bulk `/moviefile?movieId=`, the per-series `/episode?seriesId=`, or the bulk `/episodeFile?episodeFileIds=`) falls back to the unchanged direct read instead of failing the window.",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json finding P11R-F5 (unquantified 'wider than pre-11.2' phrasing)",
+        "docs/implementation/11.4/reviewer-report.json finding 11.4-F1",
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs AcquirePopulationAsync (per-connection single-flight gate)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs and Sonarr/SonarrMetadataReader.cs (library-read failure -> InventoryPopulation.Failed; sub-read failure -> direct read)"
+      ]
+    },
+    {
+      "document": "docs/implementation-readiness.md",
+      "section": "Status line Phase 11 clause",
+      "before": "so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is created",
+      "after": "so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json",
+        "docs/implementation/phase-11/orchestration.json"
+      ]
+    },
+    {
+      "document": "docs/decisions.md",
+      "section": "ADR-018 Decision clause 5",
+      "before": "(clause 5 text unchanged: 'on provider failure the existing bounded last-known-good semantics apply')",
+      "after": "Clause text unchanged; added a clarifying note after clause 5: the 'existing bounded last-known-good semantics' are the pre-existing per-item `MetadataStateEntry` path (`MetadataReconciliationProcessor.KeepLastKnownGoodAsStale`), not inventory retention; the inventory cache caches nothing on a failed cold population, consistent with the Consequences and `docs/limitations.md` F1.",
+      "evidence": [
+        "docs/implementation/phase-11/phase-review.json finding P11R-F4 (recorded divergence)",
+        "docs/decisions.md ADR-018 Consequences (unchanged: 'A library read failure during a population caches nothing ...')",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs KeepLastKnownGoodAsStale",
+        "docs/limitations.md F1"
+      ]
+    }
+  ],
+  "ambiguous_or_deferred": [
+    {
+      "claim": "P11R-F6: docs/planning/v1.1.md Goal C 'Current state' (lines 81-84) still states that limitation F1 applies and that the GOALS 'avoid unnecessary API requests' goal is only partially met for provider fetches, which is now false.",
+      "recommended_action": "Not corrected here: docs/planning/v1.1.md is the governing-scope planning artifact rather than a canonical current-state surface, and the phase review deliberately defers this to the Phase 13/V1.1-7 documentation pass (same precedent as P10-F3). Correct it there alongside the Goal F stale line."
+    },
+    {
+      "claim": "P11R-F7/F8/F9/F10: unwired ArrInventoryCacheEntry.WithFailure/LastError/EvaluateState (docs now honest); no DI-composition test proving the shared inventory singleton is injected; InventoryCacheMaxBytes is a conservative lower-bound estimate with the record cap as the hard bound; the bulk id chunk size reuses ReconciliationBatchSize.",
+      "recommended_action": "No current-state documentation overclaim; carry forward as tracked non-blocking follow-ups. Any future code task that wires failure/refresh-on-stale semantics must update docs/limitations.md and docs/architecture.md."
+    },
+    {
+      "claim": "P11R-F1/P11R-F2 (closure actions): docs/implementation/phase-11/orchestration.json is now created, and the annotated tag v1.1.0-phase11 must be moved from the sibling lineage commit b852c99 to this branch's Phase 11 closure commit (and the sibling worktree removed) immediately after this reconciliation commit.",
+      "recommended_action": "Orchestrator-owned closure actions. This reconciliation asserts the tag is created per the Phase 9/10 convention; if the tag is not moved, the Gate 11 status lines would overclaim and must be reverted. The canonical surfaces reference the phase review; no canonical surface references the phase aggregate (matching the other phases), so the aggregate is referenced here and in the orchestration phase_review block."
+    },
+    {
+      "claim": "docs/changelog.md task 11.2/11.3 documentation-impact lines retain 'docs/limitations.md F1 (partial progress; still open until 11.4)'.",
+      "recommended_action": "No change: these are historical point-in-time task entries and the phrase explicitly self-annotates the resolution point ('until 11.4'), consistent with preserving historical records."
+    }
+  ],
+  "summary": "Reconciled the canonical current-state surfaces for the approved v1.1 Phase 11 (Gate 11). All surfaces that presented the phase review or tag as outstanding now state Gate 11 is met (Phase 11 review approved in docs/implementation/phase-11/phase-review.json, APPROVED_WITH_FINDINGS, 0 open BLOCKER/HIGH/MEDIUM) with the annotated tag v1.1.0-phase11 created. Addressed P11R-F3 (annotated the changelog task 11.2 failure-retention sentence, and, for consistency with D-11.4-1, the matching PLANS.md task 11.1/11.2 status sentences), P11R-F4 (added an ADR-018 clause 5 clarifying note without rewriting the decision), and P11R-F5 (reworded architecture section 8 to the concrete shipped bound: a library-read failure caches nothing and fails the window's work items, while a sub-read failure falls back to the unchanged direct read). F1 is consistently recorded as resolved at the integration-test level with the live pinned-host confirmation owned by task 14.3. No application code, tests, build scripts, or the release artifact were modified; no historical record was rewritten. The only unresolved stale claim is P11R-F6 in docs/planning/v1.1.md, deferred to the Phase 13/V1.1-7 pass per the phase review."
+}

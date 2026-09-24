@@ -1,0 +1,118 @@
+{
+  "phase": 11,
+  "title": "Provider inventory cache and library-refresh-driven refresh",
+  "release": "v1.1.0",
+  "phase_tag": "v1.1.0-phase11",
+  "status": "COMPLETE",
+  "phase_review": {
+    "report": "docs/implementation/phase-11/phase-review.json",
+    "reviewer_status": "APPROVED_WITH_FINDINGS",
+    "phase_complete": true,
+    "ready_for_next_phase": true,
+    "open_blocker_or_high": 0,
+    "reviewed_head": "e685f84",
+    "findings": [
+      {"id": "P11R-F1", "severity": "LOW", "status": "closure-action", "summary": "phase-11/orchestration.json aggregate absent; created by this closure."},
+      {"id": "P11R-F2", "severity": "LOW", "status": "closure-action", "summary": "v1.1.0-phase11 pointed to the sibling lineage commit b852c99; re-pointed to this branch's Phase 11 closure commit."},
+      {"id": "P11R-F3", "severity": "LOW", "status": "addressed", "summary": "changelog task 11.2 retained an unannotated false failure-retention sentence; annotated as superseded by task 11.4."},
+      {"id": "P11R-F4", "severity": "LOW", "status": "addressed", "summary": "ADR-018 clause 5 literal wording diverged from shipped behavior; a clarifying note records the per-item reading."},
+      {"id": "P11R-F5", "severity": "LOW", "status": "addressed", "summary": "architecture section 8 'wider than pre-11.2' phrasing was unquantified; reworded to the concrete bound."},
+      {"id": "P11R-F6", "severity": "LOW", "status": "deferred", "summary": "docs/planning/v1.1.md Goal C current-state line is stale; owned by Phase 13/V1.1-7."},
+      {"id": "P11R-F7", "severity": "LOW", "status": "tracked", "summary": "ArrInventoryCacheEntry.WithFailure/LastError/EvaluateState are unwired; docs are now honest (sibling P11-F1 addressed)."},
+      {"id": "P11R-F8", "severity": "LOW", "status": "tracked", "summary": "No DI-composition test proving the readers/webhook receive the shared inventory singleton."},
+      {"id": "P11R-F9", "severity": "LOW", "status": "tracked", "summary": "The byte bound is a conservative lower-bound estimate; the record cap is the hard bound."},
+      {"id": "P11R-F10", "severity": "LOW", "status": "tracked", "summary": "Bulk id chunk size reuses ReconciliationBatchSize rather than a request-line bound."}
+    ],
+    "tag_recommendation": "re-point v1.1.0-phase11 from the sibling commit b852c99 to this branch's Phase 11 closure commit"
+  },
+  "authoritative_execution_order": ["11.1", "11.2", "11.3", "11.4"],
+  "tasks": [
+    {
+      "task": "11.1",
+      "title": "Inventory cache model, bounds, and limits",
+      "status": "COMPLETE",
+      "commit": "65313f8",
+      "state_commit": "fce78eb",
+      "orchestration": "docs/implementation/11.1/orchestration.json",
+      "subagent_invocations": 8,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: test-quality-reviewer HIGH TQ-11.1-1 (the FromLimits validated-limits binding was untested) plus MEDIUM TQ-11.1-2/3 and security LOW SEC-11.1-1/3; the worker added mutation-sensitive binding/failure/secret-free tests and honest producer-redaction documentation without changing production behavior."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "test_quality_reviewer": "PASS_WITH_FINDINGS (attempt 2; all attempt-1 findings closed)",
+        "security_reviewer": "PASS_WITH_FINDINGS (attempt 2; 0 open BLOCKER/HIGH/MEDIUM)"
+      }
+    },
+    {
+      "task": "11.2",
+      "title": "Provider-client integration and bulk reads",
+      "status": "COMPLETE",
+      "commit": "9e53480",
+      "state_commit": "97c649f",
+      "orchestration": "docs/implementation/11.2/orchestration.json",
+      "subagent_invocations": 7,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: implementation-reviewer MEDIUM 11.2-F1 (stale suite counts) plus test-quality-reviewer MEDIUM TQ-11.2-1..4 (inert provider-failure test, insensitive Sonarr fallback test, single-identity window test, and no single-flight cold-start coalescing); the worker added per-connection single-flight population coalescing, mutation-sensitive tests, whole-library retention, bounded bulk-id chunking, and refreshed counts."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "test_quality_reviewer": "PASS (attempt 2)"
+      }
+    },
+    {
+      "task": "11.3",
+      "title": "ArrTags-side invalidation",
+      "status": "COMPLETE",
+      "commit": "72d425f",
+      "state_commit": "1ed4bf7",
+      "orchestration": "docs/implementation/11.3/orchestration.json",
+      "subagent_invocations": 6,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: test-quality-reviewer MEDIUM TQ-11.3-1 (the 'no revision token/history-since' negative claim only checked literal substrings) plus LOW TQ-11.3-2 and documentation LOW 11.3-F3; the worker pinned the provider request endpoint/query allowlist, strengthened the per-source invalidation observation, and corrected the changelog wording."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "test_quality_reviewer": "PASS_WITH_FINDINGS (attempt 2; MEDIUM closed, only LOW/INFO remain)"
+      }
+    },
+    {
+      "task": "11.4",
+      "title": "Goal C documentation and integration verification",
+      "status": "COMPLETE",
+      "commit": "cb62fe4",
+      "state_commit": "e685f84",
+      "orchestration": "docs/implementation/11.4/orchestration.json",
+      "subagent_invocations": 3,
+      "rework_rounds": 0,
+      "final_gates": {
+        "implementation_reviewer": "APPROVED",
+        "documentation_maintainer": "PASS_WITH_FINDINGS (0 BLOCKER/HIGH/MEDIUM)"
+      }
+    }
+  ],
+  "related_commits": [
+    "673b1f2 Reconcile Phase 10 completion across canonical documentation surfaces (pre-Phase-11 base)",
+    "1ed4bf7 Record v1.1 task 11.3 commit hash in implementation state"
+  ],
+  "summary": {
+    "total_task_subagent_invocations": 24,
+    "total_rework_rounds": 3,
+    "tasks_complete": 4,
+    "tasks_total": 4,
+    "user_decisions_required": []
+  },
+  "notes": [
+    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null in the per-task records; no estimation was performed.",
+    "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and rework entries.",
+    "Phase 11 was implemented on the canonical v1.1 branch (11.1 65313f8, 11.2 9e53480, 11.3 72d425f, 11.4 cb62fe4). A parallel sibling implementation existed in a separate worktree (lineage ending 8f6e28e) and had incorrectly tagged v1.1.0-phase11; that tag was re-pointed to this branch's Phase 11 closure commit and the sibling worktree removed after this closure.",
+    "The applicable gaps from the sibling Phase 11 review (P11-F1..F9) and its Phase 11A corrective work were folded into task 11.4, adapted to this branch's actual behavior (per-connection single-flight population coalescing present; sub-read failures fall back to the direct read; only a library-read failure fails the window).",
+    "Phase 11 phase-review gate: APPROVED_WITH_FINDINGS, phase_complete true, ready_for_next_phase true, 0 open BLOCKER/HIGH/MEDIUM; acceptance criteria 1-4 met at the integration-test level and the criterion-4 clarified reading (per-item MetadataStateEntry last-known-good; the inventory cache caches nothing on a failed cold population) confirmed sound.",
+    "Validation: build 0 warnings / 0 errors; full default suite Failed 0, Passed 1421, Skipped 63, Total 1484; focused Goal C tests 55/55.",
+    "Tracked non-blocking findings carried forward: P11R-F6 (docs/planning/v1.1.md Goal C stale line, owned by Phase 13/V1.1-7), P11R-F7 (unwired WithFailure/LastError/EvaluateState; docs honest), P11R-F8 (no DI-composition test for the shared inventory singleton), P11R-F9 (byte bound is a conservative lower-bound estimate; the record cap is the hard bound), P11R-F10 (bulk id chunk size reuses ReconciliationBatchSize).",
+    "The live pinned-host cache/logging confirmation remains owned by task 14.3; ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the 63 host-guarded facts skip."
+  ]
+}

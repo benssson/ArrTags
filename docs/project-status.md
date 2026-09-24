@@ -36,9 +36,10 @@ token, `history/since`, or SignalR dependency is used. Task 11.4 reconciles
 the shipped cache behavior, records limitation F1 as resolved, and adds the Goal C
 integration coverage for the one-read-per-window, invalidation-source, bounds, and
 last-known-good facets, so all four Phase 11 acceptance criteria are met at the
-integration-test level; Gate 11 is met once the phase review is approved and the
-tag `v1.1.0-phase11` is created, and the live pinned-host confirmation is owned by
-task 14.3.
+integration-test level; Gate 11 is met (the Phase 11 review is approved in
+`docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created, and
+the live pinned-host confirmation is owned by task 14.3.
 Phase 10 — Logging with configurable verbosity (v1.1) is
 complete: tasks 10.1 (logging foundation, verbosity configuration, and
 fingerprint exclusion), 10.2 (bounded, redacted log call sites and volume
@@ -718,8 +719,10 @@ Next tasks:
   limitation F1 as resolved, and adds the Goal C integration coverage for the
   one-read-per-window, invalidation-source, bounds, and last-known-good facets, so
   all four Phase 11 acceptance criteria are met at the integration-test level;
-  Gate 11 is met once the phase review is approved and the tag `v1.1.0-phase11` is
-  created, and the live pinned-host confirmation is owned by task 14.3.
+  Gate 11 is met (the Phase 11 review is approved in
+  `docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+  open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase11` is created, and
+  the live pinned-host confirmation is owned by task 14.3.
 - Phase 10 — Logging with configurable verbosity (v1.1) task 10.1 (logging
   foundation, verbosity configuration, and fingerprint exclusion) is complete:
   the bounded `LogVerbosity` setting (default `Warning`) is validated and

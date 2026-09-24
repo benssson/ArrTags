@@ -3032,8 +3032,11 @@ warnings / 0 errors; default suite Failed 0, Passed 1363, Skipped 63, Total 1426
 
 ## Phase 11 - Provider inventory cache and library-refresh-driven refresh (v1.1)
 
-**Status:** Complete at the integration-test level. Tasks 11.1, 11.2, 11.3, and
-11.4 are complete; limitation F1 is recorded as resolved.
+**Status:** Complete; the independent phase review is approved (Gate 11 met; see
+`docs/implementation/phase-11/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+open BLOCKER/HIGH/MEDIUM) and the `v1.1.0-phase11` tag is created (tasks 11.1,
+11.2, 11.3, and 11.4 complete). Limitation F1 is recorded as resolved at the
+integration-test level.
 
 ### Task 11.1 - Inventory cache model, bounds, and limits
 
@@ -3127,7 +3130,13 @@ serves the matching and metadata from the retained observations without calling
 the provider library endpoint again. An observation set over the record or byte
 bound, or a failed bulk file read, keeps the existing direct read unchanged; an
 absent or expired set is re-read; and a provider failure keeps the bounded
-last-known-good observation set until the TTL without extending the window. The
+last-known-good observation set until the TTL without extending the window.
+*(Superseded by task 11.4: this sentence is retained as the historical
+point-in-time record of the task 11.2 wording. Inventory stale-serving on
+provider failure is not realized in production — a failed cold population caches
+nothing and the retained last-known-good is the per-item `MetadataStateEntry`;
+the bounded last-known-good serving is the TTL second half. See the task 11.4
+entry below and `docs/limitations.md` F1.)* The
 reader's per-item `IArrMetadataReader` interface is unchanged; the cache is the
 cross-item mechanism, and the reader falls back to the existing direct read when
 it is unavailable.

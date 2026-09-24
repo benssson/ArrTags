@@ -1,0 +1,315 @@
+{
+  "phase": "v1.1 Phase 11 — Provider inventory cache and library-refresh-driven refresh (Goal C, ADR-018)",
+  "reviewer_role": "phase-reviewer",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "reviewed_head": "e685f84ec08a49a6a01d0d78e7fb0fcac7034dd4",
+  "reviewed_branch": "v1.1",
+  "phase_tag_expected": "v1.1.0-phase11",
+  "tag_recommendation": {
+    "action": "re-point-then-close",
+    "note": "The annotated tag v1.1.0-phase11 already exists (tag object 0be826c018d7eeeba7820ac6f28c19a7dc1fa10a) but points to the sibling worktree lineage commit b852c9970a1ac714bafed76dedbcc73fbab54f92, not this branch. Because this branch is the authoritative Phase 11 and the sibling worktree is to be removed, the orchestrator must move the tag to this branch's final Phase 11 commit (force-move the annotated tag with -f, or delete and recreate it) and remove the sibling worktree. Point it at the final closure HEAD; if a phase-completion reconciliation commit is added after this review, tag that commit, otherwise tag e685f84. After the move, update the canonical surfaces that currently phrase Gate 11 as pending (PLANS.md Project Status / milestone row 11 / Gate 11 paragraph, docs/project-status.md, docs/architecture.md status line, docs/implementation-readiness.md status line, docs/changelog.md, README.md as applicable)."
+  },
+  "gate_11_status": "NOT MET UNTIL THE TAG IS MOVED TO THIS BRANCH. Tasks 11.1-11.4 are complete with all four acceptance criteria met at the integration-test level and this phase review is approved; the only outstanding Gate 11 step is the tag action above (plus the closure artifacts P11R-F1/P11R-F2). The docs correctly present Gate 11 as unmet at HEAD.",
+  "findings": [
+    {
+      "id": "P11R-F1",
+      "severity": "LOW",
+      "status": "closure-action",
+      "area": "orchestration/phase aggregate",
+      "summary": "docs/implementation/phase-11/orchestration.json does not exist. Phases 7-10 each have a phase-level aggregate that embeds the phase review result, so it can only be created after this review; its absence at review time is expected but is still a required closure artifact.",
+      "detail": "The four per-task records (11.1-11.4) are complete, mutually consistent, and contain per-invocation execution metadata and visible rework entries. The phase-level aggregate that rolls up task status, invocation counts, rework rounds, this review result, and the tag action is missing.",
+      "evidence": [
+        "docs/implementation/phase-11/ contains only this phase-review.json (no orchestration.json)",
+        "docs/implementation/phase-10/orchestration.json (aggregate with phase_review block)",
+        "docs/implementation/phase-9/orchestration.json, docs/implementation/phase-8/orchestration.json, docs/implementation/phase-7/orchestration.json"
+      ],
+      "recommended_action": "Orchestrator to create docs/implementation/phase-11/orchestration.json as a post-review closure artifact (tasks 11.1-11.4, per-invocation counts and rework rounds, this phase-review result, and the v1.1.0-phase11 tag action), matching the Phases 9-10 convention."
+    },
+    {
+      "id": "P11R-F2",
+      "severity": "LOW",
+      "status": "closure-action",
+      "area": "release/tag integrity",
+      "summary": "The v1.1.0-phase11 annotated tag currently points to the sibling worktree lineage (b852c99), not to this branch's Phase 11 completion (e685f84). Gate 11 is not met on this branch until the tag is moved and the sibling worktree removed.",
+      "detail": "git for-each-ref shows refs/tags/v1.1.0-phase11 = tag 0be826c -> b852c99. This branch's accepted Phase 11 work is 65313f8/fce78eb, 9e53480/97c649f, 72d425f/1ed4bf7, cb62fe4/e685f84. The sibling lineage (phase-11 phase-review.json + Phase 11A) is to be discarded per the phase instruction, so the tag must be re-pointed to preserve a valid gate marker.",
+      "evidence": [
+        "git for-each-ref refs/tags/v1.1.0-phase11 -> tag 0be826c -> b852c99",
+        "git log --oneline (this branch): 65313f8, 9e53480, 72d425f, cb62fe4 + state commits",
+        "git worktree list: /config/.local/share/opencode/worktree/6521d4/nimble-circuit 8f6e28e (sibling)"
+      ],
+      "recommended_action": "Move v1.1.0-phase11 to this branch's final Phase 11 commit (tag -f, or delete/recreate), remove the sibling worktree, and reconcile the Gate 11 status lines in PLANS.md, docs/project-status.md, docs/architecture.md, docs/implementation-readiness.md, and docs/changelog.md."
+    },
+    {
+      "id": "P11R-F3",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation consistency / historical record",
+      "summary": "docs/changelog.md Task 11.2 retains the now-false sentence 'a provider failure keeps the bounded last-known-good observation set until the TTL without extending the window' with no 'superseded by task 11.4' annotation, while the Task 11.1 sentence immediately above it is annotated.",
+      "detail": "The claim was never realized: both production TryStore calls omit lastError and the readers cache nothing on a failed library read. The Task 11.1 changelog entry is annotated; the Task 11.2 entry is not, producing an inconsistent treatment of the same class of claim on the same canonical surface. This is a point-in-time historical entry and every surface presented as current is accurate, so it is not a current-state overclaim. Mirrors 11.4-F3 and the sibling P11-F6.",
+      "evidence": [
+        "docs/changelog.md lines 3056-3063 (task 11.1 sentence annotated)",
+        "docs/changelog.md lines 3129-3130 (task 11.2 sentence unannotated)",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:250 and Sonarr/SonarrMetadataReader.cs:317 (TryStore without lastError)"
+      ],
+      "recommended_action": "Optional: add a one-line '(superseded by task 11.4)' pointer to the task 11.2 changelog sentence, or record a house rule that historical task entries are intentionally left unannotated and are superseded by the current-state surfaces."
+    },
+    {
+      "id": "P11R-F4",
+      "severity": "LOW",
+      "status": "recorded-divergence",
+      "area": "decision record consistency",
+      "summary": "ADR-018 Decision clause 5 still reads 'on provider failure the existing bounded last-known-good semantics apply' in the paragraph about the inventory cache, while the shipped behaviour (a failed library read caches nothing; the per-item metadata state retains last-known-good) is recorded only in the Consequences.",
+      "detail": "The worker correctly did not rewrite a historical decision clause; the divergence is recorded in the Consequences. A reader can reconcile clause 5 only by interpreting 'existing semantics' as the pre-existing per-item MetadataStateEntry path, which is the clarified reading confirmed below and which the composed integration test verifies. Mirrors 11.4-F2 / D-11.4-3.",
+      "evidence": [
+        "docs/decisions.md ADR-018 clause 5 (unchanged) vs Consequences (updated)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:187-194, 355-380 (KeepLastKnownGoodAsStale)",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs RadarrLibraryReadFailureOnACacheMissFailsTheWindowAndKeepsBoundedLastKnownGoodMetadata"
+      ],
+      "recommended_action": "No change required. Optionally add a one-line pointer in clause 5 or an explicit divergence note tying it to the Consequences and the per-item metadata state."
+    },
+    {
+      "id": "P11R-F5",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation precision",
+      "summary": "docs/architecture.md section 8 states 'the failure blast radius is wider than the pre-11.2 per-item library read' without quantifying the difference; the concrete change is same-connection serialization/latency, not a larger count of independent failures.",
+      "detail": "Pre-11.2 each work item performed and failed its own library read independently; post-11.2 a failed cold population also causes each waiting work item to re-check the still-empty cache and re-attempt the population (so the failure count is not demonstrably larger), but same-connection readers now serialize behind the population gate, which can add latency during a slow/failing library read. The claim is conservative (overstates rather than understates), so it is not an overclaim. Mirrors 11.4-F1.",
+      "evidence": [
+        "docs/architecture.md lines 700-705",
+        "src/ArrTags/Providers/ArrInventoryCacheProvider.cs AcquirePopulationAsync (per-connection single-flight gate)",
+        "docs/implementation/11.4/reviewer-report.json finding 11.4-F1"
+      ],
+      "recommended_action": "Optional rewording: state the concrete bound (a failed population leaves the connection window unpopulated and same-connection readers serialize behind the population gate) without the unquantified comparison."
+    },
+    {
+      "id": "P11R-F6",
+      "severity": "LOW",
+      "status": "deferred",
+      "area": "documentation/planning artifact",
+      "summary": "docs/planning/v1.1.md Goal C 'Current state' (lines 81-84) still states that limitation F1 applies and that the GOALS 'avoid unnecessary API requests' goal 'is only partially met for provider fetches', which is now false.",
+      "detail": "docs/planning/v1.1.md is the governing-scope planning artifact rather than one of the canonical current-state surfaces, and the analogous stale Goal F line (Phase 10 finding P10-F3) was deliberately deferred to the Phase 13/V1.1-7 documentation pass. Correctly untouched by task 11.4. Mirrors the sibling P11-F7 / 11A-PR-3.",
+      "evidence": [
+        "docs/planning/v1.1.md lines 81-84",
+        "PLANS.md Phase 13/V1.1-7 documentation checklist",
+        "docs/implementation/phase-10/orchestration.json P10-F3 precedent"
+      ],
+      "recommended_action": "Correct in the Phase 13 (V1.1-7) documentation pass alongside the Goal F stale line. Tracked, not blocking."
+    },
+    {
+      "id": "P11R-F7",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "technical debt / dead API surface",
+      "summary": "ArrInventoryCacheEntry.WithFailure, ArrInventoryCacheEntry.LastError, ArrInventoryCacheEntry.EvaluateState, and the cache-entry IsUsableAsCurrent have no production caller; the shipped readers cache nothing on a failed library read and never supply lastError.",
+      "detail": "The XML documentation was corrected in task 11.4 to state that failure-driven inventory last-known-good retention is not realized and that these members are test-facing, so the source no longer asserts a false invariant (this addresses the sibling's P11-F1, whose complaint was the misleading comments). The residual risk is a maintainer wiring unrealized failure/refresh-on-stale semantics; the members are part of the public cache shape.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs:204-268 (WithFailure/EvaluateState/IsUsableAsCurrent, XML docs state no production caller)",
+        "grep src/ArrTags: WithFailure/EvaluateState/lastError have no production caller; LastError never read in production",
+        "docs/implementation/11.4/worker-report.json; docs/implementation/11.4/documentation-review.json"
+      ],
+      "recommended_action": "In a later code task, either remove the unused members or keep them with the explicit test-only annotation already present. No action required for Gate 11."
+    },
+    {
+      "id": "P11R-F8",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "integration-boundary test gap",
+      "summary": "No test asserts that the production DI composition injects the shared ArrInventoryCacheProvider singleton into the RadarrMetadataReader/SonarrMetadataReader and WebhookIntakeService; the criterion-1 activation path rests on optional constructor injection plus TryAddSingleton<ArrInventoryCacheProvider>().",
+      "detail": "Registration is indirectly protected (the LibraryReconciliationService factory calls GetRequiredService<ArrInventoryCacheProvider>(), and tests resolve the registered IArrMetadataReader set), and standard Microsoft.Extensions.DependencyInjection injects the registered singleton into the optional constructor parameters, so this is not a current defect. However, because the readers' cache dependency is optional and defaults to null, a future registration regression would silently degrade to pre-11.2 per-item reads without failing a test. This mirrors the sibling's DI-singleton-sharing coverage, which this branch lacks. Tracked as 11.3 TQ-11.3-3.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:80, 82-83, 166, 237-247",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:46-54 and Sonarr/SonarrMetadataReader.cs:49-57 (optional ArrInventoryCacheProvider)",
+        "docs/implementation/11.3/orchestration.json TQ-11.3-3 (LOW, webhook verified on a directly-constructed service)"
+      ],
+      "recommended_action": "Add one DI-composition test that resolves RadarrMetadataReader/SonarrMetadataReader and the hosted WebhookIntakeService from the registered service collection and asserts they share the same ArrInventoryCacheProvider instance and that a populated cache is served. No action required for Gate 11."
+    },
+    {
+      "id": "P11R-F9",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "bounds/accounting",
+      "summary": "InventoryCacheMaxBytes is enforced against a conservative lower-bound size estimate; actual retained bytes can exceed the configured byte bound by a bounded per-record amount. The record-count bound is the hard memory cap.",
+      "detail": "Documented honestly in the ArrInventoryCache/ArrInventoryCacheEntry remarks and docs/architecture.md section 12; the security review recorded SEC-11.1-2 (LOW, unchanged). No unbounded path exists; the per-connection record bound (default 10000) and the bounded connection count cap memory.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrInventoryCacheEntry.cs EstimateSizeBytes",
+        "docs/implementation/11.1/security-review.attempt-2.json SEC-11.1-2",
+        "src/ArrTags/Configuration/OperationalLimits.cs:196-198 (validated ranges)"
+      ],
+      "recommended_action": "None for Gate 11. Optionally document the estimate's omission set as a tracked bound (already partially recorded in the worker report)."
+    },
+    {
+      "id": "P11R-F10",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "provider request bounds",
+      "summary": "The repeatable bulk id list is chunked by OperationalLimits.ReconciliationBatchSize (default 100, validated 1-1000) rather than a dedicated request-line bound, so a user-configured maximal batch can still approach provider request-line limits and fall back to the direct read.",
+      "detail": "Chunking removes the unbounded-query case; the fallback is safe (the direct read is used, correctness preserved). At the default batch of 100 the query string is small; at the maximum of 1000 it is roughly 11 KB. Reusing the library-enumeration batch size as the id-chunk bound couples two unrelated concerns, which is a design smell but not a defect. Tracked as 11.2-F3.",
+      "evidence": [
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:164-192 and Sonarr/SonarrClient.cs GetEpisodeFilesAsync (chunk by ReconciliationBatchSize)",
+        "tests/ArrTags.Tests/ProviderInventoryCacheIntegrationTests.cs BulkReadsChunkTheIdListIntoBoundedRequests",
+        "docs/implementation/11.2/orchestration.json 11.2-F3"
+      ],
+      "recommended_action": "Optional: introduce a dedicated bounded bulk-id chunk size, or document the practical batch/request-line relationship. No action required for Gate 11."
+    }
+  ],
+  "acceptance_criteria_assessment": [
+    {
+      "criterion": "1. One provider library read per connection serves a reconciliation window instead of one read per work item.",
+      "status": "met-at-integration-test-level",
+      "assessment": "Verified against source and independently-run tests. RadarrMetadataReader.ReadAsync consults ArrInventoryCache.TryGet first and only populations on a miss; PopulateAsync issues one GET /api/v3/movie for the whole library plus one bulk GET /api/v3/moviefile?movieId=... for the movies with a file, then every work item is matched from the cached observations with no provider library read. SonarrMetadataReader is structurally identical (one GET /api/v3/series, one GET /api/v3/episode?seriesId= per series, one bulk GET /api/v3/episodeFile?episodeFileIds= for files the embedded resource does not resolve). ProviderInventoryCacheIntegrationTests proves one /movie request serves two distinct identities with whole-library retention, a second in-window read makes no provider call, the bulk selector URIs replace per-item reads, concurrent cold readers coalesce to one library read through the per-connection single-flight gate, and an over-bound/failed-read population keeps the direct read. Documented nuance (accurate): Sonarr episode enumeration is O(series) per window, not O(1), and a sparse webhook window repopulates the whole library; both are recorded in docs/limitations.md F1 and ADR-018 Consequences."
+    },
+    {
+      "criterion": "2. Invalidation is ArrTags-side (webhook, Jellyfin library refresh/post-scan, scheduled/manual reconciliation, bounded TTL); no provider conditional request, revision token, or SignalR dependency.",
+      "status": "met-at-integration-test-level",
+      "assessment": "Verified. LibraryReconciliationService.ReconcileAsync calls InvalidateInventory()/InvalidateAll() after the enabled/fence guards and before enumeration; ArrtagsReconciliationTask (Scheduled, which manual execution reuses), ArrTagsPostScanTask (PostScan), and ConfigurationReconciliationTrigger (PostSave) all route through ReconcileAsync. WebhookIntakeService.ResolveAndEnqueue invalidates the event's provider/connection (resolved via the same ArrConnectionCatalog.FromSnapshot identity the readers use) before enqueuing any hint, with a bounded invalidate-all fallback. ArrInventoryCache.TryGet evicts an expired set, and ArrayInventoryCacheEntry.StaleUntil is the bounded TTL fallback. ReconciliationTriggerTests.ReconciliationInvalidatesTheInventoryForEverySource covers PostScan/Scheduled/PostSave via served-before/not-served-after, WebhookResolutionTests.ServiceInvalidatesTheEventConnectionInventoryScopedToThatConnection covers per-connection scoping, InventoryCacheInvalidationTests covers the TTL eviction and the no-SignalR assembly guard, and ProviderInventoryCacheIntegrationTests.ProviderReadsUseNoConditionalRequestRevisionTokenOrHistorySinceWatermark pins the endpoint-path and query-key allowlists. Independent grep of src found no If-None-Match/If-Modified-Since/history-since/SignalR (only a Jellyfin source-image ETag used in MediaIdentityFactory, unrelated). The periodic scheduled reconciliation keeps its unchanged 12-hour interval."
+    },
+    {
+      "criterion": "3. The cache is bounded and secret-free, with validated TTL/size limits.",
+      "status": "met-at-integration-test-level",
+      "assessment": "Verified. OperationalLimits gains InventoryCacheTtlMinutes (default 15, validated 1-1440), InventoryCacheMaxRecords (default 10000, validated 1-100000), and InventoryCacheMaxBytes (default 32 MiB, validated 1 MiB-256 MiB), validated at configuration load, cloned into the immutable snapshot, and exposed on the ADR-016 settings page. ArrInventoryCache stores at most one observation set per ArrConnectionId keyed by a secret-free identity (provider kind + normalized base URL; API key and userinfo excluded), rejects an over-bound or scope-invalid set before it displaces a retained one, and is in-memory only (never persisted, rebuilt empty on restart). The only free-text carrier is a bounded ArrProviderError; value-level redaction is the producer contract (documented, consistent with MetadataStateEntry.LastError). ArrInventoryCacheTests (24) covers the bounds, FromLimits binding, secret-free member-type denylist, distinctness from the per-item state, and the TTL boundaries; the 11.1 security review returned PASS_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM."
+    },
+    {
+      "criterion": "4. Provider failure keeps the existing bounded last-known-good behavior.",
+      "status": "met-at-integration-test-level (under the clarified per-item reading confirmed below)",
+      "assessment": "Verified. On a failed cold population the reader returns the bounded ArrMetadataReadResult.Failure and caches nothing (PodulateAsync returns InventoryPopulation.Failed before TryStore in both readers), so the inventory cache never serves a failed read as current. The retained last-known-good is the unchanged per-item MetadataStateEntry path: MetadataReconciliationProcessor.ProcessAsync calls KeepLastKnownGoodAsStale on a Retryable.Later failure, which writes the still-usable entry as explicit Stale via MetadataStateEntry.ToStale() without extending its bounded window; MetadataReconciliationProcessor is untouched by Phase 11 (not present in any of the four task diffs). ProviderInventoryCacheIntegrationTests.RadarrLibraryReadFailureOnACacheMissFailsTheWindowAndKeepsBoundedLastKnownGoodMetadata composes the real reader, real cache, real processor, and real durable MetadataStateStore and asserts the per-item state is Stale with an unchanged fingerprint/ExpiresAt/StaleUntil. Separately, an already-stored observation set is served through the TTL second half without a provider call (RadarrStaleObservationSetIsServedWithoutAProviderCallWhenTheProviderFails), which is the TTL-driven bounded last-known-good, not failure-driven retention."
+    }
+  ],
+  "criterion_4_clarified_reading": {
+    "reading_under_review": "The retained last-known-good is the unchanged per-item MetadataStateEntry path (MetadataReconciliationProcessor.KeepLastKnownGoodAsStale); the inventory cache caches nothing on a failed cold population and is not an inventory stale-serving mechanism on failure.",
+    "verdict": "SOUND",
+    "justification": [
+      "Source: RadarrMetadataReader.PopulateAsync returns InventoryPopulation.Failed before any TryStore on a library-read failure, and ReadAsync returns the bounded failure when population.Error is set; SonarrMetadataReader is identical. No failure path writes the cache.",
+      "Source: the last-known-good behaviour is MetadataReconciliationProcessor.KeepLastKnownGoodAsStale -> MetadataStateEntry.ToStale(), which preserves the entry's fingerprint, ExpiresAt, and StaleUntil; the file is unmodified by Phase 11.",
+      "Test: the composed integration test asserts exactly this (Stale per-item state, unchanged fingerprint/ExpiresAt/StaleUntil, empty inventory cache) at the real reader/cache/processor/store boundary.",
+      "ADR-018 clause 5's 'existing bounded last-known-good semantics' is therefore correctly read as the pre-existing per-item metadata semantics; the Consequences record that failure-driven inventory retention is not realized, and the inventory's own stale-serving is TTL-second-half, not failure-driven.",
+      "Soundness caveat: clause 5's literal wording is still divergent (P11R-F4); the reading is sound but the clause would read more precisely with an optional pointer to the per-item path."
+    ]
+  },
+  "sibling_findings_assessment": [
+    {
+      "sibling_id": "P11-F1",
+      "sibling_severity": "MEDIUM",
+      "resolution_here": "addressed",
+      "assessment": "The sibling's complaint was misleading production XML comments asserting unrealized inventory stale-serving. This branch corrected the ArrInventoryCache/ArrInventoryCacheEntry/ArrInventoryCacheState XML docs in task 11.4 (source diff is XML-doc-only), so no production comment asserts the unrealized behaviour. Residual dead members remain as tracked debt (P11R-F7); not a gap that blocks the criterion."
+    },
+    {
+      "sibling_id": "P11-F2",
+      "sibling_severity": "MEDIUM",
+      "resolution_here": "addressed",
+      "assessment": "The Sonarr sparse-window/webhook amplification is recorded in docs/limitations.md F1 and ADR-018 Consequences, naming per-record/per-series invalidation scoping as a possible future optimization. Verified in the tree."
+    },
+    {
+      "sibling_id": "P11-F3",
+      "sibling_severity": "MEDIUM",
+      "resolution_here": "addressed (adapted)",
+      "assessment": "This branch's implementation fallback differs from the sibling's: only a library-read failure fails the window, while a failed bulk/sub-read falls back to the unchanged direct read. The behaviour is documented in docs/limitations.md F1 / architecture section 8 and covered by new integration tests for the Radarr bulk-read fallback, the Sonarr per-series fallback, and the library-read window failure with retained per-item last-known-good. No open gap. Residual: the unquantified 'wider blast radius' phrasing (P11R-F5)."
+    },
+    {
+      "sibling_id": "P11-F4",
+      "sibling_severity": "LOW",
+      "resolution_here": "addressed",
+      "assessment": "PLANS.md line 4168 reads '- [x] 11.4 Goal C documentation and integration verification.'"
+    },
+    {
+      "sibling_id": "P11-F5",
+      "sibling_severity": "LOW",
+      "resolution_here": "addressed / not applicable",
+      "assessment": "The 11.1 orchestration.json lists 8 subagent invocations (worker x2, implementation-reviewer x2, security-reviewer x2, test-quality-reviewer x2), matching the report artifacts on disk; no invocation is missing or overwritten. The 11.2/11.3/11.4 records are also complete."
+    },
+    {
+      "sibling_id": "P11-F6",
+      "sibling_severity": "LOW",
+      "resolution_here": "partially addressed",
+      "assessment": "Both 'Open items carried out of Phase 7' headers were reworded so the v1.1-promoted bullets are annotated closed, and the task 11.1 changelog sentence is annotated. The task 11.2 changelog sentence remains unannotated (P11R-F3); this is a historical entry, not a current-state overclaim."
+    },
+    {
+      "sibling_id": "P11-F7",
+      "sibling_severity": "LOW",
+      "resolution_here": "open/deferred (same as sibling)",
+      "assessment": "docs/planning/v1.1.md Goal C current-state line is still stale; consistent with the sibling's deferral to the Phase 13/V1.1-7 pass. Recorded as P11R-F6."
+    },
+    {
+      "sibling_id": "P11-F8",
+      "sibling_severity": "LOW",
+      "resolution_here": "open/closure-action (same as sibling)",
+      "assessment": "The phase-11 orchestration aggregate is absent here too; it is a post-review closure artifact. Recorded as P11R-F1."
+    },
+    {
+      "sibling_id": "P11-F9",
+      "sibling_severity": "LOW",
+      "resolution_here": "addressed / not applicable",
+      "assessment": "This branch's current v1.1 working-suite counts are refreshed to 1,421 passed / 63 skipped / 1,484 total in docs/project-status.md and docs/limitations.md V6, matching the independently reproduced suite."
+    }
+  ],
+  "deliverables_assessment": {
+    "status": "complete-at-integration-test-level",
+    "assessment": "All five Phase 11 deliverables and all four tasks are present, committed, and independently inspected. 11.1 (65313f8, state fce78eb) adds ArrInventoryCache/ArrInventoryCacheEntry/ArrInventoryCacheState/ArrInventoryRecordObservation, the three validated OperationalLimits bounds, the settings-page fields, and docs/data-model.md section 6 / docs/architecture.md sections 8 and 12. 11.2 (9e53480, state 97c649f) adds ArrInventoryCacheProvider, the reader population/consumption, the Radarr repeatable moviefile?movieId= and Sonarr repeatable episodeFile?episodeFileIds= bulk selectors with ReconciliationBatchSize chunking, and the DI singleton. 11.3 (72d425f, state 1ed4bf7) adds ArrInventoryCache.Invalidate/InvalidateAll, the webhook and reconciliation invalidation wiring, and the TTL fallback. 11.4 (cb62fe4, state e685f84) reconciles the Goal C documents (XML-doc-only src diff; 0 non-documentation source lines changed), records F1 resolved, and adds the three Goal C integration cases. No overclaim was found: every status surface says 'at the integration-test level', F1's resolution states the remaining bounds (Sonarr O(series), sparse-window amplification, eager whole-library population on a miss, size-bound rejection via the direct read, library-read-failure window vs sub-read fallback, whole-cache clear on a full reconciliation, per-connection single-flight coalescing), and no surface claims Gate 11 is met or that the tag points to this branch."
+  },
+  "tasks_checked": ["11.1", "11.2", "11.3", "11.4"],
+  "commits_checked": [
+    "65313f8 (11.1 implementation)",
+    "fce78eb (11.1 state)",
+    "9e53480 (11.2 implementation)",
+    "97c649f (11.2 state)",
+    "72d425f (11.3 implementation)",
+    "1ed4bf7 (11.3 state)",
+    "cb62fe4 (11.4 implementation)",
+    "e685f84 (11.4 state; reviewed HEAD)"
+  ],
+  "requirements_checked": [
+    "PLANS.md Phase 11 objective, deliverables, authoritative execution order (11.1, 11.2, 11.3, 11.4), dependency table, per-task acceptance criteria, four Phase 11 acceptance criteria, and Gate 11",
+    "GOALS.md Reliability/Performance ('avoid unnecessary API requests to Sonarr and Radarr', 'avoid blocking Jellyfin operations') and success criterion 6",
+    "docs/planning/v1.1.md Goal C, DG-12, V1.1-4, and section 9 verification requirements",
+    "docs/limitations.md F1 (resolved record and remaining bounds) and the V1 success-criteria row 6"
+  ],
+  "architecture_checked": [
+    "docs/architecture.md section 8 (inventory cache boundary, provider-client integration, single-flight population, failure blast radius, bulk selectors, observation-time semantics, invalidation sources) and section 12 (three inventory limit rows, cache semantics paragraph, metadata last-known-good paragraph)",
+    "docs/data-model.md section 6 (inventory cache subsection, population/consumption, observation-time semantics, invalidation, inventory cache-key row, expiration and invalidation)",
+    "docs/decisions.md ADR-018 clauses 1-7, Consequences, and Rejected alternatives; ADR-004 (limits) and ADR-016 (runtime activation) interactions",
+    "Cross-task interfaces: ArrInventoryCacheProvider singleton shared by both readers and both invalidation services; ArrConnectionId identity shared by ArrConnectionCatalog, the readers, the webhook, and the reconciliation invalidation; ReconciliationBatchSize reused as the bulk-id chunk size"
+  ],
+  "research_checked": [
+    "docs/research/sonarr-api.md line 159 and 469-486 (episodeFile repeated episodeFileIds selector; seriesId is the required episode selector; no all-episodes endpoint)",
+    "docs/research/radarr-api.md lines 203 and 893-903 (moviefile?movieId= repeatable movieId)",
+    "docs/research/arr-api-researcher/conditional-requests-and-inventory-caching.json (no ETag/If-None-Match for /api/**, no bulk revision token, history/since incomplete, SignalR internal, bulk selection available)",
+    "Jellyfin assumption check: Phase 11 adds no new Jellyfin API surface (the only Jellyfin touches are the pre-existing webhook intake and reconciliation triggers plus three settings-page fields); the target is the pinned Jellyfin 12.0.0, and no unverified Jellyfin API was introduced."
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, Milestone Status row 11, Phase 11 task checkboxes and per-task status blocks, Phase 11 acceptance-criteria checkboxes, Gate 11 paragraph, and the Post-V1 Backlog 'Open items carried out of Phase 7' header",
+    "docs/changelog.md Phase 11 header and task 11.1-11.4 entries (including the task 11.1 superseded annotation and the task 11.4 entry)",
+    "docs/project-status.md current milestone, Next tasks, and the current v1.1 working-suite count (1,421/63/1,484)",
+    "docs/architecture.md status line and sections 8/12",
+    "docs/implementation-readiness.md status line and the 'Open items carried out of Phase 7' header (v1.1-promoted bullets annotated closed)",
+    "docs/limitations.md F1 (resolved) and V6 (current count 1,421/63/1,484)",
+    "docs/data-model.md section 6",
+    "docs/decisions.md ADR-018 Consequences",
+    "README.md Known limitations provider-inventory-cache bullet",
+    "docs/planning/v1.1.md Goal C current-state line (deferred, P11R-F6)"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/11.1/orchestration.json (8 recorded invocations, 1 rework round; attempt-1 reports preserved alongside attempt-2)",
+    "docs/implementation/11.2/orchestration.json (7 recorded invocations including one aborted-and-rerun test-quality attempt; 1 rework round)",
+    "docs/implementation/11.3/orchestration.json (6 recorded invocations, 1 rework round)",
+    "docs/implementation/11.4/orchestration.json (3 recorded invocations, 0 rework rounds)",
+    "docs/implementation/phase-11/orchestration.json (absent; post-review closure artifact - P11R-F1)"
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 24,
+    "total_attempts": 24,
+    "correction_rounds": 3,
+    "note": "Recorded per-task invocations: 11.1 = 8 (worker 2, implementation-reviewer 2, security-reviewer 2, test-quality-reviewer 2); 11.2 = 7 (worker 2, implementation-reviewer 2, test-quality-reviewer 2 plus one aborted-and-rerun attempt-2 invocation); 11.3 = 6 (worker 2, implementation-reviewer 2, test-quality-reviewer 2); 11.4 = 3 (worker 1, implementation-reviewer 1, documentation-maintainer 1). Correction rounds = rework entries across the four task records: 11.1 = 1, 11.2 = 1, 11.3 = 1, 11.4 = 0. Every correction round is visible as an incremented attempt with the prior attempt's report preserved, not overwritten. Per-invocation execution metadata is present (runtime token/cost fields are null by the runtime's own statement; no estimation)."
+  },
+  "validation": {
+    "independent_run_performed": true,
+    "method": "Removed src/ArrTags/{bin,obj} and tests/ArrTags.Tests/{bin,obj}, sourced /config/arrtags-env.sh, then ran ./build.sh restore, ./build.sh build, ./build.sh test, and targeted focused filters against HEAD e685f84. Logs under the phase-owned temp directory /tmp/phase-11/.",
+    "build": "Build succeeded; 0 Warning(s); 0 Error(s) (clean rebuild).",
+    "full_suite": "Failed 0, Passed 1421, Skipped 63, Total 1484 (independently reproduced; matches the task 11.4 record and the canonical count surfaces).",
+    "focused_goal_c": "dotnet test --filter FullyQualifiedName~ProviderInventoryCacheIntegrationTests|ArrInventoryCacheTests|InventoryCacheInvalidationTests -> Failed 0, Passed 55, Skipped 0, Total 55 (ArrInventoryCacheTests 24 + ProviderInventoryCacheIntegrationTests 25 + InventoryCacheInvalidationTests 6).",
+    "focused_invalidation_sources": "ReconciliationTriggerTests 30/30 and WebhookResolutionTests 12/12 passed (42 total, matching the task 11.4 record).",
+    "git_state": "Working tree clean at HEAD e685f84; implementation/state commits 65313f8/fce78eb, 9e53480/97c649f, 72d425f/1ed4bf7, cb62fe4/e685f84 present. The v1.1.0-phase11 tag exists but points to b852c99 (sibling lineage) - see P11R-F2.",
+    "environment_limitations": "The pinned Jellyfin host is unavailable (ARRTAGS_JELLYFIN_HOST_DIR unset), so the 63 host-guarded facts skip and no live-host cache verification was performed. Phase 11's own scope is explicitly integration-test-level, and live cache verification remains owned by task 14.3."
+  },
+  "summary": "Phase 11 (v1.1 Goal C, ADR-018) is complete and architecturally consistent with GOALS.md, the PLANS.md Phase 11 spec, ADR-018, and the documented data model. All four acceptance criteria are genuinely met at the integration-test level, verified by independent source inspection and an independently reproduced clean build (0 warnings / 0 errors), full suite (Failed 0, Passed 1421, Skipped 63, Total 1484, no new skips), focused Goal C suite (55/55) and invalidation-source tests (42/42). The provider inventory cache is bounded, secret-free, non-authoritative, in-memory, keyed by the secret-free ArrConnectionId, and consumed through one DI singleton by both readers and both invalidation services; one library read per connection plus the bulk file selectors serve a reconciliation window (with the honest Sonarr O(series) and sparse-window bounds recorded); invalidation is ArrTags-side across the complete trigger set with no conditional request, revision token, history/since, or SignalR dependency and the periodic scheduled reconciliation unchanged; and provider failure keeps the unchanged per-item bounded last-known-good MetadataStateEntry while the inventory caches nothing on a failed cold population. The criterion-4 clarified reading (per-item last-known-good; no inventory stale-serving on failure) is SOUND. The sibling Phase 11 review's applicable findings (P11-F1/F2/F3/F4/F5/F9) are genuinely addressed or not applicable on this branch, and the two that remain (P11-F7 v1.1.md planning line; P11-F8 phase aggregate) are the same non-blocking deferrals; no sibling finding reveals an unresolved real gap here. All task-level findings are LOW and tracked; there is no BLOCKER or HIGH finding, so the phase is APPROVED_WITH_FINDINGS and ready for Phase 12. Closure actions before Gate 11 is formally met: move the v1.1.0-phase11 tag from the sibling commit b852c99 to this branch and remove the sibling worktree (P11R-F2), create docs/implementation/phase-11/orchestration.json (P11R-F1), and reconcile the Gate 11 status lines; the LOW documentation/technical-debt items (P11R-F3/F4/F5/F6/F7/F8/F9/F10) should be carried forward as tracked follow-ups."
+}

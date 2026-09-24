@@ -2340,6 +2340,14 @@ boundary.
    existing bounded last-known-good semantics apply, and the cache never holds a
    credential or other secret. The inventory cache is in-memory and rebuilt on
    restart; it is not persisted authoritative state.
+
+   > **Clarifying note (v1.1 Phase 11, task 11.4; the clause text above is
+   > unchanged):** the "existing bounded last-known-good semantics" are the
+   > pre-existing per-item `MetadataStateEntry` path
+   > (`MetadataReconciliationProcessor.KeepLastKnownGoodAsStale`), not inventory
+   > retention. The inventory cache caches nothing on a failed cold population,
+   > consistent with the Consequences below and `docs/limitations.md` F1.
+
 6. **Relationship to existing cache model.** The inventory cache is distinct from
    the per-item `MetadataCacheEntry` (`docs/data-model.md` 3.9): the inventory
    cache holds raw canonical provider observations for reuse, while
