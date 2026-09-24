@@ -1,0 +1,79 @@
+{
+  "task": "14.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "findings": [
+    {
+      "id": "14.4-R1",
+      "severity": "LOW",
+      "summary": "SEC-14.4-03 (stale docs/planning/v1.1.md:146-147 'zero logging call sites' current-state line) is accurately described, genuinely non-blocking, and disclosed rather than hidden.",
+      "status": "noted",
+      "area": "documentation/assurance",
+      "evidence": [
+        "docs/planning/v1.1.md:146-147 still states 'Current state: The plugin has zero logging call sites' (confirmed on disk at HEAD)",
+        "docs/implementation/14.4/security-review.json SEC-14.4-03 (severity LOW, status open)",
+        "docs/implementation/10.3/security-review.json SEC-10.3-2 and docs/implementation/phase-10/phase-review.json P10-F3 (same carried item)",
+        "worker-report.json known_limitations[0] discloses the item and routes it to task 14.5"
+      ],
+      "recommended_action": "Correct the Goal F 'Current state' sentence in the task 14.5 documentation update; does not block release acceptance (0 open BLOCKER/HIGH)."
+    },
+    {
+      "id": "14.4-R2",
+      "severity": "LOW",
+      "summary": "The three new accepted limitations (SEC-10/SEC-11/SEC-12) are correctly rated no worse than LOW/INFORMATIONAL and are supported by concrete code evidence; none masks a BLOCKER/HIGH.",
+      "status": "noted",
+      "area": "secret/input bound",
+      "evidence": [
+        "SEC-10: PluginConfigurationValidator.cs:40-68 has no length check for ApiKey/WebhookSecret; SecretLease.cs:80-82 allocates both byte arrays before FixedTimeEquals; WebhookAuthentication.cs:71-74 bounds the untrusted candidate to 1024 chars; requires an admin-configured implausibly long secret and fails closed when unconfigured -> not a credential disclosure",
+        "SEC-11: PluginConfigurationValidator.cs:77-94 rejects only blank/duplicate; MediaEligibility.cs:29-48 Guid.TryParse per entry and fails closed; reachable only through the elevation-gated save or direct XML edit",
+        "SEC-12: PluginConfigurationValidator.cs:70-75 accepts any absolute http/https URL; ArrConnectionId.cs:74-98 excludes user info; SecretLease.cs:56-57 sends X-Api-Key as a header, never the URL; carried from SEC-10.3-4",
+        "docs/limitations.md SEC-10/SEC-11/SEC-12 entries cite the above evidence with plausible post-V1 hardening paths"
+      ],
+      "recommended_action": "None; the ratings and residual scoping are appropriate for a release gate whose criterion is no open BLOCKER/HIGH."
+    },
+    {
+      "id": "14.4-R3",
+      "severity": "INFORMATIONAL",
+      "summary": "PLANS.md task 14.4 status remains 'Not started' and the 14.4 checkbox is unchecked; this is the orchestrator's post-review state update and is outside the task's declared documentation impact (docs/limitations.md).",
+      "status": "noted",
+      "area": "documentation/state",
+      "evidence": [
+        "PLANS.md:4987 ('- [ ] 14.4 Release security review.') and PLANS.md:5167 ('**Status:** Not started.')",
+        "PLANS.md:5192 declares the 14.4 documentation impact as docs/limitations.md only"
+      ],
+      "recommended_action": "Orchestrator updates the PLANS.md 14.4 status/checkbox after accepting this review; not a worker rework item."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The release security review is recorded",
+      "met": true,
+      "evidence": "docs/implementation/14.4/security-review.json exists (10 findings SEC-14.4-01..10, prior-finding reconciliation over final-review SEC-1..SEC-9 and the 9.2/9.3/10.3/11.1 reviews, reproductions, summary), with reviewer_status PASS_WITH_FINDINGS and ready_for_next_task true; docs/implementation/14.4/worker-report.json records COMPLETE and the same verdict. Reviewed scope covers (a) the ADR-020 logging path and the SEC-5 rewrite, (b) the ADR-016 embedded settings page and elevation-gated administrator save path, (c) the ADR-021 rejection activity log, and (d) release breadth (ADR-005 secret boundary, ADR-012 webhook boundary, state integrity, bounded inputs, packaged artifact). Spot-checked code claims hold: 21 _log.Write call sites over 11 registered categories; validator bounds none of ApiKey/WebhookSecret/EnabledLibraries-GUIDs; SecretLease.Matches allocates before comparing; the page embeds no secret (password inputs carry no value), posts only real library ids (data-library-id=folder.ItemId via ApiClient.updatePluginConfiguration); the rejection notifier uses fixed EntryType/EntryName, Guid.Empty, LogLevel.Warning, MaxSurfacedReasons=8 and truncated fields."
+    },
+    {
+      "criterion": "No open BLOCKER/HIGH",
+      "met": true,
+      "evidence": "security-review.json declares open_blocker_high=0; severity tally is 3 LOW + 7 INFORMATIONAL and 0 HIGH/BLOCKER. The only status=open finding is SEC-14.4-03 (LOW documentation debt, non-blocking). SEC-10/SEC-11 (LOW) and SEC-12 (INFORMATIONAL) are accepted residuals recorded in docs/limitations.md with post-V1 hardening paths."
+    }
+  ],
+  "validation_reproduced": [
+    "git state: branch v1.1 at HEAD c7d2a3a; `git status --porcelain` shows only `M docs/limitations.md` plus untracked `docs/implementation/14.4/`; no 14.4 commit and no 14.4 tag (latest phase tag v1.1.0-phase13).",
+    "Finding severities/statuses parsed from security-review.json: 3 LOW, 7 INFORMATIONAL; 0 BLOCKER/HIGH; open_blocker_high=0; reviewer_status=PASS_WITH_FINDINGS; ready_for_next_task=true.",
+    "Code claims spot-checked on disk: PluginConfigurationValidator.cs:40-68 (ValidateConnection, no ApiKey/WebhookSecret length bounds), :70-75 (IsAbsoluteHttpUrl accepts any absolute http/https URI), :77-94 (ValidateLibraryScope blank/duplicate only); SecretLease.cs:80-82 (UTF-8 byte arrays allocated before FixedTimeEquals); WebhookAuthentication.cs:71-74 (MaxCandidateLength=1024) and :76-92 (TryAcquire then Matches); JellyfinConfigurationRejectionNotifier.cs:25/31/36/43-44/104-109 (fixed EntryType, EntryName, MaxSurfacedReasons=8, MAX field/reason bounds, Guid.Empty, LogLevel.Warning, sanitizer + truncation).",
+    "config.html: password inputs at lines 23/46/61 have no value attribute; enabledLibraries collected only from .enabledLibrary checkboxes whose data-library-id is set from folder.ItemId (Lines 315-316, 448-451); save uses ApiClient.updatePluginConfiguration (elevation-gated PluginsController); file size 37,180 bytes matches the review claim.",
+    "SEC-2 evidence-line correction verified: ArrTagsServiceRegistrator.cs:259-261 is the `root = ... Path.Combine(Path.GetTempPath(), \"ArrTags\")` assignment (method 255-263), so the updated citation is accurate and the finding substance (shared-temp fallback) is unchanged.",
+    "Logging surface: 21 `_log.Write(` call sites confirmed across the 11 categories registered in ArrTagsServiceRegistrator.cs:180-190, matching the review's enumeration.",
+    "Packaged artifact: sha256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1 and md5 547beb2f7d83cd256d3a3ce7bb7e7620 match the review and manifest.json's 1.1.0.0 checksum; unzip lists exactly the 7 expected entries; the extracted ArrTags.dll sha256 c376b981033fe5bcdfa63ab5cc55dcd132cb46bdb4134e6594d57be62735b497 equals src/ArrTags/bin/Release/net10.0/ArrTags.dll; a grep of the extracted artifact for the mock keys/admin test password returned no matches.",
+    "docs/planning/v1.1.md:146-147 still carries the stale 'zero logging call sites' current-state sentence, confirming SEC-14.4-03.",
+    "Not rerun: the review's default/host-guarded suite counts (1,494/63 and 1,513/44) were not reproduced because they corroborate the independent task 14.2 matrix recorded in docs/limitations.md V6 and no code or test changed in this task; no reason to doubt them."
+  ],
+  "reviewed_head": "c7d2a3a",
+  "reviewed_diff_scope": [
+    "docs/limitations.md (tracked, modified: SEC-2 evidence-line correction + SEC-10/SEC-11/SEC-12 accepted-limitations section)",
+    "docs/implementation/14.4/security-review.json (untracked, added)",
+    "docs/implementation/14.4/worker-report.json (untracked, added)"
+  ],
+  "ready_for_next_task": true
+}

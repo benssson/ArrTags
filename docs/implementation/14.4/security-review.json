@@ -1,0 +1,217 @@
+{
+  "task": "14.4",
+  "attempt": 1,
+  "reviewer": "security-reviewer",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "open_blocker_high": 0,
+  "scope": "ArrTags v1.1 release-candidate security audit at HEAD c7d2a3a (artifact ArrTags_1.1.0.0.zip, 594,931 bytes, SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1). Covered: (1) the ADR-020 logging path and the SEC-5 rewrite, including every plugin log call site, the IArrTagsLog<T> facade, LogVerbosityGate, LogThrottle volume bound, DI wiring, and the live pinned-host verbosity/secret-scan evidence; (2) the ADR-016 embedded Configuration/config.html settings page, the IHasWebPages resource, and the Plugin.UpdateConfiguration validate-before-persist/last-valid-retention/serialized-save path, including the anonymous static page-resource and the elevation-gated PluginsController save boundary; (3) the ADR-021 configuration-rejection activity-log surface; (4) release breadth: the ADR-005 secret boundary and leases, the ADR-012 webhook boundary, state integrity (versioned envelopes, atomic writes, quarantine vs discard, traversal-safe paths), bounded-input boundaries (provider responses, webhook body/parser, inventory cache, configuration limits), and the packaged artifact; (5) reconciliation of every prior security finding in docs/implementation/final-review/security-review.json (SEC-1..SEC-9), docs/implementation/10.3/security-review.json, docs/implementation/9.2/security-review.json, docs/implementation/9.3/security-review.json, and docs/implementation/11.1/security-review.json, plus docs/limitations.md SEC-2/SEC-3/SEC-4/SEC-5/SEC-6/SEC-7/SEC-8/SEC-9/SEC-9.3-02.",
+  "reviewed_head": "c7d2a3ad4424ad9de3401795b10ca5b5a37b9b54",
+  "findings": [
+    {
+      "id": "SEC-14.4-01",
+      "severity": "LOW",
+      "status": "accepted",
+      "area": "secret/input bound",
+      "summary": "Configuration validation does not bound the length of the configured provider API keys or the inbound webhook shared secret. Because SecretLease.Matches allocates the UTF-8 byte arrays for both the expected secret and the untrusted candidate before the constant-time comparison, each request to the anonymous webhook route allocates memory proportional to the configured secret length, even though the candidate itself is bounded to 1024 characters (so a secret longer than 1024 characters can never authenticate). The exposure requires an administrator to save an implausibly long secret, there is no default secret, and an unconfigured webhook fails closed with 401 before any comparison; this is a memory-amplification/availability hardening gap, not a credential disclosure.",
+      "evidence": [
+        "src/ArrTags/Configuration/PluginConfiguration.cs:42 (WebhookSecret string, no bound)",
+        "src/ArrTags/Configuration/ArrConnectionConfiguration.cs:22 (ApiKey string, no bound)",
+        "src/ArrTags/Configuration/PluginConfigurationValidator.cs:40-68 (ValidateConnection checks only timeout/enabled/base URL/blank API key; no length check for ApiKey or WebhookSecret)",
+        "src/ArrTags/Webhooks/WebhookAuthentication.cs:71-92 (candidate bound MaxCandidateLength = 1024, then TryAcquire + SecretLease.Matches)",
+        "src/ArrTags/Secrets/SecretLease.cs:80-82 (Encoding.UTF8.GetBytes(_value) and Encoding.UTF8.GetBytes(candidate) allocated on every attempt)",
+        "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:56-81 (anonymous pre-binding filter reaches Authenticate for every unauthenticated request; no per-client throttling, SEC-8)",
+        "Independent suite runs at HEAD: default Failed 0, Passed 1494, Skipped 63, Total 1557; host-guarded (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin) Failed 0, Passed 1513, Skipped 44, Total 1557"
+      ],
+      "recommended_action": "Post-V1 hardening: bound WebhookSecret and both ApiKey values in PluginConfigurationValidator (for the webhook secret, at most the 1024-character candidate bound; a comparable small bound for API keys) and/or compare lengths before allocating in SecretLease.Matches. Accepted for v1.1 and recorded in docs/limitations.md SEC-10: a code change at the release gate would invalidate the byte-reproducible artifact and the task 14.3 live matrix."
+    },
+    {
+      "id": "SEC-14.4-02",
+      "severity": "LOW",
+      "status": "accepted",
+      "area": "input/configuration bound",
+      "summary": "PluginConfigurationValidator.ValidateLibraryScope rejects only blank and duplicate entries, so a saved configuration can carry an unbounded number of arbitrarily long EnabledLibraries entries (bounded in practice only by the host request-body and configuration-file limits). Each reconciliation and webhook resolution then parses the list with Guid.TryParse per item, so an oversized list adds work proportional to its size, and an entry that is not a library GUID is silently ignored, so a non-empty scope made only of unparseable entries fails the scope check closed for every item and silently stops badge work instead of surfacing a validation error. Trigger is the elevation-gated PluginsController save (or direct XML editing), not a remote input.",
+      "evidence": [
+        "src/ArrTags/Configuration/PluginConfigurationValidator.cs:77-94 (ValidateLibraryScope: non-empty and unique only)",
+        "src/ArrTags/Media/MediaEligibility.cs:29-48 (Guid.TryParse per entry per item; unparseable entries are ignored, non-empty scope fails closed)",
+        "src/ArrTags/Configuration/PluginConfigurationSnapshot.cs:183-187 (the whole list is copied into the snapshot)",
+        "src/ArrTags/Configuration/config.html (the page submits only the host's real library ids via enabledLibrary checkboxes, so the gap is reachable only through a crafted elevation-gated POST)",
+        "docs/implementation/14.3/live-verification.json L2 (admin POST /Plugins/{guid}/Configuration -> 204; anon POST -> 401)"
+      ],
+      "recommended_action": "Post-V1 hardening: bound the EnabledLibraries entry count and per-entry length and validate the library GUID format in PluginConfigurationValidator, surfacing a failure through the existing ADR-021 rejection path. Accepted for v1.1 and recorded in docs/limitations.md SEC-11."
+    },
+    {
+      "id": "SEC-14.4-03",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation/assurance",
+      "summary": "docs/planning/v1.1.md:146-147 still states 'Current state: The plugin has zero logging call sites; docs/limitations.md SEC-5 relies on that to assert no plugin log path can leak a secret.' The claim was falsified when task 10.2 added the instrumented call sites and SEC-5 was rewritten by task 10.3. It is a stale current-state assurance statement about the security surface under review (already recorded as SEC-10.3-2 / P10-F3 and routed to the Phase 13 documentation reconciliation, which did not correct it). It is documentation debt only: the shipped logging path is bounded and secret-free (verified in this audit and live in task 14.3 L7), and no canonical current-state document carries the claim.",
+      "evidence": [
+        "docs/planning/v1.1.md:146-147 (stale line, still present at HEAD)",
+        "docs/implementation/10.3/security-review.json finding SEC-10.3-2 (LOW, open, routed to Phase 13)",
+        "docs/implementation/phase-10/phase-review.json finding P10-F3 (LOW, open)",
+        "grep for 'zero logging call sites' over docs at HEAD: only intentional historical references remain in ADR-020 Context, the dated research snapshot, docs/changelog.md, and review records; docs/planning/v1.1.md is the only current-state claim"
+      ],
+      "recommended_action": "Correct the Goal F 'Current state' sentence in a documentation-only edit (the 14.5 documentation update or a delegated trivial fix); it does not require a code change, rebuild, or re-verification, and it does not block the release acceptance criterion (0 open BLOCKER/HIGH)."
+    },
+    {
+      "id": "SEC-14.4-04",
+      "severity": "INFORMATIONAL",
+      "status": "accepted",
+      "area": "secret/url",
+      "summary": "Configuration validation accepts any absolute http/https base URL, including one with embedded user information (for example https://user:password@sonarr.example:8989). ArrTags' own connection identity excludes user information and the API key, the plugin never logs a request URI, and credentials are sent only in the X-Api-Key header, so the plugin's log call sites cannot emit the value; however, framework-level HttpClient logging (host category, outside the plugin LogVerbosity gate) could include the request URI. This is carried from the task 10.3 review (SEC-10.3-4) and requires an administrator to embed credentials in the base URL.",
+      "evidence": [
+        "src/ArrTags/Configuration/PluginConfigurationValidator.cs:70-75 (IsAbsoluteHttpUrl accepts any absolute http/https URI)",
+        "src/ArrTags/Providers/ArrConnectionId.cs:74-98 (identity uses SchemeAndServer + AbsolutePath; user information excluded)",
+        "src/ArrTags/Secrets/SecretLease.cs:56-57 (X-Api-Key request header, never the URL)",
+        "docs/implementation/10.3/security-review.json finding SEC-10.3-4 (same residual, pre-existing)"
+      ],
+      "recommended_action": "Post-V1 hardening: reject a base URL whose user-information component is non-empty. Accepted for v1.1 and recorded in docs/limitations.md SEC-12."
+    },
+    {
+      "id": "SEC-14.4-05",
+      "severity": "INFORMATIONAL",
+      "status": "informational",
+      "area": "secret/logging",
+      "summary": "Carried, unchanged and still accurate: SEC-5's absolute wording depends on the code-owned producer invariant for ArrProviderError.Message (and transitively WorkProcessingResult.Reason and MediaMatch.AmbiguityReason), which are length-bounded/trimmed but not control-character-stripped at the boundary. All producers were re-verified at HEAD as fixed code-owned strings: ClassifyStatus and every ArrProviderError constructor in RadarrClient/SonarrClient and both metadata readers, the MediaMatcher/MediaMatchPolicy reasons plus a survivor count, the LibraryReconciliationService literal reasons, and ArtworkOperationErrors.Sanitize for artwork reasons. No URL, key, header, or provider response text can reach a log line today; this remains a future-regression risk only.",
+      "evidence": [
+        "src/ArrTags/Providers/ArrProviderError.cs:55-64 (Bound trims/truncates only)",
+        "src/ArrTags/Providers/Radarr/RadarrClient.cs:384-423 and src/ArrTags/Providers/Sonarr/SonarrClient.cs:410-448 (ClassifyStatus returns fixed strings)",
+        "src/ArrTags/Matching/MediaMatcher.cs:58-71,121-170 and src/ArrTags/Matching/MediaMatchPolicy.cs:49-89 (fixed reasons + count)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:89-231 (fixed literal reasons)",
+        "src/ArrTags/Artwork/ArtworkOperationErrors.cs:22-51 (control-character-stripping sanitizer used for artwork reasons)",
+        "docs/implementation/10.3/security-review.json finding SEC-10.3-1 (LOW, noted)"
+      ],
+      "recommended_action": "No action for 14.4; optional post-V1 hardening is to route all log-bound reason strings through a control-character sanitizer at the boundary."
+    },
+    {
+      "id": "SEC-14.4-06",
+      "severity": "INFORMATIONAL",
+      "status": "informational",
+      "area": "state integrity",
+      "summary": "Carried, unchanged and still accurate: the versioned state envelope's SHA-256 covers only PayloadJson; SchemaVersion, Kind, RecordId, Authority, Terminal, and UpdatedUtc are not covered, and authoritative retention trusts the unauthenticated Terminal/UpdatedUtc fields (StateRetention.IsTerminalAndExpired). The reader validates only SchemaVersion and the payload hash, so StateEnvelopeCodec is a corruption detector rather than a tamper MAC. This is bounded by the fact that local write access to the state root is already the administrative boundary; no change was introduced by v1.1.",
+      "evidence": [
+        "src/ArrTags/State/StateEnvelopeCodec.cs:83-113 (hash over PayloadJson only)",
+        "src/ArrTags/State/StateEnvelopeCodec.cs:123-154 (TryReadEnvelope validates SchemaVersion only)",
+        "src/ArrTags/State/StateRetention.cs:154-165 (trusts Terminal/UpdatedUtc)",
+        "docs/limitations.md SEC-3 (INFORMATIONAL, noted)"
+      ],
+      "recommended_action": "No action for 14.4; optional post-V1 hardening is to cover the envelope metadata in the integrity hash."
+    },
+    {
+      "id": "SEC-14.4-07",
+      "severity": "INFORMATIONAL",
+      "status": "informational",
+      "area": "state/secret",
+      "summary": "Carried and re-verified unchanged: when IPluginManager is unavailable or the loaded plugin instance cannot be found, CreateStateRepository roots authoritative state at Path.Combine(Path.GetTempPath(), 'ArrTags') - a predictable, shared, local path. It is not triggered on the pinned host (the plugin is found and DataFolderPath is ProgramDataPath/ArrTags) and is not remotely reachable. The finding remains LOW/open as recorded in docs/limitations.md SEC-2.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:255-264 (fallback Path.Combine(Path.GetTempPath(), 'ArrTags'))",
+        "src/ArrTags/Plugin.cs:269-273 (normal state root ProgramDataPath/ArrTags)",
+        "docs/limitations.md SEC-2 (LOW, open; evidence line reference updated to :259-261 by this review)"
+      ],
+      "recommended_action": "No action for 14.4; the recorded post-V1 hardening (fail closed or use a host-private directory) remains optional."
+    },
+    {
+      "id": "SEC-14.4-08",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "logging/assurance",
+      "summary": "SEC-10.3-3 (live host Serilog emission and sink output not exercised) is now resolved: task 14.3's pinned-host matrix row L7 changed LogVerbosity Warning -> Information -> Off through the elevation-gated save path with no restart (host startups = 1), observed 0 ArrTags lines at Warning, 4 bounded ArrTags.* lines at Information, and 0 at Off, and scanned console.log plus the log directory with 0 occurrences of the mock API keys or the local test admin password. The logging path therefore emits only bounded, secret-free content through the real host pipeline.",
+      "evidence": [
+        "docs/implementation/14.3/live-verification.json L7 (observed: verbosity toggles applied without restart; secret scan 0 occurrences)",
+        "docs/implementation/14.3/live-verification.json L2 (anon settings-page resource 200; anon ConfigurationPages/Configuration 401)"
+      ],
+      "recommended_action": "None; closed by task 14.3."
+    },
+    {
+      "id": "SEC-14.4-09",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "auth/webhook boundary",
+      "summary": "SEC-1 (pre-binding webhook authentication) remains fixed and independently re-verified at HEAD: WebhookAuthenticationFilter is a TypeFilter that authenticates before model binding and returns the uniform UnauthorizedResult before any body read; the action re-authenticates, enforces the configured byte bound, tolerates only JSON content, and the parser is depth- and entry-bounded. The live matrix confirms anon POST /Plugins/{guid}/Configuration -> 401 and the webhook runtime behavior; the 0.1.0 reproduction of the uniform 401 for every content type and the effective 256 KiB authenticated bound is unchanged in code.",
+      "evidence": [
+        "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs:32-124 (authenticate-first, non-JSON rejected pre-read)",
+        "src/ArrTags/Webhooks/ArrTagsWebhookController.cs:110-142 (re-auth, 413, tolerant parse, 202)",
+        "src/ArrTags/Webhooks/WebhookBodyReader.cs:26-65 (hard byte bound, ContentLength pre-check)",
+        "src/ArrTags/Webhooks/WebhookEventParser.cs:22-27 (MaxJsonDepth 16, MaxEpisodeEntries 32)",
+        "docs/implementation/final-review/security-review.json SEC-1 (fixed, reproduced live); docs/implementation/14.3/live-verification.json"
+      ],
+      "recommended_action": "None; resolved and regression-checked."
+    },
+    {
+      "id": "SEC-14.4-10",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "configuration save path",
+      "summary": "S-9.2-03 (a page save persisted an unvalidated candidate before task 9.3) remains resolved: Plugin.UpdateConfiguration validates with PluginConfigurationValidator before calling base.UpdateConfiguration, an invalid candidate is never persisted, the whole validate/persist/activate sequence is serialized under _configurationSaveGate, and the running snapshot's private secrets are replaced only on a valid candidate (ConfigurationSnapshotService.TryReplace). Task 14.3 L5 independently confirmed on the pinned host that a rejected save writes exactly one bounded, secret-free activity-log entry, leaves ArrTags.xml byte-unchanged, and retains the last valid configuration, while a valid save writes no entry.",
+      "evidence": [
+        "src/ArrTags/Plugin.cs:124-174 (validate-before-persist, serialized, never throws into the host)",
+        "src/ArrTags/Configuration/ConfigurationSnapshotService.cs:72-110 (TryReplace + version-matched TryAcquire)",
+        "src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs:74-110 (one bounded, sanitized entry; Guid.Empty; fixed type)",
+        "docs/implementation/9.3/security-review.json SEC-9.3-01 (fixed); docs/implementation/14.3/live-verification.json L5"
+      ],
+      "recommended_action": "None; resolved and regression-checked."
+    }
+  ],
+  "prior_review_reconciliation": [
+    { "id": "SEC-1", "source": "docs/implementation/final-review/security-review.json", "disposition": "resolved/re-verified", "note": "Pre-binding auth filter and bounded JSON path unchanged at HEAD; live matrix passes. See SEC-14.4-09." },
+    { "id": "SEC-2", "source": "docs/implementation/final-review/security-review.json", "disposition": "unchanged (LOW open, recorded)", "note": "Shared-temp state-root fallback still present at ArrTagsServiceRegistrator.cs:259-261; unreachable on the pinned host. See SEC-14.4-07." },
+    { "id": "SEC-3", "source": "docs/implementation/final-review/security-review.json", "disposition": "unchanged (INFORMATIONAL, noted)", "note": "Envelope hash covers only PayloadJson. See SEC-14.4-06." },
+    { "id": "SEC-4", "source": "docs/implementation/final-review/security-review.json", "disposition": "unchanged (INFORMATIONAL, noted)", "note": "Residual framework ProblemDetails body for webhook failures (D1 wording gap); no secret/route/plugin detail reflected. No regression." },
+    { "id": "SEC-5", "source": "docs/implementation/final-review/security-review.json", "disposition": "rewritten and accurate", "note": "docs/limitations.md SEC-5 rewrite matches the shipped ADR-020 contract and the SEC-9 surface; producer-invariant nuance carried as SEC-14.4-05." },
+    { "id": "SEC-6", "source": "docs/implementation/final-review/security-review.json", "disposition": "unchanged (INFORMATIONAL, noted)", "note": "ArtworkSubjectGate process-lifetime dictionary (D2); not attacker-controllable." },
+    { "id": "SEC-7", "source": "docs/implementation/final-review/security-review.json", "disposition": "unchanged (INFORMATIONAL, noted)", "note": "Authenticated declared non-JSON content type -> bounded pre-read 400; Sonarr/Radarr send application/json." },
+    { "id": "SEC-8", "source": "docs/implementation/final-review/security-review.json", "disposition": "unchanged (INFORMATIONAL, noted)", "note": "No ArrTags-level per-client auth throttling on the anonymous webhook route; mitigated by the high-entropy secret, 1024-char candidate bound, constant-time compare, uniform 401, and the warning-level LogThrottle." },
+    { "id": "SEC-9", "source": "docs/implementation/final-review/security-review.json", "disposition": "unchanged (INFORMATIONAL, noted)", "note": "Activity-log surfacing bounded/secret-free; live-verified by task 14.3 L5." },
+    { "id": "S-9.2-01", "source": "docs/implementation/9.2/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "Secrets in the page are runtime values from the elevation-gated config API; no secret literal in the resource (re-verified by byte-identity check and artifact scan)." },
+    { "id": "S-9.2-02", "source": "docs/implementation/9.2/security-review.json", "disposition": "resolved/confirmed live", "note": "Anonymous static page resource accepted; live anon GET page 200, ConfigurationPages/Configuration 401." },
+    { "id": "S-9.2-03", "source": "docs/implementation/9.2/security-review.json", "disposition": "resolved", "note": "Fixed by SEC-9.3-01; live-confirmed. See SEC-14.4-10." },
+    { "id": "S-9.2-04", "source": "docs/implementation/9.2/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "Empty numeric inputs -> null -> host deserialization rejects before UpdateConfiguration." },
+    { "id": "S-9.2-05", "source": "docs/implementation/9.2/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "AllowInsecureTls surfaced by the page; per-connection, admin-only, documented." },
+    { "id": "SEC-9.3-01", "source": "docs/implementation/9.3/security-review.json", "disposition": "resolved/re-verified", "note": "Validate-before-persist + serialized save present in Plugin.cs at HEAD; live L5 confirms." },
+    { "id": "SEC-9.3-02", "source": "docs/implementation/9.3/security-review.json", "disposition": "unchanged (LOW, recorded)", "note": "Repeated invalid saves produce repeated activity entries by design (ADR-021 clause 6); admin-only." },
+    { "id": "SEC-9.3-03", "source": "docs/implementation/9.3/security-review.json", "disposition": "resolved/re-verified", "note": "Sanitizer, 8-reason cap, and truncation present in JellyfinConfigurationRejectionNotifier; live entry lengths within bounds." },
+    { "id": "SEC-9.3-04", "source": "docs/implementation/9.3/security-review.json", "disposition": "resolved/re-verified", "note": "Bounded wait injectable; never throws out of NotifyRejected; activity write contained." },
+    { "id": "SEC-9.3-05", "source": "docs/implementation/9.3/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "Save gate scope; no deadlock/re-entrancy hazard found." },
+    { "id": "SEC-9.3-06", "source": "docs/implementation/9.3/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "A persisted valid candidate whose activation fails activates on the next host startup; safe." },
+    { "id": "SEC-10.3-1", "source": "docs/implementation/10.3/security-review.json", "disposition": "unchanged (LOW, noted)", "note": "Producer-invariant redaction dependency; all producers re-verified fixed strings. See SEC-14.4-05." },
+    { "id": "SEC-10.3-2", "source": "docs/implementation/10.3/security-review.json", "disposition": "still open", "note": "docs/planning/v1.1.md:146-147 stale claim. See SEC-14.4-03." },
+    { "id": "SEC-10.3-3", "source": "docs/implementation/10.3/security-review.json", "disposition": "resolved", "note": "Live host emission confirmed by task 14.3 L7. See SEC-14.4-08." },
+    { "id": "SEC-10.3-4", "source": "docs/implementation/10.3/security-review.json", "disposition": "accepted (recorded)", "note": "Base-URL user information not rejected. See SEC-14.4-04 and docs/limitations.md SEC-12." },
+    { "id": "SEC-11.1-1", "source": "docs/implementation/11.1/security-review.json", "disposition": "unchanged (LOW, open)", "note": "Inventory-cache LastError is bounded free text whose redaction relies on the ArrProviderError producer invariant; the shipped readers supply no LastError (ArrInventoryCacheEntry.cs:54,128-135)." },
+    { "id": "SEC-11.1-2", "source": "docs/implementation/11.1/security-review.json", "disposition": "unchanged (LOW, noted)", "note": "InventoryCacheMaxBytes is a conservative estimate; the record-count bound is the hard cap." },
+    { "id": "SEC-11.1-3", "source": "docs/implementation/11.1/security-review.json", "disposition": "unchanged (LOW, open)", "note": "Secret-free guard in the cache tests is a name heuristic backed by structural type checks." },
+    { "id": "SEC-11.1-4", "source": "docs/implementation/11.1/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "Per-connection bounds only; connection count is externally bounded (two provider kinds)." },
+    { "id": "SEC-11.1-5", "source": "docs/implementation/11.1/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "TTL computed from the observation timestamp; total lifetime never exceeds the configured TTL." },
+    { "id": "SEC-11.1-6", "source": "docs/implementation/11.1/security-review.json", "disposition": "unchanged (INFORMATIONAL)", "note": "Raw provider strings are stored only as non-persisted canonical observations; the cache is not a path/URL/log sink." }
+  ],
+  "accepted_limitations": [
+    "SEC-10 (new, LOW): configured provider ApiKey and WebhookSecret strings are not length-bounded; the anonymous webhook authentication path allocates bytes proportional to the configured secret per attempt. Accepted for v1.1; recorded in docs/limitations.md SEC-10. See SEC-14.4-01.",
+    "SEC-11 (new, LOW): EnabledLibraries entries are not count/length-bounded and are not validated as library GUIDs; admin-only, fails closed. Accepted for v1.1; recorded in docs/limitations.md SEC-11. See SEC-14.4-02.",
+    "SEC-12 (new, INFORMATIONAL): configured base-URL user information is not rejected; ArrTags identity/logging excludes it, framework HttpClient logging is outside the plugin gate. Accepted for v1.1; recorded in docs/limitations.md SEC-12. See SEC-14.4-04.",
+    "SEC-2 (unchanged, LOW open): state-root fallback to the shared temp path, unreachable on the pinned host.",
+    "SEC-3 (unchanged, INFORMATIONAL): state-envelope integrity hash does not cover envelope metadata.",
+    "SEC-4/D1 (unchanged, INFORMATIONAL): generic framework ProblemDetails body on webhook failures versus ADR-012's 'no body' wording.",
+    "SEC-5 (rewritten, INFORMATIONAL): secrets persist only in Jellyfin's plugin configuration XML; the logging path is bounded and redacted, with the producer-invariant nuance of SEC-14.4-05.",
+    "SEC-6/D2 (unchanged, INFORMATIONAL): ArtworkSubjectGate process-lifetime bound.",
+    "SEC-7 (unchanged, INFORMATIONAL): authenticated declared non-JSON content type rejected with a bounded pre-read 400.",
+    "SEC-8 (unchanged, INFORMATIONAL): no ArrTags-level per-client authentication throttling on the anonymous webhook route.",
+    "SEC-9 (unchanged, INFORMATIONAL): configuration-rejection activity-log entry is bounded, secret-free, and administrator-only.",
+    "SEC-9.3-02 (unchanged, LOW recorded): repeated invalid saves can write repeated activity-log entries by design.",
+    "SEC-11.1-1/2/3 (unchanged, LOW): inventory-cache LastError producer invariant, byte-estimate vs record cap, and the test name-heuristic guard.",
+    "RR-15 (unchanged): deliberate mock-fixture API keys appear in tracked documentation; the packaged artifact contains no such value (re-scanned in this audit)."
+  ],
+  "reproductions": [
+    "Artifact identity: sha256sum artifacts/ArrTags_1.1.0.0.zip -> 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1; md5sum -> 547beb2f7d83cd256d3a3ce7bb7e7620 (matches manifest.json and docs/release/build-and-release.md).",
+    "Artifact contents: unzip -l -> exactly 7 entries (ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt); no SkiaSharp runtime assets, PDB, test files, or unexpected runtime files.",
+    "Artifact/build correspondence: SHA-256 of the extracted artifact ArrTags.dll equals src/ArrTags/bin/Release/net10.0/ArrTags.dll (c376b981033fe5bcdfa63ab5cc55dcd132cb46bdb4134e6594d57be62735b497), so the packaged assembly is the one built from the reviewed tree.",
+    "Embedded page identity: extracted manifest resource ArrTags.Configuration.config.html from the artifact DLL -> 37,180 bytes, SHA-256 734BE771D82080361C620672026D10625D16F2E6D72F04DD26C8585C58DDF721, byte-identical to src/ArrTags/Configuration/config.html (and equal to the live-served page size 37,180 bytes in 14.3 L2); the resource is static and untemplated.",
+    "Artifact secret scan: grep -ral 'radarrkey123|sonarrkey456|webhooksecret789|arrtagsverify1|arrtagsadmin' over the extracted artifact -> no matches; no SENTINEL literals.",
+    "Uri/control-character probe (independent harness): Uri.TryCreate accepts a base URL containing CR/LF but ArrConnectionId normalization (SchemeAndServer + AbsolutePath, UriEscaped) renders them as %0D%0A, so the connection identity logged by ConcurrencyLimitedArrMetadataReader cannot inject a raw log line; the only values logged from configuration are the normalized non-secret connection identity and bounded enums/counts.",
+    "Log call-site enumeration at HEAD: 21 IArrTagsLog call sites across 11 registered categories (LibraryWorkWorker 3, WebhookIntakeService 3, WebhookAuthenticationFilter 2, RadarrMetadataReader 1, SonarrMetadataReader 1, MetadataReconciliationProcessor 4, ConcurrencyLimitedArrMetadataReader 2, LibraryReconciliationService 1, ArtworkGenerationCoordinator 1, ArrTagsLifecycleService 3), matching RegisterArrTagsLogs; all free-text carriers are code-owned fixed strings or sanitized values; no custom ILoggerProvider/sink and no host ILoggerFactory replacement.",
+    "Default suite at HEAD (source /config/arrtags-env.sh && ./build.sh test) -> Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557.",
+    "Host-guarded suite at HEAD (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin) -> Passed! - Failed: 0, Passed: 1513, Skipped: 44, Total: 1557 (19 host facts including the dashboard page resource/authorization and configuration round-trip facts unskipped).",
+    "Prior-claim greps: 'zero logging call sites' -> only historical/context/planning-residual matches (docs/planning/v1.1.md is the only current-state claim, tracked as SEC-14.4-03); artifact and source scans for mock keys/admin test password -> clean."
+  ],
+  "summary": "The ArrTags v1.1 release candidate at HEAD c7d2a3a passes an independent adversarial security audit with no open BLOCKER or HIGH finding (0). The ADR-020 logging path is sound: all 21 call sites emit only bounded, code-owned values through the plugin-owned facade; secrets, headers, bodies, provider payloads, and the mutable configuration are absent at every verbosity; the emitted shape does not expand with Debug/Trace; volume is bounded by LogThrottle; the verbosity gate falls back to Warning and applies without restart (live task 14.3 L7 re-confirmed emission at Information, silence at Warning/Off, one host startup, and a 0-occurrence secret scan). The SEC-5 rewrite accurately describes the shipped contract (with the carried producer-invariant nuance). The ADR-016 settings page is a static, embedding resource byte-identical to source that contains no secret, uses no DOM-injection sink, adds no custom route, and reads/writes configuration only through the elevation-gated PluginsController path (live: anon page 200, anon ConfigurationPages/GET/POST 401, admin save 204); Plugin.UpdateConfiguration validates before persistence, retains the last valid snapshot and private secrets on rejection, serializes concurrent saves, and never throws into the host. The ADR-021 rejection surface writes exactly one bounded, sanitized, secret-free, administrator-visible entry with a fixed type and Guid.Empty user (live L5: exactly +1 entry, ArrTags.xml unchanged, no candidate/secret match, no entry on a valid save). The ADR-005 secret boundary (version-matched leases, X-Api-Key header only, no secret in URLs), the ADR-012 webhook boundary (authenticate-before-binding, 1024-char constant-time candidate, bounded body/parser/intake/coalescing), state integrity (versioned envelopes, atomic writes, quarantine for authoritative vs discard for cache, traversal-safe path segments), bounded inputs (provider response limit, image decode/artifact limits, inventory cache record/byte/TTL bounds), and the artifact (7 expected entries, no SkiaSharp runtime, no secrets, hash matching the manifest, assembly matching the reviewed tree) are all confirmed. Every previously recorded security finding was re-checked: no regression; SEC-1, SEC-9.3-01/03/04, S-9.2-03, and SEC-10.3-3 are resolved/verified; SEC-2, SEC-3, SEC-4, SEC-5, SEC-6, SEC-7, SEC-8, SEC-9, SEC-9.3-02, SEC-9.3-05/06, SEC-10.3-1, and SEC-11.1-1..6 are unchanged and accurately recorded; SEC-10.3-2 (stale docs/planning/v1.1.md current-state line) remains open as a LOW documentation item; SEC-10.3-4 (base-URL user information) is accepted and now recorded. Three new accepted limitations are recorded in docs/limitations.md: SEC-10 (unbounded configured secret length with a per-request allocation on the anonymous webhook path, LOW), SEC-11 (unbounded/unvalidated EnabledLibraries entries, LOW), and SEC-12 (base-URL user information, INFORMATIONAL). None is remotely exploitable without an administrator saving an extreme or credential-bearing configuration, and none is a credential disclosure. Verdict: PASS_WITH_FINDINGS; the task 14.4 acceptance criterion (recorded release security review with no open BLOCKER/HIGH) is met, and the release is ready for the next task.",
+  "ready_for_next_task": true
+}

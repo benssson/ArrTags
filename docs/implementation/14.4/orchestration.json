@@ -1,0 +1,54 @@
+{
+  "task": "14.4",
+  "title": "Release security review",
+  "phase": "14",
+  "subagents": [
+    {
+      "role": "security-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 299398,
+        "output_tokens": 28036,
+        "reasoning_tokens": 40181,
+        "cache_read_tokens": 16602240,
+        "cache_write_tokens": 0,
+        "total_tokens": 16969855,
+        "cost_usd": 0.13564662,
+        "duration_seconds": 1177,
+        "session_id": "ses_f2b3ccd47ffepzRSgivJMjrXo6"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 71567,
+        "output_tokens": 5916,
+        "reasoning_tokens": 8078,
+        "cache_read_tokens": 1028096,
+        "cache_write_tokens": 0,
+        "total_tokens": 1113657,
+        "cost_usd": 0.022215738,
+        "duration_seconds": 144,
+        "session_id": "ses_f2b2a461bffekIHqaDWMuxhnQ8"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "The v1.1 release security review is recorded at docs/implementation/14.4/security-review.json: reviewer_status PASS_WITH_FINDINGS, open_blocker_high 0, 10 findings (3 LOW, 7 INFORMATIONAL), ready_for_next_task true. Scope covered the ADR-020 logging path and the SEC-5 rewrite, the ADR-016 embedded settings page and elevation-gated administrator save path, the ADR-021 rejection activity log, and release breadth (ADR-005 secret boundary, ADR-012 webhook boundary, state integrity, bounded inputs, and the packaged artifact). All prior security findings (final-review SEC-1..SEC-9 and the 9.2/9.3/10.3/11.1 reviews) were re-checked with no regression.",
+    "Accepted limitations recorded in docs/limitations.md (task 14.4's documented documentation impact): SEC-10 (LOW: configured provider API keys / webhook secret are not length-bounded, a memory-amplification hardening gap), SEC-11 (LOW: EnabledLibraries entries are not count/length-bounded or GUID-validated, admin-only and fails closed), and SEC-12 (INFORMATIONAL: base-URL user information is not rejected, pre-existing SEC-10.3-4). The SEC-2 evidence line reference was corrected for the v1.1 file growth without changing the finding.",
+    "One open LOW documentation finding SEC-14.4-03 remains: docs/planning/v1.1.md lines 146-147 still carry the pre-logging 'zero logging call sites' current-state line (a SEC-10.3-2 / P10-F3 carry-over missed by Phase 13). It is non-blocking and disclosed, not hidden.",
+    "The independent implementation review verified the recorded audit's code claims and confirmed reviewer_status APPROVED with 0 blockers and 0 required changes (docs/implementation/14.4/reviewer-report.json). No src/, tests/, build metadata, manifest, or release-artifact change was made; no git commit/tag was created by any subagent.",
+    "The security-reviewer ran at variant max (the runtime-reported variant for that session); the orchestrator recorded the runtime-reported model/variant, not its own configuration.",
+    "Runtime figures are authoritative from the OpenCode session usage endpoint (.opencode/scripts/collect-session-usage.sh); no values were estimated."
+  ]
+}

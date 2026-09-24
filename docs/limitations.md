@@ -534,7 +534,9 @@ is not triggered on the pinned host (the plugin is found and `DataFolderPath` is
 
 - Evidence: security-review finding SEC-2
   (`docs/implementation/final-review/security-review.json`);
-  `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:178-180`.
+  `src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:259-261` (the line
+  reference was updated by the v1.1 release security review, task 14.4, because
+  the file grew in v1.1; the finding itself is unchanged).
 - Consequence: if the fallback ever engaged, authoritative state would live under
   a shared temp path. Accepted for V1; optional post-V1 hardening is to fail
   closed or use a host-private directory instead.
@@ -696,6 +698,85 @@ divergent.
   activity-log entry is the only plugin-initiated administrator-visible
   notification and it carries no candidate value or secret. SEC-5 records this
   entry's scope alongside the v1.1 task 10.3 logging redaction contract.
+
+**v1.1 release-review accepted limitations.** The v1.1 release audit
+(`docs/implementation/14.4/security-review.json`) returned
+`PASS_WITH_FINDINGS` with no open BLOCKER or HIGH. The items below are the
+audit's accepted residuals (SEC-10 to SEC-12) alongside the carried
+`0.1.0`/task-level items above, which the release audit re-verified as
+unchanged.
+
+### SEC-10. Configured provider API keys and the webhook shared secret are not length-bounded (LOW, accepted)
+
+Configuration validation bounds every operational limit and renderer value, but
+it does not bound the length of `ArrConnectionConfiguration.ApiKey` or
+`PluginConfiguration.WebhookSecret`. The webhook authentication path is
+anonymous, and `SecretLease.Matches` allocates the expected and candidate UTF-8
+byte arrays before the constant-time comparison, so each request to
+`POST /ArrTags/Webhook/{Sonarr,Radarr}` allocates memory proportional to the
+configured secret length, even though the untrusted candidate is already bounded
+to 1024 characters (so a secret longer than 1024 characters can never
+authenticate). There is no default secret, and an unconfigured webhook fails
+closed with `401` before any comparison.
+
+- Evidence: release security-review finding SEC-14.4-01
+  (`docs/implementation/14.4/security-review.json`);
+  `src/ArrTags/Configuration/PluginConfiguration.cs:42` and
+  `src/ArrTags/Configuration/ArrConnectionConfiguration.cs:22` (unbounded string
+  properties); `src/ArrTags/Configuration/PluginConfigurationValidator.cs:40-68`
+  (no length check); `src/ArrTags/Webhooks/WebhookAuthentication.cs:71-92`
+  (candidate bound 1024); `src/ArrTags/Secrets/SecretLease.cs:80-82` (byte arrays
+  allocated per attempt).
+- Consequence: accepted for v1.1. This requires an administrator to save an
+  implausibly long secret and is a memory-amplification/availability hardening
+  gap, not a credential disclosure. Post-V1 hardening is to bound the configured
+  secret lengths in `PluginConfigurationValidator` (at most the 1024-character
+  candidate bound for the webhook secret) and/or compare lengths before
+  allocating in `SecretLease.Matches`.
+
+### SEC-11. Library-scope entries are not count/length-bounded or validated as library identifiers (LOW, accepted)
+
+`PluginConfigurationValidator.ValidateLibraryScope` rejects only blank and
+duplicate entries, so a saved configuration can carry an unbounded number of
+arbitrarily long `EnabledLibraries` entries (bounded in practice only by the host
+request-body and configuration-file limits). Reconciliation and webhook
+resolution parse each entry with `Guid.TryParse` per item, and an entry that is
+not a library GUID is silently ignored, so a non-empty scope made only of
+unparseable entries fails the scope check closed for every item and silently
+stops badge work instead of surfacing a validation error. The trigger is the
+elevation-gated `PluginsController` save (or direct XML editing), not a remote
+input.
+
+- Evidence: release security-review finding SEC-14.4-02
+  (`docs/implementation/14.4/security-review.json`);
+  `src/ArrTags/Configuration/PluginConfigurationValidator.cs:77-94`;
+  `src/ArrTags/Media/MediaEligibility.cs:29-48`;
+  `src/ArrTags/Configuration/PluginConfigurationSnapshot.cs:183-187`; the
+  settings page submits only the host's real library ids
+  (`src/ArrTags/Configuration/config.html`, `enabledLibrary` checkboxes).
+- Consequence: accepted for v1.1. Post-V1 hardening is to bound the entry count
+  and per-entry length and validate the GUID format, surfacing a failure through
+  the existing ADR-021 rejection path.
+
+### SEC-12. Configured base-URL user information is not rejected (INFORMATIONAL, accepted)
+
+Configuration validation accepts any absolute `http`/`https` URL, including one
+with embedded user information (for example
+`https://user:password@sonarr.example:8989`). ArrTags' own connection identity
+excludes user information and the API key, the plugin never logs a request URI,
+and credentials travel only in the `X-Api-Key` header, so the plugin's log call
+sites cannot emit the value; however, framework-level `HttpClient` logging (host
+category, outside the plugin `LogVerbosity` gate) could include the request URI.
+This is pre-existing (recorded by the task 10.3 security review as
+SEC-10.3-4) and requires an administrator to embed credentials in the base URL.
+
+- Evidence: release security-review finding SEC-14.4-04
+  (`docs/implementation/14.4/security-review.json`);
+  `src/ArrTags/Configuration/PluginConfigurationValidator.cs:70-75`;
+  `src/ArrTags/Providers/ArrConnectionId.cs:74-98` (identity excludes user
+  information); `src/ArrTags/Secrets/SecretLease.cs:56-57` (`X-Api-Key` header).
+- Consequence: accepted for v1.1. Post-V1 hardening is to reject a base URL whose
+  user-information component is non-empty.
 
 ## Deliberate V1 scope exclusions
 
