@@ -3,7 +3,7 @@
   "title": "Allowlist configuration, bounds, validation, and fingerprint",
   "phase": 12,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "c56d228",
   "subagents": [
     {
       "role": "implementation-worker",
