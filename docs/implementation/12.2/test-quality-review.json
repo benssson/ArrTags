@@ -1,0 +1,163 @@
+{
+  "task": "v1.1 Phase 12, task 12.2 - Allowlist resolution and renderer filtering order (ADR-017 clauses 2, 3, 4)",
+  "reviewer_role": "test-quality-reviewer",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "subject": "Per-selector badge value allowlist filter: exact case-insensitive ordinal match against the resolved pre-template value, applied before the definition template and before layout.",
+  "findings": [
+    {
+      "id": "TQ-12.2-1",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage",
+      "summary": "No single test drives a non-empty per-selector allowlist from PluginConfiguration through PluginConfigurationSnapshot/RendererConfigurationResolver into the resolved selection; the two seams are covered separately, so the composition is only implicitly verified.",
+      "evidence": [
+        "tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs constructs BadgeDefinition objects directly (e.g. Quality(...)/Audio(...) helpers) and never obtains them from a PluginConfigurationSnapshot.",
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs:363 ValidatorAcceptsAndResolvesAllowedValues and :383 ValidatorTrimsAllowedValueEntries assert config -> snapshot.BadgeDefinitions[selector].AllowedValues only; they do not call BadgeDefinitionResolver.Resolve.",
+        "tests/ArrTags.Tests/RendererConfigurationIntegrationTests.cs:52 resolves config -> snapshot -> real coordinator but exercises a disabled selector and palette only, with an empty allowlist.",
+        "src/ArrTags/Configuration/RendererConfigurationResolver.cs:101 passes entry.AllowedValues straight into BadgeDefinition, and src/ArrTags/Rendering/BadgeDefinitionResolver.cs:59 applies the filter, so the seams are simple and each is covered.",
+        "The acceptance criterion (PLANS.md task 12.2) is literally 'A configured allowlist restricts rendering to the listed values'."
+      ],
+      "recommended_action": "Optional: add one integration assertion (for example extend RendererConfigurationIntegrationTests or add a case that builds a PluginConfiguration with Quality.AllowedValues={\"Bluray-1080p\"}, resolves it through PluginConfigurationSnapshot, and asserts BadgeDefinitionResolver.Resolve excludes a non-allowlisted value). Not required to establish the behavior; both seams are independently covered and the mapping is a direct property pass-through."
+    },
+    {
+      "id": "TQ-12.2-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "assertion strength / substitutes",
+      "summary": "The allowlist assertions are on the resolved selection (TechnicalValues/StatusValue) and on layout pills, not on rendered pixels; the native Skia renderer path is environment-guarded and skipped in the default matrix.",
+      "evidence": [
+        "tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs asserts selection.TechnicalValues and StatusValue (the exact values the renderer consumes).",
+        "tests/ArrTags.Tests/RendererBehaviorTruncationTests.cs:87 AnAllowlistedValueThatCannotFitStillFollowsTheOmitBehavior asserts layout.TechnicalPills empty via BadgeLayoutEngine.Build (pure, unguarded).",
+        "src/ArrTags/Rendering/SkiaBadgeRenderer.cs:82 and src/ArrTags/Artwork/ArtworkRegenerationPlanner.cs:173 both call BadgeDefinitionResolver.Resolve, so the tested layer is the real filtering path.",
+        "The native pixel path (SkiaBadgeRendererRenderTests, RenderGoldenTests) is [SkiaNativeFact]/[SkiaNativeTheory] and skipped without ARRTAGS_SKIA_COMPAT=1 (documented limitation V6)."
+      ],
+      "recommended_action": "None. Selection-level assertions are the correct observable layer given the documented native-Skia environment limitation; task 12.4 owns golden regeneration and task 14.3 owns the live-host run."
+    },
+    {
+      "id": "TQ-12.2-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism / isolation",
+      "summary": "All allowlist tests are deterministic and isolated; no wall-clock, random ordering, culture, filesystem, or ambient-state dependence was found.",
+      "evidence": [
+        "BadgeAllowlistFilterTests uses a fixed ObservedAt and literal metadata values; BadgeDefinitionResolver.Resolve is a pure static function over immutable inputs.",
+        "BadgeSelectorResolver.IsAllowed uses value.Trim() and StringComparison.OrdinalIgnoreCase (culture-independent); the build/test env sets DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1.",
+        "CustomBadgeAllowlistAppliesPerRetainedValue asserts the metadata's own custom-badge order (deterministic), not dictionary enumeration order.",
+        "The two independent full-suite runs produced identical counts (Failed 0, Passed 1445, Skipped 63, Total 1508)."
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "TQ-12.2-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "summary": "No new skips were introduced; all 63 skips are genuinely environment-guarded and none covers allowlist behavior.",
+      "evidence": [
+        "Pre-task baseline documented as 63 skips (docs/changelog.md:3412); current independent run reports 63 skips.",
+        "63 skipped facts decompose into ARRTAGS_SKIA_COMPAT-guarded SkiaNative facts/theories, ARRTAGS_JELLYFIN_HOST_DIR-guarded JellyfinHost facts, and one ARRTAGS_NONCANONICAL_GOLDENS-guarded fact (see skips_checked).",
+        "The new allowlist tests are unguarded [Fact] and the new truncation case is an unguarded [Fact]; they run in the default ./build.sh test configuration.",
+        "No skip attribute or manual Skip was added by the task diff (git diff HEAD tests/)."
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "mutation_or_non_vacuity_evidence": {
+    "method": "Copied the working tree to /tmp/final-review/test-quality/mut (excluding .git/bin/obj/artifacts), restored/built with . /config/arrtags-env.sh && ./build.sh build, and ran the focused filter (BadgeAllowlistFilterTests + RendererBehaviorTruncationTests, 15 tests) under five independent source mutations. The working tree was never modified (verified: git status/diff unchanged after the audit).",
+    "baseline": "Failed 0, Passed 15, Skipped 0",
+    "mutations": [
+      {
+        "id": "M1",
+        "mutation": "BadgeSelectorResolver.IsAllowed returns true unconditionally (filter removed)",
+        "result": "Failed 6, Passed 9",
+        "killed_by": [
+          "BadgeAllowlistFilterTests.AllowlistRequiresAnExactCaseInsensitiveMatch",
+          "BadgeAllowlistFilterTests.IsAllowedTrimsTheResolvedValueAndRejectsPartialMatches",
+          "BadgeAllowlistFilterTests.CustomBadgeAllowlistAppliesPerRetainedValue",
+          "BadgeAllowlistFilterTests.AudioAllowlistMatchesTheFullComposite",
+          "BadgeAllowlistFilterTests.UpgradePendingAllowlistPermitsTheFixedStatusText",
+          "BadgeAllowlistFilterTests.FilterIsAppliedBeforeTheDefinitionTemplate"
+        ]
+      },
+      {
+        "id": "M2",
+        "mutation": "exact match changed to substring (candidate.Contains(allowed, OrdinalIgnoreCase))",
+        "result": "Failed 3, Passed 12",
+        "killed_by": [
+          "BadgeAllowlistFilterTests.AllowlistRequiresAnExactCaseInsensitiveMatch",
+          "BadgeAllowlistFilterTests.IsAllowedTrimsTheResolvedValueAndRejectsPartialMatches",
+          "BadgeAllowlistFilterTests.AudioAllowlistMatchesTheFullComposite"
+        ]
+      },
+      {
+        "id": "M3",
+        "mutation": "StringComparison.OrdinalIgnoreCase changed to StringComparison.Ordinal (case-sensitive)",
+        "result": "Failed 2, Passed 13",
+        "killed_by": [
+          "BadgeAllowlistFilterTests.AllowlistRequiresAnExactCaseInsensitiveMatch",
+          "BadgeAllowlistFilterTests.IsAllowedTrimsTheResolvedValueAndRejectsPartialMatches"
+        ]
+      },
+      {
+        "id": "M4",
+        "mutation": "filter applied to the templated text instead of the pre-template value (order violation)",
+        "result": "Failed 1, Passed 14",
+        "killed_by": [
+          "BadgeAllowlistFilterTests.FilterIsAppliedBeforeTheDefinitionTemplate"
+        ]
+      },
+      {
+        "id": "M5",
+        "mutation": "filter removed only from the UpgradePending status path",
+        "result": "Failed 1, Passed 14",
+        "killed_by": [
+          "BadgeAllowlistFilterTests.UpgradePendingAllowlistPermitsTheFixedStatusText"
+        ]
+      }
+    ],
+    "restored": "Both source files restored from the working tree; focused run back to Failed 0, Passed 15.",
+    "conclusion": "Every mutation is detected by at least one allowlist/truncation fact; the tests are non-vacuous and the required behaviors are load-bearing."
+  },
+  "validation": {
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1, LD_LIBRARY_PATH=/config/sysroot/usr/lib)",
+    "commands": [
+      ". /config/arrtags-env.sh && ./build.sh build",
+      "dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~BadgeAllowlistFilterTests|FullyQualifiedName~RendererBehaviorTruncationTests|FullyQualifiedName~BadgeDefinitionTests|FullyQualifiedName~RendererConfigurationTests\"",
+      ". /config/arrtags-env.sh && ./build.sh test",
+      "dotnet test ArrTags.slnx -c Release --no-build --logger \"trx;LogFileName=full.trx\" --results-directory /tmp/final-review/test-quality/trx",
+      "five mutation runs in /tmp/final-review/test-quality/mut (see mutation_or_non_vacuity_evidence)"
+    ],
+    "results": {
+      "build": "Build succeeded. 0 Warning(s), 0 Error(s).",
+      "focused_allowlist_truncation_definition_configuration": "Failed 0, Passed 58, Skipped 0, Total 58.",
+      "focused_allowlist_truncation": "Failed 0, Passed 15, Skipped 0, Total 15.",
+      "full_default_suite": "Failed 0, Passed 1445, Skipped 63, Total 1508 (run twice; matches the documented current v1.1 matrix).",
+      "skip_count": "63, unchanged from the pre-task baseline.",
+      "working_tree_after_audit": "git status --short and git diff HEAD -- src tests identical to the pre-audit state; no test or implementation file was modified."
+    }
+  },
+  "matrix_observed": {
+    "default": "Failed 0, Passed 1445, Skipped 63, Total 1508",
+    "host_guarded": "not run in this audit (ARRTAGS_JELLYFIN_HOST_DIR unset; owned by task 14.3; documented historical 1.0.1.0 matrix 1,244/44/1,288 is explicitly historical)",
+    "forced_native": "not run in this audit (ARRTAGS_SKIA_COMPAT=1 native runtime unusable in this container, matching the documented limitation V6; owned by task 14.3/release refresh)"
+  },
+  "substitutes_checked": [
+    "No substitutes/doubles are used by the allowlist tests: they call the real static BadgeSelectorResolver.IsAllowed and BadgeDefinitionResolver.Resolve over real BadgeMetadata and real BadgeDefinition objects.",
+    "RendererBehaviorTruncationTests.AnAllowlistedValueThatCannotFitStillFollowsTheOmitBehavior uses the real BadgeLayoutEngine.Build with a width-measuring delegate (pure, no Skia).",
+    "src/ArrTags/Rendering/SkiaBadgeRenderer.cs:82 and src/ArrTags/Artwork/ArtworkRegenerationPlanner.cs:173 both call BadgeDefinitionResolver.Resolve, so the directly tested resolver is the production filtering path."
+  ],
+  "skips_checked": [
+    "Total 63 skipped, all environment-guarded: 46 via SkiaNativeFact/SkiaNativeTheory (ARRTAGS_SKIA_COMPAT=1), 16 via JellyfinHostFact (ARRTAGS_JELLYFIN_HOST_DIR), 1 via NonCanonicalRuntimeFact (ARRTAGS_NONCANONICAL_GOLDENS=1).",
+    "By class: SkiaBadgeRendererRenderTests 9, JellyfinImageResponseTests 9, RenderPngContractTests 7, RendererBehaviorDimensionTests 5, RenderDeterminismTests 5, JellyfinImageRouteTests 5, RendererCrossRuntimeTests 4, RendererBehaviorFormatTests 4, SourceImageDescriptorTests 2, RendererBehaviorFailureTests 2, PluginDiscoveryHostTests 2, JellyfinArtworkImageAccessTests 2, DashboardSettingsPageTests 2, SkiaHostCompatibilityTests 1, RenderOrientationTests 1, RenderGoldenTests 1, RenderDeterminismProcessProbe 1, ConfigurationRoundTripTests 1.",
+    "None of the 63 skipped facts exercises the allowlist filter; the 9 new task-12.2 cases (8 allowlist + 1 truncation) are unguarded and executed in the default configuration.",
+    "No new skips introduced (baseline 63 -> current 63)."
+  ],
+  "determinism_checked": [
+    "Fixed ObservedAt (2026-01-02T03:04:05Z) and literal metadata; no wall-clock or random input.",
+    "OrdinalIgnoreCase comparison and InvariantCulture channel formatting; DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 in the test env.",
+    "Custom-badge retention asserted in metadata order, not dictionary order.",
+    "Two independent full-suite runs produced identical counts; focused tests produced identical results across repeated runs."
+  ],
+  "ready_for_next_task": true,
+  "summary": "The task 12.2 test suite genuinely establishes the ADR-017 allowlist filter behavior. All required behaviors are covered by unguarded facts: exact case-insensitive ordinal match, trim, no substring/prefix/wildcard/regex, per-retained custom value, full audio composite with component-alone rejection, fixed UpgradePending text, empty allowlist = no restriction, unknown/absent omitted unchanged, filter-before-template order, and allowlisted-but-unfittable still shortens/omits. Five independent source mutations (always-allow, substring, case-sensitive, filter-after-template, status-filter-removed) each fail one or more tests, so the suite is non-vacuous. The default suite independently reproduces the documented matrix (Failed 0, Passed 1445, Skipped 63, Total 1508) and all 63 skips are environment-guarded with none covering allowlist behavior and no new skips introduced. Tests are deterministic and isolated, and the assertions target the real production filtering path (selection and layout pills). The only finding is a LOW coverage observation that no single test composes a non-empty allowlist from PluginConfiguration through the snapshot/resolver into the selection; both seams are separately covered, so this is optional hardening rather than a correctness gap. PASS_WITH_FINDINGS; ready for the next task."
+}

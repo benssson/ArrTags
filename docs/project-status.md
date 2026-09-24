@@ -2,7 +2,13 @@
 
 ## Project Status
 
-**Current milestone:** Phase 11 — Provider inventory cache and
+**Current milestone:** Phase 12 — Badge value allowlist and badge size/position
+(v1.1) is in progress: tasks 12.1 (allowlist configuration, bounds, validation,
+and fingerprint) and 12.2 (allowlist resolution and renderer filtering order) are
+complete, and tasks 12.3 (badge size/position configuration and layout engine) and
+12.4 (coordinated schema/`RenderVersion` advance, golden regeneration, and
+documentation) remain, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is
+not yet created. Phase 11 — Provider inventory cache and
 library-refresh-driven refresh (v1.1) is complete at the integration-test level:
 tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
 integration and bulk reads), 11.3 (ArrTags-side invalidation), and 11.4 (Goal C
@@ -655,8 +661,8 @@ The plugin:
   `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244 with 44
   skips, and running `./build.sh package` first unskips the package-content
   cases. These are the `1.0.1.0` release-matrix counts, not current v1.1 truth:
-  the current v1.1 working suite is Failed 0, Passed 1,421, Skipped 63, Total
-  1,484 (see the Project Status above and `docs/limitations.md` V6, which the
+  the current v1.1 working suite is Failed 0, Passed 1,445, Skipped 63, Total
+  1,508 (see the Project Status above and `docs/limitations.md` V6, which the
   v1.1 release task refreshes). The `1.0.1.0` counts reflect the suite after the
   SEC-1 webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
 
@@ -692,6 +698,31 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 
 Next tasks:
 
+- Phase 12 — Badge value allowlist and badge size/position (v1.1) tasks 12.1
+  (allowlist configuration, bounds, validation, and fingerprint) and 12.2
+  (allowlist resolution and renderer filtering order) are complete, and tasks
+  12.3 (badge size/position configuration and layout engine) and 12.4
+  (coordinated schema/`RenderVersion` advance, golden regeneration, and
+  documentation) remain, so Gate 12 is not yet met and the `v1.1.0-phase12` tag
+  is not yet created. Task 12.1 defines the bounded per-selector allowlist (at
+  most 32 entries per selector, each at most 64 characters, trimmed, with no
+  blank or control-character entry and no case-insensitive duplicate), validates
+  it at configuration load, includes a non-empty resolved allowlist in the
+  renderer configuration fingerprint (normalized for case and entry order), and
+  exposes it on the settings page. Task 12.2 applies the ADR-017 filter in the
+  documented order (value resolution -> allowlist filter -> definition template
+  -> normalization/truncation -> layout): `BadgeSelectorResolver.IsAllowed`
+  performs a case-insensitive ordinal exact match of the trimmed pre-template
+  value, with an empty allowlist meaning no restriction and no substring,
+  wildcard, prefix, or regular-expression matching, and
+  `BadgeDefinitionResolver.Resolve` filters each resolved pre-template value (and
+  the fixed `UpgradePending` status text) before the definition template,
+  applying the filter to each retained `CustomBadge` value independently and to
+  the full `Audio` composite and never widening an omission.
+  `RendererConfiguration.CurrentSchemaVersion` is still 1,
+  `RenderVersion.CurrentRendererVersion` is still 2, and no golden under
+  `tests/ArrTags.Tests/Goldens/` was regenerated; the coordinated
+  schema/`RenderVersion` advance and golden regeneration are task 12.4.
 - Phase 11 — Provider inventory cache and library-refresh-driven refresh (v1.1)
   tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
   integration and bulk reads), 11.3 (ArrTags-side invalidation), and 11.4 (Goal C

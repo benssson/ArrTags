@@ -1,0 +1,29 @@
+{
+  "task": "12.2",
+  "attempt": 3,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Third attempt: a documentation-only review-driven correction of the single remaining MEDIUM finding in docs/implementation/12.2/reviewer-report.attempt-2.json. The finding was that docs/project-status.md line 708 stated the per-selector badge value allowlist bound as 'at most 64 entries per selector, each at most 64 characters', while the shipped bound is at most 32 entries per selector (BadgeDefinition.MaximumAllowedValues = 32 in src/ArrTags/Rendering/BadgeDefinition.cs:36, enforced by RendererConfiguration.Validate at src/ArrTags/Configuration/RendererConfiguration.cs:160). This attempt changed the entry-count bound from 64 to 32 so the sentence now reads 'at most 32 entries per selector, each at most 64 characters'. A follow-up scan of every surface touched by the attempt-2 reconciliation (docs/project-status.md, docs/implementation-readiness.md, docs/limitations.md, docs/architecture.md) plus a repo-wide check found no other allowlist-bound or suite-count factual error: docs/architecture.md:1195-1196 already states 32 entries / 64 characters, docs/implementation-readiness.md carries no allowlist bound and no current suite count, docs/limitations.md V6 and docs/project-status.md both state the current v1.1 working suite as Failed 0, Passed 1,445, Skipped 63, Total 1,508 with the distinct historical 1.0.1.0 counts (1,228/60/1,288 and 1,244/44/1,288) preserved, and docs/decisions.md:2231 (ADR-017 clause 5), docs/data-model.md:890, PLANS.md:4509/4537, and docs/changelog.md:3329 all consistently state 32. No source or test file was modified in this attempt; the functional implementation and the attempt-1/attempt-2 changes are unchanged. The attempt-2 report is preserved as docs/implementation/12.2/worker-report-attempt-2.json.",
+  "validation": [
+    "`. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s). No source changed, so no test re-run was required (the prior attempt-2 full run reported Failed 0, Passed 1445, Skipped 63, Total 1508; attempt 3 changed only documentation).",
+    "Allowlist-bound scan: `grep -rn \"64 entries\\|entries per selector\" docs README.md PLANS.md` -> only correct 32-entry statements remain (docs/decisions.md:2231, docs/changelog.md:3329, docs/architecture.md:1196, docs/data-model.md:890, docs/project-status.md:708, PLANS.md:4509/4537); no surface still states 64 entries.",
+    "Suite-count scan: `grep -rn \"1,421\\|1,484\\|1,445\\|1,508\\|1,436\\|1,499\" docs/project-status.md docs/implementation-readiness.md docs/limitations.md docs/architecture.md` -> the current v1.1 count 1,445/63/1,508 is consistent in docs/project-status.md:664-665 and docs/limitations.md:315; the stale 1,421/1,484 strings are absent.",
+    "`git status --short` -> this attempt changed only docs/project-status.md plus the 12.2 implementation-state report files; the src/ and tests/ changes are the pre-existing uncommitted task 12.2 functional implementation from attempt 1, untouched by this attempt."
+  ],
+  "changed_files": [
+    "docs/project-status.md",
+    "docs/implementation/12.2/worker-report-attempt-2.json",
+    "docs/implementation/12.2/worker-report.json"
+  ],
+  "known_limitations": [
+    "RendererConfiguration.CurrentSchemaVersion remains 1 and RenderVersion.CurrentRendererVersion remains 2; the committed goldens are not regenerated. ADR-017 clause 6's coordinated schema/RenderVersion advance and golden regeneration are deferred to task 12.4 per the Phase 12 plan.",
+    "Badge size/position (task 12.3) is not implemented.",
+    "Whole-composite matching for the Audio selector is coarse (a single audio component such as 'TrueHD' alone does not match); token-level audio filtering is a documented possible future refinement (ADR-017 Consequences), not part of v1.1.",
+    "Phase 12 is in progress, not complete: tasks 12.3 and 12.4 remain, Gate 12 is not met, and the v1.1.0-phase12 tag does not exist. The reconciled current-state surfaces state this explicitly."
+  ],
+  "ready_for_next_task": true
+}

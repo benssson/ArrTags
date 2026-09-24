@@ -3308,11 +3308,12 @@ Skipped 63, Total 1481; +3 passed, +3 total, 0 new skips).
 
 ## Phase 12 - Badge value allowlist and badge size/position (v1.1)
 
-**Status:** In progress. Task 12.1 is complete; tasks 12.2 (allowlist resolution
-and renderer filtering order), 12.3 (badge size/position configuration and layout
-engine), and 12.4 (coordinated schema/`RenderVersion` advance, golden
-regeneration, and documentation) remain. Gate 12 is not yet met and the
-`v1.1.0-phase12` tag is not yet created.
+**Status:** In progress. Tasks 12.1 (allowlist configuration, bounds, validation,
+and fingerprint) and 12.2 (allowlist resolution and renderer filtering order) are
+complete; tasks 12.3 (badge size/position configuration and layout engine) and
+12.4 (coordinated schema/`RenderVersion` advance, golden regeneration, and
+documentation) remain. Gate 12 is not yet met and the `v1.1.0-phase12` tag is not
+yet created.
 
 ### Task 12.1 - Allowlist configuration, bounds, validation, and fingerprint
 
@@ -3367,3 +3368,48 @@ settings-page allowlist exposure.
 0, Passed 1436, Skipped 63, Total 1499 (pre-task baseline Failed 0, Passed 1421,
 Skipped 63, Total 1484; +15 passed, +15 total, 0 new skips). The focused
 renderer/definition/page filter was Failed 0, Passed 50, Skipped 2, Total 52.
+
+### Task 12.2 - Allowlist resolution and renderer filtering order
+
+**Status:** Complete.
+
+Applies the per-selector value allowlist in the documented ADR-017 order (clauses
+2, 3, and 4). `BadgeSelectorResolver.IsAllowed` owns the filter match: an empty
+allowlist means no restriction; otherwise the resolved pre-template value is
+trimmed and compared by a case-insensitive ordinal exact match, with no
+substring, wildcard, prefix, or regular-expression matching, and it never widens
+an omission. `BadgeDefinitionResolver.Resolve` filters each resolved pre-template
+value (and the fixed `UpgradePending` status text) against the definition's
+resolved `AllowedValues` before applying the definition template, so the order is
+value resolution -> allowlist filter -> definition template -> text
+normalization/truncation -> layout. The allowlist is applied to each retained
+`CustomBadge` value independently, to the full `Audio` composite (features, then
+codec, then channel count), and to the fixed `UpgradePending` status text. An
+allowlisted value that cannot fit still follows the existing shorten/omit
+behavior because the filter runs before layout. Provider-neutral and secret-free:
+only canonical resolved values are matched; no provider DTO path, record
+identifier, quality profile, credential, or extension value is referenced.
+
+Scope: `RendererConfiguration.CurrentSchemaVersion` is still 1 and
+`RenderVersion.CurrentRendererVersion` is still 2, and no golden under
+`tests/ArrTags.Tests/Goldens/` was regenerated (the coordinated schema/
+`RenderVersion` advance and golden regeneration are task 12.4). The default
+configuration has an empty allowlist, so the committed goldens filter nothing and
+pass unchanged. No badge size/position work is included (task 12.3).
+
+Documentation: `docs/architecture.md` section 9 and `PLANS.md`.
+
+New tests (9 cases): `tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs` (8 cases)
+covers the exact case-insensitive match with no substring/prefix/wildcard match,
+the `IsAllowed` trim and empty-list behavior, the per-retained-value custom-badge
+filter, the full audio composite (including a component alone not matching), the
+`UpgradePending` fixed status text, an empty allowlist meaning no restriction,
+unknown/absent values remaining omitted, and filter-before-template order;
+`tests/ArrTags.Tests/RendererBehaviorTruncationTests.cs` (1 case) covers an
+allowlisted value that cannot fit still following the shorten/omit behavior.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1445, Skipped 63, Total 1508 (pre-task baseline Failed 0, Passed 1436,
+Skipped 63, Total 1499; +9 passed, +9 total, 0 new skips). The focused
+allowlist/definition/truncation/layout filter was Failed 0, Passed 39, Skipped 0,
+Total 39.

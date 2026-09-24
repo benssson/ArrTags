@@ -1,0 +1,35 @@
+{
+  "task": "12.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implements ADR-017 clauses 2, 3, and 4: the per-selector badge value allowlist is now applied in the renderer. BadgeSelectorResolver.IsAllowed performs the match (empty allowlist means no restriction; otherwise the resolved pre-template value is trimmed and compared by case-insensitive ordinal exact match, with no substring, wildcard, prefix, or regex matching). BadgeDefinitionResolver.Resolve applies the filter to each resolved pre-template technical value and to the fixed UpgradePending status text before applying the definition template, giving the documented order value resolution -> allowlist filter -> definition template -> normalization/truncation -> layout. The filter applies to each retained CustomBadge value independently and to the full Audio composite. Unknown/absent values remain omitted and the filter never widens an omission; an allowlisted value that cannot fit still follows the existing shorten/omit behavior. RendererConfiguration.CurrentSchemaVersion stays 1, RenderVersion.CurrentRendererVersion stays 2, and no golden was regenerated (task 12.4); the empty-allowlist default goldens are unchanged.",
+  "validation": [
+    "Pre-task baseline: `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1436, Skipped 63, Total 1499.",
+    "`. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Focused: `dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~BadgeAllowlistFilterTests|FullyQualifiedName~BadgeDefinitionTests|FullyQualifiedName~RendererBehaviorTruncationTests|FullyQualifiedName~RendererBehaviorLayoutTests\"` -> Failed 0, Passed 39, Skipped 0, Total 39.",
+    "Post-task: `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1445, Skipped 63, Total 1508 (pre-task 1436/63/1499; +9 passed, +9 total, 0 new skips).",
+    "`git status --short tests/ArrTags.Tests/Goldens/` -> no output (goldens unmodified).",
+    "Inspected full `git diff`: all changed paths are task-scoped (two rendering sources, two test files, architecture/changelog/PLANS docs, and this report)."
+  ],
+  "changed_files": [
+    "src/ArrTags/Rendering/BadgeSelectorResolver.cs",
+    "src/ArrTags/Rendering/BadgeDefinitionResolver.cs",
+    "tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs",
+    "tests/ArrTags.Tests/RendererBehaviorTruncationTests.cs",
+    "docs/architecture.md",
+    "docs/changelog.md",
+    "PLANS.md",
+    "docs/implementation/12.2/worker-report.json"
+  ],
+  "known_limitations": [
+    "RendererConfiguration.CurrentSchemaVersion remains 1 and RenderVersion.CurrentRendererVersion remains 2; the committed goldens are not regenerated. ADR-017 clause 6's coordinated schema/RenderVersion advance and golden regeneration are deferred to task 12.4 per the Phase 12 plan.",
+    "Badge size/position (task 12.3) is not implemented.",
+    "Whole-composite matching for the Audio selector is coarse (a single audio component such as 'TrueHD' alone does not match); token-level audio filtering is a documented possible future refinement (ADR-017 Consequences), not part of v1.1."
+  ],
+  "ready_for_next_task": true
+}

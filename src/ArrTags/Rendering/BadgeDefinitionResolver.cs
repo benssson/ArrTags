@@ -8,9 +8,10 @@ namespace ArrTags.Rendering;
 /// Resolves the ordered provider-neutral <see cref="BadgeDefinition"/> snapshot
 /// against canonical <see cref="BadgeMetadata"/>. It first applies the enabled
 /// selectors through <see cref="BadgeSelectorResolver"/> so the ADR-009 semantic
-/// priority is preserved, then applies each enabled definition's bounded template
-/// to the confirmed value. Provider kind is never a rendering branch and unknown
-/// values are still omitted.
+/// priority is preserved, then applies each enabled definition's resolved
+/// allowlist filter to the pre-template value (ADR-017), and finally applies the
+/// bounded template to the retained value. Provider kind is never a rendering
+/// branch and unknown values are still omitted.
 /// </summary>
 public static class BadgeDefinitionResolver
 {
@@ -53,7 +54,9 @@ public static class BadgeDefinitionResolver
         var technicalValues = new List<BadgeValue>(resolved.TechnicalValues.Count);
         foreach (var value in resolved.TechnicalValues)
         {
-            if (!bySelector.TryGetValue(value.Selector, out var definition) || !definition.Enabled)
+            if (!bySelector.TryGetValue(value.Selector, out var definition)
+                || !definition.Enabled
+                || !BadgeSelectorResolver.IsAllowed(value.Text, definition.AllowedValues))
             {
                 continue;
             }
@@ -64,7 +67,8 @@ public static class BadgeDefinitionResolver
         BadgeValue? status = null;
         if (resolved.StatusValue is not null
             && bySelector.TryGetValue(BadgeSelector.UpgradePending, out var statusDefinition)
-            && statusDefinition.Enabled)
+            && statusDefinition.Enabled
+            && BadgeSelectorResolver.IsAllowed(resolved.StatusValue.Text, statusDefinition.AllowedValues))
         {
             status = new BadgeValue(
                 BadgeSelector.UpgradePending,

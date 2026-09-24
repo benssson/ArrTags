@@ -1,0 +1,160 @@
+{
+  "task": "12.2",
+  "title": "Allowlist resolution and renderer filtering order",
+  "phase": 12,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 95504,
+        "output_tokens": 12196,
+        "reasoning_tokens": 13051,
+        "cache_read_tokens": 3231104,
+        "cache_write_tokens": 0,
+        "total_tokens": 3351855,
+        "cost_usd": 0.039167111999999976,
+        "duration_seconds": 380,
+        "session_id": "ses_f2cd171e7ffemB0d6zVAeieiEC"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 120552,
+        "output_tokens": 11883,
+        "reasoning_tokens": 24774,
+        "cache_read_tokens": 3125632,
+        "cache_write_tokens": 0,
+        "total_tokens": 3282841,
+        "cost_usd": 0.049453896,
+        "duration_seconds": 630,
+        "session_id": "ses_f2ccb5210ffenXVmU4SMBXpedF"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 73104,
+        "output_tokens": 7941,
+        "reasoning_tokens": 10529,
+        "cache_read_tokens": 1461248,
+        "cache_write_tokens": 0,
+        "total_tokens": 1552822,
+        "cost_usd": 0.026431343999999996,
+        "duration_seconds": 167,
+        "session_id": "ses_f2cc16c69ffeqjshJ4nr489R4X"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 101627,
+        "output_tokens": 9003,
+        "reasoning_tokens": 6230,
+        "cache_read_tokens": 531840,
+        "cache_write_tokens": 0,
+        "total_tokens": 648700,
+        "cost_usd": 0.02597937,
+        "duration_seconds": 143,
+        "session_id": "ses_f2cbeb8f1ffemG3zpTcwCG7IQD"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 3,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 35691,
+        "output_tokens": 3414,
+        "reasoning_tokens": 1834,
+        "cache_read_tokens": 391168,
+        "cache_write_tokens": 0,
+        "total_tokens": 432107,
+        "cost_usd": 0.009675954,
+        "duration_seconds": 57,
+        "session_id": "ses_f2cbc4f78ffeFRIXc5ou9hBMYN"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 3,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 59149,
+        "output_tokens": 7740,
+        "reasoning_tokens": 3425,
+        "cache_read_tokens": 413440,
+        "cache_write_tokens": 0,
+        "total_tokens": 483754,
+        "cost_usd": 0.01681167,
+        "duration_seconds": 112,
+        "session_id": "ses_f2cbb4171ffe0s4G0kYZMYWj37"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 135084,
+        "output_tokens": 12390,
+        "reasoning_tokens": 12094,
+        "cache_read_tokens": 4727296,
+        "cache_write_tokens": 0,
+        "total_tokens": 4886864,
+        "cost_usd": 0.049134887999999995,
+        "duration_seconds": 442,
+        "session_id": "ses_f2cb95e80ffe4fW96WIef7PRHE"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "implementation-reviewer attempt 1 returned CHANGES_REQUIRED (MEDIUM, documentation-only): docs/project-status.md and docs/implementation-readiness.md were not reconciled with the current state (stale suite count 1,421/63/1,484 vs actual 1,445/63/1,508; Phase 11 still presented as the current milestone), while every Phase 11 task commit had updated both surfaces. Worker attempt 2 reconciled project-status.md, implementation-readiness.md, limitations.md V6, and the architecture.md status line; no source or test code changed."
+    },
+    {
+      "attempt": 3,
+      "reason": "implementation-reviewer attempt 2 returned CHANGES_REQUIRED (MEDIUM, documentation-only): the attempt-2 reconciliation introduced a factual error in docs/project-status.md stating the allowlist bound as 'at most 64 entries per selector' when the shipped bound is 32 (BadgeDefinition.MaximumAllowedValues = 32; ADR-017 clause 5). Worker attempt 3 corrected the bound to 32 and scanned the touched docs for other inaccuracies (none found); no source or test code changed."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields were read from the authoritative OpenCode session API via .opencode/scripts/collect-session-usage.sh using the recorded session ids; no estimation was performed.",
+    "Final gates: implementation-worker attempt 3 COMPLETE; implementation-reviewer attempt 3 APPROVED (reviewer_blockers [], required_changes [], ready_for_next_task true); test-quality-reviewer attempt 1 PASS_WITH_FINDINGS (0 BLOCKER/HIGH/MEDIUM).",
+    "Validation (independently reproduced): build 0 warnings / 0 errors; full suite Failed 0, Passed 1445, Skipped 63, Total 1508 (pre-task baseline 1436/63/1499; +9 passed, 0 new skips); focused allowlist/definition/truncation/layout 39/0/39; BadgeAllowlistFilterTests 8/8. The test-quality-reviewer independently killed 5 source mutations (always-allow, substring, case-sensitive, filter-after-template, status-path filter removed), demonstrating non-vacuous coverage of the ADR-017 clauses 2-4 behavior.",
+    "Scope boundaries honored: no badge size/position (task 12.3); RendererConfiguration.CurrentSchemaVersion remains 1 and RenderVersion.CurrentRendererVersion remains 2; tests/ArrTags.Tests/Goldens/ is unmodified (the single coordinated advance and golden regeneration are task 12.4). The existing default-configuration goldens are unchanged because an empty allowlist filters nothing.",
+    "Documentation reconciled: docs/architecture.md section 9 (filter order/semantics), docs/changelog.md (Phase 12 section + Task 12.2 entry), PLANS.md (12.2 status/checkbox and Phase 12 milestone row), plus the current-state surfaces docs/project-status.md, docs/implementation-readiness.md, and docs/limitations.md V6 (suite count 1,445/63/1,508; Phase 12 in progress, Gate 12 not met, no v1.1.0-phase12 tag).",
+    "Tracked non-blocking findings: TQ-12.2-1 (LOW, no single test composes a non-empty allowlist from PluginConfiguration through the snapshot/resolver to selection; the two seams are covered separately); 12.2-F2 (INFO, data-model.md 3.12 forward reference to task 12.2 now historical); 12.2-F3 (INFO, IsAllowed trims only the candidate, safe because BadgeDefinition pre-trims entries); 12.2-F4 (INFO, pixel-level goldens are native-guarded and not executable in this environment, owned by tasks 12.4/14.3); 12.2-F5 (INFO, pre-existing limitations.md F3 citation drift)."
+  ]
+}

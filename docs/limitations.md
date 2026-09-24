@@ -312,7 +312,7 @@ for package content, `./build.sh package` has been run). The counts below are th
 `1.0.1.0` release matrix and are not current v1.1 truth: the `1.0.1.0` default
 suite was 1,228 passed / 60 skipped / 1,288 total and the `1.0.1.0` host-guarded
 suite was 1,244 passed / 44 skipped / 1,288 total. The current v1.1 working suite
-is Failed 0, Passed 1,421, Skipped 63, Total 1,484; the v1.1 release task
+is Failed 0, Passed 1,445, Skipped 63, Total 1,508; the v1.1 release task
 refreshes this matrix (test-quality review finding TQ-8).
 
 - Evidence: tasks 7.5/7.8 worker reports; `docs/release/build-and-release.md`.

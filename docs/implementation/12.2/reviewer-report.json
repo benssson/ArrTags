@@ -1,0 +1,155 @@
+{
+  "task": "12.2",
+  "attempt": 1,
+  "reviewer_role": "implementation-reviewer",
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "required_changes": [
+    "Reconcile the stale canonical current-state surfaces with the task 12.2 repository state, as required by the documented worker workflow (`.opencode/agents/implementation-worker.md` lines 229-251: update every canonical surface the change makes stale, including `docs/project-status.md` and `docs/implementation-readiness.md`, when the task changes a completion count or phase status). `docs/project-status.md` line 5 still presents Phase 11 as the current milestone (no Phase 12 progress) and lines 658-659 still state `the current v1.1 working suite is Failed 0, Passed 1,421, Skipped 63, Total 1,484`, whereas the verified task 12.2 state is Failed 0, Passed 1,445, Skipped 63, Total 1,508; `docs/implementation-readiness.md` line 5 does not reflect Phase 12 progress. The functional implementation itself is correct; this is a documentation current-state correction only."
+  ],
+  "findings": [
+    {
+      "id": "12.2-F1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "documentation / canonical current-state surfaces",
+      "summary": "`docs/project-status.md` and `docs/implementation-readiness.md` are stale for the task 12.2 repository state (suite count and Phase 12 progress), although the task changes a completion count and phase status.",
+      "detail": "Task 12.2 completes a Phase 12 task and adds nine passing tests, changing both the phase status and the current build/test count. The documented worker workflow (`.opencode/agents/implementation-worker.md` lines 229-251) lists `docs/project-status.md` (current build/test/structure/next-step statements) and `docs/implementation-readiness.md` (status line) as canonical current-state surfaces and states that leaving stale lines is not acceptable merely because the task did not touch the file. `docs/project-status.md` line 5 still reads `Current milestone: Phase 11 ... is complete` with no Phase 12 progress, and lines 658-659 still state the current v1.1 working suite as `Passed 1,421 ... Total 1,484`. `docs/implementation-readiness.md` line 5 ends at Phase 11 and does not mention Phase 12. Precedent: every Phase 11 task commit (65313f8, 9e53480, 72d425f, cb62fe4) modified both files, and task 11.4 explicitly updated the same suite-count line from 1,407/1,470 to 1,421/1,484. The count was already stale after task 12.1 (1,436/1,499) because 12.1 did not update these surfaces; task 12.2 compounds it. This is a documentation defect only; it does not affect functional correctness or the acceptance criteria. The independently verified current count is 1,445/63/1,508.",
+      "evidence": [
+        "docs/project-status.md:5 (Current milestone: Phase 11; no Phase 12)",
+        "docs/project-status.md:658-659 ('the current v1.1 working suite is Failed 0, Passed 1,421, Skipped 63, Total 1,484')",
+        "docs/implementation-readiness.md:5 (status line ends at Phase 11)",
+        ".opencode/agents/implementation-worker.md:229-251 (canonical current-state surfaces)",
+        "git show --stat 65313f8 9e53480 72d425f cb62fe4 -> each modified docs/project-status.md and docs/implementation-readiness.md",
+        "Independent run: `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1445, Skipped 63, Total 1508"
+      ],
+      "recommended_action": "Update `docs/project-status.md` (Current milestone / Phase 12 progress and the current v1.1 working-suite count to Failed 0, Passed 1,445, Skipped 63, Total 1,508) and `docs/implementation-readiness.md` (status line) to reflect task 12.2 completion, matching the task 11.x format."
+    },
+    {
+      "id": "12.2-F2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation / data-model forward reference",
+      "summary": "`docs/data-model.md` 3.12 still says the renderer filtering order 'is task 12.2', which now reads as pending.",
+      "detail": "The `v1.1 task 12.1 implementation note` in `docs/data-model.md` 3.12 ends with 'Task 12.1 does not yet apply the filter to rendering; the renderer filtering order is task 12.2.' The note is explicitly scoped to task 12.1 (historical) and task 12.2's declared documentation impact is only `docs/architecture.md` section 9, so this is not a required change. However, now that 12.2 has landed, the sentence no longer describes current state. The field description earlier in the same document (line 469) already states the matching semantics as the field's semantics, so the document is not materially misleading.",
+      "evidence": [
+        "docs/data-model.md:570-571",
+        "docs/data-model.md:469 (allowedValues field semantics)",
+        "PLANS.md 12.2 'Documentation impact: docs/architecture.md section 9.'"
+      ],
+      "recommended_action": "Optional: refresh the 3.12 note when reconciling docs so it states that task 12.2 now applies the filter."
+    },
+    {
+      "id": "12.2-F3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness / API robustness",
+      "summary": "`IsAllowed` trims the candidate but not the supplied allowlist entries; the production path is nevertheless correct because `BadgeDefinition` trims every entry at construction.",
+      "detail": "`BadgeSelectorResolver.IsAllowed` trims only the candidate value and compares against `allowedValues` verbatim. ADR-017 clause 2 trims the comparison value and clause 5 trims the configured entries; the resolved allowlist reaching the renderer is always `BadgeDefinition.AllowedValues`, which is built by `NormalizeAllowedValues` and trims (and copies) every entry. `RendererConfigurationResolver.ResolveDefinitions` constructs `BadgeDefinition` from the persisted entries, so the only production caller is guaranteed trimmed entries. The public `IsAllowed` method would not match untrimmed entries passed directly by an external caller, but no such caller exists. Not required for this task; noted as a minor API-contract observation.",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs:110-130 (trims candidate only)",
+        "src/ArrTags/Rendering/BadgeDefinition.cs:199 (entry.Trim() at construction)",
+        "src/ArrTags/Configuration/RendererConfigurationResolver.cs:101 (resolver constructs BadgeDefinition)",
+        "docs/decisions.md ADR-017 clauses 2 and 5"
+      ],
+      "recommended_action": "None required; optionally document in the `IsAllowed` XML comment that entries are expected to be pre-trimmed, or trim defensively."
+    },
+    {
+      "id": "12.2-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / validation limitation",
+      "summary": "The committed goldens are unmodified but were not executed in this environment (native Skia unavailable), so 'goldens pass unchanged' is inferred rather than run.",
+      "detail": "`tests/ArrTags.Tests/Goldens/` is clean (`git status --short` empty), and the default suite reports the same 63 skips as the pre-task baseline (no new skips). The golden and cross-runtime facts are `[SkiaNativeTheory]`/`[NonCanonicalRuntimeFact]` and are skipped without `ARRTAGS_SKIA_COMPAT=1`. Forcing `ARRTAGS_SKIA_COMPAT=1` in this environment fails with a native `SkiaSharp.SKColorSpace.CreateSrgb()` failure, i.e. the pinned native runtime is not usable here, so the goldens could not be executed. The unchanged default configuration has an empty allowlist, which `IsAllowed` treats as no restriction and which the task 12.1 fingerprint work treats as identity-neutral, so the rendered output is unchanged by construction. The 'goldens pass unchanged' claim is therefore supported by source inspection and the unmodified golden set, not by an executed golden run.",
+      "evidence": [
+        "git status --short tests/ArrTags.Tests/Goldens/ -> empty",
+        "ARRTAGS_SKIA_COMPAT=1 dotnet test ... --filter FullyQualifiedName~RenderGoldenTests -> Failed 9, Passed 2 (native SKColorSpace failure)",
+        "tests/ArrTags.Tests/SkiaNativeTheoryAttribute.cs (skips without ARRTAGS_SKIA_COMPAT=1)",
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs:115-118 (empty allowlist -> allow)"
+      ],
+      "recommended_action": "None required for this task; the coordinated golden regeneration/execution remains task 12.4 and the live-host run task 14.3."
+    },
+    {
+      "id": "12.2-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / pre-existing citation drift",
+      "summary": "`docs/limitations.md` F3 cites `docs/architecture.md` lines 1209-1212, which do not contain the metrics/diagnostic recommendation; this predates task 12.2.",
+      "detail": "The F3 evidence line points at `docs/architecture.md` lines 1209-1212 for the metrics/diagnostic-status limitation. Before task 12.2 those lines were the section 10 heading area and the metrics recommendation was at lines 1413-1416; after this task's section 9 edit the same line numbers now fall inside the allowlist-filter paragraph. The citation was already inaccurate before task 12.2, so this is a pre-existing, unrelated defect and is not required to be fixed here.",
+      "evidence": [
+        "docs/limitations.md:64",
+        "git show HEAD:docs/architecture.md | grep -n 'Metrics or diagnostic status' -> line 1413",
+        "docs/architecture.md:1209-1212 (allowlist filter paragraph after this task)"
+      ],
+      "recommended_action": "None required for task 12.2; the citation is a pre-existing drift."
+    }
+  ],
+  "acceptance_criteria_assessment": {
+    "a_configured_allowlist_restricts_rendering_to_the_listed_values": "MET. `BadgeDefinitionResolver.Resolve` filters each resolved pre-template `value.Text` through `BadgeSelectorResolver.IsAllowed(value.Text, definition.AllowedValues)` before applying the template. Tests `AllowlistRequiresAnExactCaseInsensitiveMatch`, `CustomBadgeAllowlistAppliesPerRetainedValue`, `AudioAllowlistMatchesTheFullComposite`, `UpgradePendingAllowlistPermitsTheFixedStatusText`, and `FilterIsAppliedBeforeTheDefinitionTemplate` assert retention and suppression. Mutation of `IsAllowed` to always allow caused 6 of the 8 `BadgeAllowlistFilterTests` to fail, so the tests are non-vacuous.",
+    "unknown_and_absent_values_remain_omitted": "MET. Unknown/absent values are never emitted by `BadgeSelectorResolver.Resolve`, and `IsAllowed` only removes already-confirmed values (empty allowlist returns true; non-empty only matches present text). Test `UnknownAndAbsentValuesRemainOmittedWithAnAllowlist` asserts an empty selection when no quality/audio is confirmed even with a non-empty allowlist. The filter cannot widen an omission.",
+    "an_empty_allowlist_means_no_restriction": "MET. `IsAllowed` returns true immediately when `allowedValues.Count == 0`; `BadgeDefinition` normalizes null/empty to an empty read-only list. Tests `IsAllowedTrimsTheResolvedValueAndRejectsPartialMatches` and `EmptyAllowlistMeansNoRestriction` assert the behavior; the default `BadgeDefinition.V1Default` carries empty allowlists.",
+    "match_semantics_exact_case_insensitive_ordinal_trimmed": "MET. `string.Equals(candidate, allowed, StringComparison.OrdinalIgnoreCase)` after `value.Trim()`; configured entries are trimmed by `BadgeDefinition.NormalizeAllowedValues`. No substring/prefix/wildcard/regex path exists. Tests assert no substring/prefix/wildcard match (`Bluray`, `1080p`, `Bluray-1080p-extra`, `Bluray*` all filtered) and that `  Bluray-1080p  ` matches.",
+    "filter_before_template_order": "MET. The allowlist test uses the pre-template value (`value.Text`) and the template is applied only to retained values; test `FilterIsAppliedBeforeTheDefinitionTemplate` shows an allowlist naming the templated text (`Q:Bluray-1080p`) filters the value out while an allowlist naming the pre-template value retains it and then applies the template.",
+    "per_custom_value_and_full_audio_composite_and_upgrade_pending": "MET. `BadgeSelectorResolver.Resolve` emits one `BadgeValue` per retained custom badge (filtered independently) and one full `Audio` composite (`Atmos/TrueHD/8`); a component alone (`TrueHD`, `Atmos`) does not match. The fixed `UpgradePending` status text is filtered and can be suppressed.",
+    "allowlisted_but_unfittable_still_shortens_or_omits": "MET. The filter runs before `BadgeLayoutEngine.Build`; `AnAllowlistedValueThatCannotFitStillFollowsTheOmitBehavior` retains an allowlisted custom value and then asserts the layout omits it because it cannot fit.",
+    "scope_no_size_or_position": "MET. The diff contains no `BadgePosition`/`BadgeSize` or `BadgeLayoutEngine`/geometry change.",
+    "scope_versions_unchanged": "MET. `RendererConfiguration.CurrentSchemaVersion` = 1 (src/ArrTags/Configuration/RendererConfiguration.cs:32) and `RenderVersion.CurrentRendererVersion` = 2 (src/ArrTags/Rendering/RenderVersion.cs:20). The ADR-017 clause 6 advance and golden regeneration are correctly deferred to task 12.4.",
+    "scope_goldens_unmodified": "MET. `git status --short tests/ArrTags.Tests/Goldens/` is empty and no Goldens path appears in `git diff --name-only`.",
+    "scope_diff_task_scoped": "MET. Changed/added paths are exactly the two rendering sources, the new `BadgeAllowlistFilterTests.cs`, one added case in `RendererBehaviorTruncationTests.cs`, `docs/architecture.md` section 9, `docs/changelog.md`, `PLANS.md`, and the task's own `docs/implementation/12.2/worker-report.json`. No unrelated production change."
+  },
+  "validation": {
+    "method": "Independently inspected the full working-tree diff, the changed sources, the new and modified tests, ADR-017 clauses 2-6, PLANS.md task 12.2/12.4, docs/planning/v1.1.md Goal B/DG-11, the canonical documentation surfaces, and the worker report; then rebuilt and re-ran the project test entry points under the pinned environment, plus a focused filter and a mutation test on a throwaway copy.",
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1)",
+    "commands": [
+      ". /config/arrtags-env.sh && ./build.sh build",
+      ". /config/arrtags-env.sh && ./build.sh test",
+      ". /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~BadgeAllowlistFilterTests\"",
+      ". /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~BadgeAllowlistFilterTests|FullyQualifiedName~BadgeDefinitionTests|FullyQualifiedName~RendererBehaviorTruncationTests|FullyQualifiedName~RendererBehaviorLayoutTests\"",
+      "ARRTAGS_SKIA_COMPAT=1 dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RenderGoldenTests\"",
+      "Mutation: copy to /tmp/12.2/mutant, force `IsAllowed` to return true, rebuild and re-run BadgeAllowlistFilterTests (then removed the copy)"
+    ],
+    "results": {
+      "build": "Build succeeded. 0 Warning(s), 0 Error(s).",
+      "full_test_suite": "Failed 0, Passed 1445, Skipped 63, Total 1508. Reproduces the worker report exactly; pre-task baseline was 1436/63/1499, so +9 passed, +9 total, 0 new skips.",
+      "focused_allowlist": "BadgeAllowlistFilterTests -> Failed 0, Passed 8, Skipped 0, Total 8.",
+      "focused_combined": "Failed 0, Passed 39, Skipped 0, Total 39. Reproduces the worker report exactly.",
+      "golden_execution": "Not possible in this environment: ARRTAGS_SKIA_COMPAT=1 renders fail with a native SkiaSharp SKColorSpace.CreateSrgb() failure (Failed 9, Passed 2). Goldens are unmodified and the default configuration is an empty-allowlist no-op, so the unchanged-golden claim is supported by inspection rather than execution.",
+      "mutation_non_vacuousness": "Forcing `IsAllowed` to always return true made 6 of the 8 BadgeAllowlistFilterTests fail (Failed 6, Passed 2), confirming the filter tests are non-vacuous.",
+      "version_constants": "RendererConfiguration.CurrentSchemaVersion = 1; RenderVersion.CurrentRendererVersion = 2.",
+      "goldens": "git status --short tests/ArrTags.Tests/Goldens/ -> empty (no regeneration).",
+      "changed_paths": "6 modified + 2 untracked (new test file and docs/implementation/12.2/); every path is task-scoped."
+    },
+    "not_verified": [
+      "Golden/cross-runtime execution (native SkiaSharp runtime unusable in this environment).",
+      "Live pinned-host behavior (ARRTAGS_JELLYFIN_HOST_DIR unset; host-guarded facts skipped), which is task 14.3's scope."
+    ]
+  },
+  "tests_checked": [
+    "tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs (8 new facts; read in full and executed)",
+    "tests/ArrTags.Tests/RendererBehaviorTruncationTests.cs (1 new fact; read and executed)",
+    "tests/ArrTags.Tests/BadgeDefinitionTests.cs (regression; executed in the focused filter)",
+    "tests/ArrTags.Tests/RendererBehaviorLayoutTests.cs (regression; executed in the focused filter)",
+    "Full default suite (Failed 0, Passed 1445, Skipped 63, Total 1508)",
+    "Mutation run on a throwaway copy of the repository (filter forced to allow; 6/8 allowlist facts failed)"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-017 clauses 2, 3, 4 (match semantics, order, unknown/absent) and clause 6 (version advance deferred to 12.4)",
+    "docs/planning/v1.1.md Goal B and DG-11",
+    "PLANS.md task 12.2 objective/work/tests/acceptance and task 12.4 scope boundary",
+    "src/ArrTags/Rendering/BadgeSelectorResolver.cs and BadgeDefinitionResolver.cs (source verification of the documented order and semantics)"
+  ],
+  "documentation_checked": [
+    "PLANS.md (Milestone Status table row, task 12.2 checkbox/status text) — correct",
+    "docs/changelog.md (Phase 12 status and task 12.2 entry) — correct, counts match the independent run",
+    "docs/architecture.md section 9 — correct and no overclaim",
+    "docs/project-status.md — STALE (see 12.2-F1)",
+    "docs/implementation-readiness.md — STALE (see 12.2-F1)",
+    "docs/limitations.md — no Phase 12 statement; F3 citation drift is pre-existing (see 12.2-F5)",
+    "README.md — end-user guide; no task 12.2 statement affected",
+    "docs/data-model.md 3.6/3.12 — 3.6 now accurate; 3.12 forward reference is historical (see 12.2-F2)",
+    "docs/implementation/12.2/worker-report.json — internally consistent with the repository state (changed files, counts, scope limits)"
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false,
+  "summary": "The functional implementation of task 12.2 is correct and complete. `BadgeSelectorResolver.IsAllowed` implements the ADR-017 match exactly: an empty allowlist is unrestricted, otherwise the resolved pre-template value is trimmed and compared by a case-insensitive ordinal exact match with no substring/prefix/wildcard/regex path; configured entries are trimmed by `BadgeDefinition`. `BadgeDefinitionResolver.Resolve` applies the filter to each resolved pre-template value (and to the fixed `UpgradePending` text) before the definition template, giving value resolution -> allowlist filter -> template -> normalization/truncation -> layout; it applies per retained `CustomBadge` value and to the full `Audio` composite, permits the fixed status text, keeps unknown/absent values omitted, never widens an omission, and does not bypass the shorten/omit layout behavior. Scope boundaries hold: no size/position work, schema and renderer versions remain 1 and 2, and no golden under tests/ArrTags.Tests/Goldens/ changed. Independent build/test reproduce the worker's counts exactly (build 0/0; suite Failed 0, Passed 1445, Skipped 63, Total 1508; focused 39/0/39), and a mutation run confirmed the new tests are non-vacuous (6/8 fail when the filter is forced to allow). The only required correction is documentation current-state: docs/project-status.md and docs/implementation-readiness.md were not reconciled with the task 12.2 phase status and test count, which the documented canonical-surface workflow requires. Review is CHANGES_REQUIRED with one MEDIUM required change; no functional or architectural blocker."
+}

@@ -95,6 +95,40 @@ public static class BadgeSelectorResolver
             : new BadgeSelection(technicalValues, status);
     }
 
+    /// <summary>
+    /// Determines whether a resolved, pre-template selector value is permitted by
+    /// a resolved allowlist (ADR-017). An empty allowlist means no restriction.
+    /// Otherwise the value is trimmed and compared by a case-insensitive ordinal
+    /// exact match against the allowlist entries; substring, wildcard, prefix,
+    /// and regular-expression matching are never applied. The filter can only
+    /// remove an already-confirmed value and never widens an omission.
+    /// </summary>
+    /// <param name="value">The confirmed, pre-template resolved value.</param>
+    /// <param name="allowedValues">The resolved allowlist; empty means no restriction.</param>
+    /// <returns><see langword="true"/> when the value is permitted.</returns>
+    /// <exception cref="ArgumentNullException">The value or the allowlist is <see langword="null"/>.</exception>
+    public static bool IsAllowed(string value, IReadOnlyList<string> allowedValues)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(allowedValues);
+
+        if (allowedValues.Count == 0)
+        {
+            return true;
+        }
+
+        var candidate = value.Trim();
+        foreach (var allowed in allowedValues)
+        {
+            if (string.Equals(candidate, allowed, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static void AddSelector(BadgeMetadata metadata, BadgeSelector selector, List<BadgeValue> values)
     {
         switch (selector)

@@ -84,6 +84,36 @@ public class RendererBehaviorTruncationTests
     }
 
     [Fact]
+    public void AnAllowlistedValueThatCannotFitStillFollowsTheOmitBehavior()
+    {
+        // The allowlist filter runs before layout and must not bypass the fit
+        // logic: an allowlisted value that cannot fit any pill is still omitted.
+        var label = "\u1671\u1671\u1671";
+        var metadata = RendererBehaviorFixtures.BuildMetadata(customBadges: new[] { label });
+        var definitions = new[]
+        {
+            new BadgeDefinition(
+                BadgeSelector.CustomBadge,
+                true,
+                BadgeDefinition.ValuePlaceholder,
+                new[] { label }),
+        };
+
+        var selection = BadgeDefinitionResolver.Resolve(metadata, definitions);
+        Assert.Single(selection.TechnicalValues);
+
+        var layout = BadgeLayoutEngine.Build(
+            selection.TechnicalValues,
+            null,
+            1000,
+            1500,
+            RenderOutputPolicy.Default,
+            text => text.Contains("\u1671", StringComparison.Ordinal) ? 100000f : text.Length * 10f);
+
+        Assert.Empty(layout.TechnicalPills);
+    }
+
+    [Fact]
     public void WidthFittingFurtherShortensAnOverwideLabelAndKeepsTheScalarBound()
     {
         var label = new string('W', 16) + string.Concat(Enumerable.Repeat("\u1671", 8));

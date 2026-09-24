@@ -1,0 +1,33 @@
+{
+  "task": "12.2",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction round for v1.1 task 12.2 addressing the reviewer's single MEDIUM documentation current-state finding (docs/implementation/12.2/reviewer-report.json). The functional implementation is unchanged from attempt 1 and remains correct: the per-selector badge value allowlist is applied in the renderer per ADR-017 clauses 2, 3, and 4, with BadgeSelectorResolver.IsAllowed performing a case-insensitive ordinal exact match of the trimmed pre-template value (empty allowlist unrestricted; no substring/wildcard/prefix/regex), BadgeDefinitionResolver.Resolve filtering each resolved pre-template value and the fixed UpgradePending status text before the definition template (value resolution -> allowlist filter -> definition template -> normalization/truncation -> layout), per retained CustomBadge value and the full Audio composite, never widening an omission, and RendererConfiguration.CurrentSchemaVersion still 1 and RenderVersion.CurrentRendererVersion still 2 with no golden regenerated (task 12.4). The only changes in this attempt are documentation: reconciled the stale canonical current-state surfaces with the verified task 12.2 state. docs/project-status.md now presents Phase 12 (in progress; tasks 12.1 and 12.2 complete, tasks 12.3 and 12.4 remaining; Gate 12 not met and the v1.1.0-phase12 tag not created) as the current milestone, updates the current v1.1 working-suite count from Failed 0, Passed 1,421, Skipped 63, Total 1,484 to the verified Failed 0, Passed 1,445, Skipped 63, Total 1,508, and adds a Phase 12 item to the Next tasks list. docs/implementation-readiness.md line 5 now reflects Phase 12 progress and states that CurrentSchemaVersion is still 1, CurrentRendererVersion is still 2, and no golden was regenerated. docs/limitations.md V6's canonical v1.1 count was updated to Failed 0, Passed 1,445, Skipped 63, Total 1,508 (preserving the distinct 1.0.1.0 release-matrix counts). docs/architecture.md's status line now reflects Phase 12 in progress (it had been left stale by task 12.1, which updated architecture section 9 but not the status line). No source or test file was modified in this attempt.",
+  "validation": [
+    "Attempt-1 (functional implementation, preserved in docs/implementation/12.2/worker-report-attempt-1.json): `. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s); post-task `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1445, Skipped 63, Total 1508 (pre-task 1436/63/1499; +9 passed, +9 total, 0 new skips); focused allowlist/definition/truncation/layout filter -> Failed 0, Passed 39, Skipped 0, Total 39.",
+    "Attempt-2 after the documentation reconciliation: `. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Attempt-2 after the documentation reconciliation: `. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1445, Skipped 63, Total 1508, Duration 16 s - ArrTags.Tests.dll (net10.0). Matches the reconciled count exactly.",
+    "Count-surface scan: `grep -rn \"1,421\\|1,484\" docs/*.md README.md` -> no matches; the reconciled current v1.1 count Failed 0, Passed 1,445, Skipped 63, Total 1,508 appears at docs/project-status.md lines 664-665 and docs/limitations.md line 315. The distinct historical `1.0.1.0` release-matrix counts (1,228/60/1,288 and 1,244/44/1,288) and earlier v1.1 counts are preserved as historical context.",
+    "`git status --short` -> the only files modified by this attempt are docs/architecture.md, docs/implementation-readiness.md, docs/limitations.md, and docs/project-status.md; the src/ and tests/ changes are the pre-existing uncommitted task 12.2 functional implementation from attempt 1, untouched by this attempt."
+  ],
+  "changed_files": [
+    "docs/project-status.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "docs/architecture.md",
+    "docs/implementation/12.2/worker-report.json",
+    "docs/implementation/12.2/worker-report-attempt-1.json"
+  ],
+  "known_limitations": [
+    "RendererConfiguration.CurrentSchemaVersion remains 1 and RenderVersion.CurrentRendererVersion remains 2; the committed goldens are not regenerated. ADR-017 clause 6's coordinated schema/RenderVersion advance and golden regeneration are deferred to task 12.4 per the Phase 12 plan.",
+    "Badge size/position (task 12.3) is not implemented.",
+    "Whole-composite matching for the Audio selector is coarse (a single audio component such as 'TrueHD' alone does not match); token-level audio filtering is a documented possible future refinement (ADR-017 Consequences), not part of v1.1.",
+    "Phase 12 is in progress, not complete: tasks 12.3 and 12.4 remain, Gate 12 is not met, and the v1.1.0-phase12 tag does not exist. The reconciled current-state surfaces state this explicitly."
+  ],
+  "ready_for_next_task": true
+}

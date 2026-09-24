@@ -1,0 +1,172 @@
+{
+  "task": "12.2",
+  "attempt": 3,
+  "reviewer_role": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "prior_required_change_assessment": {
+    "attempt_1_required_change": "Reconcile docs/project-status.md and docs/implementation-readiness.md with the task 12.2 state (Phase 12 progress and suite count 1,445/63/1,508).",
+    "attempt_2_required_change": "Correct docs/project-status.md line 707-708: the allowlist bound was stated as 'at most 64 entries per selector' while the shipped bound is 32.",
+    "status": "RESOLVED",
+    "detail": "Attempt 3 changed only docs/project-status.md. Its Phase 12 'Next tasks' paragraph now reads 'at most 32 entries per selector, each at most 64 characters, trimmed ...', matching the shipped bound. An independent repo-wide scan found no remaining '64 entries' statement on any current-state surface. The attempt-1 phase-status/suite-count reconciliation remains correct."
+  },
+  "findings": [
+    {
+      "id": "12.2-A2-F1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "documentation / canonical current-state accuracy",
+      "summary": "Attempt-2 finding: docs/project-status.md stated the allowlist bound as 64 entries per selector. Corrected to 32 by attempt 3.",
+      "detail": "docs/project-status.md:707-708 now reads 'at most 32 entries per selector, each at most 64 characters, trimmed, with no blank or control-character entry and no case-insensitive duplicate'. This matches BadgeDefinition.MaximumAllowedValues = 32 (src/ArrTags/Rendering/BadgeDefinition.cs:36) enforced by RendererConfiguration.Validate (src/ArrTags/Configuration/RendererConfiguration.cs:160), ADR-017 clause 5 (docs/decisions.md:2231), docs/architecture.md:1195-1196, docs/data-model.md:469/890, PLANS.md:4509/4537, docs/changelog.md:3329, and src/ArrTags/Configuration/config.html. A repo-wide grep for '64 entries'/'entries per selector' found only correct 32-entry statements on current-state surfaces; the only '64 entries' strings left are inside the preserved historical reviewer-report.attempt-2.json.",
+      "evidence": [
+        "docs/project-status.md:707-708 ('at most 32 entries per selector, each at most 64 characters')",
+        "src/ArrTags/Rendering/BadgeDefinition.cs:36 (MaximumAllowedValues = 32)",
+        "src/ArrTags/Configuration/RendererConfiguration.cs:160 (Validate against MaximumAllowedValues)",
+        "grep -rn '64 entries|entries per selector' docs/ PLANS.md README.md -> no current-state surface states 64"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "12.2-F1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "documentation / canonical current-state surfaces",
+      "summary": "Attempt-1 finding: docs/project-status.md and docs/implementation-readiness.md were stale for the task 12.2 phase status and suite count. Resolved by attempt 2.",
+      "detail": "Re-verified in attempt 3. docs/project-status.md line 5 presents Phase 12 in progress (tasks 12.1/12.2 complete; 12.3/12.4 remaining; Gate 12 not met; no v1.1.0-phase12 tag) and lines 664-665 state the current v1.1 working suite as Failed 0, Passed 1,445, Skipped 63, Total 1,508. docs/implementation-readiness.md line 5 ends with the same Phase 12 in-progress status including CurrentSchemaVersion 1 / CurrentRendererVersion 2 / no golden regeneration. docs/architecture.md line 3 and docs/changelog.md's Phase 12 status were reconciled. docs/limitations.md V6 was updated to the current count while preserving the distinct 1.0.1.0 release-matrix counts. No overclaim: Phase 12 is not presented as complete, Gate 12 is not presented as met, no phase tag is claimed.",
+      "evidence": [
+        "docs/project-status.md:5 (Phase 12 current milestone)",
+        "docs/project-status.md:664-665 (Failed 0, Passed 1,445, Skipped 63, Total 1,508)",
+        "docs/implementation-readiness.md:5 (Phase 12 in progress)",
+        "docs/architecture.md:3 (Phase 12 status line)",
+        "docs/changelog.md Phase 12 status and Task 12.2 entry",
+        "docs/limitations.md:313-315 (1.0.1.0 counts 1,228/60/1,288 and 1,244/44/1,288 preserved; current v1.1 1,445/63/1,508)"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "12.2-F2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation / data-model historical note",
+      "summary": "docs/data-model.md 3.12 still ends its task 12.1 implementation note with 'the renderer filtering order is task 12.2', which now reads as pending.",
+      "detail": "The note is explicitly scoped as a 'v1.1 task 12.1 implementation note' (historical), and the allowedValues field description at docs/data-model.md:469 already states the current matching semantics. Not a current-state surface and not materially misleading. Carries forward from attempts 1 and 2 unchanged.",
+      "evidence": [
+        "docs/data-model.md:570-571",
+        "docs/data-model.md:469 (allowedValues field semantics)"
+      ],
+      "recommended_action": "None required for task 12.2."
+    },
+    {
+      "id": "12.2-F3",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "correctness / API robustness",
+      "summary": "BadgeSelectorResolver.IsAllowed trims the candidate but not the supplied allowlist entries; the production path is correct because BadgeDefinition trims every entry at construction.",
+      "detail": "IsAllowed trims only the candidate and compares against allowedValues verbatim. ADR-017 clause 5 requires the configured entries to be trimmed, and the only production caller (BadgeDefinitionResolver.Resolve via RendererConfigurationResolver.ResolveDefinitions) passes BadgeDefinition.AllowedValues, which NormalizeAllowedValues builds as a trimmed immutable copy. A direct external caller passing untrimmed entries would not match, but no such caller exists. Carries forward unchanged.",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs:98-130 (trims candidate only)",
+        "src/ArrTags/Rendering/BadgeDefinition.cs:199 (entry.Trim() at construction)",
+        "src/ArrTags/Configuration/RendererConfigurationResolver.cs (resolver constructs BadgeDefinition)"
+      ],
+      "recommended_action": "None required."
+    },
+    {
+      "id": "12.2-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / validation limitation",
+      "summary": "The committed goldens are unmodified but were not executed in this environment (native Skia unavailable), so 'goldens pass unchanged' is inferred rather than run.",
+      "detail": "tests/ArrTags.Tests/Goldens/ is clean and the default suite reports the same 63 skips as baseline (no new skips). Golden/cross-runtime facts are skipped without ARRTAGS_SKIA_COMPAT=1, and forcing that variable fails with a native SkiaSharp.SKColorSpace.CreateSrgb() failure in this environment. The default configuration has an empty allowlist, which IsAllowed treats as no restriction and which the task 12.1 fingerprint work treats as identity-neutral, so rendered output is unchanged by construction. Task 12.4 owns golden regeneration/execution; task 14.3 owns the live-host run.",
+      "evidence": [
+        "git status --short tests/ArrTags.Tests/Goldens/ -> empty",
+        "Full suite: 63 skipped (unchanged baseline)",
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs (empty allowlist -> allow)"
+      ],
+      "recommended_action": "None required for this task."
+    },
+    {
+      "id": "12.2-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / pre-existing citation drift",
+      "summary": "docs/limitations.md F3 cites docs/architecture.md lines 1209-1212, which do not contain the metrics/diagnostic recommendation; this predates task 12.2.",
+      "detail": "Pre-existing, unrelated citation drift. Not required to be fixed for task 12.2. Carries forward unchanged.",
+      "evidence": [
+        "docs/limitations.md:64"
+      ],
+      "recommended_action": "None required for task 12.2."
+    }
+  ],
+  "acceptance_criteria_assessment": {
+    "a_configured_allowlist_restricts_rendering_to_the_listed_values": "MET. BadgeDefinitionResolver.Resolve filters each resolved pre-template value.Text through BadgeSelectorResolver.IsAllowed(value.Text, definition.AllowedValues) before applying the template. BadgeAllowlistFilterTests asserts retention and suppression. Implementation unchanged from the attempt-1 review.",
+    "unknown_and_absent_values_remain_omitted": "MET. Unknown/absent values are never emitted by BadgeSelectorResolver.Resolve, and IsAllowed only removes already-confirmed values. UnknownAndAbsentValuesRemainOmittedWithAnAllowlist asserts an empty selection even with a non-empty allowlist.",
+    "an_empty_allowlist_means_no_restriction": "MET. IsAllowed returns true immediately when allowedValues.Count == 0; BadgeDefinition normalizes null/empty to an empty read-only list. EmptyAllowlistMeansNoRestriction asserts the behavior; BadgeDefinition.V1Default carries empty allowlists.",
+    "match_semantics_exact_case_insensitive_ordinal_trimmed": "MET. string.Equals(candidate, allowed, StringComparison.OrdinalIgnoreCase) after value.Trim(); configured entries are trimmed at construction. AllowlistRequiresAnExactCaseInsensitiveMatch and IsAllowedTrimsTheResolvedValueAndRejectsPartialMatches assert no substring/prefix/wildcard/regex path.",
+    "filter_before_template_order": "MET. The filter uses the pre-template value; FilterIsAppliedBeforeTheDefinitionTemplate shows an allowlist naming the templated text filters the value out while an allowlist naming the pre-template value retains it and then applies the template.",
+    "per_custom_value_and_full_audio_composite_and_upgrade_pending": "MET. One BadgeValue per retained custom badge (filtered independently); the full Audio composite (Atmos/TrueHD/8) matches while a component alone does not; the fixed UpgradePending status text is filtered and can be suppressed.",
+    "allowlisted_but_unfittable_still_shortens_or_omits": "MET. The filter runs before BadgeLayoutEngine.Build; AnAllowlistedValueThatCannotFitStillFollowsTheOmitBehavior asserts an allowlisted custom value is omitted when it cannot fit.",
+    "scope_no_size_or_position": "MET. The diff contains no BadgePosition/BadgeSize or layout-geometry change; the only size/position strings are documentation descriptions of the remaining task 12.3.",
+    "scope_versions_unchanged": "MET. RendererConfiguration.CurrentSchemaVersion = 1 (src/ArrTags/Configuration/RendererConfiguration.cs:32) and RenderVersion.CurrentRendererVersion = 2 (src/ArrTags/Rendering/RenderVersion.cs:20).",
+    "scope_goldens_unmodified": "MET. git status --short tests/ArrTags.Tests/Goldens/ is empty.",
+    "scope_correction_documentation_only": "MET. Attempt 3 changed only docs/project-status.md (mtime 11:53:47) plus report files; all src/ and tests/ files remain at 11:32-11:33 (attempt 1), and no other doc changed after attempt 2 (11:49) / task 12.1 (11:35). The src/test diff matches the attempt-1-reviewed implementation."
+  },
+  "validation": {
+    "method": "Independently inspected the attempt-3 change (docs/project-status.md allowlist bound), confirmed attempt 3 changed only documentation via file mtimes and the unchanged src/test diff, scanned every canonical current-state surface for remaining factual errors or overclaims, re-verified the version constants, unmodified golden tree, absence of a v1.1.0-phase12 tag, and the preserved distinct 1.0.1.0 counts, and independently rebuilt and re-ran the full suite under the pinned environment.",
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1)",
+    "commands": [
+      ". /config/arrtags-env.sh && ./build.sh build",
+      ". /config/arrtags-env.sh && ./build.sh test",
+      "git diff docs/project-status.md docs/implementation-readiness.md docs/limitations.md docs/architecture.md PLANS.md docs/changelog.md",
+      "git status --short tests/ArrTags.Tests/Goldens/",
+      "git tag | grep -i phase12",
+      "grep -rn '64 entries|entries per selector' docs/ PLANS.md README.md",
+      "grep -rn '1,228|1,244|1,445|1,508|1,421|1,484' docs/project-status.md docs/limitations.md docs/changelog.md",
+      "grep -n 'CurrentSchemaVersion = |CurrentRendererVersion = ' src/ArrTags/Configuration/RendererConfiguration.cs src/ArrTags/Rendering/RenderVersion.cs",
+      "git diff src/ArrTags/Rendering/BadgeSelectorResolver.cs src/ArrTags/Rendering/BadgeDefinitionResolver.cs tests/ArrTags.Tests/RendererBehaviorTruncationTests.cs"
+    ],
+    "results": {
+      "build": "Build succeeded. 0 Warning(s), 0 Error(s).",
+      "full_test_suite": "Failed 0, Passed 1445, Skipped 63, Total 1508 (independently re-run; matches the expected current v1.1 count).",
+      "version_constants": "RendererConfiguration.CurrentSchemaVersion = 1; RenderVersion.CurrentRendererVersion = 2.",
+      "goldens": "git status --short tests/ArrTags.Tests/Goldens/ -> empty (no regeneration).",
+      "phase_tag": "git tag | grep -i phase12 -> no phase12 tag.",
+      "allowlist_bound": "docs/project-status.md:707-708 now states 32 entries per selector / 64 characters; repo-wide grep found no current-state surface stating 64 entries.",
+      "historical_counts": "docs/limitations.md:313-314 and docs/project-status.md:656-661 preserve the distinct 1.0.1.0 release-matrix counts (1,228/60/1,288 and 1,244/44/1,288); the current v1.1 count is 1,445/63/1,508; the stale 1,421/1,484 current-v1.1 strings are absent.",
+      "documentation_only_correction": "File mtimes: src/test implementation 11:32-11:33 (attempt 1); PLANS.md 11:35, changelog 11:35, architecture 11:49, implementation-readiness 11:49, limitations 11:49 (attempt 2); project-status.md 11:53 (attempt 3). No source or test file changed after attempt 1."
+    },
+    "not_verified": [
+      "Golden/cross-runtime execution (native SkiaSharp runtime unusable in this environment); inference as described in 12.2-F4.",
+      "Live pinned-host behavior (ARRTAGS_JELLYFIN_HOST_DIR unset), owned by task 14.3."
+    ]
+  },
+  "tests_checked": [
+    "tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs (8 facts; read in full)",
+    "tests/ArrTags.Tests/RendererBehaviorTruncationTests.cs (1 new fact; diff inspected)",
+    "Full default suite (independently re-run: Failed 0, Passed 1445, Skipped 63, Total 1508)",
+    "Attempt-1 mutation evidence for non-vacuousness (carried forward; implementation unchanged)"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-017 clauses 2, 3, 4, 5, 6 (match semantics, order, unknown/absent, bounds, version advance)",
+    "PLANS.md task 12.2 objective/work/tests/acceptance and task 12.4 scope boundary",
+    "src/ArrTags/Rendering/BadgeSelectorResolver.cs, BadgeDefinitionResolver.cs, BadgeDefinition.cs, and RendererConfiguration.cs (source verification of semantics and the 32-entry bound)"
+  ],
+  "documentation_checked": [
+    "PLANS.md (Project Status cumulative paragraph; Milestone Status table row 'In progress'; task 12.2 checkbox/status) - correct",
+    "docs/changelog.md (Phase 12 in-progress status; task 12.2 entry; counts 1,445/63/1,508) - correct",
+    "docs/architecture.md (status line Phase 12 in progress; section 9 filter description; 32/64 bound) - correct",
+    "docs/project-status.md (current milestone; suite count; Next tasks allowlist bound now 32) - correct",
+    "docs/implementation-readiness.md (status line Phase 12 in progress, schema 1 / renderer 2 / no golden) - correct",
+    "docs/limitations.md (V6 current v1.1 count updated; 1.0.1.0 counts preserved) - correct",
+    "README.md (end-user guide; no task 12.2 statement affected) - no change needed",
+    "docs/data-model.md (3.6/3.12; 3.12 forward reference historical - 12.2-F2)",
+    "docs/implementation/12.2/worker-report.json (attempt 3; internally consistent) - reviewed"
+  ],
+  "rework_log": [
+    "Attempt 1 (reviewer-report.json): CHANGES_REQUIRED - one MEDIUM required change to reconcile stale docs/project-status.md and docs/implementation-readiness.md (Phase 11 still current; suite count 1,421/1,484). Functional implementation correct; no code/test blockers.",
+    "Attempt 2 (reviewer-report.attempt-2.json): CHANGES_REQUIRED - the attempt-1 reconciliation was substantively complete but newly introduced a factual error in docs/project-status.md (allowlist bound stated as 64 entries instead of the shipped 32).",
+    "Attempt 3 (this report): APPROVED - the single remaining MEDIUM documentation finding is resolved (bound now 32, consistent with code, ADR-017, architecture, data-model, PLANS, changelog, and the settings page). Attempt 3 changed only documentation; the attempt-1 functional implementation is unchanged and remains correct (build 0 warnings/0 errors; full suite Failed 0, Passed 1445, Skipped 63, Total 1508). All acceptance criteria are met and no blocker or required change remains."
+  ],
+  "ready_for_next_task": true,
+  "summary": "The attempt-1 functional implementation of task 12.2 is unchanged and correct (independently re-verified: build 0 warnings/0 errors; full suite Failed 0, Passed 1445, Skipped 63, Total 1508). Attempt 3 changed only documentation (confirmed by file mtimes and the unchanged src/test diff) and resolved the sole remaining required change: docs/project-status.md:707-708 now states the per-selector allowlist bound as 32 entries (each at most 64 characters), consistent with BadgeDefinition.MaximumAllowedValues = 32, RendererConfiguration.Validate, ADR-017 clause 5, docs/architecture.md, docs/data-model.md, PLANS.md, docs/changelog.md, and the settings page. A repo-wide scan found no other allowlist-bound or suite-count factual error, and the reconciled current-state surfaces accurately present Phase 12 in progress (tasks 12.1/12.2 complete; 12.3/12.4 remaining; Gate 12 not met; no v1.1.0-phase12 tag) with the current v1.1 count 1,445/63/1,508 and the distinct 1.0.1.0 historical counts preserved. All three acceptance criteria are met and no blocker, required change, or unresolved risk remains. APPROVED."
+}
