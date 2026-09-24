@@ -106,7 +106,7 @@
     "user_decisions_required": []
   },
   "notes": [
-    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null in the per-task records; no estimation was performed.",
+    "Runtime token/cost fields were backfilled from the authoritative OpenCode session API in the per-task records using the recorded session ids; no estimation was performed.",
     "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and rework entries.",
     "Phase 11 was implemented on the canonical v1.1 branch (11.1 65313f8, 11.2 9e53480, 11.3 72d425f, 11.4 cb62fe4). A parallel sibling implementation existed in a separate worktree (lineage ending 8f6e28e) and had incorrectly tagged v1.1.0-phase11; that tag was re-pointed to this branch's Phase 11 closure commit and the sibling worktree removed after this closure.",
     "The applicable gaps from the sibling Phase 11 review (P11-F1..F9) and its Phase 11A corrective work were folded into task 11.4, adapted to this branch's actual behavior (per-connection single-flight population coalescing present; sub-read failures fall back to the direct read; only a library-read failure fails the window).",

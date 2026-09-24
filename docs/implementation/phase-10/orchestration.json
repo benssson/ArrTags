@@ -79,7 +79,7 @@
     "user_decisions_required": []
   },
   "notes": [
-    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null in the per-task records; no estimation was performed.",
+    "Runtime token/cost fields were backfilled from the authoritative OpenCode session API in the per-task records using the recorded session ids; no estimation was performed.",
     "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and rework entries.",
     "Phase tag v1.1.0-phase10 is created only after the phase-reviewer gate passes.",
     "Tracked non-blocking findings carried forward: 10.1 TQ-10.1-03/TQ-10.1-05 (noted), 10.2-F1 (stale project-status suite count), 10.2-F2 (fixed in 10.3), SEC-10.2-1 (fixed in 10.3), 10.3-F2/SEC-10.3-2 (stale suite count in docs/project-status.md and the 'zero logging call sites' line in docs/planning/v1.1.md - routed to the Phase 13 reconciliation), SEC-10.3-1/-3/-4 (informational).",

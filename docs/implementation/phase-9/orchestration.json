@@ -117,7 +117,7 @@
     ]
   },
   "notes": [
-    "Runtime token/cost fields are unavailable from the runtime session surface and are recorded as null in the per-task records; no estimation was performed.",
+    "Runtime token/cost fields were backfilled from the authoritative OpenCode session API in the per-task records using the recorded session ids; no estimation was performed.",
     "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and rework entries.",
     "Phase tag v1.1.0-phase9 is created only after the phase-reviewer gate passes."
   ]

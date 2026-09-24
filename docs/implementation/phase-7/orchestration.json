@@ -93,8 +93,8 @@
     "reviewer_invocations": 10,
     "review_rounds": 8,
     "rework_rounds": 2,
-    "tokens": null,
-    "cost_usd": null
+    "tokens": 171162447,
+    "cost_usd": 1.7459433600000005
   },
-  "notes": "All 20 subagent invocations ran on opencode-go/deepseek-v4.1-flash variant high. Runtime token/cost fields are unavailable in this environment and are recorded as null; no per-invocation figures were estimated. Two non-task support commits were made by the orchestrator: 577abb7 (DG-9/ADR-013 decision record) and 632954c (pinned Jellyfin 12.0.0 musl test-host provisioning)."
+  "notes": "All 20 subagent invocations ran on opencode-go/deepseek-v4.1-flash variant high. Runtime token/cost figures were backfilled from the authoritative OpenCode session API: totals.tokens sums the invocations' total tokens and totals.cost_usd sums their reported cost; the per-task per-invocation figures were not estimated. Two non-task support commits were made by the orchestrator: 577abb7 (DG-9/ADR-013 decision record) and 632954c (pinned Jellyfin 12.0.0 musl test-host provisioning)."
 }

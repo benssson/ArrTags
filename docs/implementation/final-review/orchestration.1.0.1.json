@@ -13,14 +13,14 @@
         "agent": "release-reviewer",
         "model": "opencode-go/deepseek-v4.1-flash",
         "variant": "high",
-        "input_tokens": null,
-        "output_tokens": null,
-        "reasoning_tokens": null,
-        "cache_read_tokens": null,
-        "cache_write_tokens": null,
-        "total_tokens": null,
-        "cost_usd": null,
-        "duration_seconds": null,
+        "input_tokens": 409458,
+        "output_tokens": 30156,
+        "reasoning_tokens": 22005,
+        "cache_read_tokens": 7345792,
+        "cache_write_tokens": 0,
+        "total_tokens": 7807411,
+        "cost_usd": 0.11475267600000003,
+        "duration_seconds": 753,
         "session_id": "ses_f3661450effeVgcN5umo72XPn8"
       }
     }
