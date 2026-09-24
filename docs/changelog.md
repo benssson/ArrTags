@@ -3540,3 +3540,43 @@ was Failed 0, Passed 1,575, Skipped 20, Total 1,595 (pre-task baseline Failed 0,
 Passed 1,566, Skipped 20, Total 1,586; +9 passed, +9 total); the 20 skips are the
 pinned-host guards (`ARRTAGS_JELLYFIN_HOST_DIR` unset) plus the pre-existing
 non-canonical cross-runtime golden set.
+
+## Phase 13 - README and documentation pass (v1.1)
+
+**Status:** In progress; task 13.1 is complete and task 13.2 (the canonical
+current-state reconciliation sweep of `docs/project-status.md`,
+`docs/changelog.md`, and `docs/implementation-readiness.md`) is pending. The
+phase review and the `v1.1.0-phase13` tag are owned by the orchestrator and are
+not claimed here.
+
+### Task 13.1 - README palette documentation and v1.1 feature documentation
+
+**Status:** Complete.
+
+Documents the four Goal D palette override fields that `README.md` previously
+named but never explained, and reconciles the end-user README with the shipped
+v1.1 behavior. A new `README.md` "Renderer palette overrides" section gives each
+of `TechnicalBackground`, `TechnicalText`, `StatusBackground`, and `StatusText`
+its meaning (the technical badge rail's background/text and the `UPGRADE` status
+pill's background/text), its code-owned default color (`#111827`, `#FFFFFF`,
+`#B45309`, and `#FFFFFF`, from `RenderOutputPolicy.Default`), the `RRGGBB` format
+where an empty value keeps the default, and the 4.5:1 minimum text/background
+contrast rule that is validated at configuration load (`BadgeContrast`,
+`RendererConfiguration.Validate`); a changed palette is output-affecting because
+it participates in the render fingerprint. The README's v1.1 feature
+documentation - the elevation-gated dashboard settings page at
+Dashboard -> Plugins -> ArrTags, runtime activation without a host restart for
+the per-operation values with last-valid retention and the bounded post-save
+reconciliation, the construction-captured restart residual, the per-selector
+value allowlist, the badge position/size presets, the bounded `LogVerbosity`,
+and the provider inventory cache with limitation F1 resolved - was verified
+against the shipped behavior and the canonical documents and needed no
+correction. No stale "no web configuration UI" or restart-required-for-saved-
+changes claim remains (the plugin install/update restart steps are still
+accurate).
+
+Documentation: `README.md`, plus the task 13.1 status and checkbox in `PLANS.md`.
+This is a documentation-only change with no production or test code change and no
+suite rerun; the task's stated manual review searched the README and the
+repository for the stale claims and confirmed the documented behavior matches the
+shipped behavior.

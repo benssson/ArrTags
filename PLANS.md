@@ -265,7 +265,7 @@ work.
 | 10 | Logging with configurable verbosity (v1.1) | Complete (tasks 10.1-10.3 complete; all five Phase 10 acceptance criteria are met at the integration-test level; the logging security review is recorded at `docs/implementation/10.3/security-review.json` with 0 open BLOCKER/HIGH/MEDIUM; Gate 10 is met (the Phase 10 review is approved in `docs/implementation/phase-10/phase-review.json`) and the annotated tag `v1.1.0-phase10` is created; the live pinned-host logging confirmation is owned by task 14.3) | The plugin logs through the host pipeline at a bounded, validated, secret-free configurable verbosity; redaction is proven at every level; SEC-5 is rewritten and the logging path is security-reviewed. Phase tag `v1.1.0-phase10`. |
 | 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | Complete at the integration-test level (tasks 11.1-11.4 complete: the canonical, secret-free, in-memory per-connection inventory cache shape and the inventory TTL and record/byte limits are defined, validated at configuration load, and documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12; the provider metadata readers populate and consume the cache at the provider-client boundary so one library read per connection serves a reconciliation window, using the Radarr repeatable `movieId` and Sonarr repeatable `episodeFileIds` bulk selectors instead of per-item file reads; the ArrTags-side invalidation surface is wired to the provider webhook, Jellyfin library refresh/post-scan, scheduled/manual and post-save reconciliation, and the bounded TTL fallback, with no provider conditional request, revision token, `history/since`, or SignalR dependency, and the periodic scheduled reconciliation continues on its unchanged interval; task 11.4 records limitation F1 as resolved and adds the Goal C integration coverage for the one-read-per-window, invalidation-source, bounds, and last-known-good facets, so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`) and the annotated tag `v1.1.0-phase11` is created) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
 | 12 | Badge value allowlist and badge size/position (v1.1) | Complete (Phase 12 tasks 12.1-12.4 complete; Goals B and E; ADR-017 and ADR-019; the single coordinated schema/`RenderVersion` advance is applied and the goldens are regenerated; all six Phase 12 acceptance criteria are met at the implementation and test level; Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
-| 13 | README and documentation pass (v1.1) | Not started (Phase 13 tasks 13.1-13.2; Goal D) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
+| 13 | README and documentation pass (v1.1) | In progress (task 13.1 complete; task 13.2 pending; Goal D) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
 | 14 | v1.1 release | Not started (Phase 14 tasks 14.1-14.5) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
 
 ## Milestones
@@ -4810,7 +4810,7 @@ current-state documentation so no stale claim remains.
 
 **Tasks:**
 
-- [ ] 13.1 README palette documentation and v1.1 feature documentation.
+- [x] 13.1 README palette documentation and v1.1 feature documentation.
 - [ ] 13.2 Canonical current-state reconciliation sweep.
 
 **Authoritative Phase 13 execution order:** 13.1, 13.2. Task IDs are stable
@@ -4824,7 +4824,20 @@ execution order and task numbering conflict, the execution order wins.
 
 #### 13.1 README palette documentation and v1.1 feature documentation
 
-**Status:** Not started.
+**Status:** Complete. `README.md` now explains the four palette override fields
+(`TechnicalBackground`, `TechnicalText`, `StatusBackground`, and `StatusText`)
+with their meaning (the technical badge rail's background/text and the `UPGRADE`
+status pill's background/text), their default colors (`#111827`, `#FFFFFF`,
+`#B45309`, and `#FFFFFF`, from `RenderOutputPolicy.Default`), the `RRGGBB`
+format with an empty value keeping the default, and the 4.5:1 contrast rule
+validated at configuration load (`BadgeContrast`, `RendererConfiguration.Validate`).
+`README.md` also documents the v1.1 dashboard settings UI, the badge value
+allowlist, badge position/size, the bounded log verbosity, and the provider
+inventory cache, and it carries the construction-captured restart residual
+accurately with no stale "no web configuration UI" or restart-required-for-saved-
+changes claim. The canonical current-state reconciliation of
+`docs/project-status.md`, `docs/changelog.md`, and
+`docs/implementation-readiness.md` remains task 13.2.
 
 **Objective:** Document `TechnicalBackground`, `TechnicalText`, `StatusBackground`,
 and `StatusText` with their meaning, default colors, and the 4.5:1 contrast rule

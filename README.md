@@ -106,9 +106,27 @@ Other fields:
 | `Template` | A bounded display template containing at most one `{value}` placeholder; a template without a placeholder renders its literal text. |
 | `AllowedValues` | An optional per-selector value allowlist that restricts the selector to the listed values. An empty list (the default) means no restriction. Matching is a case-insensitive exact comparison of the resolved value, so it is not a substring/wildcard match; the allowlist only removes an already-confirmed value, never adds one. Bounded to at most 32 entries per selector, each at most 64 characters. |
 
-The optional `Renderer` palette overrides are `RRGGBB` hexadecimal colors. An
-empty value keeps the default color, and each text/background pair must reach at
-least 4.5:1 contrast.
+### Renderer palette overrides
+
+The optional `Renderer` palette overrides are `RRGGBB` hexadecimal colors that
+recolor the two badge styles. An empty value keeps its default color, and the
+technical text/background pair and the status text/background pair must each
+reach at least 4.5:1 contrast. The palette is validated when the configuration
+loads, so an unparseable color or a pair below 4.5:1 is rejected and the last
+valid configuration stays active (`src/ArrTags/Rendering/BadgeContrast.cs`,
+`RendererConfiguration.Validate`).
+
+| Field | Meaning | Default |
+| --- | --- | --- |
+| `TechnicalBackground` | Background color of the technical badge rail (the stacked selector badges). | `#111827` |
+| `TechnicalText` | Text color on the technical badge rail. | `#FFFFFF` |
+| `StatusBackground` | Background color of the `UPGRADE` status pill. | `#B45309` |
+| `StatusText` | Text color on the `UPGRADE` status pill. | `#FFFFFF` |
+
+The four defaults are the code-owned ADR-009/ADR-010 output policy
+(`src/ArrTags/Rendering/RenderOutputPolicy.cs`). A changed palette is
+output-affecting because it participates in the render fingerprint, so the next
+reconciliation re-renders the affected posters with the new colors.
 
 ### Minimal `ArrTags.xml` example
 

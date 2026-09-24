@@ -1,0 +1,168 @@
+{
+  "task": "13.1",
+  "title": "README palette documentation and v1.1 feature documentation",
+  "reviewer": "documentation-maintainer",
+  "scope": "Independent documentation-accuracy review of the v1.1 task 13.1 working-tree diff (README.md palette section + PLANS.md task status/checkbox + docs/changelog.md Phase 13/Task 13.1 entry) against the shipped code and canonical current-state surfaces. README palette defaults/contrast rule and the pre-existing v1.1 README capability claims (settings UI, allowlist, position/size, LogVerbosity, inventory cache) were verified against source; no files were edited.",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "surfaces_checked": [
+    "README.md",
+    "PLANS.md (Project Status, Milestone Status row 13, Phase 13 / task 13.1, Phase 13 acceptance criteria)",
+    "docs/changelog.md (Phase 13 / Task 13.1 entry)",
+    "docs/limitations.md (F1, F2, V6)",
+    "docs/project-status.md",
+    "docs/data-model.md (section 3.6 palette/allowlist, section 6 inventory cache)",
+    "docs/architecture.md (status line; sections 6, 8, 9, 11, 12)",
+    "src/ArrTags/Rendering/RenderOutputPolicy.cs",
+    "src/ArrTags/Rendering/BadgeContrast.cs",
+    "src/ArrTags/Rendering/RgbColor.cs",
+    "src/ArrTags/Rendering/BadgeSize.cs",
+    "src/ArrTags/Rendering/BadgePosition.cs",
+    "src/ArrTags/Rendering/BadgeLayoutEngine.cs",
+    "src/ArrTags/Rendering/SkiaBadgeRenderer.cs",
+    "src/ArrTags/Rendering/BadgeSelectorResolver.cs",
+    "src/ArrTags/Rendering/BadgeDefinition.cs",
+    "src/ArrTags/Rendering/BadgeDefinitionResolver.cs",
+    "src/ArrTags/Configuration/RendererConfiguration.cs",
+    "src/ArrTags/Configuration/RendererPalette.cs",
+    "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs",
+    "src/ArrTags/Configuration/PluginConfigurationValidator.cs",
+    "src/ArrTags/Configuration/ConfigurationSnapshotService.cs",
+    "src/ArrTags/Configuration/config.html",
+    "src/ArrTags/Plugin.cs",
+    "docs/implementation/13.1/worker-report.json",
+    "git state and full working-tree diff"
+  ],
+  "verified_reconciliations": [
+    {
+      "claim": "README palette defaults are #111827 (TechnicalBackground), #FFFFFF (TechnicalText), #B45309 (StatusBackground), #FFFFFF (StatusText).",
+      "evidence": [
+        "src/ArrTags/Rendering/RenderOutputPolicy.cs:45,50,55,60",
+        "docs/data-model.md:488-489"
+      ],
+      "result": "VERIFIED - all four defaults match the code-owned RenderOutputPolicy.Default values and the canonical data-model statement."
+    },
+    {
+      "claim": "README: 'RRGGBB hexadecimal colors', empty value keeps the default, and the technical pair and status pair must each reach at least 4.5:1 contrast, validated at configuration load, with an unparseable color or low-ratio pair rejected and the last valid configuration staying active.",
+      "evidence": [
+        "src/ArrTags/Rendering/RgbColor.cs:69-103 (accepts #RRGGBB and RRGGBB; length-6 hex)",
+        "src/ArrTags/Rendering/BadgeContrast.cs:18 (MinimumRatio = 4.5), 46-63",
+        "src/ArrTags/Configuration/RendererConfiguration.cs:244-307 (ValidatePalette/ValidateStyle/TryValidateColor)",
+        "src/ArrTags/Configuration/PluginConfigurationValidator.cs:35 (Renderer.Validate called)",
+        "src/ArrTags/Configuration/ConfigurationSnapshotService.cs:43-44, 72-91 (load fallback / last-valid retention)",
+        "src/ArrTags/Configuration/RendererPalette.cs:20-30 (empty/whitespace resolves to default)",
+        "src/ArrTags/Rendering/SkiaBadgeRenderer.cs:235-267 (technical rail uses technical pair, status pill uses status pair)"
+      ],
+      "result": "VERIFIED - format, default-retention, 4.5:1 minimum, load-time validation, and last-valid retention are all accurate."
+    },
+    {
+      "claim": "README: 'A changed palette is output-affecting because it participates in the render fingerprint, so the next reconciliation re-renders the affected posters with the new colors.'",
+      "evidence": [
+        "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:49-52 (effective palette appended)",
+        "src/ArrTags/Rendering/RenderFingerprint.cs:47-50",
+        "src/ArrTags/Plugin.cs:124-174 (valid save activates snapshot and requests bounded post-save reconciliation)"
+      ],
+      "result": "VERIFIED - a changed effective palette changes both fingerprints and the post-save trigger re-renders."
+    },
+    {
+      "claim": "README: dashboard settings page at Dashboard -> Plugins -> ArrTags; saves through Jellyfin's administrator-gated configuration API; invalid change rejected, last valid config active, bounded secret-free Activity-log rejection entry; per-operation settings apply without host restart; construction-captured artifact-size/decode and render work-cache TTL/quota/retention values still require a restart; successful save requests a bounded post-save reconciliation.",
+      "evidence": [
+        "src/ArrTags/Plugin.cs:91-99 (IHasWebPages page), 124-174 (validate/persist/activate + notify + post-save trigger)",
+        "src/ArrTags/Configuration/config.html:361-507 (get/updatePluginConfiguration round-trip)",
+        "docs/limitations.md:165-222 (F2 resolved + residual)",
+        "docs/limitations.md:635-677 (SEC-9 bounded secret-free activity-log entry)"
+      ],
+      "result": "VERIFIED - all settings-UI, save, rejection, restart, and post-save statements are accurate."
+    },
+    {
+      "claim": "README allowlist: case-insensitive exact comparison of the resolved value (not substring/wildcard), only removes an already-confirmed value, bounded to 32 entries per selector each at most 64 characters, empty means no restriction.",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs:100-130 (IsAllowed, OrdinalIgnoreCase exact match on trimmed value)",
+        "src/ArrTags/Rendering/BadgeDefinition.cs:36 (MaximumAllowedValues=32), 42 (MaximumAllowedValueLength=64)",
+        "src/ArrTags/Rendering/BadgeDefinitionResolver.cs:54-76 (filter only removes)",
+        "docs/data-model.md section 3.12"
+      ],
+      "result": "VERIFIED - matching semantics and bounds match the shipped code."
+    },
+    {
+      "claim": "README position/size: Position default BottomLeft with TopLeft/TopRight/BottomRight/Center; UPGRADE status pill stays top-right except a TopRight rail moves it top-left; Size Medium default with Small/Large and the size multiplies the width-based badge scale.",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgePosition.cs:6,16,33",
+        "src/ArrTags/Rendering/BadgeLayoutEngine.cs:11-16,133-135,256-257,353",
+        "src/ArrTags/Rendering/BadgeSize.cs:4-33 (Small 0.75, Medium 1.0, Large 1.5 multiplying the width-based scale)",
+        "src/ArrTags/Configuration/config.html:150-169"
+      ],
+      "result": "VERIFIED - anchor set, default, status-pill placement rule, and size semantics are accurate."
+    },
+    {
+      "claim": "README LogVerbosity: Off/Error/Warning(default)/Information/Debug/Trace; bounds ArrTags only, applies without restart, never changes the Jellyfin host log level, never changes rendered posters, bounded secret-free diagnostics.",
+      "evidence": [
+        "src/ArrTags/Configuration/PluginConfiguration.cs:26 (default Warning)",
+        "src/ArrTags/Configuration/LogVerbosity.cs:10",
+        "src/ArrTags/PluginLifecycle/LogVerbosityGate.cs:8-61 (reads current snapshot per call; maps levels)",
+        "docs/limitations.md:553-591 (SEC-5, ADR-020)",
+        "src/ArrTags/Configuration/config.html:265-278"
+      ],
+      "result": "VERIFIED - enum, default, restart-free application, and host-log/poster isolation are accurate."
+    },
+    {
+      "claim": "README inventory cache: implemented and F1 resolved at the integration-test level; one provider library read per connection across a reconciliation window with bulk file reads replacing per-item reads; provider webhook invalidates its connection; reconciliation (library refresh/post-scan, scheduled, manual, post-save) invalidates the retained sets; bounded TTL fallback; remaining O(series) and sparse-window bounds recorded.",
+      "evidence": [
+        "docs/limitations.md:106-163 (F1 resolved + remaining bounds)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:50,118,277-286 (reconciliation calls InvalidateAll)",
+        "src/ArrTags/Webhooks/WebhookIntakeService.cs:189-240 (per-connection webhook invalidation)",
+        "docs/data-model.md section 6",
+        "docs/architecture.md sections 8, 12"
+      ],
+      "result": "VERIFIED - the README F1 bullet matches the canonical limitations record; post-save reconciliation is a valid full-reconciliation invalidation source."
+    },
+    {
+      "claim": "No stale 'no web configuration UI' or 'restart required to apply saved changes' claim remains in README.",
+      "evidence": [
+        "README.md:44-71, 90 (only current restart-free activation wording)",
+        "README.md:31,40,173,175 (restart mentions are install/update steps only)",
+        "grep of README for no-web-UI/restart-required phrases returned no stale match"
+      ],
+      "result": "VERIFIED - stale claims removed; remaining restart mentions are accurate plugin install/update steps."
+    },
+    {
+      "claim": "Task 13.1 did not overclaim Phase 13 closure, did not claim Gate 13 / the phase tag, and did not rewrite V1 history.",
+      "evidence": [
+        "PLANS.md:4813 ([x] 13.1, [ ] 13.2), 4906-4916 (Phase 13 acceptance criteria all unchecked; Gate 13 stated as a future condition)",
+        "docs/changelog.md:3544-3550 (Phase 13 status 'In progress'; phase review/tag explicitly not claimed)",
+        "git diff - only README.md, PLANS.md task-status/checkbox, and an appended changelog Phase 13 entry; no earlier phase status or changelog entry rewritten"
+      ],
+      "result": "VERIFIED - no Phase 13 closure overclaim and no V1 history rewrite."
+    },
+    {
+      "claim": "The change is documentation-only; no production or test code changed.",
+      "evidence": [
+        "git status --porcelain / git diff --stat: only PLANS.md, README.md, docs/changelog.md modified; docs/implementation/13.1/ untracked"
+      ],
+      "result": "VERIFIED - no application code, test, or build-script change."
+    }
+  ],
+  "findings": [
+    {
+      "id": "DM-13.1-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "summary": "PLANS.md Milestone Status row 13 still reads 'Not started (Phase 13 tasks 13.1-13.2; Goal D)' while the same file now marks task 13.1 complete ([x]) and its 13.1 status paragraph says 'Complete'. The Milestone Status table is a canonical current-state surface and now internally contradicts the task status it sits beside; the phase is in progress, not unstarted.",
+      "recommended_action": "Update the row-13 Status cell to an in-progress form, e.g. 'In progress (task 13.1 complete; task 13.2 pending; Goal D)', consistent with docs/changelog.md's Phase 13 'In progress' status. This is a small bookkeeping correction within the file the task already edited; if the phase-level framing is intentionally reserved for the orchestrator, record that explicitly so it is reconciled before Phase 13 closure."
+    },
+    {
+      "id": "DM-13.1-02",
+      "severity": "LOW",
+      "status": "noted",
+      "summary": "The README palette table describes StatusBackground/StatusText as the '`UPGRADE` status pill'. The status pill is the UpgradePending badge whose display text is template-driven and user-configurable (default template 'UPGRADE'), so a customized template means the pill may not literally read 'UPGRADE'.",
+      "recommended_action": "Optional clarification only; 'UPGRADE status pill' is consistent with the shipped default and config.html's 'Upgrade status' labels, so no correction is required unless the maintainer prefers 'upgrade-status pill (default text UPGRADE)'."
+    },
+    {
+      "id": "DM-13.1-03",
+      "severity": "LOW",
+      "status": "deferred",
+      "summary": "docs/project-status.md still says 'Current milestone: Phase 12' and lists both Phase 13 tasks as next, and the PLANS.md v1.1 status paragraph (lines 185-229) stops at Phase 11, so Phase 12/13 current-state framing is stale. This is intentionally outside task 13.1 (task 13.2 owns docs/project-status.md, docs/changelog.md, docs/implementation-readiness.md); no README contradiction results.",
+      "recommended_action": "Resolve in task 13.2 (and have the orchestrator cover the PLANS.md phase-level paragraph if 13.2's stated file list is not expanded to include PLANS.md)."
+    }
+  ],
+  "summary": "The task 13.1 deliverable is accurate. The new README 'Renderer palette overrides' section matches the shipped code exactly: the four defaults (#111827, #FFFFFF, #B45309, #FFFFFF) come from RenderOutputPolicy.Default, the RRGGBB/empty-keeps-default semantics match RgbColor/RendererPalette, and the 4.5:1 pair rule matches BadgeContrast.MinimumRatio plus RendererConfiguration.ValidatePalette and last-valid retention. The pre-existing v1.1 README claims (elevation-gated settings UI, pre-save validation/post-save bounded reconciliation, per-operation restart-free activation with the construction-captured residual, case-insensitive bounded allowlist, position/size semantics, bounded LogVerbosity, and the F1 inventory cache with F1 resolved) all match source and the canonical docs, and no stale 'no web configuration UI' or restart-required-for-saved-changes claim remains. Phase 13 is not overclaimed (acceptance criteria unchecked, Gate 13/tag not claimed) and no V1 history was rewritten. One MEDIUM current-state inconsistency remains in PLANS.md itself: Milestone Status row 13 still says 'Not started' although task 13.1 is complete; this should be corrected (or explicitly handed to the orchestrator for phase closure). Two LOW notes are informational/deferred. No edits were made by this review."
+}

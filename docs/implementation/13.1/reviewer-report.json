@@ -1,0 +1,76 @@
+{
+  "task": "13.1",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "13.1-R1",
+      "severity": "MEDIUM",
+      "status": "not_required",
+      "area": "documentation / PLANS.md canonical current-state surface",
+      "summary": "RESOLVED in attempt 2: PLANS.md Milestone Status row 13 now reads 'In progress (task 13.1 complete; task 13.2 pending; Goal D)', matching the adjacent task 13.1 Complete status, the changelog Phase 13 'In progress' status, and the phase 10-12 per-task milestone-row convention.",
+      "detail": "Attempt 1 required this change (CHANGES_REQUIRED, single required change 13.1-R1; the documentation-maintainer independently raised the same item as DM-13.1-01). Attempt 2 applies it exactly: PLANS.md:268 now reads '| 13 | README and documentation pass (v1.1) | In progress (task 13.1 complete; task 13.2 pending; Goal D) | ...'. The task checkbox (PLANS.md:4813 '[x] 13.1' / '[ ] 13.2') and the task 13.1 'Complete' status paragraph are unchanged, the Phase 13 acceptance-criteria checkboxes (PLANS.md:4908-4913) remain unchecked, Gate 13 (PLANS.md:4915-4916) remains a future condition, and no v1.1.0-phase13 tag exists (git tag has no phase13 entry). The correction is the only delta from attempt 1: git diff --numstat moved PLANS.md from 15/2 to 16/3 while README.md (21/3) and docs/changelog.md (40/0) are unchanged, so there is no regression or unrelated change.",
+      "evidence": [
+        "PLANS.md:268 ('In progress (task 13.1 complete; task 13.2 pending; Goal D)')",
+        "PLANS.md:4813 ([x] 13.1), PLANS.md:4827-4840 (task 13.1 Status: Complete)",
+        "PLANS.md:4908-4913 (Phase 13 acceptance criteria all unchecked), PLANS.md:4915-4916 (Gate 13 future condition)",
+        "git tag (no v1.1.0-phase13)",
+        "git diff --numstat (PLANS.md 16/3; README.md 21/3; docs/changelog.md 40/0)"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "13.1-R2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "README palette wording",
+      "summary": "The palette table labels StatusBackground/StatusText as the '`UPGRADE` status pill'; the pill's display text is template-driven (default template '{value}', resolved value 'UPGRADE'), so a customized template means the pill need not literally read 'UPGRADE'.",
+      "detail": "Retained as informational. The label matches the shipped default resolved value and config.html's 'Upgrade status' field labels; no acceptance-criteria impact.",
+      "evidence": [
+        "README.md:123-124",
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs:24,88",
+        "src/ArrTags/Configuration/config.html:142-146"
+      ],
+      "recommended_action": "None required."
+    },
+    {
+      "id": "13.1-R3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "deferred canonical current-state surfaces",
+      "summary": "docs/project-status.md still says 'Current milestone: Phase 12' and lists both Phase 13 tasks as next, and the PLANS.md v1.1 status paragraph (lines 185-229) stops at Phase 11; deferred to task 13.2 / the orchestrator by design.",
+      "detail": "Task 13.1's assigned scope does not include docs/project-status.md; PLANS.md Phase 13 assigns that reconciliation to task 13.2 (PLANS.md:4874-4904). No README claim depends on these stale lines. The orchestrator should ensure the PLANS.md v1.1 status paragraph is also reconciled before Phase 13 closure, since task 13.2's stated file list does not include PLANS.md.",
+      "evidence": [
+        "docs/project-status.md:5,704-712",
+        "PLANS.md:185-229,4874-4904"
+      ],
+      "recommended_action": "Resolve in task 13.2 / at phase closure."
+    }
+  ],
+  "tests_checked": [
+    "No test suite rerun: documentation-only change; no production/test/build file changed (git diff --name-only -- 'src/**' 'tests/**' empty).",
+    "Re-ran the stale-claim grep on README.md (no web configuration / restart-to-apply) -> no match.",
+    "Re-confirmed the README palette defaults (#111827/#FFFFFF/#B45309/#FFFFFF) and 4.5:1 rule against the shipped code (RenderOutputPolicy.cs:45,50,55,60; BadgeContrast.cs:18).",
+    "Confirmed the only working-tree delta from attempt 1 is the PLANS.md row-13 Status cell (numstat PLANS.md 15/2 -> 16/3; README/changelog numstat unchanged)."
+  ],
+  "research_checked": [
+    "No new technical claims in the correction; attempt-1 source verification remains valid (RenderOutputPolicy.cs, BadgeContrast.cs, RendererConfiguration.cs, RenderFingerprint.cs, RendererConfigurationFingerprint.cs, Plugin.cs, config.html, docs/limitations.md, docs/data-model.md)."
+  ],
+  "documentation_checked": [
+    "PLANS.md Milestone Status row 13 (corrected), task 13.1 status/checkbox, Phase 13 acceptance criteria, Gate 13",
+    "README.md (unchanged from attempt 1; no stale claim; palette section intact)",
+    "docs/changelog.md (unchanged from attempt 1; appended Phase 13 / Task 13.1 entry)",
+    "docs/implementation/13.1/worker-report.json (attempt 2), worker-report-attempt-1.json (preserved), documentation-review.json, reviewer-report.json (this file)"
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "reviewer_status": "CHANGES_REQUIRED",
+      "required_change": "13.1-R1: Update PLANS.md Milestone Status row 13 from 'Not started (Phase 13 tasks 13.1-13.2; Goal D)' to an in-progress form reflecting task 13.1 complete / task 13.2 pending.",
+      "resolution": "Resolved in attempt 2: row 13 now reads 'In progress (task 13.1 complete; task 13.2 pending; Goal D)'. No other change was required and no new issue was introduced."
+    }
+  ],
+  "ready_for_next_task": true
+}
