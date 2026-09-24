@@ -306,19 +306,35 @@ original source poster.
 
 ### V6. Host-guarded facts are skipped without the pinned host
 
-The host route/response, plugin-discovery, native-Skia, and package-content
-facts skip unless `ARRTAGS_JELLYFIN_HOST_DIR` points at the pinned host (and,
-for package content, `./build.sh package` has been run). The counts below are the
-`1.0.1.0` release matrix and are not current v1.1 truth: the `1.0.1.0` default
-suite was 1,228 passed / 60 skipped / 1,288 total and the `1.0.1.0` host-guarded
-suite was 1,244 passed / 44 skipped / 1,288 total. The current v1.1 working suite
-is Failed 0, Passed 1,494, Skipped 63, Total 1,557; with the pinned native
-SkiaSharp runtime forced (`ARRTAGS_SKIA_COMPAT=1`) it is Failed 0, Passed 1,575,
-Skipped 20, Total 1,595, and the remaining skips are the pinned-host guards and
-the pre-existing non-canonical cross-runtime golden set. The v1.1 release task
-refreshes this matrix (test-quality review finding TQ-8).
+The host route/response, plugin-discovery, dashboard/configuration, native-Skia,
+and package-content facts are environment-guarded and skip unless their guard is
+enabled: `ARRTAGS_JELLYFIN_HOST_DIR` enables the 19 pinned-host route/response,
+plugin-discovery, dashboard, and configuration round-trip facts (it does not
+enable the native-Skia facts); `ARRTAGS_SKIA_COMPAT=1` enables the 43
+native-render/decode facts (39 `SkiaNativeFact` + 4 `SkiaNativeTheory`);
+`ARRTAGS_NONCANONICAL_GOLDENS` enables the 1 non-canonical cross-runtime
+comparison; and a produced `artifacts/ArrTags_1.1.0.0.zip` is required for the 3
+`PackagedPluginFact` package-content facts.
 
-- Evidence: tasks 7.5/7.8 worker reports; `docs/release/build-and-release.md`.
+The current `1.1.0.0` release matrix is: default suite with the archive present
+Failed 0, Passed 1,494, Skipped 63, Total 1,557 (the 63 skips are the 19 host +
+43 native + 1 non-canonical facts), or Failed 0, Passed 1,491, Skipped 66, Total
+1,557 from a clean checkout that tests before packaging; host-guarded suite (with
+`ARRTAGS_JELLYFIN_HOST_DIR` set and the archive present) Failed 0, Passed 1,513,
+Skipped 44, Total 1,557, where the host directory unskips only the 19 host facts
+and the 44 remaining are the 43 native facts plus the 1 non-canonical comparison;
+and with the pinned native SkiaSharp runtime forced (`ARRTAGS_SKIA_COMPAT=1`,
+with the pinned native dependency directory on `LD_LIBRARY_PATH`, host directory
+unset) Failed 0, Passed 1,575, Skipped 20, Total 1,595, where the 43 native facts
+unskip (the Total grows from 1,557 to 1,595 as the enabled native theories
+expand) and the remaining 20 are the 19 host facts plus the 1 non-canonical
+comparison. The previous `1.0.1.0` release matrix (default 1,228 passed / 60
+skipped / 1,288 total; host-guarded 1,244 passed / 44 skipped / 1,288 total) is
+historical. Task 14.2 recorded this v1.1 matrix (test-quality review finding
+TQ-8).
+
+- Evidence: tasks 7.5/7.8 worker reports; task 14.2 worker report;
+  `docs/release/build-and-release.md`.
 - Consequence: the default `./build.sh test` run does not exercise the real host
   discovery, route, or native-render paths.
 
@@ -326,9 +342,9 @@ refreshes this matrix (test-quality review finding TQ-8).
 
 ### P1. Byte-reproducibility depends on the pinned toolchain
 
-Byte-identity of `artifacts/ArrTags_1.0.1.0.zip` (568,248 bytes, SHA-256
-`de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
-`16baa5a7324b8e14fdb113d84b944d09`, the current `1.0.1.0` identity) is
+Byte-identity of `artifacts/ArrTags_1.1.0.0.zip` (594,931 bytes, SHA-256
+`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`, MD5
+`547beb2f7d83cd256d3a3ce7bb7e7620`, the current `1.1.0.0` identity) is
 demonstrated with the pinned toolchain (`global.json` pins SDK `10.0.0` with
 `latestMinor`; validated with `10.0.401`). A different .NET SDK version could in
 principle change compiler or deflate output.
@@ -347,9 +363,13 @@ principle change compiler or deflate output.
   `./build.sh package` runs and was live-verified on the same host for the SEC-1
   boundary (`docs/changelog.md`); the re-run release review re-verifies the
   end-to-end publication on the new artifact. Phase 8 task 8.3 then bumped the
-  version to `1.0.1.0`, changing only version/release metadata; the current
-  `1.0.1.0` artifact is byte-stable across repeated `./build.sh package` runs
-  (the Phase 8 task 8.4 and 8.5 runs produced the identical SHA-256).
+  version to `1.0.1.0`, changing only version/release metadata; the `1.0.1.0`
+  artifact was byte-stable across repeated `./build.sh package` runs (the Phase 8
+  task 8.4 and 8.5 runs produced the identical SHA-256). Phase 14 task 14.2 then
+  rebuilt at `1.1.0.0`; the current `1.1.0.0` artifact is byte-stable across
+  repeated clean builds (the two task 14.2 runs — the second after wiping
+  `bin`/`obj`/`artifacts` and re-restoring — produced the identical SHA-256
+  `85730fe7…`).
 
 ### P2. The shipped assembly has reduced debug metadata for reproducibility
 
@@ -357,13 +377,13 @@ principle change compiler or deflate output.
 and `SuppressImplicitGitSourceLink=true`, and `src/ArrTags/ArrTags.csproj` maps
 the source path via `PathMap`, so a build from a git working tree matches a
 `.git`-less clean export. As a result the shipped `ArrTags.dll` has
-`AssemblyInformationalVersion` `1.0.1.0` with no commit suffix and the PDB
+`AssemblyInformationalVersion` `1.1.0.0` with no commit suffix and the PDB
 carries no SourceLink mapping.
 
 - Evidence: task 7.5 worker report (reviewer finding 7.5-F3) and
   `docs/release/build-and-release.md`.
 - Consequence: `AssemblyVersion`/`FileVersion`/`ProductVersion` remain
-  `1.0.1.0` and no runtime behavior depends on the suppressed metadata, but
+  `1.1.0.0` and no runtime behavior depends on the suppressed metadata, but
   source-level debugging of a released assembly is harder. This is a deliberate
   reproducibility trade-off, not an oversight.
 
@@ -403,21 +423,22 @@ so it must be deleted once. A normal V1 install writes state to
   must remove it or a reinstall must reconcile it. The completed-drain path
   removes it.
 
-### P6. The `v1.0.1` release publication, manifest push, and asset upload are pending
+### P6. The `v1.1.0` release publication, manifest push, and asset upload are pending
 
-Phase 8 tasks 8.1-8.6 complete the `1.0.1.0` release preparation, but the release
-is not yet published: the annotated tag `v1.0.1` and the `manifest.json` commit
-`8cba85b` exist only in the local repository and have not been pushed, no GitHub
-release exists, and the `ArrTags_1.0.1.0.zip` asset has not been uploaded. The
-public repository `benssson/ArrTags` therefore does not yet serve a manifest that
-lists `1.0.1.0`, so the standard Jellyfin plugin-catalog install cannot resolve
-ArrTags until the user runs the publish step.
+Phase 14 prepares the `1.1.0.0` release, but the publication is not yet
+performed: task 14.2 regenerated the `manifest.json` entry in the working tree,
+and task 14.5 commits the manifest and creates the annotated tag `v1.1.0`; the
+push, the GitHub release, and the `ArrTags_1.1.0.0.zip` asset upload all remain
+the user's manual step. The public repository `benssson/ArrTags` therefore does
+not serve a manifest that lists `1.1.0.0`, so the standard Jellyfin plugin-catalog
+install cannot resolve the `1.1.0.0` release until the user runs the publish
+step. The earlier `1.0.1.0` preparation (Phase 8 tasks 8.1-8.6) is Phase 8
+history and is recorded in `docs/changelog.md`.
 
-- Evidence: task 8.6 worker/reviewer reports (`docs/implementation/8.6/`);
-  `git rev-parse origin/main` = `09596e0` while the local `v1.0.1` tag
-  dereferences to `8cba85b`.
-- Consequence: the release is prepared but deliberately left unpublished; the
-  user must run `scripts/publish-release.sh` (push the prepared commit/tag and
+- Evidence: task 14.2 worker report; for the historical `1.0.1.0` state, task 8.6
+  worker/reviewer reports (`docs/implementation/8.6/`).
+- Consequence: the current release is prepared but deliberately left unpublished;
+  the user must run `scripts/publish-release.sh` (push the prepared commit/tag and
   create the GitHub release with the asset upload) or the equivalent steps.
   Until then no catalog-install or download-from-Releases claim holds.
 

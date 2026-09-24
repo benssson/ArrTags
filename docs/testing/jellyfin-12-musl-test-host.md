@@ -193,8 +193,8 @@ record with optional fields absent (ADR-013).
 ### Reproduction of the task 7.3 end-to-end run
 
 1. Build, package, and install: `. /config/arrtags-env.sh && ./build.sh build &&
-   ./build.sh package`, then extract `artifacts/ArrTags_1.0.1.0.zip` into
-   `PREFIX/data/plugins/ArrTags_1.0.1.0` and run
+   ./build.sh package`, then extract `artifacts/ArrTags_1.1.0.0.zip` into
+   `PREFIX/data/plugins/ArrTags_1.1.0.0` and run
    `scripts/provision-jellyfin-test-host.sh PREFIX`.
 2. Configure the plugin by writing `PREFIX/data/plugins/configurations/ArrTags.xml`
    (enable each provider independently, set the mock base URL/API key) and

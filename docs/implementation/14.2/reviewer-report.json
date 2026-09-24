@@ -1,0 +1,134 @@
+{
+  "task": "14.2",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "findings": [
+    {
+      "id": "14.2-R1",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "documentation accuracy (host-guarded suite matrix)",
+      "summary": "The skip-taxonomy mischaracterization from attempt 1 (also TQ-14.2-01) is corrected in both documents and matches the test guards.",
+      "detail": "docs/release/build-and-release.md now states that ARRTAGS_JELLYFIN_HOST_DIR unskips only the 19 pinned-host route/response, plugin-discovery, dashboard, and configuration round-trip facts and does not unskip the native-Skia facts; that the 44 host-guarded remaining skips are the 43 ARRTAGS_SKIA_COMPAT-gated native facts (39 SkiaNativeFact + 4 SkiaNativeTheory) plus the 1 ARRTAGS_NONCANONICAL_GOLDENS-gated cross-runtime comparison; and that the forced-native run unskips those 43 and leaves 20 (19 host + 1 non-canonical). docs/limitations.md V6 was rewritten to the same guard-based attribution. Independently verified attribute counts in tests/ArrTags.Tests (source files only): [JellyfinHostFact]=19, [SkiaNativeFact]=39, [SkiaNativeTheory]=4, [NonCanonicalRuntimeFact]=1, [PackagedPluginFact]=3. Arithmetic reconciles: 19+43+1=63 default skips; 43+1=44 host-guarded; 19+1=20 forced-native; +3 pack = 66 clean-checkout. All four suite counts were independently re-measured.",
+      "evidence": [
+        "docs/release/build-and-release.md:77-105 (corrected passages)",
+        "docs/limitations.md:307-337 (corrected V6)",
+        "tests/ArrTags.Tests/JellyfinHostFactAttribute.cs",
+        "tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:141-154 (SkiaNativeFactAttribute)",
+        "tests/ArrTags.Tests/SkiaNativeTheoryAttribute.cs",
+        "tests/ArrTags.Tests/NonCanonicalRuntimeFactAttribute.cs",
+        "tests/ArrTags.Tests/PackagedPluginFactAttribute.cs",
+        "attribute counts: 19 JellyfinHostFact, 39 SkiaNativeFact, 4 SkiaNativeTheory, 1 NonCanonicalRuntimeFact, 3 PackagedPluginFact"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "14.2-R2",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "documentation accuracy (default-count precondition, TQ-14.2-02)",
+      "summary": "The default 1,494/63/1,557 figure is now explicitly conditioned on a previously produced archive, with the clean-checkout 1,491/66/1,557 recorded.",
+      "detail": "docs/release/build-and-release.md and docs/limitations.md V6 now state that 1,494/63/1,557 presumes artifacts/ArrTags_1.1.0.0.zip is present (the 3 PackagedPluginFact facts run) and record the clean-checkout test-before-package figure 1,491/66/1,557 (Total unchanged). Independently reproduced both: with the archive present the default suite is 1,494/63/1,557; with the archive moved away it is 1,491/66/1,557, and the archive was restored (SHA-256 unchanged).",
+      "evidence": [
+        "docs/release/build-and-release.md:77-85",
+        "docs/limitations.md:322-330",
+        "reproduced default with archive: Passed 1494 / Skipped 63 / Total 1557",
+        "reproduced default without archive: Passed 1491 / Skipped 66 / Total 1557"
+      ],
+      "recommended_action": "None; addressed."
+    },
+    {
+      "id": "14.2-R3",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "canonical current-state surfaces outside the authorized scope",
+      "summary": "docs/project-status.md still presents 1.0.1.0 counts/identity as current (self-labelled not-current); owned by task 14.5.",
+      "detail": "Unchanged from attempt 1. docs/architecture.md and docs/implementation-readiness.md Phase 8 sentences read as phase history. The orchestrator's scope extension authorized only README.md, docs/testing/jellyfin-12-musl-test-host.md, and docs/limitations.md; the worker stayed within it. No action for this task.",
+      "evidence": [
+        "docs/project-status.md:666-700",
+        "docs/architecture.md:3",
+        "docs/implementation-readiness.md:3",
+        "git diff 45634f1 -- docs/changelog.md docs/project-status.md (empty)"
+      ],
+      "recommended_action": "None for task 14.2; task 14.5 owns docs/project-status.md and docs/changelog.md."
+    },
+    {
+      "id": "14.2-R4",
+      "severity": "LOW",
+      "status": "informational",
+      "area": "historical preservation",
+      "summary": "Historical 0.1.0/1.0.1.0 statements remain intact in the corrected documents.",
+      "detail": "The V6 rewrite preserves the previous 1.0.1.0 matrix as explicitly historical; P1/P2 retain the 0.1.0.0 and 1.0.1.0 history and the previous 1.0.1.0 artifact identity; P6 keeps the earlier 1.0.1.0 preparation as Phase 8 history; docs/release/build-and-release.md keeps the full 0.1.0 history table and the prior 1.0.1.0 identity. The unmodified docs/changelog.md and docs/project-status.md retain the 8cba85b/v1.0.1 records.",
+      "evidence": [
+        "docs/limitations.md:290-293, 331-333, 362-366, 435-438",
+        "docs/release/build-and-release.md:168-213, 333-334",
+        "docs/changelog.md:2499-2524",
+        "docs/project-status.md:77-92"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The v1.1 artifact is reproducible",
+      "met": true,
+      "evidence": "Artifact unchanged from attempt 1: artifacts/ArrTags_1.1.0.0.zip 594,931 bytes, SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, MD5 547beb2f7d83cd256d3a3ce7bb7e7620 (re-measured after the correction round; byte-identity independently confirmed in attempt 1 across two clean builds)."
+    },
+    {
+      "criterion": "The v1.1 artifact is documented",
+      "met": true,
+      "evidence": "manifest.json unchanged and correct (versions[0]=1.1.0.0, targetAbi 12.0.0.0, checksum==md5sum, sourceUrl .../download/v1.1.0/ArrTags_1.1.0.0.zip, valid timestamp; prior 1.0.1.0 retained newest-first). The two review findings are corrected: the skip taxonomy now matches the guard attributes and reconciles arithmetically, and the default-count precondition (archive present vs clean checkout) is stated. Historical 0.1.0/1.0.1.0 statements preserved; no change to manifest/README/testing doc/PLANS/build metadata/changelog/project-status."
+    }
+  ],
+  "validation_reproduced": [
+    "git rev-parse HEAD -> 8ab27f79d4439362cb54fe6e5e1eaa9832fa8bea (no commit created); git status --short unchanged file set.",
+    "File mtimes show only docs/release/build-and-release.md (18:02) and docs/limitations.md (18:03) changed after the attempt-1 review (~17:53); manifest.json 17:35, README.md/docs/testing/jellyfin-12-musl-test-host.md 17:37, PLANS.md 17:41, build.yaml/Directory.Build.props 16:02, docs/changelog.md/docs/project-status.md 15:43.",
+    "git diff 45634f1 -- build.yaml Directory.Build.props docs/changelog.md docs/project-status.md -> empty (unchanged).",
+    "Attribute counts (tests/ArrTags.Tests, source .cs files only): [JellyfinHostFact]=19, [SkiaNativeFact]=39, [SkiaNativeTheory]=4, [NonCanonicalRuntimeFact]=1, [PackagedPluginFact]=3. 19+43+1=63; 43+1=44; 19+1=20; 63+3=66.",
+    "Default suite with archive present (. /config/arrtags-env.sh && ./build.sh package && ./build.sh test) -> 'Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557'.",
+    "Default suite without archive (mv artifacts/ArrTags_1.1.0.0.zip /tmp/14.2/ && ./build.sh test) -> 'Passed! - Failed: 0, Passed: 1491, Skipped: 66, Total: 1557'; archive restored via ./build.sh package -> SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1 (unchanged).",
+    "Host-guarded suite (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin ./build.sh test) -> 'Passed! - Failed: 0, Passed: 1513, Skipped: 44, Total: 1557'.",
+    "Forced-native suite (ARRTAGS_SKIA_COMPAT=1 LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ./build.sh test) -> 'Passed! - Failed: 0, Passed: 1575, Skipped: 20, Total: 1595' (43 native guards enabled; Total grows by 38 as the 4 native theories expand).",
+    "manifest.json re-parsed: versions[0] = {1.1.0.0, targetAbi 12.0.0.0, checksum 547beb2f7d83cd256d3a3ce7bb7e7620, sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.1.0/ArrTags_1.1.0.0.zip, timestamp 2026-09-24T17:35:04Z}; version list [1.1.0.0, 1.0.1.0].",
+    "Corrected passages inspected in both documents; historical 0.1.0/1.0.1.0 statements and the prior 1.0.1.0 artifact identity are intact."
+  ],
+  "tests_checked": [
+    "Default suite with archive: Failed 0, Passed 1494, Skipped 63, Total 1557 (independently re-run).",
+    "Default suite without archive: Failed 0, Passed 1491, Skipped 66, Total 1557 (independently re-run).",
+    "Host-guarded suite: Failed 0, Passed 1513, Skipped 44, Total 1557 (independently re-run).",
+    "Forced-native suite: Failed 0, Passed 1575, Skipped 20, Total 1595 (independently re-run).",
+    "Guard attribute count verification against the corrected skip taxonomy."
+  ],
+  "research_checked": [
+    "Guard attribute implementations: JellyfinHostFactAttribute, SkiaNativeFactAttribute (SkiaHostCompatibilityTests.cs), SkiaNativeTheoryAttribute, NonCanonicalRuntimeFactAttribute, PackagedPluginFactAttribute.",
+    "scripts/write-manifest.cs upsert/newest-first sort and scripts/publish-release.sh tag derivation (unchanged; manifest re-verified)."
+  ],
+  "documentation_checked": [
+    "docs/release/build-and-release.md (corrected host-guarded/default passages; identity/entries unchanged).",
+    "docs/limitations.md V6 (corrected), P1/P2/P6 (history preserved).",
+    "manifest.json (unchanged and correct).",
+    "README.md, docs/testing/jellyfin-12-musl-test-host.md, PLANS.md (unchanged from attempt 1).",
+    "docs/changelog.md and docs/project-status.md (unchanged; task 14.5-owned)."
+  ],
+  "rework_log": [
+    {
+      "attempt": 2,
+      "trigger": "Attempt-1 LOW 14.2-R1 plus test-quality-reviewer MEDIUM TQ-14.2-01 (skip-taxonomy attribution) and LOW TQ-14.2-02 (state-dependent default count).",
+      "changes": "Documentation-only: docs/release/build-and-release.md and docs/limitations.md V6 corrected to attribute ARRTAGS_JELLYFIN_HOST_DIR to the 19 pinned-host facts only, to describe the 44 host-guarded skips as 43 ARRTAGS_SKIA_COMPAT-gated native facts + 1 ARRTAGS_NONCANONICAL_GOLDENS-gated comparison, and to condition the default 1,494/63/1,557 on a produced archive while recording 1,491/66/1,557 for a clean checkout.",
+      "outcome": "Both findings resolved; guard counts and all four suite counts independently reproduced; artifact, manifest, and all other tracked files unchanged."
+    }
+  ],
+  "reviewed_head": "8ab27f79d4439362cb54fe6e5e1eaa9832fa8bea",
+  "reviewed_diff_scope": [
+    "docs/release/build-and-release.md",
+    "docs/limitations.md",
+    "manifest.json (unchanged, re-verified)",
+    "README.md (unchanged, re-verified)",
+    "docs/testing/jellyfin-12-musl-test-host.md (unchanged, re-verified)",
+    "PLANS.md (unchanged, re-verified)",
+    "docs/implementation/14.2/ (untracked: worker-report.json, worker-report-attempt-1.json, test-quality-review.json, reviewer-report.json, reviewer-report.attempt-1.json)"
+  ],
+  "ready_for_next_task": true
+}

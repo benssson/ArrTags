@@ -1,0 +1,135 @@
+{
+  "task": "14.2",
+  "title": "Release build, full suite, reproducible artifact, and release documentation",
+  "phase": "14",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 148653,
+        "output_tokens": 23506,
+        "reasoning_tokens": 32062,
+        "cache_read_tokens": 5968512,
+        "cache_write_tokens": 0,
+        "total_tokens": 6172733,
+        "cost_usd": 0.073544286,
+        "duration_seconds": 779,
+        "session_id": "ses_f2b87c914ffep6hfC0bhfVAhZq"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 91822,
+        "output_tokens": 11057,
+        "reasoning_tokens": 20713,
+        "cache_read_tokens": 1429248,
+        "cache_write_tokens": 0,
+        "total_tokens": 1552840,
+        "cost_usd": 0.037123044,
+        "duration_seconds": 511,
+        "session_id": "ses_f2b7ae333ffeNoBTOMQYjz4sSa"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 89763,
+        "output_tokens": 9545,
+        "reasoning_tokens": 18413,
+        "cache_read_tokens": 1386368,
+        "cache_write_tokens": 0,
+        "total_tokens": 1504089,
+        "cost_usd": 0.034398354,
+        "duration_seconds": 438,
+        "session_id": "ses_f2b725054ffeWypsJVbxp7e4A6"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 453258,
+        "output_tokens": 31858,
+        "reasoning_tokens": 38766,
+        "cache_read_tokens": 8513152,
+        "cache_write_tokens": 0,
+        "total_tokens": 9037034,
+        "cost_usd": 0.135902556,
+        "duration_seconds": 2103,
+        "session_id": "ses_f2b87c914ffep6hfC0bhfVAhZq"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 222812,
+        "output_tokens": 17753,
+        "reasoning_tokens": 25658,
+        "cache_read_tokens": 2700800,
+        "cache_write_tokens": 0,
+        "total_tokens": 2967023,
+        "cost_usd": 0.0675708,
+        "duration_seconds": 1611,
+        "session_id": "ses_f2b7ae333ffeNoBTOMQYjz4sSa"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 102542,
+        "output_tokens": 14305,
+        "reasoning_tokens": 19710,
+        "cache_read_tokens": 2039680,
+        "cache_write_tokens": 0,
+        "total_tokens": 2176237,
+        "cost_usd": 0.04190934,
+        "duration_seconds": 1138,
+        "session_id": "ses_f2b725054ffeWypsJVbxp7e4A6"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Both independent reviewers approved attempt 1 but flagged the same newly-introduced documentation defect: the implementation-reviewer as LOW 14.2-R1 and the plan-specified test-quality-reviewer as MEDIUM TQ-14.2-01. The host-guarded-suite passages in docs/release/build-and-release.md and docs/limitations.md V6 claimed ARRTAGS_JELLYFIN_HOST_DIR unskips native-Skia facts and that the 44 remaining host-guarded skips were the non-canonical cross-runtime golden set; the test-quality reviewer's independent TRX capture showed the 44 are 39 SkiaNativeFact + 4 SkiaNativeTheory (43 ARRTAGS_SKIA_COMPAT-gated native facts) plus 1 ARRTAGS_NONCANONICAL_GOLDENS-gated comparison, and that only the 19 JellyfinHostFact facts unskip with the host dir. The reviewer also raised LOW TQ-14.2-02: the recorded default 1,494/63/1,557 presumes a pre-produced archive; a clean checkout testing before package is 1,491/66/1,557. The worker applied a documentation-only correction: corrected the skip-taxonomy attribution in both documents and conditioned the default figure on the pre-produced archive while recording the clean-checkout count. No artifact, manifest, build metadata, README, or testing-doc content changed. Both reviewers re-approved (implementation-reviewer attempt 2 APPROVED with 14.2-R1 resolved; test-quality-reviewer attempt 2 APPROVED with TQ-14.2-01 and TQ-14.2-02 resolved)."
+    }
+  ],
+  "notes": [
+    "Release-build task: clean rebuild 0 warnings / 0 errors; default suite Failed 0 / Passed 1494 / Skipped 63 / Total 1557 (archive present); no-archive default Failed 0 / Passed 1491 / Skipped 66 / Total 1557; host-guarded (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin) Failed 0 / Passed 1513 / Skipped 44 / Total 1557; forced-native (ARRTAGS_SKIA_COMPAT=1 with the pinned native dependency dir on LD_LIBRARY_PATH) Failed 0 / Passed 1575 / Skipped 20 / Total 1595.",
+    "The artifact artifacts/ArrTags_1.1.0.0.zip (7 entries, 594,931 bytes) was reproduced byte-identically by the worker and independently by the implementation-reviewer, the test-quality-reviewer, and an independent .git-less git-archive export: SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, MD5 547beb2f7d83cd256d3a3ce7bb7e7620. manifest.json was regenerated for 1.1.0.0 (checksum = artifact MD5, sourceUrl .../download/v1.1.0/ArrTags_1.1.0.0.zip, prior 1.0.1.0 entry retained newest-first).",
+    "Orchestrator-authorized scope extension (from task 14.1 finding 14.1-R1): the v1.1 release identity was refreshed only where README.md, docs/testing/jellyfin-12-musl-test-host.md, and docs/limitations.md still presented the previous 1.0.1.0/v1.0.1 identity as current; historical 0.1.0/1.0.1.0 statements were preserved. The extension is recorded in PLANS.md task 14.2 affected-files/documentation-impact. docs/changelog.md and docs/project-status.md were not modified (task 14.5 owns them).",
+    "No git commit, tag, push, or GitHub call was performed by any subagent; the orchestrator owns the commit and tag gates. HEAD was 8ab27f7 throughout.",
+    "Same-session attempts (the worker, implementation-reviewer, and test-quality-reviewer each ran both attempts in one session) report the OpenCode session's cumulative usage at collection time; both attempt snapshots are recorded, matching the Phase 13 task-record convention. No values were estimated or reconstructed.",
+    "Runtime figures are authoritative from the OpenCode session usage endpoint (.opencode/scripts/collect-session-usage.sh)."
+  ]
+}

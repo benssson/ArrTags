@@ -1,0 +1,104 @@
+{
+  "task": "14.2",
+  "attempt": 2,
+  "subject": "v1.1 (Phase 14 task 14.2) release build, reproducible artifact, and release documentation - correction round",
+  "reviewer_status": "APPROVED",
+  "scope": "reproducibility evidence and test-claim honesty for the v1.1 release artifact (attempt-2 verification of the documentation-only correction round)",
+  "findings": [
+    {
+      "id": "TQ-14.2-01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "skips",
+      "summary": "RESOLVED: the host-guarded skip taxonomy now matches the independently captured guard set (TQ-14.2-01 from attempt 1).",
+      "description": "Attempt 1 found docs/release/build-and-release.md and docs/limitations.md V6 misattributed the host-guarded 44 skips to the non-canonical cross-runtime golden set and claimed native-Skia facts unskip with ARRTAGS_JELLYFIN_HOST_DIR. The corrected passages now state: ARRTAGS_JELLYFIN_HOST_DIR unskips only the 19 pinned-host route/response, plugin-discovery, dashboard, and configuration round-trip facts and does not unskip native-Skia; the host-guarded 44 remaining skips are the 43 ARRTAGS_SKIA_COMPAT-gated native facts (39 SkiaNativeFact + 4 SkiaNativeTheory) plus the 1 ARRTAGS_NONCANONICAL_GOLDENS-gated cross-runtime comparison; the forced-native run unskips those 43 and gives 1,575 / 20 / 1,595 with the 20 remaining being the 19 host facts plus the 1 non-canonical comparison; and Total grows from 1,557 to 1,595 as the enabled native theories expand. Every element matches this reviewer's independently captured TRX skip set from attempt 1 (host-guarded 44 = 39 SkiaNativeFact + 4 SkiaNativeTheory + 1 NonCanonicalRuntimeFact; forced-native 20 = 19 JellyfinHostFact + 1 NonCanonicalRuntimeFact; 19 JellyfinHostFact facts unskip with the host directory).",
+      "evidence": [
+        "docs/release/build-and-release.md:77-105 (corrected default and host-guarded passages)",
+        "docs/limitations.md:307-339 (corrected V6)",
+        "attempt-1 host.trx: 39 SkiaNativeFact + 4 SkiaNativeTheory + 1 NonCanonicalRuntimeFact = 44",
+        "attempt-1 native.trx: 19 JellyfinHostFact + 1 NonCanonicalRuntimeFact = 20",
+        "attempt-1 default.trx: 19 JellyfinHostFact + 39 SkiaNativeFact + 4 SkiaNativeTheory + 1 NonCanonicalRuntimeFact = 63"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "TQ-14.2-02",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "determinism",
+      "summary": "RESOLVED: the documented default counts now record the archive-present precondition and both the 1,494/63 and clean-checkout 1,491/66 figures (TQ-14.2-02 from attempt 1).",
+      "description": "Attempt 1 found the recorded default 1,494/63/1,557 was state-dependent (the 3 PackagedPluginFact package-content tests run only when artifacts/ArrTags_1.1.0.0.zip exists) and contradicted the clean-checkout procedure that tests before packaging. The corrected passages now say the 1,494/63 figure requires a previously produced archive (so the 3 package-content tests run) and explicitly record the clean-checkout test-before-package default as 1,491/66/1,557, with the skip composition stated. This matches this reviewer's independent observation (attempt 1: 1,494/63/1,557 with the archive present; 1,491/66/1,557 with artifacts/ removed) and the implementation-reviewer attempt-2 reproduction.",
+      "evidence": [
+        "docs/release/build-and-release.md:77-85",
+        "docs/limitations.md:309-325",
+        "attempt-1 default suite with archive present: Failed 0, Passed 1494, Skipped 63, Total 1557",
+        "attempt-1 default suite with artifacts/ removed: Failed 0, Passed 1491, Skipped 66, Total 1557"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "TQ-14.2-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "The P1 statement that no automated test guards archive byte-identity remains accurate and unchanged.",
+      "description": "Unchanged by the correction round. docs/limitations.md P1 and docs/release/build-and-release.md still state that PluginPackagingTests verifies package contents but not archive bytes, so reproducibility rests on the manual re-run-and-compare procedure. No test references the archive SHA-256/MD5. The docs do not overclaim an automated byte-identity guard.",
+      "evidence": [
+        "docs/limitations.md P1",
+        "docs/release/build-and-release.md known environment notes",
+        "No archive-hash assertion under tests/"
+      ],
+      "recommended_action": "None; accurately disclosed."
+    },
+    {
+      "id": "TQ-14.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "No document claims the v1.1.0 push, GitHub release, or asset upload was performed; task-14.5-owned files remain unmodified.",
+      "description": "Unchanged by the correction round. docs/release/build-and-release.md and docs/limitations.md P6 still explicitly state the v1.1.0 publication has not been performed and that the push/GitHub release/upload remain the user's manual step. README.md's manual-install fallback remains forward-looking for the prepared (unpublished) v1.1.0 release. git status confirms docs/changelog.md and docs/project-status.md are unmodified (task 14.5 owned).",
+      "evidence": [
+        "docs/release/build-and-release.md Jellyfin plugin repository section",
+        "docs/limitations.md P6",
+        "git status --short docs/changelog.md docs/project-status.md -> empty"
+      ],
+      "recommended_action": "None for task 14.2; task 14.5 owns publication."
+    }
+  ],
+  "validation_reproduced": [
+    "Attempt-1 independent evidence remains valid because the correction round is documentation-only and no source/build input changed: reproducibility run 1 (full bin/obj/artifacts wipe + restore && build && package) produced sha256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, md5 547beb2f7d83cd256d3a3ce7bb7e7620, 594,931 bytes.",
+    "Attempt-1 reproducibility run 2 (second full wipe + restore && build && package) produced the identical sha256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, md5 547beb2f7d83cd256d3a3ce7bb7e7620, 594,931 bytes.",
+    "Attempt-1 independent cross-path/.git-less git-export build produced the identical sha256 85730fe7...e836e1 / md5 547beb2f...7620 / 594,931 bytes.",
+    "Attempt-2 (this round) re-hashed the artifact in place: sha256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, md5 547beb2f7d83cd256d3a3ce7bb7e7620 - unchanged, matching the documented identity and manifest checksum.",
+    "Attempt-1 suite counts (independently observed; corroborated by the implementation-reviewer attempt 2): default archive present 0/1494/63/1557; default no archive 0/1491/66/1557; host-guarded 0/1513/44/1557; forced-native 0/1575/20/1595.",
+    "Attempt-2 documentation check: docs/release/build-and-release.md:77-105 and docs/limitations.md:307-339 now match the captured guard taxonomy exactly (19 host / 43 native / 1 non-canonical / 3 package).",
+    "Attempt-2 preservation check: historical 0.1.0 and 1.0.1.0 statements retained in both changed docs (12 occurrences in limitations.md, 13 in build-and-release.md, including the 0.1.0 history table, the SEC-1 historical note, and the previous 1.0.1.0 artifact identity).",
+    "Attempt-2 repository check: HEAD = 8ab27f79d4439362cb54fe6e5e1eaa9832fa8bea (unchanged); git status shows docs/changelog.md and docs/project-status.md unmodified; no commit/tag created by this review."
+  ],
+  "matrix_observed": {
+    "default": "passed 1494 / skipped 63 / total 1557 (archive present)",
+    "default_no_archive": "passed 1491 / skipped 66 / total 1557",
+    "host_guarded": "passed 1513 / skipped 44 / total 1557",
+    "forced_native": "passed 1575 / skipped 20 / total 1595"
+  },
+  "substitutes_checked": [
+    "Reproducibility is measured on the real archive produced by scripts/pack-release.cs; no substitute or double is involved in the byte-identity evidence.",
+    "PluginPackagingTests reads the real artifacts/ArrTags_*.zip; the 3 PackagedPluginFact tests skip (counted as skipped) when no archive exists, which the corrected docs now disclose.",
+    "No source or test file changed in the correction round, so attempt-1's absence of archive-hash assertions and honest guards still holds."
+  ],
+  "skips_checked": [
+    "JellyfinHostFact: 19 skips by default; unskipped only with ARRTAGS_JELLYFIN_HOST_DIR (host-guarded run).",
+    "SkiaNativeFact: 39 and SkiaNativeTheory: 4 skips, gated by ARRTAGS_SKIA_COMPAT=1; the 43 native facts that remain skipped in the host-guarded run.",
+    "NonCanonicalRuntimeFact: 1 skip, gated by ARRTAGS_NONCANONICAL_GOLDENS=1 (limitation V2).",
+    "PackagedPluginFact: 3 tests, skipped only when artifacts/ArrTags_*.zip is absent.",
+    "No hard-coded [Fact(Skip=...)], [Ignore], or #if-disabled tests exist; corrected docs now describe this set accurately."
+  ],
+  "determinism_checked": [
+    "Archive byte-identity verified in attempt 1 across two clean in-place builds and one clean .git-less different-path build; artifact hash re-verified unchanged in attempt 2.",
+    "Suite counts stable across independent re-runs; the corrected docs now record the one real conditional (archive presence) that shifts the default skip count from 63 to 66."
+  ],
+  "reproducibility_verdict": "ESTABLISHED",
+  "reviewed_head": "8ab27f7",
+  "ready_for_next_task": true,
+  "summary": "Attempt-2 re-review of the documentation-only correction round. The corrected docs/release/build-and-release.md:77-105 and docs/limitations.md:307-339 now state the guard taxonomy exactly as independently captured in attempt 1: ARRTAGS_JELLYFIN_HOST_DIR unskips only the 19 pinned-host route/response, discovery, dashboard, and configuration facts; the host-guarded 44 remaining skips are 43 ARRTAGS_SKIA_COMPAT-gated native facts (39 SkiaNativeFact + 4 SkiaNativeTheory) plus 1 ARRTAGS_NONCANONICAL_GOLDENS-gated comparison; forced-native unskips those 43 to give 1,575/20/1,595 with 20 = 19 host + 1 non-canonical. The default 1,494/63/1,557 figure is now conditioned on a previously produced archive, with the clean-checkout 1,491/66/1,557 recorded. TQ-14.2-01 and TQ-14.2-02 are RESOLVED. Historical 0.1.0/1.0.1.0 statements are preserved, docs/changelog.md and docs/project-status.md are unmodified, HEAD is unchanged at 8ab27f7, and no commit/tag was created. No BLOCKER/HIGH remains; reproducibility remains ESTABLISHED (artifact SHA-256 unchanged at 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1). Reviewer status APPROVED."
+}

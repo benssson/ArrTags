@@ -32,10 +32,10 @@ restored.
 
 ## Manual install (fallback)
 
-1. Download the release package `ArrTags_1.0.1.0.zip` from the GitHub Releases
-   page for `v1.0.1` at <https://github.com/benssson/ArrTags/releases>.
+1. Download the release package `ArrTags_1.1.0.0.zip` from the GitHub Releases
+   page for `v1.1.0` at <https://github.com/benssson/ArrTags/releases>.
 2. Extract it so the plugin files sit in a versioned folder under Jellyfin's
-   plugins directory: `<plugins>/ArrTags_1.0.1.0/`. The plugins directory is the
+   plugins directory: `<plugins>/ArrTags_1.1.0.0/`. The plugins directory is the
    `plugins` folder under Jellyfin's data directory.
 3. Restart Jellyfin.
 

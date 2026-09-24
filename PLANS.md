@@ -239,8 +239,9 @@ sweep) are complete; all three Phase 13 acceptance criteria are met; Gate 13 is
 met (the Phase 13 review is approved in
 `docs/implementation/phase-13/phase-review.json`, APPROVED_WITH_FINDINGS with 0
 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase13` is created. Phase
-14 (v1.1 release) is in progress: task 14.1 (version bump and release metadata) is
-complete and tasks 14.2-14.5 remain; the release tag `v1.1.0` is created only
+14 (v1.1 release) is in progress: tasks 14.1 (version bump and release metadata)
+and 14.2 (reproducible artifact and release documentation) are complete and tasks
+14.3-14.5 remain; the release tag `v1.1.0` is created only
 after the `release-reviewer` gate and the GitHub publish remains the user's
 manual step. V1.1-1 (this
 plan, ADR-016..ADR-020, and the GOALS.md/PLANS.md
@@ -285,7 +286,7 @@ work.
 | 11 | Provider inventory cache and library-refresh-driven refresh (v1.1) | Complete at the integration-test level (tasks 11.1-11.4 complete: the canonical, secret-free, in-memory per-connection inventory cache shape and the inventory TTL and record/byte limits are defined, validated at configuration load, and documented in `docs/data-model.md` section 6 and `docs/architecture.md` sections 8 and 12; the provider metadata readers populate and consume the cache at the provider-client boundary so one library read per connection serves a reconciliation window, using the Radarr repeatable `movieId` and Sonarr repeatable `episodeFileIds` bulk selectors instead of per-item file reads; the ArrTags-side invalidation surface is wired to the provider webhook, Jellyfin library refresh/post-scan, scheduled/manual and post-save reconciliation, and the bounded TTL fallback, with no provider conditional request, revision token, `history/since`, or SignalR dependency, and the periodic scheduled reconciliation continues on its unchanged interval; task 11.4 records limitation F1 as resolved and adds the Goal C integration coverage for the one-read-per-window, invalidation-source, bounds, and last-known-good facets, so all four Phase 11 acceptance criteria are met at the integration-test level; Gate 11 is met (the Phase 11 review is approved in `docs/implementation/phase-11/phase-review.json`) and the annotated tag `v1.1.0-phase11` is created) | One provider library read per connection serves a reconciliation window; invalidation is ArrTags-side; the cache is bounded, secret-free, and validated; provider failure keeps bounded last-known-good. Phase tag `v1.1.0-phase11`. |
 | 12 | Badge value allowlist and badge size/position (v1.1) | Complete (Phase 12 tasks 12.1-12.4 complete; Goals B and E; ADR-017 and ADR-019; the single coordinated schema/`RenderVersion` advance is applied and the goldens are regenerated; all six Phase 12 acceptance criteria are met at the implementation and test level; Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3) | A configured allowlist restricts rendering to listed values and a configured size/anchor affects the badge with per-anchor rail packing, status-pill placement, and safe-area bounds; one coordinated schema/`RenderVersion` advance with regenerated goldens. Phase tag `v1.1.0-phase12`. |
 | 13 | README and documentation pass (v1.1) | Complete (Phase 13 tasks 13.1 and 13.2 complete; all three Phase 13 acceptance criteria are met; Gate 13 is met (the Phase 13 review is approved in `docs/implementation/phase-13/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH/MEDIUM) and the annotated tag `v1.1.0-phase13` is created) | The palette override fields are documented with meaning, default colors, and the 4.5:1 contrast rule; the README documents the v1.1 features; the canonical current-state docs are reconciled with no stale claim. Phase tag `v1.1.0-phase13`. |
-| 14 | v1.1 release | In progress (Phase 14 task 14.1 complete; tasks 14.2-14.5 pending) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
+| 14 | v1.1 release | In progress (Phase 14 tasks 14.1 and 14.2 complete; tasks 14.3-14.5 pending) | The plugin builds and packages reproducibly at `1.1.0.0`; the full suite and the live pinned-host matrix pass; a fresh security review covers logging, SEC-5, and the settings save path; the changelog/manifest are updated and the annotated `v1.1.0` tag is created after the release-reviewer gate. |
 
 ## Milestones
 
@@ -4979,7 +4980,7 @@ documentation and the annotated `v1.1.0` tag.
 **Tasks:**
 
 - [x] 14.1 Version bump and release metadata.
-- [ ] 14.2 Release build, full suite, reproducible artifact, and release
+- [x] 14.2 Release build, full suite, reproducible artifact, and release
   documentation.
 - [ ] 14.3 Live pinned-host verification.
 - [ ] 14.4 Release security review.
@@ -5051,7 +5052,22 @@ behavior.
 
 #### 14.2 Release build, full suite, reproducible artifact, and release documentation
 
-**Status:** Not started.
+**Status:** Complete. Clean rebuild at `1.1.0.0` reported 0 warnings / 0 errors;
+the default suite (Failed 0, Passed 1,494, Skipped 63, Total 1,557) and the
+host-guarded suite (Failed 0, Passed 1,513, Skipped 44, Total 1,557) pass;
+`./build.sh package` produced `artifacts/ArrTags_1.1.0.0.zip` (7 entries, 594,931
+bytes), byte-stable across a second clean build (SHA-256
+`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`, MD5
+`547beb2f7d83cd256d3a3ce7bb7e7620`); `manifest.json` was regenerated for
+`1.1.0.0` (checksum matches the artifact, prior `1.0.1.0` entry retained); and
+`docs/release/build-and-release.md` records the identity, commands, and supported
+ranges. Scope was extended by the orchestrator to refresh the v1.1 release
+identity in `README.md`, `docs/testing/jellyfin-12-musl-test-host.md`, and
+`docs/limitations.md`, which task 14.1's review found still carried the previous
+`1.0.1.0`/`v1.0.1` identity and were not owned by another Phase 14 task; only the
+current identity/limits-matrix statements in those files changed (historical
+`0.1.0`/`1.0.1.0` statements preserved). The orchestrator commits and records the
+commit hash.
 
 **Objective:** Build and package reproducibly at `1.1.0.0` and record the artifact
 identity, commands, and supported ranges.
@@ -5062,7 +5078,8 @@ build/package at `1.1.0.0`).
 **Dependencies:** 14.1.
 
 **Affected files/components:** `artifacts/ArrTags_1.1.0.0.zip`, `manifest.json`,
-`docs/release/build-and-release.md`, `build.yaml`.
+`docs/release/build-and-release.md`, `build.yaml`; extended scope: `README.md`,
+`docs/testing/jellyfin-12-musl-test-host.md`, `docs/limitations.md`.
 
 **Work:** Clean rebuild; run the full default and host-guarded suites; run
 `./build.sh package`; regenerate `manifest.json` and
@@ -5079,7 +5096,8 @@ artifact.
 **Review:** `test-quality-reviewer` (reproducibility evidence).
 
 **Documentation impact:** `docs/release/build-and-release.md`, `manifest.json`,
-`build.yaml`.
+`build.yaml`; extended scope: `README.md`,
+`docs/testing/jellyfin-12-musl-test-host.md`, `docs/limitations.md`.
 
 **Definition of done:** The reproducible artifact identity is recorded.
 

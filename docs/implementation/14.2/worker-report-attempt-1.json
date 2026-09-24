@@ -1,0 +1,46 @@
+{
+  "task": "14.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Built and packaged ArrTags reproducibly at 1.1.0.0 and recorded the artifact identity, commands, and supported ranges. Clean rebuild reported 0 warnings / 0 errors; the default suite (Failed 0, Passed 1,494, Skipped 63, Total 1,557) and the host-guarded suite against the pinned Jellyfin 12.0.0 host (/tmp/arrtags-host-dl/host/jellyfin; Failed 0, Passed 1,513, Skipped 44, Total 1,557) pass. ./build.sh package produced artifacts/ArrTags_1.1.0.0.zip (7 entries, 594,931 bytes) that was byte-stable across two clean builds (SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, MD5 547beb2f7d83cd256d3a3ce7bb7e7620). manifest.json was regenerated for 1.1.0.0 via scripts/write-manifest.cs (checksum = md5sum of the artifact; prior 1.0.1.0 entry retained, newest-first), and docs/release/build-and-release.md now records the 1.1.0.0 identity, supported ranges, commands, and expected counts. Per the orchestrator's extended scope, the v1.1 release identity was refreshed only where three documents still presented the previous identity as current: README.md (manual-install download/folder names), docs/testing/jellyfin-12-musl-test-host.md (task 7.3/7.8 reproduction extract paths), and docs/limitations.md (V6 suite matrix, P1 current artifact identity, P2 AssemblyInformationalVersion, P6 pending-publication text); historical 0.1.0/1.0.1.0 statements were preserved. PLANS.md task 14.2 was marked complete with the extended scope recorded in its status, affected files, and documentation impact. No git commit/tag/push/GitHub action was performed (the orchestrator owns those); build.yaml metadata/version was not changed.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh restore -> 'All projects are up-to-date for restore.' (exit 0).",
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (exit 0).",
+    ". /config/arrtags-env.sh && ./build.sh test -> default suite 'Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557, Duration: 16 s - ArrTags.Tests.dll (net10.0)' (exit 0).",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin . /config/arrtags-env.sh && ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin ./build.sh test -> host-guarded suite 'Passed! - Failed: 0, Passed: 1513, Skipped: 44, Total: 1557, Duration: 17 s - ArrTags.Tests.dll (net10.0)' (exit 0); 19 host facts unskipped vs the default run.",
+    "Forced-native evidence (V6): ARRTAGS_SKIA_COMPAT=1 with LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib -> 'Passed! - Failed: 0, Passed: 1575, Skipped: 20, Total: 1595'. Note: the bare ARRTAGS_SKIA_COMPAT=1 ./build.sh test (without the pinned native dependency directory on the loader path) failed 80 tests with System.DllNotFoundException for 'libSkiaSharp' because libfontconfig.so.1 is absent; the probe sysroot supplies the pinned dependency chain. Recorded in docs/release/build-and-release.md and docs/limitations.md V6.",
+    "./build.sh package (run 1) -> 'Build succeeded. 0 Warning(s) 0 Error(s)' and 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.1.0.0.zip (7 entries)'. sha256sum = 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1; md5sum = 547beb2f7d83cd256d3a3ce7bb7e7620; size = 594,931 bytes.",
+    "Reproducibility run 2: rm -rf src/ArrTags/bin src/ArrTags/obj tests/ArrTags.Tests/bin tests/ArrTags.Tests/obj artifacts; ./build.sh restore && ./build.sh build && ./build.sh package -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (both) and 'Created deterministic package ... (7 entries)'; sha256sum = 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1 (identical to run 1); md5sum = 547beb2f7d83cd256d3a3ce7bb7e7620 (identical).",
+    "unzip -l artifacts/ArrTags_1.1.0.0.zip -> exactly 7 entries, all stamped 2000-01-01 00:00: ArrTags.deps.json 5,899; ArrTags.dll 1,237,504; THIRD-PARTY-NOTICES.md 1,368; build.yaml 1,783; licenses/DejaVu-Fonts-License.txt 8,816; licenses/SkiaSharp-LICENSE.txt 1,129; licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 139,775. No SkiaSharp.dll/libSkiaSharp.so (only the two license/notice text files match 'skia').",
+    "Per-entry SHA-256 (unzip -q artifacts/ArrTags_1.1.0.0.zip -d /tmp/arrtags-pkg-1.1.0.0 then sha256sum each entry): ArrTags.deps.json c8dd803d5364255059a9826bd6a1d85c684bd3712a073226ff8281402d378153; ArrTags.dll c376b981033fe5bcdfa63ab5cc55dcd132cb46bdb4134e6594d57be62735b497; THIRD-PARTY-NOTICES.md 3656c9f037624237e0530c8729dbe792791ded877b93c28807034ff55bf181b1; build.yaml 66c549403dc1747d506a014a9eed2db0a22538f06d175ae1f0e6526ffeacdec5; licenses/DejaVu-Fonts-License.txt 7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93; licenses/SkiaSharp-LICENSE.txt 89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938; licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5.",
+    "Archive build.yaml is byte-identical to the repository build.yaml (unzip -p artifacts/ArrTags_1.1.0.0.zip build.yaml | diff - build.yaml -> empty).",
+    "manifest regeneration: dotnet run scripts/write-manifest.cs -- --build-yaml build.yaml --manifest manifest.json --checksum 547beb2f7d83cd256d3a3ce7bb7e7620 --source-url https://github.com/benssson/ArrTags/releases/download/v1.1.0/ArrTags_1.1.0.0.zip --timestamp 2026-09-24T17:35:04Z -> 'Wrote Jellyfin repository manifest: /workspace/ArrTags/manifest.json (1 plugin(s))'. jq parsed it: versions[0].version=1.1.0.0, targetAbi=12.0.0.0, checksum=547beb2f7d83cd256d3a3ce7bb7e7620, which equals md5sum artifacts/ArrTags_1.1.0.0.zip (CHECKSUM MATCH); version list = [1.1.0.0, 1.0.1.0] (newest-first, prior entry retained).",
+    "git status --short and git diff --stat inspected: only PLANS.md, README.md, docs/limitations.md, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md, and manifest.json changed (6 files, 152 insertions / 93 deletions); the gitignored artifacts/ archive is not tracked.",
+    "strings src/ArrTags/bin/Release/net10.0/ArrTags.dll | grep '^1.1.0.0$' -> 1.1.0.0, confirming the shipped assembly version and AssemblyInformationalVersion (no commit suffix)."
+  ],
+  "changed_files": [
+    "manifest.json",
+    "docs/release/build-and-release.md",
+    "README.md",
+    "docs/testing/jellyfin-12-musl-test-host.md",
+    "docs/limitations.md",
+    "PLANS.md",
+    "docs/implementation/14.2/worker-report.json"
+  ],
+  "known_limitations": [
+    "artifacts/ArrTags_1.1.0.0.zip is gitignored build output and is not part of the committed tree; the committed manifest.json checksum refers to that locally produced artifact.",
+    "The forced-native suite requires the pinned libSkiaSharp.so dependency chain (notably libfontconfig.so.1) on the loader path (LD_LIBRARY_PATH). The bare documented command ARRTAGS_SKIA_COMPAT=1 ./build.sh test fails 80 native-render tests with System.DllNotFoundException in this environment; the run only reaches Failed 0 / Passed 1,575 / Skipped 20 / Total 1,595 with /tmp/arrtags-skia-probe/sysroot/usr/lib on LD_LIBRARY_PATH. This is an environment prerequisite, not a product defect, and is now recorded in docs/release/build-and-release.md and docs/limitations.md V6.",
+    "docs/project-status.md (lines ~86 and ~694) still presents the 1.0.1.0 artifact identity as current. It is explicitly excluded from this task's scope and owned by task 14.5, so it is left unchanged.",
+    "docs/changelog.md Phase 8 entries and docs/implementation/* records retain the 1.0.1.0 identity as historical records; they are intentionally unchanged (changelog is owned by task 14.5).",
+    "docs/architecture.md (status line) and docs/implementation-readiness.md retain the Phase 8 1.0.1.0/v1.0.1 completion text as Phase 8 history. The orchestrator's extended scope authorized only README.md, docs/testing/jellyfin-12-musl-test-host.md, and docs/limitations.md, so these were left unchanged; a reviewer may wish to confirm they read as history rather than current state.",
+    "No automated test guards archive byte-identity (pre-existing limitation P1); reproducibility is verified by re-running ./build.sh package and comparing SHA-256, which this task did twice with identical results.",
+    "The public GitHub release/tag/asset state for v1.0.1 could not be verified because GitHub calls are out of scope. The local origin/main remote-tracking ref includes the v1.0.1 manifest commit 8cba85b, so the refreshed documents describe only the current v1.1.0 release state and do not assert the v1.0.1 push/release outcome.",
+    "The manifest retains the prior 1.0.1.0 entry by design (versions are written newest-first) rather than replacing it; this matches the generator's documented upsert behavior."
+  ],
+  "ready_for_next_task": true
+}

@@ -1,0 +1,111 @@
+{
+  "task": "14.2",
+  "attempt": 1,
+  "subject": "v1.1 (Phase 14 task 14.2) release build, reproducible artifact, and release documentation",
+  "reviewer_status": "APPROVED",
+  "scope": "reproducibility evidence and test-claim honesty for the v1.1 release artifact",
+  "findings": [
+    {
+      "id": "TQ-14.2-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "skips",
+      "summary": "The release docs misstate which facts the host-guarded run unskips and what its 44 remaining skips are; 43 of the 44 are ARRTAGS_SKIA_COMPAT-gated native facts, not the non-canonical cross-runtime golden set.",
+      "description": "docs/release/build-and-release.md:87-90 says the host-guarded run unskips 'the pinned-host route, discovery, native-Skia, and package-content facts' and that 'the remaining 44 skips are the pre-existing non-canonical cross-runtime golden set'. docs/limitations.md V6 (lines 310-318) likewise says the four fact categories skip unless ARRTAGS_JELLYFIN_HOST_DIR is set and that 'the skips are the environment-guarded pinned-host facts and the pre-existing non-canonical cross-runtime golden set'. Independent TRX skip capture from this run shows the host-guarded 44 skips are: 39 x SkiaNativeFact ('Set ARRTAGS_SKIA_COMPAT=1 ...'), 4 x SkiaNativeTheory ('Set ARRTAGS_SKIA_COMPAT=1 ... golden and cross-runtime fixtures'), and exactly 1 x NonCanonicalRuntimeFact ('Set ARRTAGS_NONCANONICAL_GOLDENS=1'). No native-Skia fact unskips with ARRTAGS_JELLYFIN_HOST_DIR; the 19 facts that unskip are exclusively JellyfinHostFact-gated. The counts themselves (1494/63, 1513/44, 1575/20) are all accurate and reproduced. This is newly-introduced prose (the previous limitations.md wording applied the 'pinned-host + non-canonical' phrase to the forced-native run's 20 remaining skips, where it was correct; the 14.2 edit generalized it to the host-guarded 44). It materially misleads a release reader about which run exercises native rendering, although the forced-native run and the ARRTAGS_SKIA_COMPAT guard are documented elsewhere in the same file. The implementation-reviewer already recorded this as LOW informational finding 14.2-R1; this reviewer independently reproduces the exact skip set and rates it MEDIUM as a release-doc coverage statement, not a count error.",
+      "evidence": [
+        "docs/release/build-and-release.md:87-90",
+        "docs/limitations.md:307-326",
+        "default.trx / host.trx / native.trx skip messages: host.trx has 39 SkiaNativeFact + 4 SkiaNativeTheory + 1 NonCanonicalRuntimeFact = 44",
+        "native.trx has 19 JellyfinHostFact + 1 NonCanonicalRuntimeFact = 20 (confirms the old forced-native phrasing was correct)",
+        "tests/ArrTags.Tests/{JellyfinHostFactAttribute,SkiaNativeTheoryAttribute,NonCanonicalRuntimeFactAttribute,PackagedPluginFactAttribute}.cs",
+        "tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:141-153 (SkiaNativeFactAttribute)"
+      ],
+      "recommended_action": "Reword both passages to match the guards: only the pinned-host route/response, discovery, dashboard, and configuration facts unskip with ARRTAGS_JELLYFIN_HOST_DIR; the 44 remaining host-guarded skips are the 43 ARRTAGS_SKIA_COMPAT-gated native-render/decode facts (39 facts + 4 theory cases) plus the single ARRTAGS_NONCANONICAL_GOLDENS-gated cross-runtime comparison. Non-blocking for task 14.2's reproducibility acceptance criterion."
+    },
+    {
+      "id": "TQ-14.2-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "determinism",
+      "summary": "The recorded default suite count (Passed 1,494 / Skipped 63) is state-dependent: it holds only when artifacts/ArrTags_*.zip already exists; a clean checkout yields Passed 1,491 / Skipped 66.",
+      "description": "The 3 PackagedPluginFact package-content tests run only when a built archive is present (PackagedPluginFactAttribute skips otherwise). The documented default figure of 1494/63/1557 was produced with a pre-existing artifacts/ArrTags_1.1.0.0.zip; independently re-running the default suite with the archive present reproduces 1494/63/1557, but with the archive removed it is 1491/66/1557 (same Total 1557). The documented 'Clean-checkout release build' procedure runs `test` before `package` (build-and-release.md:149-154), so a literal clean export yields 1491/66/1557, not the recorded 1494/63. docs/limitations.md V6 parenthetically notes that package content requires `./build.sh package` to have run, but docs/release/build-and-release.md:77-79 and V6's matrix sentence record 1,494 / 63 without that precondition. No shipped behavior is hidden (the package-content contract is exercised when the archive exists, and its guard is honest and documented), so this is a documentation/state-isolation nuance rather than a false-verification issue.",
+      "evidence": [
+        "Default suite with artifacts/ArrTags_1.1.0.0.zip present: 'Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557'",
+        "Default suite with artifacts/ moved away: 'Passed! - Failed: 0, Passed: 1491, Skipped: 66, Total: 1557'",
+        "tests/ArrTags.Tests/PackagedPluginFactAttribute.cs:22-28",
+        "docs/release/build-and-release.md:77-79 and 147-154",
+        "docs/limitations.md:310-311"
+      ],
+      "recommended_action": "State in docs/release/build-and-release.md that the default 1,494/63/1,557 figure presumes a previously produced artifacts/ArrTags_1.1.0.0.zip (so the 3 package-content facts run), or record the clean-checkout default of 1,491/66/1,557 alongside it."
+    },
+    {
+      "id": "TQ-14.2-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "The P1 statement that no automated test guards archive byte-identity is accurate, and reproducibility is established only by the manual repeat-package procedure.",
+      "description": "docs/limitations.md P1 (lines 341-344) and docs/release/build-and-release.md:360-363 state that PluginPackagingTests verifies package contents (required entries, no duplicate SkiaSharp runtime) but not the archive bytes, so a regression in scripts/pack-release.cs or the build properties would not fail the suite. Verified: no test file references the 1.1.0.0 archive SHA-256/MD5 or byte-identity (grep of tests/ found only an unrelated 'reproducible' comment), and the packaging tests read the real archive rather than asserting its hash. The docs do not overclaim an automated byte-identity guard; they correctly label reproducibility as a manual re-run-and-compare procedure. This review independently re-ran that procedure (see validation_reproduced).",
+      "evidence": [
+        "docs/limitations.md:330-359",
+        "docs/release/build-and-release.md:357-363",
+        "grep for 85730fe7/byte-identit/reproducib under tests/ returns no archive-hash assertion",
+        "tests/ArrTags.Tests/PluginPackagingTests.cs:78-120"
+      ],
+      "recommended_action": "None; the limitation is accurately disclosed."
+    },
+    {
+      "id": "TQ-14.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "No modified document claims the v1.1.0 push, GitHub release, or asset upload was performed, and the task-14.5-owned files are untouched.",
+      "description": "docs/release/build-and-release.md and docs/limitations.md P6 explicitly state the v1.1.0 publication has not been performed, that task 14.5 commits the manifest and creates the tag, and that the push/release/upload remain the user's manual step; the 'Jellyfin plugin repository' section is future/conditional ('once the user pushes ... publishes'). git status confirms docs/changelog.md and docs/project-status.md are unmodified (task 14.5 owned). README.md's manual-install fallback points at ArrTags_1.1.0.0.zip / v1.1.0, which is forward-looking user documentation for the prepared (as yet unpublished) release; it does not assert the release was performed, and P6 records its own 'no download-from-Releases claim holds' caveat. Noted, no action for 14.2.",
+      "evidence": [
+        "docs/release/build-and-release.md:225-238 and 291-296",
+        "docs/limitations.md:413-430",
+        "README.md:33-40",
+        "git status --short docs/changelog.md docs/project-status.md -> empty"
+      ],
+      "recommended_action": "None for task 14.2; task 14.5 owns publication and the changelog/project-status refresh."
+    }
+  ],
+  "validation_reproduced": [
+    "Reproducibility run 1 (in-place, full wipe of src/ArrTags/bin src/ArrTags/obj tests/ArrTags.Tests/bin tests/ArrTags.Tests/obj artifacts then `. /config/arrtags-env.sh && ./build.sh restore && ./build.sh build && ./build.sh package`): 0 warnings / 0 errors, 'Created deterministic package: artifacts/ArrTags_1.1.0.0.zip (7 entries)'. sha256 = 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1; md5 = 547beb2f7d83cd256d3a3ce7bb7e7620; size = 594931 bytes.",
+    "Reproducibility run 2 (identical second wipe + restore && build && package): sha256 = 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1; md5 = 547beb2f7d83cd256d3a3ce7bb7e7620; size = 594931 bytes. Identical to run 1 and to the recorded value.",
+    "Independent cross-path/.git-less reproduction (git archive HEAD | tar -x into /tmp/final-review/test-quality/release-src, then restore && build && package): sha256 = 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1; md5 = 547beb2f7d83cd256d3a3ce7bb7e7620; size = 594931 bytes. Identical, independently confirming the docs' checkout-path/.git-independence claim for 1.1.0 (docs/release/build-and-release.md:114-128, 354-356).",
+    "unzip -l artifacts/ArrTags_1.1.0.0.zip: exactly 7 entries, all stamped 2000-01-01 00:00; no SkiaSharp.dll / libSkiaSharp.so. build.yaml in the archive is the repository build.yaml (version 1.1.0.0, targetAbi 12.0.0.0, framework net10.0, guid 40322d52-5680-449f-b33e-e01836ee2f46).",
+    "manifest.json: versions[0].version = 1.1.0.0, targetAbi = 12.0.0.0, checksum = 547beb2f7d83cd256d3a3ce7bb7e7620 (== md5sum of the artifact), sourceUrl = https://github.com/benssson/ArrTags/releases/download/v1.1.0/ArrTags_1.1.0.0.zip; versions list = [1.1.0.0, 1.0.1.0] (newest-first, prior entry retained).",
+    "Default suite (artifact present): 'Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557, Duration: 19 s'. Matches docs/release/build-and-release.md:77-79 and docs/limitations.md V6.",
+    "Host-guarded suite (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin): 'Passed! - Failed: 0, Passed: 1513, Skipped: 44, Total: 1557, Duration: 16 s'. Matches docs/release/build-and-release.md:87-89 and V6.",
+    "Forced-native suite (ARRTAGS_SKIA_COMPAT=1 with LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib prepended): 'Passed! - Failed: 0, Passed: 1575, Skipped: 20, Total: 1595, Duration: 17 s'. Matches docs/release/build-and-release.md:90-93 and V6.",
+    "Default suite with artifacts/ removed: 'Passed! - Failed: 0, Passed: 1491, Skipped: 66, Total: 1557' (finding TQ-14.2-02).",
+    "git status --short: only PLANS.md, README.md, docs/limitations.md, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md, manifest.json modified plus untracked docs/implementation/14.2/; HEAD = 8ab27f79d4439362cb54fe6e5e1eaa9832fa8bea. No commit/tag created by this review."
+  ],
+  "matrix_observed": {
+    "default": "passed 1494 / skipped 63 / total 1557",
+    "default_no_archive": "passed 1491 / skipped 66 / total 1557",
+    "host_guarded": "passed 1513 / skipped 44 / total 1557",
+    "forced_native": "passed 1575 / skipped 20 / total 1595"
+  },
+  "substitutes_checked": [
+    "Reproducibility is measured on the real archive produced by scripts/pack-release.cs; no substitute or double is involved in the byte-identity evidence (the archive is read directly by unzip/sha256sum).",
+    "PluginPackagingTests reads the real artifacts/ArrTags_*.zip; the 3 PackagedPluginFact tests are the only way the suite checks the packaged artifact and they skip when no archive exists (correctly counted as skipped, not silently passed).",
+    "The test suite's in-process Jellyfin host doubles (e.g. V4 DispatchProxy doubles in JellyfinImageResponseTests) are unrelated to this task's artifact claim and are not relied on for reproducibility."
+  ],
+  "skips_checked": [
+    "JellyfinHostFact: 19 skips by default, unskipped only with ARRTAGS_JELLYFIN_HOST_DIR (host-guarded run). Genuine xUnit Skip set in the attribute.",
+    "SkiaNativeFact: 39 skips; SkiaNativeTheory: 4 skips; both gated by ARRTAGS_SKIA_COMPAT=1 and are the 43 native facts that remain skipped in the host-guarded run.",
+    "NonCanonicalRuntimeFact: 1 skip, gated by ARRTAGS_NONCANONICAL_GOLDENS=1 (documented limitation V2; no non-canonical runtime selected).",
+    "PackagedPluginFact: 3 tests, skipped only when artifacts/ArrTags_*.zip is absent; passed in the recorded runs (archive present).",
+    "No hard-coded [Fact(Skip=...)], [Ignore], or #if-disabled tests were found in tests/; all skips are the four honest environment guards above."
+  ],
+  "determinism_checked": [
+    "Archive byte-identity: identical SHA-256 across two independent clean in-place builds (each preceded by a full bin/obj/artifacts wipe) and one clean .git-less, different-path git-export build.",
+    "Archive entry determinism: fixed 2000-01-01 timestamp and ordinal entry order reproduced in every build; no SkiaSharp runtime entries.",
+    "Suite counts stable across independent re-runs (default, host-guarded, forced-native) and match the documented values; the only observed count variation is the documented archive-presence dependency of the 3 PackagedPluginFact tests (TQ-14.2-02)."
+  ],
+  "reproducibility_verdict": "ESTABLISHED",
+  "reviewed_head": "8ab27f7",
+  "ready_for_next_task": true,
+  "summary": "Reproducibility is genuinely established: three independent clean `./build.sh package` builds (two in-place with a full bin/obj/artifacts wipe, one .git-less git-export at a different path) all produced byte-identical artifacts with SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, MD5 547beb2f7d83cd256d3a3ce7bb7e7620, and size 594,931 bytes, exactly matching the recorded and manifest values. The documented suite counts are accurate and independently reproduced: default 0/1494/63/1557, host-guarded 0/1513/44/1557, forced-native 0/1575/20/1595. All skips are honest environment guards (no hard-coded ignores). Two non-blocking documentation gaps remain: (1) MEDIUM - the host-guarded skip attribution is wrong (43 of the 44 skips are ARRTAGS_SKIA_COMPAT-gated native facts, not the non-canonical golden set; native-Skia does not unskip with the host dir); (2) LOW - the recorded default 1,494/63 presumes a pre-built archive (a clean checkout yields 1,491/66). Neither affects the reproducibility verdict, the artifact identity, or any shipped behavior. Reviewer status APPROVED."
+}

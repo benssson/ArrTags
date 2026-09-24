@@ -1,0 +1,43 @@
+{
+  "task": "14.2",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction round (attempt 2) applying only the two documentation-accuracy corrections both reviewers flagged on attempt 1; no artifact, manifest, build metadata, README, or testing-doc change. Correction 1 (TQ-14.2-01 / 14.2-R1, skip-taxonomy attribution): docs/release/build-and-release.md and docs/limitations.md V6 no longer claim that ARRTAGS_JELLYFIN_HOST_DIR unskips the native-Skia facts or that the host-guarded run's 44 remaining skips are the non-canonical golden set. They now state that the host directory unskips only the 19 pinned-host route/response, discovery, dashboard, and configuration round-trip facts, and that the 44 remaining skips are 43 ARRTAGS_SKIA_COMPAT-gated native-render/decode facts (39 SkiaNativeFact + 4 SkiaNativeTheory) plus the 1 ARRTAGS_NONCANONICAL_GOLDENS-gated non-canonical cross-runtime comparison; the forced-native run unskips those 43 facts and its 20 remaining skips are the 19 host facts plus the 1 non-canonical comparison (Total grows 1,557 -> 1,595 because the enabled native theories expand). Correction 2 (TQ-14.2-02, default-count precondition): the default 1,494/63/1,557 figure now states it presumes a previously produced artifacts/ArrTags_1.1.0.0.zip (the 3 PackagedPluginFact package-content tests run), and records the clean-checkout test-before-package default of 1,491/66/1,557 (Total unchanged); the same qualifier was added to limitations.md V6. All counts were re-measured on this tree and confirmed. The artifact was re-packaged and remains byte-identical (SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1). The attempt-1 report is preserved at docs/implementation/14.2/worker-report-attempt-1.json. No git commit, tag, push, or GitHub call was performed.",
+  "validation": [
+    "Preserved attempt 1: cp docs/implementation/14.2/worker-report.json docs/implementation/14.2/worker-report-attempt-1.json (both 8,977 bytes).",
+    ". /config/arrtags-env.sh && ./build.sh package -> 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.1.0.0.zip (7 entries)'.",
+    "Default suite with the archive present: . /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557, Duration: 16 s - ArrTags.Tests.dll (net10.0)'. Confirms the 1,494/63/1,557 figure.",
+    "Default suite without the archive: mv artifacts/ArrTags_1.1.0.0.zip /tmp/14.2/ && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1491, Skipped: 66, Total: 1557, Duration: 18 s - ArrTags.Tests.dll (net10.0)'. Confirms the clean-checkout/test-before-package figure 1,491/66/1,557 (3 extra PackagedPluginFact skips).",
+    "Archive restore + reproducibility: ./build.sh package -> 7 entries; sha256sum artifacts/ArrTags_1.1.0.0.zip = 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, identical to the attempt-1 identity (artifact unchanged).",
+    "Host-guarded suite: ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin . /config/arrtags-env.sh && ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin ./build.sh test -> 'Passed! - Failed: 0, Passed: 1513, Skipped: 44, Total: 1557, Duration: 16 s - ArrTags.Tests.dll (net10.0)'. Confirms the 1,513/44/1,557 figure.",
+    "git diff --stat: PLANS.md, README.md, docs/limitations.md, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md, manifest.json changed (6 files, 179 insertions / 95 deletions); the correction round touched only docs/release/build-and-release.md and docs/limitations.md among tracked files. No source, test, build metadata, build.yaml, or Directory.Build.props change; artifacts/ is gitignored.",
+    "Reviewed the corrected passages in both documents for the skip taxonomy (19 host + 43 native (39 SkiaNativeFact + 4 SkiaNativeTheory) + 1 non-canonical; +3 PackagedPluginFact when the archive is absent) and confirmed the counts reconcile arithmetically with Total 1,557 (and 1,595 forced-native)."
+  ],
+  "changed_files": [
+    "docs/release/build-and-release.md",
+    "docs/limitations.md",
+    "manifest.json",
+    "README.md",
+    "docs/testing/jellyfin-12-musl-test-host.md",
+    "PLANS.md",
+    "docs/implementation/14.2/worker-report.json",
+    "docs/implementation/14.2/worker-report-attempt-1.json"
+  ],
+  "known_limitations": [
+    "artifacts/ArrTags_1.1.0.0.zip is gitignored build output and is not part of the committed tree; the committed manifest.json checksum refers to that locally produced artifact.",
+    "The forced-native suite requires the pinned libSkiaSharp.so dependency chain (notably libfontconfig.so.1) on the loader path (LD_LIBRARY_PATH). The bare documented command ARRTAGS_SKIA_COMPAT=1 ./build.sh test fails 80 native-render tests with System.DllNotFoundException in this environment; the run only reaches Failed 0 / Passed 1,575 / Skipped 20 / Total 1,595 with /tmp/arrtags-skia-probe/sysroot/usr/lib on LD_LIBRARY_PATH. This is an environment prerequisite, not a product defect, and is recorded in docs/release/build-and-release.md and docs/limitations.md V6.",
+    "The host-guarded figure (1,513/44/1,557) and the default figure (1,494/63/1,557) both presume artifacts/ArrTags_1.1.0.0.zip has already been produced; without it the default suite is 1,491/66/1,557. This precondition is now stated in both documents.",
+    "docs/project-status.md (lines ~86 and ~694) still presents the 1.0.1.0 artifact identity as current. It is explicitly excluded from this task's scope and owned by task 14.5, so it is left unchanged.",
+    "docs/changelog.md Phase 8 entries and docs/implementation/* records retain the 1.0.1.0 identity as historical records; they are intentionally unchanged (changelog is owned by task 14.5).",
+    "docs/architecture.md (status line) and docs/implementation-readiness.md retain the Phase 8 1.0.1.0/v1.0.1 completion text as Phase 8 history. The orchestrator's extended scope authorized only README.md, docs/testing/jellyfin-12-musl-test-host.md, and docs/limitations.md, so these were left unchanged.",
+    "No automated test guards archive byte-identity (pre-existing limitation P1); reproducibility is verified by re-running ./build.sh package and comparing SHA-256, which reproduced the identical hash (85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1) in this correction round.",
+    "The public GitHub release/tag/asset state for v1.0.1 could not be verified because GitHub calls are out of scope. The refreshed documents describe only the current v1.1.0 release state and do not assert the v1.0.1 push/release outcome.",
+    "The manifest retains the prior 1.0.1.0 entry by design (versions are written newest-first) rather than replacing it; this matches the generator's documented upsert behavior."
+  ],
+  "ready_for_next_task": true
+}
