@@ -1,0 +1,29 @@
+{
+  "session_id": "ses_f3a505859ffdLw3xzHUi1urCAu",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "low",
+  "title": "Phase 7 kickoff",
+  "tokens": {
+    "input": 916929,
+    "output": 75903,
+    "reasoning": 76739,
+    "cache": {
+      "read": 33370240,
+      "write": 0
+    }
+  },
+  "total_tokens": 34439811,
+  "cost_usd": 0.32926602000000005,
+  "duration_seconds": 47052,
+  "first_recorded_at": "2026-09-24T10:24:52Z",
+  "last_updated_at": "2026-09-24T10:24:52Z",
+  "updates": [
+    {
+      "at": "2026-09-24T10:24:52Z",
+      "cost_usd": 0.32926602000000005,
+      "total_tokens": 34439811,
+      "duration_seconds": 47052
+    }
+  ]
+}

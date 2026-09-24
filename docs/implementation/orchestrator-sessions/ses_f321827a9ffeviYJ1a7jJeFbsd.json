@@ -1,0 +1,29 @@
+{
+  "session_id": "ses_f321827a9ffeviYJ1a7jJeFbsd",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "low",
+  "title": "Repository planning scope and first-phase implementation kickoff",
+  "tokens": {
+    "input": 203302,
+    "output": 53460,
+    "reasoning": 19993,
+    "cache": {
+      "read": 11697280,
+      "write": 0
+    }
+  },
+  "total_tokens": 11974035,
+  "cost_usd": 0.10969464000000001,
+  "duration_seconds": 20520,
+  "first_recorded_at": "2026-09-24T10:24:52Z",
+  "last_updated_at": "2026-09-24T10:24:52Z",
+  "updates": [
+    {
+      "at": "2026-09-24T10:24:52Z",
+      "cost_usd": 0.10969464000000001,
+      "total_tokens": 11974035,
+      "duration_seconds": 20520
+    }
+  ]
+}

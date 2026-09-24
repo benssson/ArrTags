@@ -1,0 +1,29 @@
+{
+  "session_id": "ses_f3a512ec2ffekuYUnO9SYpxrn9",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "low",
+  "title": "Subagent execution metadata persistence location",
+  "tokens": {
+    "input": 11314,
+    "output": 600,
+    "reasoning": 28,
+    "cache": {
+      "read": 0,
+      "write": 0
+    }
+  },
+  "total_tokens": 11942,
+  "cost_usd": 0.00210605,
+  "duration_seconds": 3,
+  "first_recorded_at": "2026-09-24T10:24:51Z",
+  "last_updated_at": "2026-09-24T10:24:51Z",
+  "updates": [
+    {
+      "at": "2026-09-24T10:24:51Z",
+      "cost_usd": 0.00210605,
+      "total_tokens": 11942,
+      "duration_seconds": 3
+    }
+  ]
+}

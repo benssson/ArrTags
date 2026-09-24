@@ -1,0 +1,29 @@
+{
+  "session_id": "ses_f2fe8bf7fffeDUwNEQ0RNKpyBT",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "default",
+  "title": "Continuing implementation",
+  "tokens": {
+    "input": 472060,
+    "output": 50754,
+    "reasoning": 44164,
+    "cache": {
+      "read": 21180928,
+      "write": 0
+    }
+  },
+  "total_tokens": 21747906,
+  "cost_usd": 0.19127593399999998,
+  "duration_seconds": 44497,
+  "first_recorded_at": "2026-09-24T10:24:53Z",
+  "last_updated_at": "2026-09-24T10:24:53Z",
+  "updates": [
+    {
+      "at": "2026-09-24T10:24:53Z",
+      "cost_usd": 0.19127593399999998,
+      "total_tokens": 21747906,
+      "duration_seconds": 44497
+    }
+  ]
+}

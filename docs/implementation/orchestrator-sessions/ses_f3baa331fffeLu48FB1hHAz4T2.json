@@ -1,0 +1,29 @@
+{
+  "session_id": "ses_f3baa331fffeLu48FB1hHAz4T2",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "low",
+  "title": "Phase 6 Start",
+  "tokens": {
+    "input": 168763,
+    "output": 56630,
+    "reasoning": 40862,
+    "cache": {
+      "read": 18081024,
+      "write": 0
+    }
+  },
+  "total_tokens": 18347279,
+  "cost_usd": 0.13808347199999998,
+  "duration_seconds": 20761,
+  "first_recorded_at": "2026-09-24T10:24:51Z",
+  "last_updated_at": "2026-09-24T10:24:51Z",
+  "updates": [
+    {
+      "at": "2026-09-24T10:24:51Z",
+      "cost_usd": 0.13808347199999998,
+      "total_tokens": 18347279,
+      "duration_seconds": 20761
+    }
+  ]
+}
