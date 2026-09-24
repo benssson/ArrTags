@@ -3543,11 +3543,11 @@ non-canonical cross-runtime golden set.
 
 ## Phase 13 - README and documentation pass (v1.1)
 
-**Status:** In progress; task 13.1 is complete and task 13.2 (the canonical
-current-state reconciliation sweep of `docs/project-status.md`,
-`docs/changelog.md`, and `docs/implementation-readiness.md`) is pending. The
-phase review and the `v1.1.0-phase13` tag are owned by the orchestrator and are
-not claimed here.
+**Status:** In progress; tasks 13.1 (README palette documentation and v1.1
+feature documentation) and 13.2 (canonical current-state reconciliation sweep)
+are complete at the documentation level, so Gate 13 is not yet met and the
+`v1.1.0-phase13` tag is not yet created. The phase review and the tag are owned
+by the orchestrator and are not claimed here.
 
 ### Task 13.1 - README palette documentation and v1.1 feature documentation
 
@@ -3580,3 +3580,49 @@ This is a documentation-only change with no production or test code change and n
 suite rerun; the task's stated manual review searched the README and the
 repository for the stale claims and confirmed the documented behavior matches the
 shipped behavior.
+
+### Task 13.2 - Canonical current-state reconciliation sweep
+
+**Status:** Complete.
+
+Reconciles `docs/project-status.md`, `docs/changelog.md`, and
+`docs/implementation-readiness.md` with the v1.1 state so no stale claim is
+presented as current. `docs/project-status.md` now names Phase 13 (README and
+documentation pass) as the current milestone with tasks 13.1 and 13.2 complete at
+the documentation level, Gate 13 not yet met, and the `v1.1.0-phase13` tag and
+phase review owned by the orchestrator; it records Phase 12 as complete with the
+annotated tag `v1.1.0-phase12` and the live pinned-host confirmations for Phases
+9-12 owned by task 14.3; the Next-tasks framing leads with the completed Phase 13
+and its pending gate; the provider inventory/catalogue cache is removed from the
+open follow-ups; and the Known-limitations summary is reconciled with
+`docs/limitations.md` (limitation F1 resolved; `GOALS.md` criterion 6 met for
+render/publication and for the provider library read within a reconciliation
+window). `docs/implementation-readiness.md` appends the Phase 13 status segment.
+`PLANS.md` gains the Phase 12/13 framing in its Project Status paragraph, Active
+Planning Scope paragraph, and Milestone Status row 13; the Milestone Status row 7
+and the Project Status Phase 7 references annotate limitation F1 as resolved in
+v1.1, and the Phase 6 residual-item sentence notes that the provider inventory
+cache and runtime configuration replacement were later completed. V1 history and
+the Phase 1-12 changelog entries are unchanged; the `1.0.1.0` release-matrix
+test-count block in `docs/project-status.md` stays labelled as not current v1.1
+truth, and its current-v1.1 counts (default Failed 0, Passed 1,494, Skipped 63,
+Total 1,557; forced-native Failed 0, Passed 1,575, Skipped 20, Total 1,595) match
+`docs/limitations.md` V6.
+
+The stale-claim search across the three named documents for "no logging", "no
+web configuration UI", F1/F2-open, and old V1 phase-status claims found no
+remaining current-state claim: the surviving occurrences are historical V1 and
+Phases 7-10 records (for example the Phase 7 `F1` reference, now annotated as
+resolved by task 11.4) or the explicitly labelled `1.0.1.0` release-matrix
+counts, which stay historical.
+
+Documentation: `docs/project-status.md`, `docs/changelog.md`,
+`docs/implementation-readiness.md`, `docs/architecture.md`, and the PLANS.md
+current-state surfaces (the Project Status paragraph, the Active Planning Scope
+paragraph, Milestone Status rows 7 and 13, and the task 13.2 status/checkbox). In
+the correction round, the `docs/architecture.md` status line's Phase 7
+criterion-6 sentence was annotated as resolved in v1.1 by task 11.4 (preserving
+the historical V1 wording) and the Phase 13 task framing was appended to that
+status line, and the `docs/project-status.md` Next-tasks claim was narrowed to
+the documents actually reconciled. This is a documentation-only change with no
+production or test code change and no suite rerun.

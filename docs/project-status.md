@@ -2,7 +2,12 @@
 
 ## Project Status
 
-**Current milestone:** Phase 12 — Badge value allowlist and badge size/position
+**Current milestone:** Phase 13 — README and documentation pass (v1.1) is in
+progress: tasks 13.1 (README palette documentation and v1.1 feature
+documentation) and 13.2 (canonical current-state reconciliation sweep) are
+complete at the documentation level, so Gate 13 is not yet met and the
+`v1.1.0-phase13` tag is not yet created (the phase review and tag are owned by
+the orchestrator). Phase 12 — Badge value allowlist and badge size/position
 (v1.1) is complete: tasks 12.1 (allowlist configuration, bounds, validation, and
 fingerprint), 12.2 (allowlist resolution and renderer filtering order), 12.3
 (badge size/position configuration and layout engine), and 12.4 (coordinated
@@ -170,7 +175,8 @@ persisted `ActiveImageIdentity`, the original source posters are byte-unchanged,
 changed metadata republishes and unchanged metadata does not, and a provider
 outage leaves the host up with the current artwork unchanged. `GOALS.md`
 criteria 5 and 8 are therefore met as shipped, with criterion 6 met for render
-and publication but only partial for provider fetches (`docs/limitations.md` F1).
+and publication but only partial for provider fetches (`docs/limitations.md` F1,
+resolved by v1.1 task 11.4; see the Known limitations summary below).
 Enhanced compatibility is
 covered at the contract-test level (`EnhancedCoexistenceTests` 7/7; Jellyfin
 Enhanced is not installed live).
@@ -705,11 +711,15 @@ Next tasks:
 
 - Phase 13 — README and documentation pass (v1.1) tasks 13.1 (README palette
   documentation and v1.1 feature documentation) and 13.2 (canonical current-state
-  documentation reconciliation) are next: document the four palette override
-  fields with their meaning, default colors, and the 4.5:1 contrast rule;
-  document the v1.1 features (settings UI, allowlist, placement/size, verbosity)
-  in the README; and reconcile the canonical current-state docs so no stale claim
-  remains.
+  reconciliation sweep) are complete at the documentation level, so Gate 13 is
+  not yet met and the `v1.1.0-phase13` tag is not yet created (the phase review
+  and tag are owned by the orchestrator): the four palette override fields are
+  documented with their meaning, default colors, and the 4.5:1 contrast rule, the
+  v1.1 features (settings UI, allowlist, placement/size, verbosity, and inventory
+  cache) are documented in the README, and the canonical current-state
+  documents reconciled by this task (PLANS.md, `docs/project-status.md`,
+  `docs/changelog.md`, `docs/implementation-readiness.md`, and
+  `docs/architecture.md`) carry no stale claim.
 - Phase 12 — Badge value allowlist and badge size/position (v1.1) is complete:
   tasks 12.1 (allowlist configuration, bounds, validation, and fingerprint), 12.2
   (allowlist resolution and renderer filtering order), 12.3 (badge size/position
@@ -855,10 +865,12 @@ Next tasks:
 - Phase 7 — Testing & release is complete (tasks 7.1-7.8); all five Phase 7
   acceptance criteria are met. No Phase 7 implementation task remains; Gate 7 is
   not declared here and is covered by the separate phase review.
-- Open follow-ups are consolidated in `docs/limitations.md`: the provider
-  inventory/catalogue cache, the metrics/diagnostic-status surface, the
-  `QueueCapacity`-bounded reconciliation prefix, and the verification-coverage and
-  packaging/release limitations. The ADR-010 non-canonical cross-runtime
+- Open follow-ups are consolidated in `docs/limitations.md`: the
+  metrics/diagnostic-status surface, the `QueueCapacity`-bounded reconciliation
+  prefix, and the verification-coverage and packaging/release limitations. (The
+  provider inventory/catalogue cache was an open follow-up and is now
+  implemented, with limitation F1 resolved by task 11.4.) The ADR-010
+  non-canonical cross-runtime
   comparison remains unselected/unrun: select
   and record the second explicitly supported non-canonical Linux runtime, produce
   its golden set under `tests/ArrTags.Tests/Goldens/non-canonical/`, and run the
@@ -869,11 +881,13 @@ Next tasks:
 The consolidated current-state record of known limitations and deferred
 decisions is `docs/limitations.md`. In summary: `GOALS.md` success criteria 1-4,
 8, and 9 are met as shipped; criterion 5 is met as shipped but requires the host
-to supply a compatible SkiaSharp; criterion 6 is met for render and publication
-but only partial for provider fetches; and criterion 7 is met only at the
-contract level. The main open items are the missing provider
-inventory/catalogue cache, the absent bounded metrics/diagnostic-status surface,
-the `QueueCapacity`-bounded
+to supply a compatible SkiaSharp; criterion 6 is met for render/publication and
+for the provider library read within a reconciliation window (limitation F1 is
+resolved by task 11.4, with the residual Sonarr O(series) episode-read and
+sparse-invalidation-window bounds recorded in `docs/limitations.md`); and
+criterion 7 is met only at the
+contract level. The main open items are the absent bounded
+metrics/diagnostic-status surface, the `QueueCapacity`-bounded
 reconciliation prefix, and the limited live-verification coverage (no real
 Sonarr/Radarr instance, no live Jellyfin Enhanced install, manual-only live
 image read-back, and the unexercised live uninstall drain). The prepared

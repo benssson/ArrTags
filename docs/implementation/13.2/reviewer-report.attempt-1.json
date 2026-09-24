@@ -1,0 +1,71 @@
+{
+  "task": "13.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R-01",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "canonical current-state surfaces / scope",
+      "summary": "docs/architecture.md (outside task 13.2's declared three-file affected set) keeps the unannotated Phase 7 sentence 'with criterion 6 met for render and publication but only partial for provider fetches (docs/limitations.md F1)'.",
+      "detail": "This sentence is embedded in the Phase 7 portion of the architecture.md status line and describes the task 7.8 outcome; the same status line's Phase 11 clause later states task 11.4 'records limitation F1 as resolved', so the document as a whole reflects the resolved v1.1 state. It is therefore a historical point-in-time record rather than a stale claim presented as current, and architecture.md is not named in the task's acceptance criteria or affected-files list. The documentation-maintainer (docs/implementation/13.2/documentation-review.json DM-13.2-01, MEDIUM/open) reads it as a stale current-state line and notes the scope tension itself. For cross-surface parity it would be worth annotating at Phase 13 closure or Phase 14, but this does not block task 13.2.",
+      "evidence": [
+        "docs/architecture.md:3 (Phase 7 sentence + later Phase 11 'task 11.4 ... records limitation F1 as resolved')",
+        "PLANS.md:4922-4924 and PLANS.md:4934-4941 (acceptance criteria / affected files enumerate only project-status.md, changelog.md, implementation-readiness.md)",
+        "docs/implementation/13.2/documentation-review.json finding DM-13.2-01"
+      ],
+      "recommended_action": "Optional follow-up (Phase 13 closure or Phase 14): annotate the architecture.md criterion-6 sentence consistently with the other surfaces while preserving the historical V1 wording."
+    },
+    {
+      "id": "R-02",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation wording / claim breadth",
+      "summary": "docs/project-status.md's new Next-tasks sentence 'the canonical current-state docs carry no stale claim' is broader than the three documents the sweep actually reconciled.",
+      "detail": "Read in context it summarises the Phase 13 documentation deliverable (the three named documents), and since architecture.md does record F1 resolved in its Phase 11 clause the statement is not materially false. Recorded only for transparency alongside R-01 and documentation-maintainer DM-13.2-02; no change required for task 13.2.",
+      "evidence": [
+        "docs/project-status.md:718-720",
+        "docs/implementation/13.2/documentation-review.json finding DM-13.2-02"
+      ],
+      "recommended_action": "None required."
+    },
+    {
+      "id": "R-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation / test-count evidence",
+      "summary": "The documented forced-native count is not reproducible under the project's default env script; it was independently reproduced with the pinned fontconfig sysroot on the loader path.",
+      "detail": "The worker restated (did not re-measure) the v1.1 counts from docs/limitations.md V6 and disclosed this. The default suite reproduced exactly. A first ARRTAGS_SKIA_COMPAT=1 run without the pinned sysroot failed 80 native Skia tests purely from a missing libfontconfig.so.1 (DllNotFoundException), with Total 1595 / Skipped 20 matching; re-running with the pinned sysroot on the loader path produced Failed 0, Passed 1575, Skipped 20, Total 1595. Both documented counts are therefore accurate; the initial mismatch was an environment limitation, not a documentation defect.",
+      "evidence": [
+        "Default run: Passed! Failed 0, Passed 1494, Skipped 63, Total 1557",
+        "Forced-native run (pinned sysroot): Passed! Failed 0, Passed 1575, Skipped 20, Total 1595",
+        "First forced-native run without sysroot: libfontconfig.so.1 not found (environmental)"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "tests_checked": [
+    "Default suite on the reviewed working tree (./build.sh restore/build/test): Failed 0, Passed 1,494, Skipped 63, Total 1,557 - matches docs/limitations.md V6 and the reconciled statements.",
+    "Forced-native suite (ARRTAGS_SKIA_COMPAT=1 with the pinned fontconfig sysroot on the loader path): Failed 0, Passed 1,575, Skipped 20, Total 1,595 - matches V6 and the reconciled statements.",
+    "An initial forced-native attempt without the sysroot failed 80 native Skia tests only from a missing libfontconfig.so.1 (environmental)."
+  ],
+  "research_checked": [
+    "docs/limitations.md V6 (test-count labelling) and criterion-6 row (F1 resolution/residual bounds).",
+    "docs/implementation/phase-12/phase-review.json presence and APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH.",
+    "git tag state: annotated v1.1.0-phase9/10/11/12 exist; v1.1.0-phase13 absent; v1.0.1 at 8cba85b; v0.1.0 at a634d61.",
+    "Task 12.4 commit (2db0b47): last-task-of-phase convention (task checkboxes complete while phase acceptance criteria unchecked and Gate 12 a future condition)."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status paragraph, Active Planning Scope paragraph, Milestone Status rows 7 and 13, Phase 6 residual annotation, task 13.2 status/checkbox, Phase 13 acceptance criteria (all unchecked), Gate 13 (future condition).",
+    "docs/project-status.md: Current milestone, Phase 7 F1 annotation, Next tasks, open follow-ups, Known limitations summary, 1.0.1.0 vs current-v1.1 test-count block.",
+    "docs/changelog.md: Phase 13 status line, Task 13.2 entry, Phase 1-12 entries unchanged.",
+    "docs/implementation-readiness.md: Status paragraph Phase 13 segment and F1/criterion-6 annotations.",
+    "docs/limitations.md, docs/architecture.md status line, README.md, docs/release path (stale-claim spot checks).",
+    "docs/implementation/13.2/worker-report.json and docs/implementation/13.2/documentation-review.json."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

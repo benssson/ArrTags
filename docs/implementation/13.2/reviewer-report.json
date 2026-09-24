@@ -1,0 +1,84 @@
+{
+  "task": "13.2",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R-01",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "canonical current-state surfaces / stale F1 claim",
+      "summary": "RESOLVED in attempt 2: docs/architecture.md's status line now annotates the Phase 7 criterion-6 sentence as F1 resolved in v1.1 by task 11.4 (with residual bounds) and appends the Phase 13 framing.",
+      "detail": "The architecture.md status line previously read '...with criterion 6 met for render and publication but only partial for provider fetches (docs/limitations.md F1)' without noting the v1.1 resolution, while project-status.md, implementation-readiness.md, and PLANS.md rows 7/Project Status all annotated it. Attempt 2 changed it to '...(`docs/limitations.md` F1, resolved in v1.1 by task 11.4; the residual Sonarr O(series) per-window episode reads and sparse-invalidation-window bounds remain)' and appended 'Phase 13 (v1.1) README and documentation is in progress: tasks 13.1 ... and 13.2 ... are complete at the documentation level, so Gate 13 is not yet met and the annotated tag `v1.1.0-phase13` is not yet created (the phase review and tag are owned by the orchestrator).' The historical V1 wording is preserved. The residual bounds match docs/limitations.md criterion 6/F1. No canonical status line now presents F1 as open.",
+      "evidence": [
+        "docs/architecture.md:3 (annotation + Phase 13 framing)",
+        "docs/limitations.md:36 (criterion 6 residual bounds: Sonarr O(series) episode reads / sparse invalidation window)",
+        "git diff docs/architecture.md (single status-line replacement; +1/-1)"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "R-02",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation wording / claim breadth",
+      "summary": "RESOLVED in attempt 2: docs/project-status.md's Next-tasks claim is no longer a blanket 'the canonical current-state docs carry no stale claim'.",
+      "detail": "The claim now names the documents actually reconciled by this task ('the canonical current-state documents reconciled by this task (PLANS.md, `docs/project-status.md`, `docs/changelog.md`, `docs/implementation-readiness.md`, and `docs/architecture.md`) carry no stale claim'), so it no longer overstates the sweep's coverage.",
+      "evidence": [
+        "docs/project-status.md:718-723",
+        "docs/implementation/13.2/documentation-review.json findings DM-13.2-02 / DM-13.2-03"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "R-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation / test-count evidence",
+      "summary": "The documented v1.1 suite counts remain accurate; the forced-native count required the pinned fontconfig sysroot on the loader path (not provided by the default env script).",
+      "detail": "Independently reproduced in attempt 1: default suite Failed 0, Passed 1,494, Skipped 63, Total 1,557; forced-native (ARRTAGS_SKIA_COMPAT=1 with the pinned sysroot) Failed 0, Passed 1,575, Skipped 20, Total 1,595. Both match docs/limitations.md V6 and the statements in project-status.md. Attempt 2 changed no code or tests, so the counts remain valid and were not re-measured (the attempt-2 worker report discloses this).",
+      "evidence": [
+        "Default run: Failed 0, Passed 1494, Skipped 63, Total 1557",
+        "Forced-native run (pinned sysroot): Failed 0, Passed 1575, Skipped 20, Total 1595",
+        "docs/limitations.md:307-319 (V6)"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "tests_checked": [
+    "Attempt 1 independent default suite run (build of HEAD 3c86609 + docs-only tree): Failed 0, Passed 1,494, Skipped 63, Total 1,557 - matches docs/limitations.md V6.",
+    "Attempt 1 independent forced-native suite run (pinned fontconfig sysroot): Failed 0, Passed 1,575, Skipped 20, Total 1,595 - matches V6.",
+    "Attempt 2 changed no production/test code, so the counts remain current; not re-run."
+  ],
+  "research_checked": [
+    "docs/limitations.md V6 (test-count labelling) and criterion-6/F1 residual bounds.",
+    "git tag state: annotated v1.1.0-phase9/10/11/12 exist; v1.1.0-phase13 absent; v1.0.1 at 8cba85b; v0.1.0 at a634d61.",
+    "Task 12.4 commit (2db0b47) last-task-of-phase convention (task checkboxes complete, phase acceptance criteria unchecked, Gate a future condition).",
+    "docs/implementation/13.2/documentation-review.json findings DM-13.2-01/-02/-03 and their resolution."
+  ],
+  "documentation_checked": [
+    "PLANS.md: Project Status paragraph (F1 annotated), Active Planning Scope paragraph (Phase 12/13), Milestone Status rows 7 (F1 annotated) and 13 (Phase 13 in progress, Gate 13 not met, no tag), Phase 6 residual annotation, task 13.2 status/checkbox, Phase 13 acceptance criteria (all unchecked), Gate 13 future condition.",
+    "docs/architecture.md: status line Phase 7 F1 annotation + Phase 13 framing (attempt-2 correction).",
+    "docs/project-status.md: Current milestone, Phase 7 F1 annotation, narrowed Next-tasks claim, open follow-ups, Known limitations summary, 1.0.1.0 vs current-v1.1 test-count block.",
+    "docs/changelog.md: Phase 13 status line, Task 13.2 entry (now records the architecture.md correlation and correction round), Phase 1-12 entries unchanged.",
+    "docs/implementation-readiness.md: Phase 6 deferral sentence completion note, Phase 7 F1 annotations, Phase 13 segment listing docs/architecture.md.",
+    "docs/limitations.md and README.md stale-claim spot checks.",
+    "docs/implementation/13.2/worker-report.json (attempt 2) and worker-report-attempt-1.json (preserved)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "decision": "CHANGES_REQUIRED",
+      "source": "documentation-maintainer findings DM-13.2-01 (MEDIUM/open), DM-13.2-02 (LOW), DM-13.2-03 (LOW); the orchestrator recorded attempt 1 as CHANGES_REQUIRED. Audit note: the persisted attempt-1 independent reviewer report (docs/implementation/13.2/reviewer-report.attempt-1.json) carried reviewer_status APPROVED with the same docs/architecture.md sentence recorded as informational finding R-01 and the project-status claim as R-02; the correction round implemented exactly the changes those findings recommended.",
+      "issues": [
+        "docs/architecture.md status line still presented limitation F1 as open ('only partial for provider fetches') without the v1.1 resolution, inconsistent with docs/limitations.md and the other canonical surfaces.",
+        "docs/project-status.md asserted a blanket 'the canonical current-state docs carry no stale claim' broader than the three documents the sweep had reconciled.",
+        "docs/implementation-readiness.md Phase 6 deferral sentence did not note that the provider inventory/catalogue cache and runtime configuration replacement were later completed in v1.1."
+      ],
+      "resolution": "Attempt 2 corrected all three: architecture.md now annotates the Phase 7 criterion-6 sentence as F1 resolved in v1.1 by task 11.4 (with residual bounds) and appends the Phase 13 framing; project-status.md narrows the claim to the documents actually reconciled; implementation-readiness.md notes the later Phase 11/Phase 9 completion while keeping the reconciliation coverage bound and metrics/status surface open. Cross-surface notes were added to docs/changelog.md and PLANS.md. Re-review: no canonical status line presents F1 as open; historical V1/Phase 7-10 wording is preserved; Gate 13 is not claimed, no v1.1.0-phase13 tag exists, and Phase 13 acceptance criteria remain unchecked."
+    }
+  ],
+  "ready_for_next_task": true
+}

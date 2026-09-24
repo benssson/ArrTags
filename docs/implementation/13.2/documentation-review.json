@@ -1,0 +1,147 @@
+{
+  "task": "13.2",
+  "attempt": 2,
+  "title": "Canonical current-state reconciliation sweep",
+  "reviewer": "documentation-maintainer",
+  "scope": "Re-review of the v1.1 task 13.2 correction round in /workspace/ArrTags (branch v1.1, HEAD 3c86609, uncommitted working tree). Independently verified that the three attempt-1 findings were applied: docs/architecture.md's status line now annotates the Phase 7 criterion-6/F1 sentence as resolved in v1.1 by task 11.4 (residual bounds noted, historical V1 wording preserved) and appends the Phase 13 in-progress framing; docs/project-status.md's Next-tasks claim is narrowed to the documents actually reconciled; docs/implementation-readiness.md's Phase 6 deferral sentence records the later v1.1 completion of the inventory cache and runtime configuration replacement. Also re-ran the cross-surface F1/F2-open and Phase 13 closure/Gate 13/tag checks. No files were edited by this review.",
+  "reviewer_status": "CONSISTENT",
+  "surfaces_checked": [
+    "docs/architecture.md (status line: Phase 7 criterion-6/F1 sentence, Phase 9-13 clauses)",
+    "docs/project-status.md (Project Status current-milestone paragraph, Next tasks claim scope, Known limitations summary, suite-count block)",
+    "docs/implementation-readiness.md (Status paragraph Phase 6/7/9-13 clauses and F1/criterion-6 annotations)",
+    "docs/changelog.md (Phase 13 status line, Task 13.2 entry including the correction-round note, Phase 1-12 entries)",
+    "PLANS.md (Project Status, Active Planning Scope, Milestone Status rows 7 and 13, task 13.2 status/checkbox, Phase 13 acceptance criteria, Gate 13 paragraph)",
+    "docs/limitations.md (criterion 6 row, F1/F2 resolved records, V6 counts)",
+    "git state (diff, status, tags) and docs/implementation/13.2/worker-report.json (attempt 2)"
+  ],
+  "verified_reconciliations": [
+    {
+      "claim": "docs/architecture.md's current-state status line no longer presents limitation F1 as open: the Phase 7 criterion-6 sentence now reads '... only partial for provider fetches (`docs/limitations.md` F1, resolved in v1.1 by task 11.4; the residual Sonarr O(series) per-window episode reads and sparse-invalidation-window bounds remain).'",
+      "evidence": [
+        "git diff docs/architecture.md (+1/-1); docs/architecture.md line 3",
+        "docs/limitations.md:36 (criterion 6 'Met for render/publication and for the provider library read within a window ... Remaining bounds ... item F1')",
+        "docs/project-status.md:178, docs/implementation-readiness.md:5, PLANS.md:19 and 276 (the same sentence annotated resolved by task 11.4 on the other surfaces)"
+      ],
+      "result": "VERIFIED - historical V1 wording preserved, resolved annotation added, and residual bounds match docs/limitations.md; this closes attempt-1 finding DM-13.2-01."
+    },
+    {
+      "claim": "docs/architecture.md's status line now appends the Phase 13 framing consistent with the other surfaces: tasks 13.1/13.2 complete at the documentation level, Gate 13 not yet met, the annotated tag v1.1.0-phase13 not yet created, phase review/tag orchestrator-owned.",
+      "evidence": [
+        "docs/architecture.md line 3 final Phase 13 clause",
+        "git tag -l '*phase13*' -> empty",
+        "docs/project-status.md:5-10, PLANS.md:238-239, docs/changelog.md:3548-3550, docs/implementation-readiness.md:5"
+      ],
+      "result": "VERIFIED - the architecture status line's Phase 13 statement matches every other canonical surface and does not claim closure."
+    },
+    {
+      "claim": "docs/project-status.md no longer overstates the sweep's coverage; the Next-tasks claim is narrowed to 'the canonical current-state documents reconciled by this task (PLANS.md, docs/project-status.md, docs/changelog.md, docs/implementation-readiness.md, and docs/architecture.md) carry no stale claim.'",
+      "evidence": [
+        "docs/project-status.md:719-723",
+        "Cross-surface F1 re-scan: no canonical current-state status line presents F1 as open (docs/architecture.md:3, docs/project-status.md:178, docs/implementation-readiness.md:5, PLANS.md:19/276 all annotated resolved; remaining 'only partial' occurrences are historical Phase 7 records or explicitly closed backlog items)"
+      ],
+      "result": "VERIFIED - the narrowed claim is true because docs/architecture.md was corrected; this closes attempt-1 finding DM-13.2-02."
+    },
+    {
+      "claim": "docs/implementation-readiness.md's Phase 6 deferral sentence is accurate: '... the provider inventory/catalogue cache and the runtime configuration replacement were later completed in v1.1 (Phases 11 and 9 respectively), while the reconciliation coverage bound and the metrics/status surface remain open.'",
+      "evidence": [
+        "docs/implementation-readiness.md:5",
+        "docs/limitations.md:106-163 (F1 resolved, Phase 11) and 165-222 (F2 resolved, Phase 9)",
+        "docs/limitations.md:58-83 (F3 metrics/status surface and F4 QueueCapacity bound remain open)"
+      ],
+      "result": "VERIFIED - accurate; this closes attempt-1 finding DM-13.2-03."
+    },
+    {
+      "claim": "Cross-surface consistency: no canonical current-state status line still presents F1 or F2 as open; remaining F1/F2-open mentions are historical.",
+      "evidence": [
+        "grep 'only partial|partial for' across docs/project-status.md, docs/architecture.md, docs/implementation-readiness.md, PLANS.md, docs/changelog.md: current-state occurrences are annotated resolved (project-status 178; architecture 3; readiness 5; PLANS 19 and 276); remaining occurrences are Phase 7 historical task statuses/records (PLANS 2587, 2729, 2805, 2953, 5347; changelog 2060, 2268, 2421) or the explicitly closed Phase 7 backlog item (PLANS 5273)",
+        "architecture status line F2 phrase -> 'limitation F2 is recorded as resolved'",
+        "docs/limitations.md:99-222 (F1/F2 in the Resolved limitations section)"
+      ],
+      "result": "VERIFIED - no current-state F1/F2-open claim survives; historical records are preserved as history."
+    },
+    {
+      "claim": "No Phase 13 closure, Gate 13, or v1.1.0-phase13-tag overclaim was introduced by the correction round.",
+      "evidence": [
+        "git tag -l '*phase13*' -> empty",
+        "PLANS.md:4934-4943 (all three Phase 13 acceptance-criteria checkboxes unchecked), 4945-4946 (Gate 13 remains 'Met when ... the tag v1.1.0-phase13 is created'), 282 (row 13 In progress)",
+        "docs/changelog.md:3547-3550 (Phase 13 'In progress ... Gate 13 is not yet met'), docs/project-status.md:5-10"
+      ],
+      "result": "VERIFIED - all closure/gate/tag claims correctly withheld."
+    },
+    {
+      "claim": "The correction round remains documentation-only; no application code, tests, build scripts, or release artifact were modified; and the working tree now also includes the intended docs/architecture.md edit.",
+      "evidence": [
+        "git status --porcelain -> PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md modified; docs/implementation/13.2/ untracked",
+        "git diff --numstat -> PLANS.md 38/6, docs/architecture.md 1/1, docs/changelog.md 51/5, docs/implementation-readiness.md 1/1, docs/project-status.md 30/16 (documentation only)"
+      ],
+      "result": "VERIFIED - compliant with the documentation-only constraint."
+    }
+  ],
+  "resolved_findings": [
+    {
+      "id": "DM-13.2-01",
+      "severity": "MEDIUM",
+      "previous_status": "open",
+      "status": "resolved",
+      "resolution": "docs/architecture.md line 3 now annotates the Phase 7 task 7.8 criterion-6/F1 sentence as resolved in v1.1 by task 11.4, records the residual Sonarr O(series) per-window episode reads and sparse-invalidation-window bounds, preserves the historical V1 wording, and appends the Phase 13 in-progress framing. No canonical current-state status line presents F1 as open.",
+      "evidence": [
+        "docs/architecture.md line 3",
+        "git diff docs/architecture.md (+1/-1)",
+        "docs/limitations.md:36, 106-163"
+      ]
+    },
+    {
+      "id": "DM-13.2-02",
+      "severity": "LOW",
+      "previous_status": "open",
+      "status": "resolved",
+      "resolution": "docs/project-status.md's blanket 'the canonical current-state docs carry no stale claim' was narrowed to the documents actually reconciled by the task (PLANS.md, docs/project-status.md, docs/changelog.md, docs/implementation-readiness.md, and docs/architecture.md). Because DM-13.2-01 was also fixed, no reconciled surface carries a stale F1 claim, so the narrowed statement holds.",
+      "evidence": [
+        "docs/project-status.md:719-723"
+      ]
+    },
+    {
+      "id": "DM-13.2-03",
+      "severity": "LOW",
+      "previous_status": "noted",
+      "status": "resolved",
+      "resolution": "docs/implementation-readiness.md's Phase 6 deferral sentence now states that the provider inventory/catalogue cache and the runtime configuration replacement were later completed in v1.1 (Phases 11 and 9 respectively) while the reconciliation coverage bound and the metrics/status surface remain open.",
+      "evidence": [
+        "docs/implementation-readiness.md:5",
+        "docs/limitations.md:58-83, 106-222"
+      ]
+    }
+  ],
+  "findings": [],
+  "observations": [
+    {
+      "id": "DM-13.2-OBS-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "summary": "The changelog Task 13.2 entry's stale-claim-search sentence still says 'the three named documents' even though the correction round extended the sweep to docs/architecture.md. The sentence is accurate for the three named documents and the correction-round note in the same entry records the architecture.md fix, so this is a minor completeness nit rather than a documentation-accuracy defect.",
+      "recommended_action": "Optional only; no correction required for task acceptance."
+    },
+    {
+      "id": "DM-13.2-OBS-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "summary": "PLANS.md task 13.2's 'Affected files/components' list still names only docs/project-status.md, docs/changelog.md, and docs/implementation-readiness.md, while the correction round also reconciled docs/architecture.md and the PLANS.md current-state surfaces. The task 13.2 status paragraph documents the architecture.md correction.",
+      "recommended_action": "Procedural only; the orchestrator may leave the stable task definition as-is."
+    }
+  ],
+  "ambiguous_or_deferred": [
+    {
+      "claim": "docs/implementation/phase-12/phase-review.json records '\"gate_12_status\": \"NOT_MET\"' while the canonical current-state surfaces state 'Gate 12 is met'.",
+      "recommended_action": "No documentation change required. This is the established pre-tag review pattern (the Phase 11 review records the same), the v1.1.0-phase12 annotated tag now exists (c1c8593), and the review is APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH. The phase review text must not be rewritten."
+    },
+    {
+      "claim": "The live pinned-host confirmations for Phases 9-12 (and the Phase 13 documentation review/tag) remain owned by the orchestrator or task 14.3.",
+      "recommended_action": "Correctly stated as owned/pending in every reconciled surface; do not claim live confirmation before it is performed."
+    },
+    {
+      "claim": "The v1.1 suite counts (1,494/1,557 and 1,575/1,595) are restated from docs/limitations.md V6, not re-measured by this documentation-only task.",
+      "recommended_action": "Acceptable; the counts were measured after task 12.4 and tasks 13.1/13.2 changed no code or tests. Task 14.x owns refreshing the matrix."
+    }
+  ],
+  "summary": "The attempt-2 correction round resolves all three attempt-1 findings and the re-review is CONSISTENT. docs/architecture.md's status line now presents limitation F1 as resolved in v1.1 by task 11.4 (residual Sonarr O(series) per-window episode-read and sparse-invalidation-window bounds noted) while preserving the historical V1 wording and appending the Phase 13 in-progress framing; docs/project-status.md's Next-tasks claim is narrowed to the documents actually reconciled; docs/implementation-readiness.md's Phase 6 deferral sentence now records the later v1.1 completion of the inventory cache (Phase 11) and runtime configuration replacement (Phase 9) with the still-open reconciliation coverage bound and metrics/status surface. Cross-surface re-scan confirms no canonical current-state status line presents F1 or F2 as open; all remaining 'only partial'/F1 mentions are historical Phase 7 records or the explicitly closed Phase 7 backlog item. No Phase 13 closure, Gate 13, or v1.1.0-phase13-tag overclaim exists (tag absent, acceptance checkboxes unchecked, Gate 13 a future condition). The change remains documentation-only (PLANS.md, docs/architecture.md, docs/changelog.md, docs/implementation-readiness.md, docs/project-status.md). Two informational observations about sweep-scope wording in the changelog and PLANS task definition remain non-blocking. No files were edited by this review."
+}
