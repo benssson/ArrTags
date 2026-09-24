@@ -10,12 +10,13 @@ namespace ArrTags.Configuration;
 /// <summary>
 /// Computes the secret-free, deterministic renderer configuration fingerprint.
 /// It covers every output-affecting renderer-configuration value: the ordered
-/// selector enablement, bounded templates, and non-empty resolved allowlists, and
-/// the effective technical and status palette. It deliberately excludes
-/// credentials, the webhook secret, timestamps, correlation identifiers, and
-/// every code-owned output value that <see cref="RenderFingerprint"/> already
-/// covers. Credentials and the webhook secret are absent by construction, so
-/// rotating a secret cannot change the fingerprint.
+/// selector enablement, bounded templates, and non-empty resolved allowlists, the
+/// effective technical and status palette, and a non-default global badge
+/// position and size (ADR-019). It deliberately excludes credentials, the
+/// webhook secret, timestamps, correlation identifiers, and every code-owned
+/// output value that <see cref="RenderFingerprint"/> already covers. Credentials
+/// and the webhook secret are absent by construction, so rotating a secret
+/// cannot change the fingerprint.
 /// </summary>
 public static class RendererConfigurationFingerprint
 {
@@ -50,7 +51,29 @@ public static class RendererConfigurationFingerprint
         Append(builder, "paletteStatusBackground", outputPolicy.StatusBackground);
         Append(builder, "paletteStatusText", outputPolicy.StatusText);
 
+        AppendBadgePlacement(builder, outputPolicy);
+
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+    }
+
+    /// <summary>
+    /// Appends a non-default global badge position and size (ADR-019 clause 6).
+    /// The V1 default (<see cref="BadgePosition.BottomLeft"/> and
+    /// <see cref="BadgeSize.Medium"/>) is identity-neutral, so the default
+    /// configuration fingerprint is unchanged and the committed goldens are
+    /// unaffected; any other position or size changes the fingerprint.
+    /// </summary>
+    private static void AppendBadgePlacement(StringBuilder builder, RenderOutputPolicy outputPolicy)
+    {
+        if (outputPolicy.Position != BadgePosition.BottomLeft)
+        {
+            Append(builder, "badgePosition", outputPolicy.Position.ToString());
+        }
+
+        if (outputPolicy.Size != BadgeSize.Medium)
+        {
+            Append(builder, "badgeSize", outputPolicy.Size.ToString());
+        }
     }
 
     private static void Append(StringBuilder builder, string name, string value)

@@ -468,7 +468,7 @@ the current item's metadata.
 | `textTemplate` | Bounded display template | Optional | Configuration | Formatting rule after values are normalized; no provider DTO paths. |
 | `allowedValues` | Bounded string list | Optional | Configuration | Per-selector value allowlist (ADR-017); empty means no restriction. At most 32 entries, each at most 64 characters; entries are trimmed, blank entries and control characters are rejected, and case-insensitive duplicates are rejected. Matching is a case-insensitive ordinal exact match against the resolved pre-template value; no substring, wildcard, prefix, or regular-expression matching. |
 | `style` | Badge style value | Yes | Configuration | Opaque palette, text, font, and contrast policy; V1 geometry is defined by ADR-009. |
-| `placement` | Placement value | Yes | Configuration | V1 poster anchor, bounded rail packing, margins, and scale. |
+| `placement` | Placement value | Yes | Configuration | V1 poster anchor, bounded rail packing, margins, and scale. The global position and size (ADR-019) are configurable; packing and the safe area remain bounded and code-owned. |
 | `visibilityPolicy` | Image/item/client surface policy | Yes | Configuration | V1 is poster-oriented and not user-specific. |
 | `customValueRules` | Optional bounded rules | Optional | Configuration | Maps approved custom metadata to a visual value. |
 
@@ -490,8 +490,12 @@ arbitrary markup:
 - Text is a single bold or semibold sans-serif line at a 28 pixel reference
   size. Geometry uses the 1000 pixel reference values and
   `clamp(width / 1000, 0.5, 4.0)` scale in ADR-009.
-- Technical pills use a bottom-left rail with at most two rows and three pills
-  per row. Upgrade status is an independent top-right pill.
+- Technical pills use a configurable global anchor (ADR-019: four corners plus
+  center, default bottom-left) with at most two rows and three pills per row;
+  rows stack away from the anchored edge and align to the anchored side. Upgrade
+  status is an independent pill that is top-right except when the anchor is
+  top-right, then top-left. The global preset size (Small/Medium/Large, default
+  Medium) multiplies the reference geometry.
 - The final label is limited to 24 Unicode scalar values after whitespace and
   control-character normalization; end truncation uses `...`.
 - A configured color must pass the 4.5:1 text/background contrast check. Badge
@@ -569,6 +573,31 @@ case and entry order so that case-only or order-only allowlist changes are
 identity-neutral; an empty allowlist means no restriction and is identity-neutral
 (so the default configuration fingerprint is unchanged). Task 12.1 does not yet
 apply the filter to rendering; the renderer filtering order is task 12.2.
+
+**v1.1 task 12.3 implementation note:** `RendererConfiguration` gains the global
+`Position` (`BadgePosition`: `BottomLeft` default, `TopLeft`, `TopRight`,
+`BottomRight`, `Center`) and `Size` (`BadgeSize`: `Medium` default, `Small`,
+`Large`) settings (ADR-019 clauses 1-5 and 7). `RendererConfiguration.Validate`
+rejects an undefined enum value with a bounded, secret-free message, and
+`RendererConfigurationResolver.ResolveOutputPolicy` carries both onto the
+resolved `RenderOutputPolicy` (falling back to the code-owned default for a
+tolerantly read undefined value). `BadgeGeometry.ComputeEffectiveScale` computes
+`clamp(width / 1000, 0.5, 4.0) * sizeFactor` (`Small` 0.75, `Medium` 1.0,
+`Large` 1.5), clamped so the scaled outer inset leaves a positive safe area; the
+layout engine then shortens or omits rather than overflowing. `BadgeLayoutEngine`
+positions the rail per anchor (rows stack away from the anchored edge and align
+to the anchored side; `Center` centers both axes) and places the status pill
+top-right except when the anchor is `TopRight`, then top-left. The 24-pixel
+scaled inset and all ADR-009 safe-area, text-limit, contrast, opacity, and
+determinism guarantees are unchanged. A non-default position or size is included
+in both `RendererConfigurationFingerprint` and
+`RenderFingerprint.ComputeOutputFingerprint`; the V1 default is identity-neutral,
+so the default configuration and output fingerprints are unchanged and the
+committed goldens are unaffected. Placement and size are global only; there is
+no per-selector placement. `RendererConfiguration.CurrentSchemaVersion` is still
+1 and `RenderVersion.CurrentRendererVersion` is still 2, and no golden under
+`tests/ArrTags.Tests/Goldens/` was regenerated (the coordinated advance and
+golden regeneration are task 12.4).
 
 **Phase 5 implementation note:** The task 5.8
 `ArtworkGenerationCoordinator` composes the 3.7-3.8 request/result with the
@@ -814,7 +843,7 @@ badge selection, rendering, cache policy, and update behavior.
 | `connections` | ArrConnection set | Yes | Configuration | Sonarr and Radarr can be independently enabled. |
 | `libraryScope` | Set of Jellyfin collection-folder/library identifiers and eligible item types | Yes | Configuration | Entries are collection-folder/library identifiers, not display names; limits matching and rendering eligibility. V1 badge surfaces are Movie and Episode posters; Series/Season are structural only (ADR-006). An empty set means no library restriction. |
 | `badgeDefinitions` | Ordered BadgeDefinition set | Yes | Configuration | Defines what metadata is displayed and how. |
-| `renderingPolicy` | Render size, format, placement, and limits | Yes | Configuration | Output-affecting values belong in the configuration fingerprint. |
+| `renderingPolicy` | Render size, format, placement, and limits | Yes | Configuration | Output-affecting values belong in the configuration fingerprint. The global badge `Position` (four corners plus center, default bottom-left) and `Size` (Small/Medium/Large, default medium) are user-adjustable (ADR-019); format, reference geometry, text limits, and the renderer version remain code-owned. |
 | `cachePolicy` | TTL, stale window, size, and eviction limits | Yes | Configuration | Separate metadata freshness from artwork retention. |
 | `updatePolicy` | Schedule, webhook, retry, and queue policy | Yes | Configuration | Webhooks accelerate reconciliation; they do not replace it. |
 | `enhancedCoexistencePolicy` | Existing poster and selector enable flags | Yes | Configuration | Realized by the existing `BadgeMoviePosters`/`BadgeEpisodePosters` flags and renderer selector enablement; ADR-011 adds no automatic duplicate/overlap suppression and no Enhanced-internals dependency. |
@@ -896,6 +925,23 @@ resolved allowlist is included in the renderer configuration fingerprint
 default configuration fingerprint is unchanged. The value is provider-neutral and
 never references a provider DTO path, record identifier, quality profile,
 credential, or extension value.
+
+**Badge position and size (v1.1 task 12.3).** `RendererConfiguration` gains the
+global `Position` and `Size` enums (ADR-019). They are persisted in the XML
+configuration as `<Renderer><Position>…</Position><Size>…</Size>` and exposed on
+the settings page as two selects (anchor and preset size). `Position` is
+`BottomLeft` (default), `TopLeft`, `TopRight`, `BottomRight`, or `Center`; `Size`
+is `Medium` (default), `Small`, or `Large`. `RendererConfiguration.Validate`
+rejects an undefined enum value with a bounded, secret-free message, and the
+resolver carries the value onto the resolved `RenderOutputPolicy` (defaulting a
+tolerantly read undefined value). The value is output-affecting: a non-default
+position or size is included in both the renderer configuration fingerprint and
+the render fingerprint, while the V1 default is identity-neutral so an unchanged
+configuration keeps the V1 identity. Placement and size are global renderer
+policy only; they are not per selector. `RendererConfiguration.CurrentSchemaVersion`
+is still 1 and `RenderVersion.CurrentRendererVersion` is still 2, and the
+committed goldens were not regenerated (the coordinated advance and golden
+regeneration are task 12.4).
 
 **Runtime activation (task 9.3).** The persisted `PluginConfiguration` is the
 candidate supplied to `Plugin.UpdateConfiguration`. The override validates the

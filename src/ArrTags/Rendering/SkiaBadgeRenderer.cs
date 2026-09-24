@@ -198,7 +198,7 @@ public sealed class SkiaBadgeRenderer : IRenderer
             canvas.Clear(SKColors.Transparent);
             canvas.DrawBitmap(working, 0, 0);
 
-            using var font = new SKFont(typeface, (float)(BadgeGeometry.FontSize * BadgeGeometry.ComputeScale(orientedWidth, policy)));
+            using var font = new SKFont(typeface, (float)(BadgeGeometry.FontSize * BadgeGeometry.ComputeEffectiveScale(orientedWidth, orientedHeight, policy)));
             using var pillPaint = new SKPaint
             {
                 IsAntialias = true,

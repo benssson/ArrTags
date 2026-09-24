@@ -1,0 +1,120 @@
+{
+  "task": "12.3",
+  "attempt": 1,
+  "reviewer_role": "implementation-reviewer",
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "required_changes": [
+    "Update the docs/architecture.md Status line (line 3, Phase 12 sentence) so it reflects that task 12.3 is complete and only task 12.4 remains, instead of the current stale 'tasks 12.3 ... and 12.4 ... remain' statement."
+  ],
+  "findings": [
+    {
+      "id": "12.3-DOC-1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "documentation/canonical-current-state",
+      "summary": "docs/architecture.md Status line still says task 12.3 remains, contradicting the completed implementation.",
+      "detail": "The task changed the Phase 12 completion state (12.3 complete). The canonical current-state surface docs/architecture.md line 3 still ends its Phase 12 sentence with 'tasks 12.3 (badge size/position configuration and layout engine) and 12.4 (coordinated schema/`RenderVersion` advance, golden regeneration, and documentation) remain, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created.' Task 12.2 had updated this same status line to enumerate 12.1 and 12.2 as complete, so leaving 12.3 listed as remaining is a stale current-state claim, not a historical record. docs/implementation-readiness.md, docs/project-status.md, PLANS.md, and docs/changelog.md were correctly updated to 12.3 complete.",
+      "evidence": [
+        "docs/architecture.md line 3 (unchanged by the diff) contains 'tasks 12.3 ... and 12.4 ... remain'",
+        "git diff docs/architecture.md touches only section 9 body; the Status line is unchanged",
+        "docs/implementation-readiness.md line 5 and docs/project-status.md lines 7-8 read '12.3 ... complete'"
+      ],
+      "recommended_action": "Rewrite the Phase 12 clause of the docs/architecture.md Status line to state that tasks 12.1, 12.2, and 12.3 are complete and only task 12.4 remains."
+    },
+    {
+      "id": "12.3-VER-1",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "verification/end-to-end",
+      "summary": "The rendered-pixel effect of a non-default anchor/size is not independently executed; only pure layout geometry and fingerprints are.",
+      "detail": "Native SkiaSharp is unavailable in this environment, so RenderGoldenTests/RenderDeterminismTests and the Skia renderer tests are skipped (ARRTAGS_SKIA_COMPAT unset). The per-anchor and per-size behavior is asserted through BadgeLayoutEngine with a delegate measure (BadgeSizePositionTests), and the renderer consumes the same layout placements and effective scale. The end-to-end decoded-pixel comparison for non-default anchors/sizes is deferred to task 12.4 golden regeneration, which is the task that owns golden regeneration per PLANS.md. This is acknowledged in the worker report and is not a defect for 12.3.",
+      "evidence": [
+        "tests/ArrTags.Tests/SkiaNativeTheoryAttribute.cs skips without ARRTAGS_SKIA_COMPAT=1",
+        "./build.sh test: Skipped 63, matching the pre-task baseline",
+        "SkiaBadgeRenderer.cs line 201 and 214 use ComputeEffectiveScale and the same policy passed to BadgeLayoutEngine.Build"
+      ],
+      "recommended_action": "No change for 12.3; task 12.4 owns the regenerated per-anchor/size goldens."
+    },
+    {
+      "id": "12.3-TEST-1",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "testing/coverage",
+      "summary": "The ComputeEffectiveScale safe-area clamp branch and the resolver tolerant-undefined fallback are not directly unit-tested.",
+      "detail": "No test dimension triggers the `scale > maximumInsetScale` branch (the tested dimensions keep the clamp from binding), and no test resolves an undefined BadgePosition/BadgeSize through RendererConfigurationResolver to assert the fallback. Both are correct by inspection: the clamp only binds when min(width,height) < 24*scale, in which case the safe area is already empty and the renderer pass-through result is unchanged; the fallback uses Enum.IsDefined and the code-owned default. These are coverage gaps, not correctness defects, and the acceptance criteria are met by other tests.",
+      "evidence": [
+        "BadgeGeometry.cs lines 157-168",
+        "BadgeSizePositionTests.cs dimensions (240,600),(320,480),(500,750),(1000,150),(1000,1500),(2000,3000) never bind the clamp",
+        "RendererConfigurationResolver.cs ResolvePosition/ResolveSize use Enum.IsDefined with the default fallback; only the undefined-rejection path is tested (RendererConfigurationTests ValidatorRejectsUndefinedBadgePositionAndSize)"
+      ],
+      "recommended_action": "Optional: add a tiny-dimension clamp case and an undefined-value resolver-fallback case."
+    },
+    {
+      "id": "12.3-DEFAULT-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/default-output-preservation",
+      "summary": "Default (BottomLeft, Medium) layout math and scale are mathematically identical to the pre-task implementation.",
+      "detail": "By construction: SizeFactor(Medium)=1.0 so ComputeEffectiveScale == ComputeScale for the committed golden dimensions (500x750 and 750x500, min dimension 500; the inset clamp binds only when min dimension < 24*scale), the layout engine's ComputeAvailableRows(safeHeight,...) equals the old TopOfRow>=inset test, BottomRowTop(row) equals the old TopOfRow(row), the bottom-left x packing accumulates the same inset + widths + gaps, and the status pill x is outputWidth - inset - width. The goldens directory is unmodified (git status clean) and no schema/RenderVersion advance occurred (1 and 2).",
+      "evidence": [
+        "BadgeGeometry.cs ComputeEffectiveScale",
+        "BadgeLayoutEngine.cs vs git show HEAD:src/ArrTags/Rendering/BadgeLayoutEngine.cs",
+        "tests/ArrTags.Tests/Goldens/manifest.json dimensions 500x750/750x500",
+        "git status --short tests/ArrTags.Tests/Goldens/ -> empty"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "acceptance_criteria_assessment": [
+    {
+      "criterion": "A configured size and anchor (four corners plus center) affect the rendered badge.",
+      "assessment": "SATISFIED at the layout/fingerprint level. BadgeSizePositionTests proves each anchor changes the rail x/y and each preset changes the scale/pill height; RenderFingerprintTests and RendererConfigurationTests prove non-default position/size change both fingerprints. The end-to-end decoded-pixel effect could not be executed because native Skia is unavailable; that comparison is owned by task 12.4 golden regeneration (see 12.3-VER-1)."
+    },
+    {
+      "criterion": "Rail packing, status-pill placement, and safe-area bounds are defined per anchor; no badge paints outside the safe area.",
+      "assessment": "SATISFIED. Tests cover top anchors stacking downward, bottom anchors stacking upward, left/right alignment, Center centering both axes, the top-right status pill moving top-left only for the TopRight anchor, status/rail non-overlap for every anchor, and an all-anchor/all-size safe-area InRange assertion on narrow and short posters, plus the Large-size omit-not-overflow case."
+    }
+  ],
+  "validation": {
+    "method": "Independent inspection of the full working-tree diff, the pre-task git blobs, the tests, the documentation surfaces, and independent execution of the build and the full and focused test suites.",
+    "results": [
+      "`. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+      "`. /config/arrtags-env.sh && ./build.sh test` -> Passed! Failed 0, Passed 1486, Skipped 63, Total 1549 (matches the required expected counts).",
+      "Focused filter (BadgeSizePositionTests, BadgeLayoutTests, RendererBehaviorLayoutTests, RenderFingerprintTests, RendererConfigurationTests, DashboardSettingsPageTests) -> Failed 0, Passed 138, Skipped 2, Total 140. The 2 skips are the pre-existing pinned-host DashboardSettingsPageTests (ARRTAGS_JELLYFIN_HOST_DIR unset).",
+      "Scope: `RendererConfiguration.CurrentSchemaVersion` == 1 and `RenderVersion.CurrentRendererVersion` == 2; `git status --short tests/ArrTags.Tests/Goldens/` empty; the diff touches only task-scoped files; no changes to BadgeSelectorResolver/BadgeDefinitionResolver (12.2 allowlist order/semantics intact).",
+      "Default-output preservation verified by construction against `git show HEAD:` blobs (no divergence found)."
+    ],
+    "not_verified": [
+      "Native SkiaSharp pixel/byte golden comparison and cross-runtime determinism (RenderGoldenTests, RenderDeterminismTests, Skia renderer tests) could not be executed: the pinned native runtime is not present and ARRTAGS_SKIA_COMPAT is unset, so those cases are honestly skipped. The per-anchor/size end-to-end rendered-pixel comparison is therefore deferred to task 12.4 golden regeneration.",
+      "The settings-page JSON round-trip of the two enum selects was checked against the established LogVerbosity precedent (JsonDefaults.Options accepts string enum names, proven by LogVerbosityTests.PostRoundTripPopulatesLogVerbosity) and the source-string page test; no live-host save was executed."
+    ]
+  },
+  "tests_checked": [
+    "tests/ArrTags.Tests/BadgeSizePositionTests.cs (new, 36 cases) — per-anchor geometry, size factors, row stacking/alignment, status-pill rules, safe-area invariant, omit-not-overflow",
+    "tests/ArrTags.Tests/RenderFingerprintTests.cs — BadgePositionAndSizeChangeTheOutputFingerprint (sensitivity + identity-neutral default)",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs — fingerprint sensitivity, undefined-value validation, resolved policy mapping, XML round-trip",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs — settings-page position/size exposure",
+    "tests/ArrTags.Tests/SkiaNativeTheoryAttribute.cs — skip guard for native tests",
+    "Full suite and focused filter executed independently"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-019 clauses 1-7 (position, status pill, size, rail packing, safe area, fingerprint/identity, no per-selector placement)",
+    "docs/decisions.md ADR-009 (superseded geometry/placement clauses) and ADR-010 (superseded code-owned placement/geometry clauses)",
+    "docs/architecture.md section 9 and docs/data-model.md 3.6/3.12 renderer contract",
+    "PLANS.md task 12.3 objective/work/tests/acceptance criteria and dependency 9.4",
+    "JsonDefaults.Options string-enum handling via LogVerbosityTests precedent"
+  ],
+  "documentation_checked": [
+    "PLANS.md — Project Status paragraph, Milestone 12 row, task 12.3 status/checkbox (all updated and accurate)",
+    "docs/changelog.md — task 12.3 entry (accurate; test counts 1486/1549 match)",
+    "docs/project-status.md — phase status and suite counts (accurate)",
+    "docs/architecture.md — section 9 body updated and accurate, but the Status line is stale (finding 12.3-DOC-1)",
+    "docs/implementation-readiness.md — status line updated to 12.3 complete (accurate)",
+    "docs/limitations.md — current suite count updated to 1,486/1,549 (accurate)",
+    "README.md — no Phase 12 status to reconcile (not in this task's scope)"
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false,
+  "summary": "Implementation is correct, well-scoped, and independently validated: the build is clean, the full suite is Failed 0 / Passed 1486 / Skipped 63 / Total 1549 exactly as required, the focused filter is 138/2/140, schema (1) and RenderVersion (2) are unchanged, the goldens are untouched, and the default (BottomLeft, Medium) path is mathematically identical to the pre-task implementation by construction. Per-anchor packing, status-pill placement, and the safe-area invariant are covered by non-vacuous tests. The only required change is a stale current-state line: docs/architecture.md line 3 still lists task 12.3 as remaining. No functional, security, or scope defect was found."
+}

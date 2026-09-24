@@ -1,0 +1,237 @@
+{
+  "task": "v1.1 Phase 12 task 12.3 - Badge size/position configuration and layout engine",
+  "reviewer_role": "test-quality-reviewer",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "reviewed_revision": "working tree at v1.1 (uncommitted task 12.3 changes; functional implementation review attempt 3 APPROVED)",
+  "scope": "ADR-019 clauses 1-5 and 7: global BadgePosition (TopLeft/TopRight/BottomLeft/BottomRight/Center; default BottomLeft) and BadgeSize (Small/Medium/Large; default Medium); effectiveScale = clamp(width/1000, 0.5, 4.0) * sizeFactor (0.75/1.0/1.5) with safe-area clamp; per-anchor rail packing and status-pill placement; position/size on RenderOutputPolicy and in both fingerprints; settings-page exposure.",
+  "findings": [
+    {
+      "id": "TQ-12.3-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "meaningfulness/coverage",
+      "description": "The top-anchor status-pill reservation is not exercised, and the test named for it cannot fail if the reservation is removed. BadgeLayoutEngine reserves the status pill plus one gap from the first rail row only for top anchors (rowAvailableWidth[0] = safeWidth - statusPill.Width - pillGap, BadgeLayoutEngine.cs:80-87). BadgeSizePositionTests.TopAnchorsReserveTheTopRowForTheStatusPill uses CustomValues(6) with a 2-char pill (~44 px) and a ~94 px status pill on a 1000 px poster, so the top-left rail can never reach the opposite-side status pill and the reservation boundary is never reached. Removing the reservation entirely leaves the full default suite green (Failed 0, Passed 1490, Skipped 63, Total 1553). A throwaway wide-pill probe (3 x ~300 px pills, TopLeft, ~208 px status pill on 1000x1500) passes pristine and fails with the reservation removed: 'status 768..976 overlaps pill at 640..940'. The reservation is therefore a real, undocumented-in-tests behaviour.",
+      "evidence": [
+        "Mutation M7 (rowAvailableWidth[0] = safeWidth) -> full suite Failed 0, Passed 1490, Skipped 63, Total 1553 (no committed test failed)",
+        "Throwaway /tmp probe WideTopLeftRailDoesNotOverlapTheTopRightStatusPill: pristine Failed 0/Passed 1; reservation removed Failed 1/Passed 0 with 'status 768..976 overlaps pill at 640..940'",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:196-208 (TopAnchorsReserveTheTopRowForTheStatusPill)",
+        "src/ArrTags/Rendering/BadgeLayoutEngine.cs:80-87 (reservation)"
+      ],
+      "recommended_action": "Add a top-anchor case with pills wide enough that the first rail row would collide with the status pill absent the reservation (combined first-row width > safeWidth - statusPill.Width - pillGap but <= safeWidth) and assert non-overlap. Also narrow the theory to top anchors or rename it, since the bottom/center InlineData cases have an empty top band and are vacuous."
+    },
+    {
+      "id": "TQ-12.3-02",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "meaningfulness/default-output-preservation",
+      "description": "The ADR-019 clause 6 identity-neutral default fingerprint claim has no unguarded absolute pin. The committed tests only compare the code-owned default against an explicit (BottomLeft, Medium) policy through the same code path, so they pass when the default fingerprint itself changes. Making AppendBadgePlacement append unconditionally in both RenderFingerprint.ComputeOutputFingerprint and RendererConfigurationFingerprint.Compute (so the default output and configuration fingerprints change) leaves the full default suite green (Failed 0, Passed 1490, Skipped 63, Total 1553). The only absolute check is RenderGoldenTests.GoldenMatchesDecodedPixelsBytesDimensionsAndFingerprint, which compares the committed Goldens/manifest.json OutputFingerprint, and that test is native-Skia-skipped in the shipping configuration. The manifest OutputFingerprint comparison itself requires no native Skia, so an unguarded pin is feasible today.",
+      "evidence": [
+        "Mutation M4b (append badgePosition/badgeSize unconditionally in both fingerprints) -> full suite Failed 0, Passed 1490, Skipped 63, Total 1553 (no committed test failed)",
+        "Mutation M4a (remove badge placement from both fingerprints) -> Failed 2 (RenderFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint, RendererConfigurationTests.RendererFingerprintIsSensitiveToBadgePositionAndSize), so inclusion sensitivity is genuinely pinned",
+        "tests/ArrTags.Tests/RenderFingerprintTests.cs:169-186 and the new RendererConfigurationTests fact only assert default == explicit-default through the same code path",
+        "tests/ArrTags.Tests/RenderGoldenTests.cs:30-75 (guarded by [SkiaNativeTheory], skipped without ARRTAGS_SKIA_COMPAT=1) and :43 (compares golden.Entry.OutputFingerprint)",
+        "tests/ArrTags.Tests/Goldens/manifest.json (committed pre-task OutputFingerprint values)"
+      ],
+      "recommended_action": "Optionally add a pure (no-Skia) test that computes the default ComputeOutputFingerprint for the committed golden fixtures and compares it to Goldens/manifest.json OutputFingerprint. Otherwise accept this as the residual risk that only task 12.4's coordinated RenderVersion/schema advance and golden regeneration closes; state it explicitly in the 12.3/12.4 handoff."
+    },
+    {
+      "id": "TQ-12.3-03",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage",
+      "description": "The Center-anchor status-band row reduction branch is not exercised. BadgeLayoutEngine's Center branch drops vertically centered rows that would start inside the top status band (BadgeLayoutEngine.cs:88-96). On every committed Center test dimension the centered block top is already below statusReserve, so the loop never runs; disabling the branch leaves the full suite green (Failed 0, Passed 1490). The equivalent bottom-anchor branch is covered: disabling it (M10) fails the pre-existing BadgeLayoutTests.StatusAndTechnicalRailDoNotOverlapOnAShortPoster, which also protects the default bottom-left path.",
+      "evidence": [
+        "Mutation M9 (Center reduction condition made never-true) -> full suite Failed 0, Passed 1490, Skipped 63, Total 1553",
+        "Mutation M10 (bottom-anchor reduction condition made never-true) -> Failed 1 (BadgeLayoutTests.StatusAndTechnicalRailDoNotOverlapOnAShortPoster)",
+        "src/ArrTags/Rendering/BadgeLayoutEngine.cs:88-106",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:216-238 (dimensions never include a short Center poster such as 1000x150)"
+      ],
+      "recommended_action": "Add a Center-anchor short-poster case (for example 1000x150) asserting the rail is omitted or does not overlap the status pill."
+    },
+    {
+      "id": "TQ-12.3-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage/substitutes",
+      "description": "Settings-page exposure is verified as a static source-string assertion, not an executed page. DashboardSettingsPageTests.PageExposesAndRoundTripsTheGlobalBadgePlacement asserts literal substrings of the embedded config.html (ids, config.Renderer.Position/Size references, option values). It is non-vacuous for what it checks (removing id=\"rendererPosition\" fails it, M13), but the actual select population/write round-trip runs only in the host-guarded PinnedDashboardController facts, which are skipped without ARRTAGS_JELLYFIN_HOST_DIR. This matches the established config.html test pattern; the live round-trip is owned by task 14.3.",
+      "evidence": [
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs new fact",
+        "Mutation M13 (remove id=\"rendererPosition\") -> Failed 1",
+        "Skip list: DashboardSettingsPageTests.PinnedDashboardControllerServesTheArrTagsSettingsPage and ...PageResourceIsAnonymousAndTheListIsElevationGated"
+      ],
+      "recommended_action": "None; recorded."
+    },
+    {
+      "id": "TQ-12.3-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation",
+      "description": "The task prompt names additions in RendererBehaviorLayoutTests.cs, but the working tree adds no cases there. The 45 new cases are BadgeSizePositionTests 39, RenderFingerprintTests 1, RendererConfigurationTests 4, and DashboardSettingsPageTests 1 (independently counted: 39 + 1 + 4 + 1 = 45, matching the +45 passed suite growth). The pre-existing RendererBehaviorLayoutTests still pins the default bottom-left geometry and is included in the focused filter. Not a repository defect.",
+      "evidence": [
+        "git diff --stat tests/ArrTags.Tests (RendererBehaviorLayoutTests.cs unmodified)",
+        "dotnet test --filter FullyQualifiedName~BadgeSizePositionTests -> Passed 39, Skipped 0, Total 39",
+        "Full suite +45 passed over the documented pre-task baseline 1445/63/1508"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "mutation_or_non_vacuity_evidence": {
+    "method": "All mutations were applied to a throwaway copy of the working tree under /tmp/final-review/test-quality/mut (built and run independently; the real working tree was never modified). Each mutation was applied with sed, the solution rebuilt, the full default suite run, and the source restored from backup before the next mutation.",
+    "mutations": [
+      {
+        "id": "M1",
+        "change": "BadgeGeometry.SizeFactor returns MediumSizeFactor for Small and Large (size factor neutralized)",
+        "result": "Failed 3, Passed 1487, Skipped 63, Total 1553",
+        "failed": ["BadgeSizePositionTests.SizeFactorIsCodeOwned", "BadgeSizePositionTests.EachPresetSizeScalesTheGeometryByItsCodeOwnedFactor(Small)", "BadgeSizePositionTests.EachPresetSizeScalesTheGeometryByItsCodeOwnedFactor(Large)"],
+        "conclusion": "Size factor is genuinely pinned."
+      },
+      {
+        "id": "M2",
+        "change": "Status pill always placed top-right (TopRight -> top-left rule removed)",
+        "result": "Failed 3, Passed 1487",
+        "failed": ["BadgeSizePositionTests.TopRightAnchorMovesTheStatusPillToTheTopLeft", "BadgeSizePositionTests.StatusPillNeverOverlapsTheRailForEveryAnchor(TopRight)", "BadgeSizePositionTests.TopAnchorsReserveTheTopRowForTheStatusPill(TopRight)"],
+        "conclusion": "Status-pill TopRight rule is genuinely pinned."
+      },
+      {
+        "id": "M3",
+        "change": "Rail always left-aligned (right alignment and horizontal centering removed)",
+        "result": "Failed 7, Passed 1483",
+        "failed": ["RightAnchorsAlignRowsToTheRightEdge", "CenterAnchorCentersRowsHorizontallyAndTheBlockVertically", "EachAnchorPlacesTheRailAtTheExpectedCornerOrCenter(TopRight/BottomRight/Center)", "StatusPillNeverOverlapsTheRailForEveryAnchor(TopRight)", "TopAnchorsReserveTheTopRowForTheStatusPill(TopRight)"],
+        "conclusion": "Per-anchor horizontal alignment is genuinely pinned."
+      },
+      {
+        "id": "M4a",
+        "change": "Badge placement removed from both fingerprints (condition never true)",
+        "result": "Failed 2, Passed 1488",
+        "failed": ["RenderFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint", "RendererConfigurationTests.RendererFingerprintIsSensitiveToBadgePositionAndSize"],
+        "conclusion": "Fingerprint inclusion in both fingerprints is genuinely pinned."
+      },
+      {
+        "id": "M4b",
+        "change": "Badge placement appended unconditionally in both fingerprints (default identity-neutrality broken)",
+        "result": "Failed 0, Passed 1490, Skipped 63, Total 1553",
+        "failed": [],
+        "conclusion": "GAP: the identity-neutral default fingerprint claim is not absolutely pinned by any unguarded test (finding TQ-12.3-02)."
+      },
+      {
+        "id": "M5",
+        "change": "ComputeEffectiveScale safe-area clamp removed (condition never true)",
+        "result": "Failed 3, Passed 1487",
+        "failed": ["BadgeSizePositionTests.SafeAreaClampReducesTheEffectiveScaleOnAShortPoster(Medium/Large/Small)"],
+        "conclusion": "Safe-area clamp branch is genuinely pinned."
+      },
+      {
+        "id": "M6",
+        "change": "Top anchors stack from the bottom instead of downward from the top",
+        "result": "Failed 3, Passed 1487",
+        "failed": ["TopAnchorsStackRowsDownwardFromTheTopEdge", "EachAnchorPlacesTheRailAtTheExpectedCornerOrCenter(TopLeft/TopRight)"],
+        "conclusion": "Per-anchor vertical stacking direction is genuinely pinned."
+      },
+      {
+        "id": "M7",
+        "change": "Top-anchor status-pill reservation removed (rowAvailableWidth[0] = safeWidth)",
+        "result": "Failed 0, Passed 1490, Skipped 63, Total 1553; throwaway wide-pill probe then Failed 1 with 'status 768..976 overlaps pill at 640..940'",
+        "failed": [],
+        "conclusion": "GAP: the reservation is real but not exercised by any committed test (finding TQ-12.3-01)."
+      },
+      {
+        "id": "M8",
+        "change": "Center anchor no longer centers the block vertically",
+        "result": "Failed 2, Passed 1488",
+        "failed": ["CenterAnchorCentersRowsHorizontallyAndTheBlockVertically", "EachAnchorPlacesTheRailAtTheExpectedCornerOrCenter(Center)"],
+        "conclusion": "Center vertical centering is genuinely pinned."
+      },
+      {
+        "id": "M9",
+        "change": "Center status-band row reduction disabled (condition never true)",
+        "result": "Failed 0, Passed 1490, Skipped 63, Total 1553",
+        "failed": [],
+        "conclusion": "GAP: the Center status-band branch is not exercised (finding TQ-12.3-03)."
+      },
+      {
+        "id": "M10",
+        "change": "Bottom-anchor status-band row reduction disabled (condition never true)",
+        "result": "Failed 1, Passed 1489",
+        "failed": ["BadgeLayoutTests.StatusAndTechnicalRailDoNotOverlapOnAShortPoster"],
+        "conclusion": "The default bottom-anchor collision guard is genuinely pinned by a pre-existing test."
+      },
+      {
+        "id": "M11",
+        "change": "RendererConfiguration.Validate no longer rejects undefined position/size",
+        "result": "Failed 1, Passed 1489",
+        "failed": ["RendererConfigurationTests.ValidatorRejectsUndefinedBadgePositionAndSize"],
+        "conclusion": "Undefined-value validation is genuinely pinned."
+      },
+      {
+        "id": "M12",
+        "change": "RendererConfigurationResolver propagates an undefined position/size instead of falling back",
+        "result": "Failed 1, Passed 1489",
+        "failed": ["RendererConfigurationTests.ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize"],
+        "conclusion": "Resolver tolerant fallback is genuinely pinned."
+      },
+      {
+        "id": "M13",
+        "change": "config.html no longer contains id=\"rendererPosition\"",
+        "result": "Failed 1, Passed 1489",
+        "failed": ["DashboardSettingsPageTests.PageExposesAndRoundTripsTheGlobalBadgePlacement"],
+        "conclusion": "Settings-page exposure assertion is non-vacuous for its source-string check."
+      }
+    ],
+    "default_geometry_assessment": "The pure layout tests genuinely pin the default bottom-left geometry numerically, not relatively: DefaultPolicyReproducesTheV1BottomLeftGeometry asserts Scale 1.0, X 24, Y height-24-48, Height 48, Row 0; EachAnchorPlacesTheRailAtTheExpectedCornerOrCenter(BottomLeft), BottomAnchorsStackRowsUpwardFromTheBottomEdge, LeftAnchorsAlignRowsToTheLeftEdge, and the pre-existing RendererBehaviorLayoutTests.TheTechnicalRailSitsAtTheBottomLeft / TechnicalRailSitsAtTheBottomInsideTheSafeArea assert absolute coordinates. The code-owned RenderOutputPolicy.Default (BottomLeft, Medium) is additionally pinned by RendererConfigurationTests.ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize (asserts the fallback equals both Default and the literal BottomLeft/Medium). Mutations M1, M3, M5, M6, M8, M10 all fail, so a default-path geometry/scale regression is caught without native Skia.",
+    "residual_risk": "Only task 12.4's golden regeneration can close the end-to-end pixel/byte comparison and the absolute default-fingerprint pin: the committed golden pixel comparison and the manifest OutputFingerprint comparison both live in the native-Skia-guarded RenderGoldenTests, which is skipped in the shipping configuration. A subtle renderer-only change to the default output that leaves the pure layout geometry and the policy inputs unchanged (for example a draw-time padding/font change) is not caught by any unguarded test."
+  },
+  "coverage_assessment": {
+    "geometry_per_anchor_and_size": "Covered and non-vacuous (M1/M2/M3/M6/M8 fail on mutation).",
+    "rail_packing_and_alignment_per_anchor": "Covered for horizontal alignment and vertical stacking (M3/M6/M8); the top-anchor status reservation is not (M7).",
+    "status_pill_placement_including_topright_rule": "Covered (M2).",
+    "safe_area_bounds_narrow_and_short": "Covered, including the ComputeEffectiveScale clamp branch (M5 fails).",
+    "fingerprint_sensitivity_and_identity_neutral_default": "Sensitivity in both fingerprints covered (M4a fails); identity-neutral default only tested relatively (M4b passes - TQ-12.3-02).",
+    "undefined_value_validation_and_resolver_fallback": "Covered (M11/M12 fail).",
+    "settings_page_exposure": "Covered at the static-source level (M13 fails); live round-trip host-guarded (TQ-12.3-04)."
+  },
+  "assertion_strength": "The new tests assert observable layout geometry (pill X/Y/Width/Height/Row and layout.Scale), status-pill placement and non-overlap, absolute per-anchor coordinates, fingerprint equality/inequality, validator errors, and resolver output. They do not assert private/internal flags. The only source-string assertions are the config.html settings-page exposure, which matches the repository's established pattern for the static page.",
+  "determinism_checked": [
+    "No wall-clock, random, network, filesystem-order, or process-state dependence in BadgeSizePositionTests, the new RenderFingerprintTests fact, the new RendererConfigurationTests facts, or the new DashboardSettingsPageTests fact; all are pure in-memory calls with fresh inputs.",
+    "No ambient culture dependence: invariant formatting is used (index.ToString(CultureInfo.InvariantCulture)); the layout delegates are deterministic (text.Length * 10f / * 92f).",
+    "InlineData enum and double arguments are compile-time constants; floating-point assertions use explicit precision (3 or 6 digits) and epsilon-bounded InRange checks, so no incidental exact-double fragility was observed.",
+    "Tests are isolated: no shared mutable state between cases; the new facts construct fresh PluginConfiguration/RenderOutputPolicy instances."
+  ],
+  "substitutes_checked": [
+    "BadgeLayoutEngine is measured through a caller-supplied Func<string,float> delegate instead of a raster font, so the pure layout tests never load Skia; the renderer consumes the same layout placements and ComputeEffectiveScale (SkiaBadgeRenderer.cs:201, :214-220), so the substitute covers the layout math but not draw-time pixels.",
+    "RendererConfigurationIntegrationTests uses an in-memory FingerprintingRenderer instead of SkiaBadgeRenderer; it exercises the real snapshot/resolver/coordinator path and the fingerprint inputs, not decoded pixels.",
+    "The native Skia pixel/byte path is entirely native-guarded and skipped in this environment."
+  ],
+  "skips_checked": {
+    "count": 63,
+    "new_skips": 0,
+    "baseline": 63,
+    "classification": "All 63 skipped cases are environment-guarded and none belongs to task 12.3. Native-Skia-guarded ([SkiaNativeFact]/[SkiaNativeTheory], skipped without ARRTAGS_SKIA_COMPAT=1): RenderDeterminismTests (5), RenderGoldenTests (1), RenderDeterminismProcessProbe (1), RenderOrientationTests (1), RenderPngContractTests (7), RendererBehaviorDimensionTests (5), RendererBehaviorFailureTests (2), RendererBehaviorFormatTests (4), RendererCrossRuntimeTests (4, including the ADR-010 non-canonical set), SkiaBadgeRendererRenderTests (9), SkiaHostCompatibilityTests (1), SourceImageDescriptorTests (2), JellyfinArtworkImageAccessTests (2). Pinned-host-guarded ([JellyfinHostFact], skipped without ARRTAGS_JELLYFIN_HOST_DIR): ConfigurationRoundTripTests (1), DashboardSettingsPageTests (2), JellyfinImageResponseTests (9), JellyfinImageRouteTests (5), PluginDiscoveryHostTests (2). The 3-test delta seen when artifacts/ArrTags_1.0.1.0.zip is absent is the [PackagedPluginFact] packaging guard, not a task 12.3 skip.",
+    "honesty": "No guarded test hides a task 12.3 behaviour gap: the per-anchor/size layout and both fingerprints are asserted by unguarded pure tests; the golden pixel/byte and manifest-fingerprint absolute checks are the only skipped task-relevant verification, recorded as the residual risk in TQ-12.3-02."
+  },
+  "matrix_observed": {
+    "default": "Failed 0, Passed 1490, Skipped 63, Total 1553",
+    "focused_task_filter": "Failed 0, Passed 142, Skipped 2, Total 144",
+    "focused_new_tests": "Failed 0, Passed 4, Skipped 0, Total 4",
+    "badge_size_position_file": "Failed 0, Passed 39, Skipped 0, Total 39",
+    "host_guarded": "not run (ARRTAGS_JELLYFIN_HOST_DIR unset); documented 63 skips include the host-guarded facts",
+    "forced_native": "not run (native SkiaSharp unavailable; ARRTAGS_SKIA_COMPAT unset)"
+  },
+  "validation": {
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1)",
+    "commands": [
+      ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+      ". /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1490, Skipped 63, Total 1553",
+      ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~BadgeSizePositionTests|...|FullyQualifiedName~DashboardSettingsPageTests\" -> Failed 0, Passed 142, Skipped 2, Total 144",
+      ". /config/arrtags-env.sh && dotnet test ... --filter \"FullyQualifiedName~BadgeSizePositionTests\" -> Failed 0, Passed 39, Skipped 0, Total 39",
+      ". /config/arrtags-env.sh && dotnet test ... --filter \"FullyQualifiedName~SafeAreaClampReducesTheEffectiveScaleOnAShortPoster|FullyQualifiedName~ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize\" -> Failed 0, Passed 4, Skipped 0, Total 4",
+      "Throwaway copy build: tar of the working tree to /tmp/final-review/test-quality/mut, . /config/arrtags-env.sh && ./build.sh restore && ./build.sh build -> Build succeeded, 0 warnings, 0 errors; baseline copy suite Failed 0, Passed 1490, Skipped 63, Total 1553 after copying artifacts/ArrTags_1.0.1.0.zip (1487/66 without it, from the [PackagedPluginFact] guard)",
+      "13 mutations applied one at a time to the throwaway copy, each followed by a full rebuild and full default suite run (see mutation_or_non_vacuity_evidence)"
+    ],
+    "not_verified": [
+      "Native SkiaSharp decoded-pixel/byte golden comparison, byte determinism, and the ADR-010 cross-runtime comparison (native runtime absent; ARRTAGS_SKIA_COMPAT unset).",
+      "Live pinned-host settings-page behaviour (ARRTAGS_JELLYFIN_HOST_DIR unset)."
+    ]
+  },
+  "ready_for_next_task": true,
+  "summary": "Task 12.3's test suite is substantially non-vacuous and honest: 13 targeted mutations show that the size factors, the TopRight status-pill rule, per-anchor horizontal alignment and vertical stacking, the safe-area clamp, both fingerprint inclusions, undefined-value validation, the resolver fallback, and settings-page exposure all fail when broken, and the default bottom-left geometry/scale is pinned by absolute-coordinate assertions (mutations M1/M3/M5/M6/M8/M10 fail). The full default suite reproduces exactly Failed 0, Passed 1490, Skipped 63, Total 1553, the focused filter 142/2/144, and BadgeSizePositionTests 39/0/39; all 63 skips are environment-guarded (native Skia / pinned Jellyfin host) with zero new skips. Three gaps remain: (MEDIUM) the top-anchor status-pill reservation is real - a wide-pill probe shows removing it overlaps the status pill - yet no committed test fails when it is removed, so the test named for it is non-failing; (MEDIUM) the ADR-019 clause 6 identity-neutral default fingerprints are only tested relatively, so an unconditional fingerprint append passes the whole unguarded suite, with the only absolute pin in the native-skipped golden test; (LOW) the Center-anchor status-band row-reduction branch is never exercised (the equivalent bottom-anchor branch is guarded by a pre-existing test). None of these blocks 12.4; the two default-preservation items are naturally closed by 12.4's coordinated RenderVersion/schema advance and golden regeneration, and the reservation/Center cases are cheap test additions worth making. Reviewer status: PASS_WITH_FINDINGS."
+}

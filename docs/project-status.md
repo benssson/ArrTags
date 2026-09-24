@@ -4,10 +4,10 @@
 
 **Current milestone:** Phase 12 — Badge value allowlist and badge size/position
 (v1.1) is in progress: tasks 12.1 (allowlist configuration, bounds, validation,
-and fingerprint) and 12.2 (allowlist resolution and renderer filtering order) are
-complete, and tasks 12.3 (badge size/position configuration and layout engine) and
+and fingerprint), 12.2 (allowlist resolution and renderer filtering order), and
+12.3 (badge size/position configuration and layout engine) are complete, and task
 12.4 (coordinated schema/`RenderVersion` advance, golden regeneration, and
-documentation) remain, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is
+documentation) remains, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is
 not yet created. Phase 11 — Provider inventory cache and
 library-refresh-driven refresh (v1.1) is complete at the integration-test level:
 tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
@@ -661,8 +661,8 @@ The plugin:
   `ARRTAGS_JELLYFIN_HOST_DIR` pointing at the pinned host passes 1,244 with 44
   skips, and running `./build.sh package` first unskips the package-content
   cases. These are the `1.0.1.0` release-matrix counts, not current v1.1 truth:
-  the current v1.1 working suite is Failed 0, Passed 1,445, Skipped 63, Total
-  1,508 (see the Project Status above and `docs/limitations.md` V6, which the
+  the current v1.1 working suite is Failed 0, Passed 1,493, Skipped 63, Total
+  1,556 (see the Project Status above and `docs/limitations.md` V6, which the
   v1.1 release task refreshes). The `1.0.1.0` counts reflect the suite after the
   SEC-1 webhook-boundary fix, which added the 10 `WebhookBindingBoundaryTests`.
 
@@ -699,11 +699,11 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 Next tasks:
 
 - Phase 12 — Badge value allowlist and badge size/position (v1.1) tasks 12.1
-  (allowlist configuration, bounds, validation, and fingerprint) and 12.2
-  (allowlist resolution and renderer filtering order) are complete, and tasks
-  12.3 (badge size/position configuration and layout engine) and 12.4
+  (allowlist configuration, bounds, validation, and fingerprint), 12.2
+  (allowlist resolution and renderer filtering order), and 12.3 (badge
+  size/position configuration and layout engine) are complete, and task 12.4
   (coordinated schema/`RenderVersion` advance, golden regeneration, and
-  documentation) remain, so Gate 12 is not yet met and the `v1.1.0-phase12` tag
+  documentation) remains, so Gate 12 is not yet met and the `v1.1.0-phase12` tag
   is not yet created. Task 12.1 defines the bounded per-selector allowlist (at
   most 32 entries per selector, each at most 64 characters, trimmed, with no
   blank or control-character entry and no case-insensitive duplicate), validates
@@ -718,7 +718,16 @@ Next tasks:
   `BadgeDefinitionResolver.Resolve` filters each resolved pre-template value (and
   the fixed `UpgradePending` status text) before the definition template,
   applying the filter to each retained `CustomBadge` value independently and to
-  the full `Audio` composite and never widening an omission.
+  the full `Audio` composite and never widening an omission. Task 12.3 adds the
+  global `BadgePosition` (four corners plus center, default bottom-left) and
+  `BadgeSize` (Small/Medium/Large, default medium) settings (ADR-019 clauses 1-5
+  and 7), validates them with bounded secret-free messages, carries them on the
+  resolved `RenderOutputPolicy`, positions the technical rail per anchor with the
+  derived status-pill placement (top-right except a top-right anchor, then
+  top-left), computes `effectiveScale = clamp(width / 1000, 0.5, 4.0) *
+  sizeFactor` clamped so the badge still fits the safe area, and includes a
+  non-default position or size in both the renderer configuration fingerprint and
+  the render fingerprint while keeping the V1 default identity-neutral.
   `RendererConfiguration.CurrentSchemaVersion` is still 1,
   `RenderVersion.CurrentRendererVersion` is still 2, and no golden under
   `tests/ArrTags.Tests/Goldens/` was regenerated; the coordinated

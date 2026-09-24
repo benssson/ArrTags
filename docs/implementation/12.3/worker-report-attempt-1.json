@@ -1,0 +1,51 @@
+{
+  "task": "12.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented v1.1 Phase 12 task 12.3 (ADR-019 clauses 1-5 and 7): the global configurable badge position and size and the per-anchor layout engine. Added BadgePosition (BottomLeft default, TopLeft, TopRight, BottomRight, Center) and BadgeSize (Medium default, Small, Large) enums in ArrTags.Rendering; added RendererConfiguration.Position and .Size with bounded, secret-free undefined-value validation; carried both onto the resolved RenderOutputPolicy via RendererConfigurationResolver.ResolveOutputPolicy (tolerant fallback for an undefined value). Added BadgeGeometry.SizeFactor (Small 0.75, Medium 1.0, Large 1.5) and BadgeGeometry.ComputeEffectiveScale = clamp(width/1000, 0.5, 4.0) * sizeFactor, clamped so the scaled outer inset leaves a positive safe area; the renderer now sizes its font with the effective scale. Rewrote BadgeLayoutEngine to place the rail per anchor (rows stack away from the anchored edge: downward for top anchors, upward for bottom anchors, vertically centered for Center; rows align left/right/centered), to place the status pill top-right except when the anchor is TopRight then top-left, and to reserve the top-anchor first row for the status pill. The ADR-009 priority order, the at-most-two-rows/three-pills-per-row limit, shortening, omission, the 24-pixel scaled inset, and the safe-area/text/contrast/opacity/determinism guarantees are unchanged; no pill paints outside the safe area. Included a non-default position/size in both RendererConfigurationFingerprint and RenderFingerprint.ComputeOutputFingerprint; the V1 default (BottomLeft, Medium) is identity-neutral so the default configuration/output fingerprints and the committed goldens are unaffected. Exposed two selects on the ADR-016 settings page (config.html). RendererConfiguration.CurrentSchemaVersion remains 1 and RenderVersion.CurrentRendererVersion remains 2; no golden under tests/ArrTags.Tests/Goldens/ was regenerated (task 12.4). Placement/size are global only.",
+  "validation": [
+    "`. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "`. /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1486, Skipped 63, Total 1549. Pre-task baseline (measured before any change in this task): Failed 0, Passed 1445, Skipped 63, Total 1508. Delta: +41 passed, +41 total, 0 new skips, 0 failures.",
+    "Focused filter (BadgeSizePositionTests, BadgeLayoutTests, RendererBehaviorLayoutTests, RenderFingerprintTests, RendererConfigurationTests, DashboardSettingsPageTests) -> Failed 0, Passed 138, Skipped 2, Total 140.",
+    "`git status --short tests/ArrTags.Tests/Goldens/` -> no output; the committed goldens directory is unmodified.",
+    "`git status --short` and `git diff --stat` -> every changed path is task-scoped (10 src/ArrTags files, 3 test files, 3 new files, 7 documentation files); no unrelated file was modified."
+  ],
+  "changed_files": [
+    "src/ArrTags/Rendering/BadgePosition.cs",
+    "src/ArrTags/Rendering/BadgeSize.cs",
+    "src/ArrTags/Rendering/BadgeGeometry.cs",
+    "src/ArrTags/Rendering/BadgeLayout.cs",
+    "src/ArrTags/Rendering/BadgeLayoutEngine.cs",
+    "src/ArrTags/Rendering/RenderOutputPolicy.cs",
+    "src/ArrTags/Rendering/RenderFingerprint.cs",
+    "src/ArrTags/Rendering/SkiaBadgeRenderer.cs",
+    "src/ArrTags/Configuration/RendererConfiguration.cs",
+    "src/ArrTags/Configuration/RendererConfigurationResolver.cs",
+    "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs",
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/BadgeSizePositionTests.cs",
+    "tests/ArrTags.Tests/RenderFingerprintTests.cs",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs",
+    "docs/architecture.md",
+    "docs/data-model.md",
+    "docs/changelog.md",
+    "docs/project-status.md",
+    "docs/implementation-readiness.md",
+    "docs/limitations.md",
+    "PLANS.md"
+  ],
+  "known_limitations": [
+    "The native SkiaSharp runtime is not available in this environment (ARRTAGS_SKIA_COMPAT=1 fails to load libSkiaSharp), so the committed golden pixel/byte comparison (RenderGoldenTests, RenderDeterminismTests) could not be executed here; those cases are skipped by the default `./build.sh test` run (63 skips, unchanged from the pre-task baseline). The default-configuration V1 output is byte-preserved by construction and by the pure layout tests: ComputeEffectiveScale is identity-neutral for Medium (factor 1.0) and its safe-area clamp does not bind at the committed golden dimensions, the layout engine reproduces the previous bottom-left placement math exactly for BottomLeft, and the renderer's font now uses the same effective scale (equal to the previous ComputeScale for Medium). This is a construction argument, not an executed pixel comparison.",
+    "Position and size are encoded identity-neutrally in both fingerprints: the V1 default (BottomLeft, Medium) appends nothing, while any other value appends badgePosition/badgeSize. Precondition: a non-default position or size is configured. Consequence: the renderer configuration fingerprint and the output fingerprint change for that configuration, so affected artwork republishes; a default configuration keeps the V1 fingerprint. This is the mechanism that lets the committed default-configuration goldens pass unchanged in this task while still satisfying fingerprint sensitivity for non-default values.",
+    "The safe-area clamp in ComputeEffectiveScale bounds the effective scale so that the scaled outer inset (24 * scale per edge) cannot consume the whole poster: effectiveScale <= min(outputWidth, outputHeight) / 48. Precondition: a poster smaller than 48 * effectiveScale in its smaller dimension. Consequence: the scale is reduced (possibly below the policy minimum) so the safe area stays positive. It is deliberately not a pill-height fit clamp: pills that cannot fit the safe area still follow the existing shorten/omit behavior (ADR-019 clause 5), so no previously-omitted pill starts rendering on a short poster.",
+    "Task 12.4 remains: RendererConfiguration.CurrentSchemaVersion is still 1 and RenderVersion.CurrentRendererVersion is still 2, and no committed golden was regenerated. The new anchor/size golden cases and the single coordinated version advance are deferred to task 12.4 per PLANS.md. Phase 12 is in progress, Gate 12 is not met, and the v1.1.0-phase12 tag does not exist.",
+    "Per-anchor behavior is asserted at the pure layout-geometry level (BadgeLayoutEngine with a delegate measure) and at the settings-page/config/fingerprint level; the end-to-end rendered-pixel per-anchor comparison is deferred to the task 12.4 golden regeneration because the native renderer is unavailable here."
+  ],
+  "ready_for_next_task": true
+}

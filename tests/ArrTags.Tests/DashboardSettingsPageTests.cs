@@ -170,6 +170,23 @@ public class DashboardSettingsPageTests
     }
 
     [Fact]
+    public void PageExposesAndRoundTripsTheGlobalBadgePlacement()
+    {
+        var page = ReadEmbeddedPage();
+
+        // The global position and size selects exist and are populated/written
+        // through the existing administrator-gated configuration API.
+        Assert.Contains("id=\"rendererPosition\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"rendererSize\"", page, StringComparison.Ordinal);
+        Assert.Contains("config.Renderer.Position", page, StringComparison.Ordinal);
+        Assert.Contains("config.Renderer.Size", page, StringComparison.Ordinal);
+        Assert.Contains("value=\"BottomLeft\"", page, StringComparison.Ordinal);
+        Assert.Contains("value=\"Center\"", page, StringComparison.Ordinal);
+        Assert.Contains("value=\"Small\"", page, StringComparison.Ordinal);
+        Assert.Contains("value=\"Large\"", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PageSourceContainsNoSecretOrCredentialLiteral()
     {
         var page = ReadEmbeddedPage();

@@ -3,9 +3,10 @@ namespace ArrTags.Rendering;
 /// <summary>
 /// The code-owned V1 output policy from ADR-009 and ADR-010. Every value here is
 /// an output-affecting input to the render fingerprint. Format, color-space,
-/// alpha model, font identity, palette, scale policy, and text limits are not
-/// user-selectable except where ADR-010 exposes a contrast-validated palette
-/// override; callers pass the effective policy for one render attempt.
+/// alpha model, font identity, scale policy, and text limits are not
+/// user-selectable; the palette (ADR-010) and the global badge position and size
+/// (ADR-019) are the only contrast-validated/validated configuration-derived
+/// values. Callers pass the effective policy for one render attempt.
 /// </summary>
 public sealed class RenderOutputPolicy
 {
@@ -57,6 +58,18 @@ public sealed class RenderOutputPolicy
     /// Gets the upgrade-status text color.
     /// </summary>
     public string StatusText { get; init; } = "#FFFFFF";
+
+    /// <summary>
+    /// Gets the global technical-rail anchor (ADR-019). The default
+    /// <see cref="BadgePosition.BottomLeft"/> reproduces the V1 output.
+    /// </summary>
+    public BadgePosition Position { get; init; } = BadgePosition.BottomLeft;
+
+    /// <summary>
+    /// Gets the global preset badge size (ADR-019). The default
+    /// <see cref="BadgeSize.Medium"/> reproduces the V1 geometry.
+    /// </summary>
+    public BadgeSize Size { get; init; } = BadgeSize.Medium;
 
     /// <summary>
     /// Gets the reference poster width in pixels for the scale policy.

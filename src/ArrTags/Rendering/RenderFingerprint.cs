@@ -54,8 +54,29 @@ public static class RenderFingerprint
         Append(builder, "textMaximumScalarValues", policy.MaximumScalarValues.ToString(CultureInfo.InvariantCulture));
         Append(builder, "textRetainedPrefixScalarValues", policy.RetainedPrefixScalarValues.ToString(CultureInfo.InvariantCulture));
         Append(builder, "textEllipsis", policy.Ellipsis);
+        AppendBadgePlacement(builder, policy);
 
         return Hash(builder);
+    }
+
+    /// <summary>
+    /// Appends a non-default global badge position and size (ADR-019 clause 6).
+    /// The V1 default (<see cref="BadgePosition.BottomLeft"/> and
+    /// <see cref="BadgeSize.Medium"/>) is identity-neutral, so the default
+    /// output fingerprint is unchanged and the committed goldens are unaffected;
+    /// any other position or size changes the fingerprint.
+    /// </summary>
+    private static void AppendBadgePlacement(StringBuilder builder, RenderOutputPolicy policy)
+    {
+        if (policy.Position != BadgePosition.BottomLeft)
+        {
+            Append(builder, "badgePosition", policy.Position.ToString());
+        }
+
+        if (policy.Size != BadgeSize.Medium)
+        {
+            Append(builder, "badgeSize", policy.Size.ToString());
+        }
     }
 
     /// <summary>

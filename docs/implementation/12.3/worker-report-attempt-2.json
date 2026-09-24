@@ -1,0 +1,36 @@
+{
+  "task": "12.3",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Attempt 2 is a review-driven correction of the attempt-1 implementation, which the reviewer found functionally correct and returned CHANGES_REQUIRED for one stale current-state line plus two optional coverage notes. (1) Required documentation fix: docs/architecture.md line 3 still said 'tasks 12.3 (badge size/position configuration and layout engine) and 12.4 ... remain'; it now states that tasks 12.1, 12.2, and 12.3 are complete, describes task 12.3's shipped behaviour (global BadgePosition/BadgeSize settings, bounded secret-free validation, resolved RenderOutputPolicy, per-anchor rail packing/status-pill placement/safe-area behavior, non-default position/size included in both fingerprints while the V1 default stays identity-neutral), and records that RendererConfiguration.CurrentSchemaVersion is still 1, RenderVersion.CurrentRendererVersion is still 2, and no golden under tests/ArrTags.Tests/Goldens/ was regenerated, with task 12.4 (coordinated schema/RenderVersion advance, golden regeneration, and documentation) remaining, so Gate 12 is not yet met and the v1.1.0-phase12 tag is not yet created. The other touched current-state surfaces were scanned and are consistent: docs/project-status.md, docs/implementation-readiness.md, and PLANS.md already present 12.1/12.2/12.3 complete with 12.4 remaining and the same Gate/tag/schema/RenderVersion status; docs/limitations.md carries no Phase 12 status claim. (2) Coverage strengthening: added a deterministic BadgeGeometry.ComputeEffectiveScale safe-area-clamp theory (3 cases where the clamp binds) to BadgeSizePositionTests and a RendererConfigurationResolver.ResolveOutputPolicy tolerant-fallback fact (undefined BadgePosition/BadgeSize fall back to the V1 defaults; defined values still apply) to RendererConfigurationTests. (3) Suite-count surfaces reconciled to the exact post-correction counts: docs/project-status.md and docs/limitations.md V6 now read Failed 0, Passed 1,490, Skipped 63, Total 1,553 (was 1,486/1,549). No source behaviour changed in attempt 2: the schema stays 1, RenderVersion stays 2, and no golden was regenerated.",
+  "validation": [
+    "`. /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "`. /config/arrtags-env.sh && ./build.sh test` -> Passed! - Failed: 0, Passed: 1490, Skipped: 63, Total: 1553. Pre-correction attempt-1 baseline (recorded in worker-report-attempt-1.json): Failed 0, Passed 1486, Skipped 63, Total 1549. Delta: +4 passed, +4 total, 0 new skips, 0 failures.",
+    "Focused filter `dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~SafeAreaClampReducesTheEffectiveScaleOnAShortPoster|FullyQualifiedName~ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize\"` -> Failed 0, Passed 4, Skipped 0, Total 4 (the 3 clamp theory cases plus the 1 resolver fallback fact).",
+    "`grep -rn \"1,486\\|1,549\" docs/architecture.md docs/project-status.md docs/implementation-readiness.md docs/limitations.md PLANS.md README.md docs/changelog.md docs/data-model.md` -> no output; the current-state surfaces no longer carry the stale count.",
+    "`git status --short tests/ArrTags.Tests/Goldens/` -> no output; the committed goldens directory is unmodified.",
+    "Source diff inspection: attempt 2 changed only the two test files and three documentation files listed below; no src/ArrTags production file was modified in this attempt."
+  ],
+  "changed_files": [
+    "docs/architecture.md",
+    "docs/project-status.md",
+    "docs/limitations.md",
+    "tests/ArrTags.Tests/BadgeSizePositionTests.cs",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs",
+    "docs/implementation/12.3/worker-report.json",
+    "docs/implementation/12.3/worker-report-attempt-1.json"
+  ],
+  "known_limitations": [
+    "The native SkiaSharp runtime is not available in this environment (ARRTAGS_SKIA_COMPAT=1 fails to load libSkiaSharp), so the committed golden pixel/byte comparison (RenderGoldenTests, RenderDeterminismTests) could not be executed here; those cases are skipped by the default `./build.sh test` run (63 skips, unchanged from the attempt-1 baseline). The default-configuration V1 output is byte-preserved by construction and by the pure layout tests. This is a construction argument, not an executed pixel comparison.",
+    "Position and size are encoded identity-neutrally in both fingerprints: the V1 default (BottomLeft, Medium) appends nothing, while any other value appends badgePosition/badgeSize. Precondition: a non-default position or size is configured. Consequence: the renderer configuration fingerprint and the output fingerprint change for that configuration, so affected artwork republishes; a default configuration keeps the V1 fingerprint.",
+    "The safe-area clamp in ComputeEffectiveScale bounds the effective scale so that the scaled outer inset (24 * scale per edge) cannot consume the whole poster: effectiveScale <= min(outputWidth, outputHeight) / 48. Precondition: a poster smaller than 48 * effectiveScale in its smaller dimension. Consequence: the scale is reduced (possibly below the policy minimum) so the safe area stays non-negative (exactly zero at the clamp boundary). The new theory directly exercises this branch with three posters where the clamp binds (Medium 3000x120, Large 1000x40, Small 1000x30); it is deliberately not a pill-height fit clamp: pills that cannot fit the safe area still follow the existing shorten/omit behavior (ADR-019 clause 5), so no previously-omitted pill starts rendering on a short poster.",
+    "Task 12.4 remains: RendererConfiguration.CurrentSchemaVersion is still 1 and RenderVersion.CurrentRendererVersion is still 2, and no committed golden was regenerated. The new anchor/size golden cases and the single coordinated version advance are deferred to task 12.4 per PLANS.md. Phase 12 is in progress, Gate 12 is not met, and the v1.1.0-phase12 tag does not exist.",
+    "Per-anchor behavior is asserted at the pure layout-geometry level (BadgeLayoutEngine with a delegate measure) and at the settings-page/config/fingerprint level; the end-to-end rendered-pixel per-anchor comparison is deferred to the task 12.4 golden regeneration because the native renderer is unavailable here."
+  ],
+  "ready_for_next_task": true
+}

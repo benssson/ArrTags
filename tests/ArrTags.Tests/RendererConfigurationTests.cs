@@ -536,6 +536,90 @@ public class RendererConfigurationTests
     }
 
     [Fact]
+    public void RendererFingerprintIsSensitiveToBadgePositionAndSize()
+    {
+        var original = Fingerprint(new PluginConfiguration());
+
+        var moved = new PluginConfiguration();
+        moved.Renderer.Position = BadgePosition.TopRight;
+        Assert.NotEqual(original, Fingerprint(moved));
+
+        var sized = new PluginConfiguration();
+        sized.Renderer.Size = BadgeSize.Large;
+        Assert.NotEqual(original, Fingerprint(sized));
+
+        // The V1 default is identity-neutral, so an explicit default is the same
+        // fingerprint as the code-owned default.
+        var explicitDefault = new PluginConfiguration();
+        explicitDefault.Renderer.Position = BadgePosition.BottomLeft;
+        explicitDefault.Renderer.Size = BadgeSize.Medium;
+        Assert.Equal(original, Fingerprint(explicitDefault));
+    }
+
+    [Fact]
+    public void ValidatorRejectsUndefinedBadgePositionAndSize()
+    {
+        var badPosition = new PluginConfiguration();
+        badPosition.Renderer.Position = (BadgePosition)99;
+        var positionResult = PluginConfigurationValidator.Validate(badPosition);
+        Assert.False(positionResult.IsValid);
+        Assert.Contains(positionResult.Errors, error => error.Contains("position", StringComparison.Ordinal));
+
+        var badSize = new PluginConfiguration();
+        badSize.Renderer.Size = (BadgeSize)99;
+        var sizeResult = PluginConfigurationValidator.Validate(badSize);
+        Assert.False(sizeResult.IsValid);
+        Assert.Contains(sizeResult.Errors, error => error.Contains("size", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ConfiguredPositionAndSizeResolveOntoTheOutputPolicy()
+    {
+        var configuration = new PluginConfiguration();
+        configuration.Renderer.Position = BadgePosition.TopRight;
+        configuration.Renderer.Size = BadgeSize.Large;
+
+        Assert.True(PluginConfigurationValidator.Validate(configuration).IsValid);
+
+        var snapshot = PluginConfigurationSnapshot.From(configuration);
+        Assert.Equal(BadgePosition.TopRight, snapshot.RendererOutputPolicy.Position);
+        Assert.Equal(BadgeSize.Large, snapshot.RendererOutputPolicy.Size);
+
+        // The default configuration resolves to the V1 default placement.
+        var defaultSnapshot = PluginConfigurationSnapshot.From(new PluginConfiguration());
+        Assert.Equal(BadgePosition.BottomLeft, defaultSnapshot.RendererOutputPolicy.Position);
+        Assert.Equal(BadgeSize.Medium, defaultSnapshot.RendererOutputPolicy.Size);
+    }
+
+    [Fact]
+    public void ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize()
+    {
+        var undefined = new RendererConfiguration
+        {
+            Position = (BadgePosition)99,
+            Size = (BadgeSize)99,
+        };
+
+        // Resolution is tolerant: an undefined value from a configuration that has
+        // not passed validation falls back to the code-owned V1 default.
+        var policy = RendererConfigurationResolver.ResolveOutputPolicy(undefined);
+        Assert.Equal(RenderOutputPolicy.Default.Position, policy.Position);
+        Assert.Equal(BadgePosition.BottomLeft, policy.Position);
+        Assert.Equal(RenderOutputPolicy.Default.Size, policy.Size);
+        Assert.Equal(BadgeSize.Medium, policy.Size);
+
+        // A defined value is still applied.
+        var defined = new RendererConfiguration
+        {
+            Position = BadgePosition.TopRight,
+            Size = BadgeSize.Large,
+        };
+        var definedPolicy = RendererConfigurationResolver.ResolveOutputPolicy(defined);
+        Assert.Equal(BadgePosition.TopRight, definedPolicy.Position);
+        Assert.Equal(BadgeSize.Large, definedPolicy.Size);
+    }
+
+    [Fact]
     public void SnapshotServiceRetainsLastValidRendererConfigurationOnInvalidAllowlist()
     {
         var initial = new PluginConfiguration();
@@ -580,6 +664,8 @@ public class RendererConfigurationTests
         source.AllowedValues.Add("Blu-ray");
         configuration.Renderer.Selectors.Add(source);
         configuration.Renderer.TechnicalBackground = "#000000";
+        configuration.Renderer.Position = BadgePosition.TopRight;
+        configuration.Renderer.Size = BadgeSize.Large;
 
         var serializer = new XmlSerializer(typeof(PluginConfiguration));
         using var writer = new StringWriter();
@@ -594,6 +680,8 @@ public class RendererConfigurationTests
         Assert.Equal("SRC:{value}", entry.Template);
         Assert.Equal(new[] { "WEB-DL", "Blu-ray" }, entry.AllowedValues);
         Assert.Equal("#000000", restored.Renderer.TechnicalBackground);
+        Assert.Equal(BadgePosition.TopRight, restored.Renderer.Position);
+        Assert.Equal(BadgeSize.Large, restored.Renderer.Size);
     }
 
     private static BadgeSelectorConfiguration AllowedValuesEntry(params string[] values)

@@ -1,0 +1,31 @@
+{
+  "task": "12.3",
+  "attempt": 3,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Attempt 3 is a documentation-only, review-driven correction of the attempt-2 state, addressing reviewer finding 12.3-DOC-2 (LOW): the docs/changelog.md Task 12.3 entry still reported the attempt-1 test counts after attempt 2 added four focused cases. The entry now states the final task state: 45 new cases (BadgeSizePositionTests 39, RenderFingerprintTests 1, RendererConfigurationTests 4, DashboardSettingsPageTests 1); the BadgeSizePositionTests description now also names the safe-area clamp theory, and the RendererConfigurationTests description now also names the resolver's tolerant undefined-value fallback. The suite line now reads Failed 0, Passed 1,490, Skipped 63, Total 1,553 (pre-task baseline Failed 0, Passed 1,445, Skipped 63, Total 1,508; +45 passed, +45 total, 0 new skips), and the focused-filter line now reads Failed 0, Passed 142, Skipped 2, Total 144 for the layout/renderer/configuration/page filter plus the focused new-test filter Failed 0, Passed 4, Skipped 0, Total 4. No source or test code changed in this attempt; only docs/changelog.md and the implementation-state report files. No other canonical current-state surface carried a stale count from this task (docs/project-status.md and docs/limitations.md already read 1,490/1,553).",
+  "validation": [
+    "`. /config/arrtags-env.sh && ./build.sh test` -> Passed! - Failed: 0, Passed: 1490, Skipped: 63, Total: 1553, Duration: 16 s - ArrTags.Tests.dll (net10.0). Matches the required final count; pre-task baseline remains Failed 0, Passed 1,445, Skipped 63, Total 1,508, so the delta is +45 passed / +45 total / 0 new skips.",
+    "Focused layout/renderer/configuration/page filter `dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~BadgeSizePositionTests|FullyQualifiedName~BadgeLayoutTests|FullyQualifiedName~RendererBehaviorLayoutTests|FullyQualifiedName~RenderFingerprintTests|FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~DashboardSettingsPageTests\"` -> Failed 0, Passed 142, Skipped 2, Total 144 (the 2 skips are the pre-existing pinned-host DashboardSettingsPageTests; ARRTAGS_JELLYFIN_HOST_DIR unset).",
+    "Focused new-test filter `dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~SafeAreaClampReducesTheEffectiveScaleOnAShortPoster|FullyQualifiedName~ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize\"` -> Failed 0, Passed 4, Skipped 0, Total 4 (3 clamp theory cases + 1 resolver fallback fact).",
+    "Case-count derivation from the test files: BadgeSizePositionTests.cs has 9 [Fact] + 7 [Theory] with 30 [InlineData] = 39 cases; the attempt-2 additions to that file are the 3-case SafeAreaClampReducesTheEffectiveScaleOnAShortPoster theory. RendererConfigurationTests.cs gained 4 position/size [Fact]s (fingerprint sensitivity, undefined-value validation, resolved output-policy mapping, resolver tolerant fallback); RenderFingerprintTests.cs gained 1 [Fact]; DashboardSettingsPageTests.cs gained 1 [Fact]. 39 + 1 + 4 + 1 = 45 new cases.",
+    "`sed -n '3417,3482p' docs/changelog.md | grep -n \"1486|1549|+41|41 cases|36 cases|Passed 138|Total 140|3 cases\"` -> no match; the Task 12.3 entry no longer carries a stale count. `grep -rn` over docs/changelog.md, docs/project-status.md, docs/limitations.md, docs/architecture.md, docs/implementation-readiness.md, PLANS.md, README.md for 1486/1549/Passed 138/Total 140 -> only historical 12.1/12.2 entries (docs/changelog.md:3108 and :3196), which are correct as historical records and were intentionally left unchanged.",
+    "`git status --short` -> only the task-scoped documentation and report paths are modified/added; no src/ArrTags or tests/ file was changed in this attempt (the pre-existing task 12.3 implementation/test files remain uncommitted from earlier attempts)."
+  ],
+  "changed_files": [
+    "docs/changelog.md",
+    "docs/implementation/12.3/worker-report.json",
+    "docs/implementation/12.3/worker-report-attempt-2.json"
+  ],
+  "known_limitations": [
+    "The native SkiaSharp runtime is not available in this environment, so the committed golden pixel/byte comparison (RenderGoldenTests, RenderDeterminismTests) and the Skia renderer tests could not be executed here; those cases are honestly skipped by the default `./build.sh test` run (63 skips, unchanged from the pre-task baseline). The default-configuration V1 output is byte-preserved by construction and by the pure layout tests; the per-anchor/size end-to-end decoded-pixel comparison is owned by task 12.4 golden regeneration.",
+    "Position and size are encoded identity-neutrally in both fingerprints: the V1 default (BottomLeft, Medium) appends nothing, while any other value appends badgePosition/badgeSize. Precondition: a non-default position or size is configured. Consequence: the renderer configuration fingerprint and the output fingerprint change for that configuration, so affected artwork republishes; a default configuration keeps the V1 fingerprint.",
+    "Task 12.4 remains: RendererConfiguration.CurrentSchemaVersion is still 1 and RenderVersion.CurrentRendererVersion is still 2, and no committed golden was regenerated. Phase 12 is in progress, Gate 12 is not met, and the v1.1.0-phase12 tag does not exist.",
+    "This attempt changed only documentation and the implementation-state report files; it did not alter source or tests, so the attempt-2 functional validation and the reviewer's functional conclusions still hold."
+  ],
+  "ready_for_next_task": true
+}

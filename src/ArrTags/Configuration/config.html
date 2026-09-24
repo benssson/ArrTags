@@ -148,6 +148,27 @@
                     </div>
 
                     <div class="verticalSection">
+                        <h2>Renderer placement</h2>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Choose the global technical badge anchor and preset size. The UPGRADE status pill stays top-right unless the anchor is top-right, then it moves top-left. The default (bottom-left, medium) reproduces the original badge.</div>
+                        <div class="inputContainer">
+                            <select is="emby-select" id="rendererPosition" label="Badge Position">
+                                <option value="BottomLeft">Bottom left</option>
+                                <option value="TopLeft">Top left</option>
+                                <option value="TopRight">Top right</option>
+                                <option value="BottomRight">Bottom right</option>
+                                <option value="Center">Center</option>
+                            </select>
+                        </div>
+                        <div class="inputContainer">
+                            <select is="emby-select" id="rendererSize" label="Badge Size">
+                                <option value="Medium">Medium</option>
+                                <option value="Small">Small</option>
+                                <option value="Large">Large</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
                         <h2>Renderer palette</h2>
                         <div class="fieldDescription" style="margin-bottom:1em;">Optional RRGGBB overrides. Leave a value empty to keep the default color. Each text/background pair must reach at least 4.5:1 contrast.</div>
                         <div class="inputContainer">
@@ -362,6 +383,9 @@
 
                         populateSelectors(config.Renderer.Selectors || []);
 
+                        document.querySelector('#rendererPosition').value = config.Renderer.Position;
+                        document.querySelector('#rendererSize').value = config.Renderer.Size;
+
                         document.querySelector('#technicalBackground').value = config.Renderer.TechnicalBackground;
                         document.querySelector('#technicalText').value = config.Renderer.TechnicalText;
                         document.querySelector('#statusBackground').value = config.Renderer.StatusBackground;
@@ -439,6 +463,9 @@
                             });
                         });
                         config.Renderer.Selectors = selectorConfigs;
+
+                        config.Renderer.Position = document.querySelector('#rendererPosition').value;
+                        config.Renderer.Size = document.querySelector('#rendererSize').value;
 
                         config.Renderer.TechnicalBackground = document.querySelector('#technicalBackground').value;
                         config.Renderer.TechnicalText = document.querySelector('#technicalText').value;

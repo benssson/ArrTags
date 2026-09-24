@@ -68,6 +68,39 @@ public static class BadgeGeometry
     public const int MaximumPillsPerRow = 3;
 
     /// <summary>
+    /// The code-owned geometry factor for <see cref="BadgeSize.Small"/>.
+    /// </summary>
+    public const double SmallSizeFactor = 0.75;
+
+    /// <summary>
+    /// The code-owned geometry factor for <see cref="BadgeSize.Medium"/>. It is
+    /// the V1 reference factor.
+    /// </summary>
+    public const double MediumSizeFactor = 1.0;
+
+    /// <summary>
+    /// The code-owned geometry factor for <see cref="BadgeSize.Large"/>.
+    /// </summary>
+    public const double LargeSizeFactor = 1.5;
+
+    /// <summary>
+    /// Returns the code-owned geometry factor for one preset badge size.
+    /// </summary>
+    /// <param name="size">The preset badge size.</param>
+    /// <returns>The factor that multiplies the width-based scale.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The size is not defined.</exception>
+    public static double SizeFactor(BadgeSize size)
+    {
+        return size switch
+        {
+            BadgeSize.Small => SmallSizeFactor,
+            BadgeSize.Medium => MediumSizeFactor,
+            BadgeSize.Large => LargeSizeFactor,
+            _ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unknown badge size."),
+        };
+    }
+
+    /// <summary>
     /// Computes the uniform scale for one output width. The output preserves the
     /// oriented source dimensions, so the width alone selects the scale.
     /// </summary>
@@ -97,5 +130,41 @@ public static class BadgeGeometry
 
         var raw = outputWidth / (double)policy.ScaleReferenceWidth;
         return Math.Clamp(raw, policy.MinimumScale, policy.MaximumScale);
+    }
+
+    /// <summary>
+    /// Computes the effective uniform scale for one output surface: the
+    /// width-based <see cref="ComputeScale"/> multiplied by the policy's preset
+    /// <see cref="BadgeSize"/> factor, then clamped so the scaled outer inset
+    /// leaves a positive safe area (ADR-019 clauses 3 and 5). The layout engine's
+    /// fit checks then shorten or omit any pill that still cannot fit rather than
+    /// letting it paint outside the safe area. The default (<see cref="BadgeSize.Medium"/>)
+    /// is identity-neutral, so it reproduces the V1 geometry exactly.
+    /// </summary>
+    /// <param name="outputWidth">The oriented output width in pixels.</param>
+    /// <param name="outputHeight">The oriented output height in pixels.</param>
+    /// <param name="policy">The effective output policy that owns the size and scale bounds.</param>
+    /// <returns>The effective uniform geometry scale.</returns>
+    /// <exception cref="ArgumentNullException">The policy is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">An output dimension is not positive, or the size is not defined.</exception>
+    /// <exception cref="ArgumentException">The policy scale bounds are not usable.</exception>
+    public static double ComputeEffectiveScale(int outputWidth, int outputHeight, RenderOutputPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(outputWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(outputHeight);
+
+        var scale = ComputeScale(outputWidth, policy) * SizeFactor(policy.Size);
+
+        // The scaled outer inset must not consume the whole poster, so the safe
+        // area stays positive in both dimensions. A pill that still cannot fit
+        // the safe area is shortened or omitted by the layout engine.
+        var maximumInsetScale = Math.Min(outputWidth, outputHeight) / (2.0 * OuterInset);
+        if (maximumInsetScale > 0 && scale > maximumInsetScale)
+        {
+            scale = maximumInsetScale;
+        }
+
+        return scale;
     }
 }

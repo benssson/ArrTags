@@ -4,10 +4,11 @@ using System.Collections.Generic;
 namespace ArrTags.Rendering;
 
 /// <summary>
-/// The computed ADR-009 badge layout for one render surface: the uniform scale,
-/// the priority-ordered technical rail pills, and the optional independent
-/// top-right status pill. It contains geometry and final visible text only, never
-/// source pixels or provider values beyond the resolved selection.
+/// The computed ADR-009/ADR-019 badge layout for one render surface: the
+/// effective uniform scale, the priority-ordered technical rail pills placed per
+/// the configured anchor, and the optional independent status pill. It contains
+/// geometry and final visible text only, never source pixels or provider values
+/// beyond the resolved selection.
 /// </summary>
 public sealed class BadgeLayout
 {
@@ -33,7 +34,8 @@ public sealed class BadgeLayout
     }
 
     /// <summary>
-    /// Gets the uniform geometry scale.
+    /// Gets the effective uniform geometry scale, including the configured
+    /// preset size factor and the safe-area clamp.
     /// </summary>
     public double Scale { get; }
 
@@ -44,7 +46,9 @@ public sealed class BadgeLayout
     public IReadOnlyList<BadgePillPlacement> TechnicalPills { get; }
 
     /// <summary>
-    /// Gets the optional independent top-right status pill.
+    /// Gets the optional independent status pill. It is top-right unless the
+    /// configured rail anchor is <see cref="BadgePosition.TopRight"/>, in which
+    /// case it is top-left.
     /// </summary>
     public BadgePillPlacement? StatusPill { get; }
 

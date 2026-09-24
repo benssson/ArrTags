@@ -1,0 +1,203 @@
+{
+  "task": "12.3",
+  "title": "Badge size/position configuration and layout engine",
+  "phase": 12,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 248006,
+        "output_tokens": 35751,
+        "reasoning_tokens": 46439,
+        "cache_read_tokens": 20068224,
+        "cache_write_tokens": 0,
+        "total_tokens": 20398420,
+        "cost_usd": 0.14671957199999996,
+        "duration_seconds": 1623,
+        "session_id": "ses_f2ca9243cffekv6ZSm82i15KI5"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 186253,
+        "output_tokens": 9696,
+        "reasoning_tokens": 25503,
+        "cache_read_tokens": 4744576,
+        "cache_write_tokens": 0,
+        "total_tokens": 4966028,
+        "cost_usd": 0.06329107799999999,
+        "duration_seconds": 547,
+        "session_id": "ses_f2c90155fffevSqZdjlUkwjrpc"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 102237,
+        "output_tokens": 7303,
+        "reasoning_tokens": 11088,
+        "cache_read_tokens": 1896576,
+        "cache_write_tokens": 0,
+        "total_tokens": 2017204,
+        "cost_usd": 0.032059878,
+        "duration_seconds": 237,
+        "session_id": "ses_f2c879488ffeKd9lbi06eXmNsn"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 107718,
+        "output_tokens": 10573,
+        "reasoning_tokens": 18549,
+        "cache_read_tokens": 1744256,
+        "cache_write_tokens": 0,
+        "total_tokens": 1881096,
+        "cost_usd": 0.03886366799999999,
+        "duration_seconds": 282,
+        "session_id": "ses_f2c83c6a9ffeVbC8jkK98Fy1Yl"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 3,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 48156,
+        "output_tokens": 5588,
+        "reasoning_tokens": 10593,
+        "cache_read_tokens": 495744,
+        "cache_write_tokens": 0,
+        "total_tokens": 560081,
+        "cost_usd": 0.018419232,
+        "duration_seconds": 132,
+        "session_id": "ses_f2c7f4957ffeKOl7d3OkOLQe93"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 3,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 75011,
+        "output_tokens": 11181,
+        "reasoning_tokens": 7045,
+        "cache_read_tokens": 1308288,
+        "cache_write_tokens": 0,
+        "total_tokens": 1401525,
+        "cost_usd": 0.026112114,
+        "duration_seconds": 210,
+        "session_id": "ses_f2c7d25e6ffeix7DCYbO03zTO6"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 162516,
+        "output_tokens": 16031,
+        "reasoning_tokens": 30015,
+        "cache_read_tokens": 5001088,
+        "cache_write_tokens": 0,
+        "total_tokens": 5209650,
+        "cost_usd": 0.067008264,
+        "duration_seconds": 908,
+        "session_id": "ses_f2c79c9d6ffezJjb4R4RO6xjop"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 4,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 98464,
+        "output_tokens": 11040,
+        "reasoning_tokens": 20493,
+        "cache_read_tokens": 2562176,
+        "cache_write_tokens": 0,
+        "total_tokens": 2692173,
+        "cost_usd": 0.041375928,
+        "duration_seconds": 330,
+        "session_id": "ses_f2c6b7cd8ffebSNB5Q6CcFeKe2"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 4,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 183887,
+        "output_tokens": 11610,
+        "reasoning_tokens": 9936,
+        "cache_read_tokens": 1860480,
+        "cache_write_tokens": 0,
+        "total_tokens": 2065913,
+        "cost_usd": 0.04609209,
+        "duration_seconds": 364,
+        "session_id": "ses_f2c664ac7ffe3Qh5a3Yk2iikDm"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "implementation-reviewer attempt 1 returned CHANGES_REQUIRED (12.3-DOC-1, MEDIUM): the docs/architecture.md status line still claimed task 12.3 remained. Worker attempt 2 fixed the status line, added two focused tests (the ComputeEffectiveScale safe-area clamp branch and the ResolveOutputPolicy undefined-value fallback), and reconciled suite counts."
+    },
+    {
+      "attempt": 3,
+      "reason": "implementation-reviewer attempt 2 returned CHANGES_REQUIRED (12.3-DOC-2, LOW): the docs/changelog.md Task 12.3 entry had stale test/suite counts (41 cases / 1486 / 1549) after attempt 2 added tests. Worker attempt 3 corrected the changelog entry to the final 45-case / 1,490 / 1,553 state (documentation only)."
+    },
+    {
+      "attempt": 4,
+      "reason": "test-quality-reviewer attempt 1 returned PASS_WITH_FINDINGS with two test-honesty gaps: TQ-12.3-01 (MEDIUM, TopAnchorsReserveTheTopRowForTheStatusPill did not fail when the top-anchor first-row reservation was removed) and TQ-12.3-03 (LOW, the Center-anchor status-band row reduction was unexercised). Worker attempt 4 added two tests (TopAnchorsReserveTheFirstRowForAWideStatusBand, CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt), proved them non-vacuous by independent mutations, and reconciled counts to 48 cases / 1,493 / 1,556. No production behavior changed."
+    }
+  ],
+  "notes": [
+    "Runtime token/cost fields were read from the authoritative OpenCode session API via .opencode/scripts/collect-session-usage.sh using the recorded session ids; no estimation was performed.",
+    "Final gates: implementation-worker attempt 4 COMPLETE; implementation-reviewer attempt 4 APPROVED (reviewer_blockers [], required_changes [], ready_for_next_task true); test-quality-reviewer attempt 1 PASS_WITH_FINDINGS, with TQ-12.3-01 (MEDIUM) and TQ-12.3-03 (LOW) resolved in attempt 4 and the resolution independently reproduced by implementation-reviewer attempt 4.",
+    "Validation (independently reproduced): build 0 warnings / 0 errors; full suite Failed 0, Passed 1493, Skipped 63, Total 1556 (pre-task baseline 1445/63/1508; +48 passed, 0 new skips); focused layout/renderer/configuration/page filter 145/2/147; focused new-test filter 7/0/7. The implementation-reviewer independently reproduced two mutations (remove the top-anchor reservation -> the 2 reservation cases fail; disable the Center reduction -> the Center case fails), confirming the new tests are non-vacuous.",
+    "Default-output preservation: the default (BottomLeft, Medium) path is mathematically identical to the pre-task layout (SizeFactor(Medium)=1.0, ComputeAvailableRows/BottomRowTop algebraically equal to the old TopOfRow logic, bottom-left x packing and status-pill x unchanged), so the committed default-configuration goldens are unchanged. Native Skia is unavailable in this environment, so the golden pixel/byte comparison is honestly skipped (63 skips) and the decoded-pixel per-anchor/size comparison is owned by task 12.4.",
+    "Scope boundaries honored: no schema/RenderVersion advance (RendererConfiguration.CurrentSchemaVersion still 1, RenderVersion.CurrentRendererVersion still 2) and no golden regenerated (task 12.4). tests/ArrTags.Tests/Goldens/ is unmodified.",
+    "Documentation reconciled: docs/architecture.md section 9 and status line, docs/data-model.md 3.6/3.12, docs/changelog.md (Phase 12 section + Task 12.3 entry), PLANS.md (12.3 checkbox/status and Phase 12 milestone row), and the current-state surfaces docs/project-status.md, docs/implementation-readiness.md, and docs/limitations.md V6 (suite count 1,493/63/1,556; Phase 12 in progress, Gate 12 not met, no v1.1.0-phase12 tag).",
+    "Tracked non-blocking findings carried to the phase review / task 12.4: TQ-12.3-02 (MEDIUM test-strength residual, the ADR-019 clause 6 identity-neutral default fingerprint is only tested relatively; the absolute pin is the native-Skia-skipped golden manifest comparison, naturally closed by task 12.4's coordinated version advance and golden regeneration), TQ-12.3-04 (INFO, settings-page coverage is a static source-string check; the live POST round-trip is host-guarded and owned by task 14.3), and TQ-12.3-05 (INFO, the 48 new cases are 42+1+4+1)."
+  ]
+}

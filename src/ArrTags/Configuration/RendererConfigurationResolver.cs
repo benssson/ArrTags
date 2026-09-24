@@ -9,10 +9,12 @@ namespace ArrTags.Configuration;
 /// provider-neutral <see cref="BadgeDefinition"/> snapshot and the effective
 /// <see cref="RenderOutputPolicy"/>. Missing selectors keep the code-owned
 /// ADR-009 defaults, the definition order is the canonical selector order, and
-/// every code-owned format, color-space, alpha, font, geometry, text, and version
-/// value is preserved from <see cref="RenderOutputPolicy.Default"/>. Resolution
-/// is tolerant so <see cref="PluginConfigurationSnapshot.From"/> remains usable
-/// for a configuration that has not first passed validation.
+/// every code-owned format, color-space, alpha, font, reference-geometry, text,
+/// and version value is preserved from <see cref="RenderOutputPolicy.Default"/>
+/// while the configured palette (ADR-010) and global position and size
+/// (ADR-019) are applied. Resolution is tolerant so
+/// <see cref="PluginConfigurationSnapshot.From"/> remains usable for a
+/// configuration that has not first passed validation.
 /// </summary>
 public static class RendererConfigurationResolver
 {
@@ -56,7 +58,8 @@ public static class RendererConfigurationResolver
     /// <summary>
     /// Resolves the effective output policy from a persisted renderer
     /// configuration. The configured palette override is applied to the four
-    /// palette colors; every other value remains code-owned.
+    /// palette colors and the configured global position and size are applied
+    /// (ADR-019); every other value remains code-owned.
     /// </summary>
     /// <param name="configuration">The persisted renderer configuration, or <see langword="null"/> for the code-owned defaults.</param>
     /// <returns>The effective immutable output policy.</returns>
@@ -73,6 +76,8 @@ public static class RendererConfigurationResolver
             TechnicalText = RendererPalette.Resolve(configuration?.TechnicalText, defaults.TechnicalText),
             StatusBackground = RendererPalette.Resolve(configuration?.StatusBackground, defaults.StatusBackground),
             StatusText = RendererPalette.Resolve(configuration?.StatusText, defaults.StatusText),
+            Position = ResolvePosition(configuration?.Position),
+            Size = ResolveSize(configuration?.Size),
             ScaleReferenceWidth = defaults.ScaleReferenceWidth,
             MinimumScale = defaults.MinimumScale,
             MaximumScale = defaults.MaximumScale,
@@ -80,6 +85,22 @@ public static class RendererConfigurationResolver
             RetainedPrefixScalarValues = defaults.RetainedPrefixScalarValues,
             Ellipsis = defaults.Ellipsis,
         };
+    }
+
+    private static BadgePosition ResolvePosition(BadgePosition? configured)
+    {
+        // Resolution is tolerant: an undefined value from a configuration that
+        // has not passed validation falls back to the code-owned default.
+        return configured is { } value && Enum.IsDefined(value)
+            ? value
+            : RenderOutputPolicy.Default.Position;
+    }
+
+    private static BadgeSize ResolveSize(BadgeSize? configured)
+    {
+        return configured is { } value && Enum.IsDefined(value)
+            ? value
+            : RenderOutputPolicy.Default.Size;
     }
 
     /// <summary>

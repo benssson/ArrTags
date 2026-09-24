@@ -1,0 +1,172 @@
+{
+  "task": "12.3",
+  "attempt": 2,
+  "reviewer_role": "implementation-reviewer",
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "prior_required_change_assessment": {
+    "attempt_1_required_change": "Update the docs/architecture.md Status line (line 3, Phase 12 sentence) so it reflects that task 12.3 is complete and only task 12.4 remains, instead of the stale 'tasks 12.3 ... and 12.4 ... remain' statement.",
+    "status": "RESOLVED",
+    "detail": "docs/architecture.md line 3 now reads 'tasks 12.1, 12.2, and 12.3 are complete; task 12.3 adds the global BadgePosition ... and BadgeSize ... ; RendererConfiguration.CurrentSchemaVersion is still 1 and RenderVersion.CurrentRendererVersion is still 2, and no golden under tests/ArrTags.Tests/Goldens/ was regenerated; task 12.4 (coordinated schema/RenderVersion advance, golden regeneration, and documentation) remains, so Gate 12 is not yet met and the v1.1.0-phase12 tag is not yet created.' This is accurate against the repository: task 12.3 is implemented, task 12.4 is unchecked in PLANS.md, CurrentSchemaVersion = 1 and CurrentRendererVersion = 2, the goldens tree is clean, and no phase12 tag exists. The fix is present and correct."
+  },
+  "required_changes": [
+    "Update the docs/changelog.md Task 12.3 entry (lines 3460, 3470, 3478-3479) so its test counts reflect the final task state: 45 new cases (BadgeSizePositionTests 39, RendererConfigurationTests 4, plus the unchanged RenderFingerprintTests 1 and DashboardSettingsPageTests 1), suite Failed 0, Passed 1,490, Skipped 63, Total 1,553, and +45 passed / +45 total. The current text still reads 41 cases, BadgeSizePositionTests 36, RendererConfigurationTests 3, Passed 1486, Total 1549, +41."
+  ],
+  "findings": [
+    {
+      "id": "12.3-DOC-1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "documentation/canonical-current-state",
+      "summary": "Attempt-1 required change: docs/architecture.md line 3 still listed task 12.3 as remaining. Corrected by attempt 2.",
+      "detail": "docs/architecture.md line 3 now states that tasks 12.1, 12.2, and 12.3 are complete, describes task 12.3's shipped behaviour, and records that RendererConfiguration.CurrentSchemaVersion is still 1, RenderVersion.CurrentRendererVersion is still 2, no golden was regenerated, task 12.4 remains, Gate 12 is not yet met, and the v1.1.0-phase12 tag is not yet created. Independently verified: RendererConfiguration.cs:32 CurrentSchemaVersion = 1; RenderVersion.cs:20 CurrentRendererVersion = 2; git status --short tests/ArrTags.Tests/Goldens/ is empty; git tag has no phase12 tag. PLANS.md line 19/267, docs/project-status.md, docs/implementation-readiness.md, and the docs/changelog.md Phase 12 status paragraph carry the same accurate Phase 12 in-progress status. No overclaim.",
+      "evidence": [
+        "docs/architecture.md line 3 (Phase 12 clause now reads 12.1/12.2/12.3 complete; 12.4 remains; Gate 12 not met; no v1.1.0-phase12 tag)",
+        "git diff docs/architecture.md shows the Status-line rewrite",
+        "PLANS.md:4490-4491 ([x] 12.3, [ ] 12.4), PLANS.md:19 and :267 (12.1/12.2/12.3 complete, 12.4 remains)",
+        "src/ArrTags/Configuration/RendererConfiguration.cs:32 (CurrentSchemaVersion = 1); src/ArrTags/Rendering/RenderVersion.cs:20 (CurrentRendererVersion = 2)",
+        "git status --short tests/ArrTags.Tests/Goldens/ -> empty; git tag | grep -i phase12 -> no match"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "12.3-DOC-2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation/canonical-current-state",
+      "summary": "docs/changelog.md Task 12.3 entry still states 41 new test cases and Failed 0/Passed 1,486/Total 1,549; the final task state is 45 cases and Passed 1,490/Total 1,553.",
+      "detail": "The task changed a completion count when attempt 2 added two focused tests (+4 cases). The documented worker workflow (.opencode/agents/implementation-worker.md:237) lists docs/changelog.md's task entry as a canonical current-state surface and states that a task changing a completion count must have the affected surfaces verified explicitly, that stale lines in these files are a recurring carry-over defect, and that leaving them is not acceptable merely because the task did not touch the file. docs/changelog.md:3460 still says 'New tests (41 cases)'; :3460 says BadgeSizePositionTests (36 cases); :3470 says RendererConfigurationTests (3 cases); :3478-3479 says 'Passed 1486 ... Total 1549 ... +41 passed, +41 total'. The final repository state is 45 new cases (BadgeSizePositionTests 39, RendererConfigurationTests 4) and Failed 0, Passed 1,490, Skipped 63, Total 1,553 (independently re-run), i.e. +45/+45 over the pre-task baseline 1,445/1,508. The worker's attempt-2 report claims the suite-count surfaces were reconciled and its validation grep reported no stale count in docs/changelog.md, but that grep pattern used comma-separated numbers ('1,486'/'1,549') while the changelog entry writes them without commas, so the stale line was missed. The other current-state surfaces (docs/project-status.md:664, docs/limitations.md:315) were correctly updated to 1,490/1,553. The pre-task baseline (1,445/1,508) in the changelog is historical and correct and should be preserved. Precedent: the analogous task 7.8 changelog factual error was recorded as required change 7.8-R2 (LOW).",
+      "evidence": [
+        "docs/changelog.md:3460 ('New tests (41 cases)' and BadgeSizePositionTests (36 cases))",
+        "docs/changelog.md:3470 (RendererConfigurationTests (3 cases))",
+        "docs/changelog.md:3478-3479 ('Passed 1486 ... Total 1549 ... +41 passed, +41 total')",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs (39 cases: 36 + 3 safe-area clamp theory cases)",
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs (+1 resolver fallback fact, 4 position/size cases)",
+        "Independently re-run . /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1490, Skipped 63, Total 1553",
+        "docs/project-status.md:664 and docs/limitations.md:315 read 1,490/1,553 (correctly reconciled)",
+        ".opencode/agents/implementation-worker.md:230-243 (canonical current-state surfaces; changelog task entry; stale lines not acceptable)"
+      ],
+      "recommended_action": "Rewrite the docs/changelog.md Task 12.3 entry counts to 45 new cases (BadgeSizePositionTests 39, RendererConfigurationTests 4) and Failed 0, Passed 1,490, Skipped 63, Total 1,553 (+45 passed, +45 total), keeping the historical pre-task baseline 1,445/1,508; optionally update the focused-filter count. No production or test code change."
+    },
+    {
+      "id": "12.3-TEST-1",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "testing/coverage",
+      "summary": "Attempt-1 coverage gap (ComputeEffectiveScale safe-area clamp branch and resolver tolerant-undefined fallback) is closed by two new non-vacuous tests.",
+      "detail": "BadgeSizePositionTests.SafeAreaClampReducesTheEffectiveScaleOnAShortPoster is a 3-case theory (Medium 3000x120, Large 1000x40, Small 1000x30). In each case ComputeScale * SizeFactor exceeds min(width,height)/(2*OuterInset), so the clamp at BadgeGeometry.cs:163-166 actually binds; the test asserts unclamped > expected and effective == min(width,height)/48, so removing or weakening the clamp would fail it. RendererConfigurationTests.ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize passes (BadgePosition)99/(BadgeSize)99 through RendererConfigurationResolver.ResolveOutputPolicy and asserts the code-owned defaults (BottomLeft/Medium) plus a defined TopRight/Large case, so a regression that propagated the undefined value would fail it. Both are deterministic and assert concrete values. Focused run: Failed 0, Passed 4, Skipped 0, Total 4.",
+      "evidence": [
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:254-275 (clamp theory; all three cases bind the clamp)",
+        "src/ArrTags/Rendering/BadgeGeometry.cs:151-169 (ComputeEffectiveScale clamp branch)",
+        "tests/ArrTags.Tests/RendererConfigurationTests.cs ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize",
+        "src/ArrTags/Configuration/RendererConfigurationResolver.cs:90-104 (Enum.IsDefined fallback)",
+        "Focused dotnet test filter -> Failed 0, Passed 4, Skipped 0, Total 4"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "12.3-VER-1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "verification/end-to-end",
+      "summary": "The rendered-pixel effect of a non-default anchor/size is still not independently executed; only pure layout geometry and fingerprints are.",
+      "detail": "Unchanged from attempt 1. Native SkiaSharp is unavailable in this environment (ARRTAGS_SKIA_COMPAT unset; the default suite honestly skips 63 cases), so RenderGoldenTests/RenderDeterminismTests and the Skia renderer tests cannot execute. Per-anchor and per-size behaviour is asserted through BadgeLayoutEngine with a delegate measure and through the fingerprints; the renderer consumes the same layout placements and effective scale. The end-to-end decoded-pixel comparison for non-default anchors/sizes is owned by task 12.4 golden regeneration. Not a defect for 12.3.",
+      "evidence": [
+        "tests/ArrTags.Tests/SkiaNativeTheoryAttribute.cs (skips without ARRTAGS_SKIA_COMPAT=1)",
+        "./build.sh test -> Skipped 63 (unchanged baseline)",
+        "src/ArrTags/Rendering/SkiaBadgeRenderer.cs consumes ComputeEffectiveScale and the same policy"
+      ],
+      "recommended_action": "No change for 12.3; task 12.4 owns the regenerated per-anchor/size goldens."
+    },
+    {
+      "id": "12.3-DEFAULT-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/default-output-preservation",
+      "summary": "Default (BottomLeft, Medium) layout math and scale remain mathematically identical to the pre-task implementation.",
+      "detail": "Production source is unchanged since the attempt-1 review (file mtimes 12:26-12:28, before the attempt-1 reviewer report at 12:50:51; attempt-2 writes are 12:52+ and touch only docs and the two test files). By construction SizeFactor(Medium)=1.0, the inset clamp binds only when min(width,height) < 48*scale (not the committed golden dimensions 500x750/750x500), BottomRowTop equals the old TopOfRow, bottom-left x packing accumulates the same inset + widths + gaps, and the status pill x is outputWidth - inset - width. The goldens tree is clean and schema/RenderVersion stay 1/2.",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeGeometry.cs ComputeEffectiveScale/SizeFactor",
+        "src/ArrTags/Rendering/BadgeLayoutEngine.cs (spot-checked per-anchor rows, status-pill rule, safe-area guards)",
+        "File mtimes: src production 12:26-12:28 < attempt-1 review 12:50:51 < attempt-2 docs/tests 12:52+",
+        "git status --short tests/ArrTags.Tests/Goldens/ -> empty"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "acceptance_criteria_assessment": [
+    {
+      "criterion": "A configured size and anchor (four corners plus center) affect the rendered badge.",
+      "assessment": "SATISFIED at the layout/fingerprint level, unchanged from attempt 1. BadgeSizePositionTests proves each anchor changes the rail x/y and each preset changes the scale/pill height; RenderFingerprintTests and RendererConfigurationTests prove non-default position/size change both fingerprints. The end-to-end decoded-pixel effect could not be executed (native Skia unavailable); that comparison is owned by task 12.4 golden regeneration (see 12.3-VER-1)."
+    },
+    {
+      "criterion": "Rail packing, status-pill placement, and safe-area bounds are defined per anchor; no badge paints outside the safe area.",
+      "assessment": "SATISFIED. Tests cover top anchors stacking downward, bottom anchors stacking upward, left/right alignment, Center centering both axes, the top-right status pill moving top-left only for the TopRight anchor, status/rail non-overlap for every anchor, and an all-anchor/all-size safe-area InRange assertion on narrow and short posters, plus the Large-size omit-not-overflow case and the new clamp-binding theory."
+    }
+  ],
+  "validation": {
+    "method": "Independent inspection of the working-tree diff, the pre-task git blobs, the added tests, and every canonical current-state surface, plus independent execution of the build, the full suite, and the focused new tests under the pinned environment. Attempt-2 change isolation verified by file mtimes and the unchanged production source.",
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1)",
+    "commands": [
+      ". /config/arrtags-env.sh && ./build.sh build",
+      ". /config/arrtags-env.sh && ./build.sh test",
+      ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~SafeAreaClampReducesTheEffectiveScaleOnAShortPoster|FullyQualifiedName~ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize\"",
+      "git status --short tests/ArrTags.Tests/Goldens/",
+      "git tag | grep -i phase12",
+      "stat -c '%y %n' on src/, tests/, and docs/ files",
+      "grep for stale suite counts across PLANS.md, docs/changelog.md, docs/project-status.md, docs/architecture.md, docs/implementation-readiness.md, docs/limitations.md, README.md"
+    ],
+    "results": {
+      "build": "Build succeeded. 0 Warning(s), 0 Error(s).",
+      "full_test_suite": "Failed 0, Passed 1490, Skipped 63, Total 1553 (independently reproduced; matches the required expected counts).",
+      "focused_new_tests": "Failed 0, Passed 4, Skipped 0, Total 4 (3 safe-area clamp theory cases + 1 resolver fallback fact).",
+      "correction_scope": "Attempt 2 changed only docs/architecture.md, docs/project-status.md, docs/limitations.md, tests/ArrTags.Tests/BadgeSizePositionTests.cs, tests/ArrTags.Tests/RendererConfigurationTests.cs, and the report files. All src/ArrTags production files retain their attempt-1 mtimes (12:26-12:28), before the attempt-1 reviewer report (12:50:51); no production source changed and no regression is possible from attempt 2.",
+      "version_constants": "RendererConfiguration.CurrentSchemaVersion = 1; RenderVersion.CurrentRendererVersion = 2.",
+      "goldens": "git status --short tests/ArrTags.Tests/Goldens/ -> empty (no regeneration).",
+      "phase_tag": "git tag | grep -i phase12 -> no phase12 tag (only v1.1.0-phase11)."
+    },
+    "not_verified": [
+      "Native SkiaSharp pixel/byte golden comparison and cross-runtime determinism (RenderGoldenTests, RenderDeterminismTests, Skia renderer tests) could not be executed: the pinned native runtime is not present and ARRTAGS_SKIA_COMPAT is unset, so those cases are honestly skipped (63, unchanged). The per-anchor/size end-to-end rendered-pixel comparison is therefore deferred to task 12.4 golden regeneration.",
+      "Live pinned-host settings-page behaviour (ARRTAGS_JELLYFIN_HOST_DIR unset; the host-guarded DashboardSettingsPageTests skip), owned by task 14.3."
+    ]
+  },
+  "tests_checked": [
+    "tests/ArrTags.Tests/BadgeSizePositionTests.cs (read in full; 39 cases incl. the new SafeAreaClampReducesTheEffectiveScaleOnAShortPoster 3-case theory)",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs (new ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize; position/size fingerprint, validation, and XML round-trip cases)",
+    "src/ArrTags/Rendering/BadgeGeometry.cs ComputeEffectiveScale clamp branch (line 151-169) and RendererConfigurationResolver.cs:90-104 (non-vacuousness of the new tests)",
+    "src/ArrTags/Rendering/BadgeLayoutEngine.cs (per-anchor layout, status-pill rule, safe-area guards)",
+    "Full default suite independently re-run: Failed 0, Passed 1490, Skipped 63, Total 1553",
+    "Focused new-test filter independently re-run: Failed 0, Passed 4, Skipped 0, Total 4"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-019 clauses 1-7 (position, status pill, size, rail packing, safe area, fingerprint/identity, no per-selector placement) - carried forward from attempt 1, production unchanged",
+    "PLANS.md task 12.3 objective/work/tests/acceptance criteria and the 12.4 scope boundary",
+    ".opencode/agents/implementation-worker.md:230-243 (canonical current-state surfaces and the completion-count rule supporting finding 12.3-DOC-2)"
+  ],
+  "documentation_checked": [
+    "PLANS.md - Project Status paragraph (line 19) and Milestone 12 row (line 267): 12.1/12.2/12.3 complete, 12.4 remains, Gate 12 not met, no tag - accurate; task 12.3 status has no suite counts - accurate",
+    "docs/changelog.md - Phase 12 status paragraph accurate (12.3 complete; 12.4 remains; Gate 12 not met; no tag), but the Task 12.3 entry test counts are stale (finding 12.3-DOC-2)",
+    "docs/project-status.md - line 664 current v1.1 suite 1,490/63/1,553 - accurate; 1.0.1.0 historical counts preserved",
+    "docs/architecture.md - Status line now accurate (attempt-1 finding resolved); section 9 body accurate",
+    "docs/implementation-readiness.md - status line 12.1/12.2/12.3 complete, 12.4 remains, versions 1/2, no golden - accurate",
+    "docs/limitations.md - V6 current v1.1 suite 1,490/63/1,553 - accurate; 1.0.1.0 counts preserved",
+    "README.md - no Phase 12 status or suite-count claim to reconcile",
+    "docs/data-model.md 3.6/3.12 - task 12.3 implementation notes accurate and correctly scoped to 12.4 for the version/golden advance"
+  ],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "trigger": "Initial independent review of the task 12.3 implementation.",
+      "resolution": "APPROVED functionally; CHANGES_REQUIRED for one MEDIUM stale current-state line (docs/architecture.md line 3 still listed task 12.3 as remaining). Two optional coverage notes (12.3-TEST-1).",
+      "verification": "Recorded in docs/implementation/12.3/reviewer-report.json."
+    },
+    {
+      "attempt": 2,
+      "trigger": "Worker correction: fixed the docs/architecture.md status line; added the BadgeGeometry.ComputeEffectiveScale safe-area clamp theory and the RendererConfigurationResolver.ResolveOutputPolicy undefined-value fallback fact; reconciled docs/project-status.md and docs/limitations.md to 1,490/1,553.",
+      "resolution": "12.3-DOC-1 is resolved and 12.3-TEST-1 is closed; production source is unchanged (mtimes). A new LOW documentation finding 12.3-DOC-2 remains: the docs/changelog.md Task 12.3 entry still states 41 new cases and Passed 1486/Total 1549 instead of 45 and Passed 1490/Total 1553, and the worker's claim that all suite-count surfaces were reconciled is inaccurate (its grep used comma-separated numbers that do not match the changelog's formatting).",
+      "verification": "Independently re-ran build (0 warnings/0 errors), full suite (Failed 0, Passed 1490, Skipped 63, Total 1553), and the focused new tests (Failed 0, Passed 4). Verified versions 1/2, clean goldens, no phase12 tag, unchanged production source, and scanned every canonical current-state surface."
+    }
+  ],
+  "ready_for_next_task": false,
+  "summary": "The attempt-1 required change (12.3-DOC-1, stale docs/architecture.md status line) is resolved and accurate, the two added tests are meaningful and non-vacuous, and the correction changed only documentation and tests (all src/ArrTags production files retain their pre-attempt-1-review mtimes, so the attempt-1 functional conclusions still hold: default output preservation by construction, per-anchor rail packing, the top-right-except-TopRight status-pill rule, the safe-area invariant, fingerprint sensitivity with an identity-neutral default, bounded secret-free validation, and unchanged scope versions 1/2 with unmodified goldens). Independent validation reproduces Build 0 warnings/0 errors, full suite Failed 0, Passed 1,490, Skipped 63, Total 1,553, and focused new tests Failed 0, Passed 4. One documentation defect remains: the docs/changelog.md Task 12.3 entry still reports 41 new cases and Passed 1,486/Total 1,549 rather than the final 45 cases and Passed 1,490/Total 1,553; the documented worker workflow treats the changelog task entry as a canonical current-state surface whose stale counts are not acceptable, and the worker's claim to have reconciled the suite-count surfaces missed this file because its grep used comma-separated numbers. CHANGES_REQUIRED for that single LOW documentation correction; no functional, security, or scope defect was found. The native-golden limitation is explicitly noted (63 honest skips; task 12.4 owns golden regeneration)."
+}

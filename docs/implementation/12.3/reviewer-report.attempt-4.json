@@ -1,0 +1,208 @@
+{
+  "task": "12.3",
+  "attempt": 4,
+  "reviewer_role": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "trigger": "Attempt 3 was APPROVED. The independent test-quality-reviewer then recorded TQ-12.3-01 (MEDIUM) and TQ-12.3-03 (LOW) as open test-honesty gaps. Attempt 4 is a test-hardening correction (no production change) that adds TopAnchorsReserveTheFirstRowForAWideStatusBand (2-case theory) and CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt (1 fact), and reconciles the current-state counts to Failed 0, Passed 1,493, Skipped 63, Total 1,556 (48 task cases).",
+  "prior_required_change_assessment": {
+    "TQ-12.3-01": {
+      "description": "The committed top-anchor status-pill reservation test could not fail when the reservation was removed.",
+      "status": "RESOLVED",
+      "detail": "BadgeSizePositionTests.TopAnchorsReserveTheFirstRowForAWideStatusBand (BadgeSizePositionTests.cs:229-261) uses a deliberate wide probe (status text 70 px -> 94 px pill; the single technical pill 876 px text -> 900 px pill on a 1000x1500 poster, Medium). The reserved first row is safeWidth - statusWidth - pillGap = 952 - 94 - 8 = 850 px, so the 900 px technical pill cannot fit row 0 and must drop to row 1 (y = inset + pillHeight + rowGap = 80 >= status.Y + status.Height = 72); row 1 has full safeWidth 952 and holds it. The test asserts non-overlap, pill.Y >= status.Y + status.Height, and safe-area containment for both pills. Independently reproduced on a throwaway copy: replacing BadgeLayoutEngine.cs:86 'rowAvailableWidth[0] = safeWidth - statusPill.Width - pillGap;' with 'rowAvailableWidth[0] = safeWidth;' rebuilds clean and fails both TopLeft and TopRight cases at line 252 (Failed 2, Passed 1, Total 3), while the Center fact still passes."
+    },
+    "TQ-12.3-03": {
+      "description": "The Center-anchor status-band row-reduction branch was never exercised.",
+      "status": "RESOLVED",
+      "detail": "BadgeSizePositionTests.CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt (BadgeSizePositionTests.cs:139-156) uses a 1000x240 poster where a 2-row centered block would start at (240 - 104)/2 = 68, inside the 80 px top status band (inset 24 + pill height 48 + row gap 8). The Center reduction drops availableRows to 1, so the block top becomes (240 - 48)/2 = 96 and only three technical pills are placed, all in row 0 at y = 96 >= status.Y + status.Height = 72. Independently reproduced on the same throwaway copy: changing BadgeLayoutEngine.cs:92 'CenteredBlockTop(...) < statusReserve' to '< -1' rebuilds clean and fails the Center fact with 'Expected 3, Actual 6' at line 150 (Failed 1, Passed 2, Total 3), while the reservation theory still passes. The two mutations are mutually independent, so each test pins its own branch."
+    },
+    "TQ-12.3-02": {
+      "description": "The ADR-019 clause 6 identity-neutral default fingerprints have no unguarded absolute pin.",
+      "status": "DEFERRED",
+      "detail": "Not addressed by attempt 4. The test-quality-reviewer's recommended action explicitly permits acceptance and assigns closure to task 12.4's coordinated schema/RenderVersion advance and golden regeneration; the worker report and PLANS.md carry the 12.3/12.4 handoff. The production default remains identity-neutral by construction (RenderFingerprint.cs:71-79 and RendererConfigurationFingerprint.cs:66-76 append only when Position != BottomLeft or Size != Medium), and production source is unchanged, so this is a test-strength residual, not a functional defect. It is recorded here as an open 12.4-owned item, not a required change for attempt 4."
+    }
+  },
+  "required_changes": [],
+  "findings": [
+    {
+      "id": "12.3-ATT4-TQ01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "testing/meaningfulness",
+      "summary": "TQ-12.3-01 resolved: the new wide-probe theory fails when the top-anchor reservation is removed.",
+      "detail": "Verified by independent mutation on a throwaway copy: reservation removed -> BadgeSizePositionTests.TopAnchorsReserveTheFirstRowForAWideStatusBand(TopLeft) and (TopRight) both fail at line 252 (Failed 2, Passed 1, Total 3); pristine passes. The probe measures 900 px > 850 px reserved and <= 952 px full safeWidth, so it exercises exactly the reservation boundary.",
+      "evidence": [
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:229-261 (TopAnchorsReserveTheFirstRowForAWideStatusBand)",
+        "src/ArrTags/Rendering/BadgeLayoutEngine.cs:77-87 (top-anchor reservation)",
+        "Independent mutation A on /tmp/12.3-review/mut: rowAvailableWidth[0] = safeWidth -> Failed 2, Passed 1, Total 3 at line 252"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "12.3-ATT4-TQ03",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "testing/coverage",
+      "summary": "TQ-12.3-03 resolved: the new Center fact fails when the Center status-band row reduction is disabled.",
+      "detail": "Verified by independent mutation on a throwaway copy: Center reduction condition made never-true -> CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt fails with Expected 3, Actual 6 at line 150 (Failed 1, Passed 2, Total 3); pristine passes. The 1000x240 geometry makes the centered block top (68) fall inside the 80 px status band only when two rows are available.",
+      "evidence": [
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:139-156 (CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt)",
+        "src/ArrTags/Rendering/BadgeLayoutEngine.cs:88-96 (Center reduction)",
+        "Independent mutation B on /tmp/12.3-review/mut: < statusReserve -> < -1 -> Failed 1, Passed 2, Total 3 at line 150"
+      ],
+      "recommended_action": "None; resolved."
+    },
+    {
+      "id": "12.3-ATT4-TQ02",
+      "severity": "MEDIUM",
+      "status": "noted",
+      "area": "testing/default-output-preservation",
+      "summary": "TQ-12.3-02 remains open but is explicitly deferred to task 12.4; production default is identity-neutral by construction.",
+      "detail": "The identity-neutral default fingerprint claim is still only tested relatively; the only absolute pin is the native-Skia-guarded golden/manifest comparison. This is unchanged by attempt 4 and by design owned by 12.4's coordinated schema/RenderVersion advance and golden regeneration (the test-quality reviewer's recommended action). Production is unchanged and appends badge placement only for a non-default value, so the V1 default fingerprint is unchanged by construction. No action required for attempt 4; close in 12.4.",
+      "evidence": [
+        "docs/implementation/12.3/test-quality-review.json TQ-12.3-02 (mutation M4b passes the whole unguarded suite)",
+        "src/ArrTags/Rendering/RenderFingerprint.cs:69-79; src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:66-76 (conditional append)",
+        "PLANS.md:4704-4737 (task 12.4 owns the coordinated advance and golden regeneration)"
+      ],
+      "recommended_action": "Close in task 12.4 (regenerated goldens and/or an unguarded default-fingerprint pin)."
+    },
+    {
+      "id": "12.3-ATT4-SCOPE",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope/change-isolation",
+      "summary": "Attempt 4 changed only tests and current-state documentation; production source is the already-approved attempt-3 state.",
+      "detail": "File mtimes: every src/ArrTags production file is 12:26-12:28, before the attempt-3 review (13:06) and the test-quality review (13:21); attempt-4 writes are tests/ArrTags.Tests/BadgeSizePositionTests.cs (13:24:01), docs/limitations.md and docs/project-status.md (13:25:21), docs/changelog.md (13:25:29), and the report files. No production regression is possible.",
+      "evidence": [
+        "stat -c '%y %n' over src/**/*.cs -> newest production file 12:28:59",
+        "stat -c '%y %n' tests/ArrTags.Tests/BadgeSizePositionTests.cs -> 13:24:01",
+        "git status --short tests/ArrTags.Tests/Goldens/ -> empty"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "12.3-ATT4-DOC",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/canonical-current-state",
+      "summary": "Current-state count surfaces reconciled to the attempt-4 state with no stale or overclaiming statement.",
+      "detail": "docs/changelog.md:3460/3482-3485 now read 48 cases (BadgeSizePositionTests 42), Failed 0/Passed 1,493/Skipped 63/Total 1,556 (+48/+48), focused 145/2/147, new-test 7/0/7. docs/project-status.md:664-665 and docs/limitations.md:315 read 1,493/1,556. A grep for 1,490/1,553/'45 cases'/'39 cases'/Passed 142/Total 144 over the canonical surfaces finds no stale current-state count. Phase 12 status stays 'in progress': 12.3 complete, 12.4 remains, Gate 12 not met, no v1.1.0-phase12 tag; CurrentSchemaVersion = 1 and CurrentRendererVersion = 2; no golden regenerated.",
+      "evidence": [
+        "docs/changelog.md:3460, :3482-3485",
+        "docs/project-status.md:664-665; docs/limitations.md:315",
+        "docs/architecture.md line 3; PLANS.md:19, :267, :4490-4491; docs/implementation-readiness.md status line",
+        "git tag | grep -i phase12 -> no match; grep CurrentSchemaVersion/CurrentRendererVersion -> 1/2"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "12.3-ATT4-NATIVE",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "verification/end-to-end",
+      "summary": "Native-Skia decoded-pixel/byte golden comparison and the absolute manifest OutputFingerprint check remain unexecuted in this environment.",
+      "detail": "ARRTAGS_SKIA_COMPAT is unset, so RenderGoldenTests, RenderDeterminismTests, and the Skia renderer tests are honestly skipped (63 skips, unchanged). The per-anchor/size end-to-end decoded-pixel comparison and the absolute default-fingerprint pin are owned by task 12.4 golden regeneration. The renderer consumes the same RenderOutputPolicy/BadgeGeometry.ComputeEffectiveScale and BadgeLayoutEngine placements the pure tests exercise.",
+      "evidence": [
+        "./build.sh test -> Skipped 63 (unchanged baseline)",
+        "tests/ArrTags.Tests/RenderGoldenTests.cs (native-guarded)",
+        "src/ArrTags/Rendering/SkiaBadgeRenderer.cs (uses ComputeEffectiveScale and the same policy)"
+      ],
+      "recommended_action": "Task 12.4 owns the regenerated per-anchor/size goldens and the native-Skia execution."
+    }
+  ],
+  "acceptance_criteria_assessment": [
+    {
+      "criterion": "A configured size and anchor (four corners plus center) affect the rendered badge.",
+      "assessment": "SATISFIED at the layout/fingerprint level (unchanged from attempt 3). BadgeSizePositionTests proves each of the five anchors changes the rail x/y and each preset changes the scale/pill height; RenderFingerprintTests and RendererConfigurationTests prove a non-default position/size change both fingerprints. The end-to-end decoded-pixel effect could not be executed (native Skia unavailable) and is owned by task 12.4."
+    },
+    {
+      "criterion": "Rail packing, status-pill placement, and safe-area bounds are defined per anchor; no badge paints outside the safe area.",
+      "assessment": "SATISFIED, strengthened by attempt 4. The per-anchor horizontal alignment and vertical stacking, the TopRight status-pill rule, status/rail non-overlap for every anchor, the all-anchor/all-size safe-area InRange bound on narrow and short posters, the Large-size omit-not-overflow case, and the clamp-binding theory are all covered; the added tests now also pin the top-anchor first-row reservation and the Center status-band row reduction."
+    }
+  ],
+  "validation": {
+    "method": "Independent inspection of the working tree, the attempt-4 test additions, the production branches they target, the attempt-3 reviewer report, the test-quality review, and every canonical current-state surface; independent execution of the build, the full suite, and both focused filters; and independent reproduction of both non-vacuity mutations on a throwaway copy of the tree under /tmp/12.3-review/mut (removed after use). The real working tree was never modified.",
+    "environment": ". /config/arrtags-env.sh (DOTNET_ROOT=/config/.dotnet, DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1)",
+    "commands": [
+      ". /config/arrtags-env.sh && ./build.sh build",
+      ". /config/arrtags-env.sh && ./build.sh test",
+      ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~BadgeSizePositionTests|FullyQualifiedName~BadgeLayoutTests|FullyQualifiedName~RendererBehaviorLayoutTests|FullyQualifiedName~RenderFingerprintTests|FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~DashboardSettingsPageTests\"",
+      ". /config/arrtags-env.sh && dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~SafeAreaClampReducesTheEffectiveScaleOnAShortPoster|FullyQualifiedName~ResolverFallsBackToDefaultsForUndefinedBadgePositionAndSize|FullyQualifiedName~TopAnchorsReserveTheFirstRowForAWideStatusBand|FullyQualifiedName~CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt\"",
+      "Throwaway copy: cp -a /workspace/ArrTags /tmp/12.3-review/mut; mutation A (reservation removed) then mutation B (Center reduction disabled), each rebuilt with ./build.sh build and run with the 2-test new-case filter",
+      "grep -rnE '1,490|1,553|45 cases|39 cases|Total 144|Passed 142|1,493|1,556|48 cases|42 cases' over the canonical current-state surfaces",
+      "stat -c '%y %n' over all src/**, tests/**, and docs/** files to isolate attempt-4 writes"
+    ],
+    "results": {
+      "build": "Build succeeded. 0 Warning(s), 0 Error(s).",
+      "full_test_suite": "Failed 0, Passed 1,493, Skipped 63, Total 1,556 (independently reproduced; matches the worker report and the reconciled changelog/project-status/limitations counts).",
+      "focused_filter": "Failed 0, Passed 145, Skipped 2, Total 147 (the 2 skips are the pre-existing pinned-host DashboardSettingsPageTests; ARRTAGS_JELLYFIN_HOST_DIR unset). Matches.",
+      "focused_new_tests": "Failed 0, Passed 7, Skipped 0, Total 7 (3 safe-area clamp theory cases + 1 resolver fallback fact + 2 wide-probe reservation theory cases + 1 Center row-reduction fact). Matches.",
+      "mutation_a_reservation_removed": "Failed 2, Passed 1, Total 3; the two failing cases are TopAnchorsReserveTheFirstRowForAWideStatusBand(TopLeft) and (TopRight) at line 252; the Center fact still passes.",
+      "mutation_b_center_reduction_disabled": "Failed 1, Passed 2, Total 3; the failing case is CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt with 'Expected 3, Actual 6' at line 150; the reservation theory still passes.",
+      "case_count_derivation": "BadgeSizePositionTests.cs now has 10 [Fact] + 8 [Theory] with 32 [InlineData] = 42 cases (attempt 3 had 39; +1 fact and +1 two-case theory). RenderFingerprintTests +1, RendererConfigurationTests +4, DashboardSettingsPageTests +1 => 42 + 1 + 4 + 1 = 48 task 12.3 cases, matching the changelog.",
+      "change_scope": "Attempt-4 writes are tests/ArrTags.Tests/BadgeSizePositionTests.cs (13:24:01), docs/limitations.md and docs/project-status.md (13:25:21), docs/changelog.md (13:25:29), and the report files; all src/ArrTags production files retain mtimes 12:26-12:28, before the attempt-3 review, so production is the already-approved attempt-3 state.",
+      "version_constants": "RendererConfiguration.CurrentSchemaVersion = 1; RenderVersion.CurrentRendererVersion = 2.",
+      "goldens": "git status --short tests/ArrTags.Tests/Goldens/ -> empty (no regeneration).",
+      "phase_tag": "git tag | grep -i phase12 -> no phase12 tag."
+    },
+    "not_verified": [
+      "Native SkiaSharp decoded-pixel/byte golden comparison and cross-runtime determinism (RenderGoldenTests, RenderDeterminismTests, Skia renderer tests): the pinned native runtime is absent and ARRTAGS_SKIA_COMPAT is unset, so those cases are honestly skipped (63, unchanged). The per-anchor/size end-to-end rendered-pixel comparison and the absolute default-fingerprint pin are owned by task 12.4 golden regeneration.",
+      "Live pinned-host settings-page behaviour (ARRTAGS_JELLYFIN_HOST_DIR unset; the host-guarded DashboardSettingsPageTests skip), owned by task 14.3."
+    ]
+  },
+  "tests_checked": [
+    "tests/ArrTags.Tests/BadgeSizePositionTests.cs (read in full; 10 [Fact] + 8 [Theory] with 32 [InlineData] = 42 cases incl. the two attempt-4 additions)",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs (+4 [Fact]: fingerprint sensitivity, undefined-value validation, resolved output-policy mapping, resolver tolerant fallback)",
+    "tests/ArrTags.Tests/RenderFingerprintTests.cs (+1 [Fact]: output-fingerprint sensitivity and identity-neutral default)",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs (+1 [Fact]: settings-page position/size exposure)",
+    "src/ArrTags/Rendering/BadgeLayoutEngine.cs (top-anchor reservation :77-87 and Center reduction :88-96; independently mutated)",
+    "src/ArrTags/Rendering/BadgeGeometry.cs (ComputeEffectiveScale clamp and size factors)",
+    "src/ArrTags/Rendering/RenderFingerprint.cs and src/ArrTags/Configuration/RendererConfigurationFingerprint.cs (conditional identity-neutral append)",
+    "Full default suite independently re-run: Failed 0, Passed 1,493, Skipped 63, Total 1,556",
+    "Focused layout/renderer/configuration/page filter: Failed 0, Passed 145, Skipped 2, Total 147",
+    "Focused new-test filter: Failed 0, Passed 7, Skipped 0, Total 7",
+    "Independent mutation reproduction on a throwaway copy: reservation removal (Failed 2/1/3) and Center reduction removal (Failed 1/2/3)"
+  ],
+  "research_checked": [
+    "docs/decisions.md ADR-019 clauses 1-7 (position, status pill, size, rail packing, safe area, fingerprint/identity, no per-selector placement) - carried forward; production unchanged",
+    "PLANS.md task 12.3 objective/work/tests/acceptance criteria and the 12.4 scope boundary (PLANS.md:4621, :4704-4737)",
+    "docs/implementation/12.3/test-quality-review.json (TQ-12.3-01/-02/-03 mutation evidence) - the two addressed findings independently reproduced"
+  ],
+  "documentation_checked": [
+    "PLANS.md - Project Status (line 19) and Milestone 12 row (line 267): 12.1/12.2/12.3 complete, 12.4 remains, Gate 12 not met, no tag - accurate; task 12.3 [x] and 12.4 [ ] (lines 4490-4491)",
+    "docs/changelog.md - Task 12.3 entry now 48 cases / BadgeSizePositionTests 42 / suite 1,493/63/1,556 (+48/+48) / focused 145/2/147 / new-test 7/0/7 - accurate; no stale count",
+    "docs/project-status.md - line 7-9 phase status accurate; line 664-665 current v1.1 suite 1,493/63/1,556 accurate; 1.0.1.0 historical counts preserved",
+    "docs/architecture.md - Status line (line 3) accurate; section 9 body accurate",
+    "docs/implementation-readiness.md - status line 12.1/12.2/12.3 complete, 12.4 remains, versions 1/2, no golden - accurate",
+    "docs/limitations.md - V6 current v1.1 suite 1,493/63/1,556 accurate; 1.0.1.0 counts preserved",
+    "docs/data-model.md 3.6/3.12 and README.md - no stale Phase 12 status or suite-count claim to reconcile"
+  ],
+  "rework_log": [
+    {
+      "attempt": 1,
+      "trigger": "Initial independent review of the task 12.3 implementation.",
+      "resolution": "APPROVED functionally; CHANGES_REQUIRED for one MEDIUM stale current-state line (docs/architecture.md line 3).",
+      "verification": "Recorded in docs/implementation/12.3/reviewer-report.json."
+    },
+    {
+      "attempt": 2,
+      "trigger": "Worker correction: fixed the docs/architecture.md status line; added the ComputeEffectiveScale clamp theory and the resolver undefined-value fallback fact; reconciled project-status/limitations counts.",
+      "resolution": "12.3-DOC-1 resolved and the coverage note closed; a new LOW 12.3-DOC-2 (stale changelog counts) remained.",
+      "verification": "Recorded in docs/implementation/12.3/reviewer-report.attempt-2.json."
+    },
+    {
+      "attempt": 3,
+      "trigger": "Worker correction: rewrote the docs/changelog.md Task 12.3 entry to the final counts.",
+      "resolution": "12.3-DOC-2 resolved; APPROVED.",
+      "verification": "Recorded in docs/implementation/12.3/reviewer-report.attempt-3.json."
+    },
+    {
+      "attempt": 4,
+      "trigger": "Test-quality-reviewer TQ-12.3-01 (MEDIUM) and TQ-12.3-03 (LOW); worker added two tests and reconciled counts.",
+      "resolution": "Both findings resolved and independently reproduced as non-vacuous; TQ-12.3-02 (MEDIUM) remains explicitly deferred to task 12.4. Production source unchanged. APPROVED.",
+      "verification": "Independently re-ran build (0/0), full suite (Failed 0, Passed 1,493, Skipped 63, Total 1,556), focused filter (145/2/147), new-test filter (7/0/7), and both mutations on a throwaway copy; verified scope by mtimes, versions 1/2, clean goldens, no phase12 tag, and reconciled count surfaces."
+    }
+  ],
+  "ready_for_next_task": true,
+  "summary": "Attempt 4 correctly hardens the task 12.3 test suite with no production change. The two added tests are genuinely non-vacuous and independently reproduced: removing the top-anchor reservation (BadgeLayoutEngine.cs:86) fails both cases of TopAnchorsReserveTheFirstRowForAWideStatusBand at line 252 (Failed 2, Passed 1, Total 3), and disabling the Center status-band row reduction (BadgeLayoutEngine.cs:92) fails CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt with 'Expected 3, Actual 6' at line 150 (Failed 1, Passed 2, Total 3); each mutation leaves the other new test passing, so the two are independent. Attempt 4 changed only tests/ArrTags.Tests/BadgeSizePositionTests.cs and the current-state docs (changelog/project-status/limitations) plus report files; every src/ArrTags production file retains an mtime at or before the attempt-3 review, so production is the already-approved attempt-3 state. I independently reproduced build 0 warnings/0 errors, the full suite Failed 0, Passed 1,493, Skipped 63, Total 1,556, the focused layout/renderer/configuration/page filter 145/2/147, and the focused new-test filter 7/0/7; per-file case counts (BadgeSizePositionTests 42 = 10 [Fact] + 32 [Theory InlineData]; +1/+4/+1 elsewhere = 48 task cases) match the reconciled documentation. Current-state surfaces are accurate with no overclaim: 12.3 complete, 12.4 remains, Gate 12 not met, no v1.1.0-phase12 tag, CurrentSchemaVersion 1, CurrentRendererVersion 2, goldens unmodified. TQ-12.3-01 and TQ-12.3-03 are resolved; TQ-12.3-02 (identity-neutral default fingerprint absolute pin) remains open but is explicitly owned by task 12.4 and does not block this attempt. The native-Skia decoded-pixel/byte golden comparison and the absolute manifest OutputFingerprint check remain unexecuted (63 honest skips; task 12.4 owns golden regeneration). APPROVED; ready for task 12.4."
+}

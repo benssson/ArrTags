@@ -8,10 +8,10 @@ namespace ArrTags.Configuration;
 /// <summary>
 /// Persisted, user-adjustable V1 renderer configuration. It contains only the
 /// enabled/disabled badge selectors, their bounded provider-neutral templates,
-/// their optional bounded value allowlists, plus optional contrast-validated
-/// palette overrides. Output format, color space, alpha policy, font identity,
-/// geometry, text limits, and the renderer version remain code-owned per ADR-010
-/// and are not represented here.
+/// their optional bounded value allowlists, the global badge position and size,
+/// plus optional contrast-validated palette overrides. Output format, color
+/// space, alpha policy, font identity, reference geometry, text limits, and the
+/// renderer version remain code-owned per ADR-010 and are not represented here.
 /// </summary>
 /// <remarks>
 /// A selector that is absent keeps the code-owned ADR-009 default. A template
@@ -77,15 +77,40 @@ public sealed class RendererConfiguration
     public string StatusText { get; set; } = string.Empty;
 
     /// <summary>
-    /// Validates the configured selectors, templates, allowlists, colors, and
-    /// contrast, and appends a safe message for each violation. Messages never
-    /// contain a secret, a template value, an allowlist value, or a configured
-    /// color value.
+    /// Gets or sets the global technical-rail anchor (ADR-019). The default
+    /// <see cref="BadgePosition.BottomLeft"/> reproduces the V1 output.
+    /// Placement is global renderer policy; it is not representable per
+    /// selector.
+    /// </summary>
+    public BadgePosition Position { get; set; } = BadgePosition.BottomLeft;
+
+    /// <summary>
+    /// Gets or sets the global preset badge size (ADR-019). The default
+    /// <see cref="BadgeSize.Medium"/> reproduces the V1 geometry. Size is global
+    /// renderer policy; it is not representable per selector.
+    /// </summary>
+    public BadgeSize Size { get; set; } = BadgeSize.Medium;
+
+    /// <summary>
+    /// Validates the configured selectors, templates, allowlists, position,
+    /// size, colors, and contrast, and appends a safe message for each violation.
+    /// Messages never contain a secret, a template value, an allowlist value, or
+    /// a configured color value.
     /// </summary>
     /// <param name="errors">The bounded error collection to append to.</param>
     public void Validate(ICollection<string> errors)
     {
         ArgumentNullException.ThrowIfNull(errors);
+
+        if (!Enum.IsDefined(Position))
+        {
+            errors.Add("Renderer badge position must be a known value.");
+        }
+
+        if (!Enum.IsDefined(Size))
+        {
+            errors.Add("Renderer badge size must be a known value.");
+        }
 
         var seen = new HashSet<BadgeSelector>();
         foreach (var entry in Selectors)

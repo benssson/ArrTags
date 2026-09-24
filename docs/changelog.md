@@ -3309,10 +3309,10 @@ Skipped 63, Total 1481; +3 passed, +3 total, 0 new skips).
 ## Phase 12 - Badge value allowlist and badge size/position (v1.1)
 
 **Status:** In progress. Tasks 12.1 (allowlist configuration, bounds, validation,
-and fingerprint) and 12.2 (allowlist resolution and renderer filtering order) are
-complete; tasks 12.3 (badge size/position configuration and layout engine) and
+and fingerprint), 12.2 (allowlist resolution and renderer filtering order), and
+12.3 (badge size/position configuration and layout engine) are complete; task
 12.4 (coordinated schema/`RenderVersion` advance, golden regeneration, and
-documentation) remain. Gate 12 is not yet met and the `v1.1.0-phase12` tag is not
+documentation) remains. Gate 12 is not yet met and the `v1.1.0-phase12` tag is not
 yet created.
 
 ### Task 12.1 - Allowlist configuration, bounds, validation, and fingerprint
@@ -3413,3 +3413,74 @@ allowlisted value that cannot fit still following the shorten/omit behavior.
 Skipped 63, Total 1499; +9 passed, +9 total, 0 new skips). The focused
 allowlist/definition/truncation/layout filter was Failed 0, Passed 39, Skipped 0,
 Total 39.
+
+### Task 12.3 - Badge size/position configuration and layout engine
+
+**Status:** Complete.
+
+Adds the global badge position and size settings and the per-anchor layout
+behavior (ADR-019 clauses 1-5 and 7). `RendererConfiguration` gains `Position`
+(`BadgePosition`: `BottomLeft` default, `TopLeft`, `TopRight`, `BottomRight`,
+`Center`) and `Size` (`BadgeSize`: `Medium` default, `Small`, `Large`).
+`RendererConfiguration.Validate` rejects an undefined enum value with a bounded,
+secret-free message ("Renderer badge position must be a known value." /
+"Renderer badge size must be a known value."). `RendererConfigurationResolver`
+carries both onto the resolved `RenderOutputPolicy` (the object passed into
+`BadgeLayoutEngine.Build`), defaulting a tolerantly read undefined value to the
+code-owned default. `BadgeGeometry.ComputeEffectiveScale` computes
+`clamp(width / 1000, 0.5, 4.0) * sizeFactor` with code-owned factors `Small`
+0.75, `Medium` 1.0, and `Large` 1.5, clamped so the scaled outer inset leaves a
+positive safe area; the renderer uses the same effective scale for its font.
+`BadgeLayoutEngine` positions the rail per anchor: rows stack away from the
+anchored edge (downward for top anchors, upward for bottom anchors, vertically
+centered for `Center`) and align to the anchored side (left, right, or
+centered); the `UPGRADE` status pill stays top-right except when the anchor is
+`TopRight`, then top-left; and a top-anchor first row reserves the status pill
+plus one gap so the two never overlap. Pills still pack in the ADR-009 priority
+order with the at-most-two-rows / three-pills-per-row limit, shortening, and
+omission unchanged, and no pill paints outside the safe area. The 24-pixel
+scaled inset and all ADR-009 safe-area, text-limit, contrast, opacity, and
+determinism guarantees are unchanged. A non-default position or size is included
+in both `RendererConfigurationFingerprint` and
+`RenderFingerprint.ComputeOutputFingerprint`; the V1 default is identity-neutral,
+so the default configuration and output fingerprints are unchanged and the
+committed goldens are unaffected. The ADR-016 settings page
+(`src/ArrTags/Configuration/config.html`) exposes a position select and a size
+select, populates them on `pageshow`, and writes them back on submit. Placement
+and size are global only; there is no per-selector placement.
+
+Scope: `RendererConfiguration.CurrentSchemaVersion` is still 1 and
+`RenderVersion.CurrentRendererVersion` is still 2, and no golden under
+`tests/ArrTags.Tests/Goldens/` was regenerated (the coordinated schema/
+`RenderVersion` advance and golden regeneration are task 12.4).
+
+Documentation: `docs/architecture.md` section 9, `docs/data-model.md` 3.6/3.12,
+and `PLANS.md`.
+
+New tests (48 cases): `tests/ArrTags.Tests/BadgeSizePositionTests.cs` (42 cases)
+covers the default bottom-left/medium V1 reproduction, the rail position for
+each of the five anchors, the code-owned size factor and each preset scale, the
+top/bottom row stacking, left/right row alignment, the center row centering, the
+status pill top-right placement for every anchor except top-right, the
+top-right-to-top-left rule, status/rail non-overlap for every anchor, the
+top-anchor status reservation (including a wide status/rail probe that requires
+the reservation to keep the technical pill out of the status band), the
+center-anchor status-band row reduction, the safe-area bound for every anchor and
+size on narrow and short posters, the large-size omit-not-overflow fallback, and
+the safe-area clamp that binds on a very short poster;
+`tests/ArrTags.Tests/RenderFingerprintTests.cs` (1 case) covers output-fingerprint
+sensitivity to position and size and the identity-neutral default;
+`tests/ArrTags.Tests/RendererConfigurationTests.cs` (4 cases) covers the
+configuration-fingerprint sensitivity to position and size, the undefined-value
+validation messages, the resolved output-policy mapping, and the resolver's
+tolerant fallback to the code-owned default for an undefined value (the XML
+round-trip test now also persists and reloads the position and size);
+`tests/ArrTags.Tests/DashboardSettingsPageTests.cs` (1 case) covers the
+settings-page position/size exposure and round-trip.
+
+`./build.sh build` reported 0 warnings / 0 errors; the default suite was Failed
+0, Passed 1,493, Skipped 63, Total 1,556 (pre-task baseline Failed 0, Passed
+1,445, Skipped 63, Total 1,508; +48 passed, +48 total, 0 new skips). The focused
+layout/renderer/configuration/page filter was Failed 0, Passed 145, Skipped 2,
+Total 147; the focused new-test filter was Failed 0, Passed 7, Skipped 0, Total
+7.
