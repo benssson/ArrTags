@@ -1,0 +1,119 @@
+{
+  "phase": 12,
+  "title": "Badge value allowlist and badge size/position",
+  "release": "v1.1.0",
+  "phase_tag": "v1.1.0-phase12",
+  "status": "COMPLETE",
+  "phase_review": {
+    "report": "docs/implementation/phase-12/phase-review.json",
+    "reviewer_status": "APPROVED_WITH_FINDINGS",
+    "phase_complete": true,
+    "ready_for_next_phase": true,
+    "open_blocker_or_high": 0,
+    "reviewed_head": "75d3a42",
+    "findings": [
+      {"id": "P12R-F1", "severity": "MEDIUM", "status": "tracked", "summary": "The absolute default output/configuration-fingerprint pin lives only in the native-guarded golden path (TQ-12.3-02 == TQ-12.4-01); production is identity-neutral by construction and the committed manifest fingerprints are pinned by the forced-native run."},
+      {"id": "P12R-F2", "severity": "LOW", "status": "tracked", "summary": "Two pre-existing source XML comments on the private AppendBadgePlacement helpers still say the default fingerprint is 'unchanged'; reword in a later documentation pass."},
+      {"id": "P12R-F3", "severity": "LOW", "status": "addressed", "summary": "Task 12.1's orchestration omitted the test-quality-reviewer invocation and the attempt-1 worker report was overwritten; the orchestration was updated at closure with the invocation metadata, the TQ-12.1-1/TQ-12.1-2 findings, and a record-keeping note."},
+      {"id": "P12R-F4", "severity": "LOW", "status": "closure-action", "summary": "The phase-level aggregate was absent; created by this closure."},
+      {"id": "P12R-F5", "severity": "LOW", "status": "tracked", "summary": "No single end-to-end test composes a configured allowlist/position/size from PluginConfiguration through the resolver to the selection/output fingerprint (TQ-12.2-1); the seams are covered separately."},
+      {"id": "P12R-F6", "severity": "LOW", "status": "tracked", "summary": "The settings-page allowlist/position/size round-trip is asserted statically only; the live POST confirmation is owned by task 14.3."}
+    ],
+    "tag_recommendation": "Create the annotated tag v1.1.0-phase12 at the Phase 12 closure commit."
+  },
+  "authoritative_execution_order": ["12.1", "12.2", "12.3", "12.4"],
+  "tasks": [
+    {
+      "task": "12.1",
+      "title": "Allowlist configuration, bounds, validation, and fingerprint",
+      "status": "COMPLETE",
+      "commit": "c56d228",
+      "state_commit": "50b372c",
+      "orchestration": "docs/implementation/12.1/orchestration.json",
+      "subagent_invocations": 5,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: implementation-reviewer MEDIUM 12.1-F1 (docs/changelog.md had no task 12.1 entry); the worker added the Phase 12 section and Task 12.1 entry (documentation only)."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "test_quality_reviewer": "PASS_WITH_FINDINGS (TQ-12.1-1/TQ-12.1-2 LOW; report committed d1b80fb)"
+      }
+    },
+    {
+      "task": "12.2",
+      "title": "Allowlist resolution and renderer filtering order",
+      "status": "COMPLETE",
+      "commit": "b404448",
+      "state_commit": "34b8ca5",
+      "orchestration": "docs/implementation/12.2/orchestration.json",
+      "subagent_invocations": 7,
+      "rework_rounds": 2,
+      "rework_reasons": [
+        "attempt 2: implementation-reviewer MEDIUM (docs/project-status.md and docs/implementation-readiness.md not reconciled with the current suite count/phase status).",
+        "attempt 3: implementation-reviewer MEDIUM (the attempt-2 reconciliation introduced a '64 entries per selector' bound error; corrected to 32)."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 3)",
+        "test_quality_reviewer": "PASS_WITH_FINDINGS (0 BLOCKER/HIGH/MEDIUM; 5 source mutations killed)"
+      }
+    },
+    {
+      "task": "12.3",
+      "title": "Badge size/position configuration and layout engine",
+      "status": "COMPLETE",
+      "commit": "b8ed851",
+      "state_commit": "707c272",
+      "orchestration": "docs/implementation/12.3/orchestration.json",
+      "subagent_invocations": 9,
+      "rework_rounds": 3,
+      "rework_reasons": [
+        "attempt 2: implementation-reviewer MEDIUM 12.3-DOC-1 (stale docs/architecture.md status line); the worker also added two focused tests (safe-area clamp, resolver fallback) and reconciled counts.",
+        "attempt 3: implementation-reviewer LOW 12.3-DOC-2 (stale changelog Task 12.3 counts).",
+        "attempt 4: test-quality-reviewer MEDIUM TQ-12.3-01 (top-anchor reservation test non-failing) and LOW TQ-12.3-03 (Center status-band reduction unexercised); the worker added two non-vacuous tests and reconciled counts (no production change)."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 4)",
+        "test_quality_reviewer": "PASS_WITH_FINDINGS (TQ-12.3-01/-03 resolved in attempt 4; TQ-12.3-02 carried as P12R-F1)"
+      }
+    },
+    {
+      "task": "12.4",
+      "title": "Coordinated schema/RenderVersion advance, golden regeneration, and documentation",
+      "status": "COMPLETE",
+      "commit": "2db0b47",
+      "state_commit": "75d3a42",
+      "orchestration": "docs/implementation/12.4/orchestration.json",
+      "subagent_invocations": 5,
+      "rework_rounds": 1,
+      "rework_reasons": [
+        "attempt 2: implementation-reviewer MEDIUM 12.4-DOC-1 (named Goal B/E docs still claimed the default fingerprints/identity were unchanged after the version advance); the worker qualified every current-state identity-neutral claim (documentation only)."
+      ],
+      "final_gates": {
+        "implementation_reviewer": "APPROVED (attempt 2)",
+        "test_quality_reviewer": "PASS_WITH_FINDINGS (TQ-12.4-01 carried as P12R-F1)"
+      }
+    }
+  ],
+  "related_commits": [
+    "d1b80fb Record v1.1 task 12.1 test-quality review"
+  ],
+  "summary": {
+    "total_task_subagent_invocations": 26,
+    "total_rework_rounds": 7,
+    "tasks_complete": 4,
+    "tasks_total": 4,
+    "user_decisions_required": []
+  },
+  "notes": [
+    "Runtime token/cost fields were recorded from the authoritative OpenCode session API in the per-task records using the recorded session ids; no estimation was performed.",
+    "Each task record under docs/implementation/<task>/orchestration.json contains per-invocation execution metadata and rework entries.",
+    "Phase 12 was implemented on the canonical v1.1 branch: 12.1 c56d228/50b372c, 12.2 b404448/34b8ca5, 12.3 b8ed851/707c272, 12.4 2db0b47/75d3a42.",
+    "The single coordinated output-affecting advance is exactly RendererConfiguration.CurrentSchemaVersion 1 -> 2 and RenderVersion.CurrentRendererVersion 2 -> 3; BadgeMetadata.CurrentSchemaVersion (2) and StateEnvelopeCodec.CurrentSchemaVersion (1) are unchanged.",
+    "Golden regeneration: the nine existing default-configuration PNGs are byte-identical to pre-task HEAD (only their OutputFingerprint advanced with the renderer version) and four anchor/size goldens were added (top-left, top-right-large, bottom-right-small, center). Regeneration used a throwaway generator that was removed; no committed writer/auto-approval path exists.",
+    "Phase 12 phase-review gate: APPROVED_WITH_FINDINGS, phase_complete true, ready_for_next_phase true, 0 open BLOCKER/HIGH; all six Phase 12 acceptance criteria met at the implementation and test level.",
+    "Validation: build 0 warnings / 0 errors; default suite Failed 0, Passed 1494, Skipped 63, Total 1557; forced-native focused Failed 0, Passed 35, Skipped 1, Total 36; forced-native full Failed 0, Passed 1575, Skipped 20, Total 1595. All 63 default skips are environment-guarded (native Skia / pinned host / non-canonical) with 0 new skips.",
+    "Tracked non-blocking findings carried forward: P12R-F1 (MEDIUM, absolute default-fingerprint pin only in the native-guarded golden path; recommended closure is a pure unguarded default-fingerprint pin and/or adding the forced-native run to the release checklist), P12R-F2 (LOW, stale source XML comments on AppendBadgePlacement), P12R-F5 (LOW, no single end-to-end allowlist/position/size composition test), P12R-F6 (LOW, settings-page live round-trip owned by task 14.3).",
+    "The live pinned-host confirmation of the Goal B/E behavior remains owned by task 14.3; ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the host-guarded facts skip."
+  ]
+}

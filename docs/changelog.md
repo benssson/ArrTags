@@ -3308,13 +3308,12 @@ Skipped 63, Total 1481; +3 passed, +3 total, 0 new skips).
 
 ## Phase 12 - Badge value allowlist and badge size/position (v1.1)
 
-**Status:** Tasks 12.1 (allowlist configuration, bounds, validation, and
-fingerprint), 12.2 (allowlist resolution and renderer filtering order), 12.3
-(badge size/position configuration and layout engine), and 12.4 (coordinated
-schema/`RenderVersion` advance, golden regeneration, and documentation) are
-complete at the integration-test level. Gate 12 is not yet met and the
-`v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the
-orchestrator).
+**Status:** Complete; the independent phase review is approved (Gate 12 met; see
+`docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+open BLOCKER/HIGH) and the `v1.1.0-phase12` tag is created (tasks 12.1, 12.2,
+12.3, and 12.4 complete). All six Phase 12 acceptance criteria are met at the
+implementation and test level; the live pinned-host confirmation is owned by task
+14.3.
 
 ### Task 12.1 - Allowlist configuration, bounds, validation, and fingerprint
 

@@ -3,13 +3,15 @@
 ## Project Status
 
 **Current milestone:** Phase 12 — Badge value allowlist and badge size/position
-(v1.1) tasks 12.1 (allowlist configuration, bounds, validation, and fingerprint),
-12.2 (allowlist resolution and renderer filtering order), 12.3 (badge
-size/position configuration and layout engine), and 12.4 (coordinated
+(v1.1) is complete: tasks 12.1 (allowlist configuration, bounds, validation, and
+fingerprint), 12.2 (allowlist resolution and renderer filtering order), 12.3
+(badge size/position configuration and layout engine), and 12.4 (coordinated
 schema/`RenderVersion` advance, golden regeneration, and documentation) are
-complete at the integration-test level, so Gate 12 is not yet met and the
-`v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the
-orchestrator). Phase 11 — Provider inventory cache and
+complete; all six Phase 12 acceptance criteria are met at the implementation and
+test level; Gate 12 is met (the Phase 12 review is approved in
+`docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live
+pinned-host confirmation is owned by task 14.3. Phase 11 — Provider inventory cache and
 library-refresh-driven refresh (v1.1) is complete at the integration-test level:
 tasks 11.1 (inventory cache model, bounds, and limits), 11.2 (provider-client
 integration and bulk reads), 11.3 (ArrTags-side invalidation), and 11.4 (Goal C
@@ -701,14 +703,23 @@ assembly. The package contains `ArrTags.dll`, `ArrTags.deps.json`, `build.yaml`,
 
 Next tasks:
 
-- Phase 12 — Badge value allowlist and badge size/position (v1.1) tasks 12.1
-  (allowlist configuration, bounds, validation, and fingerprint), 12.2
-  (allowlist resolution and renderer filtering order), 12.3 (badge
-  size/position configuration and layout engine), and 12.4 (coordinated
-  schema/`RenderVersion` advance, golden regeneration, and documentation) are
-  complete at the integration-test level, so Gate 12 is not yet met and the
-  `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by
-  the orchestrator). Task 12.1 defines the bounded per-selector allowlist (at
+- Phase 13 — README and documentation pass (v1.1) tasks 13.1 (README palette
+  documentation and v1.1 feature documentation) and 13.2 (canonical current-state
+  documentation reconciliation) are next: document the four palette override
+  fields with their meaning, default colors, and the 4.5:1 contrast rule;
+  document the v1.1 features (settings UI, allowlist, placement/size, verbosity)
+  in the README; and reconcile the canonical current-state docs so no stale claim
+  remains.
+- Phase 12 — Badge value allowlist and badge size/position (v1.1) is complete:
+  tasks 12.1 (allowlist configuration, bounds, validation, and fingerprint), 12.2
+  (allowlist resolution and renderer filtering order), 12.3 (badge size/position
+  configuration and layout engine), and 12.4 (coordinated schema/`RenderVersion`
+  advance, golden regeneration, and documentation) are complete; all six Phase 12
+  acceptance criteria are met at the implementation and test level; Gate 12 is met
+  (the Phase 12 review is approved in
+  `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0
+  open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live
+  pinned-host confirmation is owned by task 14.3. Task 12.1 defines the bounded per-selector allowlist (at
   most 32 entries per selector, each at most 64 characters, trimmed, with no
   blank or control-character entry and no case-insensitive duplicate), validates
   it at configuration load, includes a non-empty resolved allowlist in the

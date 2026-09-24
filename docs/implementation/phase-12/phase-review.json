@@ -1,0 +1,270 @@
+{
+  "phase": "12",
+  "reviewer_role": "phase-reviewer",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "gate_12_status": "NOT_MET",
+  "reviewed_head": "75d3a42cec7aabdd6b3f81e56318e42beab98704",
+  "phase_title": "Badge value allowlist and badge size/position (v1.1)",
+  "goals": ["B (ADR-017)", "E (ADR-019)"],
+  "acceptance_criteria_assessment": [
+    {
+      "criterion": "A configured allowlist restricts rendering to the listed values.",
+      "status": "MET",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeDefinitionResolver.cs:54-76 filters each resolved pre-template value (and the fixed UpgradePending status text) against definition.AllowedValues before applying the definition template.",
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs:110-130 IsAllowed performs a case-insensitive ordinal exact match of the trimmed value; no substring/wildcard/prefix/regex.",
+        "tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs (8 unguarded cases) covers exact/case-insensitive match, trim + partial-match rejection, per-retained CustomBadge value, the full Audio composite, UpgradePending, filter-before-template, and unknown/absent omission.",
+        "Test-quality mutation evidence (docs/implementation/12.2/test-quality-review.json) independently killed always-allow, substring, case-sensitive, filter-after-template, and status-path-filter-removed mutants."
+      ]
+    },
+    {
+      "criterion": "The allowlist is bounded, validated at configuration load, and secret-free.",
+      "status": "MET",
+      "evidence": [
+        "src/ArrTags/Configuration/RendererConfiguration.cs:180-229 ValidateAllowedValues enforces <=32 entries (BadgeDefinition.MaximumAllowedValues), <=64 chars each (MaximumAllowedValueLength), trims entries, and rejects blank/control-character/case-insensitive-duplicate entries.",
+        "src/ArrTags/Configuration/PluginConfigurationValidator.cs:35 invokes RendererConfiguration.Validate at configuration load.",
+        "Validation messages include only the selector name and the bound, never the configured value (secret-free).",
+        "src/ArrTags/Rendering/BadgeDefinition.cs:173-232 defensively re-enforces the same bounds on the resolved snapshot; RendererConfigurationResolver.TryCreateDefinition (118-133) falls back to the code-owned default for an unvalidated candidate."
+      ]
+    },
+    {
+      "criterion": "Unknown/absent values remain omitted; an empty allowlist means no restriction.",
+      "status": "MET",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeSelectorResolver.cs:115-118 returns true for an empty allowlist (no restriction).",
+        "tests/ArrTags.Tests/BadgeAllowlistFilterTests.cs EmptyAllowlistMeansNoRestriction and UnknownAndAbsentValuesRemainOmittedWithAnAllowlist.",
+        "The filter can only remove an already-confirmed value and never widens an omission (it is applied after value resolution, never before)."
+      ]
+    },
+    {
+      "criterion": "A configured size and anchor (four corners plus center) affect the rendered badge.",
+      "status": "MET",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgePosition.cs and BadgeSize.cs define the five anchors and three presets; RendererConfigurationResolver.ResolveOutputPolicy carries them onto RenderOutputPolicy (79-80, 90-104).",
+        "src/ArrTags/Rendering/BadgeGeometry.cs:151-169 ComputeEffectiveScale = clamp(width/1000,0.5,4.0)*sizeFactor (0.75/1.0/1.5) with the safe-area clamp.",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs (48 cases) asserts absolute per-anchor coordinates and each preset scale; test-quality mutations M1/M3/M6/M8 fail.",
+        "Four new pixel-level goldens pin non-default placement/size (top-left, top-right-large, bottom-right-small, center); forced-native RenderGoldenTests passes 35/1/36 and the new top-left.png differs from the default rgb-png.png."
+      ]
+    },
+    {
+      "criterion": "Rail packing, status-pill placement, and safe-area bounds are defined per anchor; no badge paints outside the safe area.",
+      "status": "MET",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeLayoutEngine.cs:48-131, 277-310 positions the rail per anchor (stack away from the anchored edge, align to the anchored side) and places the status pill top-right except TopRight->top-left (312-357).",
+        "Top-anchor first-row reservation (79-87) and bottom/Center status-band row reduction (88-106) prevent rail/status overlap.",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs NoPillPaintsOutsideTheSafeAreaOnNarrowAndShortPosters asserts every pill lies inside the scaled inset for all 5 anchors x 3 sizes x 6 dimensions, including 1000x150 and 240x600.",
+        "TQ-12.3-01 (top-anchor reservation) and TQ-12.3-03 (Center status band) were resolved in worker attempt 4 with non-vacuous wide-pill and short-Center tests (TopAnchorsReserveTheFirstRowForAWideStatusBand, CenterAnchorStatusBandDropsTheRowsThatWouldStartInsideIt)."
+      ]
+    },
+    {
+      "criterion": "The change is output-affecting: the fingerprint changes, RenderVersion advances, and the goldens are regenerated.",
+      "status": "MET",
+      "evidence": [
+        "RendererConfiguration.CurrentSchemaVersion 1->2 and RenderVersion.CurrentRendererVersion 2->3 are the only advanced version values (BadgeMetadata.CurrentSchemaVersion stays 2; StateEnvelopeCodec.CurrentSchemaVersion stays 1).",
+        "RendererConfigurationFingerprint includes a non-empty resolved allowlist (normalized) and a non-default position/size; RenderFingerprint.ComputeOutputFingerprint hashes rendererVersion, badgeSchemaVersion, configurationFingerprint, and a non-default placement.",
+        "manifest.json: 9 existing entries changed only OutputFingerprint (OutputHash byte-identical to pre-task HEAD) and 4 new anchor/size entries added; all 13 committed PNGs reproduce byte- and fingerprint-identical under the forced-native renderer (35/1/36).",
+        "No writer/auto-approval path exists in the golden tests (writer scan clean; the determinism probe writes only to its env temp path); mutating a golden byte or a manifest OutputFingerprint fails RenderGoldenTests closed."
+      ]
+    }
+  ],
+  "tasks_checked": [
+    {
+      "task": "12.1",
+      "title": "Allowlist configuration, bounds, validation, and fingerprint",
+      "status": "COMPLETE",
+      "commit": "c56d228",
+      "state_commit": "50b372c",
+      "worker_reports": ["worker-report.json (attempt 2; attempt-1 report overwritten)"],
+      "reviewer_reports": ["reviewer-report.json (attempt 1 CHANGES_REQUIRED)", "reviewer-report.attempt-2.json (APPROVED)"],
+      "test_quality_report": "test-quality-review.json (PASS_WITH_FINDINGS; TQ-12.1-1/TQ-12.1-2 LOW)",
+      "orchestration": "docs/implementation/12.1/orchestration.json",
+      "note": "Rework: docs/changelog.md Task 12.1 entry added after reviewer attempt 1. Orchestration record omits the test-quality-reviewer invocation (see P12R-F3)."
+    },
+    {
+      "task": "12.2",
+      "title": "Allowlist resolution and renderer filtering order",
+      "status": "COMPLETE",
+      "commit": "b404448",
+      "state_commit": "34b8ca5",
+      "worker_reports": ["worker-report-attempt-1.json", "worker-report-attempt-2.json", "worker-report.json (attempt 3)"],
+      "reviewer_reports": ["reviewer-report.json (attempt 1 CHANGES_REQUIRED)", "reviewer-report.attempt-2.json (CHANGES_REQUIRED)", "reviewer-report.attempt-3.json (APPROVED)"],
+      "test_quality_report": "test-quality-review.json (PASS_WITH_FINDINGS; 0 BLOCKER/HIGH/MEDIUM)",
+      "orchestration": "docs/implementation/12.2/orchestration.json"
+    },
+    {
+      "task": "12.3",
+      "title": "Badge size/position configuration and layout engine",
+      "status": "COMPLETE",
+      "commit": "b8ed851",
+      "state_commit": "707c272",
+      "worker_reports": ["worker-report-attempt-1.json", "worker-report-attempt-2.json", "worker-report-attempt-3.json", "worker-report.json (attempt 4)"],
+      "reviewer_reports": ["reviewer-report.json (attempt 1 CHANGES_REQUIRED)", "reviewer-report.attempt-2.json (CHANGES_REQUIRED)", "reviewer-report.attempt-3.json (APPROVED)", "reviewer-report.attempt-4.json (APPROVED)"],
+      "test_quality_report": "test-quality-review.json (PASS_WITH_FINDINGS; TQ-12.3-01/-03 resolved in attempt 4; TQ-12.3-02 carried)",
+      "orchestration": "docs/implementation/12.3/orchestration.json"
+    },
+    {
+      "task": "12.4",
+      "title": "Coordinated schema/RenderVersion advance, golden regeneration, and documentation",
+      "status": "COMPLETE",
+      "commit": "2db0b47",
+      "state_commit": "75d3a42",
+      "worker_reports": ["worker-report-attempt-1.json", "worker-report.json (attempt 2)"],
+      "reviewer_reports": ["reviewer-report.json (attempt 1 CHANGES_REQUIRED)", "reviewer-report.attempt-2.json (APPROVED)"],
+      "test_quality_report": "test-quality-review.json (PASS_WITH_FINDINGS; TQ-12.4-01 carried)",
+      "orchestration": "docs/implementation/12.4/orchestration.json"
+    }
+  ],
+  "commits_checked": [
+    "c56d228 Implement v1.1 task 12.1 allowlist configuration, bounds, validation, and fingerprint",
+    "50b372c Record v1.1 task 12.1 commit hash in implementation state",
+    "d1b80fb Record v1.1 task 12.1 test-quality review",
+    "b404448 Implement v1.1 task 12.2 allowlist resolution and renderer filtering order",
+    "34b8ca5 Record v1.1 task 12.2 commit hash in implementation state",
+    "b8ed851 Implement v1.1 task 12.3 badge size/position configuration and layout engine",
+    "707c272 Record v1.1 task 12.3 commit hash in implementation state",
+    "2db0b47 Implement v1.1 task 12.4 coordinated schema/RenderVersion advance and golden regeneration",
+    "75d3a42 Record v1.1 task 12.4 commit hash in implementation state"
+  ],
+  "requirements_checked": [
+    "PLANS.md Phase 12 (deliverables, tasks 12.1-12.4, authoritative execution order, Phase 12 acceptance criteria, Gate 12)",
+    "docs/planning/v1.1.md Goal B (ADR-017), Goal E (ADR-019), DG-11, DG-13",
+    "docs/decisions.md ADR-017 clauses 1-7 and ADR-019 clauses 1-7, plus the ADR-009/ADR-010 supersession notes",
+    "Task-level acceptance criteria for 12.1, 12.2, 12.3, 12.4"
+  ],
+  "architecture_checked": [
+    "docs/architecture.md status line and section 9 (V1 rendering contract and renderer implementation contract)",
+    "docs/data-model.md 3.6 (BadgeDefinition) and 3.12 (Configuration), including the v1.1 task 12.1/12.3 notes",
+    "Single coordinated advance: RendererConfiguration.CurrentSchemaVersion 1->2 and RenderVersion.CurrentRendererVersion 2->3 only",
+    "Cross-task interface consistency: configuration snapshot -> RendererConfigurationResolver.ResolveDefinitions/ResolveOutputPolicy -> RenderOutputPolicy -> ArtworkGenerationRequest -> RenderRequest -> SkiaBadgeRenderer -> RenderFingerprint; configuration fingerprint flows through to the output fingerprint"
+  ],
+  "research_checked": [
+    "docs/planning/v1.1.md section 8/9 (verification requirements; ADR-010 golden regeneration and byte-determinism)",
+    "docs/implementation/12.2/test-quality-review.json and docs/implementation/12.3/test-quality-review.json mutation evidence",
+    "docs/implementation/12.4/test-quality-review.json golden byte-identity, manifest consistency, and skip decomposition"
+  ],
+  "documentation_checked": [
+    "PLANS.md Project Status paragraph, Milestone Status row 12, task 12.1-12.4 statuses, and the unchecked Phase 12 acceptance checkboxes; Gate 12 presented as not met",
+    "docs/changelog.md Phase 12 section + Task 12.1-12.4 entries (historically scoped identity-neutral claims are acceptable)",
+    "docs/project-status.md current milestone and Phase 12 paragraph",
+    "docs/implementation-readiness.md status line Phase 12 clause",
+    "docs/architecture.md section 9 and status line",
+    "docs/data-model.md 3.6/3.12",
+    "docs/decisions.md ADR-009/ADR-010/ADR-017/ADR-019",
+    "docs/limitations.md V6 (default 1,494/63/1,557; forced-native 1,575/20/1,595)",
+    "README.md (allowedValues, Position, Size documented; palette Goal D remains Phase 13 scope)"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/12.1/orchestration.json (4 subagents recorded; test-quality-reviewer invocation absent)",
+    "docs/implementation/12.2/orchestration.json (7 subagents; 2 rework entries)",
+    "docs/implementation/12.3/orchestration.json (9 subagents; 3 rework entries)",
+    "docs/implementation/12.4/orchestration.json (5 subagents; 1 rework entry)",
+    "Phase-level aggregate docs/implementation/phase-12/orchestration.json absent (to be created at closure)"
+  ],
+  "findings": [
+    {
+      "id": "P12R-F1",
+      "severity": "MEDIUM",
+      "status": "tracked",
+      "area": "test-strength / default fingerprint pin (TQ-12.3-02 == TQ-12.4-01)",
+      "summary": "The absolute default output/configuration-fingerprint pin lives only in the native-guarded golden path. An unconditional AppendBadgePlacement mutation (or any regression that changes the default fingerprint) leaves the default ./build.sh test suite green; only the forced-native RenderGoldenTests catches it. This is a default-suite test-strength gap, not a correctness defect: production is identity-neutral by construction (AppendBadgePlacement appends nothing for BottomLeft/Medium) and the committed manifest OutputFingerprint values are absolutely pinned by the forced-native run.",
+      "evidence": [
+        "docs/implementation/12.3/test-quality-review.json TQ-12.3-02 mutation M4b -> default suite Failed 0, Passed 1490",
+        "docs/implementation/12.4/test-quality-review.json TQ-12.4-01 mutation F2 -> default suite green; forced-native RenderGoldenTests Failed 11, Passed 4, Total 15",
+        "tests/ArrTags.Tests/RenderGoldenTests.cs:30-75 ([SkiaNativeTheory]) is the only absolute OutputFingerprint pin and is a single skip without ARRTAGS_SKIA_COMPAT=1",
+        "tests/ArrTags.Tests/RenderFingerprintTests.cs and RendererConfigurationTests.cs assert only relative default==explicit-default equality"
+      ],
+      "recommended_action": "Non-blocking for the phase gate (the forced-native golden run is part of the documented v1.1 verification matrix and is owned by task 14.3). To close the residual in the default suite, add a pure (no-Skia) test that computes the default ComputeOutputFingerprint/Compute for a committed golden fixture and asserts the exact committed Goldens/manifest.json value, and/or add the forced-native run to the documented release/verification checklist so it cannot be silently skipped."
+    },
+    {
+      "id": "P12R-F2",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "documentation accuracy (source XML comments)",
+      "summary": "Two pre-existing XML doc comments on the private AppendBadgePlacement helpers still state the default configuration/output fingerprint is 'unchanged' and the committed goldens are 'unaffected'. After the coordinated 1->2 / 2->3 advance the default fingerprints do change (the helper adds no placement field, but the hashed schema/renderer versions advanced). This matches implementation-reviewer 12.4-DOC-2 and test-quality TQ-12.4-03.",
+      "evidence": [
+        "src/ArrTags/Configuration/RendererConfigurationFingerprint.cs:59-64",
+        "src/ArrTags/Rendering/RenderFingerprint.cs:62-68"
+      ],
+      "recommended_action": "Reword both comments in a later documentation pass so they say the default placement values add nothing to the fingerprint (rather than the whole fingerprint being unchanged). Not required for the phase gate."
+    },
+    {
+      "id": "P12R-F3",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "orchestration record completeness (task 12.1)",
+      "summary": "docs/implementation/12.1/orchestration.json does not record the test-quality-reviewer invocation, even though the review exists (docs/implementation/12.1/test-quality-review.json, PASS_WITH_FINDINGS with TQ-12.1-1/TQ-12.1-2) and was committed separately (d1b80fb). Its notes also do not mention TQ-12.1-1 (the first appearance of the default-fingerprint identity-neutral pin carried forward as TQ-12.3-02/TQ-12.4-01). Additionally, the task-12.1 worker attempt-1 report was overwritten by the attempt-2 report rather than preserved as worker-report-attempt-1.json (tasks 12.2/12.3/12.4 preserve each attempt).",
+      "evidence": [
+        "docs/implementation/12.1/orchestration.json subagents[] lists only implementation-worker x2 and implementation-reviewer x2",
+        "docs/implementation/12.1/test-quality-review.json exists (committed in d1b80fb) and is not referenced by the orchestration",
+        "docs/implementation/12.1/ contains no worker-report-attempt-1.json"
+      ],
+      "recommended_action": "Update docs/implementation/12.1/orchestration.json to add the test-quality-reviewer invocation (with its execution metadata) and the TQ-12.1-1/TQ-12.1-2 tracked findings, and note the overwritten attempt-1 worker report, so the per-task record matches the other three tasks and the phase aggregate is accurate."
+    },
+    {
+      "id": "P12R-F4",
+      "severity": "LOW",
+      "status": "closure-action",
+      "area": "phase-level orchestration aggregate",
+      "summary": "The phase-level aggregate docs/implementation/phase-12/orchestration.json does not exist yet. Phases 7-11 each have one; for Phase 11 its absence was recorded as closure finding P11R-F1 and created at closure.",
+      "evidence": [
+        "docs/implementation/phase-12/ contained only this phase-review.json before closure",
+        "docs/implementation/phase-11/orchestration.json exists and its P11R-F1 records the same pattern"
+      ],
+      "recommended_action": "Create docs/implementation/phase-12/orchestration.json at closure, aggregating the four task records (see rework_summary below) and the phase-review status, consistent with the Phase 11 aggregate."
+    },
+    {
+      "id": "P12R-F5",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "integration-boundary test coverage",
+      "summary": "No single end-to-end test composes a configured allowlist or a configured position/size from PluginConfiguration through the snapshot/resolver to the selection or output fingerprint. The seams are covered separately (RendererConfigurationTests validates/resolves them; BadgeAllowlistFilterTests and BadgeSizePositionTests exercise the resolved definitions/policy; RendererConfigurationIntegrationTests covers only palette/selector). This matches the tracked TQ-12.2-1 LOW. The new fields flow through the same snapshot->resolver->render plumbing already covered end-to-end for palette/selector, so the risk is low.",
+      "evidence": [
+        "tests/ArrTags.Tests/RendererConfigurationIntegrationTests.cs ResolvedConfigurationReachesTheRenderAndChangesTheOutput asserts palette and selector only",
+        "docs/implementation/12.2/orchestration.json tracked finding TQ-12.2-1"
+      ],
+      "recommended_action": "Optionally extend RendererConfigurationIntegrationTests to configure a non-empty allowlist and a non-default position/size and assert the resolved selection and output fingerprint differ from the default. Non-blocking."
+    },
+    {
+      "id": "P12R-F6",
+      "severity": "LOW",
+      "status": "tracked",
+      "area": "settings-page live round-trip (deferred)",
+      "summary": "The settings-page exposure of the allowlist, position, and size is asserted only by static source-string checks; the elevation-gated JSON POST round-trip runs only in host-guarded DashboardSettingsPageTests facts that skip without ARRTAGS_JELLYFIN_HOST_DIR. This matches the established config.html pattern (LogVerbosity) and the live confirmation is owned by task 14.3. String enum deserialization under the pinned JsonDefaults.Options is independently proven for BadgeSelector by ConfigurationRoundTripTests.PostRoundTripPopulatesRendererSelectors.",
+      "evidence": [
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs (static source assertions; 2 host-guarded facts skip)",
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:73-86 (string enum round-trip proven for BadgeSelector)"
+      ],
+      "recommended_action": "None required; the live POST round-trip confirmation remains owned by task 14.3."
+    }
+  ],
+  "validation": {
+    "method": "Independent repository inspection (source, full Phase 12 diff, git history, golden manifest/PNG bytes, task records), independent build, default suite, forced-native focused suite, and full forced-native suite, plus targeted checks of the version advance, golden byte-identity, no-writer property, skip guards, and documentation surfaces.",
+    "environment": ". /config/arrtags-env.sh; SYSROOT=/tmp/arrtags-skia-probe/sysroot; LD_LIBRARY_PATH including /tmp/arrtags-host-dl/host/jellyfin; FONTCONFIG_PATH/XDG_DATA_DIRS/XDG_CACHE_HOME set; ARRTAGS_SKIA_COMPAT=1 for the forced-native runs.",
+    "results": [
+      "./build.sh build -> Build succeeded. 0 Warning(s), 0 Error(s).",
+      "./build.sh test -> Failed 0, Passed 1494, Skipped 63, Total 1557 (matches the documented post-task default matrix exactly).",
+      "Forced-native focused (RenderGoldenTests|RenderDeterminismTests|RendererCrossRuntimeTests) -> Failed 0, Passed 35, Skipped 1, Total 36 (the 1 skip is the pre-existing non-canonical cross-runtime case).",
+      "Forced-native full (dotnet test ArrTags.slnx -c Release --no-build) -> Failed 0, Passed 1575, Skipped 20, Total 1595 (matches docs/limitations.md V6 exactly).",
+      "Version advance: only RendererConfiguration.CurrentSchemaVersion (1->2) and RenderVersion.CurrentRendererVersion (2->3) changed; BadgeMetadata.CurrentSchemaVersion==2 and StateEnvelopeCodec.CurrentSchemaVersion==1 unchanged.",
+      "Golden byte-identity: git rev-parse 2db0b47^:<png> == git rev-parse 2db0b47:<png> for all 9 existing default PNGs (byte-identical); manifest.json diff = 9 OutputFingerprint replacements + 4 new entries; all 13 committed PNGs sha256-match their manifest OutputHash and reproduce under the forced-native renderer.",
+      "No-writer scan: no File.Write*/StreamWriter/auto-update/auto-approval flag in the golden test code; the only nearby write is RenderDeterminismProcessProbe writing to the env-provided temp path.",
+      "Skip honesty: default 63 skips = native-guarded ([SkiaNativeFact]/[SkiaNativeTheory] without ARRTAGS_SKIA_COMPAT=1) + host-guarded ([JellyfinHostFact] without ARRTAGS_JELLYFIN_HOST_DIR) + 1 non-canonical; forced-native reduces skips to 20 (host + non-canonical). 0 new skips from the phase (baseline 63 -> 63).",
+      "Gate/tag: git tag -l '*phase12*' is empty; Phase 12 acceptance checkboxes remain unchecked; PLANS.md, architecture.md, changelog.md, and project-status.md present Gate 12 as not met and no v1.1.0-phase12 tag."
+    ]
+  },
+  "rework_summary": {
+    "total_subagent_invocations": 26,
+    "total_attempts": 26,
+    "correction_rounds": 7,
+    "per_task": {
+      "12.1": {"invocations": 5, "rework_rounds": 1, "note": "test-quality-reviewer invocation not recorded in orchestration"},
+      "12.2": {"invocations": 7, "rework_rounds": 2},
+      "12.3": {"invocations": 9, "rework_rounds": 3},
+      "12.4": {"invocations": 5, "rework_rounds": 1}
+    },
+    "open_blocker_or_high": 0
+  },
+  "summary": "APPROVED_WITH_FINDINGS. Phase 12 (tasks 12.1-12.4) is complete and internally consistent: the authoritative execution order 12.1->12.2->12.3->12.4 respects the documented dependencies; each task has worker/reviewer evidence, a commit, a state commit, and an orchestration record (task 12.1's orchestration omits the test-quality invocation - P12R-F3). The single coordinated output-affecting advance is exactly RendererConfiguration.CurrentSchemaVersion 1->2 and RenderVersion.CurrentRendererVersion 2->3 with no other version bumped; the nine existing default goldens are byte-identical to pre-task HEAD while their OutputFingerprint advanced, four new anchor/size goldens were added, the manifest is self-consistent, and no writer/auto-approval path exists. All six Phase 12 acceptance criteria are met at the implementation and test level, independently reproduced: build 0/0; default suite Failed 0, Passed 1494, Skipped 63, Total 1557; forced-native focused Failed 0, Passed 35, Skipped 1, Total 36; forced-native full Failed 0, Passed 1575, Skipped 20, Total 1595. All 63 default skips are environment-guarded (native Skia / pinned host / non-canonical) with zero new skips. No BLOCKER or HIGH finding exists. The carried MEDIUM residual (P12R-F1 / TQ-12.3-02 == TQ-12.4-01, absolute default-fingerprint pin only in the native-guarded golden path) is non-blocking: production is identity-neutral by construction, the committed manifest fingerprints are absolutely pinned by the forced-native run that is part of the documented matrix, and the live confirmation is owned by task 14.3. The remaining findings (stale source comments, the task-12.1 orchestration gap, the absent phase-level aggregate, and two low test-coverage/live-round-trip notes) are tracked and non-blocking. Gate 12 is correctly presented as not yet met and no v1.1.0-phase12 tag exists; the phase is ready for the next phase, with the phase tag creation and phase-level aggregate owned by the orchestrator."
+}

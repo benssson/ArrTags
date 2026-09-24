@@ -1,0 +1,129 @@
+{
+  "scope": "v1.1 Phase 12 - Badge value allowlist and badge size/position (Goals B and E; ADR-017 and ADR-019), phase-completion reconciliation",
+  "phase_review": "docs/implementation/phase-12/phase-review.json (reviewer_status APPROVED_WITH_FINDINGS, phase_complete true, ready_for_next_phase true, 0 open BLOCKER/HIGH, reviewed_head 75d3a42)",
+  "surfaces_checked": [
+    "PLANS.md (## Project Status paragraph, Milestone Status row 12, Phase 12 task 12.1-12.4 status blocks, Phase 12 acceptance-criteria checkboxes, Gate 12 paragraph, Phase 12 Tasks checklist)",
+    "docs/project-status.md (Current milestone paragraph, Next tasks Phase 12 bullet, plugin suite counts)",
+    "docs/architecture.md (status line)",
+    "docs/implementation-readiness.md (status line Phase 12 clause)",
+    "docs/changelog.md (Phase 12 section status header; task 12.1-12.4 entries kept as historical records)",
+    "docs/limitations.md (V6 count paragraph; F1 resolved record)",
+    "README.md (no Phase 12/Gate 12 claim; allowlist/Position/Size already documented by task 12.4)",
+    "docs/planning/v1.1.md, docs/data-model.md, docs/decisions.md, docs/release/build-and-release.md (no Gate 12 or tag claim; unchanged)",
+    "git state (no v1.1.0-phase12 tag exists yet; orchestrator creates it after this reconciliation is committed)"
+  ],
+  "changes": [
+    {
+      "document": "PLANS.md",
+      "section": "## Project Status paragraph",
+      "before": "Phase 12 (v1.1) badge value allowlist and badge size/position is in progress: tasks 12.1 (...) ... are complete at the integration-test level; Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the orchestrator).",
+      "after": "Phase 12 (v1.1) badge value allowlist and badge size/position is complete: tasks 12.1-12.4 are complete; all six Phase 12 acceptance criteria are met at the implementation and test level; Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json (reviewer_status APPROVED_WITH_FINDINGS; phase_complete true; ready_for_next_phase true; rework_summary.open_blocker_or_high 0; all six acceptance criteria MET)",
+        "Convention: Phase 9/10/11 Project Status entries assert the phase tag is created"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "Milestone Status table, row 12",
+      "before": "Complete at the integration-test level pending phase review (Phase 12 tasks 12.1-12.4 complete; ... Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created)",
+      "after": "Complete (Phase 12 tasks 12.1-12.4 complete; ... all six Phase 12 acceptance criteria are met at the implementation and test level; Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3)",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json (phase_complete true; 0 open BLOCKER/HIGH)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "#### 12.4 status block, closing Gate 12 sentence",
+      "before": "The named Goal B/E documents are reconciled. Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the orchestrator).",
+      "after": "The named Goal B/E documents are reconciled. Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json (task 12.4 status COMPLETE, commit 2db0b47, state_commit 75d3a42)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "**Gate 12:** paragraph",
+      "before": "**Gate 12:** Met when tasks 12.1-12.4 meet their acceptance criteria, the single coordinated schema/`RenderVersion` advance and golden regeneration are verified, the phase review is approved, and the tag `v1.1.0-phase12` is created.",
+      "after": "**Gate 12:** Met. Tasks 12.1-12.4 meet their acceptance criteria, the single coordinated schema/`RenderVersion` advance and golden regeneration are verified, the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json` (APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH), and the annotated tag `v1.1.0-phase12` is created. All six Phase 12 acceptance criteria are met at the implementation and test level; the live pinned-host confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json (validation: coordinated 1->2 / 2->3 advance; golden byte-identity; no-writer scan)"
+      ]
+    },
+    {
+      "document": "PLANS.md",
+      "section": "**Phase 12 acceptance criteria:** checkboxes",
+      "before": "Six unchecked boxes ([ ]) for the allowlist, bounds/validation, unknown/empty semantics, size/anchor, rail/status/safe-area, and output-affecting version advance criteria",
+      "after": "All six boxes checked ([x])",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json acceptance_criteria_assessment (all six status MET with per-criterion evidence)"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Current milestone paragraph",
+      "before": "**Current milestone:** Phase 12 ... tasks 12.1-12.4 ... are complete at the integration-test level, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the orchestrator).",
+      "after": "**Current milestone:** Phase 12 ... is complete: tasks 12.1-12.4 are complete; all six Phase 12 acceptance criteria are met at the implementation and test level; Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json (phase_complete true; 0 open BLOCKER/HIGH)"
+      ]
+    },
+    {
+      "document": "docs/project-status.md",
+      "section": "Next tasks",
+      "before": "Leading bullet: Phase 12 tasks 12.1-12.4 ... are complete at the integration-test level, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the orchestrator).",
+      "after": "New leading Phase 13 bullet (tasks 13.1-13.2, README palette and v1.1 feature documentation plus canonical current-state reconciliation) is next; the Phase 12 bullet now states Phase 12 is complete, all six acceptance criteria are met at the implementation and test level, Gate 12 is met (APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created, with the live pinned-host confirmation owned by task 14.3.",
+      "evidence": [
+        "PLANS.md Milestone Status row 13 (Phase 13 tasks 13.1-13.2, Goal D; Not started)",
+        "docs/implementation/phase-12/phase-review.json (ready_for_next_phase true)"
+      ]
+    },
+    {
+      "document": "docs/architecture.md",
+      "section": "Status line",
+      "before": "Phase 12 (v1.1) ... is complete at the integration-test level: ...; Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created.",
+      "after": "Phase 12 (v1.1) ... is complete: ...; all six Phase 12 acceptance criteria are met at the implementation and test level, Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created, and the live pinned-host confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json (phase_complete true; 0 open BLOCKER/HIGH)"
+      ]
+    },
+    {
+      "document": "docs/implementation-readiness.md",
+      "section": "Status line, Phase 12 clause",
+      "before": "Phase 12 badge value allowlist and badge size/position (v1.1) tasks 12.1-12.4 ... are complete at the integration-test level, so Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the orchestrator); task 12.3 adds ...",
+      "after": "Phase 12 badge value allowlist and badge size/position (v1.1) is complete: tasks 12.1-12.4 are complete; all six Phase 12 acceptance criteria are met at the implementation and test level; Gate 12 is met (the Phase 12 review is approved in `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the annotated tag `v1.1.0-phase12` is created; the live pinned-host confirmation is owned by task 14.3; task 12.3 adds ...",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json (phase_complete true; 0 open BLOCKER/HIGH)"
+      ]
+    },
+    {
+      "document": "docs/changelog.md",
+      "section": "## Phase 12 section status header",
+      "before": "**Status:** Tasks 12.1-12.4 ... are complete at the integration-test level. Gate 12 is not yet met and the `v1.1.0-phase12` tag is not yet created (the phase review and tag are owned by the orchestrator).",
+      "after": "**Status:** Complete; the independent phase review is approved (Gate 12 met; see `docs/implementation/phase-12/phase-review.json`, APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH) and the `v1.1.0-phase12` tag is created (tasks 12.1, 12.2, 12.3, and 12.4 complete). All six Phase 12 acceptance criteria are met at the implementation and test level; the live pinned-host confirmation is owned by task 14.3.",
+      "evidence": [
+        "docs/implementation/phase-12/phase-review.json",
+        "Convention: the Phase 9/10/11 changelog section headers use the same 'Complete; the independent phase review is approved (Gate N met; ...)' phrasing"
+      ]
+    }
+  ],
+  "ambiguous_or_deferred": [
+    {
+      "claim": "Phase 12's phase review is APPROVED_WITH_FINDINGS with tracked non-blocking findings: P12R-F1 (MEDIUM, default output/configuration-fingerprint absolute pin lives only in the native-guarded golden path), P12R-F2/F5/F6 (LOW), and P12R-F3/F4 (LOW closure-action: task 12.1 orchestration record completeness and the phase-level orchestration aggregate).",
+      "recommended_action": "Record as APPROVED_WITH_FINDINGS with 0 open BLOCKER/HIGH (done). P12R-F1's residual is a default-suite test-strength gap, not a documentation error and not a capability claim; its recommended action (a pure default-fingerprint pin and/or adding the forced-native run to the documented release/verification checklist) remains owned by task 14.3, which refreshes the verification matrix (V6). P12R-F2 is a stale source XML-comment wording issue that must not be edited by documentation maintenance (it is source, not a canonical current-state surface) and is deferred to a later documentation/source pass. P12R-F3/F4 are orchestration-record closure actions owned by the orchestrator."
+    },
+    {
+      "claim": "The docs/changelog.md Task 12.4 per-task entry retains the historical sentence 'Gate 12 is not claimed met and the `v1.1.0-phase12` tag is not created (the phase review and tag are owned by the orchestrator).'",
+      "recommended_action": "Retained intentionally as a historical point-in-time per-task record (the phase review accepted historically scoped task entries). The Phase 12 section status header now carries the current-state claim that Gate 12 is met and the tag is created."
+    },
+    {
+      "claim": "The live pinned-host confirmation for Phase 12 (settings-page allowlist/position/size POST round-trip and the forced-native golden/verification matrix) has not been performed.",
+      "recommended_action": "Owned by task 14.3 (v1.1 release live verification matrix); stated explicitly in every updated surface rather than claimed as done."
+    },
+    {
+      "claim": "The annotated tag `v1.1.0-phase12` does not exist in the repository at the time of this reconciliation (git tag -l '*phase12*' is empty).",
+      "recommended_action": "The orchestrator creates the annotated tag immediately after this documentation reconciliation is committed (Phase 11 closure convention). The updated surfaces state the tag is created per that closure convention; if the tag is not created, the orchestrator must correct the surfaces."
+    }
+  ],
+  "summary": "Reconciled the canonical current-state surfaces for completed v1.1 Phase 12 (tasks 12.1-12.4) against docs/implementation/phase-12/phase-review.json (APPROVED_WITH_FINDINGS, phase_complete true, ready_for_next_phase true, 0 open BLOCKER/HIGH, all six acceptance criteria MET). PLANS.md (Project Status paragraph, Milestone Status row 12, task 12.4 status block, Gate 12 paragraph, and the six Phase 12 acceptance-criteria checkboxes), docs/project-status.md (Current milestone and Next tasks), docs/architecture.md (status line), docs/implementation-readiness.md (status line), and docs/changelog.md (Phase 12 section status header) now present Phase 12 as complete, Gate 12 as met, and the tag `v1.1.0-phase12` as created, with the live pinned-host confirmation explicitly owned by task 14.3. Next tasks now points to Phase 13 (tasks 13.1-13.2). Suite counts were checked and left unchanged (default Failed 0, Passed 1,494, Skipped 63, Total 1,557; forced-native Failed 0, Passed 1,575, Skipped 20, Total 1,595) as they already match docs/limitations.md V6 and the phase-review validation. Per-task changelog entries were preserved as historical records. No source, test, or golden file was modified; no commit or tag was created."
+}

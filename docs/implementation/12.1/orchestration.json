@@ -80,6 +80,25 @@
         "duration_seconds": 112,
         "session_id": "ses_f2cd42accffee1aGQNynwxwUdS"
       }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 113593,
+        "output_tokens": 13108,
+        "reasoning_tokens": 17061,
+        "cache_read_tokens": 3537664,
+        "cache_write_tokens": 0,
+        "total_tokens": 3681426,
+        "cost_usd": 0.045753341999999995,
+        "duration_seconds": 536,
+        "session_id": "ses_f2cb279e2ffeUw0yDytW4VkaR1"
+      }
     }
   ],
   "rework": [
@@ -95,6 +114,8 @@
     "Scope boundaries honored: no allowlist filtering behavior (task 12.2), no badge size/position (task 12.3), and no schema/RenderVersion advance or golden regeneration (task 12.4). RendererConfiguration.CurrentSchemaVersion remains 1; RenderVersion.CurrentRendererVersion remains 2; tests/ArrTags.Tests/Goldens/ is unmodified.",
     "Deliberate implementation decision (reviewer-confirmed consistent with ADR-017 and the 12.1 boundary): a non-empty resolved allowlist is included in RendererConfigurationFingerprint with case/entry-order normalization, while an empty allowlist is identity-neutral so the default configuration fingerprint stays byte-identical to its pre-task value (the version advance that would accompany an unconditional identity change is task 12.4).",
     "Non-blocking informational findings carried forward: 12.1-F2 (docs/data-model.md 3.6 present-tense 'restricts rendering' describes the task 12.2 target semantics, clarified by adjacent notes), 12.1-F4 (the pinned elevation-gated JSON POST round-trip of AllowedValues is not directly exercised; XML round-trip and static page exposure are covered, and the live POST confirmation remains owned by task 14.3).",
-    "No live pinned-host verification was performed for this task (ARRTAGS_JELLYFIN_HOST_DIR unset; the 2 host-guarded DashboardSettingsPageTests facts skipped as expected). Not required by task 12.1."
+    "No live pinned-host verification was performed for this task (ARRTAGS_JELLYFIN_HOST_DIR unset; the 2 host-guarded DashboardSettingsPageTests facts skipped as expected). Not required by task 12.1.",
+    "Per-task review: the plan names test-quality-reviewer for task 12.1; its report is docs/implementation/12.1/test-quality-review.json (PASS_WITH_FINDINGS, committed d1b80fb). Tracked findings: TQ-12.1-1 (LOW, the 'empty allowlist is identity-neutral / default fingerprint unchanged' claim was only tested relatively; this is the first appearance of the default-fingerprint pin residual later carried as TQ-12.3-02 / TQ-12.4-01) and TQ-12.1-2 (LOW, the BadgeDefinition too-many case passed via the duplicate rule rather than the count bound; the config-load count bound is covered by ValidatorRejectsTooManyAllowedValues).",
+    "Record-keeping note (phase-review finding P12R-F3): the task-12.1 worker attempt-1 report was overwritten by the attempt-2 report (no worker-report-attempt-1.json was preserved), unlike tasks 12.2-12.4; the attempt-1 evidence is retained inline in worker-report.json. Recorded here at Phase 12 closure for the phase aggregate."
   ]
 }
