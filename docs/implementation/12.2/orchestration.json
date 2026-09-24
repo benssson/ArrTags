@@ -3,7 +3,7 @@
   "title": "Allowlist resolution and renderer filtering order",
   "phase": 12,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "b404448",
   "subagents": [
     {
       "role": "implementation-worker",
