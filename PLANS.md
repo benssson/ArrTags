@@ -5052,7 +5052,7 @@ behavior.
 
 #### 14.2 Release build, full suite, reproducible artifact, and release documentation
 
-**Status:** Complete. Clean rebuild at `1.1.0.0` reported 0 warnings / 0 errors;
+**Status:** Complete (commit `2b0351c`). Clean rebuild at `1.1.0.0` reported 0 warnings / 0 errors;
 the default suite (Failed 0, Passed 1,494, Skipped 63, Total 1,557) and the
 host-guarded suite (Failed 0, Passed 1,513, Skipped 44, Total 1,557) pass;
 `./build.sh package` produced `artifacts/ArrTags_1.1.0.0.zip` (7 entries, 594,931
