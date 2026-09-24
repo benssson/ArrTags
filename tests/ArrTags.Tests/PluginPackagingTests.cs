@@ -25,7 +25,7 @@ public class PluginPackagingTests
 
         Assert.Contains("name: \"ArrTags\"", manifest, StringComparison.Ordinal);
         Assert.Contains("guid: \"40322d52-5680-449f-b33e-e01836ee2f46\"", manifest, StringComparison.Ordinal);
-        Assert.Contains("version: \"1.0.1.0\"", manifest, StringComparison.Ordinal);
+        Assert.Contains("version: \"1.1.0.0\"", manifest, StringComparison.Ordinal);
         Assert.Contains("targetAbi: \"12.0.0.0\"", manifest, StringComparison.Ordinal);
         Assert.Contains("framework: \"net10.0\"", manifest, StringComparison.Ordinal);
     }

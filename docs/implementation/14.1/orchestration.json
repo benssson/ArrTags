@@ -1,0 +1,53 @@
+{
+  "task": "14.1",
+  "title": "Version bump and release metadata",
+  "phase": "14",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 115405,
+        "output_tokens": 10435,
+        "reasoning_tokens": 12327,
+        "cache_read_tokens": 3200256,
+        "cache_write_tokens": 0,
+        "total_tokens": 3338423,
+        "cost_usd": 0.040568718,
+        "duration_seconds": 497,
+        "session_id": "ses_f2bdad1eaffeK1BYUXQ2oMW3ZJ"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 74071,
+        "output_tokens": 6769,
+        "reasoning_tokens": 10927,
+        "cache_read_tokens": 1025408,
+        "cache_write_tokens": 0,
+        "total_tokens": 1117175,
+        "cost_usd": 0.024804474,
+        "duration_seconds": 344,
+        "session_id": "ses_f2bd30642ffe6UhEsJY2P4JoFn"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Release-metadata-only task: the plugin version is 1.1.0.0 in build.yaml and Directory.Build.props, the build.yaml overview/description/changelog describe the shipped v1.1 behavior, and the four hard-coded plugin-version literals in PluginPackagingTests, PluginDiscoveryHostTests, and PluginStateLocationTests were updated. PLANS.md bookkeeping (task 14.1 status/checkbox, Milestone Status row 14, Project Status and Active Planning Scope framing) was updated per the task 8.3 / Phase 13 precedent. No runtime plugin behavior changed.",
+    "Independent reviewer reproduced the validation: ./build.sh build 0 warnings / 0 errors; ./build.sh test Failed 0 / Passed 1494 / Skipped 63 / Total 1557; ./build.sh package produced artifacts/ArrTags_1.1.0.0.zip (7 entries) with packaged build.yaml version 1.1.0.0 / targetAbi 12.0.0.0 / framework net10.0. No commit was created by the worker; the orchestrator owns the commit gate.",
+    "Reviewer verdict APPROVED with no blockers and no required changes (reviewer_blockers [], required_changes []). Findings: 14.1-R1 LOW/noted (README.md, docs/limitations.md and docs/testing/jellyfin-12-musl-test-host.md still name the 1.0.1.0 artifact; the orchestrator must assign a Phase 14 owner), 14.1-R2 INFORMATIONAL (DashboardSettingsPageTests' \"1.0.0.0\" is an unrelated fake-manifest fixture), 14.1-R3 INFORMATIONAL (the PLANS.md bookkeeping is appropriate).",
+    "manifest.json and docs/release/build-and-release.md were deliberately not regenerated (task 14.2 owns them); docs/changelog.md and docs/project-status.md remain task 14.5.",
+    "Runtime figures are authoritative from the OpenCode session usage endpoint (.opencode/scripts/collect-session-usage.sh); no values were estimated."
+  ]
+}

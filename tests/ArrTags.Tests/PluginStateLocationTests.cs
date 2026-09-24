@@ -53,7 +53,7 @@ public class PluginStateLocationTests
             // Arrange the supported versioned install layout that Jellyfin's
             // InstallationManager produces.
             var paths = CreateApplicationPaths(root);
-            var installFolder = Path.Combine(paths.PluginsPath, "ArrTags_1.0.1.0");
+            var installFolder = Path.Combine(paths.PluginsPath, "ArrTags_1.1.0.0");
             Directory.CreateDirectory(installFolder);
             File.WriteAllText(Path.Combine(installFolder, "meta.json"), "{}");
 

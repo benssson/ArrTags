@@ -1,0 +1,36 @@
+{
+  "task": "14.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Set the v1.1 release version to 1.1.0.0 and updated the release metadata. build.yaml version->1.1.0.0 and its overview/description/changelog now describe the shipped v1.1 behavior (dashboard settings page with runtime activation without a restart, per-selector value allowlist, configurable badge size/position, bounded configurable log verbosity with a secret-redaction contract, and the bounded provider inventory cache); guid, targetAbi 12.0.0.0, framework net10.0, category, owner, and the artifacts list are unchanged. Directory.Build.props Version/AssemblyVersion/FileVersion->1.1.0.0 (and its reproducibility comment). The hard-coded plugin-version literals in PluginPackagingTests (1), PluginDiscoveryHostTests (2: install folder and meta.json version), and PluginStateLocationTests (1) were updated to 1.1.0.0. PLANS.md task 14.1 status/checkbox and the Milestone Status row 14 / Project Status / Active Planning Scope framing were updated per project convention (mirroring task 8.3). The build is 0 warnings / 0 errors, the default suite is Failed 0 / Passed 1494 / Skipped 63 / Total 1557, and ./build.sh package produced artifacts/ArrTags_1.1.0.0.zip (7 entries) whose packaged build.yaml carries version 1.1.0.0 / targetAbi 12.0.0.0 / framework net10.0. No runtime plugin behavior changed. manifest.json and docs/release/build-and-release.md were deliberately not touched (task 14.2). PluginStateLocationTests.cs was included in addition to the three literals named in the task text because the task's affected-files wording ('the packaging/state/discovery test version literals') and the task 8.3 precedent both treat it as an in-scope version literal; the folder name is an arbitrary fixture and the change has no semantic effect.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh restore - succeeded, both projects restored in locked mode.",
+    ". /config/arrtags-env.sh && ./build.sh build - Build succeeded, 0 Warning(s), 0 Error(s).",
+    ". /config/arrtags-env.sh && ./build.sh package - succeeded; 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.1.0.0.zip (7 entries)'. (artifacts/ArrTags_1.0.1.0.zip from the prior release remains in the gitignored artifacts/ directory.)",
+    "unzip -l artifacts/ArrTags_1.1.0.0.zip - 7 entries: ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt.",
+    "unzip -p artifacts/ArrTags_1.1.0.0.zip build.yaml - packaged manifest shows version: \"1.1.0.0\", targetAbi: \"12.0.0.0\", framework: \"net10.0\", matching the source pins in build.yaml and Directory.Build.props (version 1.1.0.0).",
+    ". /config/arrtags-env.sh && ./build.sh test - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557 (Duration 20 s), matching the documented current v1.1 default-suite baseline. Skips are the environment-guarded native-Skia and ARRTAGS_JELLYFIN_HOST_DIR host facts (ARRTAGS_JELLYFIN_HOST_DIR is unset); the 3 [PackagedPluginFact] package-content facts ran because artifacts/ArrTags_1.1.0.0.zip was present.",
+    "git diff --stat - only the 6 tracked source/plan files changed; artifacts/ is gitignored and no other file was modified."
+  ],
+  "changed_files": [
+    "build.yaml",
+    "Directory.Build.props",
+    "tests/ArrTags.Tests/PluginPackagingTests.cs",
+    "tests/ArrTags.Tests/PluginDiscoveryHostTests.cs",
+    "tests/ArrTags.Tests/PluginStateLocationTests.cs",
+    "PLANS.md",
+    "docs/implementation/14.1/worker-report.json"
+  ],
+  "known_limitations": [
+    "The host-guarded suite (ARRTAGS_JELLYFIN_HOST_DIR) and the live pinned-host matrix were not run; ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment. The full host-guarded suite is task 14.2 and the live matrix is task 14.3.",
+    "The canonical current-state documents that still name the prior release identity were not updated by this release-metadata task: docs/release/build-and-release.md and manifest.json still carry the 1.0.1.0 artifact identity and are explicitly assigned to task 14.2 by PLANS.md; docs/changelog.md and docs/project-status.md are assigned to task 14.5. README.md, docs/limitations.md, and docs/testing/jellyfin-12-musl-test-host.md also still reference ArrTags_1.0.1.0; PLANS.md does not explicitly assign those three to a later Phase 14 task, so refreshing them (README manual-install download/folder name, limitations 1.0.1.0 artifact identity, test-host reproduction step) is an open follow-up for the orchestrator. Until then, the repository presents the last published v1.0.1 release identity in those surfaces, while build.yaml/Directory.Build.props and the built package are at 1.1.0.0.",
+    "Byte-reproducibility of artifacts/ArrTags_1.1.0.0.zip across repeated clean builds was not re-verified in this task; package was run once. The observed identity (594,931 bytes; SHA-256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1; MD5 547beb2f7d83cd256d3a3ce7bb7e7620) was not committed to documentation; PLANS.md assigns the reproducible-artifact identity claim and docs/release/build-and-release.md to task 14.2.",
+    "The package artifact is build output under the gitignored artifacts/ directory and is intentionally not a committed change; the orchestrator commits only after independent review."
+  ],
+  "ready_for_next_task": true
+}

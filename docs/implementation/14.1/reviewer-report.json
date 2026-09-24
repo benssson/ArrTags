@@ -1,0 +1,85 @@
+{
+  "task": "14.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "findings": [
+    {
+      "id": "14.1-R1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation/current-state surfaces",
+      "summary": "README, docs/limitations.md, and docs/testing/jellyfin-12-musl-test-host.md still name the 1.0.1.0 artifact identity; out of scope for 14.1 and not an inaccurate current state, but a Phase 14 planning gap.",
+      "detail": "README.md lines 35-38 point the manual install at ArrTags_1.0.1.0.zip / v1.0.1; docs/limitations.md lines ~312-413 and docs/testing/jellyfin-12-musl-test-host.md lines 196-197 also carry the 1.0.1.0 identity. These are release-documentation surfaces. Task 14.1's scope is build metadata plus packaging/state/discovery test literals; PLANS.md explicitly assigns manifest.json and docs/release/build-and-release.md to 14.2 and docs/changelog.md and docs/project-status.md to 14.5. README/limitations/test-host are not assigned to any Phase 14 task. Because the v1.1.0 release does not exist yet, the last published artifact still is 1.0.1.0, so the README statements remain accurate (not stale) and do not affect the 14.1 acceptance criteria. The worker disclosed these surfaces in known_limitations.",
+      "evidence": [
+        "README.md:35-38",
+        "docs/limitations.md:312,329,408-413",
+        "docs/testing/jellyfin-12-musl-test-host.md:196-197",
+        "docs/implementation/14.1/worker-report.json known_limitations[1]"
+      ],
+      "recommended_action": "Orchestrator should assign the README/limitations/test-host 1.1.0.0 identity refresh to a later Phase 14 task (14.2 or 14.5); no change required for 14.1."
+    },
+    {
+      "id": "14.1-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/version literals",
+      "summary": "DashboardSettingsPageTests.cs Version = \"1.0.0.0\" is an unrelated fake-manifest fixture, correctly left unchanged.",
+      "detail": "tests/ArrTags.Tests/DashboardSettingsPageTests.cs:314 sets PluginManifest.Version = \"1.0.0.0\" on a fake LocalPlugin used only to construct the pinned DashboardController for the settings-page resource and elevation-gating facts. It is not the ArrTags plugin version and is irrelevant to the test's purpose; the task 8.3 precedent (0.1.0.0 -> 1.0.1.0) also left it untouched. The search for plugin-version literals in tests/src/scripts/csproj found no remaining 1.0.1.0 literal (roots: tests/, src/, scripts/, *.csproj).",
+      "evidence": [
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs:307-327",
+        "grep 1.0.1.0 in tests/, src/, scripts/ -> no matches",
+        "PLANS.md task 8.3 status (same fixture untouched at the prior bump)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "14.1-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope/PLANS.md bookkeeping",
+      "summary": "The extra PLANS.md edit is appropriate project-convention bookkeeping and does not overclaim Gate 14 or the release.",
+      "detail": "The PLANS.md diff checks 14.1, marks only 14.1 complete, and states 'Phase 14 (v1.1 release) is in progress ... tasks 14.2-14.5 remain', the Milestone Status row 14 is 'In progress (Phase 14 task 14.1 complete; tasks 14.2-14.5 pending)', tasks 14.2-14.5 stay unchecked, and Gate 14/the v1.1.0 tag are explicitly left to later tasks/review. This mirrors the task 8.3 and Phase 13 bookkeeping precedent and is consistent with PLANS.md being a canonical current-state surface.",
+      "evidence": [
+        "git diff -- PLANS.md (Project Status paragraph, phase status block, Milestone Status row 14, task checkbox 14.1, task 14.1 Status)",
+        "PLANS.md task 8.3 status precedent"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Version 1.1.0.0 in build.yaml and Directory.Build.props",
+      "met": true,
+      "evidence": "build.yaml:4 version: \"1.1.0.0\"; Directory.Build.props:4-6 Version/AssemblyVersion/FileVersion all 1.1.0.0; independent ./build.sh build succeeded 0 warnings/0 errors; packaged artifacts/ArrTags_1.1.0.0.zip build.yaml has version 1.1.0.0; ArrTags.dll in the package contains the 1.1.0.0 version string."
+    },
+    {
+      "criterion": "Metadata accurately describes the shipped v1.1 behavior",
+      "met": true,
+      "evidence": "build.yaml overview/description/changelog describe only shipped v1.1 behavior: dashboard settings page with runtime activation without restart (Phase 9), per-selector value allowlist and configurable badge size/position (Phase 12), bounded configurable log verbosity with secret-redaction contract (Phase 10), and bounded provider inventory cache serving one library read per reconciliation window with ArrTags-side invalidation (Phase 11). Cross-checked against README.md (Configuration/fields, LogVerbosity, AllowedValues, Position/Size, palette/contrast) and the completed Phase 9-12 records in PLANS.md/docs/changelog.md; no unsupported capability claimed. The 'most changes ... without a restart' wording is honest given the documented construction-captured residuals."
+    }
+  ],
+  "validation_reproduced": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (exit 0).",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1494, Skipped: 63, Total: 1557, Duration: 20 s' (exit 0); matches the claimed default-suite counts and docs/project-status.md's current v1.1 counts.",
+    ". /config/arrtags-env.sh && ./build.sh package -> 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.1.0.0.zip (7 entries)' (exit 0).",
+    "unzip -l artifacts/ArrTags_1.1.0.0.zip -> 7 entries (ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt).",
+    "unzip -p artifacts/ArrTags_1.1.0.0.zip build.yaml -> version \"1.1.0.0\", targetAbi \"12.0.0.0\", framework \"net10.0\", guid/category/owner/artifacts unchanged.",
+    "strings ArrTags.dll (packaged) | grep 1.1.0.0 -> present; ArrTags.deps.json contains 1.1.0.0.",
+    "grep 1.0.1.0 across tests/, src/, scripts/, *.csproj -> no remaining plugin-version literal; git diff shows no 1.0.1.0 literal left in any changed file.",
+    "git status/git log/git diff --stat -> only build.yaml, Directory.Build.props, PLANS.md, PluginPackagingTests.cs, PluginDiscoveryHostTests.cs, PluginStateLocationTests.cs modified, plus untracked docs/implementation/14.1/; no commit created (HEAD still efaf471, no 14.1/1.1.0 commit, no tag at HEAD); git diff --check clean.",
+    "Test-default skips are the expected environment-guarded native-Skia (ARRTAGS_SKIA_COMPAT unset) and pinned-host (ARRTAGS_JELLYFIN_HOST_DIR unset) facts; the 3 [PackagedPluginFact] cases ran because artifacts/ArrTags_1.1.0.0.zip exists (ordinal-last selection in PackagedPluginFactAttribute.cs:71-73)."
+  ],
+  "reviewed_head": "efaf471955dcb0432e96ae67e415031c152adc14",
+  "reviewed_diff_scope": [
+    "build.yaml",
+    "Directory.Build.props",
+    "tests/ArrTags.Tests/PluginPackagingTests.cs",
+    "tests/ArrTags.Tests/PluginDiscoveryHostTests.cs",
+    "tests/ArrTags.Tests/PluginStateLocationTests.cs",
+    "PLANS.md",
+    "docs/implementation/14.1/worker-report.json"
+  ],
+  "ready_for_next_task": true
+}
