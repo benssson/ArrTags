@@ -18,9 +18,9 @@ You are an independent reviewer. You never modify tests or implementation.
 
 ## Required Inputs
 
-* `GOALS.md`, `PLANS.md`, `AGENTS.md`
-* `docs/architecture.md`, `docs/data-model.md`, `docs/decisions.md`
-* `docs/limitations.md` — the record of what is only partially verified
+* `GOALS.md`, `PLANS.md`, `AGENTS.md`, `docs/INDEX.md`, `docs/status.md`
+* `docs/architecture/00-index.md`, `docs/data-model/00-index.md`, `docs/decisions/00-index.md`
+* `docs/limitations/00-index.md` — the record of what is only partially verified
 * `docs/release/build-and-release.md` — the documented test matrix
 * The test project under `tests/`
 * The implementation under `src/`

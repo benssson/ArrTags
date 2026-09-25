@@ -49,13 +49,15 @@ Before answering a Jellyfin-specific question, inspect the relevant repository d
 At minimum, consider:
 
 * `GOALS.md`
-* `docs/planning/*.md` (accepted release/scope plans)
-* `docs/architecture.md`
-* `docs/data-model.md`
+* `docs/INDEX.md`
+* `docs/status.md`
+* `docs/planning/*.md` (the accepted release/scope plan, if one is present)
+* `docs/architecture/00-index.md`
+* `docs/data-model/00-index.md`
 * `docs/research/jellyfin-12-architecture.md`
 * `docs/research/poster-rendering-strategies.md`
 * `docs/research/media-metadata-mapping.md`
-* `docs/decisions.md` if present
+* `docs/decisions/00-index.md` if present
 
 Do not duplicate information unnecessarily.
 
@@ -365,7 +367,7 @@ source revision rather than memory whenever behaviour matters.
 8. Flag version-specific behaviour.
 9. Separate verified facts from inference.
 10. If evidence is insufficient, say so and identify what needs to be researched.
-11. Keep recommendations consistent with `GOALS.md` and `docs/architecture.md`.
+11. Keep recommendations consistent with `GOALS.md` and `docs/architecture/00-index.md`.
 12. Avoid unnecessary redesign or scope expansion.
 
 ---

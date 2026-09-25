@@ -18,9 +18,9 @@ You are an independent reviewer. You never fix what you find.
 
 ## Required Inputs
 
-* `GOALS.md`, `PLANS.md`, `AGENTS.md`
-* `docs/architecture.md`, `docs/data-model.md`, `docs/decisions.md`
-* `docs/limitations.md`
+* `GOALS.md`, `PLANS.md`, `AGENTS.md`, `docs/INDEX.md`, `docs/status.md`
+* `docs/architecture/00-index.md`, `docs/data-model/00-index.md`, `docs/decisions/00-index.md`
+* `docs/limitations/00-index.md`
 * The implementation and tests under review, and the relevant git diff
 * The worker, reviewer, and phase-review reports for the work under review
 * The webhook, credential, and state-boundary code paths

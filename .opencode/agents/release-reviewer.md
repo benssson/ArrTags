@@ -36,17 +36,18 @@ reports as claims to verify, never as established facts.
 Before making conclusions, read:
 
 * `GOALS.md`
+* `docs/INDEX.md`
+* `docs/status.md`
 * `PLANS.md`
+* `docs/plan/state.json`
 * `AGENTS.md`
 * `README.md`
-* `docs/architecture.md`
-* `docs/data-model.md`
-* `docs/decisions.md` (every ADR)
-* `docs/limitations.md`
+* `docs/architecture/` and `docs/data-model/` (indexes and relevant sections)
+* `docs/decisions/` (every ADR)
+* `docs/limitations/`
 * `docs/release/build-and-release.md`
 * `docs/testing/jellyfin-12-musl-test-host.md`
-* `docs/changelog.md`
-* `docs/implementation-readiness.md`
+* `docs/changelog/` and `docs/plan/archive/`
 * Every report under `docs/implementation/**` (worker, reviewer, phase review,
   orchestration records)
 * Relevant research documents under `docs/research/**`
@@ -77,7 +78,8 @@ ambiguity instead of reviewing a moving target.
 
 Verify:
 
-* Every phase and task in `PLANS.md` is complete or explicitly deferred.
+* Every phase and task in `docs/plan/state.json`, `PLANS.md`, and the archived
+  plans is complete or explicitly deferred.
 * Every phase gate that is claimed as met has supporting evidence.
 * Every claimed acceptance criterion is actually satisfied or accurately
   recorded as partial/deferred.
@@ -94,9 +96,9 @@ every gate to concrete evidence, classifying each as:
 * deferred or out of V1 scope
 * unverified because the environment lacks the counterpart
 
-Cross-check each claim against `docs/limitations.md` and reject any current-state
+Cross-check each claim against `docs/limitations/00-index.md` and reject any current-state
 surface that overclaims. A criterion described as "met as shipped" on one surface
-while `docs/limitations.md` records it as partial is a material finding, not a
+while `docs/limitations/00-index.md` records it as partial is a material finding, not a
 stylistic one.
 
 ### 4. Release-artifact verification
@@ -191,14 +193,15 @@ a passing test as proof that a platform assumption is correct.
 Check the project's canonical current-state surfaces against the released
 reality:
 
-* `PLANS.md` — Project Status paragraph, Milestone Status table, phase/task
-  status.
-* `docs/project-status.md` — current build/test/structure/next-step statements.
-* `docs/changelog.md` — phase status and entries.
-* `docs/architecture.md` — status line and affected sections.
-* `docs/implementation-readiness.md` — status line and deferral lists.
-* `docs/limitations.md` — the canonical limitations record.
+* `docs/plan/state.json` — canonical status: phase/task status, gates, and tags.
+* `PLANS.md` — active scope, phase/task checkboxes and status tokens; the
+  milestone table is generated.
+* `docs/status.md` — generated from `state.json`; verify it was regenerated.
+* `docs/changelog/` — release entries.
+* `docs/limitations/` — the canonical limitations register and its index.
 * `README.md` — the end-user guide.
+* `docs/architecture/` and `docs/data-model/` — normative sections only; these
+  documents carry no status line.
 
 Identify stale, contradictory, or overclaiming statements. Distinguish current
 project state from historical records: do not require historical entries to be
@@ -438,6 +441,6 @@ Rules:
   be resolved first, remains.
 * Use `SHIP_WITH_ACCEPTED_LIMITATIONS` only when the remaining findings are
   MEDIUM/LOW/INFORMATIONAL, are explicitly accepted, and are recorded in
-  `docs/limitations.md`.
+  `docs/limitations/00-index.md`.
 * Do not mark the release approved merely because the earlier phase reviewers
   approved their phases.

@@ -86,7 +86,7 @@ answer:
 * Any behaviour that becomes part of persisted authoritative state.
 * A conflict between two authoritative documents.
 
-When an ADR, `docs/architecture.md`, `docs/data-model.md`, `PLANS.md`, or an
+When an ADR, `docs/architecture/00-index.md`, `docs/data-model/00-index.md`, `PLANS.md`, or an
 accepted research finding already defines the meaning of a value or behaviour,
 follow it. Do not reinterpret it. If it is genuinely ambiguous or incomplete and
 the answer is not derivable from the project, stop and ask *before* implementing,
@@ -232,23 +232,24 @@ These are the project's current-state status surfaces. When the task changes
 project status or a documented behaviour, update every one that the change makes
 stale:
 
-* `PLANS.md` — the Project Status paragraph, the Milestone Status table row, and
-  the task's own status text/checkbox.
-* `docs/changelog.md` — the task entry.
-* `docs/project-status.md` — current build/test/structure/next-step statements.
-* `docs/architecture.md` — the status line and any section the change makes
-  inaccurate.
-* `docs/implementation-readiness.md` — its status line and any deferral list.
-* `docs/limitations.md` — the canonical limitations record: resolve, add, or
-  update any limitation the change affects.
+* `docs/plan/state.json` — set the task status and record its report and commit.
+* `PLANS.md` — the task's own checkbox and status token. The milestone table is
+  generated; do not hand-edit between its markers.
+* `docs/changelog/<release>.md` — the task entry.
+* `docs/limitations/` — resolve, add, or update any limitation the change
+  affects, and keep its index entry.
 * `README.md` — the end-user guide: update any capability, configuration, or
   limitation statement the change makes stale.
+* `docs/architecture/` and `docs/data-model/` — only the normative section the
+  change makes inaccurate. These documents carry no status line; do not add one.
+* `docs/status.md` and the `PLANS.md` milestone table — **generated**; regenerate
+  with `dotnet run scripts/render-docs-state.cs`, never by hand.
 
 Do not guess that a surface is unaffected: if the task changes a completion
 count, a phase status, an implemented capability, or a deferred item, verify the
 affected surfaces explicitly. Stale lines in these files are a recurring
 carry-over defect; leaving them is not acceptable merely because the task "did
-not touch that file".
+not touch that file". Run `scripts/check-docs.sh` after updating the surfaces.
 
 Do not create additional documentation, scripts, reports, or artifacts unless they are required by the task or the project's established workflow.
 

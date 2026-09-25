@@ -178,13 +178,14 @@ Only require documentation changes when they are necessary for the assigned task
 
 The project's current-state status surfaces are:
 
-* `PLANS.md` — Project Status paragraph, Milestone Status table row, task status/checkbox.
-* `docs/changelog.md` — task entry.
-* `docs/project-status.md` — current build/test/structure/next-step statements.
-* `docs/architecture.md` — status line and affected sections.
-* `docs/implementation-readiness.md` — status line and deferral lists.
-* `docs/limitations.md` — the canonical limitations record.
+* `docs/plan/state.json` — canonical status: task status, reports, and phase gate.
+* `PLANS.md` — the task checkbox and status token; the milestone table is generated.
+* `docs/status.md` — generated from `state.json`; verify it was regenerated.
+* `docs/changelog/` — the task entry.
+* `docs/limitations/` — the canonical limitations register and its index.
 * `README.md` — the end-user guide.
+* `docs/architecture/` and `docs/data-model/` — only the normative sections the
+  change makes inaccurate; these documents carry no status line.
 
 Independently check these against the implementation whenever the task changes a
 completion count, a phase status, an implemented capability, or a deferred item.

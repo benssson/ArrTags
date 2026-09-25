@@ -128,13 +128,15 @@ Identify documentation that is now stale or inconsistent with the completed impl
 
 The project's canonical current-state surfaces are:
 
-* `PLANS.md` — Project Status paragraph, Milestone Status table row, task status/checkbox.
-* `docs/changelog.md` — task entries and phase status.
-* `docs/project-status.md` — current build/test/structure/next-step statements.
-* `docs/architecture.md` — status line and affected sections.
-* `docs/implementation-readiness.md` — status line and deferral lists.
-* `docs/limitations.md` — the canonical limitations record.
+* `docs/plan/state.json` — canonical status: task statuses, reports, phase gate.
+* `PLANS.md` — the task checkboxes and status tokens; the milestone table is
+  generated. Verify it agrees with `state.json`.
+* `docs/status.md` — generated from `state.json`; verify it was regenerated.
+* `docs/changelog/` — the phase's task entries and status.
+* `docs/limitations/` — the canonical limitations register and its index.
 * `README.md` — the end-user guide.
+* `docs/architecture/` and `docs/data-model/` — only the normative sections the
+  phase makes inaccurate; these documents carry no status line.
 
 Check each of these against the completed phase. A stale current-state line that
 has survived multiple phase reviews is a material finding, not a stylistic one.

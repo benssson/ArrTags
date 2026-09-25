@@ -45,18 +45,20 @@ At minimum:
 
 * `AGENTS.md`
 * `GOALS.md`
+* `docs/INDEX.md`
+* `docs/status.md`
 * `PLANS.md`
-* `docs/planning/*.md` (accepted release/scope plans)
-* `docs/limitations.md` (current limitations and deferred items)
-* `docs/implementation-readiness.md` (decision gates and readiness state)
-* `docs/architecture.md`
-* `docs/data-model.md`
+* `docs/plan/state.json`
+* `docs/planning/*.md` (the accepted release/scope plan, if one is present)
+* `docs/limitations/00-index.md` (current limitations and deferred items)
+* `docs/architecture/00-index.md`
+* `docs/data-model/00-index.md`
 * `docs/research/jellyfin-12-architecture.md`
 * `docs/research/sonarr-api.md`
 * `docs/research/radarr-api.md`
 * `docs/research/media-metadata-mapping.md`
 * `docs/research/poster-rendering-strategies.md`
-* `docs/decisions.md` if present
+* `docs/decisions/00-index.md`
 
 Treat accepted architecture and decisions as authoritative.
 
@@ -198,7 +200,7 @@ Specific observable conditions that indicate completion.
 ### Decision Gates
 
 The decision gate(s) this task depends on. Verify each is resolved in
-`docs/decisions.md` (or the accepted plan) before planning the task. If a gate is
+`docs/decisions/00-index.md` (or the accepted plan) before planning the task. If a gate is
 unresolved, record the task as blocked by that gate rather than planning around
 it.
 
@@ -244,8 +246,15 @@ architecture decision, rather than silently restructuring the plan.
 
 A new release or scope is planned only when the user has **explicitly accepted**
 it — for example an accepted plan document under `docs/planning/` whose goals
-are agreed and whose decision gates are resolved. When asked to plan such a scope, you may add new phases to `PLANS.md`.
-You must not modify, reorder, or reopen completed or in-flight V1 phases.
+are agreed and whose decision gates are resolved. When asked to plan such a
+scope, add new phases to `PLANS.md` and record them in `docs/plan/state.json`.
+You must not modify, reorder, or reopen completed or in-flight phases.
+
+Archiving rule: before adding a new scope, move the previously active release's
+phases out of `PLANS.md` into `docs/plan/archive/` verbatim (if they are not
+already archived) and update the Active Planning Scope pointer. Phase numbers
+continue the global sequence and never restart at 1; a new release starts at the
+next unused phase number.
 
 For every new phase, define:
 
@@ -274,10 +283,16 @@ Write the new phases into `PLANS.md` using the existing conventions so the
 orchestrator can parse them:
 
 * A `### N. Name` phase heading with its objective.
-* A row in the `## Milestone Status` table.
-* Task entries with `- [ ]` checkboxes and a status line.
+* Task entries with `- [ ]` checkboxes and a concise `**Status:** <token>` (do
+  not write long per-task status prose into `PLANS.md`; the detail belongs in
+  `docs/changelog/<release>.md` and `docs/implementation/<task-id>/`).
 * A single line of the exact form
   `**Authoritative Phase N execution order:** <task ids>`.
+
+Record the phase set and each task's status in `docs/plan/state.json`. The
+`## Milestone Status` table in `PLANS.md` is generated from `state.json`; render
+it with `dotnet run scripts/render-docs-state.cs` and never hand-edit between its
+markers.
 
 Also persist a mapping table from any pre-existing flat task list in the accepted
 plan (for example a flat task list in the accepted plan document) to the new
@@ -422,16 +437,21 @@ Unaccepted examples include:
 
 # PLANS.md Maintenance
 
-`PLANS.md` is a **living execution document**.
+`PLANS.md` is the **active** execution document.
 
 When implementation progresses:
 
-* Mark completed tasks.
-* Update the current phase.
+* Mark completed tasks and update `docs/plan/state.json`.
+* Regenerate the generated blocks with `scripts/render-docs-state.cs` (or ask
+  the documentation-maintainer to).
 * Record newly discovered dependencies.
 * Add genuine implementation tasks when required.
 * Remove obsolete tasks.
-* Preserve completed work rather than rewriting history unnecessarily.
+
+Completed phases do not stay in `PLANS.md`: when a release completes, move its
+phases verbatim to `docs/plan/archive/<release>.md`, leaving `PLANS.md` with only
+the active scope (or an explicit "no scope active" pointer), the generated
+milestone table, decision gates, risks, and the compact backlog.
 
 Do not turn `PLANS.md` into a detailed implementation log.
 
@@ -457,7 +477,8 @@ Instead:
 6. Update the relevant documentation.
 7. Re-plan affected implementation work.
 
-Architecture changes should be recorded in `docs/decisions.md`.
+Architecture changes should be recorded as a new ADR under `docs/decisions/` and
+listed in its index.
 
 ---
 
@@ -539,14 +560,16 @@ Define what must be true before the milestone can be marked complete.
 
 You are a subagent operating under an orchestrator, which owns git commits.
 
-You must be able to read the repository, edit `PLANS.md` in place, and write the
-planning JSON record described below. You do not modify application code, tests,
-or architecture documents.
+You must be able to read the repository, edit `PLANS.md` and
+`docs/plan/state.json`, and write the planning JSON record described below. You
+do not modify application code, tests, or normative architecture documents.
 
-`PLANS.md` is the primary artifact you maintain. Update it in place: mark task
-status, record newly discovered dependencies, add genuine tasks required by an
-accepted decision, and remove obsolete tasks. Preserve completed work and
-history rather than rewriting it.
+`PLANS.md` (active scope) and `docs/plan/state.json` are the artifacts you
+maintain. Update them together: mark task status, record newly discovered
+dependencies, add genuine tasks required by an accepted decision, remove
+obsolete tasks, and archive completed phases to `docs/plan/archive/`. Preserve
+completed work and history rather than rewriting it. The planning JSON below is
+the proposal record; `docs/plan/state.json` is the canonical status.
 
 When asked to plan a specific milestone or change, also persist a concise,
 machine-readable record for the orchestrator:

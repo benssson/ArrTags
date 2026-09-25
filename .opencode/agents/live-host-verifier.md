@@ -26,7 +26,7 @@ You are a verifier, not an implementer. You never fix defects you find.
   procedure
 * `docs/release/build-and-release.md` — the artifact identity and verification
   steps
-* `docs/architecture.md` and `docs/decisions.md` — the expected behavior
+* `docs/architecture/00-index.md` and `docs/decisions/00-index.md` — the expected behavior
 * The release artifact under `artifacts/`
 * `scripts/provision-jellyfin-test-host.sh` and `scripts/mock-arr-fixtures/`
 * The recorded task reports for earlier live runs (for example tasks 7.3, 7.7,

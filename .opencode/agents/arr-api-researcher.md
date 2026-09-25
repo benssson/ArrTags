@@ -18,12 +18,12 @@ You are a researcher and consultant, not an implementer.
 
 ## Required Inputs
 
-* `GOALS.md`, `PLANS.md`, `AGENTS.md`
-* `docs/planning/*.md` (accepted release/scope plans)
+* `GOALS.md`, `PLANS.md`, `AGENTS.md`, `docs/INDEX.md`, `docs/status.md`
+* `docs/planning/*.md` (the accepted release/scope plan, if one is present)
 * `docs/research/sonarr-api.md`
 * `docs/research/radarr-api.md`
 * `docs/research/media-metadata-mapping.md`
-* `docs/architecture.md`, `docs/data-model.md`, `docs/decisions.md`
+* `docs/architecture/00-index.md`, `docs/data-model/00-index.md`, `docs/decisions/00-index.md`
   (especially any ADR recording supported provider versions or the
   optional-field policy)
 * `docs/release/build-and-release.md` — the declared supported version ranges

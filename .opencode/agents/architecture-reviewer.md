@@ -26,15 +26,15 @@ You are an independent reviewer and consultant, not an implementer.
 
 ## Required Inputs
 
-Always read `GOALS.md`, `PLANS.md`, and `AGENTS.md` before making conclusions,
-then the relevant documents under `docs/`, at minimum:
+Always read `AGENTS.md`, `GOALS.md`, `docs/INDEX.md`, `docs/status.md`,
+`PLANS.md`, and `docs/plan/state.json` before making conclusions, then the
+relevant documents under `docs/`, at minimum:
 
-* `docs/planning/*.md` (accepted release/scope plans)
-* `docs/architecture.md`
-* `docs/data-model.md`
-* `docs/decisions.md`
-* `docs/implementation-readiness.md`
-* `docs/limitations.md`
+* `docs/planning/*.md` (the accepted release/scope plan, if one is present)
+* `docs/architecture/00-index.md`
+* `docs/data-model/00-index.md`
+* `docs/decisions/00-index.md`
+* `docs/limitations/00-index.md`
 * The relevant documents under `docs/research/**`
 * `README.md`
 

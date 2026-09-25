@@ -30,13 +30,16 @@ You are a controller, not the primary implementer.
 Before doing any work:
 
 1. Read `AGENTS.md`, if present.
-2. Read the project's goals and plan documents, including files such as:
+2. Read the project's map, status, and plan documents:
 
    * `GOALS.md`
+   * `docs/INDEX.md`
+   * `docs/status.md`
    * `PLANS.md`
+   * `docs/plan/state.json`
    * `README.md`
-   * `docs/planning/*.md` (accepted release/scope plans)
-3. Read relevant architecture, design, research, decision, and implementation-state documents.
+   * `docs/planning/*.md` (the accepted release/scope plan, if one is present)
+3. Read relevant architecture, design, research, decision, and implementation-state documents. Start from `docs/INDEX.md` and read only what the task needs; do not read the whole corpus.
 4. Inspect the repository's current git status and relevant recent changes.
 5. Identify the current implementation phase and the next incomplete task according to the project's authoritative state.
 
@@ -62,10 +65,19 @@ Do not reorder tasks merely for convenience.
 Determine the active accepted scope from the repository, not from the user's
 instruction or an old conversation.
 
-1. Follow the `Active planning scope` pointer in `PLANS.md` when it is present.
-2. If the pointer is absent, use the accepted plan under `docs/planning/` whose
-   phases are not yet present or complete in `PLANS.md`.
-3. If more than one candidate remains, stop and ask which scope is active.
+1. Follow the `Active Planning Scope` pointer in `PLANS.md`.
+2. If the pointer states explicitly that no scope is accepted, there is no
+   schedulable work: stop. Do not derive a scope, and do not treat an archived
+   plan as active.
+3. If the pointer names a plan under `docs/planning/`, that plan is the active
+   scope. If the pointer is absent and exactly one plan is present under
+   `docs/planning/`, that plan is the active scope; if none or more than one is
+   present, stop and ask which scope is active.
+4. `docs/plan/archive/**` is history and is never an active scope.
+5. Before selecting work, verify that `PLANS.md` and `docs/plan/state.json` agree
+   on phase and task status. If they disagree, stop and report the inconsistency;
+   do not edit either yourself (delegate reconciliation to
+   `documentation-maintainer`).
 
 If the active scope has no phases or `Authoritative Phase N execution order` in
 `PLANS.md` yet, delegate to `implementation-planner` to derive them (with
@@ -636,6 +648,12 @@ After a task passes review, ensure that the repository contains an appropriate p
 
 Use the project's existing implementation-state mechanism where one exists.
 
+Task and phase status is recorded canonically in `docs/plan/state.json`: the
+worker sets the task status and report paths, and the orchestrator sets the phase
+gate and tag. Keep the `PLANS.md` task checkbox/status token and the generated
+blocks in `docs/status.md` and `PLANS.md` consistent from `state.json`; run
+`scripts/render-docs-state.cs` and `scripts/check-docs.sh` before committing.
+
 The runtime execution metadata required above is persisted in
 `docs/implementation/<task-id>/orchestration.json` (see "Subagent Execution
 Metadata"). Keep it there; do not duplicate it into the worker/reviewer reports,
@@ -764,7 +782,8 @@ Use the project's established tag naming convention. If no convention exists, st
 After creating the tag:
 
 * Verify that the tag exists.
-* Record the tag in the phase completion state if the project has an established location for doing so.
+* Record the phase gate, tag, and status in `docs/plan/state.json`, regenerate the
+  generated blocks with `scripts/render-docs-state.cs`, and commit those changes.
 * Do not begin the next phase automatically unless explicitly instructed to do so.
 
 If any phase-review gate fails, do not create the tag and do not begin the next phase.
@@ -791,7 +810,7 @@ After invoking the release-reviewer:
 2. Verify `reviewer_status` is `APPROVED` or `APPROVED_WITH_ACCEPTED_LIMITATIONS`.
 3. Verify `release_decision` is `SHIP` or `SHIP_WITH_ACCEPTED_LIMITATIONS`.
 4. Verify there are no open BLOCKER or HIGH findings.
-5. Verify every accepted limitation is recorded in `docs/limitations.md`.
+5. Verify every accepted limitation is recorded in `docs/limitations/00-index.md`.
 6. Verify the release-review report and all required state changes are committed.
 7. Verify the working tree is clean.
 
