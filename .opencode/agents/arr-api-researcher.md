@@ -2,8 +2,17 @@
 
 description: Researches and verifies Sonarr and Radarr v3 API contracts and webhook payloads against authoritative sources
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/research/**"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
+model: opencode-go/deepseek-v4.1-flash#high
 ---
 
 # Arr API Researcher

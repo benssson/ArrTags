@@ -2,8 +2,17 @@
 
 description: Runs the documented pinned-host end-to-end verification matrix and records reproducible, machine-readable results
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/implementation/**"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
+model: opencode-go/deepseek-v4.1-flash#high
 ---
 
 # Live Host Verifier

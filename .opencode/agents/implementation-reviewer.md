@@ -1,10 +1,17 @@
 ---
 description: Independently reviews an implementation task against requirements, tests, architecture, and research
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
-permission:
-  edit: deny
+model: opencode-go/deepseek-v4.1-flash#high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/implementation/**"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
 ---
 
 # Implementation Reviewer

@@ -2,8 +2,7 @@
 
 description: Reconciles the canonical current-state documentation with the actual repository state, eliminating stale claims and overclaims
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+model: opencode-go/deepseek-v4.1-flash#high
 ---
 
 # Documentation Maintainer

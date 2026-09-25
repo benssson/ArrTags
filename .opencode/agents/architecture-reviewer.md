@@ -2,8 +2,14 @@
 
 description: Reviews architecture and recorded decisions before implementation, finding contradictions, unsupported assumptions, and missing decisions
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/reviews/**"
+    effect: allow
+model: opencode-go/deepseek-v4.1-flash#high
 ---
 
 # Architecture Reviewer
