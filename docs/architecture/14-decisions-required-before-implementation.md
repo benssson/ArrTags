@@ -40,11 +40,11 @@ The following are intentionally not guessed by this architecture:
    malformed or missing required field fails closed as `ProviderIncompatible`
    with no version-number gate.
 
-These decisions must be recorded in `docs/decisions.md` or
-`docs/implementation-readiness.md` and reflected in a future architecture
-revision before they become implementation assumptions. Item 1 (the pinned
-Jellyfin `12.0.0` / `net10.0` / `targetAbi: 12.0.0.0` compatibility target) is
-resolved in `docs/implementation-readiness.md`. Item 2 (V1 badge surfaces and
+These decisions must be recorded as an ADR under `docs/decisions/` and reflected
+in a future architecture revision before they become implementation assumptions.
+Item 1 (the pinned Jellyfin `12.0.0` / `net10.0` / `targetAbi: 12.0.0.0`
+compatibility target) is resolved in the archived readiness record
+(`docs/plan/archive/v1-readiness.md`). Item 2 (V1 badge surfaces and
 the library scope identifier) is resolved by ADR-006. Item 4 (episode numbering)
 is resolved by ADR-007. Item 5 (path fallback) is resolved by ADR-008. Item 6
 (foundation operational limits) is resolved by ADR-004, with the accepted values

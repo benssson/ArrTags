@@ -52,7 +52,7 @@ verbosity cannot expand a redacted value into a secret-bearing one. The
 artwork-generation boundary currently logs only the bounded outcome and the
 generic reason; the specific bounded `PassThroughReason`, `FailureReason`, and
 `SourceFailureReason` are retained on the generation result but are not emitted,
-which is documented as an open diagnostic limitation (`docs/limitations.md` F8).
+which is documented as an open diagnostic limitation (`docs/limitations/00-index.md` F8).
 
 Log volume is bounded (ADR-020 clause 6) by the plugin-owned, provider-neutral,
 thread-safe `LogThrottle`: it admits at most 5 records per category and event
@@ -127,7 +127,7 @@ Metrics or diagnostic status should distinguish queue depth, API health,
 matching failures, cache hits/misses, render failures, and stale metadata
 without exposing credentials or full external payloads. A bounded, secret-free
 status/diagnostic surface is not yet implemented and is documented as an open
-limitation in `docs/limitations.md`.
+limitation in `docs/limitations/00-index.md`.
 
 The provider concurrency (per connection and global) and render concurrency
 limits are enforced at their boundaries, not merely validated. Each provider

@@ -20,6 +20,8 @@ Before making conclusions, read:
 * PLANS.md
 * AGENTS.md
 * README.md
+* docs/INDEX.md
+* docs/plan/state.json
 * The phase's authoritative execution order
 * Relevant documents under docs/
 * Relevant architecture and decision documents
@@ -129,7 +131,7 @@ Identify documentation that is now stale or inconsistent with the completed impl
 The project's canonical current-state surfaces are:
 
 * `docs/plan/state.json` — canonical status: task statuses, reports, phase gate.
-* `PLANS.md` — the task checkboxes and status tokens; the milestone table is
+* `PLANS.md` — the task checkboxes (canonical state in `state.json`); the milestone table is
   generated. Verify it agrees with `state.json`.
 * `docs/status.md` — generated from `state.json`; verify it was regenerated.
 * `docs/changelog/` — the phase's task entries and status.

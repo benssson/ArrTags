@@ -102,7 +102,7 @@ the queue drops overflow, so a single run over a scope larger than
 `QueueCapacity` covers a bounded prefix; successive runs overlap rather than
 advancing. Making successive runs cover the whole scope (a persisted enumeration
 cursor, stale/unknown-only enqueue, or direct pipeline drive) is not implemented
-and is documented as an open limitation in `docs/limitations.md` rather than
+and is documented as an open limitation in `docs/limitations/00-index.md` rather than
 presented as solved.
 
 Coalescing is version-blind: the queue key is the item, connection, and image
@@ -112,7 +112,7 @@ coalesced away when the item already has pending or in-flight work under the
 previous version, and that outstanding item then discards itself as a stale basis
 and is completed without re-enqueueing; the item is re-rendered on the next
 trigger rather than by the save. This is a known open limitation
-(`docs/limitations.md` F6) and is not presented as solved.
+(`docs/limitations/00-index.md` F6) and is not presented as solved.
 
 The installed webhook boundary (`src/ArrTags/Webhooks`, ADR-012) realizes this
 contract. `ArrTagsWebhookController` is an anonymous plugin route

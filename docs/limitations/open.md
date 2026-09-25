@@ -8,8 +8,8 @@ Queue depth, provider health, matching, cache, rendering, and stale-data
 counters exist internally, but there is no bounded, secret-free user-facing or
 diagnostic status surface.
 
-- Evidence: `docs/architecture.md` lines 1209-1212 (documented as an open
-  limitation here); `PLANS.md` Post-V1 Backlog.
+- Evidence: `docs/architecture/12-performance-and-operational-limits.md`
+  (documented as an open limitation here); `PLANS.md` Post-V1 Backlog.
 - Consequence: operators have no supported in-product view of queue depth or
   provider health. Architecture section 12 states this as a recommendation, not
   a hard V1 gate.
@@ -23,7 +23,7 @@ Successive runs re-cover the same prefix rather than advancing; there is no
 persisted enumeration cursor, stale/unknown-only enqueue, or direct pipeline
 drive.
 
-- Evidence: Phase 6 review MEDIUM item; `docs/architecture.md` lines 472-478;
+- Evidence: Phase 6 review MEDIUM item; `docs/architecture/08-reconciliation-and-update-flow.md`;
   `PLANS.md` Post-V1 Backlog.
 - Consequence: for a scope larger than `QueueCapacity`, some items are not
   reconciled by a single run and successive runs do not guarantee full
@@ -36,7 +36,7 @@ V1 compiles against the pinned `SkiaSharp`/`SkiaSharp.NativeAssets.Linux`
 native library from the Jellyfin host (ADR-015, superseding the bundling parts
 of ADR-010).
 
-- Evidence: task 7.8 worker report and ADR-015; `docs/architecture.md` section 9.
+- Evidence: task 7.8 worker report and ADR-015; `docs/architecture/09-persisted-artwork-rendering.md`.
 - Consequence: a host that does not provide a compatible SkiaSharp would make
   rendering fail closed (pass-through/preserve current artwork) rather than use
   a bundled copy. Validated only on the pinned Jellyfin `12.0.0`

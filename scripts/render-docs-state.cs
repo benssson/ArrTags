@@ -1,8 +1,8 @@
 #:property RestorePackagesWithLockFile=false
 // ArrTags documentation-status renderer.
 //
-// It is a .NET 10 file-based app (run with
-// `dotnet run scripts/render-docs-state.cs [--check]`) and is NOT part of the
+// It is a .NET 10 file-based app (run `--check` as
+// `dotnet run scripts/render-docs-state.cs -- --check`) and is NOT part of the
 // plugin build or solution; it adds no plugin dependency.
 //
 // It reads the canonical machine state `docs/plan/state.json` and renders the
@@ -28,6 +28,8 @@ const string StatusBegin = "<!-- BEGIN GENERATED: status -->";
 const string StatusEnd = "<!-- END GENERATED: status -->";
 const string MilestoneBegin = "<!-- BEGIN GENERATED: milestone-status -->";
 const string MilestoneEnd = "<!-- END GENERATED: milestone-status -->";
+const string ScopeBegin = "<!-- BEGIN GENERATED: active-scope -->";
+const string ScopeEnd = "<!-- END GENERATED: active-scope -->";
 
 var statePath = Path.Combine(root, "docs", "plan", "state.json");
 if (!File.Exists(statePath)) { Console.Error.WriteLine($"missing {statePath}"); return 2; }
@@ -98,10 +100,15 @@ else
     foreach (var p in activePhases)
         milestone.Add($"| {p!["id"]} | {p!["name"]} | {p!["status"]} | {p!["gate"]} |");
 
+var activeScopeBody = scope is null || scope.GetValueKind() == JsonValueKind.Null
+    ? "**Active plan:** none."
+    : $"**Active plan:** `{scope}`.";
+
 var targets = new (string Path, string Begin, string End, string Body, string Label)[]
 {
     (Path.Combine(root, "docs", "status.md"), StatusBegin, StatusEnd, string.Join("\n", status), "status"),
     (Path.Combine(root, "PLANS.md"), MilestoneBegin, MilestoneEnd, string.Join("\n", milestone), "milestone-status"),
+    (Path.Combine(root, "PLANS.md"), ScopeBegin, ScopeEnd, activeScopeBody, "active-scope"),
 };
 
 var stale = new List<string>();
@@ -165,6 +172,9 @@ List<string> PlanAgreementErrors(JsonNode state, string planText)
 {
     var errors = new List<string>();
     var phases = state["phases"]!.AsArray();
+    var completedReleases = new HashSet<string>(state["releases"]!.AsArray()
+        .Where(r => (string?)r!["status"] == "COMPLETE")
+        .Select(r => (string)r!["version"]!));
     var present = new HashSet<int>();
     foreach (Match m in Regex.Matches(planText, @"^### (\d+)\.\s", RegexOptions.Multiline))
         present.Add(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture));
@@ -179,6 +189,9 @@ List<string> PlanAgreementErrors(JsonNode state, string planText)
                 errors.Add($"active phase {id} ({status}) has no '### {id}.' section in PLANS.md");
             continue;
         }
+        var release = (string?)p["release"] ?? "";
+        if (completedReleases.Contains(release))
+            errors.Add($"phase {id} belongs to completed release {release} and must be archived out of PLANS.md");
         foreach (var t in p["tasks"]!.AsArray())
         {
             var tid = (string)t!["id"]!;

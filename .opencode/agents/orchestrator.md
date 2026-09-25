@@ -66,7 +66,9 @@ Do not reorder tasks merely for convenience.
 Determine the active accepted scope from the repository, not from the user's
 instruction or an old conversation.
 
-1. Follow the `Active Planning Scope` pointer in `PLANS.md`.
+1. Follow the generated `**Active plan:**` line in the `Active Planning Scope`
+   section of `PLANS.md`; it is rendered from `state.json.active_scope`, which is
+   the canonical value. `scripts/check-docs.sh` verifies the two agree.
 2. If the pointer states explicitly that no scope is accepted, there is no
    schedulable work: stop. Do not derive a scope, and do not treat an archived
    plan as active.
@@ -98,13 +100,13 @@ Algorithm:
 
 1. Read the authoritative execution order for the current phase.
 2. Walk the execution order from beginning to end.
-3. Select the first task whose status is not `COMPLETE` and is not explicitly `DEFERRED` or `OUT_OF_SCOPE`.
+3. Select the first task whose `done` flag in `docs/plan/state.json` is not `true` (or whose `PLANS.md` checkbox is not `[x]`).
 4. Stop evaluating later tasks once that task has been found.
 5. Verify that the selected task's documented prerequisites are satisfied before delegating it to the implementation worker.
 
 If the authoritative execution order conflicts with task numbering, the execution order takes precedence.
 
-If no authoritative execution order exists, fall back to the ordered task list defined in `PLANS.md`.
+If no authoritative execution order exists for the current phase, stop and delegate to `implementation-planner` to add it; do not infer an order from task numbering.
 
 ### Authoritative Execution Order Invariant
 
@@ -651,7 +653,7 @@ Use the project's existing implementation-state mechanism where one exists.
 
 Task and phase status is recorded canonically in `docs/plan/state.json`: the
 worker sets the task status and report paths, and the orchestrator sets the phase
-gate and tag. Keep the `PLANS.md` task checkbox/status token and the generated
+gate and tag. Keep the `PLANS.md` task checkbox and the generated
 blocks in `docs/status.md` and `PLANS.md` consistent from `state.json`; run
 `scripts/render-docs-state.cs` and `scripts/check-docs.sh` before committing.
 

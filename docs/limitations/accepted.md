@@ -27,7 +27,7 @@ or recorded, and the comparison is skipped by
 `NonCanonicalRuntimeFactAttribute` while the golden set is absent.
 
 - Evidence: tasks 4.11 and 7.1; `PLANS.md` Phase 4 status;
-  `docs/implementation-readiness.md`.
+  `docs/plan/archive/v1-readiness.md`.
 - Consequence: the native/tolerance half of the ADR-010 test strategy is
   recorded as an environment limitation, not executed. Same-runtime golden and
   byte-determinism coverage passes.
@@ -140,7 +140,7 @@ principle change compiler or deflate output.
   `ActiveImageIdentity`), which closed the task 7.6 reviewer finding 7.6-R1 for
   that artifact. The post-SEC-1 `0.1.0.0` artifact was stable across repeated
   `./build.sh package` runs and was live-verified on the same host for the SEC-1
-  boundary (`docs/changelog.md`); the re-run release review re-verifies the
+  boundary (`docs/changelog/00-index.md`); the re-run release review re-verifies the
   end-to-end publication on the new artifact. Phase 8 task 8.3 then bumped the
   version to `1.0.1.0`, changing only version/release metadata; the `1.0.1.0`
   artifact was byte-stable across repeated `./build.sh package` runs (the Phase 8
@@ -212,7 +212,7 @@ the user's manual step. The public repository `benssson/ArrTags` therefore does
 not serve a manifest that lists `1.1.0.0`, so the standard Jellyfin plugin-catalog
 install cannot resolve the `1.1.0.0` release until the user runs the publish
 step. The earlier `1.0.1.0` preparation (Phase 8 tasks 8.1-8.6) is Phase 8
-history and is recorded in `docs/changelog.md`.
+history and is recorded in `docs/changelog/00-index.md`.
 
 - Evidence: task 14.2 worker report; for the historical `1.0.1.0` state, task 8.6
   worker/reviewer reports (`docs/implementation/8.6/`).
@@ -265,7 +265,7 @@ and the per-phase `phase-review.json` records start at
 `docs/implementation/phase-4/`; `docs/implementation/phase-1/`, `phase-2/`, and
 `phase-3/` do not exist and contain no phase-review record, and there are no
 per-task worker/reviewer reports for phases 1-3. Their Gate 1-3 claims therefore
-rest on the `docs/changelog.md` phase sections, the `PLANS.md`
+rest on the `docs/changelog/00-index.md` phase sections, the `PLANS.md`
 acceptance-criteria checkboxes, the tags `v0.1.0-phase1`..`3`, and the
 accumulated suite counts, none of which was independently audited at the time.
 
@@ -373,7 +373,7 @@ header, a raw request/response body, a full provider payload, or the mutable
 `PluginConfiguration`. The emitted data shape is identical at every verbosity
 level, so raising verbosity cannot expand a redacted value into a secret-bearing
 one. Log volume is bounded by the code-owned `LogThrottle` (ADR-020 clause 6;
-`docs/architecture.md` section 12), and verbosity is not output-affecting
+`docs/architecture/12-performance-and-operational-limits.md`), and verbosity is not output-affecting
 (ADR-020 clause 5). The logging path is covered by a dedicated security review
 (task 10.3; report at `docs/implementation/10.3/security-review.json`).
 
@@ -385,8 +385,8 @@ the only plugin-initiated administrator-visible *notification*; logging is a
 diagnostic mechanism (ADR-020 clause 7).
 
 - Evidence: security-review finding SEC-5 (rewritten by v1.1 task 10.3);
-  `docs/decisions.md` ADR-005, ADR-020, and ADR-021; `src/ArrTags/Logging/`;
-  `docs/architecture.md` sections 6, 11, and 12; this file's SEC-9.
+  `docs/decisions/00-index.md` ADR-005, ADR-020, and ADR-021; `src/ArrTags/Logging/`;
+  `docs/architecture/00-index.md` sections 6, 11, and 12; this file's SEC-9.
 - Consequence: secrets remain confined to Jellyfin's plugin configuration XML at
   rest, and the diagnostic logging path is a bounded, redacted, reviewed surface
   that cannot leak a secret. The SEC-9 activity-log surface is likewise bounded
@@ -430,7 +430,7 @@ of accepted deliveries, not auth throttling). The exposure is mitigated by the
 high-entropy administrator-configured shared secret, the 1024-character
 candidate bound, the constant-time compare, and the uniform fail-closed `401`.
 
-- Evidence: security-review finding SEC-8; `docs/decisions.md` ADR-012.
+- Evidence: security-review finding SEC-8; `docs/decisions/00-index.md` ADR-012.
 - Consequence: optional post-V1 hardening only (for example per-source throttling
   or reverse-proxy rate limiting).
 
@@ -467,7 +467,7 @@ never written, and the save sequence is serialized so concurrent saves cannot
 leave the running snapshot, the in-memory configuration, and the persisted file
 divergent.
 
-- Evidence: `docs/decisions.md` ADR-021;
+- Evidence: `docs/decisions/00-index.md` ADR-021;
   `docs/research/jellyfin-expert/configuration-save-failure-surfacing.json`;
   `src/ArrTags/Configuration/IConfigurationRejectionNotifier.cs`,
   `src/ArrTags/PluginLifecycle/JellyfinConfigurationRejectionNotifier.cs`;
@@ -656,11 +656,11 @@ fallback selects the first manifest checksum.
 
 `README.md` (known-limitations bullet) and this file's F1 status/consequence
 lines still present the task 14.3 live pinned-host confirmation as pending, and
-some Phase 11/12/13 sentences in `docs/project-status.md`,
-`docs/architecture.md`, and `docs/implementation-readiness.md` retain the same
+some Phase 11/12/13 sentences in `docs/plan/archive/project-status-history.md`,
+`docs/architecture/00-index.md`, and `docs/plan/archive/v1-readiness.md` retain the same
 pre-14.3 framing, while task 14.3 is complete and passed all eight matrix rows.
 
-- Evidence: `README.md:201`; `docs/limitations.md` F1 (the "owned by task 14.3"
+- Evidence: `README.md:201`; `docs/limitations/00-index.md` F1 (the "owned by task 14.3"
   lines); `docs/implementation/14.3/live-verification.json`
   (`overall_verdict` `PASS`); the v1.1 release audit's independent live re-run of
   the same pinned host (install/load, publication, readback identity, source

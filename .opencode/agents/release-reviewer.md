@@ -194,7 +194,7 @@ Check the project's canonical current-state surfaces against the released
 reality:
 
 * `docs/plan/state.json` — canonical status: phase/task status, gates, and tags.
-* `PLANS.md` — active scope, phase/task checkboxes and status tokens; the
+* `PLANS.md` — active scope, phase/task checkboxes; the
   milestone table is generated.
 * `docs/status.md` — generated from `state.json`; verify it was regenerated.
 * `docs/changelog/` — release entries.

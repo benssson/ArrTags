@@ -31,7 +31,8 @@ fi
 
 # 2. Compatibility stubs stay short and non-normative.
 for f in docs/architecture.md docs/data-model.md docs/decisions.md \
-         docs/changelog.md docs/project-status.md docs/implementation-readiness.md; do
+         docs/changelog.md docs/limitations.md docs/project-status.md \
+         docs/implementation-readiness.md; do
     if [ ! -f "$f" ]; then err "missing stub $f"; continue; fi
     n=$(wc -l < "$f")
     [ "$n" -le 40 ] || err "$f is $n lines; a stub must stay under 40"
@@ -70,12 +71,19 @@ ok "architecture and data-model indexes checked"
 
 # 6. Artifact identity agrees between state.json and the release record.
 sha=$(grep -oE '"sha256": "[0-9a-f]{64}"' docs/plan/state.json | head -1 | grep -oE '[0-9a-f]{64}')
-if [ -n "$sha" ]; then
-    grep -qF "$sha" docs/release/build-and-release.md \
+md5=$(grep -oE '"md5": "[0-9a-f]{32}"' docs/plan/state.json | head -1 | grep -oE '[0-9a-f]{32}')
+bytes=$(grep -oE '"bytes": [0-9]+' docs/plan/state.json | head -1 | grep -oE '[0-9]+')
+release_norm=$(tr -d ',' < docs/release/build-and-release.md)
+if [ -n "$sha" ] && [ -n "$md5" ] && [ -n "$bytes" ]; then
+    grep -qF "$sha" <<< "$release_norm" \
         || err "state.json artifact sha256 not found in docs/release/build-and-release.md"
-    ok "artifact identity agrees"
+    grep -qF "$md5" <<< "$release_norm" \
+        || err "state.json artifact md5 not found in docs/release/build-and-release.md"
+    grep -qE "(^|[^0-9])${bytes} bytes" <<< "$release_norm" \
+        || err "state.json artifact byte count not found in docs/release/build-and-release.md"
+    ok "artifact identity agrees (sha256, md5, bytes)"
 else
-    err "no artifact sha256 in docs/plan/state.json"
+    err "incomplete artifact identity in docs/plan/state.json"
 fi
 
 # 7. Doc budget for the always-read surfaces.
@@ -83,7 +91,8 @@ budget() { n=$(wc -l < "$1"); [ "$n" -le "$2" ] || err "$1 is $n lines (budget $
 budget PLANS.md 400
 budget docs/status.md 140
 budget docs/INDEX.md 220
-budget docs/plan/README.md 160
+budget docs/plan/README.md 200
+budget AGENTS.md 90
 ok "doc budget checked"
 
 # 8. Relative markdown links in current-state docs resolve.

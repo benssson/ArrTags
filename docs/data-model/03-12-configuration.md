@@ -23,7 +23,7 @@ are realized incrementally. At the foundation boundary, the persisted
 connections, library and image scope, and webhook secret, while an
 `OperationalLimits` instance carries the queue, concurrency, timeout, retry,
 artifact-size, decode, cache, quota, retention, and stale-window limits accepted
-by ADR-004 and recorded in `docs/architecture.md` section 12.
+by ADR-004 and recorded in `docs/architecture/12-performance-and-operational-limits.md`.
 
 **Collection persistence shape (task 9.1).** The two persisted collection
 properties, `PluginConfiguration.EnabledLibraries` and
@@ -74,7 +74,7 @@ emits only bounded, already-redacted values under the ADR-020 clause 4 redaction
 contract and bounds volume with the code-owned `LogThrottle`; no API key, webhook
 secret, `SecretLease` value, secret header, raw request/response body, provider
 payload, or mutable `PluginConfiguration` is logged (see
-`docs/limitations.md` SEC-5).
+`docs/limitations/00-index.md` SEC-5).
 
 **Badge value allowlist (v1.1 task 12.1).** Each `BadgeSelectorConfiguration`
 entry gains a bounded `AllowedValues` string list (ADR-017). It is persisted in
@@ -123,8 +123,8 @@ persisted by the host base implementation and then activated through
 `ConfigurationSnapshotService.TryReplace` (ADR-016 clause 4), so a saved change is
 observed without a host restart for the values resolved per operation (some
 construction-captured limits still require a host restart; see
-`docs/limitations.md` F2 and the ADR-016 implementation note in
-`docs/decisions.md`). An invalid candidate is rejected before
+`docs/limitations/00-index.md` F2 and the ADR-016 implementation note in
+`docs/decisions/00-index.md`). An invalid candidate is rejected before
 persistence: the override does not call the base implementation, so a rejected
 candidate is never written to `plugins/configurations/ArrTags.xml` and neither the
 public snapshot nor the private secret map changes. The whole

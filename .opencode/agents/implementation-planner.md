@@ -284,13 +284,14 @@ Write the new phases into `PLANS.md` using the existing conventions so the
 orchestrator can parse them:
 
 * A `### N. Name` phase heading with its objective.
-* Task entries with `- [ ]` checkboxes and a concise `**Status:** <token>` (do
-  not write long per-task status prose into `PLANS.md`; the detail belongs in
-  `docs/changelog/<release>.md` and `docs/implementation/<task-id>/`).
+* Task entries with `- [ ]` checkboxes. Do not write per-task status prose or a
+  status token into `PLANS.md`: the canonical task state is the `done` flag in
+  `docs/plan/state.json`, and the detail belongs in `docs/changelog/<release>.md`
+  and `docs/implementation/<task-id>/`.
 * A single line of the exact form
   `**Authoritative Phase N execution order:** <task ids>`.
 
-Record the phase set and each task's status in `docs/plan/state.json`. The
+Record the phase set and each task's `done` flag in `docs/plan/state.json`. The
 `## Milestone Status` table in `PLANS.md` is generated from `state.json`; render
 it with `dotnet run scripts/render-docs-state.cs` and never hand-edit between its
 markers.
@@ -566,7 +567,7 @@ You must be able to read the repository, edit `PLANS.md` and
 do not modify application code, tests, or normative architecture documents.
 
 `PLANS.md` (active scope) and `docs/plan/state.json` are the artifacts you
-maintain. Update them together: mark task status, record newly discovered
+maintain. Update them together: mark the task `done` flag, record newly discovered
 dependencies, add genuine tasks required by an accepted decision, remove
 obsolete tasks, and archive completed phases to `docs/plan/archive/`. Preserve
 completed work and history rather than rewriting it. The planning JSON below is

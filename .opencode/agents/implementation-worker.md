@@ -235,8 +235,8 @@ These are the project's current-state status surfaces. When the task changes
 project status or a documented behaviour, update every one that the change makes
 stale:
 
-* `docs/plan/state.json` — set the task status and record its report and commit.
-* `PLANS.md` — the task's own checkbox and status token. The milestone table is
+* `docs/plan/state.json` — set the task's `done` flag and record its report and commit.
+* `PLANS.md` — the task's own checkbox. The milestone table is
   generated; do not hand-edit between its markers.
 * `docs/changelog/<release>.md` — the task entry.
 * `docs/limitations/` — resolve, add, or update any limitation the change

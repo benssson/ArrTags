@@ -3,8 +3,6 @@
 The data model is split by section; section and subsection numbers are
 preserved in each file heading. This index is the section map.
 
-**Status:** Draft V1 domain model
-
 **Scope:** Internal domain objects exchanged between Jellyfin, Sonarr, Radarr,
 the cache, and the badge-rendering pipeline.
 

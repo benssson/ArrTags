@@ -76,11 +76,12 @@ specific task/phase report you need, never the whole tree.
 
 The former single-file documents remain at their old paths as **non-normative
 stubs**: `docs/architecture.md`, `docs/data-model.md`, `docs/decisions.md`,
-`docs/changelog.md`, `docs/project-status.md`, and
-`docs/implementation-readiness.md`. Each contains only a pointer (and, for
-architecture and data-model, the section-number map). They exist so that
-references in immutable history (`docs/implementation/**`, `docs/reviews/**`,
-archived plans, ADR text) still resolve. Do not add content to a stub.
+`docs/changelog.md`, `docs/limitations.md`, `docs/project-status.md`, and
+`docs/implementation-readiness.md`. Each contains only a pointer to its split
+location (the architecture and data-model stubs point to the section map). They
+exist so that references in immutable history (`docs/implementation/**`,
+`docs/reviews/**`, archived plans, ADR text) still resolve. Do not add content to
+a stub.
 
 ## History is immutable
 

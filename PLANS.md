@@ -9,7 +9,11 @@ phases are archived in [`docs/plan/archive/`](docs/plan/archive/).
 
 ## Active Planning Scope
 
-**No release scope is currently accepted for planning.** The v1.1 release
+<!-- BEGIN GENERATED: active-scope -->
+**Active plan:** none.
+<!-- END GENERATED: active-scope -->
+
+No release scope is currently accepted for planning. The v1.1 release
 (Phases 9-14) is complete and archived, and `docs/planning/` is empty. The v1.2
 branch exists with the F6-F8 limitations recorded, but no accepted v1.2 plan is
 present, so no phase is scheduled and the orchestrator must not select work.

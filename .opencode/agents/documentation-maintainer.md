@@ -44,7 +44,7 @@ accuracy of the following surfaces, and only within the rules below:
 * `docs/plan/state.json` — the canonical machine-readable status. Edit this.
 * `docs/status.md` and the `PLANS.md` milestone table — **generated**; regenerate
   them with `scripts/render-docs-state.cs`, never by hand between the markers.
-* `PLANS.md` — the active scope pointer and each task's checkbox/status token.
+* `PLANS.md` — the active scope pointer and each task's checkbox.
 * `docs/changelog/` — the per-release completed-work entry.
 * `docs/limitations/` — the canonical limitations register: resolve, add, or
   update any item and its index entry.

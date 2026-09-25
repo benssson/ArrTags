@@ -179,7 +179,7 @@ Only require documentation changes when they are necessary for the assigned task
 The project's current-state status surfaces are:
 
 * `docs/plan/state.json` — canonical status: task status, reports, and phase gate.
-* `PLANS.md` — the task checkbox and status token; the milestone table is generated.
+* `PLANS.md` — the task checkbox (canonical state in `state.json`); the milestone table is generated.
 * `docs/status.md` — generated from `state.json`; verify it was regenerated.
 * `docs/changelog/` — the task entry.
 * `docs/limitations/` — the canonical limitations register and its index.

@@ -267,7 +267,7 @@ than a new badge policy. A pass-through also occurs when the resolved selection
 is empty (for example a selector allowlist that excludes the item), and because
 a previously published badge is the current usable artwork it is preserved
 rather than restored; that operator-visible consequence is documented as an open
-limitation (`docs/limitations.md` F7). The coordinator never calls Jellyfin
+limitation (`docs/limitations/00-index.md` F7). The coordinator never calls Jellyfin
 directly. For source consistency, the exact source observation used for the
 render is supplied
 to the publisher's new-session capture, so the retained provenance baseline and

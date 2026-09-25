@@ -8,8 +8,8 @@ from it. Read this file before editing plan state.
 
 | Surface | Written by |
 | --- | --- |
-| `docs/plan/state.json` | worker (task status/reports), orchestrator (phase gate/tag, release), documentation-maintainer (reconciliation) |
-| `PLANS.md` active scope, task checkbox/status token | worker, orchestrator, planner |
+| `docs/plan/state.json` | planner (scope/phases), worker (task `done`/reports), orchestrator (phase gate/tag, release), documentation-maintainer (reconciliation) |
+| `PLANS.md` active scope, task checkbox | planner, worker, orchestrator |
 | `docs/status.md`, `PLANS.md` milestone table | **generated** — `dotnet run scripts/render-docs-state.cs` |
 | `docs/changelog/<release>.md` | worker / documentation-maintainer |
 | `docs/limitations/` | worker / documentation-maintainer |
@@ -55,25 +55,44 @@ disagreements and `scripts/check-docs.sh` runs it.
 }
 ```
 
-Status vocabulary: `PLANNED`, `IN_PROGRESS`, `COMPLETE`, `BLOCKED`, `DEFERRED`,
-`OUT_OF_SCOPE`. The orchestrator treats a task as complete only when `state.json`
-says `COMPLETE` and the `PLANS.md` checkbox is `[x]`.
+Status vocabulary for **phases**: `PLANNED`, `IN_PROGRESS`, `COMPLETE`,
+`BLOCKED`, `DEFERRED`, `OUT_OF_SCOPE`. Tasks use the boolean `done`. The
+orchestrator treats a task as complete only when `state.json` has
+`"done": true` and the `PLANS.md` checkbox is `[x]`.
+
+## PLANS.md conventions
+
+The planner and the renderer rely on these exact forms:
+
+- A phase heading: `### <N>. <Name>`.
+- Task entries: `- [ ] <N.M> <name>`, or `- [x]` when done.
+- One line: `**Authoritative Phase N execution order:** <task ids>`.
+- Generated blocks (never hand-edit): `active-scope` and `milestone-status`.
+- The final release phase uses the release tag (`v1.1.0`); other phases use
+  `v<release>-phase<N>` (for example `v1.1.0-phase9`). The historical Phase 8
+  has an empty `tag` because it had no phase review.
 
 ## Lifecycle
 
 1. **New scope.** The accepted plan is placed in `docs/planning/`. The planner
-   sets `active_scope` and adds phases (continuing the global numbering) to
-   `PLANS.md` and `state.json`, plus the proposal record under
-   `docs/implementation/planning/`.
+   sets `active_scope`, adds a `releases[]` entry with `status: "PLANNED"`, and
+   adds phases (continuing the global numbering) to `PLANS.md` and `state.json`,
+   plus the proposal record under `docs/implementation/planning/`.
 2. **Task.** The worker records the implementation in
-   `docs/implementation/<task-id>/`, sets the task's status/report in
-   `state.json`, ticks the `PLANS.md` checkbox, and adds the changelog and
-   limitations updates.
+   `docs/implementation/<task-id>/`, sets the task's `done` flag and report
+   path in `state.json`, ticks the `PLANS.md` checkbox, and adds the changelog
+   and limitations updates.
 3. **Phase.** After the phase review passes, the orchestrator sets the phase
    `status`, `gate`, and `tag` in `state.json`, regenerates the status surfaces,
    and creates the tag.
 4. **Release.** After the release review passes, the orchestrator sets
-   `current_release` and the matching `releases[]` entry.
+   `current_release` and marks the matching `releases[]` entry `COMPLETE`.
 5. **Archive.** When a release completes, move its phases from `PLANS.md`
    verbatim to `docs/plan/archive/<release>.md`, set `active_scope` to `null`
    with an explanatory `active_scope_note`, and regenerate.
+
+The generated blocks are also consistency checks: the guard rejects a
+`PLANS.md` phase section whose `releases[]` entry is already `COMPLETE` (an
+unarchived release), a task checkbox that disagrees with `state.json`, an
+`active_scope` that names a missing plan, and a plan present in `docs/planning/`
+while `active_scope` is `null`.
