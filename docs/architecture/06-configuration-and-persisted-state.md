@@ -133,6 +133,27 @@ with always-present static note text stating that a Jellyfin server restart is
 required for a change to take effect, with the mixed settings also stating that
 some paths apply the change immediately (ADR-028 clause 3; task 16.3).
 
+The modal restart reminder is decided but not yet implemented. The task 16.4
+`jellyfin-expert` spike recorded that the pinned Jellyfin 12.0 bundled web client
+exposes `window.Dashboard` as a legacy compatibility object whose
+`Dashboard.alert({ title, message })` is the only single-button modal
+(`Dashboard.alert('text')` is a transient non-modal toast, `Dashboard.confirm(...)`
+is a two-button modal, and `Dashboard.showMessage` does not exist), and
+recommended that task 16.5 call it from the successful
+`ApiClient.updatePluginConfiguration(...)` callback after
+`Dashboard.processPluginConfigurationUpdateResult`, conditional on a
+restart-required value changing and guarded (a `window.Dashboard` presence check
+plus `try`/`catch`) so an absent or failing call changes nothing. The object is an
+intentionally retained web-client compatibility shim with an in-source TODO to
+remove it, so it is public but potentially unstable and is not a server plugin
+ABI; it exists only in jellyfin-web, and the pinned-asset/source confirmation is
+not a live-browser probe. ADR-028 clause 4's fail-open condition therefore
+continues to apply unchanged: the always-present note text above is the
+authoritative behavior and the modal is best-effort. The full finding and
+recommendation are recorded in
+`docs/research/jellyfin-expert/modal-notification-api.json`; the page currently
+ships the note text only.
+
 ### Logging and verbosity
 
 ArrTags logs through the host's `Microsoft.Extensions.Logging`
