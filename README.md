@@ -18,7 +18,7 @@ restored.
   SkiaSharp version but bundles no renderer runtime and shares the host's copy.
   Jellyfin 12 supplies a compatible SkiaSharp. If the host does not,
   badge rendering fails closed and the current artwork is left unchanged rather
-  than falling back to a bundled copy (`docs/limitations.md` F5).
+  than falling back to a bundled copy (`docs/limitations/00-index.md` F5).
 - ArrTags is verified on the pinned `linux-musl-x64` Jellyfin `12.0.0` host and
   makes no RID-specific claim; it does not distinguish musl from glibc.
 
@@ -64,7 +64,7 @@ rejection is recorded as a bounded, secret-free entry in the Jellyfin Activity
 log. A successful save also requests a bounded post-save reconciliation, so
 existing posters re-render with the new settings promptly instead of waiting for
 the next library event, webhook, post-scan, or scheduled run
-(`docs/limitations.md` F2, resolved in v1.1, with the construction-captured
+(`docs/limitations/00-index.md` F2, resolved in v1.1, with the construction-captured
 residual recorded there). The XML below
 remains the persisted shape and can still be edited directly at
 `plugins/configurations/ArrTags.xml` (that is,
@@ -181,12 +181,12 @@ plugin restores the original poster for every item it changed and removes its
 state root, `ProgramDataPath/ArrTags` (outside the plugins directory). If the
 uninstall drain cannot complete — for example because an item's image was
 changed externally — the current artwork and its recovery records are retained
-instead (`docs/limitations.md`).
+instead (`docs/limitations/00-index.md`).
 
 ## Known limitations
 
 The canonical record of what ArrTags does not yet do or has not yet verified is
-`docs/limitations.md`. In short:
+`docs/limitations/00-index.md`. In short:
 
 - **Provider inventory cache is implemented and F1 is resolved (at the
   integration-test level).** The bounded, in-memory inventory cache serves one
@@ -195,7 +195,7 @@ The canonical record of what ArrTags does not yet do or has not yet verified is
   are wired: a provider webhook invalidates its connection, and a reconciliation
   (library refresh/post-scan, scheduled, manual, or post-save) invalidates the
   retained sets, with the bounded inventory TTL as the fallback. Remaining bounds
-  are recorded in `docs/limitations.md` F1 (Sonarr per-series episode reads are
+  are recorded in `docs/limitations/00-index.md` F1 (Sonarr per-series episode reads are
   O(series) per window and a sparse invalidation window repopulates the whole
   library); rendering and publication are fingerprint-gated. The live pinned-host
   confirmation is owned by task 14.3.

@@ -34,7 +34,7 @@ moved verbatim to [`docs/plan/archive/`](docs/plan/archive/).
 - Update task checkboxes and the status table as work lands; do not mark a
   milestone complete until every acceptance criterion is verified.
 - Record decisions that change an architecture assumption in
-  `docs/decisions.md`, then update `docs/architecture.md` or
+  `docs/decisions/00-index.md`, then update `docs/architecture.md` or
   `docs/data-model.md` before implementation relies on them.
 - Keep provider DTOs, Jellyfin entities, credentials, and implementation
   details at their boundaries. The matching, metadata, rendering, and cache
@@ -107,7 +107,7 @@ an implementation assumption.
 
 Forward-looking capability work that is not part of any accepted scope. Open,
 accepted, and resolved limitations are tracked with evidence in
-`docs/limitations.md`; this list is only the not-yet-scheduled work.
+`docs/limitations/00-index.md`; this list is only the not-yet-scheduled work.
 
 - Additional normalized badge metadata already identified in the data model
   (bit depth, frame rate, scan type, language, subtitles, release group, edition,

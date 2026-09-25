@@ -230,7 +230,7 @@ standard image route serves the published bytes matching the persisted
 `ActiveImageIdentity`, the original source posters are preserved, changed mock
 metadata republishes and unchanged metadata does not, and a provider outage
 leaves the host up with the current artwork unchanged. See `PLANS.md` task 7.8,
-`docs/decisions.md` ADR-015, and `docs/implementation/7.8/worker-report.json`.
+`docs/decisions/00-index.md` ADR-015, and `docs/implementation/7.8/worker-report.json`.
 
 ## v1.1 live matrix (Phase 14 task 14.3)
 

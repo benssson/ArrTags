@@ -31,7 +31,7 @@ release security review `docs/implementation/14.4/security-review.json`
 `docs/plan/archive/`.
 
 **Open limitations:** 6 (`F3`, `F4`, `F5`, `F6`, `F7`, `F8`); see
-`docs/limitations.md`.
+`docs/limitations/00-index.md`.
 <!-- END GENERATED: status -->
 
 ## Detail
@@ -39,7 +39,7 @@ release security review `docs/implementation/14.4/security-review.json`
 - Release process and the full per-release artifact record:
   [`docs/release/build-and-release.md`](release/build-and-release.md).
 - Open, accepted, excluded, and resolved limitations:
-  [`docs/limitations.md`](limitations.md).
+  [`docs/limitations/00-index.md`](limitations.md).
 - Completed plans and their task history: [`docs/plan/archive/`](plan/archive/).
 - Completed work by release: [`docs/changelog/`](changelog/).
 - What to read for a task: [`docs/INDEX.md`](INDEX.md).

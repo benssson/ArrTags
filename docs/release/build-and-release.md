@@ -11,7 +11,7 @@ owns Phase 7 acceptance criterion 5 ("The release artifact and build process are
 reproducible and documented").
 
 Architecture and accepted decisions stay authoritative in
-`docs/architecture.md` and `docs/decisions.md`; the live pinned test host is
+`docs/architecture.md` and `docs/decisions/00-index.md`; the live pinned test host is
 documented in `docs/testing/jellyfin-12-musl-test-host.md`.
 
 ## Pinned toolchain and inputs
@@ -173,7 +173,7 @@ artifact before the release security fix SEC-1, so it is historical only. SEC-1
 later changed `ArrTags.dll` (the post-fix `0.1.0.0` identity was `f6b6a515…`),
 and Phase 8 task 8.3 then bumped the plugin version to `1.0.1.0`; neither
 `bd10b9b6…` nor `f6b6a515…` is the current identity. The current identity is in
-"Release artifact identity" below; see `docs/changelog.md`.
+"Release artifact identity" below; see `docs/changelog/00-index.md`.
 
 | Run (0.1.0, pre-SEC-1) | Tree | SHA-256 | Size |
 | --- | --- | --- | --- |
@@ -211,7 +211,7 @@ below). The MD5 is the Jellyfin plugin-repository manifest checksum (see
 (568,248 bytes, SHA-256
 `de4c34841d77b5ff74b6bc9edeb515a4c5fcc5a9b09d7d24a2da5d64d31b4b8c`, MD5
 `16baa5a7324b8e14fdb113d84b944d09`) is the prior release and is recorded in
-`docs/changelog.md`.
+`docs/changelog/00-index.md`.
 
 Entry list (ordinal order, all stamped `2000-01-01 00:00`):
 
@@ -393,4 +393,4 @@ performs the final release-readiness verification.
 
 The complete consolidated limitations and deferred-decision record, including
 which `GOALS.md` success criteria and Phase 7 acceptance criteria are met, is in
-`docs/limitations.md`.
+`docs/limitations/00-index.md`.
