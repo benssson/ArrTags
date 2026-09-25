@@ -3,7 +3,7 @@
   "title": "Modal-on-change implementation (fail-open to note text)",
   "phase": 16,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "9d0d7a4",
   "subagents": [
     {
       "role": "implementation-worker",
