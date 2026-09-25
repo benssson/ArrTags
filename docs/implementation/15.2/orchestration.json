@@ -3,7 +3,7 @@
   "title": "Thread the bounded log subject through the identity-bearing and fallback sites",
   "phase": 15,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "674ddbf",
   "subagents": [
     {
       "role": "implementation-worker",
