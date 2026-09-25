@@ -1,0 +1,104 @@
+{
+  "task": "16.5",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "validation",
+      "summary": "scripts/check-docs.sh section 9 fails only on the expected pre-reviewer worker/reviewer pairing; this report resolves it.",
+      "detail": "With the worker report persisted but no reviewer report, check-docs reports 'task 16.5 has a worker report but no reviewer report' (agent contract check). All other sections pass, including 'generated status blocks are current; plan state is consistent'. This is the standard worker/reviewer sequencing the worker disclosed; writing this reviewer-report.json is the required resolution.",
+      "evidence": [
+        ". /config/arrtags-env.sh && bash scripts/check-docs.sh -> sections 1-8 ok; FAIL: agent contract check failed: task 16.5 has a worker report but no reviewer report"
+      ],
+      "recommended_action": "None; resolved by persisting this reviewer report. Re-run check-docs.sh after persistence to confirm the pairing check passes."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "testing",
+      "summary": "The modal behaviour cannot be executed in this repository (no JavaScript runtime); verification is structural only, and the worker discloses this rather than overclaiming.",
+      "detail": "RestartRequiredReminderTests asserts over the embedded config.html page text, not a running browser. The focused class passes 5/5 but proves presence/placement/guard shape, not rendering. The task 16.4 spike explicitly accepts this ('No JavaScript runtime in this repository: task 16.5 can only add structural C# assertions'). The worker report's known_limitations states the gap plainly ('a live-browser confirmation ... was not performed'), so no overclaim. This is an accepted verification gap for G8, not a defect.",
+      "evidence": [
+        "tests/ArrTags.Tests/RestartRequiredReminderTests.cs (all 5 facts read from the embedded resource)",
+        "docs/research/jellyfin-expert/modal-notification-api.json risks: 'No JavaScript runtime in this repository: task 16.5 can only add structural C# assertions'",
+        "docs/implementation/16.5/worker-report.json known_limitations[0]"
+      ],
+      "recommended_action": "None for 16.5; the structural-plus-research evidence is the strongest available here. A live-browser probe (if ever desired) belongs to a future scope that serves the bundled web client; the task 16.6 G6/G8 sweep can restate the residual gap."
+    },
+    {
+      "id": "F3",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "correctness / UX",
+      "summary": "Escape/backdrop dismissal produces a benign unhandled promise rejection in the jellyfin-web shim; accepted (spike-permitted) and documented.",
+      "detail": "Dashboard.alert(object) attaches no .catch, so dismissing without 'Got it' leaves an unhandled rejection in the browser console. It does not affect the save, the POST, the page, or the reminder's fail-open property. The spike lists accepting it as a permitted option and forbids Dashboard.confirm; the worker accepted it and documented it in docs/architecture/06 and the changelog.",
+      "evidence": [
+        "docs/research/jellyfin-expert/modal-notification-api.json risks: 'Unhandled promise rejection on dismissal ... Accept and document, or use Dashboard.confirm'",
+        "docs/architecture/06-configuration-and-persisted-state.md (dismissal paragraph)",
+        "docs/changelog/v1.2.0.md task 16.5 entry"
+      ],
+      "recommended_action": "None; console-only, documented, and within the spike's accepted option set."
+    },
+    {
+      "id": "F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "Change detection is type-correct and cannot fire spuriously on an unchanged save.",
+      "detail": "Every restart-required setting is a numeric config.Limits property assigned before the comparison: SourceArtifactLimitBytes/DerivedArtifactLimitBytes/RenderCacheQuotaBytes/ArtifactStorageQuotaBytes via byteLimitToBytes (Number), MaxImageDimensionPixels/RenderCacheTtlMinutes/TerminalProvenanceRetentionDays via parseInt. The snapshot reads the same config.Limits[key] from the freshly fetched JSON (number), so the strict !== compares number to number; the byte round-trip (display -> byteLimitToBytes) is exact for values that are multiples of the field step, which the persisted values are. The snapshot is taken at the top of the getPluginConfiguration callback, before config.Sonarr.Enabled (the first mutation), and the comparison runs after the last config.Limits write and before the update request.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html:587-591 (snapshot), 593-657 (writes), 664-670 (comparison), 675-678 (update)",
+        "byteLimitFields definitions (precision/step) at config.html:315-323"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation",
+      "summary": "Canonical current-state surfaces are consistent with the shipped change and the phase remains PLANNED.",
+      "detail": "state.json task 16.5 done:true with reports ['docs/implementation/16.5/worker-report.json']; PLANS.md '- [x] 16.5'; changelog entry present and accurate; architecture-06 now describes the shipped best-effort reminder and no longer says 'decided but not yet implemented' or 'the page currently ships the note text only' (no remaining stale modal-pending claim found across docs/architecture, docs/data-model, docs/limitations, README.md, docs/status.md). Phase 16 status stays PLANNED with tag v1.2.0-phase16 and no completion claim; task 16.6 remains done:false. render-docs-state reports status.md and PLANS.md up to date. The worker's claim that architecture-12/data-model-03-12/README make no modal claim was confirmed by grep.",
+      "evidence": [
+        "docs/plan/state.json (16.5 done + report; Phase 16 status PLANNED, tag v1.2.0-phase16)",
+        "PLANS.md line '- [x] 16.5 Modal-on-change implementation (fail-open to note text)'",
+        "docs/changelog/v1.2.0.md task 16.5 entry",
+        "docs/architecture/06-configuration-and-persisted-state.md lines 136-167",
+        ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> status.md: up to date; PLANS.md: up to date"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded; 0 Warning(s), 0 Error(s) (independently rerun).",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RestartRequiredReminderTests\" -> Failed 0, Passed 5, Skipped 0, Total 5 (independently rerun).",
+    "./build.sh test (default suite) -> Failed 0, Passed 1752, Skipped 63, Total 1815 (independently rerun; matches worker).",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin ./build.sh test -> Failed 0, Passed 1771, Skipped 44, Total 1815 (independently rerun; matches worker).",
+    "tests/ArrTags.Tests/RestartRequiredReminderTests.cs: 5 structural facts inspected; each references exact strings that exist only in the new code (ReminderDeclaration, the guard literal, the success-callback marker, the config.Limits mirror snapshot/comparison, title/message), so they are not vacuous. Sensitivity claims assessed by inspection (removing the guard, moving the call before processPluginConfigurationUpdateResult, flipping a mirror flag, breaking the snapshot/comparison/ordering, swapping message for text, or removing try/catch would each violate a specific assertion); per the reviewer instruction not to edit product/test code, probes were not re-executed."
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/modal-notification-api.json read in full: recommendation_for_task_16_5 exact_call (window.Dashboard.alert({title, message})), placement, conditional_logic (in-handler pre-mutation snapshot; numeric strict comparison), fail_open_guard, and do_not list.",
+    "Verified the implementation against the recommendation: lazy window.Dashboard; guard '!window.Dashboard || typeof window.Dashboard.alert !== function'; swallowing try/catch; call placed inside the successful ApiClient.updatePluginConfiguration(...).then after Dashboard.processPluginConfigurationUpdateResult; reference via config.Limits[...] (no new config.<Unknown>); no showMessage/confirm/dialogHelper/alert('string')/innerHTML (grep found none); processPluginConfigurationUpdateResult(result) preserved and first.",
+    "Confirmed the reminder is reachable only from the success .then (no rejection handler calls it), so a rejected POST shows no reminder; restartRequiredChanged is computed pre-POST and captured by the success closure.",
+    "Confirmed window.Dashboard occurs exactly 3 times page-wide, all inside showRestartRequiredReminder; zero bare Dashboard.alert( references; exactly one 'showRestartRequiredReminder(' call site (satisfies the spike's lazy-reference/standalone-page-load requirement)."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/status.md (via render-docs-state: up to date)",
+    "docs/changelog/v1.2.0.md",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "docs/limitations/ (grep: no modal/restart-reminder stale entry)",
+    "README.md (grep: no modal claim)",
+    "docs/implementation/16.5/worker-report.json (schema fields accepted)",
+    "scripts/check-docs.sh (sections 1-8 pass; section 9 pending this reviewer report)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

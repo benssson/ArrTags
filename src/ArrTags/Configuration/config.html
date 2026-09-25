@@ -340,6 +340,35 @@
                 { setting: 'TerminalProvenanceRetentionDays', elementId: 'terminalProvenanceRetentionDays', mixed: false }
             ];
 
+            // ADR-028 clause 4 / task 16.5: best-effort modal reminder. When at
+            // least one restart-required setting changed on save and the
+            // jellyfin-web Dashboard compatibility shim exposes the single-button
+            // alert, show a modal reminder. The Dashboard object is resolved
+            // lazily through the window global so a standalone page load without
+            // the host client cannot fail, and the availability guard plus
+            // swallowing try/catch make the call fail open: an absent or failing
+            // modal API changes nothing and the always-present static restart
+            // note text (task 16.3) remains the authoritative behavior.
+            var showRestartRequiredReminder = function (restartRequiredChanged) {
+                if (!restartRequiredChanged) {
+                    return;
+                }
+
+                if (!window.Dashboard || typeof window.Dashboard.alert !== 'function') {
+                    return;
+                }
+
+                try {
+                    window.Dashboard.alert({
+                        title: 'Jellyfin restart required',
+                        message: 'A restart-required setting changed. A Jellyfin server restart is required for the change to take effect; the note text next to the setting states whether some paths apply the change immediately.'
+                    });
+                } catch (error) {
+                    // The reminder is best effort: a failing modal API changes
+                    // nothing and the always-present restart note remains.
+                }
+            };
+
             var byteLimitDivisor = function (precision) {
                 var divisor = 1;
                 for (var i = 0; i < precision; i++) {
@@ -550,6 +579,17 @@
                     Dashboard.showLoadingMsg();
 
                     ApiClient.getPluginConfiguration(PluginConfig.pluginId).then(function (config) {
+                        // ADR-028 clause 4 / task 16.5: the freshly fetched config
+                        // still holds the persisted values here, so snapshot the
+                        // restart-required ones before the handler below mutates
+                        // them; the save compares the submitted values against
+                        // this pre-mutation snapshot.
+                        var previousRestartRequiredLimits = {};
+                        for (var restartIndex = 0; restartIndex < restartRequiredFields.length; restartIndex++) {
+                            var restartField = restartRequiredFields[restartIndex];
+                            previousRestartRequiredLimits[restartField.setting] = config.Limits[restartField.setting];
+                        }
+
                         config.Sonarr.Enabled = document.querySelector('#sonarrEnabled').checked;
                         config.Sonarr.BaseUrl = document.querySelector('#sonarrBaseUrl').value;
                         config.Sonarr.ApiKey = document.querySelector('#sonarrApiKey').value;
@@ -618,7 +658,24 @@
 
                         config.LogVerbosity = document.querySelector('#logVerbosity').value;
 
-                        ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                        // ADR-028 clause 4 / task 16.5: compare the submitted
+                        // restart-required values against the pre-mutation
+                        // snapshot; only a real change triggers the reminder.
+                        var restartRequiredChanged = false;
+                        for (var restartCheckIndex = 0; restartCheckIndex < restartRequiredFields.length; restartCheckIndex++) {
+                            var restartCheckField = restartRequiredFields[restartCheckIndex];
+                            if (config.Limits[restartCheckField.setting] !== previousRestartRequiredLimits[restartCheckField.setting]) {
+                                restartRequiredChanged = true;
+                            }
+                        }
+
+                        // The existing SettingsSaved result handler is preserved
+                        // and runs first; the reminder only runs for an accepted
+                        // POST and only when a restart-required value changed.
+                        ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                            showRestartRequiredReminder(restartRequiredChanged);
+                        });
                     });
                 });
         </script>

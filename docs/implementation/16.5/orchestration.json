@@ -1,0 +1,48 @@
+{
+  "task": "16.5",
+  "title": "Modal-on-change implementation (fail-open to note text)",
+  "phase": 16,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 164077,
+        "output_tokens": 21377,
+        "reasoning_tokens": 38713,
+        "cache_read_tokens": 9932032,
+        "cache_write_tokens": 0,
+        "total_tokens": 10156199,
+        "cost_usd": 0.09046164599999999,
+        "duration_seconds": 986,
+        "session_id": "ses_f2561a544ffedTk13yrlivEwU2"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 55482,
+        "output_tokens": 6289,
+        "reasoning_tokens": 8431,
+        "cache_read_tokens": 744576,
+        "cache_write_tokens": 0,
+        "total_tokens": 814778,
+        "cost_usd": 0.019388027999999998,
+        "duration_seconds": 190,
+        "session_id": "ses_f25524c6fffeUXN6OuW6gD7Ec7"
+      }
+    }
+  ],
+  "rework": []
+}

@@ -126,7 +126,7 @@ behavior; ADR-028 and the canonical documentation.
 - [x] 16.2 Authoritative restart-required set with code evidence
 - [x] 16.3 Restart-required note text on the settings page
 - [x] 16.4 Modal-on-change research spike (`jellyfin-expert`)
-- [ ] 16.5 Modal-on-change implementation (fail-open to note text)
+- [x] 16.5 Modal-on-change implementation (fail-open to note text)
 - [ ] 16.6 G6/G8 documentation and integration verification
 **Authoritative Phase 16 execution order:** 16.1, 16.2, 16.3, 16.4, 16.5, 16.6
 **Phase acceptance criteria:** byte limits are displayed in a fixed binary unit

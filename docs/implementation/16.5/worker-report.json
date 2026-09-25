@@ -1,0 +1,111 @@
+{
+  "task": "16.5",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented ADR-028 clause 4 (G8) in src/ArrTags/Configuration/config.html exactly per the task 16.4 jellyfin-expert spike recommendation: a best-effort, fail-open modal reminder when a restart-required setting changes on save. The submit handler snapshots the persisted restart-required values from the freshly fetched configuration at the top of its ApiClient.getPluginConfiguration(...) callback before any mutation (through the restartRequiredFields classification mirror), sets restartRequiredChanged when any classified value differs from the snapshot, and the existing ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config) call now ends with .then(function (result) { Dashboard.processPluginConfigurationUpdateResult(result); showRestartRequiredReminder(restartRequiredChanged); }) so the unchanged SettingsSaved handler runs first and a rejected POST shows no reminder. showRestartRequiredReminder resolves window.Dashboard lazily, guards on !window.Dashboard || typeof window.Dashboard.alert !== 'function', wraps the call in a swallowing try/catch, and calls window.Dashboard.alert({ title: 'Jellyfin restart required', message: '<plain text>' }) (body under `message`, not `text`; no toast, confirm, dialogHelper, or showMessage). The task 16.3 note text is untouched and remains the authoritative fail-open behavior. Escape/backdrop dismissal is accepted as the shim's benign unhandled promise rejection and is documented. tests/ArrTags.Tests/RestartRequiredReminderTests.cs adds 5 classification-derived structural cases (the repository has no JavaScript runtime, so the modal cannot be executed). docs/architecture/06-configuration-and-persisted-state.md now describes the shipped best-effort reminder instead of 'decided but not yet implemented'; the changelog, docs/plan/state.json (16.5 done + report), and PLANS.md tick are updated. No classification, note text, save path, persisted state, validation semantics, endpoint, or dependency changed.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded; 0 Warning(s), 0 Error(s).",
+    "./build.sh test (default suite) -> Failed 0, Passed 1752, Skipped 63, Total 1815 (pre-task baseline after 16.4: Failed 0, Passed 1747, Skipped 63, Total 1810; +5 passed / +5 total, 0 new skips).",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin ./build.sh test -> Failed 0, Passed 1771, Skipped 44, Total 1815. ARRTAGS_JELLYFIN_HOST_DIR is unset in the default environment; the pinned host assembly was present from the earlier live-verification setup, so the host-guarded run was performed by pointing the variable at it.",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RestartRequiredReminderTests\" -> Failed 0, Passed 5, Skipped 0, Total 5 on the final tree.",
+    "Seven focused test-sensitivity probes (each temporarily broke one behaviour, ran the focused class, and was reverted): removing the window.Dashboard availability guard -> 1 failure in TheReminderFunctionFailsOpenWhenTheModalApiIsMissingOrFails; swapping the reminder before Dashboard.processPluginConfigurationUpdateResult -> 1 failure in TheReminderIsCalledOnlyFromTheSuccessfulUpdateCallbackAfterTheExistingResultHandler; flipping a restartRequiredFields mirror mixed flag -> 1 failure in TheReminderDetectionDomainIsTheCodeOwnedRestartRequiredSet; replacing the snapshot read with a non-persisted value -> 1 failure in TheChangeDetectionSnapshotsPersistedValuesBeforeMutationAndComparesBeforeSaving; moving the snapshot after the first mutation -> 1 failure in the same test (ordering assertion); passing text: instead of message: -> 1 failure in TheReminderUsesThePlainTextSingleButtonAlertNotTheToastOrMissingApis; removing the try/catch -> 1 failure in TheReminderFunctionFailsOpenWhenTheModalApiIsMissingOrFails. All probes reverted; the final focused run reports 5 passed.",
+    "dotnet run scripts/render-docs-state.cs -> status.md: up to date; PLANS.md: up to date (no hand-edited generated block).",
+    "scripts/check-docs.sh -> check-docs: PASS (nine sections) on the tree before the worker report was persisted; see known_limitations for the expected post-persistence reviewer-pairing state."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/RestartRequiredReminderTests.cs",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/implementation/16.5/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "A changed restart-required setting triggers the modal reminder when the modal API is available (G8; ADR-028 clause 4).",
+      "evidence": "config.html: showRestartRequiredReminder calls window.Dashboard.alert({ title, message }) after the availability guard; the submit handler snapshots config.Limits[...] for every restartRequiredFields entry before mutation and sets restartRequiredChanged on any strict difference before the update request. Tests: TheReminderFunctionFailsOpenWhenTheModalApiIsMissingOrFails, TheReminderIsCalledOnlyFromTheSuccessfulUpdateCallbackAfterTheExistingResultHandler, TheChangeDetectionSnapshotsPersistedValuesBeforeMutationAndComparesBeforeSaving, TheReminderUsesThePlainTextSingleButtonAlertNotTheToastOrMissingApis (5/5 passed)."
+    },
+    {
+      "criterion": "When the modal API is not available, the note text remains and the save behavior is unchanged (G8; ADR-028 clause 4 fail-open).",
+      "evidence": "config.html guard `if (!window.Dashboard || typeof window.Dashboard.alert !== 'function') { return; }` plus a swallowing try/catch (asserted by the first test); the static ADR-028 clause 3 note markup is untouched (the existing RestartRequiredNoteTextTests 3 cases pass inside the full 1815-case suite); the update call still targets ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config), with only the success handler wrapped to keep processPluginConfigurationUpdateResult(result) first."
+    },
+    {
+      "criterion": "Do not show the reminder for a rejected POST; do not remove or reorder the existing Dashboard.processPluginConfigurationUpdateResult call.",
+      "evidence": "The reminder is called only inside the successful update .then and exactly once (TheReminderIsCalledOnlyFromTheSuccessfulUpdateCallbackAfterTheExistingResultHandler); the preserved call runs first inside the same callback; no rejection handler calls the reminder."
+    },
+    {
+      "criterion": "Follow the spike mechanism exactly: window.Dashboard.alert({ title, message }) only; no Dashboard.alert('string'), Dashboard.confirm, Dashboard.dialogHelper, Dashboard.showMessage; no innerHTML; no new config.<Unknown>.",
+      "evidence": "TheReminderUsesThePlainTextSingleButtonAlertNotTheToastOrMissingApis asserts the window.Dashboard.alert object form, title/message keys, no text: key, plain-text body, and the absence of Dashboard.alert('...'), showMessage, Dashboard.confirm, and dialogHelper page-wide; the existing DashboardSettingsPageTests asserts no innerHTML; PageOnlyReferencesKnownConfigurationProperties passes in the full suite and the new code references only config.Limits[...]."
+    },
+    {
+      "criterion": "Structural C# assertions that would fail if the implementation is broken, classification-derived where practical.",
+      "evidence": "tests/ArrTags.Tests/RestartRequiredReminderTests.cs (5 cases); TheReminderDetectionDomainIsTheCodeOwnedRestartRequiredSet derives the detection domain from RestartRequiredSettings.RestartRequired and pins it to the single restartRequiredFields mirror; seven probes each produced exactly one failure (see validation)."
+    },
+    {
+      "criterion": "Documentation: changelog entry, canonical restart-reminder surface reconciled, plan state ticks.",
+      "evidence": "docs/changelog/v1.2.0.md task 16.5 entry; docs/architecture/06-configuration-and-persisted-state.md replaced the 'decided but not yet implemented' paragraph with the shipped best-effort description; docs/plan/state.json sets 16.5 done: true with the report path; PLANS.md ticks 16.5; dotnet run scripts/render-docs-state.cs reports the generated surfaces up to date; scripts/check-docs.sh PASS."
+    },
+    {
+      "criterion": "Required validation: build succeeds, default suite passes with exact counts, host-guarded reported if the variable is set, check-docs PASS.",
+      "evidence": "Build 0 warnings / 0 errors; default Failed 0, Passed 1752, Skipped 63, Total 1815; host-guarded Failed 0, Passed 1771, Skipped 44, Total 1815 with ARRTAGS_JELLYFIN_HOST_DIR pointed at the pinned host (unset by default); check-docs PASS (nine sections) before the worker report was persisted."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How the computed 'restart-required value changed' flag reaches the reminder function (the spike's conditional logic fixes the snapshot/comparison but not the transport).",
+      "chosen": "Pass it as an explicit function argument: showRestartRequiredReminder(restartRequiredChanged), computed from the in-handler snapshot; a missing/falsy state returns without showing anything.",
+      "basis": "The spike's preferred in-handler snapshot logic; an argument avoids a page-global flag that could be stale across pageshow/submit cycles and makes the 'state is missing' fail-open case a plain falsy check. No user-visible or persisted semantics change.",
+      "impact": "None on user-visible behavior; structural test pins the single call site and its argument."
+    },
+    {
+      "question": "Dismissed-modal behavior: the shim's Dashboard.alert(object) returns no promise and attaches no .catch, so Escape/backdrop dismissal rejects unhandled.",
+      "chosen": "Accept the benign unhandled promise rejection (the spike-permitted option) and document it; do not switch to Dashboard.confirm.",
+      "basis": "The task mandates Dashboard.alert and explicitly forbids Dashboard.confirm; the spike records the rejection as benign and offers acceptance as an option; it affects only the browser console, not the save or the page.",
+      "impact": "A console-only unhandled rejection when the operator dismisses without pressing 'Got it'. Documented in docs/architecture/06-configuration-and-persisted-state.md and the changelog."
+    },
+    {
+      "question": "Exact modal title and message strings (the spike fixes the title example and leaves the message as '<plain-text explanation>').",
+      "chosen": "title 'Jellyfin restart required' (from the spike); message 'A restart-required setting changed. A Jellyfin server restart is required for the change to take effect; the note text next to the setting states whether some paths apply the change immediately.'",
+      "basis": "Matches ADR-028 clause 3/4 semantics (restart required; mixed settings may apply immediately) and stays plain text so the shim's DOMPurify-sanitized dialog renders it as a body, not markup.",
+      "impact": "User-visible modal wording only; no persisted state, save path, or classification change."
+    }
+  ],
+  "test_sensitivity": [
+    "TheReminderFunctionFailsOpenWhenTheModalApiIsMissingOrFails: removing the availability guard block produced 1 failure; restoring it passed. Removing the try/catch produced 1 failure; restoring it passed. The test also fails if a bare Dashboard.alert reference or a window.Dashboard reference outside the reminder function is introduced.",
+    "TheReminderIsCalledOnlyFromTheSuccessfulUpdateCallbackAfterTheExistingResultHandler: swapping the reminder before Dashboard.processPluginConfigurationUpdateResult produced 1 failure (ordering assertion); restoring the order passed. The single-call-site and success-callback extraction assertions fail if the reminder is moved into the load path, duplicated, or removed.",
+    "TheReminderDetectionDomainIsTheCodeOwnedRestartRequiredSet: flipping a mirror mixed flag produced 1 failure; restoring it passed. It fails if the mirror drifts from RestartRequiredSettings.RestartRequired or if a second literal restart-required list is introduced.",
+    "TheChangeDetectionSnapshotsPersistedValuesBeforeMutationAndComparesBeforeSaving: replacing the snapshot read with a non-persisted value produced 1 failure; moving the snapshot after the first mutation produced 1 failure; restoring both passed. It fails if the snapshot stops reading config.Limits[...] through the mirror, if the comparison is removed or changed away from !==, or if the compare no longer precedes the update request.",
+    "TheReminderUsesThePlainTextSingleButtonAlertNotTheToastOrMissingApis: passing text: instead of message: produced 1 failure; restoring message: passed. It fails on the toast string form, Dashboard.showMessage, Dashboard.confirm, Dashboard.dialogHelper, an empty body, or a markup body.",
+    "The modal itself cannot be executed in this repository: there is deliberately no JavaScript runtime, so no test runs showRestartRequiredReminder or Dashboard.alert. The tests are structural assertions over the embedded page text, and no live-browser probe was performed (the task 16.4 spike confirmed the API against the pinned bundled asset and jellyfin-web v12.0 source only)."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md (task 16.5 entry)",
+      "docs/architecture/06-configuration-and-persisted-state.md (shipped best-effort reminder paragraph)",
+      "docs/plan/state.json (16.5 done: true, reports, updated_utc)",
+      "PLANS.md (16.5 checkbox)",
+      "docs/status.md and the PLANS.md milestone table regenerated by dotnet run scripts/render-docs-state.cs (up to date; no change needed)"
+    ],
+    "old_values_removed": [
+      "'The modal restart reminder is decided but not yet implemented' removed from docs/architecture/06-configuration-and-persisted-state.md (remaining occurrences are the historical changelog wording describing the replacement and the immutable 16.4 implementation reports).",
+      "'the page currently ships the note text only' removed from docs/architecture/06-configuration-and-persisted-state.md.",
+      "PLANS.md '- [ ] 16.5' changed to '- [x] 16.5'."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The modal behavior cannot be executed by the test suite: the repository deliberately has no JavaScript runtime, so the shipped verification is structural assertions over the embedded page plus the task 16.4 pinned-asset/source research; a live-browser confirmation of window.Dashboard/Dashboard.alert on the pinned web build was not performed (the pinned test host runs --nowebclient). This is a verification gap, not a functional claim.",
+    "Escape/backdrop dismissal of the modal produces a benign unhandled promise rejection in the jellyfin-web shim (Dashboard.alert(object) attaches no .catch); it affects only the browser console and not the save or the page, and it is documented in docs/architecture/06 and the changelog.",
+    "The modal is a best-effort web-only behavior on an intentionally retained, potentially unstable jellyfin-web compatibility shim; on any client or web build without window.Dashboard.alert the reminder shows nothing and the always-present task 16.3 note text remains the behavior (the ADR-028 clause 4 fail-open condition).",
+    "ARRTAGS_JELLYFIN_HOST_DIR is unset in the default environment, so the default run skips the 19 host-guarded facts (63 skips); the host-guarded run reported here was performed by pointing the variable at the pinned host present from the earlier live-verification setup (/tmp/arrtags-host-dl/host/jellyfin).",
+    "After the worker report is persisted, scripts/check-docs.sh section 9 reports the expected missing implementation-reviewer report for task 16.5 until the orchestrator adds docs/implementation/16.5/reviewer-report.json; this is the standard worker/reviewer sequencing (same pattern as tasks 15.4, 16.1, 16.2, 16.3, and 16.4). All other check-docs sections remain PASS."
+  ],
+  "ready_for_next_task": true
+}
