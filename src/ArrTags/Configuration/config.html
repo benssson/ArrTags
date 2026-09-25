@@ -315,6 +315,23 @@
                 { property: 'InventoryCacheMaxBytes', id: 'inventoryCacheMaxBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 1048576, precision: 0 }
             ];
 
+            // ADR-028 clause 2: the authoritative restart-required settings,
+            // mirroring the code-owned RestartRequiredSettings classification
+            // (scope and mixed flag). Every restart-required setting needs note
+            // text stating that a server restart is required; a mixed setting has
+            // both a construction-captured and a per-operation consumer, so its
+            // note also states that some paths apply the change immediately. The
+            // structural tests compare this table against the C# classification.
+            var restartRequiredFields = [
+                { setting: 'SourceArtifactLimitBytes', elementId: 'sourceArtifactLimitBytes', mixed: true },
+                { setting: 'DerivedArtifactLimitBytes', elementId: 'derivedArtifactLimitBytes', mixed: true },
+                { setting: 'MaxImageDimensionPixels', elementId: 'maxImageDimensionPixels', mixed: true },
+                { setting: 'RenderCacheTtlMinutes', elementId: 'renderCacheTtlMinutes', mixed: false },
+                { setting: 'RenderCacheQuotaBytes', elementId: 'renderCacheQuotaBytes', mixed: false },
+                { setting: 'ArtifactStorageQuotaBytes', elementId: 'artifactStorageQuotaBytes', mixed: false },
+                { setting: 'TerminalProvenanceRetentionDays', elementId: 'terminalProvenanceRetentionDays', mixed: false }
+            ];
+
             var byteLimitDivisor = function (precision) {
                 var divisor = 1;
                 for (var i = 0; i < precision; i++) {

@@ -123,7 +123,7 @@ reminder (subject to the `jellyfin-expert` spike) with note text as the fail-ope
 behavior; ADR-028 and the canonical documentation.
 **Tasks:**
 - [x] 16.1 Byte/unit conversion helper and per-field MB/KB mapping (explicit off-step rejection)
-- [ ] 16.2 Authoritative restart-required set with code evidence
+- [x] 16.2 Authoritative restart-required set with code evidence
 - [ ] 16.3 Restart-required note text on the settings page
 - [ ] 16.4 Modal-on-change research spike (`jellyfin-expert`)
 - [ ] 16.5 Modal-on-change implementation (fail-open to note text)

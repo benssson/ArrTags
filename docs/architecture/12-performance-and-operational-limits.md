@@ -35,6 +35,30 @@ retains the last valid snapshot rather than partially applying it.
 | Inventory cache records per connection | 10000 | records | integer `1`–`100000` | An observation set larger than the bound is not cached; the direct provider read path is used unchanged. |
 | Inventory cache bytes per connection | 32 | MiB | `1 MiB`–`256 MiB` | An observation set larger than the bound is not cached; the direct provider read path is used unchanged. |
 
+**Restart-required classification (ADR-028 clause 2; task 16.2).** The
+authoritative, code-evidenced classification of every user-adjustable setting is
+`src/ArrTags/Configuration/RestartRequiredSettings.cs`. A setting is
+restart-required when any consumer resolves its value at singleton construction,
+and per-operation only when every consumer resolves it from the current
+configuration snapshot on each operation. Seven settings are restart-required:
+`SourceArtifactLimitBytes`, `DerivedArtifactLimitBytes`, and
+`MaxImageDimensionPixels` — each **mixed**, with both a construction-captured
+consumer (`SourceArtifactStore`/`JellyfinArtworkImageAccess`/`ArtworkSourceReader`,
+`ArtworkPublisher`, and `ArtworkSourceReader` respectively) and a per-operation
+consumer (`RenderLimitGuard` through the work item's snapshot limits) — plus the
+construction-only `RenderCacheTtlMinutes`, `RenderCacheQuotaBytes`,
+`ArtifactStorageQuotaBytes`, and `TerminalProvenanceRetentionDays`. Every other
+setting is per-operation: the remaining operational limits, `LogVerbosity`, the
+connection fields, the badge/library scope, and the renderer configuration. The
+settings page mirrors the set in its `restartRequiredFields` table; the note
+text that marks each restart-required setting, stating for a mixed setting that
+some paths apply the change immediately, is task 16.3, and the per-consumer
+evidence is recorded in `docs/implementation/16.2/consumer-evidence.md`. The
+"HTTP request timeout" row above describes the per-connection
+`ArrConnectionConfiguration.RequestTimeoutSeconds`; the global
+`OperationalLimits.RequestTimeoutSeconds` field is validated and persisted but
+has no runtime consumer (recorded in the same task 16.2 evidence).
+
 The plugin log verbosity is a bounded, validated level (`LogVerbosity`) that
 selects how much ArrTags writes through the host logging pipeline. It is applied
 without a restart from the current configuration snapshot, is excluded from the

@@ -1,0 +1,139 @@
+{
+  "task": "16.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the ADR-028 clause 2 authoritative, code-evidenced restart-required set (goal G8, phase 16 task 16.2) and its testability. src/ArrTags/Configuration/SettingApplicationScope.cs, SettingClassification.cs, and RestartRequiredSettings.cs are the code-owned classification of all 43 user-adjustable settings (every writable property of PluginConfiguration, ArrConnectionConfiguration, OperationalLimits, RendererConfiguration, and BadgeSelectorConfiguration; BadgeSelectorConfiguration.Selector is the fixed code-owned selector and is not user-adjustable). Each entry records the binary scope, the mixed flag, the settings-page element id(s), and per-consumer code evidence; SettingClassification enforces the ADR invariants at construction (mixed must be restart-required, per-operation must have no construction capture evidence, restart-required needs evidence or a recorded note). The evidenced restart-required set is exactly seven settings: OperationalLimits.SourceArtifactLimitBytes, DerivedArtifactLimitBytes, and MaxImageDimensionPixels (each mixed: SourceArtifactStore/JellyfinArtworkImageAccess/ArtworkSourceReader, ArtworkPublisher, and ArtworkSourceReader capture at singleton construction while RenderLimitGuard re-resolves per render through the work item's snapshot.Limits), plus the construction-only RenderCacheTtlMinutes, RenderCacheQuotaBytes, and TerminalProvenanceRetentionDays (StateRepository) and ArtifactStorageQuotaBytes (SourceArtifactStore over the captured repository limits). Every other setting is per-operation. One audited finding is recorded rather than silently omitted: the global OperationalLimits.RequestTimeoutSeconds is validated, persisted, and displayed but has no runtime consumer; the effective timeout is the per-connection ArrConnectionConfiguration.RequestTimeoutSeconds, so the global field is classified per-operation with an explicit audit note and pinned as the only classified setting without a runtime consumer (it is not changed by this task). config.html gains the restartRequiredFields mirror (seven entries with setting, elementId, and mixed) after the byte-limit mapping, data only: 16.3 renders note text from it and 16.5 adds the modal; no note text, save-path, persisted-state, validation, endpoint, or dependency change is made. Tests: RestartRequiredSettingsTests (10 cases: exact restart-required set, exact mixed set with mixed=>restart-required, unique/consistent entries, the real capture type named by each restart-required entry, lookup, the inert setting, no-silent-member reflection over the five model types, the static page element per restart-required setting, exact page-mirror equality, and the constructor guard) and RestartRequiredConsumerEvidenceTests (7 cases: StateRepository TTL/terminal-retention behavior from the captured limits plus a value-lock that the captured limits do not track a replacement snapshot, SourceArtifactStore captured source limit and quota, ArtworkSourceReader captured byte and dimension limits, ArtworkPublisher captured derived limit, and LibraryWorkQueue/LogVerbosityGate per-operation resolution). Total 17 new cases; default suite Failed 0 / Passed 1744 / Skipped 63 / Total 1807 (pre-task baseline after 16.1: Failed 0 / Passed 1727 / Skipped 63 / Total 1790; delta +17 passed / +17 total, 0 new skips). The per-setting, per-consumer audit is recorded at docs/implementation/16.2/consumer-evidence.md; architecture 06, architecture 12, data-model 03-12, the v1.2 changelog, PLANS.md, and state.json are updated; README's existing generic construction-captured statement matches the seven-setting set and was left unchanged for the 16.6 sweep. Host-guarded run not performed: ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx).",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1744, Skipped: 63, Total: 1807, Duration: 16 s - ArrTags.Tests.dll (net10.0)'. Pre-task baseline on commit 8b29dfa (as recorded by the 16.1 report): Failed 0, Passed 1727, Skipped 63, Total 1790; delta +17 passed / +17 total, 0 new skips.",
+    "Focused runs: dotnet test --filter FullyQualifiedName~RestartRequired -> 'Failed: 0, Passed: 17, Skipped: 0, Total: 17' after the final test edits; intermediate focused runs recorded the probe failures below.",
+    "ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the host-guarded run was not performed; the default run reports the same 63 host-guarded skips as the baseline. No host-guarded fact was changed by this task.",
+    "Test-sensitivity probes (each temporary edit followed by a focused run, then reverted; the final build/test run above is on the reverted tree): (A) mixed flags flipped off in the classification -> 2 failures (TheMixedSetIsExactlyTheEvidencedDualConsumerSettings, ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification); (B) the restart-required-only entries flipped to per-operation -> 3 failures (TheRestartRequiredSetIsExactlyTheEvidencedConstructionCapturedSettings, EveryRestartRequiredEntryNamesItsRealConstructionCaptureSite, ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification); (C) one classified limit renamed away -> 1 failure (EveryUserAdjustableConfigurationPropertyIsClassified); (D) one page-mirror entry changed (mixed and elementId) -> 1 failure (ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification) [re-run with the final mirror syntax]; (E) a restart-required page input id renamed -> 1 failure (EveryRestartRequiredSettingHasAStaticSettingsPageElement); (F) SourceArtifactStore changed to re-read _repository.Limits per promotion -> 1 failure (SourceArtifactStoreUsesTheSourceLimitAndQuotaCapturedAtConstruction); (G) the ArtworkPublisher derived-limit enforcement removed -> 1 failure (ArtworkPublisherUsesTheDerivedLimitCapturedAtConstruction). All probes were reverted; diff inspection confirmed no probe residue.",
+    "The SettingClassification constructor guard is a permanent test (TheClassificationRejectsAnInconsistentEntry) that seeds three violations and asserts rejection: mixed with PerOperation, PerOperation with construction evidence, and RestartRequired with no evidence and no note.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. This run was on the final tree before this report file existed; after the report is persisted the only expected change is the worker/reviewer pairing in section 9, satisfied when the orchestrator's implementation-reviewer report is added (same pattern as tasks 15.4 and 16.1).",
+    "git status --short / git diff inspection -> seven modified tracked files (PLANS.md, docs/architecture/06-configuration-and-persisted-state.md, docs/architecture/12-performance-and-operational-limits.md, docs/changelog/v1.2.0.md, docs/data-model/03-12-configuration.md, docs/plan/state.json, src/ArrTags/Configuration/config.html) plus new files (three Configuration C# types, two test files, docs/implementation/16.2/consumer-evidence.md, and this report); no probe residue, no unrelated file changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/SettingApplicationScope.cs",
+    "src/ArrTags/Configuration/SettingClassification.cs",
+    "src/ArrTags/Configuration/RestartRequiredSettings.cs",
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs",
+    "tests/ArrTags.Tests/RestartRequiredConsumerEvidenceTests.cs",
+    "docs/implementation/16.2/consumer-evidence.md",
+    "docs/implementation/16.2/worker-report.json",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/data-model/03-12-configuration.md",
+    "docs/changelog/v1.2.0.md",
+    "PLANS.md",
+    "docs/plan/state.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "G8: The authoritative restart-required set is recorded with per-setting code evidence and is testable (a code-owned classification); a setting with both a construction-captured and a per-operation consumer is classified restart-required, and its note text states that some paths apply immediately.",
+      "evidence": "src/ArrTags/Configuration/RestartRequiredSettings.cs is the code-owned classification with per-consumer evidence for 43 settings; SettingClassification enforces 'mixed => RestartRequired' in the constructor. The evidenced restart-required set is exactly seven settings, with SourceArtifactLimitBytes, DerivedArtifactLimitBytes, and MaxImageDimensionPixels mixed (RestartRequiredSettingsTests.TheRestartRequiredSetIsExactlyTheEvidencedConstructionCapturedSettings and TheMixedSetIsExactlyTheEvidencedDualConsumerSettings pin both sets; EveryRestartRequiredEntryNamesItsRealConstructionCaptureSite ties each restart-required entry to the real capture type). The evidence is recorded in docs/implementation/16.2/consumer-evidence.md. The mixed note-text wording is task 16.3; this task exposes the mixed flag to it in RestartRequiredSettings and in the page mirror (the 'mixed' field)."
+    },
+    {
+      "criterion": "Phase 16 acceptance criterion this task contributes to: the restart-required set is code-owned, evidenced, and testable with mixed settings classified restart-required.",
+      "evidence": "RestartRequiredSettings + SettingClassification (code-owned, constructor-enforced invariants), docs/implementation/16.2/consumer-evidence.md (per-setting per-consumer evidence), and 17 new tests including the exact-set, exact-mixed, no-silent-member, page-mirror, and behavioral capture probes; probes A-G demonstrate the tests fail on a misclassification or a changed capture site."
+    },
+    {
+      "criterion": "Deliverable: a code-owned classification in src/ArrTags/Configuration/ that enumerates the user-adjustable settings and records, per setting, whether it is restart-required and whether it is mixed, with the consumer evidence.",
+      "evidence": "SettingApplicationScope (binary enum), SettingClassification (name, scope, IsMixed, PageElementIds, ConstructionCapturedEvidence, PerOperationEvidence, Note, HasRuntimeConsumer), and RestartRequiredSettings (All, RestartRequired, Get, IsRestartRequired). The domain is every writable property of the five configuration model types the settings page round-trips, matching the DashboardSettingsPageTests coverage domain; BadgeSelectorConfiguration.Selector is the fixed code-owned selector and is deliberately not classified."
+    },
+    {
+      "criterion": "Deliverable: per-setting, per-consumer code evidence recorded under docs/implementation/16.2/ citing file + type and the construction vs per-operation resolution site.",
+      "evidence": "docs/implementation/16.2/consumer-evidence.md sections 2-5: the six singleton-construction capture sites (StateRepository, SourceArtifactStore, JellyfinArtworkImageAccess, ArtworkSourceReader, ArtworkPublisher, ArtifactRetention), the seven restart-required rows with both consumer kinds, the 36 per-operation settings with their resolution sites, and the audited inert global timeout finding."
+    },
+    {
+      "criterion": "Deliverable: tests that make the classification testable and would fail if a setting were misclassified, including mixed-is-restart-required, every restart-required setting enumerated, every user-adjustable setting classified (no silent member), and tying the classification to a structural check of the real consumers where feasible.",
+      "evidence": "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs (10 cases) and RestartRequiredConsumerEvidenceTests.cs (7 cases). The no-silent-member test reflects over the five configuration model types with container recursion, so a new writable property fails it (probe C). The structural tie to real consumers is behavioral: the StateRepository, SourceArtifactStore, ArtworkSourceReader, and ArtworkPublisher probes drive the real types and fail if the capture becomes per-operation (probes F and G), and the exact-set/capture-site tests name and pin the real capture types. The constructor guard seeds three inconsistent classifications and asserts rejection."
+    },
+    {
+      "criterion": "Deliverable: design the classification so task 16.3 can render note text from it, consistent with how 16.1 handled the page mapping mirror.",
+      "evidence": "config.html declares the restartRequiredFields mirror (setting, elementId, mixed) after the byte-limit mapping; byteLimitFields/ByteLimitUnits and RestartRequiredSettings/restartRequiredFields are now the two mirrored code-owned tables, each pinned by a structural test. The mirror carries no note text or rendering (16.3/16.5 own those)."
+    },
+    {
+      "criterion": "Deliverable: update the canonical surfaces that describe the classification (docs/architecture/06-configuration-and-persisted-state.md, docs/architecture/12-performance-and-operational-limits.md, docs/data-model/03-12-configuration.md) and docs/changelog/v1.2.0.md; do not do the full G6/G8 sweep.",
+      "evidence": "Architecture 06 gains the code-owned-classification paragraph and the seven-setting set; architecture 12 gains the classification paragraph plus the per-connection request-timeout clarification; data-model 03-12 gains the restart-required classification section; the changelog gains the Task 16.2 entry; PLANS.md is ticked and state.json records done/reports. README's existing generic construction-captured statement matches the set and is left for task 16.6 (recorded in documentation_reconciliation)."
+    },
+    {
+      "criterion": "Task boundary: do NOT implement the settings-page note text (16.3) or the modal (16.4/16.5); do not modify persisted state, the save path, or validation semantics; do not add dependencies or endpoints.",
+      "evidence": "No change to PluginConfiguration, PluginConfigurationSnapshot, PluginConfigurationValidator, ConfigurationSnapshotService, the controllers, or any csproj; config.html only gains the data mirror and no note text/modal/DOM behavior; git diff confirms the scope. The only production files added are the three Configuration classification types."
+    },
+    {
+      "criterion": "Required validation: build succeeds and the default suite passes with exact counts; report the host-guarded run if the pinned host directory is set, else say so; scripts/check-docs.sh PASS; show test sensitivity.",
+      "evidence": "Build succeeded 0 warnings/0 errors; default suite Failed 0 / Passed 1744 / Skipped 63 / Total 1807 (+17/+17 over the 16.1 baseline); ARRTAGS_JELLYFIN_HOST_DIR is unset so the host-guarded run was not performed; check-docs.sh PASS (nine sections); sensitivity probes A-G and the constructor-guard test are recorded above."
+    },
+    {
+      "criterion": "Process: set task 16.2 done:true and its reports in docs/plan/state.json, tick the PLANS.md checkbox, add the changelog entry, persist the evidence and this structured report under docs/implementation/16.2/, and do not create a commit.",
+      "evidence": "docs/plan/state.json 16.2 done=true with reports ['docs/implementation/16.2/worker-report.json']; PLANS.md '- [x] 16.2 ...'; docs/changelog/v1.2.0.md Task 16.2 entry; docs/implementation/16.2/consumer-evidence.md and this worker-report.json; no git commit was created (git status shows the working-tree changes only)."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How should the global OperationalLimits.RequestTimeoutSeconds be classified when it has no runtime consumer at all?",
+      "chosen": "Per-operation, with no restart note, and an explicit audited note in the classification and the evidence doc recording that the field is inert and that the effective timeout is the per-connection ArrConnectionConfiguration.RequestTimeoutSeconds.",
+      "basis": "ADR-028 clause 2 defines the binary classification in terms of consumers: restart-required when any consumer resolves the value at singleton construction, per-operation when every consumer resolves it from the current snapshot per operation. With zero consumers, no construction capture exists, so the setting is not restart-required, and classifying it restart-required would be a false page claim (a restart would not apply it either). The finding is disclosed rather than silently omitted; the field is not changed.",
+      "impact": "Task 16.3 will render no restart note for this setting. The pre-existing inert field remains inert; changing or removing it is not assigned to any PLANS.md task and is recorded as an open follow-up. No persisted state, save path, or validation semantics change."
+    },
+    {
+      "question": "What is the classification domain: only the OperationalLimits properties plus LogVerbosity, or every user-adjustable setting?",
+      "chosen": "Every writable property of the five configuration model types the settings page round-trips (PluginConfiguration, ArrConnectionConfiguration, OperationalLimits, RendererConfiguration, BadgeSelectorConfiguration): 43 settings.",
+      "basis": "ADR-028 clause 2 says 'the authoritative set of settings that require a host restart', and G8 requires every restart-required setting in the settings page to carry note text, so the set must cover every page-adjustable setting. DashboardSettingsPageTests already treats exactly those five types as the user-adjustable domain (and proves the page covers every writable property), so a newly added property is caught by the no-silent-member test.",
+      "impact": "The 19 non-limit settings (connection fields, badge/library scope, renderer configuration, LogVerbosity, webhook secret) are recorded per-operation with consumer evidence, so no restart-required setting can hide outside the operational limits. The classification file is larger than a limits-only list."
+    },
+    {
+      "question": "How does task 16.3 get the classification when the page is a static embedded resource?",
+      "chosen": "Add the page-side restartRequiredFields mirror now (setting, elementId, mixed), data only, following the 16.1 byteLimitFields/ByteLimitUnits precedent, with a structural test that compares it to the code-owned set exactly.",
+      "basis": "The page cannot read C# at runtime; 16.1 established the mirrored-table pattern and its structural-test enforcement. The task explicitly allows a page-side mirror and requires the classification to be designed so 16.3 can render note text from it.",
+      "impact": "The page carries an inert JS array until 16.3 renders notes; the mirror test fails on any drift between the page and the code-owned set. No note text or modal behavior is implemented here."
+    },
+    {
+      "question": "Should BadgeSelectorConfiguration.Selector be classified?",
+      "chosen": "No. Selector is the fixed code-owned selector enum (the page presents it as the row identity); it is not a user-adjustable field, so it is the one writable property deliberately excluded from the classification.",
+      "basis": "The page never writes Selector from user input; the selector names are the code-owned vocabulary. The classification domain is user-adjustable settings.",
+      "impact": "The reflection coverage test skips exactly this property with the documented reason; any other writable property must be classified."
+    }
+  ],
+  "test_sensitivity": [
+    "Mixed flags flipped off in the classification: 2 failures (TheMixedSetIsExactlyTheEvidencedDualConsumerSettings; ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification) - catches a mixed setting no longer being restart-required or the mirror drifting.",
+    "The restart-required-only entries flipped to per-operation: 3 failures (TheRestartRequiredSetIsExactlyTheEvidencedConstructionCapturedSettings; EveryRestartRequiredEntryNamesItsRealConstructionCaptureSite; ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification) - catches a restart-required setting misclassified as per-operation.",
+    "One classified OperationalLimits entry renamed away: 1 failure (EveryUserAdjustableConfigurationPropertyIsClassified) - catches a silent (unclassified) user-adjustable setting.",
+    "One page-mirror entry changed (mixed and elementId): 1 failure (ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification) - catches the 16.3 source table drifting from the code-owned set.",
+    "A restart-required page input id renamed: 1 failure (EveryRestartRequiredSettingHasAStaticSettingsPageElement) - catches a restart-required setting whose page element no longer exists.",
+    "SourceArtifactStore changed to re-read _repository.Limits per promotion: 1 failure (SourceArtifactStoreUsesTheSourceLimitAndQuotaCapturedAtConstruction) - catches a classified construction capture becoming per-operation.",
+    "ArtworkPublisher derived-limit enforcement removed: 1 failure (ArtworkPublisherUsesTheDerivedLimitCapturedAtConstruction) - catches the publisher no longer enforcing its captured derived limit.",
+    "The SettingClassification constructor guard is a permanent test that seeds three violations (mixed with PerOperation; PerOperation with construction evidence; RestartRequired with neither evidence nor note) and asserts ArgumentException - the ADR invariants reject an inconsistent classification at construction.",
+    "Sensitivity not shown for: StateRepositoryLimitsDoNotTrackAReplacementSnapshot is a value-lock whose failure mode (the repository tracking a live snapshot instead of its construction-time limits) requires changing the StateRepository constructor contract, which fails at the compile/signature level rather than as a runtime assertion; and the per-operation classification of settings other than the LibraryWorkQueue and LogVerbosityGate probes rests on the cited consumer sites plus existing suite coverage rather than a dedicated mutation probe per setting."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/architecture/06-configuration-and-persisted-state.md (code-owned classification, seven-setting set, mixed semantics, evidence pointer)",
+      "docs/architecture/12-performance-and-operational-limits.md (classification paragraph, mixed semantics, per-connection request-timeout clarification)",
+      "docs/data-model/03-12-configuration.md (restart-required classification section for the persisted fields)",
+      "docs/changelog/v1.2.0.md (Task 16.2 entry with the set, tests, probes, and suite counts)",
+      "PLANS.md (16.2 checkbox ticked)",
+      "docs/plan/state.json (16.2 done + report path, updated_utc)",
+      "docs/implementation/16.2/consumer-evidence.md (the plan-required per-consumer audit)",
+      "README.md checked and deliberately unchanged: its existing statement ('a few construction-captured limits (the artifact-size/decode limits and the render work-cache TTL/quota and retention values) still take effect only after a host restart') matches the seven-setting set exactly; the full G6/G8 sweep is task 16.6"
+    ],
+    "old_values_removed": [],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The global OperationalLimits.RequestTimeoutSeconds has no runtime consumer: when an operator changes that field, neither the running plugin nor a host restart applies it; the effective request timeout is the per-connection Sonarr/Radarr RequestTimeoutSeconds. The field is recorded in the classification note and the 16.2 evidence and is deliberately not changed by this task. Changing or removing it is an open follow-up not assigned to any PLANS.md task.",
+    "The host-guarded suite was not executed because ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment; the default run reports the same 63 host-guarded skips as the baseline, and no host-guarded fact was changed by this task.",
+    "Sensitivity for StateRepositoryLimitsDoNotTrackAReplacementSnapshot was not shown by a runtime probe: its failure mode requires changing the StateRepository constructor contract (a compile-level failure). RenderCacheQuotaBytes has code evidence, the exact-set/capture-site tests, and this value-lock, while the other six restart-required settings also have behavioral capture probes.",
+    "The per-operation classification of settings other than LibraryWorkQueue.Capacity and LogVerbosityGate is evidenced by cited consumer sites and existing suite coverage, not by a dedicated mutation probe per setting. A future singleton that begins capturing a currently per-operation setting would not be detected automatically; ADR-028's consequence requires classifying any future limit when it is added."
+  ],
+  "ready_for_next_task": true
+}

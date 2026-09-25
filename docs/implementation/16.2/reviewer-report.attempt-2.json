@@ -1,0 +1,98 @@
+{
+  "task": "16.2",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Re-review of the correction for finding 16.2-F1 (attempt 1: CHANGES_REQUIRED). F1 is genuinely closed. RestartRequiredSettingsTests.ExpectedClassifiedNames now derives PluginConfiguration's expected members by reflecting over its writable leaf properties with the same WritableLeafProperties/IsClassifiedLeaf filter used for the other four model types, replacing the hardcoded five names. I independently reproduced the reflected domain with a standalone reflection probe against the built ArrTags.dll and the pinned Jellyfin 12.0.0 MediaBrowser.Model.dll: PluginConfiguration's only writable leaf properties are BadgeEpisodePosters, BadgeMoviePosters, EnabledLibraries, LogVerbosity, WebhookSecret; the reflected domain is 43, exactly equal to RestartRequiredSettings.All.Count, with missing=[] and unknown=[]. BasePluginConfiguration exposes no writable members, so the reflected PluginConfiguration contribution is exactly those five and the guard is robust against the pinned host. The corrected wording in worker-report.attempt-2.json, the changelog, and consumer-evidence.md now matches the real guard ('every writable leaf property of the five configuration model types, including PluginConfiguration, derived by the same WritableLeafProperties filter'); 'container recursion' is gone from all current-state surfaces and remains only in the preserved attempt-1 worker report and the attempt-1 reviewer report that quotes it. Attempt 1's worker report and reviewer report are preserved; state.json lists both worker reports. No production classification, capture behaviour, page mirror, docs, or other previously-approved content changed in a way that invalidates the attempt-1 approval. Build 0 warnings/0 errors; focused RestartRequired 17/17; default suite Failed 0 / Passed 1744 / Skipped 63 / Total 1807; scripts/check-docs.sh PASS. No new blockers.",
+  "findings": [
+    {
+      "id": "16.2-F1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "testing / worker evidence",
+      "summary": "The no-silent-member guard now genuinely covers PluginConfiguration by reflection, and the report/changelog wording matches the real guard.",
+      "detail": "ExpectedClassifiedNames() (tests/ArrTags.Tests/RestartRequiredSettingsTests.cs 283-327) now begins with a WritableLeafProperties(typeof(PluginConfiguration)) loop (lines 294-297) identical in form to the four existing type loops; the previous hardcoded names.Add calls for PluginConfiguration are gone. WritableLeafProperties/IsClassifiedLeaf are unchanged (lines 329-344). I independently replicated the filter in a standalone probe referencing the Release ArrTags.dll and the pinned MediaBrowser.Model 12.0.0: PluginConfiguration leaves = BadgeEpisodePosters, BadgeMoviePosters, EnabledLibraries, LogVerbosity, WebhookSecret; reflected domain count = 43 = RestartRequiredSettings.All count; missing(expected-not-classified)=[] and unknown(classified-not-expected)=[]. The pinned BasePluginConfiguration has no public properties or fields (verified in attempt 1 and re-confirmed), so no inherited writable member pollutes the domain. A future writable leaf property on PluginConfiguration now enters 'expected' by reflection and is absent from 'classified', so 'missing' becomes non-empty and EveryUserAdjustableConfigurationPropertyIsClassified fails; the worker's probe I (temporary PluginConfiguration.ProbeClassificationGuard -> missing [\"PluginConfiguration.ProbeClassificationGuard\"], 1 failure, reverted) is consistent with this reasoning. Wording corrected in docs/changelog/v1.2.0.md and docs/implementation/16.2/consumer-evidence.md section 7; 'container recursion' no longer appears in any current-state surface.",
+      "evidence": [
+        "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs 283-344 (reflection now includes PluginConfiguration; filter unchanged)",
+        "Independent probe (built against src/ArrTags/bin/Release/net10.0/ArrTags.dll + MediaBrowser.Model 12.0.0): PluginConfiguration leaves = [BadgeEpisodePosters, BadgeMoviePosters, EnabledLibraries, LogVerbosity, WebhookSecret]; reflected domain count 43; classification All count 43; missing=[]; unknown=[]",
+        "grep 'container recursion': absent from docs/changelog, consumer-evidence.md, architecture, data-model, README; present only in docs/implementation/16.2/worker-report.json (preserved attempt-1 history)",
+        "docs/implementation/16.2/worker-report.attempt-2.json lines 10,15,31,76,105-106 (rework entry with closure evidence)",
+        "docs/plan/state.json 16.2 reports = [worker-report.json, worker-report.attempt-2.json]",
+        "Attempt-1 docs/implementation/16.2/worker-report.json (25365 bytes) and reviewer-report.json (CHANGES_REQUIRED) both preserved"
+      ],
+      "recommended_action": "None; closed."
+    },
+    {
+      "id": "16.2-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness / ADR-028 interpretation",
+      "summary": "Inert global OperationalLimits.RequestTimeoutSeconds classified per-operation-with-note remains defensible and disclosed (unchanged from attempt 1).",
+      "detail": "Unchanged by the correction. Zero runtime consumers; per-operation is the rule-consistent binary classification and a restart would not apply the field either. Recorded in SettingClassification.Note, consumer-evidence.md section 5, and known_limitations; pinned by OnlyTheAuditedInertSettingHasNoRuntimeConsumer. Optional follow-up to register the inert field as a canonical accepted limitation remains non-blocking.",
+      "evidence": [
+        "src/ArrTags/Configuration/RestartRequiredSettings.cs 99-102",
+        "docs/implementation/16.2/consumer-evidence.md section 5",
+        "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs 171-182"
+      ],
+      "recommended_action": "No change required for task 16.2."
+    },
+    {
+      "id": "16.2-F3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "requirements / task boundary",
+      "summary": "Mixed-setting note text remains correctly deferred to task 16.3 (unchanged from attempt 1).",
+      "detail": "16.2 exposes IsMixed and the data-only config.html restartRequiredFields mirror; no note text or modal was added. PLANS.md assigns note text to 16.3 and the modal to 16.4/16.5, per the task boundary.",
+      "evidence": [
+        "PLANS.md 127-131",
+        "src/ArrTags/Configuration/config.html 318-334",
+        "grep 'restart' src/ArrTags/Configuration/config.html"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "16.2-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation / host guard",
+      "summary": "Host-guarded run still not executed (ARRTAGS_JELLYFIN_HOST_DIR unset); correctly disclosed (unchanged from attempt 1).",
+      "detail": "Same 63 host-guarded skips as the baseline; the correction touches no host-guarded production file (only a test helper, docs, and reports).",
+      "evidence": [
+        "ARRTAGS_JELLYFIN_HOST_DIR unset",
+        "worker-report.attempt-2.json validation item 4",
+        "observed default suite: Failed 0 / Passed 1744 / Skipped 63 / Total 1807"
+      ],
+      "recommended_action": "None for this task."
+    }
+  ],
+  "tests_checked": [
+    "Ran `./build.sh build`: Build succeeded, 0 Warning(s) 0 Error(s).",
+    "Ran focused `dotnet test ... -c Release --no-build --filter FullyQualifiedName~RestartRequired`: Failed 0, Passed 17, Skipped 0, Total 17.",
+    "Ran `./build.sh test`: Failed: 0, Passed: 1744, Skipped: 63, Total: 1807 (17 s), unchanged from attempt 1.",
+    "Read tests/ArrTags.Tests/RestartRequiredSettingsTests.cs: all 10 test methods present; only ExpectedClassifiedNames changed (PluginConfiguration now reflected, not hardcoded).",
+    "Independent reflection probe replicating ExpectedClassifiedNames' filter: reflected domain 43 = classification 43, missing=[] and unknown=[].",
+    "Ran `scripts/check-docs.sh`: all nine sections ok, 'check-docs: PASS'."
+  ],
+  "research_checked": [
+    "Re-verified the pinned MediaBrowser.Model 12.0.0 BasePluginConfiguration has no public properties/fields (attempt-1 probe) and confirmed via the independent domain probe that reflecting PluginConfiguration with the test filter yields exactly its five writable leaf settings.",
+    "Confirmed the attempt-1 code-evidence audit remains valid: production classification untouched (43 entries; 3 mixed + 4 restart-only + 35 per-operation + 1 per-operation-no-consumer), config.html mirror unchanged, and the same 17 tests pass."
+  ],
+  "documentation_checked": [
+    "docs/implementation/16.2/worker-report.attempt-2.json: accurate on the fix, closed scope, sensitivity probe I, and validation figures; rework entry for 16.2-F1 present with closure evidence.",
+    "docs/changelog/v1.2.0.md Task 16.2 entry: 'container recursion' replaced with 'every writable leaf property of the five configuration model types (including PluginConfiguration, whose five leaf settings are derived by the same WritableLeafProperties filter as the other four types)'; matches the code.",
+    "docs/implementation/16.2/consumer-evidence.md section 7: corrected identically; no 'container recursion'.",
+    "docs/plan/state.json: 16.2 done=true with both worker reports listed; phase 16 still PLANNED (no phase-complete/tag claim).",
+    "Attempt-1 worker report and attempt-1 reviewer report preserved (no overwrite).",
+    "Scope: attempt-2 diff touches only the test helper, changelog, consumer-evidence doc, state.json, and the new attempt report; no probe residue (PluginConfiguration.cs unmodified)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding": "16.2-F1",
+      "attempt": 2,
+      "change": "ExpectedClassifiedNames() in tests/ArrTags.Tests/RestartRequiredSettingsTests.cs now derives PluginConfiguration's domain with WritableLeafProperties(typeof(PluginConfiguration)) / IsClassifiedLeaf instead of hardcoding its five settings; docs/changelog/v1.2.0.md and docs/implementation/16.2/consumer-evidence.md wording corrected to match the real guard; docs/plan/state.json lists both worker reports.",
+      "closure": "Verified by reading the corrected test, by an independent domain probe (reflected domain 43 == classification 43; missing=[]; unknown=[]), by the pinned BasePluginConfiguration having no writable members, and by worker probe I. Focused RestartRequired 17/17; default suite Failed 0 / Passed 1744 / Skipped 63 / Total 1807; build 0 warnings/0 errors; check-docs PASS. Finding resolved."
+    }
+  ],
+  "ready_for_next_task": true
+}

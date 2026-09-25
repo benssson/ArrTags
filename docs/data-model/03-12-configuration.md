@@ -148,6 +148,29 @@ field. Task 9.5's Goal A integration verification exercises the full save ->
 activate -> bounded-reconcile flow without a live host, and limitation F2 is
 recorded as resolved.
 
+**Restart-required classification (v1.2 task 16.2).** The persisted
+configuration fields are classified under ADR-028 clause 2 by the code-owned
+`src/ArrTags/Configuration/RestartRequiredSettings.cs`: a setting is
+restart-required when any consumer resolves its value at singleton construction,
+and per-operation only when every consumer resolves it from the current
+`PluginConfigurationSnapshot` on each operation. The classification domain is
+every writable property of `PluginConfiguration`, `ArrConnectionConfiguration`,
+`OperationalLimits`, `RendererConfiguration`, and `BadgeSelectorConfiguration`
+(`BadgeSelectorConfiguration.Selector` is the fixed code-owned selector and not
+user-adjustable). Seven fields are restart-required: the `OperationalLimits`
+`SourceArtifactLimitBytes`, `DerivedArtifactLimitBytes`, and
+`MaxImageDimensionPixels` (mixed: a construction-captured consumer and a
+per-operation render consumer both exist, so a saved change applies immediately
+on some paths and requires a restart on others) and the construction-only
+`RenderCacheTtlMinutes`, `RenderCacheQuotaBytes`, `ArtifactStorageQuotaBytes`,
+and `TerminalProvenanceRetentionDays`. Every other persisted field — the
+remaining limits, `LogVerbosity`, the connection fields, `EnabledLibraries`,
+`BadgeMoviePosters`/`BadgeEpisodePosters`, and the renderer
+selectors/position/size/palette — is per-operation. The per-consumer evidence is
+recorded in `docs/implementation/16.2/consumer-evidence.md`, the settings page
+mirrors the restart-required set in its `restartRequiredFields` table, and the
+note text that marks each restart-required field is task 16.3.
+
 #### 3.12.1 Secret resolution semantics
 
 The provider-neutral credential contract is a versioned resolver equivalent to:

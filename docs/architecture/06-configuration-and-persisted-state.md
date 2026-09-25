@@ -115,6 +115,23 @@ retention values from `OperationalLimits` at construction, so those particular
 values change only after a host restart; this pre-existing state/artwork-layer
 behaviour is outside the save-path change.
 
+The complete, code-evidenced classification of every user-adjustable setting is
+owned by `src/ArrTags/Configuration/RestartRequiredSettings.cs` (ADR-028
+clause 2; task 16.2): a setting is restart-required when any consumer resolves
+its value at singleton construction, and per-operation only when every consumer
+resolves it from the current snapshot on each operation. The restart-required
+set is `SourceArtifactLimitBytes`, `DerivedArtifactLimitBytes`, and
+`MaxImageDimensionPixels` (each mixed: a construction-captured consumer and a
+per-operation render consumer both exist), plus the construction-only
+`RenderCacheTtlMinutes`, `RenderCacheQuotaBytes`, `ArtifactStorageQuotaBytes`,
+and `TerminalProvenanceRetentionDays`; every other setting, including
+`LogVerbosity`, the connection fields, the badge/library scope, and the renderer
+configuration, is per-operation. The per-consumer evidence is recorded in
+`docs/implementation/16.2/consumer-evidence.md`; the settings page mirrors the
+set in its `restartRequiredFields` table, and ADR-028 clause 3 note text for
+every restart-required setting (with the mixed "some paths apply immediately"
+statement) is task 16.3.
+
 ### Logging and verbosity
 
 ArrTags logs through the host's `Microsoft.Extensions.Logging`
