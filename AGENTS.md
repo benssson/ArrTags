@@ -38,9 +38,11 @@ Maintain compatibility with the project's declared Jellyfin and .NET versions.
   the `PLANS.md` milestone table are generated from it by
   `scripts/render-docs-state.cs`; never hand-edit between their markers.
 - History is immutable: `docs/implementation/**`, `docs/reviews/**`,
-  `docs/research/**`, `docs/changelog/**`, `docs/plan/archive/**`, and ADR text.
-  Do not rewrite it to match newer paths or status. Former single-file documents
-  remain as pointer stubs so historical references resolve.
+  `docs/changelog/**`, `docs/plan/archive/**`, and ADR text. Do not rewrite it to
+  match newer paths or status. Research notes under `docs/research/**` are
+  current evidence and may be updated by the research agents when a finding is
+  superseded, but are not rewritten to fit newer status or paths. Former
+  single-file documents remain as pointer stubs so historical references resolve.
 - Agent reports (paths, status/severity enums, attempt rule) are defined in
   `docs/agent-contracts.md`; follow it and each agent's own schema.
 - Completed phases do not accumulate in `PLANS.md`; archive them verbatim to

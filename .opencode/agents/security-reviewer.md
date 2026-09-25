@@ -12,6 +12,9 @@ permissions:
   - action: edit
     resource: "/tmp/**"
     effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
 model: opencode-go/deepseek-v4.1-flash#max
 ---
 
@@ -143,7 +146,7 @@ Use this structure:
     {
       "id": "<finding id>",
       "severity": "BLOCKER | HIGH | MEDIUM | LOW | INFORMATIONAL",
-      "status": "open | not_required | noted",
+      "status": "open | resolved | not_required | noted",
       "area": "<secret/auth/state/input/boundary area>",
       "description": "<finding>",
       "evidence": ["<file, command, or reproduced observation>"],

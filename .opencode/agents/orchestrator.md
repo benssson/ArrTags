@@ -174,7 +174,8 @@ independently.
 
 Delegate specialist reviews through `docs/agent-contracts.md`: state the report
 path (per-task by default; a release-scope audit goes to `final-review/`) and the
-status enum, and require the contract's attempt/overwrite rule.
+status enum when the agent declares one, and require the contract's
+attempt/overwrite rule.
 
 Trigger specialist research, and record its report as task evidence, when a task:
 
@@ -444,9 +445,9 @@ Structure:
   "task": "<task ID>",
   "subagents": [
     {
-      "role": "implementation-worker | implementation-reviewer | phase-reviewer",
+      "role": "implementation-worker | implementation-reviewer | test-quality-reviewer | security-reviewer | phase-reviewer | release-reviewer | live-host-verifier | architecture-reviewer | jellyfin-expert | arr-api-researcher | documentation-maintainer | implementation-planner",
       "attempt": 1,
-      "outcome": "COMPLETE | APPROVED | CHANGES_REQUIRED | BLOCKED | FAILED",
+      "outcome": "COMPLETE | APPROVED | APPROVED_WITH_FINDINGS | PASS_WITH_FINDINGS | CHANGES_REQUIRED | BLOCKED | FAILED | VERIFIED | PARTIAL | CONSISTENT | INCONSISTENT | NEEDS_RESEARCH | NEEDS_USER_INPUT",
       "execution": {
         "agent": "<agent name>",
         "model": "<model>",
@@ -532,6 +533,15 @@ Do not consider the task complete if any of the following apply:
 * `research_required` is non-empty.
 * `ready_for_next_task` is false.
 * The worker reports an unresolved blocker.
+* The report's `acceptance_criteria` does not map every acceptance criterion
+  (including any phase criterion the task owns) to evidence.
+* `test_sensitivity` is missing, or does not explain why sensitivity cannot be
+  shown.
+* `documentation_reconciliation.check_docs` is not `PASS`, or the listed surfaces
+  were not updated.
+* `interpretations` is missing (it may be an empty list).
+* For an attempt greater than 1, `rework` does not cover every required finding
+  id from the previous review.
 
 If the worker is blocked or requires user input, stop the orchestration loop and present the issue to the user.
 
@@ -540,6 +550,10 @@ If the worker identifies research that can be performed autonomously, allow it t
 ## Independent Review
 
 When the worker reports a complete task, delegate the same task to `implementation-reviewer`.
+
+If the task is listed in `docs/implementation/review-exemptions.json`, do not
+delegate to `implementation-reviewer`; instead verify the covering review named in
+the exemption and record it on the task. Every other task must be reviewed.
 
 The reviewer must independently inspect:
 

@@ -12,6 +12,9 @@ permissions:
   - action: edit
     resource: "/tmp/**"
     effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
 ---
 
 # Implementation Reviewer
@@ -100,6 +103,14 @@ Check:
 * Tests actually exercise the changed behaviour.
 * Tests pass.
 * Important behaviour is not merely covered by superficial assertions.
+
+### Worker evidence
+
+* The worker report's `acceptance_criteria`, `test_sensitivity`,
+  `documentation_reconciliation`, and `interpretations` fields are present and
+  consistent with the diff and the test results.
+* On a corrected attempt, every required change has a `rework` entry with
+  closure evidence.
 
 ### Scope
 
@@ -268,7 +279,7 @@ Return a structured report using this schema:
     {
       "id": "<finding id>",
       "severity": "BLOCKER | HIGH | MEDIUM | LOW | INFORMATIONAL",
-      "status": "open | not_required | noted",
+      "status": "open | resolved | not_required | noted",
       "area": "<requirement/architecture/correctness area>",
       "summary": "<one-line finding>",
       "detail": "<evidence and reasoning>",
@@ -326,8 +337,7 @@ docs/implementation/<task-id>/reviewer-report.json
 ```
 
 For a re-review after a correction, write the new attempt to
-`docs/implementation/<task-id>/reviewer-report.attempt-<n>.json` (or append an
-entry to `rework_log` if the project keeps a single report). Never overwrite an
+`docs/implementation/<task-id>/reviewer-report.attempt-<n>.json`. Never overwrite an
 earlier attempt's outcome, and never rewrite a previous `CHANGES_REQUIRED` or
 `BLOCKED` decision as if it had not happened. The number of attempts and the
 issues that drove rework are part of the audit trail.

@@ -12,6 +12,9 @@ permissions:
   - action: edit
     resource: "/tmp/**"
     effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
 model: opencode-go/deepseek-v4.1-flash#high
 ---
 
@@ -299,6 +302,7 @@ Classify findings as:
 * HIGH — significant architectural or integration problem that should be resolved before proceeding.
 * MEDIUM — meaningful issue or technical debt that should be tracked.
 * LOW — minor issue, documentation gap, or improvement.
+* INFORMATIONAL — an observation with no action required.
 
 Do not invent severity where no concrete impact exists.
 

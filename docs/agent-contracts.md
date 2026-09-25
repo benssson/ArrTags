@@ -2,8 +2,9 @@
 
 This is the single source of truth for **where** agents persist reports, the
 **status and severity vocabularies** they use, and the **attempt/overwrite
-rule**. Each agent prompt keeps its own full report schema and must reference
-this file; the prompt and this table together are the contract.
+rule**. Each reviewer and research agent prompt references this file; the worker,
+planner, and producer prompts follow it for their report location. The prompt and
+this table together are the contract.
 
 Status and severity values are contracts, not free text. Do not invent values.
 
@@ -27,11 +28,11 @@ Status and severity values are contracts, not free text. Do not invent values.
 | `release-reviewer` | release review | `docs/implementation/final-review/release-review.json` | `APPROVED`, `APPROVED_WITH_ACCEPTED_LIMITATIONS`, `CHANGES_REQUIRED`, `BLOCKED` |
 | `live-host-verifier` | live verification | `docs/implementation/<task-id>/live-verification.json` | `VERIFIED`, `PARTIAL`, `FAILED` |
 | `architecture-reviewer` | architecture review | `docs/reviews/architecture/<subject>.json` | `APPROVED`, `CHANGES_REQUIRED`, `BLOCKED` |
-| `jellyfin-expert` | research note | `docs/research/jellyfin-expert/<subject>.json` | conclusion-based (no status enum) |
-| `arr-api-researcher` | research note | `docs/research/arr-api-researcher/<subject>.json` | conclusion-based (no status enum) |
-| `documentation-maintainer` | documentation update (producer) | `docs/implementation/phase-<n>/documentation-update.json` (release scope: `docs/implementation/final-review/`) | change-list (no status enum) |
+| `jellyfin-expert` | research note | `docs/research/jellyfin-expert/<subject>.json` | — |
+| `arr-api-researcher` | research note | `docs/research/arr-api-researcher/<subject>.json` | — |
+| `documentation-maintainer` | documentation update (producer; release scope -> `final-review/`) | `docs/implementation/phase-<n>/documentation-update.json` | — |
 | `documentation-maintainer` | documentation review (reviewer mode) | `docs/implementation/<task-id>/documentation-review.json` | `CONSISTENT`, `PASS_WITH_FINDINGS`, `INCONSISTENT` |
-| `implementation-planner` | planning record | `docs/implementation/planning/<name>.json` | plan record (no status enum) |
+| `implementation-planner` | planning record | `docs/implementation/planning/<name>.json` | — |
 
 ## Shared enums
 
@@ -49,7 +50,10 @@ review. `scripts/check-agents.sh` enforces the pairing for every other task.
 
 ## Read-only reviewers
 
-Review, research, and advisory agents are read-only except for their report file
-and their owned temporary directory. This is enforced by each agent's
-`permissions` frontmatter (deny `edit`, then allow the report and temp paths),
-not by convention alone.
+Review, research, and advisory agents deny the `edit` action (the Edit/write/
+patch tools) and allow only their report directory and owned temporary directory,
+via each agent's `permissions` frontmatter. `shell` remains available for
+building, testing, diffs, and inspection, so this prevents direct file edits, not
+shell-based mutation; treat it as a guardrail, not a full sandbox. The allow-list
+is the report directory (for example `docs/implementation/**`), not a single
+file.

@@ -2,6 +2,28 @@
 
 description: Reconciles the canonical current-state documentation with the actual repository state, eliminating stale claims and overclaims
 mode: subagent
+permissions:
+  - action: edit
+    resource: "src/**"
+    effect: deny
+  - action: edit
+    resource: "tests/**"
+    effect: deny
+  - action: edit
+    resource: "scripts/**"
+    effect: deny
+  - action: edit
+    resource: "build.yaml"
+    effect: deny
+  - action: edit
+    resource: "build.sh"
+    effect: deny
+  - action: edit
+    resource: "manifest.json"
+    effect: deny
+  - action: edit
+    resource: "Directory.Build.props"
+    effect: deny
 model: opencode-go/deepseek-v4.1-flash#high
 ---
 

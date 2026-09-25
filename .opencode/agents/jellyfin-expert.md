@@ -12,6 +12,9 @@ permissions:
   - action: edit
     resource: "/tmp/**"
     effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
 model: opencode-go/deepseek-v4.1-flash#high
 ---
 

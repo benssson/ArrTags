@@ -86,10 +86,12 @@ a stub.
 
 ## History is immutable
 
-`docs/implementation/**`, `docs/reviews/**`, `docs/research/**`, `docs/changelog/**`,
-archived plans, and ADR text are historical records. Do not rewrite them to match
-newer paths, names, or status. Historical reports may cite pre-refactor paths or
-line numbers; the stubs resolve the path, not the line number. That is accepted.
+`docs/implementation/**`, `docs/reviews/**`, `docs/changelog/**`, archived plans,
+and ADR text are historical records. Do not rewrite them to match newer paths,
+names, or status. `docs/research/**` is evidence: the research agents may update a
+note when a finding is superseded, but must not rewrite it to fit newer status or
+paths. Historical reports may cite pre-refactor paths or line numbers; the stubs
+resolve the path, not the line number. That is accepted.
 
 ## Doc budget
 
