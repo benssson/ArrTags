@@ -3,7 +3,7 @@
   "title": "Modal-on-change research spike (jellyfin-expert)",
   "phase": 16,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "6a76327",
   "subagents": [
     {
       "role": "jellyfin-expert",
