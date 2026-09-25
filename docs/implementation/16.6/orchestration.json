@@ -3,7 +3,7 @@
   "title": "G6/G8 documentation and integration verification",
   "phase": 16,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "b033c39",
   "subagents": [
     {
       "role": "implementation-worker",
