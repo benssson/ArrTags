@@ -92,6 +92,6 @@ The project will be considered successful when:
 ## V1.1 Goals
 
 V1.1 is an additive release. Its scope, goals, decision gates, and task outline
-are defined in [`docs/planning/v1.1.md`](docs/planning/v1.1.md); the V1 scope and
+are defined in [`docs/plan/archive/v1.1-plan.md`](docs/plan/archive/v1.1-plan.md); the V1 scope and
 success criteria above remain authoritative for V1. V1.1 decisions are recorded
 as ADR-016 onward in [`docs/decisions.md`](docs/decisions.md).
