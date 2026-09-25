@@ -3,7 +3,7 @@
   "title": "Byte/unit conversion helper and per-field MB/KB mapping (explicit off-step rejection)",
   "phase": 16,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "ed62b07",
   "subagents": [
     {
       "role": "implementation-worker",
