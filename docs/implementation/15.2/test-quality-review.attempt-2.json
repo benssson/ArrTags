@@ -1,0 +1,152 @@
+{
+  "subject": "ArrTags task 15.2 - Thread the bounded log subject through the identity-bearing and fallback sites (ADR-026 clause 3) - correction attempt 2 re-review",
+  "reviewer_status": "APPROVED",
+  "attempt": 2,
+  "supersedes": "docs/implementation/15.2/test-quality-review.json",
+  "findings": [
+    {
+      "id": "TQ-15.2-01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "coverage",
+      "description": "Resolved. The reader-threw metadata-read-failure catch path is now a distinct, genuinely exercised site. DriveMetadataReadFailureAsync gained a readerThrows switch that sets FakeMetadataReader.Handler to throw InvalidOperationException (Result stays null, so ReadAsync's `Result ?? Handler(...)` reaches the throwing handler and the exception propagates into the processor's catch). Two new theories drive it: MetadataReaderThrowSubjectIsTheFileNameOnlyAtEveryVerbosity (path-bearing) and MetadataReaderThrowSubjectFallsBackToTheItemIdWhenNoPathIsAvailable (pathless), each pinning 'the reader threw InvalidOperationException.' so it cannot be confused with the failed-read result.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:305-345 (both reader-throw theories; reason text pinned)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:1062-1103 (DriveMetadataReadFailureAsync readerThrows branch sets Handler to throw, does not set Result)",
+        "tests/ArrTags.Tests/ReconciliationFixtures.cs:86-95 (`Result ?? Handler(...)`; null Result guarantees the throw path)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:154-168 (catch) versus :171-187 (failed-read) remain separate call sites",
+        "Independent probe: reverted only the catch-path subject (line 159) to LogSubject.Create(identity.JellyfinItemId); rebuilt 0 warnings / 0 errors; LogRedactionTests failed exactly 4 cases (MetadataReaderThrowSubjectIsTheFileNameOnlyAtEveryVerbosity at Warning, Information, Debug, Trace) while the failed-read theory still passed, proving the two paths are now independently asserted. Tree restored byte-identically (sha256sum -c: OK), rebuilt, focused 143/143"
+      ],
+      "recommended_action": "None. Closed by attempt-2 tests."
+    },
+    {
+      "id": "TQ-15.2-02",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "coverage",
+      "description": "Resolved. LibraryWorkWorker.LogRetryScheduled is now driven and asserted. DriveQueueRetryAsync enqueues a connection-scoped LibraryWorkItem and uses RetryableWorkItemProcessor, which returns WorkProcessingResult.Transient (retryable), so the worker emits WorkItemRetryScheduled. WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity filters on that event id, asserts the item-id subject on every retry record, and pins the retained '<connection|*>, <surface>' context with the connection-scoped key.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:446-471 (WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:897-926 (DriveQueueRetryAsync; connection-scoped key, 5s bounded wait for WorkItemRetryScheduled)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:1467-1473 (RetryableWorkItemProcessor returns Transient)",
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:259-273 (LogRetryScheduled is the distinct call site)",
+        "Independent probe: replaced the retry record's context (line 266) with LogSubject.Create(System.Guid.Empty); rebuilt 0 warnings / 0 errors; LogRedactionTests failed exactly 2 cases (WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity at Debug and Trace). Tree restored byte-identically (sha256sum -c: OK), rebuilt, focused 143/143"
+      ],
+      "recommended_action": "None. Closed by attempt-2 tests."
+    },
+    {
+      "id": "TQ-15.2-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "Unchanged. The identity-present-but-pathless fallback remains site-tested at the mixed discard site and at both metadata-read-failure sites (now including the reader-threw path), but not at the artwork or Radarr/Sonarr reader sites; those rely on the shared helper unit tests plus the representative site-level fallbacks. Residual risk remains low because every site passes the same `identity.MediaLocation?.PrimaryPath` argument into the same helper. No action expected or needed.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:285-345 (read-failure fallbacks, both paths), :372-395 (discard identity-without-path)",
+        "tests/ArrTags.Tests/LogSubjectTests.cs:137-159 (helper fallback coverage, task 15.1)"
+      ],
+      "recommended_action": "No action."
+    },
+    {
+      "id": "TQ-15.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "description": "Unchanged and honest. Roughly half of the 78 theory cases run at gated-off verbosity levels and assert only record count 0 (the sentinel scan is vacuous on an empty list). This is sufficient - count 0 is the gating assertion and no output can leak - but 'at every verbosity level' should not be read as a subject assertion at every level. The correction added two gated-off retry cases that assert Assert.Empty(retries), which is likewise honest.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:305-345, :446-471 (early returns / Assert.Empty at gated levels)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:1405-1409 (Expected maps verbosity to 0/1)"
+      ],
+      "recommended_action": "No action."
+    },
+    {
+      "id": "TQ-15.2-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "Unchanged. docs/release/build-and-release.md still records the 1.1.0.0 matrix; the new tests are not host- or native-gated and the current-state release documentation is owned by task 15.4. Host-guarded and forced-native were not rerun for this audit.",
+      "evidence": [
+        "docs/release/build-and-release.md:77-105",
+        "docs/changelog/v1.2.0.md:124-131 (15.4 owns the canonical documentation)"
+      ],
+      "recommended_action": "No action for 15.2; a later task refreshes the matrix."
+    },
+    {
+      "id": "TQ-15.2-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "New observation on the attempt-2 correction, no action required. The correction also restores bounded worker connection/surface context (implementation-reviewer IR-15.2-01) and centralizes it in DescribeWorkItem. The tests pin both context branches - a hint-derived key gives '(*, Primary)' and a connection-scoped key gives '(radarr-connection-scope, Primary)' - via the exact-substring AssertQueueContext, so dropping or changing the context fails. This is a production log-format change beyond the pure subject substitution (the item-id component also moves from the pre-task WorkItemKey N format to the D-format subject and the wrapper to parentheses), and both the worker report and changelog disclose it accurately. AssertNoSentinel still runs on the worker theories, and the context value is the non-secret connection scope (ADR-020 clause 4 allowed), so no new redaction gap is introduced.",
+      "evidence": [
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:275-288 (DescribeWorkItem; subject plus connection/surface)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:1372-1383 (AssertQueueContext exact substring)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:438-443 (processed '(*, Primary)'), :469-470 (retry '(radarr-connection-scope, Primary)')",
+        "docs/changelog/v1.2.0.md:69-79, :114-116 (context retention disclosed)"
+      ],
+      "recommended_action": "No action."
+    }
+  ],
+  "closure": [
+    {
+      "finding_id": "TQ-15.2-01",
+      "prior_severity": "MEDIUM",
+      "prior_status": "open",
+      "closure_status": "resolved",
+      "closure_evidence": "Reader-threw catch is driven by a throwing FakeMetadataReader.Handler with path-bearing and pathless identities (tests/ArrTags.Tests/LogRedactionTests.cs:305-345, :1080-1090). Independent probe reverting only the catch-path subject failed exactly the 4 enabled reader-throw cases and left the failed-read theory passing; restored byte-identically and focused suite green at 143/143."
+    },
+    {
+      "finding_id": "TQ-15.2-02",
+      "prior_severity": "LOW",
+      "prior_status": "open",
+      "closure_status": "resolved",
+      "closure_evidence": "Scheduled-retry record is driven by DriveQueueRetryAsync + RetryableWorkItemProcessor and asserted by WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity (tests/ArrTags.Tests/LogRedactionTests.cs:446-471, :897-926). Independent probe corrupting the retry context failed exactly the 2 enabled retry cases; restored byte-identically and focused suite green at 143/143."
+    },
+    {
+      "finding_id": "TQ-15.2-03",
+      "prior_severity": "INFORMATIONAL",
+      "prior_status": "noted",
+      "closure_status": "noted",
+      "closure_evidence": "Unchanged: artwork/reader fallback still relies on the helper unit tests plus the representative read-failure/discard fallbacks. No action expected."
+    },
+    {
+      "finding_id": "TQ-15.2-04",
+      "prior_severity": "INFORMATIONAL",
+      "prior_status": "noted",
+      "closure_status": "noted",
+      "closure_evidence": "Unchanged: gated-off cases still assert only count 0 / empty retry set. Honest as written."
+    },
+    {
+      "finding_id": "TQ-15.2-05",
+      "prior_severity": "INFORMATIONAL",
+      "prior_status": "noted",
+      "closure_status": "noted",
+      "closure_evidence": "Unchanged: release matrix remains 1.1.0.0 and is owned by a later task; host/native suites not rerun."
+    }
+  ],
+  "matrix_observed": {
+    "default": "1595 passed / 63 skipped / 1658 total, 0 failed (independently reproduced; post-15.1 baseline 1517/63/1580, so +78 passed / +78 total / 0 new skips)",
+    "focused_LogRedactionTests": "143 passed / 0 skipped / 143 total, 0 failed (independently reproduced; attempt 1 was 125, +18 = 2 reader-throw theories x6 + 1 retry theory x6)",
+    "probe_closure": "6 expected failures caught (4 reader-throw file-name + 2 retry) when the two previously open gaps were reintroduced; tree restored byte-identically and focused suite re-verified 143/143",
+    "host_guarded": "not run (unaffected by 15.2: the new cases are not host-gated)",
+    "forced_native": "not run (unaffected by 15.2: the new cases are not native-gated)"
+  },
+  "substitutes_checked": [
+    "Real production classes remain under test: MetadataReconciliationProcessor (both MetadataReadFailed paths), ArtworkGenerationCoordinator, RadarrMetadataReader, SonarrMetadataReader, LibraryWorkWorker (DescribeWorkItem/LogProcessed/LogRetryScheduled), ArrTagsLifecycleService; the subject is built inside them.",
+    "FakeMetadataReader substitutes only the Arr provider boundary; the readerThrows case invokes its throwing Handler, so the processor's real catch path is exercised.",
+    "RetryableWorkItemProcessor and RecordingWorkItemProcessor substitute only the work-processor boundary; the real worker retry/backoff loop and log sites run.",
+    "FakeLibraryEventSource, NoOpLifecycleCoordinator, ReconciliationLibraryResolver, PipelineArtworkHost, FingerprintingRenderer, and the read-client fakes substitute only Jellyfin/Arr/host boundaries.",
+    "TestTimeProvider keeps LogThrottle off the wall clock; CapturingLoggerProvider captures the real ArrTagsLog + LogVerbosityGate output."
+  ],
+  "skips_checked": [
+    "No skip guard ([Fact(Skip)]/environment gate) exists in LogRedactionTests.cs; the focused run reports 0 skipped.",
+    "The full default run reports 63 skipped, identical to the post-15.1 baseline, so 0 new skips across the +78-case correction.",
+    "The 63 skips are the documented host/native/non-canonical-golden gates (19 pinned-host + 43 ARRTAGS_SKIA_COMPAT + 1 ARRTAGS_NONCANONICAL_GOLDENS); none covers ADR-026 subject behavior."
+  ],
+  "determinism_checked": [
+    "New theories use static verbosity data with InvariantCulture/StringComparison.Ordinal; no clock, culture, machine, or network input affects any assertion.",
+    "The reader-throw path throws synchronously from FakeMetadataReader.ReadAsync (Result is null), so the catch is deterministic, not timing-based.",
+    "The retry driver waits on the WorkItemRetryScheduled record with a bounded 5s poll and then stops the worker; the first retry is emitted immediately, and Assert.All tolerates more than one retry record. Two independent focused runs (including after restore) both reported 143/143.",
+    "Per-test CapturingLoggerProvider instances and unique Guid temp state roots preserve isolation; no shared mutable static state.",
+    "Full default suite independently reproduced 1595/63/1658; scripts/check-docs.sh reports PASS."
+  ],
+  "summary": "Correction attempt 2 fully closes the two concrete test-quality gaps from attempt 1 and introduces no new coverage gap or overclaim. TQ-15.2-01 (MEDIUM) is resolved: the reader-threw metadata-read-failure catch is now driven by a throwing handler with path-bearing and pathless identities and exact subject/fallback assertions, and an independent probe reverting only that catch-path subject fails exactly the 4 enabled reader-throw cases while the failed-read path still passes. TQ-15.2-02 (LOW) is resolved: the scheduled-retry record is driven by a retryable processor and its subject plus retained connection/surface context are asserted, with an independent probe failing exactly the 2 enabled retry cases. The informational items TQ-15.2-03/04/05 are unchanged and honestly noted, and the new TQ-15.2-06 records that the added worker connection/surface context assertions are exact, sensitive, and sentinel-safe. Assertions remain observable-behavior based (real production classes, doubles only at external boundaries), specific (positive exact substrings plus absence of '/', the replaced item id, and the file names), deterministic, and skip-honest. Independently reproduced counts: focused LogRedactionTests 143 passed / 0 skipped / 143 total; full default suite 1595 passed / 63 skipped / 1658 total / 0 failed (+78 / +78 / 0 new skips vs the post-15.1 1517/63/1580 baseline). No open BLOCKER/HIGH/MEDIUM/LOW remains, so the re-review is APPROVED."
+}

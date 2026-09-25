@@ -1,0 +1,117 @@
+{
+  "task": "15.2",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "IR-15.2-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "scope / ADR-026 clause 1 (work worker subject substitution)",
+      "summary": "The LibraryWorkWorker logs now replace the entire WorkItemKey text, dropping the bounded connection identity and image surface from both Debug records; ADR-026 clause 1 authorizes replacing only the Jellyfin item identifier, and the task is scoped to threading the subject only.",
+      "detail": "Before the change the worker emitted `Work item {item.Key}` where `WorkItemKey.ToString()` is `WorkItemKey(<ItemId:N>, <ConnectionId ?? \"*\">, <Surface.Key>)` (src/ArrTags/Updates/WorkItemKey.cs:108-113). The change emits `Work item {LogSubject.Create(item.Key.ItemId)}` (src/ArrTags/Updates/LibraryWorkWorker.cs:240,262), i.e. only the D-format item id. ADR-026 clause 1 says 'Log call sites that currently emit the Jellyfin item identifier emit a bounded log subject instead' and clause 3 labels the worker fallback '(item id only)'. '(item id only)' describes the subject value, not the whole record: every other site keeps its non-subject bounded context (provider kind, match status/method, error code) while replacing only the identifier, and the lifecycle site keeps its surrounding sentence while swapping only the identifier. The dropped values are explicitly allowed and non-secret bounded diagnostics (WorkItemKey doc: 'safe to retain as a queue key and diagnostic'; ADR-020 clause 4 permits connection identity), so this is diagnostic loss, not a redaction gain. It is also more than the subject-only scope: the worker line now carries less diagnostic information than before and no path is available to compensate. The worker disclosed the whole-key replacement in interpretations[2], but the stated basis does not show the ADR authorizes dropping the connection/surface components. Emitting the item-id subject while retaining the bounded connection/surface context would still satisfy the acceptance criterion and preserve the connection/surface diagnostics.",
+      "evidence": [
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:240,246 and :262,268 (subject replaces the entire WorkItemKey)",
+        "src/ArrTags/Updates/WorkItemKey.cs:108-113 (pre-change ToString emits ItemId:N, ConnectionId, Surface.Key)",
+        "docs/decisions/ADR-026.md:43-47 (clause 1: replace the item identifier), :59-67 (clause 3: '(item id only)' subject; 'via WorkItemKey')",
+        "docs/decisions/ADR-020.md:48-54 (connection identity is an allowed, non-secret bounded value)",
+        "docs/implementation/15.2/worker-report.json interpretations[2] and known_limitations[0] (worker discloses dropping the WorkItemKey text)",
+        "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs:155-159 (contrast: the fallback site preserves its surrounding bounded context)"
+      ],
+      "recommended_action": "Keep the item-id fallback as the subject but retain the bounded connection-scope and surface components in the processed/retry records (for example `Work item {subject} ({item.Key.ConnectionId ?? \"*\"}, {item.Key.Surface.Key}) ...`), and add an assertion pinning those components so the reduction cannot recur; alternatively record an explicit, cited decision that the worker record is intentionally item-id-only. Do not change the WorkItemKey type itself (coalescing identity must not change)."
+    },
+    {
+      "id": "IR-15.2-02",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "acceptance criteria / worker evidence (metadata-read-failure catch path)",
+      "summary": "The reader-threw metadata-read-failure path is a distinct subject call site that no test exercises, yet the worker report and changelog claim both provider-error paths are verified.",
+      "detail": "MetadataReconciliationProcessor has two MetadataReadFailed emissions: the reader-threw catch (subject built at src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:159, written at :162) and the failed-read result (:181/:184). The worker report acceptance_criteria[1] states 'Both MetadataReadFailed paths ... build the subject' and cites LogRedactionTests as the evidence. DriveMetadataReadFailureAsync (tests/ArrTags.Tests/LogRedactionTests.cs, pathAvailable overload) sets `FakeMetadataReader.Result` to a failure result and never a throwing Handler; FakeMetadataReader.ReadAsync returns `Result ?? Handler(...)` (tests/ArrTags.Tests/ReconciliationFixtures.cs:93), so the catch block is never entered. I independently confirmed the mechanism by inspection; the separate test-quality review (docs/implementation/15.2/test-quality-review.json TQ-15.2-01) reached the same conclusion with a probe that reverted only the catch-path subject and still passed 125/125. The implementation of both paths is correct in the diff; the defect is the overstated verification claim plus the missing per-site proof for that emission path.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:154-168 (catch path) versus :171-187 (failed-read path)",
+        "tests/ArrTags.Tests/ReconciliationFixtures.cs:86-95 (Result short-circuits the throwing Handler)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:952-984 (DriveMetadataReadFailureAsync sets only Result)",
+        "docs/implementation/15.2/worker-report.json acceptance_criteria[1]",
+        "docs/implementation/15.2/test-quality-review.json finding TQ-15.2-01 (independent probe)"
+      ],
+      "recommended_action": "Add one case (or theory) that drives the reader-threw catch with a FakeMetadataReader.Handler that throws, with a path-bearing and a pathless identity, asserting the file-name-only / item-id-fallback subjects; or narrow the worker report and changelog claims to the failed-read path actually covered."
+    },
+    {
+      "id": "IR-15.2-03",
+      "severity": "LOW",
+      "status": "open",
+      "area": "acceptance criteria / worker evidence (worker retry-scheduled path)",
+      "summary": "LibraryWorkWorker.LogRetryScheduled is a separate subject call site that no test drives, yet the worker report and changelog name it as covered.",
+      "detail": "The worker changed two sites, LogProcessed (src/ArrTags/Updates/LibraryWorkWorker.cs:240) and LogRetryScheduled (:262). WorkWorkerSubjectIsTheItemIdAtEveryVerbosity drives DriveQueueAsync, which uses RecordingWorkItemProcessor (a double that always returns a non-retryable Completed result), so LogRetryScheduled is never reached; only LogProcessed is asserted. The worker report acceptance_criteria[4] and the changelog name 'processed and retry-scheduled' together. The implementation of both is correct in the diff; the gap is coverage of the retry site. The test-quality review independently recorded the same gap (TQ-15.2-02).",
+      "evidence": [
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:240 (processed) and :262 (retry)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:794-817 (DriveQueueAsync with RecordingWorkItemProcessor)",
+        "docs/implementation/15.2/worker-report.json acceptance_criteria[4]",
+        "docs/implementation/15.2/test-quality-review.json finding TQ-15.2-02"
+      ],
+      "recommended_action": "Add a queue case whose processor returns a retryable result for one attempt so the WorkItemRetryScheduled record is emitted, and assert the item-id subject on it; or drop LogRetryScheduled from the coverage claim."
+    },
+    {
+      "id": "IR-15.2-04",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "architecture / ADR-026 clause 3 enumeration versus code",
+      "summary": "ADR-026 clause 3 lists 'ineligible' and 'connection unavailable' as discard sites where no identity exists, but in code those pre-publish discards run after identity creation and do have a path available; the implementation follows the enumeration.",
+      "detail": "In MetadataReconciliationProcessor, identity is created at src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:124, before the pre-publish eligibility (discard at :130) and connection-unavailable (discard at :142) checks, so a MediaLocation with a primary path can be available at those 2-arg Discard calls. ADR-026 clause 3 (docs/decisions/ADR-026.md:59-65) nonetheless names 'ineligible' and 'connection unavailable' in the group 'where it does not [have an identity]', and the implementation matches that enumeration: the two-argument Discard overload passes no path at those sites, and only the six publish-time changed-basis discards pass identity.MediaLocation?.PrimaryPath. Because the task names the ADR-026 clause 3 enumeration as the governing decision, this is not a required change for 15.2; the ADR's characterization is simply inaccurate for those two (and the unlisted missing-provider-kind) pre-publish discards, and clause 1's general path-when-available rule would otherwise cover them.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:124,130,142 (identity exists at the 2-arg discards), :205-237 (six 3-arg discards)",
+        "docs/decisions/ADR-026.md:43-47 (clause 1) and :59-65 (clause 3 grouping)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:335-341 (2-arg overload delegates with null)"
+      ],
+      "recommended_action": "No change required for 15.2. Task 15.4's documentation reconciliation (or a follow-up ADR clarification) should reconcile clause 3's parenthetical with the actual call sites so clause 1 and clause 3 agree on whether those pre-publish discards should carry the path."
+    },
+    {
+      "id": "IR-15.2-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope / architecture conformance",
+      "summary": "All six ADR-026 clause 3 site files are threaded with the correct subject forms, the four unchanged sites and LogSubject.cs are untouched, and logging changes are confined to the six sites.",
+      "detail": "git diff --name-only HEAD lists exactly the six production files (ArtworkGenerationCoordinator, ArrTagsLifecycleService, RadarrMetadataReader, SonarrMetadataReader, MetadataReconciliationProcessor, LibraryWorkWorker) plus LogRedactionTests and the three doc/state files. No change under ConcurrencyLimitedArrMetadataReader, WebhookIntakeService, WebhookAuthenticationFilter, or LibraryReconciliationService. src/ArrTags/Logging/LogSubject.cs has no diff against HEAD (introduced at ba159c6). LogSubject.Create is invoked at exactly the nine production call sites ADR-026 clause 3 names (coordinator, two read-failure paths, Radarr/Sonarr LogMatch, the 3-arg Discard helper, and the two worker/lifecycle fallbacks). The coordinator reads request.MediaIdentity, which is non-nullable and guarded by ArgumentNullException.ThrowIfNull in the ArtworkGenerationRequest constructor, so no new NRE path is introduced; identity is non-null at the processor discard and reader sites.",
+      "evidence": [
+        "git diff --name-only HEAD",
+        "src/ArrTags/Logging/LogSubject.cs (no diff; only src usage of LogSubject.Create at the nine sites)",
+        "src/ArrTags/Artwork/ArtworkGenerationRequest.cs:41,52,88 (non-null MediaIdentity)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:124,159,181,356"
+      ],
+      "recommended_action": "No action."
+    }
+  ],
+  "tests_checked": [
+    "Source . /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently reproduced).",
+    "dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~LogRedactionTests -> Failed 0, Passed 125, Skipped 0 (independently reproduced; matches worker claim).",
+    "./build.sh test (full default suite) -> Failed 0, Passed 1577, Skipped 63, Total 1640 (independently reproduced; matches worker claim and the +60 / 0-new-skip delta against the post-15.1 1517/63/1580 baseline).",
+    "Inspected tests/ArrTags.Tests/LogRedactionTests.cs diff: 10 new per-site theories over 6 verbosity levels; AssertFileNameSubject asserts 'item <file name>', no '/', and no D-format item id; AssertItemIdSubject asserts 'item <D-format id>', no '/', and neither file name; AssertNoSentinel runs on every case.",
+    "Inspected the boundary drivers (DriveArtworkAsync, DriveMatchingAsync, DriveSonarrMatchingAsync, DriveMetadataReadFailureAsync, DriveMetadataDiscardAsync, DriveMetadataDiscardBeforeIdentityAsync, DriveQueueAsync, DriveLifecycleRemovalAsync) and confirmed they drive the real production classes with doubles only at the Jellyfin/Arr/host boundaries; not tautological or over-mocked.",
+    "Confirmed the metadata-read-failure tests only drive the failed-read path (FakeMetadataReader.Result short-circuits the throwing Handler) and the retry-scheduled worker record is never reached (RecordingWorkItemProcessor is non-retryable) - see findings IR-15.2-02/03.",
+    "Reviewed the worker's test-sensitivity numbers for internal consistency (probe 1 = 3+4+2+2+3+2 = 16 failed; probe 2 = 4+3+3+2 = 12 failed) and cross-checked the assertions that would fail; the claims are credible for the paths the tests actually cover.",
+    "docs/implementation/15.2/test-quality-review.json inspected for independent corroboration (its two coverage findings are consistent with the code inspection above; not relied on as sole evidence)."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-026.md clauses 1-4 (including the clause 3 site enumeration and the clause 4 amendment).",
+    "docs/decisions/ADR-020.md clause 4 (allowed redacted values; connection identity is allowed and non-secret).",
+    "docs/planning/v1.2.md G9 acceptance criteria and docs/implementation/planning/v1.2.json phase 15 task 15.2 acceptance criteria + review assignment.",
+    "docs/agent-contracts.md (report path and status/severity/finding-status enums).",
+    "src/ArrTags/Providers/ArrConnectionId.cs (connection id normalization excludes user info/API key, so the dropped worker component is non-secret)."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json - task 15.2 'done': true with reports [docs/implementation/15.2/worker-report.json]; updated_utc bumped.",
+    "PLANS.md - 15.2 checkbox flipped to [x]; the generated milestone table was not hand-edited.",
+    "docs/status.md - regenerated state is current (dotnet run scripts/render-docs-state.cs reported 'up to date'; file unchanged after render).",
+    "docs/changelog/v1.2.0.md - task 15.2 entry present and task-appropriate; it repeats the two-metadata-path coverage claim flagged in IR-15.2-02 and the whole-key replacement in IR-15.2-01.",
+    "scripts/check-docs.sh - passes every check except the expected mid-flow agent-contract pairing ('task 15.2 has a worker report but no reviewer report'), which this report resolves.",
+    "README/architecture/limitations not required by this task: 15.2 changes no user-facing capability, and 15.4 owns the ADR-020 amendment and the canonical logging documentation (F8 remains open)."
+  ],
+  "required_changes": [
+    "IR-15.2-01: Preserve the bounded connection-scope and image-surface diagnostic components in the LibraryWorkWorker processed/retry records while using the item-id fallback subject (or obtain and cite an explicit decision that the worker record is intentionally item-id-only); leave the WorkItemKey coalescing identity unchanged.",
+    "IR-15.2-02: Add a test driving the reader-threw metadata-read-failure catch path (path-bearing and pathless) or narrow the worker/changelog coverage claim to the failed-read path.",
+    "IR-15.2-03: Add a test driving LibraryWorkWorker.LogRetryScheduled or drop it from the coverage claim."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

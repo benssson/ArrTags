@@ -1,0 +1,153 @@
+{
+  "task": "15.2",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "IR-15.2-01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "scope / ADR-026 clause 1 (work worker subject substitution)",
+      "summary": "CLOSED: LibraryWorkWorker now keeps the item-id fallback as the subject and retains the bounded connection scope and image surface in both records; tests pin both components; WorkItemKey is unchanged.",
+      "detail": "DescribeWorkItem (src/ArrTags/Updates/LibraryWorkWorker.cs) returns `{LogSubject.Create(item.Key.ItemId)} ({item.Key.ConnectionId ?? \"*\"}, {surface})`, restoring the bounded connection scope and surface the pre-change WorkItemKey text carried while replacing only the item identifier (ADR-026 clause 1). LogProcessed and LogRetryScheduled both use it. WorkItemKey itself is not in the diff (coalescing identity unchanged). Tests: WorkWorkerSubjectIsTheItemIdAtEveryVerbosity asserts `item <D> (*, Primary)` for the hint-derived key, and WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity asserts `item <D> (radarr-connection-scope, Primary)` for a connection-scoped key, via AssertQueueContext. I re-checked every clause-3 site message pre/post change and no other non-subject bounded context (outcome/attempts/reason, provider kind/status/method, error code, discard reason, lifecycle sentence) was dropped.",
+      "evidence": [
+        "src/ArrTags/Updates/LibraryWorkWorker.cs (DescribeWorkItem, LogProcessed, LogRetryScheduled)",
+        "git diff --name-only HEAD -> src/ArrTags/Updates/WorkItemKey.cs absent (unchanged)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs WorkWorkerSubjectIsTheItemIdAtEveryVerbosity, WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity, AssertQueueContext",
+        "docs/implementation/15.2/worker-report.attempt-2.json rework[IR-15.2-01]"
+      ],
+      "recommended_action": "None; closure verified."
+    },
+    {
+      "id": "IR-15.2-02",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "acceptance criteria / worker evidence (metadata-read-failure catch path)",
+      "summary": "CLOSED: a distinct reader-threw theory now drives the catch path (path-bearing and pathless) and asserts the subject; the claim is no longer overstated.",
+      "detail": "DriveMetadataReadFailureAsync gained a `readerThrows` switch: when set it assigns FakeMetadataReader.Handler to throw InvalidOperationException and leaves Result null, so FakeMetadataReader.ReadAsync (`Result ?? Handler(...)`) throws synchronously and the processor's catch block runs - genuinely the catch path, not the failed-read result. MetadataReaderThrowSubjectIsTheFileNameOnlyAtEveryVerbosity asserts 'the reader threw InvalidOperationException.' plus AssertFileNameSubject, and MetadataReaderThrowSubjectFallsBackToTheItemIdWhenNoPathIsAvailable asserts the item-id fallback. The worker report acceptance_criteria[1] and the changelog now name both paths with their own theories.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs DriveMetadataReadFailureAsync(readerThrows), MetadataReaderThrowSubjectIsTheFileNameOnlyAtEveryVerbosity, MetadataReaderThrowSubjectFallsBackToTheItemIdWhenNoPathIsAvailable",
+        "tests/ArrTags.Tests/ReconciliationFixtures.cs:86-95 (Result ?? Handler), handler throws when readerThrows",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:154-168 (catch emission with 'the reader threw {type}.')",
+        "docs/implementation/15.2/worker-report.attempt-2.json acceptance_criteria[1]; docs/changelog/v1.2.0.md task-15.2 entry"
+      ],
+      "recommended_action": "None; closure verified."
+    },
+    {
+      "id": "IR-15.2-03",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "acceptance criteria / worker evidence (worker retry-scheduled path)",
+      "summary": "CLOSED: a retryable queue case now drives and asserts the WorkItemRetryScheduled record, including the retained connection/surface context.",
+      "detail": "DriveQueueRetryAsync enqueues a connection-scoped LibraryWorkItem with RetryableWorkItemProcessor, which returns WorkProcessingResult.Transient (IsRetryable == true for Retryability Later), so the worker reaches LogRetryScheduled before the bounded backoff. WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity filters WorkItemRetryScheduled records, asserts AssertItemIdSubject on each, and pins AssertQueueContext with ConnectionScopeId + Primary. The computation is bounded (ComputeAttemptCount = TransientRetryCount + 1) and the test does not depend on the retry record count.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs DriveQueueRetryAsync, RetryableWorkItemProcessor, WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity",
+        "src/ArrTags/Updates/WorkProcessingResult.cs:50,68-71 (Transient is retryable)",
+        "src/ArrTags/Updates/WorkRetryPolicy.cs:22-30 (bounded attempt count)",
+        "docs/implementation/15.2/worker-report.attempt-2.json rework[IR-15.2-03]"
+      ],
+      "recommended_action": "None; closure verified."
+    },
+    {
+      "id": "IR-15.2-04",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "architecture / ADR-026 clause 3 enumeration versus code",
+      "summary": "Correctly deferred: no code change at the pre-publish ineligible/connection-unavailable discards, and the ADR wording reconciliation is recorded in known_limitations as task 15.4 work.",
+      "detail": "The implementation still threads no path at the pre-publish ineligible (:130) and connection-unavailable (:142) discards, following the clause 3 enumeration as directed. The correction adds known_limitations entry 'IR-15.2-04' deferring the ADR wording reconciliation to task 15.4, and the changelog task-15.2 paragraph states the same. This remains deferred, not 'fixed' here, as required.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs (2-arg Discard calls unchanged at those sites)",
+        "docs/implementation/15.2/worker-report.attempt-2.json known_limitations[2] and rework[IR-15.2-04]",
+        "docs/changelog/v1.2.0.md task-15.2 deferral paragraph"
+      ],
+      "recommended_action": "None for 15.2; task 15.4 owns the ADR/current-state reconciliation."
+    },
+    {
+      "id": "IR-15.2-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope / architecture conformance",
+      "summary": "Scope and compatibility remain correct: only the six ADR-026 clause 3 production files changed, the four no-change sites and LogSubject.cs are untouched, and no new dependency/abstraction was introduced.",
+      "detail": "git diff --name-only HEAD lists the same six production files plus LogRedactionTests and the three doc/state surfaces. ConcurrencyLimitedArrMetadataReader, WebhookIntakeService, WebhookAuthenticationFilter, and LibraryReconciliationService are unchanged. src/ArrTags/Logging/LogSubject.cs has no diff against HEAD and its 15.1 tests pass in the full suite. WorkItemKey.cs is unchanged, so the queue coalescing/single-flight identity is preserved. The only new production abstraction is the private static DescribeWorkItem formatter inside LibraryWorkWorker.",
+      "evidence": [
+        "git diff --name-only HEAD",
+        "git diff -- src/ArrTags/Logging/LogSubject.cs (empty)",
+        "git diff -- src/ArrTags/Updates/WorkItemKey.cs (empty)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "IR-15.2-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/state surface (state.json reports path)",
+      "summary": "docs/plan/state.json reports still points at docs/implementation/15.2/worker-report.json (attempt 1) rather than the attempt-2 report.",
+      "detail": "state.json task 15.2 lists reports ['docs/implementation/15.2/worker-report.json']. Attempt 1 is preserved there (as required) and attempt 2 is at worker-report.attempt-2.json; the canonical base path still resolves, and check-docs.sh passes. This matches the observed convention (no state.json anywhere lists an attempt path). Recorded only for traceability; the orchestrator owns state.json.",
+      "evidence": [
+        "docs/plan/state.json task 15.2 reports field",
+        "grep 'attempt' docs/plan/state.json (no matches)"
+      ],
+      "recommended_action": "No action required for 15.2; the orchestrator may refresh the reports field when it advances task state."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently reproduced).",
+    "dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~LogRedactionTests -> Failed 0, Passed 143, Skipped 0 (independently reproduced; 65 pre-existing + 78 new = 143).",
+    "./build.sh test (full default suite) -> Failed 0, Passed 1595, Skipped 63, Total 1658 (independently reproduced; +78 / 0 new skips vs post-15.1 1517/63/1580; +18 vs attempt-1 1640).",
+    "Counted 13 new theories (9 '...AtEveryVerbosity' + 4 fallback theories) x 6 verbosity levels = 78 cases, matching the worker/changelog claim.",
+    "Inspected the new reader-threw driver/tests and confirmed the throwing Handler (Result null) reaches the processor catch via `Result ?? Handler(...)`, not the failed-read result; the 'the reader threw InvalidOperationException.' assertion only matches the catch.",
+    "Inspected DriveQueueRetryAsync/RetryableWorkItemProcessor and confirmed WorkProcessingResult.Transient is retryable and loggable before the bounded backoff.",
+    "Re-verified AssertQueueContext pins `item <D> (<connection|*>, <surface>)` in both worker theories, so the retained context is asserted, not assumed.",
+    "Cross-checked worker test-sensitivity arithmetic: round A 3+4+4+2+2+3+2+2 = 22; round B 4+4+3+3+2+2+2 = 20; consistent with the reported probes and the assertions I inspected (probes not rerun to avoid mutating implementation files)."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-026.md clauses 1-4 (subject policy, clause 3 site enumeration, clause 4 exclusions).",
+    "docs/decisions/ADR-020.md clause 4 (connection identity is an allowed, non-secret bounded value).",
+    "docs/implementation/planning/v1.2.json phase 15 task 15.2 and docs/planning/v1.2.md G9.",
+    "docs/agent-contracts.md (attempt rule, report paths, status/severity/finding-status enums).",
+    "src/ArrTags/Providers/ArrConnectionId.cs (connection id excludes user info and API key, so the retained connection scope is non-secret)."
+  ],
+  "documentation_checked": [
+    "docs/changelog/v1.2.0.md task-15.2 entry - corrected to 13 theories / 78 cases, both read-failure paths, retry record, retained worker context, 22/20 probe rounds, 143 focused, 1595/63/1658; all claims match the code and the runs I reproduced.",
+    "docs/plan/state.json - task 15.2 done with reports path; unchanged in the correction and consistent (reports field points at the preserved base worker report).",
+    "PLANS.md - 15.2 checkbox [x]; generated milestone table not hand-edited; render-docs-state reports up to date.",
+    "docs/status.md - generated state current.",
+    "scripts/check-docs.sh - PASS on the full run (generated blocks, plan state, indexes, artifact identity, budget, links, and agent report contracts all ok).",
+    "README/architecture/limitations - correctly not touched by 15.2; 15.4 owns the ADR-020 amendment, canonical docs, security review, and F8 resolution."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding_id": "IR-15.2-01",
+      "closure": "Resolved. DescribeWorkItem restores the bounded connection scope and surface alongside the item-id fallback subject in both worker records; WorkItemKey unchanged; WorkWorkerSubjectIsTheItemId and WorkWorkerRetrySubjectIsTheItemId pin both context components.",
+      "evidence": "src/ArrTags/Updates/LibraryWorkWorker.cs; tests/ArrTags.Tests/LogRedactionTests.cs (AssertQueueContext usages); LogRedactionTests 143/143; check-docs PASS."
+    },
+    {
+      "finding_id": "IR-15.2-02",
+      "closure": "Resolved. A distinct reader-threw catch theory set (path-bearing + pathless) drives the throwing Handler and asserts the subject/fallback; the worker report and changelog agree.",
+      "evidence": "tests/ArrTags.Tests/LogRedactionTests.cs MetadataReaderThrowSubject*; src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs catch block; focused/full runs reproduced."
+    },
+    {
+      "finding_id": "IR-15.2-03",
+      "closure": "Resolved. DriveQueueRetryAsync exercises the retry branch and WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity asserts the WorkItemRetryScheduled subject and retained context.",
+      "evidence": "tests/ArrTags.Tests/LogRedactionTests.cs DriveQueueRetryAsync, RetryableWorkItemProcessor; focused/full runs reproduced."
+    },
+    {
+      "finding_id": "IR-15.2-04",
+      "closure": "Deferred as directed. No code change at the pre-publish ineligible/connection-unavailable discards; the ADR clause 3 wording discrepancy is recorded in known_limitations and the changelog as task 15.4 work.",
+      "evidence": "docs/implementation/15.2/worker-report.attempt-2.json known_limitations[2], rework[IR-15.2-04]; docs/changelog/v1.2.0.md."
+    },
+    {
+      "finding_id": "TQ-15.2-01",
+      "closure": "Resolved by the same correction as IR-15.2-02 (coverage added rather than the claim narrowed).",
+      "evidence": "MetadataReaderThrowSubjectIsTheFileNameOnlyAtEveryVerbosity, MetadataReaderThrowSubjectFallsBackToTheItemIdWhenNoPathIsAvailable."
+    },
+    {
+      "finding_id": "TQ-15.2-02",
+      "closure": "Resolved by the same correction as IR-15.2-03 (coverage added rather than the claim dropped).",
+      "evidence": "WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity, DriveQueueRetryAsync."
+    }
+  ],
+  "ready_for_next_task": true
+}

@@ -156,11 +156,12 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             // An unclassified reader failure is terminal and never publishes.
             if (_log is not null && _log.IsEnabled(LogLevel.Warning))
             {
+                var subject = LogSubject.Create(identity.JellyfinItemId, identity.MediaLocation?.PrimaryPath);
                 _log.Write(
                     LogLevel.Warning,
                     ArrTagsLogEvent.MetadataReadFailed,
                     FormattableString.Invariant(
-                        $"Metadata read failed for item {item.Key.ItemId:D} ({kind.Value.ToApiName()}): the reader threw {exception.GetType().Name}."));
+                        $"Metadata read failed for item {subject} ({kind.Value.ToApiName()}): the reader threw {exception.GetType().Name}."));
             }
 
             return MetadataReconciliationResult.Processed(
@@ -177,11 +178,12 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
 
             if (_log is not null && _log.IsEnabled(LogLevel.Warning))
             {
+                var subject = LogSubject.Create(identity.JellyfinItemId, identity.MediaLocation?.PrimaryPath);
                 _log.Write(
                     LogLevel.Warning,
                     ArrTagsLogEvent.MetadataReadFailed,
                     FormattableString.Invariant(
-                        $"Metadata read failed for item {item.Key.ItemId:D} ({kind.Value.ToApiName()}): {read.Error.Code} ({read.Error.Retryability}). {read.Error.Message}"));
+                        $"Metadata read failed for item {subject} ({kind.Value.ToApiName()}): {read.Error.Code} ({read.Error.Retryability}). {read.Error.Message}"));
             }
 
             if (read.Error.Retryability == ArrErrorRetryability.Later)
@@ -203,28 +205,28 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         if (publishSnapshot.ConfigurationVersion != item.ConfigurationVersion
             || publishSnapshot.ConfigurationVersion != snapshot.ConfigurationVersion)
         {
-            return Discard(item.Key.ItemId, "The configuration changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, "The configuration changed while the work was processing.");
         }
 
         var publishItem = _library.ResolveItem(item.Key.ItemId);
         if (publishItem is null)
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item was removed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, "The Jellyfin item was removed while the work was processing.");
         }
 
         if (!MediaIdentityFactory.TryCreate(publishItem, _library, out var publishIdentity) || publishIdentity is null)
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, "The Jellyfin item changed while the work was processing.");
         }
 
         if (!SubjectMatches(identity, publishIdentity))
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, "The Jellyfin item changed while the work was processing.");
         }
 
         if (!MediaEligibility.IsEligible(publishIdentity, publishSnapshot))
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item is no longer eligible for a badge.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, "The Jellyfin item is no longer eligible for a badge.");
         }
 
         var publishConnection = ResolveConnection(publishSnapshot, kind.Value);
@@ -232,7 +234,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             || !publishConnection.Enabled
             || !publishConnection.ConnectionId.Equals(connection.ConnectionId))
         {
-            return Discard(item.Key.ItemId, "The provider connection changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, "The provider connection changed while the work was processing.");
         }
 
         var entry = MetadataStateEntry.From(
@@ -330,15 +332,33 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         }
     }
 
+    /// <summary>
+    /// Writes one bounded, secret-free discard record for a call site with no
+    /// usable media identity, so the subject is the documented item-identifier
+    /// fallback (ADR-026 clause 3).
+    /// </summary>
     private MetadataReconciliationResult Discard(Guid itemId, string reason)
+    {
+        return Discard(itemId, null, reason);
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free discard record. The mixed discard site is
+    /// reached both where a media identity exists and where it does not, so the
+    /// subject is the primary media file name when <paramref name="primaryPath"/>
+    /// is available and the item-identifier fallback otherwise. A caller with no
+    /// identity passes no path (ADR-026 clause 3).
+    /// </summary>
+    private MetadataReconciliationResult Discard(Guid itemId, string? primaryPath, string reason)
     {
         if (_log is not null && _log.IsEnabled(LogLevel.Information))
         {
+            var subject = LogSubject.Create(itemId, primaryPath);
             _log.Write(
                 LogLevel.Information,
                 ArrTagsLogEvent.MetadataDiscarded,
                 FormattableString.Invariant(
-                    $"Metadata reconciliation discarded item {itemId:D}: {reason}"));
+                    $"Metadata reconciliation discarded item {subject}: {reason}"));
         }
 
         return MetadataReconciliationResult.Processed(WorkProcessingResult.Completed(reason));

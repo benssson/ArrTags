@@ -225,8 +225,12 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
 
     /// <summary>
     /// Writes one bounded, secret-free queue-boundary record for a processed
-    /// work item. Only the bounded work key, the outcome classification, and the
-    /// bounded non-secret reason are emitted (ADR-020 clause 4).
+    /// work item. The subject is the documented item-identifier fallback (the
+    /// worker carries no media identity or path; ADR-026 clause 3) with the
+    /// existing bounded connection scope and image surface retained alongside it
+    /// (ADR-026 clause 1 replaces the emitted item identifier only). The outcome
+    /// classification and the bounded non-secret reason are also emitted
+    /// (ADR-020 clause 4).
     /// </summary>
     private void LogProcessed(LibraryWorkItem item, WorkProcessingResult result, int attempts)
     {
@@ -235,16 +239,22 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
             return;
         }
 
+        var context = DescribeWorkItem(item);
+
         _log.Write(
             LogLevel.Debug,
             ArrTagsLogEvent.WorkItemProcessed,
             FormattableString.Invariant(
-                $"Work item {item.Key} processed in {attempts} attempt(s): success={result.IsSuccess}, retryability={result.Retryability}. {result.Reason}"));
+                $"Work item {context} processed in {attempts} attempt(s): success={result.IsSuccess}, retryability={result.Retryability}. {result.Reason}"));
     }
 
     /// <summary>
     /// Writes one bounded, secret-free queue-boundary record for a scheduled
-    /// retry.
+    /// retry. The subject is the documented item-identifier fallback (the worker
+    /// carries no media identity or path; ADR-026 clause 3) with the existing
+    /// bounded connection scope and image surface retained alongside it
+    /// (ADR-026 clause 1 replaces the emitted item identifier only). The attempt
+    /// count and the bounded retryability are also emitted (ADR-020 clause 4).
     /// </summary>
     private void LogRetryScheduled(LibraryWorkItem item, WorkProcessingResult result, int attempts)
     {
@@ -253,11 +263,28 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
             return;
         }
 
+        var context = DescribeWorkItem(item);
+
         _log.Write(
             LogLevel.Debug,
             ArrTagsLogEvent.WorkItemRetryScheduled,
             FormattableString.Invariant(
-                $"Work item {item.Key} will be retried after {attempts} attempt(s): retryability={result.Retryability}. {result.Reason}"));
+                $"Work item {context} will be retried after {attempts} attempt(s): retryability={result.Retryability}. {result.Reason}"));
+    }
+
+    /// <summary>
+    /// Formats the bounded, secret-free queue-boundary context for one work
+    /// item: the item-identifier fallback subject (ADR-026 clause 3) followed by
+    /// the bounded connection scope and image surface. The connection identity
+    /// and surface are allowed, non-secret diagnostics (ADR-020 clause 4) and
+    /// are not part of the emitted item identifier, so ADR-026 clause 1 does not
+    /// replace them.
+    /// </summary>
+    private static string DescribeWorkItem(LibraryWorkItem item)
+    {
+        var subject = LogSubject.Create(item.Key.ItemId);
+        var surface = item.Key.Surface is null ? "*" : item.Key.Surface.Key;
+        return FormattableString.Invariant($"{subject} ({item.Key.ConnectionId ?? "*"}, {surface})");
     }
 
     /// <summary>

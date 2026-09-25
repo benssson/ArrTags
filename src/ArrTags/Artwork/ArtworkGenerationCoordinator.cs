@@ -118,10 +118,12 @@ public sealed class ArtworkGenerationCoordinator
     }
 
     /// <summary>
-    /// Writes one bounded, secret-free artwork-boundary record. Only the target
-    /// Jellyfin item identifier, the bounded generation outcome, and the bounded
-    /// non-secret reason are emitted; source bytes, artifact paths, provider
-    /// payloads, and credentials are never available here (ADR-020 clause 4).
+    /// Writes one bounded, secret-free artwork-boundary record. Only the bounded
+    /// log subject (the primary media file name when a path is available, and
+    /// otherwise the Jellyfin item identifier; ADR-026), the bounded generation
+    /// outcome, and the bounded non-secret reason are emitted; source bytes,
+    /// artifact paths, directories, provider payloads, and credentials are never
+    /// available here (ADR-020 clause 4 as amended by ADR-026).
     /// </summary>
     private void LogOutcome(ArtworkGenerationRequest request, ArtworkGenerationResult result)
     {
@@ -130,11 +132,15 @@ public sealed class ArtworkGenerationCoordinator
             return;
         }
 
+        var subject = LogSubject.Create(
+            request.JellyfinItemId,
+            request.MediaIdentity.MediaLocation?.PrimaryPath);
+
         _log.Write(
             LogLevel.Information,
             ArrTagsLogEvent.ArtworkGenerationCompleted,
             FormattableString.Invariant(
-                $"Artwork generation for item {request.JellyfinItemId:D} completed with {result.Outcome}: {result.Reason}"));
+                $"Artwork generation for item {subject} completed with {result.Outcome}: {result.Reason}"));
     }
 
     private async Task<ArtworkGenerationResult> GenerateCoreAsync(

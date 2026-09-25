@@ -347,10 +347,13 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
     }
 
     /// <summary>
-    /// Writes one bounded, secret-free matching-boundary record. Only the
-    /// Jellyfin item identifier, the provider kind, the bounded match status and
-    /// method, and the bounded ambiguity reason are emitted; the provider DTO,
-    /// the API key, and the request are never available here (ADR-020 clause 4).
+    /// Writes one bounded, secret-free matching-boundary record. Only the bounded
+    /// log subject (the primary media file name when a path is available, and
+    /// otherwise the Jellyfin item identifier; ADR-026), the provider kind, the
+    /// bounded match status and method, and the bounded ambiguity reason are
+    /// emitted; the provider DTO, the API key, the request, and any directory or
+    /// full path are never available here (ADR-020 clause 4 as amended by
+    /// ADR-026).
     /// </summary>
     private void LogMatch(MediaIdentity identity, ArrConnection connection, MediaMatch match)
     {
@@ -359,12 +362,13 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
             return;
         }
 
+        var subject = LogSubject.Create(identity.JellyfinItemId, identity.MediaLocation?.PrimaryPath);
         var reason = match.AmbiguityReason is { } ambiguity ? " Reason: " + ambiguity : string.Empty;
         _log.Write(
             LogLevel.Debug,
             ArrTagsLogEvent.MatchResolved,
             FormattableString.Invariant(
-                $"Match for Jellyfin item {identity.JellyfinItemId:D} via {connection.Provider.Kind.ToApiName()} resolved to {match.Status} ({match.MatchMethod}).{reason}"));
+                $"Match for Jellyfin item {subject} via {connection.Provider.Kind.ToApiName()} resolved to {match.Status} ({match.MatchMethod}).{reason}"));
     }
 
     /// <summary>
