@@ -3,7 +3,7 @@
   "title": "Authoritative restart-required set with code evidence",
   "phase": 16,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "04de6df",
   "subagents": [
     {
       "role": "implementation-worker",
