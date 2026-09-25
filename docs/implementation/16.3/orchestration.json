@@ -3,7 +3,7 @@
   "title": "Restart-required note text on the settings page",
   "phase": 16,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "b725d9b",
   "subagents": [
     {
       "role": "implementation-worker",
