@@ -1,0 +1,114 @@
+{
+  "task": "16.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the ADR-028 clause 3 always-present restart-required note text on the settings page (goal G8, phase 16 task 16.3). src/ArrTags/Configuration/config.html now carries a static fieldDescription restartRequiredNote div (id <elementId>RestartNote) inside each restart-required setting's own input container, before the page <script> block: the four restart-only settings (renderCacheTtlMinutes, renderCacheQuotaBytes, artifactStorageQuotaBytes, terminalProvenanceRetentionDays) read 'A Jellyfin server restart is required for a change to this setting to take effect.' and the three mixed settings (sourceArtifactLimitBytes, derivedArtifactLimitBytes, maxImageDimensionPixels) append 'Some paths apply the change immediately.' The note is plain markup, so it is present in the served page without JavaScript execution; the restartRequiredFields table added by task 16.2 is unchanged except for a comment recording that it is now data for the task 16.5 modal. tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs adds 3 structural cases deriving the expected element ids and mixed subset from the code-owned RestartRequiredSettings classification and pinning the exact strings and their association: exact set equality of <id>RestartNote ids in static markup (lost/extra/duplicate notes fail), exact full note markup adjacent to each input and before the script (count pinned), and per-note parsing asserting the restart sentence plus the immediate-application clause iff mixed and no 'immediately' claim for restart-only. Sensitivity probes: deleting the maxImageDimensionPixels note failed 3/3; relabelling the restart-only renderCacheTtlMinutes note with the mixed text failed 2; duplicating the renderCacheTtlMinutes note failed 2; all probes reverted and the final focused run reports 3 passed. Docs: changelog 16.3 entry; architecture 06, architecture 12, and data-model 03-12 updated from 'is task 16.3' to the shipped behavior; PLANS.md ticked; state.json done/reports set. No modal, classification, save-path, persisted-state, validation, endpoint, or dependency change. Default suite Failed 0 / Passed 1747 / Skipped 63 / Total 1810 (baseline after 16.2: Failed 0 / Passed 1744 / Skipped 63 / Total 1807; delta +3 passed / +3 total, 0 new skips). ARRTAGS_JELLYFIN_HOST_DIR is unset, so the host-guarded run was not performed.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx) on the final tree.",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1747, Skipped: 63, Total: 1810, Duration: 18 s - ArrTags.Tests.dll (net10.0)'. Pre-task baseline on commit 18c54c4 (as recorded by the 16.2 report): Failed 0, Passed 1744, Skipped 63, Total 1807; delta +3 passed / +3 total, 0 new skips.",
+    "Focused run: dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RestartRequiredNoteText\" -> 'Passed! - Failed: 0, Passed: 3, Skipped: 0, Total: 3' on the final (reverted) tree.",
+    "ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment (verified with echo), so the host-guarded run was not performed; the default run reports the same 63 host-guarded skips as the baseline. No host-guarded fact was changed by this task.",
+    "Test-sensitivity probes (each temporary config.html edit rebuilt with ./build.sh build, run with the focused filter, then reverted from the pre-probe copy; the full-suite run above is on the reverted tree): (A) delete the maxImageDimensionPixels note div -> 'Failed: 3, Passed: 0, Total: 3' (all three cases); (B) relabel the restart-only renderCacheTtlMinutes note with the mixed text -> 'Failed: 2, Passed: 1, Total: 3' (exact-note and clause cases; the id-set case correctly still passes); (C) duplicate the renderCacheTtlMinutes note div -> 'Failed: 2, Passed: 1, Total: 3' (id-set equality and note-count cases). After revert: 7 note divs, 3 mixed notes, focused run 3 passed; git diff shows no probe residue.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. This run was on the final tree before this worker-report.json existed; after the report is persisted the only expected change is the worker/reviewer pairing in section 9, satisfied when the orchestrator's implementation-reviewer report is added (same pattern as tasks 15.4, 16.1, and 16.2).",
+    "Stale-wording search: grep -rn 'is task 16.3|note text that marks' docs/architecture docs/data-model README.md docs/status.md PLANS.md -> no matches (exit 1). README was checked explicitly: its settings-page paragraph states the construction-captured behavior but makes no restart-indication claim, so this task does not make it stale; the user-facing G6/G8 sweep is task 16.6 per PLANS.md.",
+    "git status --short / git diff inspection -> seven modified tracked files (PLANS.md, docs/architecture/06-configuration-and-persisted-state.md, docs/architecture/12-performance-and-operational-limits.md, docs/changelog/v1.2.0.md, docs/data-model/03-12-configuration.md, docs/plan/state.json, src/ArrTags/Configuration/config.html) plus the new tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs and this report; no unrelated file changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/data-model/03-12-configuration.md",
+    "docs/changelog/v1.2.0.md",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/implementation/16.3/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "G8: Every restart-required setting in the settings page carries note text stating that a server restart is required.",
+      "evidence": "config.html carries exactly seven static 'fieldDescription restartRequiredNote' divs, one inside each restart-required setting's input container and before the <script> block; tests/ArrTags.Tests/RestartRequiredNoteTextTests.TheStaticPageCarriesExactlyTheRestartRequiredNotes derives the expected ids from RestartRequiredSettings.RestartRequired and asserts exact set equality, and EveryRestartRequiredSettingCarriesItsExactNoteNextToItsElement asserts the exact note markup after each input and before the next input container with the count pinned to the classification."
+    },
+    {
+      "criterion": "G8: The restart-required set is code-owned, evidenced, and testable with mixed settings classified restart-required; a setting with both a construction-captured and a per-operation consumer is classified restart-required, and its note text states that some paths apply immediately.",
+      "evidence": "The classification is the task 16.2 code-owned RestartRequiredSettings (unchanged); this task renders from it. The three mixed settings (sourceArtifactLimitBytes, derivedArtifactLimitBytes, maxImageDimensionPixels) carry the note 'A Jellyfin server restart is required for a change to this setting to take effect. Some paths apply the change immediately.' while the four restart-only settings carry only the restart sentence. MixedNotesStateImmediateApplicationAndRestartOnlyNotesDoNot parses each served note, asserts the exact restart sentence for all seven, the immediate-application clause iff entry.IsMixed, and no 'immediately' claim for restart-only; the probe that relabelled a restart-only note with the mixed text failed it."
+    },
+    {
+      "criterion": "ADR-028 clause 3: the note text is always present (present in the served page without JavaScript execution).",
+      "evidence": "The notes are plain HTML markup placed before the page's <script> block; TheStaticPageCarriesExactlyTheRestartRequiredNotes scans only the pre-script static markup, and EveryRestartRequiredSettingCarriesItsExactNoteNextToItsElement asserts each note index is before the script start. No note text is produced by JavaScript, and the restartRequiredFields table remains data only."
+    },
+    {
+      "criterion": "Tests: derive the expected restart-required element ids (and mixed subset) from the code-owned classification, assert the page carries the required note text for each, and fail if a restart-required setting loses its note or a mixed setting is mislabelled.",
+      "evidence": "tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs (3 cases) iterates RestartRequiredSettings.RestartRequired and uses entry.PageElementIds/entry.IsMixed for all expectations. Probes A (missing note -> 3 failures), B (restart-only relabelled with mixed text -> 2 failures), and C (duplicate note -> 2 failures) show the sensitivity; all reverted."
+    },
+    {
+      "criterion": "Exact strings are pinned and associated with each element id (static page duplication).",
+      "evidence": "RestartNoteText and MixedNoteText are pinned constants; NoteMarkup builds the exact '<div class=\"fieldDescription restartRequiredNote\" id=\"{id}RestartNote\">...' association, asserted for every entry in EveryRestartRequiredSettingCarriesItsExactNoteNextToItsElement and parsed back from the served page in MixedNotesStateImmediateApplicationAndRestartOnlyNotesDoNot."
+    },
+    {
+      "criterion": "Task boundary: no modal (16.4/16.5), no change to the classification, save path, persisted state, validation semantics, endpoints, or dependencies; keep the change to the settings page, its tests, and the task's docs.",
+      "evidence": "git diff touches only config.html (static markup + one comment) plus the new test file and documentation/state surfaces. RestartRequiredSettings/SettingClassification/SettingApplicationScope, the controllers, PluginConfigurationValidator, PluginConfigurationSnapshot, and all csproj files are unchanged. No endpoint or dependency is added; no JavaScript behavior changes."
+    },
+    {
+      "criterion": "Documentation: update docs/changelog/v1.2.0.md with the task entry and any canonical surface this task changes; do not do the final G6/G8 sweep (16.6 owns it).",
+      "evidence": "docs/changelog/v1.2.0.md gains the Task 16.3 entry; the three current-state surfaces that named task 16.3 as pending (docs/architecture/06-configuration-and-persisted-state.md, docs/architecture/12-performance-and-operational-limits.md, docs/data-model/03-12-configuration.md) now describe the shipped static note text; PLANS.md 16.3 is ticked; state.json records done/reports. README was checked and left for the 16.6 sweep (no stale claim)."
+    },
+    {
+      "criterion": "Required validation: build succeeds; default suite passes with exact counts; host-guarded run reported or its absence stated; scripts/check-docs.sh PASS; test sensitivity shown.",
+      "evidence": "Build 0 warnings/0 errors; default suite Failed 0 / Passed 1747 / Skipped 63 / Total 1810 (+3/+3 over the 16.2 baseline); ARRTAGS_JELLYFIN_HOST_DIR unset so the host-guarded run was not performed (63 skips as baseline); check-docs.sh PASS (nine sections) on the final tree before this report was persisted; probes A-C recorded above."
+    },
+    {
+      "criterion": "Process: set task 16.3 done:true and its reports in docs/plan/state.json, tick the PLANS.md checkbox, add the changelog entry, persist this structured report under docs/implementation/16.3/, and do not create a commit.",
+      "evidence": "docs/plan/state.json 16.3 done=true with reports ['docs/implementation/16.3/worker-report.json']; PLANS.md '- [x] 16.3 ...'; docs/changelog/v1.2.0.md Task 16.3 entry; this worker-report.json; no git commit was created (git status shows working-tree changes only)."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Exact wording of the always-present note text (ADR-028 clause 3 fixes the required content, not the verbatim string).",
+      "chosen": "Restart-only: 'A Jellyfin server restart is required for a change to this setting to take effect.' Mixed: the same sentence plus ' Some paths apply the change immediately.'",
+      "basis": "ADR-028 clause 3 requires note text stating that a server restart is required for the change to take effect, and for a mixed setting additionally that some paths apply the change immediately; the phase task instructs pinning the exact strings in a test. The mixed form keeps the restart-only sentence as an exact prefix so both categories provably carry the statement clause 3 requires.",
+      "impact": "User-visible wording only; the strings are pinned by RestartRequiredNoteTextTests. No persisted state, limit/window/unit meaning, or save/validation semantics change."
+    },
+    {
+      "question": "Placement and identity of the static note markup.",
+      "chosen": "A <div class=\"fieldDescription restartRequiredNote\" id=\"<elementId>RestartNote\"> placed inside the same .inputContainer as the input, after the input (and its range description where present).",
+      "basis": "The task says to prefer static markup adjacent to each affected input and to keep it consistent with the existing fieldDescription usage; the id scheme gives an explicit test-checkable association with SettingClassification.PageElementIds.",
+      "impact": "Presentation/DOM structure only; no behavior or data semantics."
+    }
+  ],
+  "test_sensitivity": [
+    "TheStaticPageCarriesExactlyTheRestartRequiredNotes fails when a restart-required note is removed (probe A: deleted the maxImageDimensionPixels note -> all 3 cases failed), when a note is duplicated (probe C: duplicated the renderCacheTtlMinutes note -> 2 cases failed: id-set equality and the pinned count), and when the note id no longer matches the classification-derived element id (regex set equality).",
+    "EveryRestartRequiredSettingCarriesItsExactNoteNextToItsElement fails on a missing note (probe A -> 3/3 cases failed), a changed or mislabelled note text (probe B: relabelled the restart-only renderCacheTtlMinutes note with the mixed text -> 2 cases failed), a detached note (asserts note index is after its input and before the next input container), and a note after the script (asserts note index < script start).",
+    "MixedNotesStateImmediateApplicationAndRestartOnlyNotesDoNot fails when a mixed setting loses the immediate-application clause or a restart-only setting gains it (probe B failed it), i.e. when a mixed setting is mislabelled restart-only or a restart-only setting is mislabelled mixed.",
+    "No new guard/validator is introduced by this task; the task 16.2 SettingClassification constructor guard remains covered by RestartRequiredSettingsTests.TheClassificationRejectsAnInconsistentEntry."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md",
+      "PLANS.md",
+      "docs/plan/state.json",
+      "docs/architecture/06-configuration-and-persisted-state.md",
+      "docs/architecture/12-performance-and-operational-limits.md",
+      "docs/data-model/03-12-configuration.md",
+      "docs/status.md (regenerated check: up to date)"
+    ],
+    "old_values_removed": [
+      "'is task 16.3' (the three current-state statements that named the note text as pending; grep over docs/architecture, docs/data-model, README.md, docs/status.md, PLANS.md returns no matches)",
+      "'note text that marks' (same search, no matches)"
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The page JavaScript cannot be executed in this repository/environment (no JS runtime), so the page contract is verified structurally against the served embedded resource rather than by running the dashboard page. The ADR-028 clause 3 note contract does not need JS: the notes are static markup before the script and the tests scan that markup.",
+    "The modal reminder on change is not implemented here; per PLANS.md Phase 16 it is the task 16.4 spike and task 16.5 implementation, with the note text as the fail-open behavior. Until 16.5 lands, a changed restart-required setting shows no modal.",
+    "The user-facing G6/G8 documentation sweep (README capability statements, integration verification) is task 16.6 per PLANS.md; README was checked and contains no stale restart-indication claim, so it was deliberately not touched here."
+  ],
+  "ready_for_next_task": true
+}

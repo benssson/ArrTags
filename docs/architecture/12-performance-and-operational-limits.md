@@ -50,10 +50,12 @@ construction-only `RenderCacheTtlMinutes`, `RenderCacheQuotaBytes`,
 `ArtifactStorageQuotaBytes`, and `TerminalProvenanceRetentionDays`. Every other
 setting is per-operation: the remaining operational limits, `LogVerbosity`, the
 connection fields, the badge/library scope, and the renderer configuration. The
-settings page mirrors the set in its `restartRequiredFields` table; the note
-text that marks each restart-required setting, stating for a mixed setting that
-some paths apply the change immediately, is task 16.3, and the per-consumer
-evidence is recorded in `docs/implementation/16.2/consumer-evidence.md`. The
+settings page mirrors the set in its `restartRequiredFields` table and marks
+each restart-required setting with always-present static note text stating that
+a Jellyfin server restart is required for a change to take effect; a mixed
+setting's note also states that some paths apply the change immediately (ADR-028
+clause 3; task 16.3). The per-consumer evidence is recorded in
+`docs/implementation/16.2/consumer-evidence.md`. The
 "HTTP request timeout" row above describes the per-connection
 `ArrConnectionConfiguration.RequestTimeoutSeconds`; the global
 `OperationalLimits.RequestTimeoutSeconds` field is validated and persisted but

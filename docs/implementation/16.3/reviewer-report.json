@@ -1,0 +1,94 @@
+{
+  "task": "16.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Independent review of task 16.3 (restart-required note text on the settings page, ADR-028 clause 3 / goal G8). The working-tree diff is task-scoped: src/ArrTags/Configuration/config.html adds exactly seven static fieldDescription restartRequiredNote divs (one per code-owned restart-required setting, id <elementId>RestartNote, inside the setting's own .inputContainer after its input and before the page's single <script> at line 300), the new tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs adds 3 structural cases deriving the expected ids and mixed subset from RestartRequiredSettings, and the seven documentation/state surfaces are updated. I independently inspected the built Release embedded resource: restartRequiredNote x7, restart sentence x7, immediate-application clause x3, and each of the seven <id>RestartNote ids exactly once; the page is served directly from that embedded resource (Plugin.GetPages, host injects nothing), so the note text is always present without JavaScript. The three mixed settings (sourceArtifactLimitBytes, derivedArtifactLimitBytes, maxImageDimensionPixels) carry the immediate clause; the four restart-only settings do not. Build succeeded 0 warnings / 0 errors; focused RestartRequiredNoteText 3/3 passed; default suite Failed 0 / Passed 1747 / Skipped 63 / Total 1810 (16.2 baseline 1744/63/1807, delta +3, consistent with 3 new [Fact]s). No modal (16.4/16.5) and no classification, save-path, validation, endpoint, dependency, or csproj change. state.json 16.3 done with worker report; PLANS.md ticked; phase 16 status remains PLANNED and no phase tag/complete claim is made. check-docs.sh passes all sections except the worker/reviewer pairing for 16.3, which this report resolves. No open findings.",
+  "findings": [
+    {
+      "id": "16.3-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / validation",
+      "summary": "check-docs.sh FAILs only on the 16.3 worker/reviewer report pairing, which this persisted reviewer report resolves; all other sections pass.",
+      "detail": "Before this report existed, `scripts/check-docs.sh` reported eight ok sections plus `FAIL: agent contract check failed: ... task 16.3 has a worker report but no reviewer report`, then `check-docs: FAIL`. This is the expected worker/reviewer pairing state for an in-flight task (same pattern as 15.4, 16.1, 16.2) and is not a defect in the implementation. Writing docs/implementation/16.3/reviewer-report.json satisfies scripts/check-agents.sh's pairing check.",
+      "evidence": [
+        "scripts/check-docs.sh output on the pre-review tree: 8x ok, then FAIL 'task 16.3 has a worker report but no reviewer report'",
+        "scripts/check-agents.sh lines 105-118 (pairing loop requires docs/implementation/<task>/reviewer-report.json)"
+      ],
+      "recommended_action": "None; resolved by persisting this reviewer report."
+    },
+    {
+      "id": "16.3-F2",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "testing / future-proofing",
+      "summary": "The note-id regex in the test accepts only [A-Za-z0-9]+ id prefixes; a future restart-required setting with a non-alphanumeric page element id would make the guard fail rather than silently pass.",
+      "detail": "TheStaticPageCarriesExactlyTheRestartRequiredNotes extracts ids with Regex id=\"([A-Za-z0-9]+)RestartNote\". All seven current restart-required page element ids are alphanumeric (verified against RestartRequiredSettings and the served markup), so the guard is exact for the current set. If a future classification entry used a hyphen/underscore page element id, the extracted set would omit it and the Assert.Equal against the classification-derived expected set would fail (fail-safe, not a false pass). This is a test-maintenance note, not a correctness issue for this task.",
+      "evidence": [
+        "tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs lines 45-57",
+        "src/ArrTags/Configuration/RestartRequiredSettings.cs lines 127-157 (all restart-required page element ids are alphanumeric)"
+      ],
+      "recommended_action": "No change required for task 16.3; the guard fails safe if the id scheme ever changes."
+    },
+    {
+      "id": "16.3-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirement / ADR-028 clause 3",
+      "summary": "Every restart-required setting carries correct, correctly-associated, always-present note text; mixed settings include the immediate-application clause and restart-only settings do not.",
+      "detail": "Independently verified against the code-owned classification (RestartRequiredSettings.RestartRequired, 7 entries, 3 mixed). The built Release embedded resource (ArrTags.Configuration.config.html, served by Plugin.GetPages with no host injection) contains restartRequiredNote x7, the exact restart sentence x7, the exact immediate-application clause x3, and each of the seven <id>RestartNote ids exactly once. Each note div sits inside its own .inputContainer after its input (and after any range description) and before the single <script> block at config.html line 300, so it is static markup that cannot be mistaken for another input and does not depend on JavaScript. The test derives ids/mixed subset from the classification and pins the exact full div markup, adjacency, pre-script position, exact count, and per-note mixed/restart-only clauses.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html lines 229-266 (seven static note divs, before <script> at line 300)",
+        "git diff -- src/ArrTags/Configuration/config.html (only note divs + restartRequiredFields comment)",
+        "grep -a -o over src/ArrTags/bin/Release/net10.0/ArrTags.dll: restartRequiredNote=7, restart sentence=7, immediate clause=3, RestartNote=7, each <id>RestartNote=1",
+        "src/ArrTags/Plugin.cs lines 91-99 (page served from the embedded resource; host injects nothing)",
+        "tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs (3 cases)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "16.3-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope / task boundary",
+      "summary": "No modal, classification, save-path, validation, endpoint, dependency, or phase-completion change; the modal remains 16.4/16.5 and phase 16 stays PLANNED.",
+      "detail": "git diff touches only config.html among product files (static note divs + one comment in the restartRequiredFields table recording that the table is now data for the 16.5 modal). No *.cs, *.csproj, *.slnx, or build.yaml change. config.html contains no modal/notify/alert call. docs/plan/state.json keeps phase 16 status PLANNED with tag v1.2.0-phase16 and does not mark the phase gate complete; the v1.2.0 release status remains PLANNED. The changelog entry states the task status (Complete) and explicitly excludes the modal and the 16.6 sweep.",
+      "evidence": [
+        "git diff --name-only (only config.html among src; no csproj/slnx/build.yaml)",
+        "grep -in 'modal|notify|alert' config.html -> only the comment referencing task 16.5",
+        "docs/plan/state.json phase 16 status=PLANNED, tasks 16.4/16.5/16.6 done=false",
+        "docs/changelog/v1.2.0.md Task 16.3 entry"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/RestartRequiredNoteTextTests.cs (3 cases: TheStaticPageCarriesExactlyTheRestartRequiredNotes, EveryRestartRequiredSettingCarriesItsExactNoteNextToItsElement, MixedNotesStateImmediateApplicationAndRestartOnlyNotesDoNot) — inspected for classification-derived expectations, exact-string pinning, adjacency, duplicate/missing detection, and pre-script static-markup enforcement; sensitivity reasoned analytically against missing/mislabelled/duplicated notes (all fail).",
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)'",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~RestartRequiredNoteText\" -> 'Passed! - Failed: 0, Passed: 3, Skipped: 0, Total: 3'",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1747, Skipped: 63, Total: 1810, Duration: 16 s' (16.2 baseline per its reviewer report: Failed 0 / Passed 1744 / Skipped 63 / Total 1807; delta +3 passed/+3 total, matching the 3 new [Fact]s)",
+    "Independent embedded-resource inspection of src/ArrTags/bin/Release/net10.0/ArrTags.dll (grep -a -o): 7 restartRequiredNote, 7 restart sentences, 3 immediate clauses, 7 RestartNote ids, each <id>RestartNote once"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-028.md clause 2 (binary restart-required classification; mixed settings) and clause 3 (always-present note text; mixed immediate-application clause)",
+    "docs/planning/v1.2.md Goal G8 acceptance criteria and DG-17",
+    "src/ArrTags/Configuration/RestartRequiredSettings.cs (7 restart-required entries: 4 restart-only, 3 mixed) — confirmed the page ids and mixed flags match the notes",
+    "src/ArrTags/Plugin.cs lines 84-99 — the settings page is the embedded resource ArrTags.Configuration.config.html served with no host injection, so static markup is the served page"
+  ],
+  "documentation_checked": [
+    "PLANS.md — 16.3 ticked [x]; 16.4/16.5/16.6 still unchecked; milestone table regenerated (render-docs-state reports 'PLANS.md: up to date')",
+    "docs/plan/state.json — 16.3 done=true with reports ['docs/implementation/16.3/worker-report.json']; phase 16 status PLANNED; no phase gate/tag claim",
+    "docs/status.md — regenerated check: 'status.md: up to date' (unchanged because it tracks phase-level state)",
+    "docs/changelog/v1.2.0.md — Task 16.3 entry present, accurate, no phase-completion claim",
+    "docs/architecture/06-configuration-and-persisted-state.md — 'is task 16.3' replaced with shipped static-note behavior",
+    "docs/architecture/12-performance-and-operational-limits.md — pending wording replaced with shipped static-note behavior; sentence flow intact",
+    "docs/data-model/03-12-configuration.md — pending wording replaced with shipped static-note behavior",
+    "README.md — checked; contains no restart-indication claim, so not stale (user-facing G6/G8 sweep is task 16.6)",
+    "grep for stale 'is task 16.3' / 'note text that marks' across docs/architecture, docs/data-model, README.md, docs/status.md, PLANS.md -> no matches",
+    "scripts/check-docs.sh — 8 ok sections; only the 16.3 worker/reviewer pairing FAILed pre-report (resolved by this report)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

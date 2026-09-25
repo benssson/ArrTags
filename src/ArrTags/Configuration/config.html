@@ -229,13 +229,16 @@
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="sourceArtifactLimitBytes" min="0.0625" max="128" step="0.0625" label="Source artifact limit (MB)" />
                             <div class="fieldDescription" id="sourceArtifactLimitBytesRange">Valid range: 0.0625 - 128 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="sourceArtifactLimitBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect. Some paths apply the change immediately.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="derivedArtifactLimitBytes" min="0.0625" max="128" step="0.0625" label="Derived artifact limit (MB)" />
                             <div class="fieldDescription" id="derivedArtifactLimitBytesRange">Valid range: 0.0625 - 128 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="derivedArtifactLimitBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect. Some paths apply the change immediately.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="maxImageDimensionPixels" pattern="[0-9]*" min="512" max="16384" label="Maximum image dimension (pixels)" />
+                            <div class="fieldDescription restartRequiredNote" id="maxImageDimensionPixelsRestartNote">A Jellyfin server restart is required for a change to this setting to take effect. Some paths apply the change immediately.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="reconciliationBatchSize" pattern="[0-9]*" min="1" max="1000" label="Reconciliation batch size" />
@@ -245,17 +248,21 @@
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="renderCacheTtlMinutes" pattern="[0-9]*" min="1" max="43200" label="Render cache TTL (minutes)" />
+                            <div class="fieldDescription restartRequiredNote" id="renderCacheTtlMinutesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="renderCacheQuotaBytes" min="64" max="65536" step="1" label="Render cache quota (MB)" />
                             <div class="fieldDescription" id="renderCacheQuotaBytesRange">Valid range: 64 - 65536 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="renderCacheQuotaBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="artifactStorageQuotaBytes" min="256" max="262144" step="1" label="Artifact storage quota (MB)" />
                             <div class="fieldDescription" id="artifactStorageQuotaBytesRange">Valid range: 256 - 262144 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="artifactStorageQuotaBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="terminalProvenanceRetentionDays" pattern="[0-9]*" min="1" max="365" label="Terminal provenance retention (days)" />
+                            <div class="fieldDescription restartRequiredNote" id="terminalProvenanceRetentionDaysRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="inventoryCacheTtlMinutes" pattern="[0-9]*" min="1" max="1440" label="Inventory cache TTL (minutes)" />
@@ -317,11 +324,12 @@
 
             // ADR-028 clause 2: the authoritative restart-required settings,
             // mirroring the code-owned RestartRequiredSettings classification
-            // (scope and mixed flag). Every restart-required setting needs note
-            // text stating that a server restart is required; a mixed setting has
-            // both a construction-captured and a per-operation consumer, so its
-            // note also states that some paths apply the change immediately. The
-            // structural tests compare this table against the C# classification.
+            // (scope and mixed flag). Every restart-required setting carries
+            // always-present static note text next to its element (task 16.3); a
+            // mixed setting has both a construction-captured and a per-operation
+            // consumer, so its note also states that some paths apply the change
+            // immediately. This table is data for the modal reminder (task 16.5),
+            // and the structural tests compare it against the C# classification.
             var restartRequiredFields = [
                 { setting: 'SourceArtifactLimitBytes', elementId: 'sourceArtifactLimitBytes', mixed: true },
                 { setting: 'DerivedArtifactLimitBytes', elementId: 'derivedArtifactLimitBytes', mixed: true },

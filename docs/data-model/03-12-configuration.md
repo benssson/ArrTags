@@ -167,9 +167,12 @@ and `TerminalProvenanceRetentionDays`. Every other persisted field — the
 remaining limits, `LogVerbosity`, the connection fields, `EnabledLibraries`,
 `BadgeMoviePosters`/`BadgeEpisodePosters`, and the renderer
 selectors/position/size/palette — is per-operation. The per-consumer evidence is
-recorded in `docs/implementation/16.2/consumer-evidence.md`, the settings page
-mirrors the restart-required set in its `restartRequiredFields` table, and the
-note text that marks each restart-required field is task 16.3.
+recorded in `docs/implementation/16.2/consumer-evidence.md`, and the settings
+page mirrors the restart-required set in its `restartRequiredFields` table and
+marks each restart-required field with always-present static note text that
+states a Jellyfin server restart is required for a change to take effect (for a
+mixed field, also that some paths apply the change immediately; ADR-028 clause
+3; task 16.3).
 
 #### 3.12.1 Secret resolution semantics
 

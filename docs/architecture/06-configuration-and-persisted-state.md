@@ -128,9 +128,10 @@ and `TerminalProvenanceRetentionDays`; every other setting, including
 `LogVerbosity`, the connection fields, the badge/library scope, and the renderer
 configuration, is per-operation. The per-consumer evidence is recorded in
 `docs/implementation/16.2/consumer-evidence.md`; the settings page mirrors the
-set in its `restartRequiredFields` table, and ADR-028 clause 3 note text for
-every restart-required setting (with the mixed "some paths apply immediately"
-statement) is task 16.3.
+set in its `restartRequiredFields` table and marks every restart-required setting
+with always-present static note text stating that a Jellyfin server restart is
+required for a change to take effect, with the mixed settings also stating that
+some paths apply the change immediately (ADR-028 clause 3; task 16.3).
 
 ### Logging and verbosity
 
