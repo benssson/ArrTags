@@ -5,7 +5,7 @@ namespace ArrTags.Media;
 /// <summary>
 /// The V1 policy that decides whether a Jellyfin item has an eligible local file
 /// location for badge generation. It implements the fail-closed behavior
-/// recorded in <c>docs/architecture.md</c> section 7 and ADR-008: remote,
+/// recorded in <c>docs/architecture/07-sonarr-and-radarr-integration.md</c> section 7 and <c>docs/decisions/ADR-008.md</c>: remote,
 /// virtual, offline, <c>.strm</c>, missing/fileless, and otherwise non-local
 /// items are never eligible and therefore produce no badge. It never compares
 /// Jellyfin and Arr paths and never uses a path as an identity key.

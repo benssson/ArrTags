@@ -297,7 +297,7 @@ install/restart/uninstall.
 
 One documented fail-closed observation: a full library scan that re-adopts the
 local sidecar poster as the Primary image is detected as `OwnershipLost`, and
-ArrTags then intentionally does not auto-republish (see `docs/data-model.md`
-section 3.10.4 and `docs/architecture.md`); the readback serves the host image
+ArrTags then intentionally does not auto-republish (see `docs/data-model/03-10-artworkcacheentry.md`
+section 3.10.4 and `docs/architecture/09-persisted-artwork-rendering.md`); the readback serves the host image
 until an explicit administrative action starts a new session. See findings
 F-14.3-1 through F-14.3-4 in `docs/implementation/14.3/live-verification.json`.

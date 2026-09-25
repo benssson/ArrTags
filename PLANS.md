@@ -34,8 +34,8 @@ moved verbatim to [`docs/plan/archive/`](docs/plan/archive/).
 - Update task checkboxes and the status table as work lands; do not mark a
   milestone complete until every acceptance criterion is verified.
 - Record decisions that change an architecture assumption in
-  `docs/decisions/00-index.md`, then update `docs/architecture.md` or
-  `docs/data-model.md` before implementation relies on them.
+  `docs/decisions/00-index.md`, then update `docs/architecture/00-index.md` or
+  `docs/data-model/00-index.md` before implementation relies on them.
 - Keep provider DTOs, Jellyfin entities, credentials, and implementation
   details at their boundaries. The matching, metadata, rendering, and cache
   pipeline consumes the canonical models.

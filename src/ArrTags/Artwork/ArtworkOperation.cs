@@ -4,7 +4,7 @@ namespace ArrTags.Artwork;
 
 /// <summary>
 /// The durable write-ahead operation record for one publication or restoration
-/// attempt, following <c>docs/data-model.md</c> section 3.10.3 and ADR-003. It
+/// attempt, following <c>docs/data-model/03-10-artworkcacheentry.md</c> section 3.10.3 and ADR-003. It
 /// bridges the non-transactional Jellyfin image APIs and the plugin-owned
 /// <see cref="PublishedArtworkState"/>: the complete intent, the exact before
 /// identity, the candidate after content, and the artifact references are

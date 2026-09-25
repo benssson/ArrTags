@@ -9,7 +9,7 @@ namespace ArrTags.Artwork;
 
 /// <summary>
 /// The provider-neutral, single-subject publication orchestration. It drives the
-/// durable write-ahead protocol from ADR-003 and `docs/architecture.md` section 9
+/// durable write-ahead protocol from ADR-003 and `docs/architecture/09-persisted-artwork-rendering.md` section 9
 /// for one Jellyfin item and one V1 image surface: it retains the exact source
 /// baseline, promotes the completed render output to a durable artifact, persists
 /// an <see cref="ArtworkOperation"/> in <see cref="ArtworkOperationPhase.Prepared"/>

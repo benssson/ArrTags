@@ -15,10 +15,10 @@ namespace ArrTags.Matching;
 /// and contains no provider DTO.
 /// </summary>
 /// <remarks>
-/// The policy implements the documented order in <c>docs/architecture.md</c>
+/// The policy implements the documented order in <c>docs/architecture/07-sonarr-and-radarr-integration.md</c>
 /// section 7, "Matching policy": episode TVDB id first, then exact season and
 /// episode numbers after the series match. Absolute/scene numbering is recorded
-/// as unsupported for V1 in <c>docs/decisions.md</c> ADR-007.
+/// as unsupported for V1 in <c>docs/decisions/ADR-007.md</c>.
 /// </remarks>
 public static class EpisodeNumberingPolicy
 {

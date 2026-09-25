@@ -21,7 +21,7 @@ namespace ArrTags.Providers;
 /// ADR-020 clause 4), exactly as for the per-item metadata record's last-error
 /// summary. The entry therefore never stores the <see cref="ArrConnection"/>, its
 /// API-key reference, or a secret lease. It is distinct from the per-item
-/// <c>MetadataCacheEntry</c> (<c>docs/data-model.md</c> 3.9), which remains the
+/// <c>MetadataCacheEntry</c> (<c>docs/data-model/03-09-metadatacacheentry.md</c> 3.9), which remains the
 /// per-item match and metadata freshness record. The configured inventory TTL is
 /// the total bounded lifetime of the observation set: it is fresh for the first
 /// half (<see cref="ExpiresAt"/>) and may be served as explicit bounded

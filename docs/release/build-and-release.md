@@ -11,7 +11,7 @@ owns Phase 7 acceptance criterion 5 ("The release artifact and build process are
 reproducible and documented").
 
 Architecture and accepted decisions stay authoritative in
-`docs/architecture.md` and `docs/decisions/00-index.md`; the live pinned test host is
+`docs/architecture/00-index.md` and `docs/decisions/00-index.md`; the live pinned test host is
 documented in `docs/testing/jellyfin-12-musl-test-host.md`.
 
 ## Pinned toolchain and inputs

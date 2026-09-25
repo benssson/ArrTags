@@ -13,7 +13,7 @@ namespace ArrTags.Matching;
 /// than a widened search.
 /// </summary>
 /// <remarks>
-/// The accepted order (see <c>docs/architecture.md</c> section 7, "Matching
+/// The accepted order (see <c>docs/architecture/07-sonarr-and-radarr-integration.md</c> section 7, "Matching
 /// policy") is:
 /// <list type="bullet">
 /// <item>Movie to Radarr: TMDb id, then IMDb id.</item>
