@@ -3,7 +3,7 @@
   "title": "Logging documentation, ADR-020 amendment, and security review",
   "phase": 15,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "a10497c",
   "subagents": [
     {
       "role": "implementation-worker",
