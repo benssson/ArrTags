@@ -2,8 +2,8 @@
   "task": "17.1",
   "title": "Bounded diagnostics metrics model and instrumentation",
   "phase": 17,
-  "status": "IN_PROGRESS",
-  "commit": null,
+  "status": "COMPLETE",
+  "commit": "885ee7a",
   "subagents": [
     {
       "role": "implementation-worker",

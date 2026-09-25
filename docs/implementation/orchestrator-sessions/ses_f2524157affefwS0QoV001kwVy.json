@@ -1,0 +1,30 @@
+{
+  "session_id": "ses_f2524157affefwS0QoV001kwVy",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "default",
+  "title": "Starting phase 17",
+  "tokens": {
+    "input": 158513,
+    "output": 7500,
+    "reasoning": 1417,
+    "cache": {
+      "read": 2094336,
+      "write": 0
+    }
+  },
+  "total_tokens": 2261766,
+  "cost_usd": 0.035383458,
+  "duration_seconds": 1,
+  "first_recorded_at": "2026-09-25T23:55:23Z",
+  "last_updated_at": "2026-09-25T23:55:23Z",
+  "updates": [
+    {
+      "at": "2026-09-25T23:55:23Z",
+      "cost_usd": 0.035383458,
+      "total_tokens": 2261766,
+      "duration_seconds": 1,
+      "note": "Phase 17 task 17.1 complete: worker + reviewer APPROVED, committed 885ee7a"
+    }
+  ]
+}
