@@ -612,6 +612,15 @@ cursor, stale/unknown-only enqueue, or direct pipeline drive) is not implemented
 and is documented as an open limitation in `docs/limitations.md` rather than
 presented as solved.
 
+Coalescing is version-blind: the queue key is the item, connection, and image
+surface, so a redundant hint is coalesced regardless of the configuration version
+it carries. A post-save hint carrying the new configuration version is therefore
+coalesced away when the item already has pending or in-flight work under the
+previous version, and that outstanding item then discards itself as a stale basis
+and is completed without re-enqueueing; the item is re-rendered on the next
+trigger rather than by the save. This is a known open limitation
+(`docs/limitations.md` F6) and is not presented as solved.
+
 The installed webhook boundary (`src/ArrTags/Webhooks`, ADR-012) realizes this
 contract. `ArrTagsWebhookController` is an anonymous plugin route
 (`POST /ArrTags/Webhook/Sonarr` and `POST /ArrTags/Webhook/Radarr`) discovered
@@ -1001,8 +1010,13 @@ absent source, a failed source read, a render pass-through (including missing
 metadata or an ineligible match), and a failed render all leave the current
 usable artwork unchanged and perform no image mutation. Missing metadata and an
 ineligible match use the existing ADR-009 renderer pass-through convention rather
-than a new badge policy. The coordinator never calls Jellyfin directly. For
-source consistency, the exact source observation used for the render is supplied
+than a new badge policy. A pass-through also occurs when the resolved selection
+is empty (for example a selector allowlist that excludes the item), and because
+a previously published badge is the current usable artwork it is preserved
+rather than restored; that operator-visible consequence is documented as an open
+limitation (`docs/limitations.md` F7). The coordinator never calls Jellyfin
+directly. For source consistency, the exact source observation used for the
+render is supplied
 to the publisher's new-session capture, so the retained provenance baseline and
 the derived artifact describe the same bounded observation; the publisher's
 before-mutation revalidation is unchanged, so a source that changes after that
@@ -1382,7 +1396,11 @@ identifiers that are not secret, and counts), and no API key, webhook
 secret, `SecretLease` value, `X-Api-Key`/`X-ArrTags-Webhook-Secret` header, raw
 request/response body, full provider payload, or mutable `PluginConfiguration` is
 ever logged. The emitted data shape is identical at every level, so raising
-verbosity cannot expand a redacted value into a secret-bearing one.
+verbosity cannot expand a redacted value into a secret-bearing one. The
+artwork-generation boundary currently logs only the bounded outcome and the
+generic reason; the specific bounded `PassThroughReason`, `FailureReason`, and
+`SourceFailureReason` are retained on the generation result but are not emitted,
+which is documented as an open diagnostic limitation (`docs/limitations.md` F8).
 
 Log volume is bounded (ADR-020 clause 6) by the plugin-owned, provider-neutral,
 thread-safe `LogThrottle`: it admits at most 5 records per category and event

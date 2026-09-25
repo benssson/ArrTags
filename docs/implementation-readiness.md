@@ -529,6 +529,20 @@ and ADR-016). They are no longer deferred V1 items.
 - Reconciliation coverage bound: successive scheduled/post-scan runs re-cover the
   same bounded `QueueCapacity` prefix when the scope is larger, so full coverage
   is not guaranteed by a single run (`docs/architecture.md` lines 472-478).
+- Version-blind work coalescing: a save's post-save re-render hint for an item
+  that already has pending or in-flight work is coalesced away (the queue key
+  excludes the configuration version), and the outstanding item then discards
+  itself as a stale basis without re-enqueueing, so that item re-renders only on
+  the next trigger (`docs/limitations.md` F6).
+- Empty-selection badge preservation: when the enabled selectors and allowlists
+  resolve no displayable value for an item, the renderer passes through and
+  preserves the previously published ArrTags badge rather than restoring the
+  original source, and restoration does not occur for an empty selection
+  (`docs/limitations.md` F7).
+- Artwork log classification: the artwork-boundary log line omits the specific
+  bounded pass-through/failure/source classification the result carries, so
+  different causes of a missing badge are indistinguishable in the log
+  (`docs/limitations.md` F8).
 - Verification-coverage gaps and packaging/release limitations (no live
   Sonarr/Radarr instance; unselected/unrun ADR-010 non-canonical comparison;
   contract-level-only Enhanced coexistence; manual-only live `SaveImage`

@@ -5409,6 +5409,28 @@ consolidated, with their evidence and criteria status, in `docs/limitations.md`
   than advancing; a persisted enumeration cursor, stale/unknown-only enqueue, or
   direct pipeline drive is not implemented (`docs/architecture.md` lines
   472-478).
+- Version-blind work coalescing. A configuration save activates a new snapshot
+  and the bounded post-save reconciliation enqueues a new-version hint for each
+  eligible item, but the queue key excludes the configuration version and a hint
+  for an item already pending or in flight is coalesced away. The outstanding
+  item then discards itself as a stale basis and is completed without
+  re-enqueueing, so the item is not re-rendered by the save and updates only on a
+  later trigger (library event, webhook, post-scan, or scheduled run). This is
+  distinct from the reconciliation coverage bound above. Recorded as limitation
+  F6 (`docs/limitations.md`).
+- Empty-selection badge preservation. When the enabled selectors and allowlists
+  resolve no displayable value for an item ArrTags previously published, the
+  renderer passes through and preserves the old ArrTags badge instead of
+  restoring the original source, and there is no restore path for an empty
+  selection (restore runs only on item removal or the lifecycle drain), so the
+  poster can keep a badge that no longer matches the configuration and an
+  output-policy change never applies to it. Recorded as limitation F7
+  (`docs/limitations.md`).
+- Artwork log classification. The artwork-boundary log line emits only the
+  outcome and the generic reason, not the specific bounded `PassThroughReason`,
+  `FailureReason`, or `SourceFailureReason` that the result already carries, so
+  attempts with different causes look identical in the host log. Recorded as
+  limitation F8 (`docs/limitations.md`).
 - Optional concurrency hardening. `ArtworkSubjectGate.Gates` is a process-local
   static per-subject `SemaphoreSlim` dictionary with no idle eviction (task 7.4
   reviewer finding 7.4-R1); dropping idle entries on the lifecycle drain or an
