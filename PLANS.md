@@ -296,7 +296,6 @@ is created.
 <!-- BEGIN GENERATED: milestone-status -->
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
-| 16 | Settings byte units and restart-required surfacing | PLANNED | Gate 16 |
 | 17 | Read-only diagnostics status surface | PLANNED | Gate 17 |
 | 18 | Extra Large badge size | PLANNED | Gate 18 |
 | 19 | Reconciliation coverage and version-aware coalescing | PLANNED | Gate 19 |
