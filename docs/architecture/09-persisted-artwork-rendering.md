@@ -53,7 +53,7 @@ for derived bytes.
 The exact Jellyfin `12.0.0` publication/read ABI, the standard item-image route
 variants, the read/write authorization split, and the confirmed cache/resize
 ownership are pinned in
-[`docs/research/jellyfin-12-architecture.md`](research/jellyfin-12-architecture.md)
+[`docs/research/jellyfin-12-architecture.md`](../research/jellyfin-12-architecture.md)
 section 4.4 (task 5.1) and asserted by
 `tests/ArrTags.Tests/JellyfinImageAbiTests.cs` and
 `tests/ArrTags.Tests/JellyfinImageRouteTests.cs`. That section confirms the ABI;

@@ -84,6 +84,28 @@ budget docs/status.md 140
 budget docs/INDEX.md 220
 ok "doc budget checked"
 
+# 8. Relative markdown links in current-state docs resolve.
+# History trees (implementation, reviews, research) and archived plans are
+# exempt: they are never rewritten to match newer paths.
+link_fail=0
+while IFS= read -r f; do
+    dir="$(dirname "$f")"
+    while IFS= read -r t; do
+        [ -n "$t" ] || continue
+        case "$t" in http*|\#*|mailto:*) continue ;; esac
+        t="${t%%#*}"
+        [ -z "$t" ] && continue
+        if [ ! -e "$dir/$t" ]; then
+            err "dangling link in $f -> $t"
+            link_fail=1
+        fi
+    done < <(grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//')
+done < <(find . -name '*.md' \
+    -not -path './.git/*' -not -path './.opencode/node_modules/*' \
+    -not -path './docs/implementation/*' -not -path './docs/reviews/*' \
+    -not -path './docs/research/*' -not -path './docs/plan/archive/*' | sort)
+[ "$link_fail" -eq 0 ] && ok "current-state links resolve"
+
 if [ "$fail" -eq 0 ]; then
     echo "check-docs: PASS"
 else

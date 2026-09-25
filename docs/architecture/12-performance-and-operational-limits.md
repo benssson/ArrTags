@@ -1,8 +1,8 @@
 # 12. Performance and operational limits
 
 The decision that accepts these foundation defaults and its rationale are
-recorded in [ADR-004](decisions.md); the inbound webhook payload bound is
-recorded in [ADR-012](decisions.md). The accepted values, units, validation
+recorded in [ADR-004](../decisions/00-index.md); the inbound webhook payload bound is
+recorded in [ADR-012](../decisions/00-index.md). The accepted values, units, validation
 ranges, and safe failure behavior are listed below. Limits are validated at
 configuration load time; a value outside its documented range, or a non-finite
 value where a finite value is required, rejects the new configuration and

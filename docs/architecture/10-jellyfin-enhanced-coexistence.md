@@ -3,7 +3,7 @@
 ArrTags has no source-level dependency on Jellyfin Enhanced. Enhanced's quality
 tags are client-side Web overlays; ArrTags' badges are persisted through the
 standard server-side image path. DG-8 is resolved by
-[ADR-011](decisions.md), and the coexistence policy is:
+[ADR-011](../decisions/00-index.md), and the coexistence policy is:
 
 - ArrTags does not implement automatic duplicate-badge detection, overlap
   suppression, or any dependency on Enhanced internals. Jellyfin Enhanced can

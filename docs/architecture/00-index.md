@@ -3,7 +3,7 @@
 The architecture is split by section; section numbers are preserved in each
 file heading. This index is the section map.
 
-**Status:** See [`docs/status.md`](docs/status.md) for current project status; this document is the normative architecture and does not carry status.
+**Status:** See [`docs/status.md`](../status.md) for current project status; this document is the normative architecture and does not carry status.
 
 **Last reviewed against:**
 - Jellyfin 12.x
