@@ -41,6 +41,8 @@ Maintain compatibility with the project's declared Jellyfin and .NET versions.
   `docs/research/**`, `docs/changelog/**`, `docs/plan/archive/**`, and ADR text.
   Do not rewrite it to match newer paths or status. Former single-file documents
   remain as pointer stubs so historical references resolve.
+- Agent reports (paths, status/severity enums, attempt rule) are defined in
+  `docs/agent-contracts.md`; follow it and each agent's own schema.
 - Completed phases do not accumulate in `PLANS.md`; archive them verbatim to
   `docs/plan/archive/`.
 - Run `scripts/check-docs.sh` before committing documentation changes.

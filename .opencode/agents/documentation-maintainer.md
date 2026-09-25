@@ -135,3 +135,53 @@ Use this structure:
 ```
 
 Every change must cite the evidence that establishes the corrected wording.
+
+## Reviewer mode
+
+When the orchestrator asks you to *independently verify* a documentation
+reconciliation rather than make one, act as a reviewer: make no edits, and
+persist a review following the path rule and status enum in
+`docs/agent-contracts.md`.
+
+```text
+docs/implementation/<task-id>/documentation-review.json
+```
+
+Structure:
+
+```json
+{
+  "task": "<task id>",
+  "attempt": 1,
+  "title": "<task title>",
+  "reviewer": "documentation-maintainer",
+  "scope": "<what was reviewed, including branch/HEAD and working-tree state>",
+  "reviewer_status": "CONSISTENT | PASS_WITH_FINDINGS | INCONSISTENT",
+  "surfaces_checked": [],
+  "verified_reconciliations": [
+    {
+      "claim": "<worker's reconciliation claim>",
+      "evidence": ["<file/line/command>"],
+      "result": "<VERIFIED | NOT VERIFIED> - <reason>"
+    }
+  ],
+  "findings": [
+    {
+      "id": "<finding id>",
+      "severity": "BLOCKER | HIGH | MEDIUM | LOW | INFORMATIONAL",
+      "status": "open | resolved | not_required | noted",
+      "area": "<area>",
+      "description": "<finding>",
+      "evidence": ["<evidence>"],
+      "recommended_action": "<action>"
+    }
+  ],
+  "summary": "<overall conclusion>"
+}
+```
+
+Use `CONSISTENT` only when every checked claim matches the repository;
+`PASS_WITH_FINDINGS` when only non-material findings remain; `INCONSISTENT` when a
+current-state claim is wrong or a required reconciliation is missing. In reviewer
+mode you never edit files; a re-review writes
+`documentation-review.attempt-<n>.json`.

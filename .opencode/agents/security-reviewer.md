@@ -118,18 +118,18 @@ Classify findings as:
 
 ## Report
 
-Persist the security review before returning:
-
-```text
-docs/implementation/final-review/security-review.json
-```
+Persist the security review before returning, following the path rule and
+status enum in `docs/agent-contracts.md`. The default is
+`docs/implementation/<task-id>/security-review.json`; a release-scope audit goes
+to `docs/implementation/final-review/security-review.json`; a re-review goes to
+`security-review.attempt-<n>.json`.
 
 Use this structure:
 
 ```json
 {
   "subject": "<task/phase/release reviewed>",
-  "reviewer_status": "APPROVED | CHANGES_REQUIRED | BLOCKED",
+  "reviewer_status": "APPROVED | PASS_WITH_FINDINGS | CHANGES_REQUIRED | BLOCKED",
   "findings": [
     {
       "id": "<finding id>",

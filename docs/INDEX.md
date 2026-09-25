@@ -58,6 +58,7 @@ specific task/phase report you need, never the whole tree.
 | `PLANS.md` | The **active** plan only: scope pointer, active phases and tasks, execution orders, milestone table, decision gates, risks, backlog |
 | `docs/plan/state.json` | Canonical machine-readable plan/status state |
 | `docs/plan/README.md` | Plan-state schema, single-writer rules, and release lifecycle |
+| `docs/agent-contracts.md` | Where agents persist reports, status/severity enums, attempt/overwrite rule |
 | `docs/plan/archive/` | Completed release plans (verbatim history) |
 | `docs/status.md` | One-page current shipped state, rendered from `state.json` |
 | `docs/architecture/` | Normative architecture, one file per original section; `00-index.md` maps section numbers |

@@ -772,7 +772,7 @@ A completed phase must pass the phase-reviewer gate.
 After invoking the phase-reviewer:
 
 1. Verify that the persisted phase review report exists.
-2. Verify `reviewer_status` is `APPROVED`.
+2. Verify `reviewer_status` is `APPROVED` or `APPROVED_WITH_FINDINGS`.
 3. Verify `phase_complete` is `true`.
 4. Verify `ready_for_next_phase` is `true`.
 5. Verify there are no unresolved BLOCKER or HIGH findings.

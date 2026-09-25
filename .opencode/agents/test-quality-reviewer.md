@@ -94,18 +94,18 @@ Classify findings as:
 
 ## Report
 
-Persist the audit before returning:
-
-```text
-docs/implementation/final-review/test-quality-review.json
-```
+Persist the audit before returning, following the path rule and status enum in
+`docs/agent-contracts.md`. The default is
+`docs/implementation/<task-id>/test-quality-review.json`; a release-scope audit
+goes to `docs/implementation/final-review/test-quality-review.json`; a re-review
+goes to `test-quality-review.attempt-<n>.json`.
 
 Use this structure:
 
 ```json
 {
   "subject": "<task/phase/release audited>",
-  "reviewer_status": "APPROVED | CHANGES_REQUIRED | BLOCKED",
+  "reviewer_status": "APPROVED | PASS_WITH_FINDINGS | CHANGES_REQUIRED | BLOCKED",
   "findings": [
     {
       "id": "<finding id>",

@@ -295,7 +295,8 @@ Do not invent severity where no concrete impact exists.
 
 ## Final Report
 
-Persist the review report before returning.
+Persist the review report before returning, following the path rule and status
+enum in `docs/agent-contracts.md`.
 
 Use the project's established implementation-report location if one exists. Otherwise use:
 
@@ -305,7 +306,7 @@ The report must use this structure:
 
 {
 "phase": "<phase>",
-"reviewer_status": "APPROVED | CHANGES_REQUIRED | BLOCKED",
+"reviewer_status": "APPROVED | APPROVED_WITH_FINDINGS | CHANGES_REQUIRED | BLOCKED",
 "findings": [
 {
 "severity": "BLOCKER | HIGH | MEDIUM | LOW",
@@ -333,6 +334,10 @@ The report must use this structure:
 }
 
 Set `phase_complete` to false if any required work remains incomplete.
+
+Use `APPROVED_WITH_FINDINGS` when the phase is complete and no BLOCKER or HIGH
+is open, but MEDIUM/LOW findings remain recorded. The orchestrator accepts
+`APPROVED` or `APPROVED_WITH_FINDINGS` for the phase gate.
 
 Set `ready_for_next_phase` to false for any BLOCKER or HIGH finding that must be resolved before the next phase.
 

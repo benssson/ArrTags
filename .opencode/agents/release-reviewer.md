@@ -387,7 +387,8 @@ Persist the final report and stop.
 
 ## Final Report
 
-Persist the review report before returning.
+Persist the review report before returning, following the path rule and status
+enum in `docs/agent-contracts.md`.
 
 Use the project's established release-review location:
 

@@ -126,10 +126,13 @@ Classify findings as:
 
 ## Report
 
-Persist the verification report before returning:
+Persist the verification report before returning, following the path rule in
+`docs/agent-contracts.md`. The default is
+`docs/implementation/<task-id>/live-verification.json`; a release-scope
+verification goes to `docs/implementation/final-review/live-verification.json`.
 
 ```text
-docs/testing/live-host-verification.json
+docs/implementation/<task-id>/live-verification.json
 ```
 
 Use this structure:

@@ -88,10 +88,13 @@ Do not invent severity where no concrete impact exists.
 
 ## Output Format
 
-Persist the review report before returning. Use:
+Persist the review report before returning, following the path rule and status
+enum in `docs/agent-contracts.md`. The default is
+`docs/reviews/architecture/<subject>.json` (one file per subject, so a new
+review never overwrites a prior record).
 
 ```text
-docs/reviews/architecture-review.json
+docs/reviews/architecture/<subject>.json
 ```
 
 The report must use this structure:

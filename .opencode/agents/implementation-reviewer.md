@@ -289,6 +289,11 @@ Normalize findings consistently: uppercase `severity`, a `status` value, an
 finding requires action, `not_required` when it does not, and `noted` when it is
 informational. Do not invent extra fields for a one-off report.
 
+Optional or purely stylistic documentation-precision findings must be recorded
+with status `not_required` or `noted`; they cannot by themselves set
+`CHANGES_REQUIRED`. Only an `open` finding tied to a requirement, acceptance
+criterion, correctness issue, security risk, or documented workflow blocks.
+
 Use:
 
 * `APPROVED` only when the task satisfies its requirements and is safe to advance.
@@ -301,7 +306,9 @@ Do not approve work merely to keep the workflow moving.
 
 ## Persist the Review Report
 
-After completing the review, save the complete structured review report to the project's established implementation-state location.
+After completing the review, save the complete structured review report to the
+project's established implementation-state location, following the path rule and
+status enum in `docs/agent-contracts.md`.
 
 If the project already has a documented location or mechanism for task reports, use it.
 

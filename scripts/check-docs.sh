@@ -92,6 +92,7 @@ budget PLANS.md 400
 budget docs/status.md 140
 budget docs/INDEX.md 220
 budget docs/plan/README.md 200
+budget docs/agent-contracts.md 160
 budget AGENTS.md 90
 ok "doc budget checked"
 
