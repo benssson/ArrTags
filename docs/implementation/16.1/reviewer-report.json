@@ -1,0 +1,76 @@
+{
+  "task": "16.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "16.1-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "architecture / code ownership",
+      "summary": "The C# ByteLimitField/ByteLimitUnits mapping has no production caller; the page JS is a mirrored copy that no test executes.",
+      "detail": "ADRs require the unit/step/precision mapping to be code-owned per field, but the settings page is a static embedded resource (src/ArrTags/Configuration/config.html) that cannot invoke C#. The C# helper is therefore the code-owned contract consumed by the test suite, and the page duplicates unit/unitBytes/stepBytes/precision in its byteLimitFields table. ByteLimitSettingsPageTests pins the table rows and the native min/max/step/label attributes structurally against the C# mapping, and pins the presence of the conversion/step-check snippets, but does not execute the JS algorithm. The repository has no JS runtime/test infrastructure (no in-tree JS runner; node/nodejs/deno/bun/qjs/js/d8/jsc are absent from this environment), so this is inherent to the established page architecture, not a shortcut introduced by this task. The worker disclosed it in known_limitations.",
+      "evidence": [
+        "src/ArrTags/Configuration/ByteLimitField.cs (no production callers; grep confirms only tests/ByteLimitUnitsTests.cs and the page mirror reference the mapping)",
+        "tests/ArrTags.Tests/ByteLimitSettingsPageTests.cs (structural substring/table assertions, no JS execution)",
+        "No node/nodejs/deno/bun/qjs/js/d8/jsc on PATH; no in-tree package.json test runner"
+      ],
+      "recommended_action": "No change required for 16.1; the 16.6 integration verification may record that the page algorithm is confirmed only structurally (or on a live host), as already noted."
+    },
+    {
+      "id": "16.1-F2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness / persistence round-trip",
+      "summary": "Legacy in-range off-step persisted values change on save: whole-unit fields are adjusted to the nearest whole unit; 64-KiB-step fields reject the save until edited.",
+      "detail": "ADR-028 clause 1 promises exact round-trip only at each field's minimum, default, and maximum; it does not promise round-trip for arbitrary persisted bytes. The pre-16.1 page accepted any in-range integer, so an upgraded ArrTags.xml can hold an off-step value. Such a value loads, validates, activates, and serializes unchanged, which satisfies the acceptance criterion 'an existing ArrTags.xml loads unchanged' (proved by ByteLimitUnitsTests.AnExistingConfigurationWithAnOffStepByteValueStillLoadsUnchanged, which exercises PluginConfigurationValidator.Validate, ConfigurationSnapshotService activation, and the XmlSerializer boundary). On save, the page renders the stored bytes at the fixed precision and converts back with the step check: for the whole-KiB/whole-MiB fields the display is an integer unit so the write is a valid step multiple (silently adjusted by at most half a display unit), and for the three 64-KiB-step MB fields the save is rejected unless the rounded display value is itself a step multiple. This is the ADR-028 reject-rather-than-round behaviour applied at the display precision, and it is disclosed in both the task 16.1 changelog entry and the worker report's known_limitations. The persisted XML is never rewritten without a save, and the numeric range semantics are unchanged.",
+      "evidence": [
+        "docs/decisions/ADR-028.md clause 1 (exact round-trip only at min/default/max; off-step rejected)",
+        "tests/ArrTags.Tests/ByteLimitUnitsTests.cs AnExistingConfigurationWithAnOffStepByteValueStillLoadsUnchanged",
+        "docs/changelog/v1.2.0.md task 16.1 entry (off-step persisted-value paragraph)",
+        "docs/implementation/16.1/worker-report.json known_limitations[1]",
+        "src/ArrTags/Configuration/config.html byteLimitToBytes step check; git diff shows no change to OperationalLimits.cs / PluginConfigurationValidator.cs"
+      ],
+      "recommended_action": "Accepted as an ADR-028 consequence; task 16.6 should consider registering it in docs/limitations/ as already planned. No change required for 16.1."
+    },
+    {
+      "id": "16.1-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "worker evidence",
+      "summary": "The worker's probe-B failure count (9) is slightly higher than a static recount of affected cases suggests (~7); immaterial to the sensitivity conclusion.",
+      "detail": "Removing the trailing-zero trim in FormatScaled affects only precision>0 fields. A static count of the test cases whose expected strings contain trimmed zeros yields roughly four DisplayUsesTheFixedUnitAndPrecisionWithTrailingZerosTrimmed cases (Provider '1'/'8'/'64', Source '128') plus three RangeLabelStaysInTheFieldUnitAndShowsTheSubMebibyteBoundAsAFraction cases (Provider/Source/Derived) = ~7, versus the report's stated 6 + 3 = 9. Other probes' counts are consistent (e.g. probe A: 7 off-step cases + the ADR example = 8). The discrepancy is a recording imprecision in the sensitivity narrative; it does not affect the conclusion that the tests are sensitive to the trim, and no acceptance criterion depends on the exact count. The probes themselves could not be re-run because the reviewer is read-only for product code.",
+      "evidence": [
+        "tests/ArrTags.Tests/ByteLimitUnitsTests.cs DisplayUsesTheFixedUnitAndPrecisionWithTrailingZerosTrimmed (17 cases) and RangeLabelStaysInTheFieldUnitAndShowsTheSubMebibyteBoundAsAFraction (7 cases)",
+        "docs/implementation/16.1/worker-report.json test_sensitivity[1]"
+      ],
+      "recommended_action": "No action; note for future reports to keep probe failure counts exact. Does not affect approval."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (Release, ArrTags.slnx)",
+    "./build.sh test -> Failed: 0, Passed: 1727, Skipped: 63, Total: 1790, Duration 17 s",
+    "tests/ArrTags.Tests/ByteLimitUnitsTests.cs (103 cases counted; mapping, ADR-028 unit/step/precision, bound divisibility, range labels, exact display, 21-case min/default/max round-trip, off-step and over-precision rejection, malformed input, unchanged legacy off-step XML load)",
+    "tests/ArrTags.Tests/ByteLimitSettingsPageTests.cs (5 cases counted; mapping-table parity with C#, native min/max/step/unit attributes, range labels, conversion + step check before save, absence of raw parseInt writes)",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs (pre-existing page contract; suite passes, so element ids, config.Limits references, in-tree page contract, and no-secret fact all still hold)",
+    "New-case arithmetic corroborated: baseline 1682 total - 63 skipped = 1619 passed; current 1790 - 63 = 1727 passed => +108, matching 103 + 5 new cases"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-028.md clauses 1-5 (units/precision, per-field step S, conversion algorithm, range label, unchanged persisted bytes)",
+    "docs/planning/v1.2.md Goal G6 acceptance criteria",
+    "PLANS.md Phase 16 (deliverables, execution order, phase acceptance criteria, Gate 16)",
+    "src/ArrTags/Configuration/OperationalLimits.cs (unchanged bounds/defaults cross-checked against the new mapping: all seven byte fields match)"
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json (task 16.1 done=true, reports path; phase 16 status remains PLANNED, no phase-complete/tag claim)",
+    "PLANS.md (task 16.1 checkbox [x]; milestone table shows phase 16 PLANNED; render-docs-state reports 'up to date')",
+    "docs/status.md (generated block current per check-docs; no per-task 16.1 line expected)",
+    "docs/changelog/v1.2.0.md (Phase 16 / task 16.1 entry; accurately describes mapping, conversion, off-step rejection, and legacy off-step save behaviour)",
+    "docs/limitations/ (not updated by design; 16.6 owns the G6/G8 sweep; index covers all IDs)",
+    "scripts/check-docs.sh (all sections PASS except the pre-existing worker-without-reviewer pairing for 16.1, which this report resolves)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

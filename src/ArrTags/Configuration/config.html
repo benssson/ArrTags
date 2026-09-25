@@ -219,16 +219,20 @@
                             <input is="emby-input" type="number" id="retryBackoffMaxSeconds" pattern="[0-9]*" min="1" max="120" label="Maximum retry backoff (seconds)" />
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="providerResponseLimitBytes" pattern="[0-9]*" min="65536" max="67108864" label="Provider response limit (bytes)" />
+                            <input is="emby-input" type="number" id="providerResponseLimitBytes" min="0.0625" max="64" step="0.0625" label="Provider response limit (MB)" />
+                            <div class="fieldDescription" id="providerResponseLimitBytesRange">Valid range: 0.0625 - 64 MB.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="webhookMaxPayloadBytes" pattern="[0-9]*" min="4096" max="4194304" label="Webhook payload limit (bytes)" />
+                            <input is="emby-input" type="number" id="webhookMaxPayloadBytes" min="4" max="4096" step="1" label="Webhook payload limit (KB)" />
+                            <div class="fieldDescription" id="webhookMaxPayloadBytesRange">Valid range: 4 - 4096 KB.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="sourceArtifactLimitBytes" pattern="[0-9]*" min="65536" max="134217728" label="Source artifact limit (bytes)" />
+                            <input is="emby-input" type="number" id="sourceArtifactLimitBytes" min="0.0625" max="128" step="0.0625" label="Source artifact limit (MB)" />
+                            <div class="fieldDescription" id="sourceArtifactLimitBytesRange">Valid range: 0.0625 - 128 MB.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="derivedArtifactLimitBytes" pattern="[0-9]*" min="65536" max="134217728" label="Derived artifact limit (bytes)" />
+                            <input is="emby-input" type="number" id="derivedArtifactLimitBytes" min="0.0625" max="128" step="0.0625" label="Derived artifact limit (MB)" />
+                            <div class="fieldDescription" id="derivedArtifactLimitBytesRange">Valid range: 0.0625 - 128 MB.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="maxImageDimensionPixels" pattern="[0-9]*" min="512" max="16384" label="Maximum image dimension (pixels)" />
@@ -243,10 +247,12 @@
                             <input is="emby-input" type="number" id="renderCacheTtlMinutes" pattern="[0-9]*" min="1" max="43200" label="Render cache TTL (minutes)" />
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="renderCacheQuotaBytes" pattern="[0-9]*" min="67108864" max="68719476736" label="Render cache quota (bytes)" />
+                            <input is="emby-input" type="number" id="renderCacheQuotaBytes" min="64" max="65536" step="1" label="Render cache quota (MB)" />
+                            <div class="fieldDescription" id="renderCacheQuotaBytesRange">Valid range: 64 - 65536 MB.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="artifactStorageQuotaBytes" pattern="[0-9]*" min="268435456" max="274877906944" label="Artifact storage quota (bytes)" />
+                            <input is="emby-input" type="number" id="artifactStorageQuotaBytes" min="256" max="262144" step="1" label="Artifact storage quota (MB)" />
+                            <div class="fieldDescription" id="artifactStorageQuotaBytesRange">Valid range: 256 - 262144 MB.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="terminalProvenanceRetentionDays" pattern="[0-9]*" min="1" max="365" label="Terminal provenance retention (days)" />
@@ -258,7 +264,8 @@
                             <input is="emby-input" type="number" id="inventoryCacheMaxRecords" pattern="[0-9]*" min="1" max="100000" label="Inventory cache records per connection" />
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="inventoryCacheMaxBytes" pattern="[0-9]*" min="1048576" max="268435456" label="Inventory cache bytes per connection" />
+                            <input is="emby-input" type="number" id="inventoryCacheMaxBytes" min="1" max="256" step="1" label="Inventory cache bytes per connection (MB)" />
+                            <div class="fieldDescription" id="inventoryCacheMaxBytesRange">Valid range: 1 - 256 MB.</div>
                         </div>
                     </div>
 
@@ -289,6 +296,84 @@
             };
 
             var selectorNames = ['Quality', 'Resolution', 'DynamicRange', 'Source', 'VideoCodec', 'Audio', 'CustomBadge', 'UpgradePending'];
+
+            // ADR-028: the byte-denominated operational limits are displayed in a
+            // fixed binary unit per field (MB, or KB for the webhook payload) with
+            // a fixed step and display precision. The stored and persisted value
+            // stays bytes. byteLimitToBytes converts a displayed value back to
+            // bytes and rejects any value that is not an exact multiple of the
+            // field step; byteLimitToDisplay renders stored bytes at the field's
+            // precision with trailing zeros trimmed. The unit, step, and precision
+            // mirror the code-owned ByteLimitUnits mapping in C#.
+            var byteLimitFields = [
+                { property: 'ProviderResponseLimitBytes', id: 'providerResponseLimitBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 65536, precision: 4 },
+                { property: 'WebhookMaxPayloadBytes', id: 'webhookMaxPayloadBytes', unit: 'KB', unitBytes: 1024, stepBytes: 1024, precision: 0 },
+                { property: 'SourceArtifactLimitBytes', id: 'sourceArtifactLimitBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 65536, precision: 4 },
+                { property: 'DerivedArtifactLimitBytes', id: 'derivedArtifactLimitBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 65536, precision: 4 },
+                { property: 'RenderCacheQuotaBytes', id: 'renderCacheQuotaBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 1048576, precision: 0 },
+                { property: 'ArtifactStorageQuotaBytes', id: 'artifactStorageQuotaBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 1048576, precision: 0 },
+                { property: 'InventoryCacheMaxBytes', id: 'inventoryCacheMaxBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 1048576, precision: 0 }
+            ];
+
+            var byteLimitDivisor = function (precision) {
+                var divisor = 1;
+                for (var i = 0; i < precision; i++) {
+                    divisor = divisor * 10;
+                }
+                return divisor;
+            };
+
+            var byteLimitToDisplay = function (bytes, definition) {
+                var divisor = byteLimitDivisor(definition.precision);
+                var scaled = Math.round(bytes * divisor / definition.unitBytes);
+                var text = (scaled / divisor).toFixed(definition.precision);
+                if (text.indexOf('.') === -1) {
+                    return text;
+                }
+                return text.replace(/0+$/, '').replace(/\.$/, '');
+            };
+
+            var byteLimitToBytes = function (text, definition) {
+                var value = text === null || text === undefined ? '' : String(text).trim();
+                var match = /^([0-9]+)(?:\.([0-9]+))?$/.exec(value);
+                if (!match || (match[2] && match[2].length > definition.precision)) {
+                    return null;
+                }
+
+                var fractional = match[2] || '';
+                while (fractional.length < definition.precision) {
+                    fractional = fractional + '0';
+                }
+
+                var scaled = Number(match[1] + fractional);
+                var divisor = byteLimitDivisor(definition.precision);
+                var bytes = Math.round(scaled * definition.unitBytes / divisor);
+                if (bytes % definition.stepBytes !== 0) {
+                    return null;
+                }
+
+                return bytes;
+            };
+
+            var readByteLimitValues = function () {
+                var values = {};
+                for (var i = 0; i < byteLimitFields.length; i++) {
+                    var definition = byteLimitFields[i];
+                    var input = document.querySelector('#' + definition.id);
+                    var bytes = byteLimitToBytes(input.value, definition);
+                    if (bytes === null) {
+                        input.setCustomValidity('Enter the value in ' + definition.unit + ' as a multiple of ' + byteLimitToDisplay(definition.stepBytes, definition) + ' ' + definition.unit + '.');
+                        if (typeof input.reportValidity === 'function') {
+                            input.reportValidity();
+                        }
+                        return null;
+                    }
+
+                    values[definition.property] = bytes;
+                }
+
+                return values;
+            };
 
             var populateLibraries = function (enabledLibraries) {
                 var container = document.querySelector('#enabledLibraries');
@@ -401,20 +486,17 @@
                         document.querySelector('#retryBackoffInitialSeconds').value = config.Limits.RetryBackoffInitialSeconds;
                         document.querySelector('#retryBackoffFactor').value = config.Limits.RetryBackoffFactor;
                         document.querySelector('#retryBackoffMaxSeconds').value = config.Limits.RetryBackoffMaxSeconds;
-                        document.querySelector('#providerResponseLimitBytes').value = config.Limits.ProviderResponseLimitBytes;
-                        document.querySelector('#webhookMaxPayloadBytes').value = config.Limits.WebhookMaxPayloadBytes;
-                        document.querySelector('#sourceArtifactLimitBytes').value = config.Limits.SourceArtifactLimitBytes;
-                        document.querySelector('#derivedArtifactLimitBytes').value = config.Limits.DerivedArtifactLimitBytes;
+                        byteLimitFields.forEach(function (definition) {
+                            document.querySelector('#' + definition.id).value =
+                                byteLimitToDisplay(config.Limits[definition.property], definition);
+                        });
                         document.querySelector('#maxImageDimensionPixels').value = config.Limits.MaxImageDimensionPixels;
                         document.querySelector('#reconciliationBatchSize').value = config.Limits.ReconciliationBatchSize;
                         document.querySelector('#metadataStaleWindowMinutes').value = config.Limits.MetadataStaleWindowMinutes;
                         document.querySelector('#renderCacheTtlMinutes').value = config.Limits.RenderCacheTtlMinutes;
-                        document.querySelector('#renderCacheQuotaBytes').value = config.Limits.RenderCacheQuotaBytes;
-                        document.querySelector('#artifactStorageQuotaBytes').value = config.Limits.ArtifactStorageQuotaBytes;
                         document.querySelector('#terminalProvenanceRetentionDays').value = config.Limits.TerminalProvenanceRetentionDays;
                         document.querySelector('#inventoryCacheTtlMinutes').value = config.Limits.InventoryCacheTtlMinutes;
                         document.querySelector('#inventoryCacheMaxRecords').value = config.Limits.InventoryCacheMaxRecords;
-                        document.querySelector('#inventoryCacheMaxBytes').value = config.Limits.InventoryCacheMaxBytes;
 
                         document.querySelector('#logVerbosity').value = config.LogVerbosity;
 
@@ -423,7 +505,23 @@
                 });
 
             document.querySelector('.configForm')
+                .addEventListener('input', function (e) {
+                    // A rejected byte limit stays invalid until the field is
+                    // edited, so clear the explicit step-multiple message then.
+                    if (e.target && typeof e.target.setCustomValidity === 'function') {
+                        e.target.setCustomValidity('');
+                    }
+                });
+
+            document.querySelector('.configForm')
                 .addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    var byteLimitValues = readByteLimitValues();
+                    if (byteLimitValues === null) {
+                        return false;
+                    }
+
                     Dashboard.showLoadingMsg();
 
                     ApiClient.getPluginConfiguration(PluginConfig.pluginId).then(function (config) {
@@ -482,28 +580,21 @@
                         config.Limits.RetryBackoffInitialSeconds = parseInt(document.querySelector('#retryBackoffInitialSeconds').value, 10);
                         config.Limits.RetryBackoffFactor = parseInt(document.querySelector('#retryBackoffFactor').value, 10);
                         config.Limits.RetryBackoffMaxSeconds = parseInt(document.querySelector('#retryBackoffMaxSeconds').value, 10);
-                        config.Limits.ProviderResponseLimitBytes = parseInt(document.querySelector('#providerResponseLimitBytes').value, 10);
-                        config.Limits.WebhookMaxPayloadBytes = parseInt(document.querySelector('#webhookMaxPayloadBytes').value, 10);
-                        config.Limits.SourceArtifactLimitBytes = parseInt(document.querySelector('#sourceArtifactLimitBytes').value, 10);
-                        config.Limits.DerivedArtifactLimitBytes = parseInt(document.querySelector('#derivedArtifactLimitBytes').value, 10);
+                        byteLimitFields.forEach(function (definition) {
+                            config.Limits[definition.property] = byteLimitValues[definition.property];
+                        });
                         config.Limits.MaxImageDimensionPixels = parseInt(document.querySelector('#maxImageDimensionPixels').value, 10);
                         config.Limits.ReconciliationBatchSize = parseInt(document.querySelector('#reconciliationBatchSize').value, 10);
                         config.Limits.MetadataStaleWindowMinutes = parseInt(document.querySelector('#metadataStaleWindowMinutes').value, 10);
                         config.Limits.RenderCacheTtlMinutes = parseInt(document.querySelector('#renderCacheTtlMinutes').value, 10);
-                        config.Limits.RenderCacheQuotaBytes = parseInt(document.querySelector('#renderCacheQuotaBytes').value, 10);
-                        config.Limits.ArtifactStorageQuotaBytes = parseInt(document.querySelector('#artifactStorageQuotaBytes').value, 10);
                         config.Limits.TerminalProvenanceRetentionDays = parseInt(document.querySelector('#terminalProvenanceRetentionDays').value, 10);
                         config.Limits.InventoryCacheTtlMinutes = parseInt(document.querySelector('#inventoryCacheTtlMinutes').value, 10);
                         config.Limits.InventoryCacheMaxRecords = parseInt(document.querySelector('#inventoryCacheMaxRecords').value, 10);
-                        config.Limits.InventoryCacheMaxBytes = parseInt(document.querySelector('#inventoryCacheMaxBytes').value, 10);
 
                         config.LogVerbosity = document.querySelector('#logVerbosity').value;
 
                         ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
                     });
-
-                    e.preventDefault();
-                    return false;
                 });
         </script>
     </div>
