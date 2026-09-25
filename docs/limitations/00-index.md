@@ -63,7 +63,7 @@ review are separate and are not declared by this document.
 | --- | --- | --- | --- |
 | `F3` | No bounded, secret-free metrics/diagnostic-status surface | Open | [`open.md`](open.md) |
 | `F4` | Reconciliation coverage is bounded by `QueueCapacity` | Open | [`open.md`](open.md) |
-| `F5` | The renderer depends on a host-supplied SkiaSharp with no bundled fallback | Open | [`open.md`](open.md) |
+| `F5` | The renderer depends on a host-supplied SkiaSharp with no bundled fallback | Accepted | [`accepted.md`](accepted.md) |
 | `F6` | Version-blind work coalescing can drop a post-save re-render | Open | [`open.md`](open.md) |
 | `F7` | An empty resolved badge selection preserves the previous ArrTags badge instead of restoring the original | Open | [`open.md`](open.md) |
 | `F8` | The specific render classification is not surfaced in the artwork log | Open | [`open.md`](open.md) |

@@ -1,5 +1,26 @@
 # Accepted limitations and verification/packaging limits
 
+## Accepted functional limitations
+
+### F5. The renderer depends on a host-supplied SkiaSharp with no bundled fallback
+
+V1 compiles against the pinned `SkiaSharp`/`SkiaSharp.NativeAssets.Linux`
+`3.119.4` but ships no renderer runtime and takes the managed assembly and
+native library from the Jellyfin host (ADR-015, superseding the bundling parts
+of ADR-010).
+
+- Evidence: task 7.8 worker report and ADR-015; `docs/architecture/09-persisted-artwork-rendering.md`.
+- Consequence: a host that does not provide a compatible SkiaSharp would make
+  rendering fail closed (pass-through/preserve current artwork) rather than use
+  a bundled copy. Validated only on the pinned Jellyfin `12.0.0`
+  `linux-musl-x64` host; the plugin makes no RID-specific claim and does not
+  distinguish musl from glibc.
+- Disposition: accepted by explicit user decision for v1.2 and reclassified from
+  Open to Accepted; a host-supplied SkiaSharp is the accepted runtime model and
+  no bundled fallback is planned. Excluded from v1.2 (see
+  `docs/planning/v1.2.md` section 10) and matching README's "known shipped
+  limitation" framing.
+
 ## Verification coverage limits
 
 These capabilities are implemented, but the available environment does not

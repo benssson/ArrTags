@@ -1,0 +1,591 @@
+{
+  "name": "v1.2",
+  "milestone": "v1.2",
+  "status": "PLANNED (v1.2 plan and ADR-022..ADR-028 accepted by the user; DG-19/DG-20/DG-21 resolved; no product behavior implemented)",
+  "change": "Derive the accepted v1.2 scope (docs/planning/v1.2.md; goals G6-G9 and limitations F3, F4, F6, F7, F8; decision gates DG-15..DG-22; decision records ADR-022..ADR-028, accepted by the user) into phases 15-21 with objectives, deliverables, acceptance criteria, exit gates, and authoritative execution orders in PLANS.md, and record the phase set in docs/plan/state.json.",
+  "active_scope": "docs/planning/v1.2.md",
+  "release": {
+    "version": "1.2.0.0",
+    "release_tag": "v1.2.0",
+    "phase_tag_convention": "v1.2.0-phase<N>"
+  },
+  "prior_scope": {
+    "v1_phases": "1-8 complete; not restructured, reordered, or reopened",
+    "v1_1_phases": "9-14 complete (tag v1.1.0); archived verbatim; not restructured, reordered, or reopened",
+    "v1_2_1": {
+      "outline_task": "V1.2-1",
+      "status": "COMPLETE",
+      "note": "This planning package: docs/planning/v1.2.md, ADR-022..ADR-028 drafts, decisions-index entries, GOALS.md pointer, PLANS.md/state.json derivation, and this record. Not re-planned as open work."
+    }
+  },
+  "files_changed": [
+    "docs/planning/v1.2.md (new)",
+    "docs/decisions/ADR-022.md (new, Accepted v1.2)",
+    "docs/decisions/ADR-023.md (new, Accepted v1.2)",
+    "docs/decisions/ADR-024.md (new, Accepted v1.2)",
+    "docs/decisions/ADR-025.md (new, Accepted v1.2)",
+    "docs/decisions/ADR-026.md (new, Accepted v1.2)",
+    "docs/decisions/ADR-027.md (new, Accepted v1.2)",
+    "docs/decisions/ADR-028.md (new, Accepted v1.2)",
+    "docs/decisions/00-index.md (added ADR-022..ADR-028 rows)",
+    "GOALS.md (V1.2 Goals pointer section)",
+    "PLANS.md (active scope; Phases 15-21; DG-15..DG-22; v1.2 risks)",
+    "docs/plan/state.json (active_scope; releases[] 1.2.0 PLANNED; phases 15-21)",
+    "docs/implementation/planning/v1.2.json (this record)",
+    "docs/status.md and the PLANS.md generated blocks (rendered)",
+    "REWORK (architecture-review closure, docs/reviews/architecture/v1.2-plan.json): docs/decisions/ADR-022.md, ADR-023.md, ADR-024.md, ADR-025.md, ADR-026.md, ADR-027.md, ADR-028.md; docs/planning/v1.2.md; PLANS.md; docs/plan/state.json; docs/limitations/open.md (F5 removed); docs/limitations/accepted.md (F5 added, Accepted); docs/limitations/00-index.md (F5 row Accepted); docs/implementation/planning/v1.2.json (this rework record)",
+    "ACCEPTANCE PASS (user accepted the v1.2 plan and ADR-022..ADR-028; DG-19/DG-20/DG-21 resolved; F5 Accepted confirmed): docs/decisions/ADR-022.md..ADR-028.md (Status -> Accepted (v1.2)), docs/decisions/00-index.md (ADR-022..ADR-028 rows -> Accepted (v1.2)), docs/planning/v1.2.md (Status, decision-gate table, decision-record table), PLANS.md (active-scope paragraphs, Phase 19/20 decision-gate wording, Decision Gates table DG-19/DG-20/DG-21), docs/plan/state.json (active_scope_note, updated_utc), docs/status.md and the PLANS.md generated blocks (rendered), docs/implementation/planning/v1.2.json (this acceptance record)"
+  ],
+  "phases": [
+    {
+      "id": "15",
+      "name": "Plugin log subject identifier and render classification",
+      "goal": "G9 and F8 (ADR-026; ADR-020 clause 4 as amended)",
+      "objective": "Replace the Jellyfin item id in log output with a bounded file name (item-id fallback when no path is available) and emit the bounded render classification, under an amended ADR-020 clause 4, with a fresh security review.",
+      "deliverables": [
+        "A bounded log-subject policy/helper: file-name-only, bounded length, control characters stripped, item-id fallback.",
+        "Threading of the bounded subject through the identity-bearing sites and explicit fallbacks at the sites without an identity (work worker, lifecycle removal event).",
+        "The bounded render classification (PassThroughReason/FailureReason/SourceFailureReason) on the artwork log line.",
+        "The ADR-020 amendment, the canonical documentation, and the logging security review."
+      ],
+      "acceptance_criteria": [
+        "The identity-bearing sites emit the file-name component only when a path is available; the mixed MetadataReconciliationProcessor discard site uses the file name when available and falls back to the item id otherwise; the fallback sites (work worker, lifecycle removal event) emit the item id explicitly.",
+        "The file name is bounded, control characters are stripped, and an empty/whitespace name falls back to the item id.",
+        "No directory, drive, share, full path, credential, or secret appears in the log output; redaction tests cover the new subject at every verbosity level.",
+        "The bounded classification is emitted when present; ADR-020 clause 4 is amended (subject added, directory/full-path exclusion added) and the log path is security-reviewed."
+      ],
+      "exit_gate": "Gate 15: tasks 15.1-15.4 meet their acceptance criteria; logging security review recorded with no open BLOCKER/HIGH; phase review approved; tag v1.2.0-phase15 created.",
+      "authoritative_execution_order": ["15.1", "15.2", "15.3", "15.4"],
+      "tasks": [
+        {
+          "id": "15.1",
+          "name": "Bounded log-subject policy and helper",
+          "traceability": "G9; ADR-026 clauses 1-3",
+          "dependencies": [],
+          "acceptance_criteria": "A shared bounded log-subject helper returns the file-name component only (no directory), bounded and control-character-stripped, falling back to the item id when no usable name is available; tests cover name-only, bound, control characters, empty/whitespace, non-ASCII, and fallback.",
+          "decision_gates": ["DG-22 (resolved by the user decision; ADR-026 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "15.2",
+          "name": "Thread the bounded log subject through the identity-bearing and fallback sites",
+          "traceability": "G9; ADR-026 clauses 1-4",
+          "dependencies": ["15.1"],
+          "acceptance_criteria": "The artwork coordinator, the metadata reconciliation processor's metadata-read-failure line, and the Sonarr/Radarr metadata readers emit the file name when the identity/path is available; the mixed MetadataReconciliationProcessor.Discard site uses the file name when available and falls back to the item id otherwise; the work worker and lifecycle removal event use the documented item-id fallback; per-site tests prove no directory appears and that the mixed site falls back correctly.",
+          "decision_gates": ["DG-22 (resolved by the user decision; ADR-026 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "15.3",
+          "name": "Emit the bounded render classification in the artwork log",
+          "traceability": "F8; ADR-020 clause 4 as amended by ADR-026",
+          "dependencies": ["15.1"],
+          "acceptance_criteria": "The artwork log line emits the specific bounded PassThroughReason, FailureReason, or SourceFailureReason when present; the classifications remain bounded and secret-free and are covered by redaction tests.",
+          "decision_gates": ["DG-22 (resolved by the user decision; ADR-026 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "15.4",
+          "name": "Logging documentation, ADR-020 amendment, and security review",
+          "traceability": "G9 and F8; ADR-026; ADR-020 clause 8",
+          "dependencies": ["15.2", "15.3"],
+          "acceptance_criteria": "ADR-020 clause 4's amendment and the canonical documentation are recorded; the log path is security-reviewed with no open BLOCKER/HIGH; F8 is recorded as resolved.",
+          "decision_gates": ["DG-22 (resolved by the user decision; ADR-026 Accepted v1.2)"],
+          "review": "security-reviewer, documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "16",
+      "name": "Settings byte units and restart-required surfacing",
+      "goal": "G6 and G8 (ADR-028)",
+      "objective": "Expose byte-denominated limits in a fixed binary unit per field (MB, with the webhook payload limit in KB) with a per-field step and precision giving exact byte round-trip at the 64 KiB minima as well as the defaults and maxima, and add restart-required note text plus a modal reminder on change for settings that only take effect after a host restart.",
+      "deliverables": [
+        "A bytes<->unit conversion helper with a fixed per-field MB/KB mapping, step, and precision, and unit-labelled validation ranges.",
+        "The authoritative, code-evidenced restart-required set (task 16.2 as single owner), including mixed settings classified restart-required.",
+        "Restart-required note text on the settings page.",
+        "The modal reminder (subject to the jellyfin-expert spike) with note text as the fail-open behavior.",
+        "ADR-028 and the canonical documentation."
+      ],
+      "acceptance_criteria": [
+        "Byte limits are displayed in a fixed per-field binary unit with validation ranges in the same unit and precision; min/default/max round-trip exactly, including the 64 KiB minima; a range that spans 1 MiB stays in the field's unit; the persisted XML and internal values stay bytes.",
+        "The restart-required set is code-owned, evidenced, and testable, with mixed settings classified restart-required.",
+        "Every restart-required setting in the settings page carries note text (a mixed setting's note text also states that some paths apply immediately).",
+        "The modal fires on change when the modal API is available and falls back to the note text otherwise."
+      ],
+      "exit_gate": "Gate 16: tasks 16.1-16.6 meet their acceptance criteria; the modal spike has recorded the API decision; phase review approved; tag v1.2.0-phase16 created.",
+      "authoritative_execution_order": ["16.1", "16.2", "16.3", "16.4", "16.5", "16.6"],
+      "tasks": [
+        {
+          "id": "16.1",
+          "name": "Byte/unit conversion helper and per-field MB/KB mapping",
+          "traceability": "G6; ADR-028 clause 1",
+          "dependencies": [],
+          "acceptance_criteria": "Each byte-denominated limit has a fixed per-field binary unit (MB, except WebhookMaxPayloadBytes in KB) with a per-field step (64 KiB for the 64-KiB-min fields, 1 MiB or 1 KiB otherwise) and display precision (4 fractional digits for the 64-KiB-step MB fields, 0 otherwise); display<->store round-trips preserve the exact byte value at min/default/max for every byte-denominated limit, including the 64 KiB minima; a range that spans 1 MiB stays in the field's unit; an off-step value (for example 0.1 MB for a 64-KiB-step field, which would compute 104858 bytes) is rejected by an explicit step-multiple check owned by this task, since the existing OperationalLimits.Validate range check does not enforce step alignment; the persisted representation is unchanged and an existing ArrTags.xml loads unchanged.",
+          "decision_gates": ["DG-15 (resolved by the user decision; ADR-028 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "16.2",
+          "name": "Authoritative restart-required set with code evidence",
+          "traceability": "G8; ADR-028 clause 2",
+          "dependencies": [],
+          "acceptance_criteria": "A code-owned, testable classification records which settings are restart-required (any consumer captures at construction) or per-operation (every consumer resolves from the current snapshot), each with per-consumer code evidence; a mixed setting is classified restart-required and its per-consumer evidence is recorded; the complete set is owned by this task and includes ArtifactStorageQuotaBytes and the per-operation ProviderResponseLimitBytes, WebhookMaxPayloadBytes, and InventoryCacheMaxBytes, plus the mixed SourceArtifactLimitBytes, DerivedArtifactLimitBytes, and MaxImageDimensionPixels; the per-operation set is demonstrated to observe a replaced snapshot.",
+          "decision_gates": ["DG-17 (restart set; ADR-028 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "16.3",
+          "name": "Restart-required note text on the settings page",
+          "traceability": "G8; ADR-028 clause 3",
+          "dependencies": ["16.1", "16.2"],
+          "acceptance_criteria": "Every setting in the code-owned restart-required set carries note text stating a server restart is required, and a mixed setting's note text also states that some paths apply immediately; the page remains secret-free; a test asserts coverage of the classified set.",
+          "decision_gates": ["DG-17 (note text; ADR-028 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "16.4",
+          "name": "Modal-on-change research spike (jellyfin-expert)",
+          "traceability": "G8; ADR-028 clause 4; research evidence section 8",
+          "dependencies": ["16.3"],
+          "acceptance_criteria": "A jellyfin-expert note records whether the jellyfin-web modal/notification API is available and stable on the pinned host, with a recommended mechanism or an explicit 'not available' finding; the note text is confirmed as the fail-open behavior.",
+          "decision_gates": ["DG-17 (modal half; resolved by the spike)"],
+          "review": "jellyfin-expert (research; no implementation review)"
+        },
+        {
+          "id": "16.5",
+          "name": "Modal-on-change implementation (fail-open to note text)",
+          "traceability": "G8; ADR-028 clause 4",
+          "dependencies": ["16.3", "16.4"],
+          "acceptance_criteria": "Changing a restart-required setting shows the modal reminder when the spike found the API available; when it is not available the note text remains and save behavior is unchanged; no secret is rendered; the behavior is tested.",
+          "decision_gates": ["DG-17 (modal half; resolved by the spike)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "16.6",
+          "name": "G6/G8 documentation and integration verification",
+          "traceability": "G6 and G8; ADR-028; documentation checklist phase 16",
+          "dependencies": ["16.5"],
+          "acceptance_criteria": "The canonical documentation describes the shipped units and restart-required surfacing; an integration test covers the settings round-trip with unit conversion and the restart-required marking.",
+          "decision_gates": ["DG-15", "DG-17"],
+          "review": "documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "name": "Read-only diagnostics status surface",
+      "goal": "F3 (ADR-025)",
+      "objective": "Add a read-only status panel to the existing ArrTags settings page, backed by a new administrator-authenticated plugin endpoint exposing a fixed counter set of bounded, secret-free values.",
+      "deliverables": [
+        "A bounded diagnostics snapshot model with a fixed counter set derived from existing bounded sources.",
+        "An elevation-gated read-only endpoint.",
+        "The read-only settings-page panel (served from the anonymous static page resource, fail-closed when unauthorized).",
+        "ADR-025, canonical documentation, and a security review of the endpoint and panel."
+      ],
+      "acceptance_criteria": [
+        "The endpoint is read-only, requires elevation, and returns the fixed counter set with no secret, path, item name, provider payload, or unbounded collection; adding or removing a counter requires a decision.",
+        "The panel renders queue depth/in-flight, provider health, matching failures, cache hits/misses, render failures, and stale metadata, and renders no data when the endpoint is not authorized (fail-closed).",
+        "The endpoint and panel are security-reviewed; this distinct v1.2 read-only surface does not reopen the v1.1 inline-rejection decision; F3 is recorded as resolved."
+      ],
+      "exit_gate": "Gate 17: tasks 17.1-17.4 meet their acceptance criteria; endpoint security review recorded with no open BLOCKER/HIGH; phase review approved; tag v1.2.0-phase17 created. Resolves F3.",
+      "authoritative_execution_order": ["17.1", "17.2", "17.3", "17.4"],
+      "tasks": [
+        {
+          "id": "17.1",
+          "name": "Bounded diagnostics metrics model and instrumentation",
+          "traceability": "F3; ADR-025 clauses 3-5",
+          "dependencies": [],
+          "acceptance_criteria": "A fixed-counter-set, secret-free diagnostics snapshot covers queue depth/in-flight, provider health, matching failures, cache hits/misses, render failures, and stale metadata (the listed set is the fixed shape; adding or removing a counter requires a decision); each counter maps to an existing bounded source or a new bounded process-lifetime counter; no per-item history or unbounded collection is retained.",
+          "decision_gates": ["DG-18 (resolved by the user decision; ADR-025 Accepted v1.2)"],
+          "review": "test-quality-reviewer, security-reviewer"
+        },
+        {
+          "id": "17.2",
+          "name": "Administrator-authenticated status endpoint",
+          "traceability": "F3; ADR-025 clauses 1 and 4; Jellyfin 12 research section 2.2/9.3",
+          "dependencies": ["17.1"],
+          "acceptance_criteria": "A plugin read-only route gated by [Authorize(Policy = Policies.RequiresElevation)] returns the bounded snapshot; a host-guarded test confirms the authorization attribute/behavior; the response contains no secret, path, item name, provider payload, or unbounded collection; errors are bounded and never throw into the host.",
+          "decision_gates": ["DG-18 (resolved by the user decision; ADR-025 Accepted v1.2)"],
+          "review": "security-reviewer"
+        },
+        {
+          "id": "17.3",
+          "name": "Read-only status panel on the settings page",
+          "traceability": "F3; ADR-025 clause 2",
+          "dependencies": ["17.2", "16.6"],
+          "acceptance_criteria": "The existing ArrTags settings page shows a read-only panel rendering the fixed counter set from the elevation-gated endpoint; the page resource is served anonymously (ADR-016 clause 6) but the panel renders no data when the endpoint is not authorized (fail-closed, no error surface); the panel is read-only, embeds no secret, and adds no write route.",
+          "decision_gates": ["DG-18 (resolved by the user decision; ADR-025 Accepted v1.2)"],
+          "review": "security-reviewer"
+        },
+        {
+          "id": "17.4",
+          "name": "F3 documentation and security review",
+          "traceability": "F3; ADR-025 clause 6; verification requirements section 9",
+          "dependencies": ["17.3"],
+          "acceptance_criteria": "The canonical documentation describes the shipped surface; the endpoint and panel security review is recorded with no open BLOCKER/HIGH; F3 is recorded as resolved.",
+          "decision_gates": ["DG-18 (resolved by the user decision; ADR-025 Accepted v1.2)"],
+          "review": "security-reviewer, documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "18",
+      "name": "Extra Large badge size",
+      "goal": "G7 (ADR-027)",
+      "objective": "Add BadgeSize.ExtraLarge (factor 2.0), extend the BadgeGeometry.SizeFactor switch and the RendererConfiguration validation coverage for the new value, order the settings dropdown Small/Medium/Large/Extra Large, and record and verify the RenderVersion decision with golden coverage.",
+      "deliverables": [
+        "The Extra Large enum member and geometry factor (extending BadgeGeometry.SizeFactor) with safe-area clamping and RendererConfiguration validation coverage.",
+        "The dropdown ordering Small, Medium, Large, Extra Large.",
+        "The ADR-027 version decision: no RenderVersion/schema advance, existing goldens byte-identical, new Extra Large goldens.",
+        "Canonical documentation."
+      ],
+      "acceptance_criteria": [
+        "Extra Large renders at 2.0x Medium and never paints outside the safe area.",
+        "The dropdown order is Small, Medium, Large, Extra Large.",
+        "Existing goldens are byte-identical and the version decision is recorded; new Extra Large goldens are deterministic and the fingerprint includes the non-default size."
+      ],
+      "exit_gate": "Gate 18: tasks 18.1-18.3 meet their acceptance criteria; the golden oracle verifies the version decision; phase review approved; tag v1.2.0-phase18 created.",
+      "authoritative_execution_order": ["18.1", "18.2", "18.3"],
+      "tasks": [
+        {
+          "id": "18.1",
+          "name": "Extra Large enum, geometry factor, and settings dropdown ordering",
+          "traceability": "G7; ADR-027 clauses 1-3, 5",
+          "dependencies": [],
+          "acceptance_criteria": "BadgeSize.ExtraLarge exists with factor 2.0 relative to Medium; BadgeGeometry.SizeFactor is extended for the new member (the current switch throws for an unknown value) and RendererConfiguration validation coverage for the new value is added; the effective scale is clamped to the safe area; the dropdown order is Small, Medium, Large, Extra Large; Small/Medium/Large renders are unchanged and the fingerprint includes a non-default size.",
+          "decision_gates": ["DG-16 (resolved by the user decision; ADR-027 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "18.2",
+          "name": "Golden coverage and version-decision verification",
+          "traceability": "G7; ADR-027 clause 4; verification requirements section 9",
+          "dependencies": ["18.1"],
+          "acceptance_criteria": "Existing committed goldens are byte-identical (documenting the no-advance decision); new Extra Large goldens are added and deterministic; a changed existing golden reopens the version decision rather than silently advancing.",
+          "decision_gates": ["DG-16 (resolved by the user decision; ADR-027 Accepted v1.2)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "18.3",
+          "name": "G7 documentation and integration verification",
+          "traceability": "G7; ADR-027; documentation checklist phase 18",
+          "dependencies": ["18.2"],
+          "acceptance_criteria": "The canonical documentation and the ADR-019 supersession note record Extra Large and the version decision; an integration test covers selecting Extra Large and the resulting fingerprint/rendered size.",
+          "decision_gates": ["DG-16"],
+          "review": "documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "19",
+      "name": "Reconciliation coverage and version-aware coalescing",
+      "goal": "F4 and F6 (ADR-022; ADR-023)",
+      "objective": "Guarantee successive-run coverage of a scope larger than QueueCapacity and stop a post-save re-render from being dropped by version-blind coalescing.",
+      "deliverables": [
+        "The accepted F4 mechanism (ADR-022, Accepted (v1.2): a persisted (SortName, itemId) cursor, a bounded enqueue-outcome vocabulary, and a resume-capable IMediaLibraryEnumerator) with a bounded Cache-authority state record and scope-reset rule.",
+        "F4 successive-run coverage tests, including the coalesce/in-flight/overflow and library-mutation cases.",
+        "The accepted F6 mechanism (ADR-023, Accepted (v1.2): a ConfigurationStale discard classification with a bounded re-enqueue after the in-flight slot is released).",
+        "F6 coalescing coverage tests, including the pre-slot-release failure case.",
+        "ADR-022/ADR-023 and the architecture documentation."
+      ],
+      "acceptance_criteria": [
+        "Successive scheduled/post-scan runs cover a scope larger than QueueCapacity (round-robin) with one run still bounded; a coalesced or in-flight item does not stall the run and the run stops at the first overflow.",
+        "The cursor is a bounded, secret-free Cache-authority (SortName, itemId) record that resets on scope change and on a missing/torn/out-of-range record and is stable under library mutation.",
+        "Event, webhook, per-item, and post-save triggers are unchanged and do not read or write the cursor.",
+        "A ConfigurationStale discard re-enqueues one current-version work item after the in-flight slot is released, bounded per (item, connection, surface, version), while a non-version discard does not re-enqueue and the version-blind key and single-flight are unchanged."
+      ],
+      "exit_gate": "Gate 19: tasks 19.1-19.5 meet their acceptance criteria; the F4 and F6 coverage tests pass; phase review approved; tag v1.2.0-phase19 created. Resolves F4 and F6.",
+      "authoritative_execution_order": ["19.1", "19.2", "19.3", "19.4", "19.5"],
+      "tasks": [
+        {
+          "id": "19.1",
+          "name": "F4 mechanism confirmation and persisted-cursor implementation",
+          "traceability": "F4; ADR-022 clauses 1-5",
+          "dependencies": [],
+          "acceptance_criteria": "DG-19/ADR-022 is accepted (Accepted (v1.2)) and the implementation follows it: the scheduled/post-scan reconciliation advances a bounded, versioned, secret-free Cache-authority cursor over the deterministic `(SortName, itemId)` total order and wraps at the end; the enqueue boundary returns the Accepted/Coalesced/InFlight/Overflow/Stopped vocabulary; a coalesced or in-flight item is covered without stalling and the run stops at the first overflow, advancing the cursor only over the covered prefix; the cursor resets on a scope change and on a missing/torn/out-of-range record; post-save does not read or write the cursor; one run remains bounded.",
+          "decision_gates": ["DG-19 (resolved by the accepted ADR-022)"],
+          "review": "implementation-reviewer, test-quality-reviewer"
+        },
+        {
+          "id": "19.2",
+          "name": "F4 successive-run coverage tests",
+          "traceability": "F4; ADR-022 clause 5; verification requirements section 9",
+          "dependencies": ["19.1"],
+          "acceptance_criteria": "Tests prove that successive runs over a scope larger than QueueCapacity cover the whole scope over time, that the cursor wraps, that a scope change resets it, and that event/webhook/per-item/post-save triggers do not read or write it; tests cover the coalesce, in-flight, overflow-stop, and library-mutation (stable seek key) cases.",
+          "decision_gates": ["DG-19 (resolved by the accepted ADR-022)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "19.3",
+          "name": "F6 mechanism confirmation and stale-basis re-enqueue implementation",
+          "traceability": "F6; ADR-023 clauses 1-5",
+          "dependencies": ["19.1"],
+          "acceptance_criteria": "DG-20/ADR-023 is accepted (Accepted (v1.2)) and the implementation follows it: a ConfigurationStale discard re-enqueues exactly one fresh work item at the current configuration version after the in-flight slot is released, bounded to one per (item, connection, surface, version) by the carried current version; a same-version discard, a stopped or full queue, and a discard with any other classification (ItemMissing/Ineligible/ConnectionChanged/IdentityUnavailable) do not re-enqueue; an item that became ineligible/absent is re-enqueued once and then discarded for its real reason; WorkItemKey stays version-blind and single-flight is preserved.",
+          "decision_gates": ["DG-20 (resolved by the accepted ADR-023)"],
+          "review": "implementation-reviewer, test-quality-reviewer"
+        },
+        {
+          "id": "19.4",
+          "name": "F6 coalescing coverage tests",
+          "traceability": "F6; ADR-023; verification requirements section 9",
+          "dependencies": ["19.3"],
+          "acceptance_criteria": "Tests reproduce the post-save coalescing case (new-version hint coalesced while the item is pending or in flight) and prove the item re-renders at the current version without a loop or duplicate concurrent work; a coverage test fails if the re-enqueue is issued before the in-flight slot is released, and a test proves a non-version discard does not re-enqueue.",
+          "decision_gates": ["DG-20 (resolved by the accepted ADR-023)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "19.5",
+          "name": "F4/F6 documentation and integration verification",
+          "traceability": "F4 and F6; ADR-022/ADR-023; documentation checklist phase 19",
+          "dependencies": ["19.2", "19.4"],
+          "acceptance_criteria": "The architecture section 8 coverage and coalescing clauses are reconciled with the shipped behavior; F4 and F6 are recorded as resolved; integration tests pass.",
+          "decision_gates": ["DG-19", "DG-20"],
+          "review": "documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "name": "Empty-selection artwork restoration",
+      "goal": "F7 (ADR-024)",
+      "objective": "Restore the retained source baseline (or remove the ArrTags image when no baseline existed) when an owned session resolves an empty resolved selection, while preserving the current artwork for the other pass-through reasons including a non-empty layout failure.",
+      "deliverables": [
+        "The empty-selection restore/removal behavior through the guarded lifecycle protocol and the internal ArtworkPublisher.RestoreAsync entry point.",
+        "A distinct NoFittingBadge pass-through reason for a non-empty layout-empty render; unchanged preservation for the other pass-through reasons.",
+        "ADR-024 plus ADR-009 and ADR-003 amendment notes.",
+        "Coverage tests, including the synthetic-state absent-baseline removal case."
+      ],
+      "acceptance_criteria": [
+        "The discriminator is the empty resolved selection (NoDisplayableValue); an owned empty selection restores the baseline, or removes the ArrTags image when the baseline was absent, through the crash-recoverable protocol and ArtworkPublisher.RestoreAsync.",
+        "The other pass-through reasons (including NoFittingBadge for a non-empty selection that cannot fit) preserve the current artwork and mutate nothing.",
+        "A non-owned empty selection stays a pass-through; the absent-baseline removal is exercised by a direct publisher test with a synthetic persisted state; coverage tests pass and F7 is recorded as resolved."
+      ],
+      "exit_gate": "Gate 20: tasks 20.1-20.3 meet their acceptance criteria; coverage tests pass; phase review approved; tag v1.2.0-phase20 created. Resolves F7.",
+      "authoritative_execution_order": ["20.1", "20.2", "20.3"],
+      "tasks": [
+        {
+          "id": "20.1",
+          "name": "Empty-selection restore/removal behavior",
+          "traceability": "F7; ADR-024 clauses 1-6; ADR-009 and ADR-003 amendments",
+          "dependencies": [],
+          "acceptance_criteria": "The pass-through discriminator is the empty resolved selection: NoDisplayableValue now means an empty selection and a new NoFittingBadge reason covers a non-empty selection whose layout is empty; an owned session with an empty selection drives the guarded restore (baseline present) or removal (baseline absent) through ArtworkPublisher.RestoreAsync under the Normal fence and the crash-recoverable operation protocol; NoMetadata, NoFittingBadge, IneligibleSurface, MatchNotEligible, and SourceUnavailable still preserve the current artwork and mutate nothing; a non-owned empty selection stays a pass-through; no RenderVersion advance.",
+          "decision_gates": ["DG-21 (resolved by the accepted ADR-024)"],
+          "review": "implementation-reviewer, test-quality-reviewer"
+        },
+        {
+          "id": "20.2",
+          "name": "F7 coverage tests",
+          "traceability": "F7; ADR-024; verification requirements section 9",
+          "dependencies": ["20.1"],
+          "acceptance_criteria": "Tests cover owned+empty+baseline -> restore, owned+empty+no-baseline -> remove (via a direct publisher test with a synthetic persisted Published state without a baseline, since the coordinator path returns NoSource), non-owned+empty -> pass-through, a non-empty layout failure -> preserve (no mutation), and each other pass-through reason -> preserve; the restore/removal uses the guarded protocol and recovery gate and ArtworkPublisher.RestoreAsync is the entry point.",
+          "decision_gates": ["DG-21 (resolved by the accepted ADR-024)"],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "20.3",
+          "name": "F7 documentation and integration verification",
+          "traceability": "F7; ADR-024; documentation checklist phase 20",
+          "dependencies": ["20.2"],
+          "acceptance_criteria": "The canonical documentation and the ADR-009/ADR-003 amendment notes describe the shipped behavior; F7 is recorded as resolved; integration tests pass.",
+          "decision_gates": ["DG-21 (resolved by the accepted ADR-024)"],
+          "review": "documentation-maintainer"
+        }
+      ]
+    },
+    {
+      "id": "21",
+      "name": "v1.2 release",
+      "goal": "v1.2 release (outline task V1.2-8)",
+      "objective": "Bump ArrTags to 1.2.0.0, reconcile the canonical documentation, build and package reproducibly, run the full suite and the live pinned-host verification, run the release security review, and complete the changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag.",
+      "deliverables": [
+        "Version 1.2.0.0 in build.yaml and Directory.Build.props.",
+        "The reconciled canonical documentation.",
+        "A reproducibly built artifacts/ArrTags_1.2.0.0.zip.",
+        "The full default and host-guarded suites passing.",
+        "The recorded live pinned-host verification.",
+        "The release security review.",
+        "The changelog, manifest.json, and the annotated tag after the release-review gate; the GitHub publish remains the user's manual step."
+      ],
+      "acceptance_criteria": [
+        "The version is 1.2.0.0 in build.yaml and Directory.Build.props.",
+        "The canonical documentation reflects v1.2 with no stale claim.",
+        "./build.sh package produces a reproducible artifacts/ArrTags_1.2.0.0.zip with recorded identity.",
+        "The full default and host-guarded suites and the live pinned-host matrix pass.",
+        "The release security review has no open BLOCKER/HIGH.",
+        "The annotated tag v1.2.0 is created after the release-reviewer gate."
+      ],
+      "exit_gate": "Gate 21: tasks 21.1-21.6 meet their acceptance criteria; full suite and live matrix pass; release security review has no open BLOCKER/HIGH; phase and release reviews pass; tag v1.2.0 created.",
+      "authoritative_execution_order": ["21.1", "21.2", "21.3", "21.4", "21.5", "21.6"],
+      "tasks": [
+        {
+          "id": "21.1",
+          "name": "Version bump and release metadata",
+          "traceability": "v1.2 release; release identity section 1",
+          "dependencies": ["20.3"],
+          "acceptance_criteria": "The version is 1.2.0.0 in build.yaml and Directory.Build.props and the metadata accurately describes the shipped v1.2 behavior.",
+          "decision_gates": [],
+          "review": "implementation-reviewer"
+        },
+        {
+          "id": "21.2",
+          "name": "Canonical documentation reconciliation",
+          "traceability": "documentation checklist phase 21",
+          "dependencies": ["21.1"],
+          "acceptance_criteria": "The canonical current-state surfaces (README, architecture, data-model, limitations, decisions index, GOALS) describe the v1.2 state with no stale claim; F3, F4, F6, F7, and F8 are recorded resolved and F5 remains accepted (reclassified from Open) and excluded.",
+          "decision_gates": [],
+          "review": "documentation-maintainer"
+        },
+        {
+          "id": "21.3",
+          "name": "Release build, full suite, reproducible artifact, and release documentation",
+          "traceability": "verification requirements section 9",
+          "dependencies": ["21.2"],
+          "acceptance_criteria": "The v1.2 artifact is reproducible and documented; the full default and host-guarded suites pass.",
+          "decision_gates": [],
+          "review": "test-quality-reviewer"
+        },
+        {
+          "id": "21.4",
+          "name": "Live pinned-host verification",
+          "traceability": "verification requirements section 9",
+          "dependencies": ["21.3"],
+          "acceptance_criteria": "The live pinned-host verification of the v1.2 matrix (status panel/endpoint, MB/KB round-trip and note text, Extra Large, log subject) is recorded and passes.",
+          "decision_gates": [],
+          "review": "live-host-verifier"
+        },
+        {
+          "id": "21.5",
+          "name": "Release security review",
+          "traceability": "verification requirements section 9; ADR-025, ADR-026",
+          "dependencies": ["21.4"],
+          "acceptance_criteria": "The release security review is recorded with no open BLOCKER/HIGH.",
+          "decision_gates": [],
+          "review": "security-reviewer"
+        },
+        {
+          "id": "21.6",
+          "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag",
+          "traceability": "v1.2 release; documentation checklist phase 21",
+          "dependencies": ["21.5"],
+          "acceptance_criteria": "docs/changelog/v1.2.0.md and the status surfaces reflect v1.2; the release-review gate passes; the annotated tag v1.2.0 exists; the GitHub publish remains the user's manual step.",
+          "decision_gates": [],
+          "review": "release-reviewer (gate)"
+        }
+      ]
+    }
+  ],
+  "decision_gates": [
+    {"gate": "DG-15", "goal": "G6", "status": "resolved by user decision 1; recorded by ADR-028 (Accepted v1.2): fixed per-field binary unit, 64-KiB/1-MiB/1-KiB steps and precision, exact min/default/max round-trip", "phase": "16"},
+    {"gate": "DG-16", "goal": "G7", "status": "resolved by user decision 3; recorded by ADR-027 (Accepted v1.2): factor 2.0, order Small/Medium/Large/Extra Large, no version advance, new goldens required", "phase": "18"},
+    {"gate": "DG-17", "goal": "G8", "status": "note text and binary classification (restart-required if any consumer captures; mixed settings marked restart-required) recorded by ADR-028 (Accepted v1.2), with the complete evidenced set owned by task 16.2; modal feasibility owned by the task 16.4 jellyfin-expert spike (records availability/stability), note text is the fail-open behavior", "phase": "16"},
+    {"gate": "DG-18", "goal": "F3", "status": "resolved by user decision 4; recorded by ADR-025 (Accepted v1.2): read-only panel, elevation-gated endpoint, fixed bounded secret-free counter set, fail-closed panel", "phase": "17"},
+    {"gate": "DG-19", "goal": "F4", "status": "RESOLVED by the v1.2 plan and accepted ADR-022 (persisted (SortName, itemId) cursor, bounded enqueue-outcome vocabulary, resume-capable enumerator); Phase 19 implementation tasks are no longer gated", "phase": "19"},
+    {"gate": "DG-20", "goal": "F6", "status": "RESOLVED by the v1.2 plan and accepted ADR-023 (ConfigurationStale-classified re-enqueue after the in-flight slot is released, bounded by the current version); Phase 19 implementation tasks are no longer gated", "phase": "19"},
+    {"gate": "DG-21", "goal": "F7", "status": "RESOLVED by the v1.2 plan and accepted ADR-024 (restore baseline / remove when absent for an owned empty resolved selection via ArtworkPublisher.RestoreAsync; preserve otherwise including NoFittingBadge); Phase 20 implementation tasks are no longer gated", "phase": "20"},
+    {"gate": "DG-22", "goal": "G9", "status": "resolved by user decision 2; recorded by ADR-026 (Accepted v1.2); security review required", "phase": "15"}
+  ],
+  "risks": [
+    "G9: the log subject exposes a directory path or a sensitive file name. Mitigated by ADR-026's bounded file-name-only subject with item-id fallback, no directory, redaction tests at every verbosity, and a fresh logging security review (15.1-15.4).",
+    "F3: the diagnostics endpoint leaks a secret or an unbounded payload. Mitigated by ADR-025's elevation-gated read-only endpoint, fixed bounded shape, no per-item listing, and a dedicated security review (17.2, 17.4).",
+    "F4: the coverage cursor corrupts or stalls reconciliation. Mitigated by a bounded Cache-authority (SortName, itemId) cursor with a scope reset and a start fallback, the bounded enqueue-outcome vocabulary that does not stall on coalesce/in-flight and stops at the first overflow, plus coverage tests (19.1, 19.2).",
+    "F6: the re-enqueue loops, is coalesced away, or duplicates work. Mitigated by the ConfigurationStale discard classification, the re-enqueue after the in-flight slot is released, the current-version bound, the unchanged version-blind key, and preserved single-flight, plus coalescing coverage tests (19.3, 19.4).",
+    "F7: the restore removes correct artwork on a transient failure. Mitigated by restoring/removing only for an owned empty resolved selection (NoDisplayableValue) through ArtworkPublisher.RestoreAsync and the guarded protocol, preserving the current artwork for every other reason including NoFittingBadge (20.1, 20.2).",
+    "G7: the Extra Large change unexpectedly alters existing output. Mitigated by the requirement that existing goldens stay byte-identical and the no-advance decision, with a changed existing golden reopening the decision (18.1, 18.2).",
+    "G6/G8: the restart-required classification is wrong. Mitigated by making it code-owned and code-evidenced and by testing the per-operation set against a replaced snapshot (16.2)."
+  ],
+  "execution_order_invariants": {
+    "each_phase_lists_every_task_exactly_once": true,
+    "dependency_references_consistent": true,
+    "phases_continue_global_numbering": true,
+    "prior_phases_not_reopened": true
+  },
+  "open_questions": [
+    "USER DECISION APPLIED (not open): F5 is reclassified from Open to Accepted by explicit user decision for v1.2 and is excluded from all v1.2 tasks; the register, index, state.json, and the plan's out-of-scope section are updated accordingly.",
+    "CONFIRM (not a blocker): the F4 coverage cursor is a new persisted Cache-authority state record under the existing StateRepository envelope (fixed kind/record id); ADR-014's state-root decision is unchanged, but the data-model/architecture documentation must record the new record when 19.1 lands.",
+    "CONFIRM (not a blocker): the F3 status panel is added to the existing ArrTags settings page (as the user decision specifies) rather than a separate page; the panel is read-only, served from the anonymous static page resource, and renders no data when the elevation-gated endpoint is not authorized."
+  ],
+  "acceptance": {
+    "decided_by": "user",
+    "date": "2026-09-25",
+    "plan": "docs/planning/v1.2.md accepted (no longer 'accepted for planning'); no v1.2 product behavior is implemented yet",
+    "adrs": "ADR-022..ADR-028 accepted (Status 'Accepted (v1.2)')",
+    "decision_gates_resolved": ["DG-19", "DG-20", "DG-21"],
+    "known_limitation_confirmed": "F5 remains Accepted as a known shipped limitation (reclassified from Open) and is excluded from v1.2",
+    "note": "No user decision remains open for the v1.2 planning package. The phases remain PLANNED in docs/plan/state.json and no task is started or completed by this acceptance pass.",
+    "surfaces_reconciled": [
+      "docs/decisions/ADR-022.md, ADR-023.md, ADR-024.md, ADR-025.md, ADR-026.md, ADR-027.md, ADR-028.md (Status -> Accepted (v1.2))",
+      "docs/decisions/00-index.md (ADR-022..ADR-028 status column)",
+      "docs/planning/v1.2.md (Status, goal Decision lines, decision-gate table, decision-record table)",
+      "PLANS.md (active-scope paragraphs, Phase 19/20 decision-gate wording, Decision Gates table DG-19/DG-20/DG-21)",
+      "docs/plan/state.json (active_scope_note, updated_utc)",
+      "docs/status.md and the PLANS.md generated blocks (rendered from state.json)",
+      "docs/implementation/planning/v1.2.json (this acceptance record)"
+    ]
+  },
+  "planning_gaps": [
+    "No unowned deliverable, phase acceptance criterion, or decision gate was found: every v1.2 goal acceptance criterion, ADR-022..ADR-028 obligation, decision gate, and verification requirement maps to at least one phase task (see the phase tasks above).",
+    "F5 is deliberately excluded and is not mapped to any task; it is recorded as Accepted (reclassified from Open) in docs/limitations/accepted.md by explicit user decision.",
+    "The per-phase documentation checklist (docs/planning/v1.2.md section 7) assigns incremental documentation to each phase and a consolidated reconciliation to task 21.2; this is intentional, matching the v1.1 pattern.",
+    "The modal-on-change half of DG-17 cannot be fully resolved at planning time; task 16.4 owns the jellyfin-expert spike and the note text is the accepted fail-open behavior, so the deliverable has a named owner and a defined fallback."
+  ],
+  "rework": {
+    "review": "docs/reviews/architecture/v1.2-plan.json",
+    "reviewer_status_before": "CHANGES_REQUIRED",
+    "findings_total": 25,
+    "blockers": 0,
+    "summary": "All 25 review findings are closed: 24 resolved in the planning package and 1 (AR-V12-23) not_required with justification. No finding required a new user decision. The user has since accepted the v1.2 plan and ADR-022..ADR-028 and resolved DG-19, DG-20, and DG-21; see the top-level acceptance record.",
+    "findings": [
+      {"id": "AR-V12-01", "severity": "HIGH", "status": "resolved", "closure": "ADR-022 clause 1 defines the bounded enqueue-outcome vocabulary (Accepted / Coalesced / InFlight / Overflow / Stopped) on IWorkHintSink's result-returning call; clause 2 defines the exact cursor-advance rule (covered on Accepted/Coalesced/InFlight and on correctly-no-hint items; stop at the first Overflow/Stopped; continue past coalesce). Plan F4 acceptance and PLANS.md Phase 19 acceptance updated."},
+      {"id": "AR-V12-02", "severity": "HIGH", "status": "resolved", "closure": "ADR-022 clause 3 defines a stable (SortName, itemId) seek key over a total order with an item-id tie-break and a resume-capable IMediaLibraryEnumerator; add/remove does not reset the cursor, and coverage is guaranteed for a stable library and best-effort under concurrent mutation. Plan F4 acceptance and task 19.1/19.2 updated."},
+      {"id": "AR-V12-03", "severity": "HIGH", "status": "resolved", "closure": "ADR-023 clause 3 requires the re-enqueue after CompleteProcessing releases the in-flight slot, dropping when stopped/full; plan F6 acceptance and task 19.4 require a coverage test that fails if the re-enqueue is issued before the slot is released."},
+      {"id": "AR-V12-04", "severity": "HIGH", "status": "resolved", "closure": "ADR-023 clause 1 defines a bounded DiscardReason (ConfigurationStale / ItemMissing / Ineligible / ConnectionChanged / IdentityUnavailable); clause 2 states only ConfigurationStale re-enqueues; plan F6 and task 19.3/19.4 require a test that a non-version discard does not re-enqueue."},
+      {"id": "AR-V12-05", "severity": "HIGH", "status": "resolved", "closure": "ADR-024 clause 1 narrows NoDisplayableValue to an empty resolved selection and adds a distinct NoFittingBadge pass-through reason for a non-empty layout-empty render; plan F7 and task 20.1/20.2 require a coverage test that a non-empty selection which cannot fit performs no mutation."},
+      {"id": "AR-V12-06", "severity": "HIGH", "status": "resolved", "closure": "ADR-028 clause 1 defines the unit selection per field (MB, KB for WebhookMaxPayloadBytes), a per-field step (64 KiB for the three 64-KiB-min fields; 1 MiB/1 KiB otherwise), the display precision, the exact conversion algorithm (scaled-decimal parse, round to nearest byte, step-validation), and the range label when the range spans 1 MiB. Plan G6 acceptance and task 16.1 updated."},
+      {"id": "AR-V12-07", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-022 clause 4 fixes the cursor StateAuthority to Cache (invalid/torn -> discarded/miss -> start), the fixed kind reconciliation-cursor and a fixed record id, and the bounded scope-identity tuple."},
+      {"id": "AR-V12-08", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-022 clause 6 excludes PostSave from the cursor and gives the reason (bounded user-triggered prefix re-cover); plan F4 decision/acceptance and PLANS.md add post-save to the unaffected-trigger list."},
+      {"id": "AR-V12-09", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-023 clause 4 defines the bound as implicit in the current version carried by the re-enqueued item (no separate version set); clause 5 restates that an ineligible/absent item is re-enqueued once then discarded for its real reason, consistent with the version check preceding item resolve/eligibility."},
+      {"id": "AR-V12-10", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-024 clause 2 names the pass-through site (ArtworkGenerationCoordinator) and the internal ArtworkPublisher.RestoreAsync entry point under ArtworkLifecycleFence.Normal and the existing subject gate/recovery; clause 3 confirms Normal-fence restoration is intended and crash-recoverable via ArtworkRecoveryDecisions."},
+      {"id": "AR-V12-11", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-026 Status/Context/clause 4 rewritten: ADR-020 clause 4 has no path exclusion; the amendment adds the bounded log subject to the allowed set and adds an explicit directory/full-path exclusion, dropping the 'still never logged' overclaim."},
+      {"id": "AR-V12-12", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-026 clause 3 enumerates every item-id-emitting site and its available subject, including MetadataReconciliationProcessor.Discard as a mixed site, and requires the helper to fall back to the item id when no path exists; plan G9 acceptance and task 15.2 updated."},
+      {"id": "AR-V12-13", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-028 clause 2 classifies a mixed setting as restart-required if ANY consumer captures, with note text stating some paths apply immediately, and requires task 16.2 to record per-consumer evidence; plan G8 and task 16.2/16.3 updated."},
+      {"id": "AR-V12-14", "severity": "MEDIUM", "status": "resolved", "closure": "ADR-028 Context marks the examples illustrative; clause 2 makes task 16.2 the single owner of the complete evidenced set, naming ArtifactStorageQuotaBytes and the per-operation ProviderResponseLimitBytes, WebhookMaxPayloadBytes, and InventoryCacheMaxBytes plus the mixed limits. Per-phase docs are owned by task 16.6/21.2."},
+      {"id": "AR-V12-15", "severity": "MEDIUM", "status": "resolved", "closure": "docs/planning/v1.2.md section 7 Phase 18 checklist adds docs/data-model/03-08-renderresult.md and docs/data-model/03-12-configuration.md; Phase 17 checklist adds docs/architecture/12-performance-and-operational-limits.md."},
+      {"id": "AR-V12-16", "severity": "LOW", "status": "resolved", "closure": "ADR-025 clause 3 makes the listed counters the fixed minimum shape (additions require a decision); clause 2 and the consequences state the anonymous static page / elevation-gated data split and the fail-closed no-data panel. Plan F3 acceptance, task 17.1/17.3, and PLANS.md Phase 17 updated."},
+      {"id": "AR-V12-17", "severity": "LOW", "status": "resolved", "closure": "ADR-028 clause 1 identifies WebhookMaxPayloadBytes by field name; the 'sub-MB' size claim is removed."},
+      {"id": "AR-V12-18", "severity": "LOW", "status": "resolved", "closure": "ADR-023 Status/References retargeted: it amends the architecture section 8 coalescing clause and depends on ADR-004's queue bound, not ADR-004 coalescing identity."},
+      {"id": "AR-V12-19", "severity": "LOW", "status": "resolved", "closure": "docs/planning/v1.2.md F7 acceptance and task 20.2/PLANS.md Phase 20 state that the absent-baseline removal is exercised by a direct publisher test with a synthetic persisted Published state without a retained baseline."},
+      {"id": "AR-V12-20", "severity": "INFORMATIONAL", "status": "resolved", "closure": "ADR-027 clause 6 and docs/planning/v1.2.md Phase 18 objective, task 18.1 acceptance, and PLANS.md require extending BadgeGeometry.SizeFactor and RendererConfiguration validation coverage for ExtraLarge."},
+      {"id": "AR-V12-21", "severity": "INFORMATIONAL", "status": "resolved", "closure": "ADR-025 clause 1 and a consequence record that the surface is a distinct v1.2 read-only surface, not a reopening of the v1.1 inline-rejection decision; plan F3 acceptance and task 17.4 note it."},
+      {"id": "AR-V12-22", "severity": "INFORMATIONAL", "status": "resolved", "closure": "ADR-026 clause 3 and plan G9 use the enumerated site list (identity-bearing, mixed Discard, item-id fallback, and the no-item-id sites), so plan coverage is explicit."},
+      {"id": "AR-V12-23", "severity": "INFORMATIONAL", "status": "not_required", "closure": "No direction change: the decision gates remain explicit and unchanged in docs/planning/v1.2.md section 3, PLANS.md, and this record; Phase 19/20 implementation tasks stay gated behind DG-19/DG-20/DG-21 acceptance. No edit was needed."},
+      {"id": "AR-V12-24", "severity": "INFORMATIONAL", "status": "resolved", "closure": "Per the user's additional decision, F5 is reclassified from Open to Accepted: moved from docs/limitations/open.md to docs/limitations/accepted.md, the index row updated, state.json limitations.open/accepted updated, and the plan out-of-scope section records the accepted status; F5 stays excluded from all v1.2 tasks."},
+      {"id": "AR-V12-25", "severity": "INFORMATIONAL", "status": "resolved", "closure": "ADR-028 clause 4 requires the jellyfin-expert spike to record the modal API's availability and stability; docs/planning/v1.2.md DG-17 and task 16.4 already require availability and stability."}
+    ],
+    "attempt2_closure": {
+      "review": "docs/reviews/architecture/v1.2-plan.attempt-2.json",
+      "reviewer_status_before": "CHANGES_REQUIRED",
+      "findings": [
+        {"id": "AR-V12-26", "severity": "LOW", "status": "resolved", "closure": "Task 21.2's acceptance criterion in this record no longer says 'F5 remains open'; it now states that F3, F4, F6, F7, and F8 are recorded resolved and F5 remains accepted (reclassified from Open) and excluded. This is consistent with docs/limitations/open.md (no F5 section), docs/limitations/accepted.md (F5 Accepted, reclassified), docs/limitations/00-index.md (F5 Accepted row), and docs/plan/state.json limitations.accepted (F5 present, not in limitations.open)."},
+        {"id": "AR-V12-27", "severity": "INFORMATIONAL", "status": "resolved", "closure": "ADR-028 clause 1 no longer attributes step-multiple rejection to the existing range validation: it now states the step-multiple check is a NEW explicit check introduced by this change, owned by task 16.1, because OperationalLimits.Validate enforces only the field's byte range and not step alignment (an off-step 0.1 MB on a 64-KiB-step field computes 104858 bytes, in range but not step-aligned). Task 16.1's acceptance criterion now requires rejecting an off-step value by an explicit step check. Recorded in docs/planning/v1.2.md Goal G6 acceptance, PLANS.md Phase 16 acceptance and the task 16.1 line, docs/plan/state.json task 16.1, and this record's task 16.1 acceptance_criteria."}
+      ]
+    },
+    "files_changed": [
+      "docs/decisions/ADR-022.md",
+      "docs/decisions/ADR-023.md",
+      "docs/decisions/ADR-024.md",
+      "docs/decisions/ADR-025.md",
+      "docs/decisions/ADR-026.md",
+      "docs/decisions/ADR-027.md",
+      "docs/decisions/ADR-028.md",
+      "docs/planning/v1.2.md",
+      "PLANS.md",
+      "docs/plan/state.json",
+      "docs/limitations/open.md",
+      "docs/limitations/accepted.md",
+      "docs/limitations/00-index.md",
+      "docs/implementation/planning/v1.2.json"
+    ],
+    "unresolved_user_decisions": []
+  }
+}

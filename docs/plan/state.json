@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "updated_utc": "2026-09-25T00:00:00Z",
-  "active_scope": null,
-  "active_scope_note": "No release scope is currently accepted for planning. The v1.2 branch exists but no accepted v1.2 plan is recorded; F6-F8 are open limitations.",
+  "updated_utc": "2026-09-25T16:19:24Z",
+  "active_scope": "docs/planning/v1.2.md",
+  "active_scope_note": "v1.2 (Phases 15-21) is accepted: goals G6-G9 and limitations F3, F4, F6, F7, F8. Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)). DG-19, DG-20, and DG-21 (the F4, F6, and F7 mechanisms) are resolved by the v1.2 plan and their ADRs, so their dependent tasks are no longer gated. F5 is accepted as a known shipped limitation (reclassified from Open) and is excluded.",
   "releases": [
     {
       "version": "0.1.0",
@@ -37,6 +37,20 @@
         "12",
         "13",
         "14"
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "tag": "v1.2.0",
+      "status": "PLANNED",
+      "phases": [
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21"
       ]
     }
   ],
@@ -732,13 +746,282 @@
           "name": "Changelog, release-readiness verification, manifest commit, and the"
         }
       ]
+    },
+    {
+      "id": 15,
+      "name": "Plugin log subject identifier and render classification",
+      "release": "1.2.0",
+      "status": "PLANNED",
+      "gate": "Gate 15",
+      "tag": "v1.2.0-phase15",
+      "execution_order": [
+        "15.1",
+        "15.2",
+        "15.3",
+        "15.4"
+      ],
+      "tasks": [
+        {
+          "id": "15.1",
+          "done": false,
+          "name": "Bounded log-subject policy and helper"
+        },
+        {
+          "id": "15.2",
+          "done": false,
+          "name": "Thread the bounded log subject through the identity-bearing and fallback sites"
+        },
+        {
+          "id": "15.3",
+          "done": false,
+          "name": "Emit the bounded render classification in the artwork log"
+        },
+        {
+          "id": "15.4",
+          "done": false,
+          "name": "Logging documentation, ADR-020 amendment, and security review"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Settings byte units and restart-required surfacing",
+      "release": "1.2.0",
+      "status": "PLANNED",
+      "gate": "Gate 16",
+      "tag": "v1.2.0-phase16",
+      "execution_order": [
+        "16.1",
+        "16.2",
+        "16.3",
+        "16.4",
+        "16.5",
+        "16.6"
+      ],
+      "tasks": [
+        {
+          "id": "16.1",
+          "done": false,
+          "name": "Byte/unit conversion helper and per-field MB/KB mapping (explicit off-step rejection)"
+        },
+        {
+          "id": "16.2",
+          "done": false,
+          "name": "Authoritative restart-required set with code evidence"
+        },
+        {
+          "id": "16.3",
+          "done": false,
+          "name": "Restart-required note text on the settings page"
+        },
+        {
+          "id": "16.4",
+          "done": false,
+          "name": "Modal-on-change research spike (jellyfin-expert)"
+        },
+        {
+          "id": "16.5",
+          "done": false,
+          "name": "Modal-on-change implementation (fail-open to note text)"
+        },
+        {
+          "id": "16.6",
+          "done": false,
+          "name": "G6/G8 documentation and integration verification"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Read-only diagnostics status surface",
+      "release": "1.2.0",
+      "status": "PLANNED",
+      "gate": "Gate 17",
+      "tag": "v1.2.0-phase17",
+      "execution_order": [
+        "17.1",
+        "17.2",
+        "17.3",
+        "17.4"
+      ],
+      "tasks": [
+        {
+          "id": "17.1",
+          "done": false,
+          "name": "Bounded diagnostics metrics model and instrumentation"
+        },
+        {
+          "id": "17.2",
+          "done": false,
+          "name": "Administrator-authenticated status endpoint"
+        },
+        {
+          "id": "17.3",
+          "done": false,
+          "name": "Read-only status panel on the settings page"
+        },
+        {
+          "id": "17.4",
+          "done": false,
+          "name": "F3 documentation and security review"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Extra Large badge size",
+      "release": "1.2.0",
+      "status": "PLANNED",
+      "gate": "Gate 18",
+      "tag": "v1.2.0-phase18",
+      "execution_order": [
+        "18.1",
+        "18.2",
+        "18.3"
+      ],
+      "tasks": [
+        {
+          "id": "18.1",
+          "done": false,
+          "name": "Extra Large enum, geometry factor, and settings dropdown ordering"
+        },
+        {
+          "id": "18.2",
+          "done": false,
+          "name": "Golden coverage and version-decision verification"
+        },
+        {
+          "id": "18.3",
+          "done": false,
+          "name": "G7 documentation and integration verification"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Reconciliation coverage and version-aware coalescing",
+      "release": "1.2.0",
+      "status": "PLANNED",
+      "gate": "Gate 19",
+      "tag": "v1.2.0-phase19",
+      "execution_order": [
+        "19.1",
+        "19.2",
+        "19.3",
+        "19.4",
+        "19.5"
+      ],
+      "tasks": [
+        {
+          "id": "19.1",
+          "done": false,
+          "name": "F4 mechanism confirmation and persisted-cursor implementation"
+        },
+        {
+          "id": "19.2",
+          "done": false,
+          "name": "F4 successive-run coverage tests"
+        },
+        {
+          "id": "19.3",
+          "done": false,
+          "name": "F6 mechanism confirmation and stale-basis re-enqueue implementation"
+        },
+        {
+          "id": "19.4",
+          "done": false,
+          "name": "F6 coalescing coverage tests"
+        },
+        {
+          "id": "19.5",
+          "done": false,
+          "name": "F4/F6 documentation and integration verification"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Empty-selection artwork restoration",
+      "release": "1.2.0",
+      "status": "PLANNED",
+      "gate": "Gate 20",
+      "tag": "v1.2.0-phase20",
+      "execution_order": [
+        "20.1",
+        "20.2",
+        "20.3"
+      ],
+      "tasks": [
+        {
+          "id": "20.1",
+          "done": false,
+          "name": "Empty-selection restore/removal behavior"
+        },
+        {
+          "id": "20.2",
+          "done": false,
+          "name": "F7 coverage tests"
+        },
+        {
+          "id": "20.3",
+          "done": false,
+          "name": "F7 documentation and integration verification"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "v1.2 release",
+      "release": "1.2.0",
+      "status": "PLANNED",
+      "gate": "Gate 21",
+      "tag": "v1.2.0",
+      "execution_order": [
+        "21.1",
+        "21.2",
+        "21.3",
+        "21.4",
+        "21.5",
+        "21.6"
+      ],
+      "tasks": [
+        {
+          "id": "21.1",
+          "done": false,
+          "name": "Version bump and release metadata"
+        },
+        {
+          "id": "21.2",
+          "done": false,
+          "name": "Canonical documentation reconciliation"
+        },
+        {
+          "id": "21.3",
+          "done": false,
+          "name": "Release build, full suite, reproducible artifact, and release documentation"
+        },
+        {
+          "id": "21.4",
+          "done": false,
+          "name": "Live pinned-host verification"
+        },
+        {
+          "id": "21.5",
+          "done": false,
+          "name": "Release security review"
+        },
+        {
+          "id": "21.6",
+          "done": false,
+          "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag"
+        }
+      ]
     }
   ],
   "limitations": {
     "open": [
       "F3",
       "F4",
-      "F5",
       "F6",
       "F7",
       "F8"
@@ -748,6 +1031,7 @@
       "F2"
     ],
     "accepted": [
+      "F5",
       "V1",
       "V2",
       "V3",

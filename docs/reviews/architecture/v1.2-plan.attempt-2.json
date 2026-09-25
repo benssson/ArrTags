@@ -1,0 +1,292 @@
+{
+  "subject": "ArrTags v1.2 planning package rework (attempt 2): ADR-022..ADR-028, docs/planning/v1.2.md, PLANS.md Phases 15-21, docs/plan/state.json, the docs/implementation/planning/v1.2.json rework record, and the F5 Open->Accepted reclassification",
+  "reviewer_status": "CHANGES_REQUIRED",
+  "prior_review": "docs/reviews/architecture/v1.2-plan.json (attempt 1, CHANGES_REQUIRED, 25 findings)",
+  "attempt": 2,
+  "findings": [
+    {
+      "id": "AR-V12-01",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "ADR-022 (F4/DG-19): coverage guarantee / enqueue-result vocabulary",
+      "description": "CLOSED. ADR-022 clause 1 now defines a bounded enqueue-outcome vocabulary on IWorkHintSink's result-returning call: Accepted / Coalesced / InFlight / Overflow / Stopped, with the boolean TryEnqueue retained for the callers that only need enqueued-or-not. Clause 2 defines the exact cursor-advance rule: Accepted, Coalesced and InFlight are all covered and continue; Overflow and Stopped stop the run at that item; a correctly-no-work item is covered and does not stall; the run persists the position after the last covered item and wraps at the end. This establishes a contiguous covered prefix and a provable successive-run coverage guarantee, and the rejected-alternatives section explicitly rejects boolean-count advance.",
+      "evidence": ["docs/decisions/ADR-022.md clauses 1-2 and Rejected alternatives", "src/ArrTags/Updates/IWorkHintSink.cs:26-34", "src/ArrTags/Updates/LibraryWorkQueue.cs:142-179 (three distinct false outcomes)", "docs/planning/v1.2.md Goal F4 acceptance criteria", "docs/implementation/planning/v1.2.json task 19.1 acceptance"]
+    },
+    {
+      "id": "AR-V12-02",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "ADR-022 (F4/DG-19): cursor position stability",
+      "description": "CLOSED. ADR-022 clause 3 replaces the integer offset with a stable opaque (SortName, itemId) seek key over a total order with an item-id tie-break, and IMediaLibraryEnumerator gains a resume capability that returns the page strictly after the key (a host query predicate where supported, otherwise a bounded linear skip). Add/remove does not reset the cursor; only a scope change does. The guarantee is honestly bounded: guaranteed for a stable library and best-effort under concurrent mutation, with no stable item skipped across a full cycle. Plan F4 acceptance and tasks 19.1/19.2 require the stable-seek-key and library-mutation cases.",
+      "evidence": ["docs/decisions/ADR-022.md clauses 3 and 5 and Consequences", "src/ArrTags/Media/IMediaLibraryEnumerator.cs:24-30", "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs:44-62 (SortName-only integer offset, the bug)", "docs/planning/v1.2.md Goal F4 acceptance criteria"]
+    },
+    {
+      "id": "AR-V12-03",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "ADR-023 (F6/DG-20): re-enqueue ordering vs single-flight",
+      "description": "CLOSED. ADR-023 clause 3 requires the re-enqueue to happen after the in-flight slot is released: record the stale-basis discard, call CompleteProcessing(item.Key), then enqueue the fresh current-version item, dropping when stopped/full. It requires a coverage test that fails if the re-enqueue is issued before the slot is released. Plan F6 acceptance and task 19.4 repeat the pre-slot-release failing test.",
+      "evidence": ["docs/decisions/ADR-023.md clauses 2-3", "src/ArrTags/Updates/LibraryWorkWorker.cs:166-183 (CompleteProcessing in finally after ProcessWithRetryAsync)", "src/ArrTags/Updates/LibraryWorkQueue.cs:151-164 (in-flight same-key rejection)", "docs/planning/v1.2.md Goal F6 acceptance criteria", "docs/implementation/planning/v1.2.json task 19.4"]
+    },
+    {
+      "id": "AR-V12-04",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "ADR-023 (F6/DG-20): machine-readable discard classification",
+      "description": "CLOSED. ADR-023 clause 1 defines a bounded DiscardReason (ConfigurationStale, ItemMissing, Ineligible, ConnectionChanged, IdentityUnavailable); ConfigurationStale covers both the initial version check and the pre-publication version re-check. Clause 2 states that exactly one classification, ConfigurationStale, re-enqueues, bounded to one per (item, connection, surface, version); every other classification, a same-version discard, and a stopped/full queue do not. Plan F6 and tasks 19.3/19.4 require a test that a non-version discard does not re-enqueue, and the rejected alternatives explicitly reject a worker-side version comparison.",
+      "evidence": ["docs/decisions/ADR-023.md clauses 1-2 and 5", "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:105-125,200-236,333-345 (all discards returned Completed)", "src/ArrTags/Updates/WorkProcessingResult.cs:20-60", "src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs:79-87 (second version guard)", "docs/planning/v1.2.md Goal F6 acceptance criteria"]
+    },
+    {
+      "id": "AR-V12-05",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "ADR-024 (F7/DG-21): empty-selection vs layout-empty discriminator",
+      "description": "CLOSED. ADR-024 clause 1 narrows NoDisplayableValue to mean exactly the resolved BadgeSelection being empty, and adds a distinct bounded pass-through reason NoFittingBadge for a non-empty selection whose layout is empty after shorten/omit. Clause 5 preserves the other reasons including NoFittingBadge. Plan F7 acceptance and tasks 20.1/20.2 require a coverage test that a non-empty selection which cannot fit performs no mutation. This removes the ambiguity that made a layout failure remove a correct badge.",
+      "evidence": ["docs/decisions/ADR-024.md clauses 1 and 5", "src/ArrTags/Rendering/SkiaBadgeRenderer.cs:82-86 (selection.IsEmpty) and 224-227 (layout.IsEmpty, same reason today)", "src/ArrTags/Rendering/RenderPassThroughReason.cs", "docs/planning/v1.2.md Goal F7 acceptance criteria", "docs/implementation/planning/v1.2.json task 20.1"]
+    },
+    {
+      "id": "AR-V12-06",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "ADR-028 (G6/DG-15): MB/KB unit-selection rule and min round-trip",
+      "description": "CLOSED. ADR-028 clause 1 fixes the unit per field in code (binary MB for every byte limit, binary KB for WebhookMaxPayloadBytes), a per-field step S that divides minimum/default/maximum (64 KiB for the three 64-KiB-min fields; 1 MiB or 1 KiB otherwise), a per-field display precision P (4 fractional digits for the 64-KiB-step MB fields; 0 otherwise), an explicit range label that stays in the field's unit across the 1 MiB boundary, and a scaled-decimal conversion algorithm. Every minimum/default/maximum is an exact multiple of its step, so all values round-trip exactly, including 64 KiB -> 0.0625 MB -> 65536 bytes. Verified against the actual validation ranges and defaults.",
+      "evidence": ["docs/decisions/ADR-028.md clause 1 and Context table", "src/ArrTags/Configuration/OperationalLimits.cs:175-198 (ranges) and 95-111,136,141 (defaults; 64 KiB minima)", "docs/planning/v1.2.md Goal G6 acceptance criteria", "docs/implementation/planning/v1.2.json task 16.1"]
+    },
+    {
+      "id": "AR-V12-07",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-022 (F4/DG-19): cursor storage authority and torn-record reset",
+      "description": "CLOSED. ADR-022 clause 4 fixes the cursor's StateAuthority to Cache (rebuildable, so an invalid/torn record is discarded and observed as a miss, resetting to the start, rather than quarantined), the fixed record kind reconciliation-cursor and a fixed record id, and clause 5 defines the bounded scope-identity tuple (sorted enabled-library id set + supported item-type scope) whose change resets it.",
+      "evidence": ["docs/decisions/ADR-022.md clauses 4-5", "src/ArrTags/State/StateRepository.cs:205-216 (Cache -> Discarded; authoritative -> Quarantined)", "src/ArrTags/State/StateAuthority.cs"]
+    },
+    {
+      "id": "AR-V12-08",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-022 / plan F4: which triggers use the cursor",
+      "description": "CLOSED. ADR-022 clause 6 excludes post-save from the cursor and gives the reason (bounded user-triggered prefix re-cover under the just-activated configuration, not the scheduled/post-scan whole-scope guarantee) and states it always enumerates from the start. Plan F4 decision/acceptance, PLANS.md Phase 19 acceptance, and planning-record task 19.1 now list post-save among the unaffected triggers.",
+      "evidence": ["docs/decisions/ADR-022.md clause 6", "docs/planning/v1.2.md Goal F4 acceptance ('Event, webhook, per-item, and post-save triggers do not read or write the cursor')", "PLANS.md Phase 19 acceptance", "docs/implementation/planning/v1.2.json task 19.1", "src/ArrTags/Reconciliation/LibraryReconciliationSource.cs"]
+    },
+    {
+      "id": "AR-V12-09",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-023 (F6/DG-20): bound storage and clause-2 eligibility claim",
+      "description": "CLOSED. ADR-023 clause 4 defines the bound as implicit in the version carried by the re-enqueued item (the fresh item carries the current version, so ConfigurationStale can never recur and a same-version repeat is impossible; no separate version set is needed; effective bound one per (item, connection, surface, version)). Clause 5 restates the eligibility ordering accurately: the version check precedes item resolve/eligibility, so an ineligible/absent item is re-enqueued once and then discarded for its real reason with no further re-enqueue.",
+      "evidence": ["docs/decisions/ADR-023.md clauses 4-5", "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:105-125 (version check before resolve/eligibility)", "src/ArrTags/Updates/WorkItemKey.cs (version-blind key)"]
+    },
+    {
+      "id": "AR-V12-10",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-024 (F7/DG-21): restore entry point and location",
+      "description": "CLOSED. ADR-024 clause 2 names the pass-through site (ArtworkGenerationCoordinator) and the single restore entry point (internal ArtworkPublisher.RestoreAsync, which requires an ArtworkLifecycleFence and a Published state, under ArtworkLifecycleFence.Normal, which ArtworkOperationFencing.AllowsNewRestoration permits). No second path is introduced and the per-subject gate/recovery suite is not bypassed. Clause 3 confirms a Normal-fence restoration is intended and crash-recoverable via ArtworkRecoveryDecisions/ArtworkReconciler. Plan F7 decision and task 20.1 repeat the entry point and fence.",
+      "evidence": ["docs/decisions/ADR-024.md clauses 2-3", "src/ArrTags/Artwork/ArtworkPublisher.cs:510-591 (internal RestoreAsync; Published required)", "src/ArrTags/Artwork/ArtworkOperationFencing.cs:33-38 (Normal permits restoration)", "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs (pass-through before publisher)", "docs/planning/v1.2.md Goal F7 decision"]
+    },
+    {
+      "id": "AR-V12-11",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-026 (G9/DG-22): clause-4 amendment framing",
+      "description": "CLOSED. ADR-026's Status, Context and clause 4 are rewritten: ADR-020 clause 4 names no path exclusion (it simply does not list a file name as an allowed value); the amendment adds the bounded log subject to the allowed redacted-value set and adds an explicit directory/drive/share/full-path exclusion. The 'still never logged' overclaim is gone. Verified against the actual ADR-020 clause 4 text.",
+      "evidence": ["docs/decisions/ADR-026.md Status, Context and clauses 4-5", "docs/decisions/ADR-020.md clause 4 (no path item)", "docs/planning/v1.2.md Goal G9 decision"]
+    },
+    {
+      "id": "AR-V12-12",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-026 (G9/DG-22): fallback-site enumeration",
+      "description": "CLOSED. ADR-026 clause 3 enumerates every item-id-emitting site with its available subject: the identity-bearing sites (ArtworkGenerationCoordinator, the metadata-read-failure line, the Sonarr/Radarr metadata readers), the mixed MetadataReconciliationProcessor.Discard site (file name when a path is available, item-id fallback otherwise, no path threaded where none exists), the fallback sites (LibraryWorkWorker via WorkItemKey, the lifecycle removal event), and the no-item-id sites. Plan G9 acceptance and task 15.2 mirror it; PLANS.md Phase 15 repeats the mixed-site fallback.",
+      "evidence": ["docs/decisions/ADR-026.md clause 3", "docs/planning/v1.2.md Goal G9 acceptance criteria", "docs/implementation/planning/v1.2.json task 15.2", "PLANS.md Phase 15 acceptance"]
+    },
+    {
+      "id": "AR-V12-13",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-028 (G8/DG-17): mixed capture vs per-operation classification",
+      "description": "CLOSED. ADR-028 clause 2 defines the mixed case: restart-required if ANY consumer resolves the value at singleton construction; per-operation only when every consumer resolves from the current snapshot each operation; a mixed setting is classified restart-required and its note text states that some paths apply immediately. Task 16.2 owns the per-consumer evidence for the mixed limits. Plan G8 acceptance and tasks 16.2/16.3 repeat it.",
+      "evidence": ["docs/decisions/ADR-028.md clauses 2-3", "docs/planning/v1.2.md Goal G8 acceptance criteria", "docs/implementation/planning/v1.2.json tasks 16.2/16.3", "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (singletons constructed with the limits snapshot)", "src/ArrTags/Rendering/RenderLimitGuard.cs (per-operation request.Limits)"]
+    },
+    {
+      "id": "AR-V12-14",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "ADR-028 (G8/DG-17): restart-required example set omissions",
+      "description": "CLOSED. ADR-028's Context now explicitly marks the examples illustrative and states the complete classification with per-consumer evidence is owned by task 16.2, not the ADR. Clause 2 names the required membership, including ArtifactStorageQuotaBytes, the per-operation ProviderResponseLimitBytes/WebhookMaxPayloadBytes/InventoryCacheMaxBytes, and the mixed SourceArtifactLimitBytes/DerivedArtifactLimitBytes/MaxImageDimensionPixels, and requires task 16.2 to record the per-consumer evidence. The per-phase documentation is owned by tasks 16.6/21.2.",
+      "evidence": ["docs/decisions/ADR-028.md Context and clause 2", "docs/implementation/planning/v1.2.json task 16.2 acceptance", "src/ArrTags/Artwork/SourceArtifactStore.cs (ArtifactStorageQuotaBytes captured)", "src/ArrTags/Reconciliation/ArrReadClientFactory.cs (ProviderResponseLimitBytes per client)", "src/ArrTags/Webhooks/ArrTagsWebhookController.cs (WebhookMaxPayloadBytes per request)", "src/ArrTags/Providers/ArrInventoryCacheProvider.cs (InventoryCacheMaxBytes per snapshot)"]
+    },
+    {
+      "id": "AR-V12-15",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "cross-cutting: plan documentation checklist gaps",
+      "description": "CLOSED. docs/planning/v1.2.md section 7 Phase 18 now lists docs/data-model/03-08-renderresult.md and docs/data-model/03-12-configuration.md (verified both exist and enumerate Small/Medium/Large), and Phase 17 now lists docs/architecture/12-performance-and-operational-limits.md (verified it carries the F3 open-limitation paragraph ADR-025 amends). Task 21.2 remains the reconciliation safety net.",
+      "evidence": ["docs/planning/v1.2.md section 7 Phase 17 and Phase 18 rows", "docs/data-model/03-12-configuration.md:12,101", "docs/architecture/12-performance-and-operational-limits.md:126-130"]
+    },
+    {
+      "id": "AR-V12-16",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "ADR-025 (F3/DG-18): documentation and panel behavior",
+      "description": "CLOSED. ADR-025 clause 3 makes the listed counters the fixed minimum shape (adding/removing a counter requires a new decision because the shape is a panel/test contract); clause 2 and the Consequences state the anonymous static page resource / elevation-gated data split and that the panel renders no data when the endpoint is not authorized (fail-closed, no error surface). Plan F3 acceptance and tasks 17.1/17.3, plus PLANS.md Phase 17, repeat it.",
+      "evidence": ["docs/decisions/ADR-025.md clauses 2-3 and Consequences", "docs/planning/v1.2.md Goal F3 acceptance criteria", "PLANS.md Phase 17 acceptance", "docs/decisions/ADR-016.md clause 6"]
+    },
+    {
+      "id": "AR-V12-17",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "ADR-028 (G6/DG-15): 'sub-MB' description of the webhook field",
+      "description": "CLOSED. ADR-028 clause 1 identifies WebhookMaxPayloadBytes by field name and states its unit is binary kibibytes; the 'sub-MB' size claim is removed.",
+      "evidence": ["docs/decisions/ADR-028.md clause 1", "src/ArrTags/Configuration/OperationalLimits.cs:101,186 (range 4 KiB-4 MiB)"]
+    },
+    {
+      "id": "AR-V12-18",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "ADR-023 (F6/DG-20): amendment target accuracy",
+      "description": "CLOSED. ADR-023's Status now says it amends the coalescing clause of docs/architecture/08-reconciliation-and-update-flow.md and depends on, but does not amend, ADR-004's bounded queue and per-item single-flight behavior. References cite architecture section 8 and ADR-004 accordingly. Verified architecture section 8 lines 108-115 carry the version-blind coalescing contract.",
+      "evidence": ["docs/decisions/ADR-023.md Status and References", "docs/architecture/08-reconciliation-and-update-flow.md:108-115", "docs/decisions/ADR-004.md"]
+    },
+    {
+      "id": "AR-V12-19",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "ADR-024 (F7/DG-21): absent-baseline removal reachability",
+      "description": "CLOSED. Plan F7 acceptance and task 20.2 (and PLANS.md Phase 20) state that the absent-baseline removal is exercised by a direct publisher test with a synthetic persisted Published state that has no retained baseline, because the coordinator returns NoSource before publishing. The criterion is now explicitly reachable.",
+      "evidence": ["docs/planning/v1.2.md Goal F7 acceptance criteria", "docs/implementation/planning/v1.2.json task 20.2", "PLANS.md Phase 20 acceptance", "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs (Absent -> NoSource)"]
+    },
+    {
+      "id": "AR-V12-20",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "ADR-027 (G7/DG-16): fingerprint/version consistency",
+      "description": "ADDRESSED. The direction was already sound and is unchanged; ADR-027 clause 6 and plan Phase 18 objective/task 18.1 plus PLANS.md now explicitly require extending BadgeGeometry.SizeFactor (the current switch throws for an unknown value) and RendererConfiguration validation coverage for ExtraLarge. No architecture change was required.",
+      "evidence": ["docs/decisions/ADR-027.md clause 6", "docs/planning/v1.2.md Phase 18 objective and task 18.1", "PLANS.md Phase 18 objective", "src/ArrTags/Rendering/BadgeGeometry.cs", "src/ArrTags/Configuration/RendererConfiguration.cs"]
+    },
+    {
+      "id": "AR-V12-21",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "ADR-025 (F3/DG-18): no conflict with the v1.1 deferred status endpoint",
+      "description": "ADDRESSED. ADR-025 clause 1 records that the surface is a distinct v1.2 read-only surface and not a reopening of the v1.1 decision that rejected a plugin-owned status endpoint as an inline configuration-rejection mechanism (ADR-016 clauses 3/4 forbid a custom save route, not a read-only elevation-gated read route), and a Consequence repeats it. Plan F3 acceptance/task 17.4 note the same.",
+      "evidence": ["docs/decisions/ADR-025.md clause 1 and Consequences", "docs/decisions/ADR-016.md clauses 3-4", "docs/planning/v1.2.md Goal F3 acceptance criteria"]
+    },
+    {
+      "id": "AR-V12-22",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "ADR-026 (G9/DG-22): sites that need no change",
+      "description": "ADDRESSED. ADR-026 clause 3 enumerates the no-item-id sites (ConcurrencyLimitedArrMetadataReader, WebhookIntakeService, WebhookAuthenticationFilter, LibraryReconciliationService) so the plan/ADR coverage of which sites change and which do not is explicit.",
+      "evidence": ["docs/decisions/ADR-026.md clause 3", "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs", "src/ArrTags/Webhooks/WebhookIntakeService.cs", "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs", "src/ArrTags/Reconciliation/LibraryReconciliationService.cs"]
+    },
+    {
+      "id": "AR-V12-23",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "cross-cutting: decision gates and phase dependency",
+      "description": "NO CHANGE REQUIRED. Re-verified independently: DG-15/DG-16/DG-18/DG-22 are user-resolved and recorded by proposed ADRs; DG-17's note-text half is resolved and the modal half is the task 16.4 jellyfin-expert spike with note text as fail-open; DG-19/DG-20/DG-21 are genuine mechanism choices explicitly marked 'requires acceptance' in docs/planning/v1.2.md section 3, PLANS.md, and state.json, with 'mechanism confirmation' as the first acceptance step of the dependent implementation tasks. Every phase lists each task exactly once with a consistent execution order; every task has a review owner; every gate DG-15..DG-22 maps to a phase. No unowned deliverable or acceptance criterion found.",
+      "evidence": ["docs/planning/v1.2.md sections 3, 5, 6", "PLANS.md Phases 15-21 and Decision Gates table", "docs/plan/state.json phases 15-21 and decision_gates", "docs/implementation/planning/v1.2.json execution_order_invariants and decision_gates"]
+    },
+    {
+      "id": "AR-V12-24",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "F5 exclusion consistency (register/index/state/plan surfaces)",
+      "description": "RESOLVED for the four named surfaces, with one residual tracked separately as AR-V12-26. F5 is now Accepted (not Open) consistently in docs/limitations/open.md (F5 section removed), docs/limitations/accepted.md (F5 present with an explicit 'reclassified from Open to Accepted' disposition), docs/limitations/00-index.md (F5 row Accepted -> accepted.md), and docs/plan/state.json (limitations.open no longer lists F5; limitations.accepted includes F5). docs/planning/v1.2.md section 10 and PLANS.md record the exclusion, and state.json/status.md say F5 is accepted and excluded. F5 is not referenced by any v1.2 task (grep confirms no task names/deliverables/criteria mention F5), so it remains excluded from every v1.2 task. README's F5 references remain the 'host must supply a compatible SkiaSharp, known shipped limitation' framing with no 'open' claim.",
+      "evidence": ["docs/limitations/open.md (no F5 section)", "docs/limitations/accepted.md:5-22", "docs/limitations/00-index.md:66", "docs/plan/state.json limitations.open/accepted (F5 in accepted)", "docs/planning/v1.2.md section 1 and section 10", "PLANS.md lines 23-25,65", "README.md:17-21,207-208"]
+    },
+    {
+      "id": "AR-V12-25",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "ADR-028 (G8/DG-17): modal API unverified and correctly deferred",
+      "description": "ADDRESSED. ADR-028 clause 4 requires the jellyfin-expert spike to record the modal API's availability and stability before implementation, with note text as the fail-open behavior; docs/planning/v1.2.md DG-17 and task 16.4 require the same. The unverified client contract remains correctly deferred and bounded.",
+      "evidence": ["docs/decisions/ADR-028.md clause 4", "docs/planning/v1.2.md DG-17 and task 16.4", "docs/research/jellyfin-12-architecture.md section 9.2 (client contract not pinned)"]
+    },
+    {
+      "id": "AR-V12-26",
+      "severity": "LOW",
+      "status": "open",
+      "area": "cross-cutting: F5 reclassification consistency (planning record)",
+      "description": "OPEN. The rework record (docs/implementation/planning/v1.2.json) leaves one stale line that contradicts the F5 Open->Accepted reclassification: task 21.2's acceptance_criteria still reads '...F3, F4, F6, F7, and F8 are recorded resolved and F5 remains open.' This contradicts docs/limitations/00-index.md (F5 Accepted), docs/limitations/accepted.md (F5 Accepted, reclassified), and docs/plan/state.json (F5 in limitations.accepted, not open). If Phase 21 task 21.2 is implemented literally, the canonical documentation reconciliation would record F5 as open, contradicting the explicit user decision and the register. This is the only residual inconsistency found in the reworked F5 surfaces; the four explicitly named surfaces are consistent.",
+      "evidence": ["docs/implementation/planning/v1.2.json:434 (task 21.2 acceptance: 'F5 remains open')", "docs/implementation/planning/v1.2.json:507,513,547 (F5 recorded as Accepted/excluded)", "docs/limitations/00-index.md:66", "docs/limitations/accepted.md:18-22", "docs/plan/state.json limitations.accepted (F5)"],
+      "document_to_change": "docs/implementation/planning/v1.2.json",
+      "recommended_action": "Change task 21.2's acceptance criterion to say F5 remains accepted (a known shipped limitation, excluded), not open - e.g. '...F3, F4, F6, F7, and F8 are recorded resolved and F5 remains accepted and excluded.' No other planning-record line needs a change."
+    },
+    {
+      "id": "AR-V12-27",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "ADR-028 (G6/DG-15): step-multiple rejection mechanism",
+      "description": "NOTED. ADR-028 clause 1 states that 'a value that does not land on the step is rejected by the existing bounded validation rather than silently rounded.' The existing bounded validation (OperationalLimits.Validate) checks range only, and the current config.html byte inputs use integer pattern + byte min/max with no step. A fraction such as 0.1 MB for a 64-KiB-step field would compute 104858 bytes, which is in range but not step-aligned. The decision's intent (non-step values rejected) is clear and does not affect the min/default/max round-trip, so this is not a reopening of AR-V12-06; task 16.1 should implement an explicit step check (or a browser step constraint enforced on submit) and the ADR wording should not attribute it to the existing range validation.",
+      "evidence": ["docs/decisions/ADR-028.md clause 1 (conversion algorithm)", "src/ArrTags/Configuration/OperationalLimits.cs:175-198 (range-only validation)", "src/ArrTags/Configuration/config.html:222-261 (integer byte inputs, no step)", "docs/implementation/planning/v1.2.json task 16.1"],
+      "document_to_change": "docs/decisions/ADR-028.md",
+      "recommended_action": "Reword clause 1 to require an explicit per-field step check in the settings conversion/validation path (and, where the page uses native constraint validation, the step attribute), rather than attributing step rejection to the existing bounded range validation; task 16.1 already owns the conversion helper."
+    }
+  ],
+  "documents_checked": [
+    "AGENTS.md",
+    "GOALS.md",
+    "docs/INDEX.md",
+    "docs/status.md",
+    "PLANS.md (Phases 15-21, Decision Gates, Risks)",
+    "docs/plan/state.json (active_scope, releases, phases 15-21, limitations)",
+    "docs/agent-contracts.md",
+    "docs/planning/v1.2.md",
+    "docs/implementation/planning/v1.2.json (including the rework record)",
+    "docs/reviews/architecture/v1.2-plan.json (attempt 1)",
+    "docs/decisions/00-index.md",
+    "docs/decisions/ADR-022.md, ADR-023.md, ADR-024.md, ADR-025.md, ADR-026.md, ADR-027.md, ADR-028.md",
+    "docs/decisions/ADR-020.md (clause 4 and clause 8)",
+    "docs/decisions/ADR-004.md, ADR-009.md, ADR-016.md (referenced)",
+    "docs/architecture/08-reconciliation-and-update-flow.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/data-model/03-08-renderresult.md, 03-12-configuration.md (existence and enumerations)",
+    "docs/limitations/00-index.md, open.md, accepted.md",
+    "README.md",
+    "src/ArrTags/Updates/IWorkHintSink.cs, LibraryWorkQueue.cs, LibraryWorkWorker.cs, WorkProcessingResult.cs, WorkItemKey.cs, ArtworkPublishingWorkItemProcessor.cs",
+    "src/ArrTags/Reconciliation/LibraryReconciliationService.cs, MetadataReconciliationProcessor.cs",
+    "src/ArrTags/Rendering/SkiaBadgeRenderer.cs, RenderPassThroughReason.cs, RenderFingerprint.cs, RenderResult.cs",
+    "src/ArrTags/Artwork/ArtworkPublisher.cs, ArtworkOperationFencing.cs, SourceArtifactStore.cs",
+    "src/ArrTags/Media/IMediaLibraryEnumerator.cs, JellyfinMediaLibraryEnumerator.cs",
+    "src/ArrTags/State/StateRepository.cs, StateAuthority.cs",
+    "src/ArrTags/Configuration/OperationalLimits.cs, config.html"
+  ],
+  "decisions_checked": [
+    "ADR-004 (foundation operational limits and bounded queue)",
+    "ADR-009 (V1 rendering specification; empty-selection pass-through clause)",
+    "ADR-016 (dashboard settings UI; clauses 3/4/6)",
+    "ADR-019 (configurable badge size; clause 3)",
+    "ADR-020 (logging redaction contract clause 4; limitations clause 8)",
+    "ADR-022 (successive-run reconciliation coverage; Proposed v1.2)",
+    "ADR-023 (version-aware post-save re-render; Proposed v1.2)",
+    "ADR-024 (empty-selection artwork restoration; Proposed v1.2)",
+    "ADR-025 (read-only diagnostics status surface; Proposed v1.2)",
+    "ADR-026 (human-readable log subject identifier; Proposed v1.2)",
+    "ADR-027 (Extra Large badge size; Proposed v1.2)",
+    "ADR-028 (limit display units and restart-required surfacing; Proposed v1.2)"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-12-architecture.md sections 2.2, 9.2, 9.3, 10 (referenced; not re-derived)",
+    "docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json (referenced by ADR-026/ADR-028; not re-derived)"
+  ],
+  "attempt1_closure_summary": {
+    "total_findings": 25,
+    "resolved": 24,
+    "not_required": 1,
+    "reopened": 0,
+    "new_findings": 2,
+    "notes": "All six HIGH findings (AR-V12-01..06) and all nine MEDIUM findings (AR-V12-07..15) are genuinely closed in the reworked ADRs and plan. The LOW/INFORMATIONAL items AR-V12-16..22 and AR-V12-24/25 are applied; AR-V12-23 is correctly not_required. One new LOW inconsistency (AR-V12-26) and one INFORMATIONAL note (AR-V12-27) remain."
+  },
+  "invariants_checked": {
+    "execution_order_each_task_exactly_once_per_phase": "PASS (state.json, PLANS.md, and the planning record agree for Phases 15-21; no duplicates, no missing/extra ids)",
+    "dependency_references_consistent": "PASS (cross-phase dependencies 17.3->16.6 and 21.1->20.3 resolve to completed prior-phase tasks)",
+    "every_deliverable_acceptance_criterion_and_decision_gate_has_an_owner": "PASS (DG-15..DG-22 each map to a phase/task; every task has a review owner; F8 has tasks 15.3/15.4; the F5 exclusion is not mapped to any task by design)",
+    "historical_adr_text_and_immutable_history_unchanged": "PASS (git status shows only the ADR index gained rows; ADR-001..ADR-021 files are unmodified; docs/reviews and docs/implementation are not rewritten; the planning record v1.2.json is a new, uncommitted package file)",
+    "f5_excluded_from_every_v12_task": "PASS (no v1.2 task, deliverable, or acceptance criterion references F5)",
+    "scripts_check_docs_sh": "PASS with one skip: 'skip: dotnet not on PATH' for the generated-block verification; the generated PLANS.md milestone table, status.md active-scope/limitations lines, and decisions/limitations indexes were additionally checked by hand and agree with state.json"
+  },
+  "recommendation": "CHANGES_REQUIRED, narrowly scoped. The reworked ADR-022..ADR-028 genuinely close all 25 attempt-1 findings: AR-V12-01/02 now establish and honestly bound the F4 coverage guarantee (bounded enqueue-outcome vocabulary, contiguous covered-prefix advance rule, stable (SortName, itemId) seek key with a resume-capable enumerator); AR-V12-03/04 make the F6 fix implementable and bounded (re-enqueue only after CompleteProcessing, a bounded DiscardReason with only ConfigurationStale re-enqueuing, and a test that fails if issued before release); AR-V12-05 discriminates on the empty resolved selection with a distinct NoFittingBadge so a layout failure never removes a correct badge; AR-V12-06 defines a per-field unit/step/precision mapping whose minima/defaults/maxima all round-trip exactly (including the 64 KiB minima). The MEDIUM items 07-15 are all addressed (Cache-authority cursor, post-save exclusion consistency, implicit version bound, ArtworkPublisher.RestoreAsync under the Normal fence, corrected ADR-026 clause-4 framing and full site list, mixed-capture classification with task 16.2 ownership, illustrative example set, and the Phase 17/18 documentation-checklist additions). The F5 Open->Accepted reclassification is consistent across open.md, accepted.md, 00-index.md, and state.json, and F5 is excluded from every v1.2 task. One open LOW finding remains: docs/implementation/planning/v1.2.json task 21.2's acceptance criterion still says 'F5 remains open', contradicting the accepted register and the user decision; it must be corrected. One INFORMATIONAL note (AR-V12-27) asks task 16.1 to own an explicit step-multiple check rather than attributing it to the existing range validation. With the task-21.2 line corrected (and the step check owned), the ADRs are sound to accept as-is; DG-19, DG-20, and DG-21 remain genuine user acceptance gates that must be accepted before the Phase 19/20 implementation tasks (19.1-19.4, 20.1-20.2) are selected.",
+  "summary": "Independent re-review (attempt 2) of the reworked v1.2 planning package. All 25 attempt-1 findings are genuinely closed: the six HIGH findings (F4 coverage vocabulary/cursor rule and stable seek key; F6 post-release re-enqueue and bounded DiscardReason; F7 empty-selection discriminator; G6 unit/step/precision round-trip) and the nine MEDIUM findings (cursor Cache authority/kind/scope; post-save trigger consistency; ADR-023 implicit bound and eligibility ordering; ADR-024 restore entry point under the Normal fence; ADR-026 clause-4 framing and site enumeration; ADR-028 mixed-capture classification, illustrative example set, and task 16.2 ownership; Phase 17/18 doc-checklist additions) are correctly reflected in the ADRs, the plan, PLANS.md, and the planning record. The LOW/INFORMATIONAL items are applied, and AR-V12-23 is correctly not_required. The execution-order invariant holds (every task exactly once per phase; consistent across state.json, PLANS.md, and the planning record), every decision gate and deliverable has an owner, no historical ADR text or immutable history was rewritten, F5 is Accepted across the register/index/state and excluded from every v1.2 task, and scripts/check-docs.sh passes (with the generated-block check skipped because dotnet is unavailable, verified by hand). One new LOW open finding remains: the planning record's task 21.2 acceptance still says 'F5 remains open', contradicting the Accepted reclassification; one INFORMATIONAL note asks task 16.1 to own an explicit step-multiple check. Status: CHANGES_REQUIRED for that single-line correction; the ADRs themselves are sound to accept as-is, and DG-19/DG-20/DG-21 remain genuine user acceptance gates before the dependent Phase 19/20 implementation tasks."
+}

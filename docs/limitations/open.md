@@ -29,20 +29,6 @@ drive.
   reconciled by a single run and successive runs do not guarantee full
   coverage. Event, webhook, and per-item triggers are not affected.
 
-### F5. The renderer depends on a host-supplied SkiaSharp with no bundled fallback
-
-V1 compiles against the pinned `SkiaSharp`/`SkiaSharp.NativeAssets.Linux`
-`3.119.4` but ships no renderer runtime and takes the managed assembly and
-native library from the Jellyfin host (ADR-015, superseding the bundling parts
-of ADR-010).
-
-- Evidence: task 7.8 worker report and ADR-015; `docs/architecture/09-persisted-artwork-rendering.md`.
-- Consequence: a host that does not provide a compatible SkiaSharp would make
-  rendering fail closed (pass-through/preserve current artwork) rather than use
-  a bundled copy. Validated only on the pinned Jellyfin `12.0.0`
-  `linux-musl-x64` host; the plugin makes no RID-specific claim and does not
-  distinguish musl from glibc.
-
 ### F6. Version-blind work coalescing can drop a post-save re-render
 
 A configuration save activates the new snapshot (`Plugin.UpdateConfiguration` ->
