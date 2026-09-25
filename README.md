@@ -209,5 +209,6 @@ The canonical record of what ArrTags does not yet do or has not yet verified is
 
 ## More information
 
-- `docs/project-status.md` — project status and contributor information.
+- `docs/status.md` — project status and contributor information.
+- `docs/INDEX.md` — documentation map (what to read for what task).
 - `docs/release/build-and-release.md` — build and release process.
