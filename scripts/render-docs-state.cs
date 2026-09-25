@@ -172,7 +172,9 @@ List<string> PlanAgreementErrors(JsonNode state, string planText)
 {
     var errors = new List<string>();
     var phases = state["phases"]!.AsArray();
-    var completedReleases = new HashSet<string>(state["releases"]!.AsArray()
+    var releases = state["releases"]!.AsArray();
+    var allReleases = new HashSet<string>(releases.Select(r => (string)r!["version"]!));
+    var completedReleases = new HashSet<string>(releases
         .Where(r => (string?)r!["status"] == "COMPLETE")
         .Select(r => (string)r!["version"]!));
     var present = new HashSet<int>();
@@ -190,7 +192,9 @@ List<string> PlanAgreementErrors(JsonNode state, string planText)
             continue;
         }
         var release = (string?)p["release"] ?? "";
-        if (completedReleases.Contains(release))
+        if (!allReleases.Contains(release))
+            errors.Add($"phase {id} release {release} has no releases[] entry in state.json");
+        else if (completedReleases.Contains(release))
             errors.Add($"phase {id} belongs to completed release {release} and must be archived out of PLANS.md");
         foreach (var t in p["tasks"]!.AsArray())
         {
