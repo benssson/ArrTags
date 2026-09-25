@@ -1,0 +1,114 @@
+{
+  "task": "15.4",
+  "title": "Logging documentation, ADR-020 amendment, and security review",
+  "phase": 15,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "BLOCKED",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 174748,
+        "output_tokens": 28412,
+        "reasoning_tokens": 37087,
+        "cache_read_tokens": 8998784,
+        "cache_write_tokens": 0,
+        "total_tokens": 9239031,
+        "cost_usd": 0.092507952,
+        "duration_seconds": 825,
+        "session_id": "ses_f25f65372ffeajPiSCZAqmyj4d",
+        "note": "Blocked on the security-review delegation: the worker session is a depth-1 subagent and experimental.subagent_depth is 1, so subagent(security-reviewer) and subagent(general) were both refused. The worker correctly did not fabricate a review and left task 15.4 unmarked."
+      }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "unknown",
+        "variant": null,
+        "input_tokens": null,
+        "output_tokens": null,
+        "reasoning_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_tokens": null,
+        "cost_usd": null,
+        "duration_seconds": null,
+        "session_id": null,
+        "note": "Produced by the worker's detached `opencode run --standalone --agent security-reviewer` CLI process (session ses_f25ef1b89ffeAmX3YnvlrHYQo4); its token/cost figures are not exposed through the collect-session-usage.sh path used for orchestrator-delegated sessions, so they are recorded as null rather than estimated. Findings SR-15.4-01/02 (LOW) were closed by worker attempt 2."
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 62333,
+        "output_tokens": 17902,
+        "reasoning_tokens": 18951,
+        "cache_read_tokens": 4527872,
+        "cache_write_tokens": 0,
+        "total_tokens": 4627058,
+        "cost_usd": 0.045045366,
+        "duration_seconds": 570,
+        "session_id": "ses_f25f65372ffeajPiSCZAqmyj4d",
+        "note": "Continued the attempt-1 session; figures are the exact delta of the authoritative session totals at invocation end minus the attempt-1 snapshot."
+      }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 2,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 204351,
+        "output_tokens": 26689,
+        "reasoning_tokens": 57694,
+        "cache_read_tokens": 13003904,
+        "cache_write_tokens": 0,
+        "total_tokens": 13292638,
+        "cost_usd": 0.12029416199999998,
+        "duration_seconds": 799,
+        "session_id": "ses_f25e97e9bffeYuYRq4aBHR1l1P",
+        "note": "Orchestrator-delegated independent security review (required because the worker could not reach the security-reviewer). Surfaced one new LOW (SR2-15.4-05, SEC-5 allowlist not reconciled), which the orchestrator closed by editing docs/limitations/accepted.md."
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 74730,
+        "output_tokens": 8355,
+        "reasoning_tokens": 11677,
+        "cache_read_tokens": 1192704,
+        "cache_write_tokens": 0,
+        "total_tokens": 1287466,
+        "cost_usd": 0.026806812,
+        "duration_seconds": 226,
+        "session_id": "ses_f25dc941effebPrs355F6YKb8W"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Worker attempt 1 was BLOCKED on the security-review delegation (depth limit); the orchestrator ran security-review attempt 2, which returned one open LOW (SR2-15.4-05: docs/limitations/accepted.md SEC-5 still enumerated the pre-ADR-026 allowlist). The orchestrator corrected SEC-5 for the amended clause 4, then the implementation-reviewer gate returned APPROVED."
+    }
+  ]
+}

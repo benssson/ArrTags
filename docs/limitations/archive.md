@@ -124,3 +124,44 @@ publishing pipeline) and records F2 as resolved.
   after a successful replacement, so an already-published poster re-renders
   promptly with the saved settings. Task 9.5 verifies the composed flow at the
   integration-test level without a live host.
+
+### F8. The specific render classification is not surfaced in the artwork log
+
+**Status:** Resolved (v1.2 Phase 15; the classification is emitted by task 15.3,
+and the documentation reconciliation and the log-path security review are task
+15.4).
+
+`ArtworkGenerationCoordinator.LogOutcome` appends the specific bounded
+classification to the single artwork-boundary record when the generation result
+carries one: ` (PassThroughReason=<RenderPassThroughReason>)` for a pass-through,
+` (FailureReason=<RenderFailureReason>)` for a render failure, and
+` (SourceFailureReason=<ArtworkSourceReadFailureReason>)` for a source-read
+failure, placed between the bounded outcome and the generic reason. The values
+are the bounded enum members the result already carries, named by their enum
+kind, so a pass-through, a render failure, and a source-read failure with
+similar-looking causes stay distinguishable; no exception message, provider
+payload, path, credential, or other unbounded value is reachable. When the
+result carries no classification (published, no source, blocked, cancelled, or
+publication-not-completed), the qualifier is empty and the record is
+byte-identical to the pre-task shape. The ADR-024 `NoFittingBadge` reason is
+owned by Phase 20 and is not part of this resolution. `LogRedactionTests` covers
+the three classifications and the omission at every verbosity level, with the
+source-failure drive proving the reader's raw detail does not reach the log.
+
+The record that emits the classification is the Information-level
+artwork-generation line, so it keeps the existing ADR-020 gating (the
+classification is not visible at `Off`, `Error`, or `Warning`). The subject on
+that line is the bounded file-name log subject (ADR-026, amending ADR-020
+clause 4), and the amended log path is security-reviewed for task 15.4
+(`docs/implementation/15.4/security-review.json`, PASS_WITH_FINDINGS with no
+open BLOCKER/HIGH).
+
+- Evidence: `src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs` (`LogOutcome`,
+  `DescribeClassification`); `tests/ArrTags.Tests/LogRedactionTests.cs` (the four
+  classification theories over six verbosity levels);
+  `docs/implementation/15.3/worker-report.json`;
+  `docs/implementation/15.4/worker-report.json`; ADR-020 clause 4 as amended by
+  ADR-026; `docs/architecture/12-performance-and-operational-limits.md`.
+- Historical consequence: before task 15.3, diagnosing why no badge was rendered
+  required eliminating causes from other log lines (or reproducing with tests);
+  two attempts with different causes were indistinguishable in the host log.

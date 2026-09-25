@@ -87,7 +87,7 @@ Other fields:
 | Field | Meaning |
 | --- | --- |
 | `WebhookSecret` | The shared secret required by the inbound webhook endpoints. |
-| `LogVerbosity` | How much ArrTags writes to the Jellyfin server log: `Off`, `Error`, `Warning` (default), `Information`, `Debug`, or `Trace`. It bounds ArrTags only, applies without a restart, never changes the Jellyfin host log level, and never changes rendered posters. ArrTags logs only bounded, secret-free diagnostics (provider error codes, connection identity, and counts); it never writes an API key or the webhook secret to the log. |
+| `LogVerbosity` | How much ArrTags writes to the Jellyfin server log: `Off`, `Error`, `Warning` (default), `Information`, `Debug`, or `Trace`. It bounds ArrTags only, applies without a restart, never changes the Jellyfin host log level, and never changes rendered posters. ArrTags logs only bounded, secret-free diagnostics (provider error codes, connection identity, counts, the bounded media file-name component of a host-native media path in place of the opaque Jellyfin item id, and bounded render-classification enums); it never writes an API key or the webhook secret to the log, and for a host-native media path it never writes a directory, share, or full path. |
 | `BadgeMoviePosters` | Whether Movie posters are eligible for badges (default `true`). |
 | `BadgeEpisodePosters` | Whether Episode posters are eligible for badges (default `true`). |
 | `EnabledLibraries` | The Jellyfin library identifiers eligible for badges. An empty set means no library restriction. |

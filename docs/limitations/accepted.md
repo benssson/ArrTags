@@ -386,12 +386,20 @@ Since v1.1 task 10.2 ArrTags logs through the host's
 (`Off`/`Error`/`Warning`/`Information`/`Debug`/`Trace`, default `Warning`), read
 from the current configuration snapshot and applied without a restart (ADR-020
 clauses 2 and 3). Every log call emits only bounded, already-redacted values per
-the ADR-020 clause 4 allowlist (`ArrProviderError` code/retryability/message, the
-non-secret connection identity, configuration version, bounded reason codes and
-enums, item/record identifiers, and counts); it never emits an API key, the
-webhook secret, a `SecretLease` value, an `X-Api-Key`/`X-ArrTags-Webhook-Secret`
-header, a raw request/response body, a full provider payload, or the mutable
-`PluginConfiguration`. The emitted data shape is identical at every verbosity
+the ADR-020 clause 4 allowlist as amended by ADR-026 (`ArrProviderError`
+code/retryability/message, the non-secret connection identity, configuration
+version, bounded reason codes and enums, item/record identifiers, counts, and the
+bounded log subject); it never emits an API key, the webhook secret, a
+`SecretLease` value, an `X-Api-Key`/`X-ArrTags-Webhook-Secret` header, a raw
+request/response body, a full provider payload, or the mutable
+`PluginConfiguration`. The bounded log subject (`LogSubject`, ADR-026) is the
+media file-name component only, with control scalars removed and bounded to 128
+Unicode scalar values, and the Jellyfin item identifier in `D` format as the
+fallback when no usable name is available; the amended clause 4 also adds an
+explicit directory, drive, share, and full-path exclusion. The artwork-boundary
+line additionally carries the specific bounded render classification
+(`PassThroughReason`, `FailureReason`, or `SourceFailureReason`) when the result
+carries one. The emitted data shape is identical at every verbosity
 level, so raising verbosity cannot expand a redacted value into a secret-bearing
 one. Log volume is bounded by the code-owned `LogThrottle` (ADR-020 clause 6;
 `docs/architecture/12-performance-and-operational-limits.md`), and verbosity is not output-affecting

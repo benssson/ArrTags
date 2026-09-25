@@ -41,18 +41,26 @@ without a restart from the current configuration snapshot, is excluded from the
 renderer and configuration output fingerprints, and never changes
 `RenderVersion`, so it is not output-affecting. Every ArrTags boundary logs
 through the plugin-owned `IArrTagsLog<T>` facade under the ADR-020 clause 4
-redaction contract: only bounded, already-redacted values are emitted
-(`ArrProviderError` code/retryability/message, the non-secret connection
-identity, configuration version, bounded reason codes and enums, item/record
-identifiers that are not secret, and counts), and no API key, webhook
-secret, `SecretLease` value, `X-Api-Key`/`X-ArrTags-Webhook-Secret` header, raw
-request/response body, full provider payload, or mutable `PluginConfiguration` is
-ever logged. The emitted data shape is identical at every level, so raising
+redaction contract as amended by ADR-026: only bounded, already-redacted values
+are emitted (`ArrProviderError` code/retryability/message, the non-secret
+connection identity, configuration version, bounded reason codes and enums,
+item/record identifiers that are not secret, counts, and the bounded log
+subject), and no API key, webhook secret, `SecretLease` value,
+`X-Api-Key`/`X-ArrTags-Webhook-Secret` header, raw request/response body, full
+provider payload, or mutable `PluginConfiguration` is ever logged. The bounded
+log subject is the media file-name component only (`Path.GetFileName`), with
+control scalars removed and bounded to 128 Unicode scalar values, and the
+Jellyfin item identifier in `D` format is the fallback when no usable name is
+available; a directory, drive, share, or full path is never emitted, and that
+exclusion is explicit in the amended clause 4 contract. The subject uses
+host-platform path semantics: on the pinned Linux host a POSIX media path yields
+the file-name component, and a Windows-style backslash string is a single file
+name rather than a path. The emitted data shape is identical at every level, so raising
 verbosity cannot expand a redacted value into a secret-bearing one. The
-artwork-generation boundary currently logs only the bounded outcome and the
-generic reason; the specific bounded `PassThroughReason`, `FailureReason`, and
-`SourceFailureReason` are retained on the generation result but are not emitted,
-which is documented as an open diagnostic limitation (`docs/limitations/00-index.md` F8).
+artwork-generation boundary emits the specific bounded `PassThroughReason`,
+`FailureReason`, or `SourceFailureReason` on the outcome line when the result
+carries one (the emitted values are bounded enum names), so the previously open
+diagnostic limitation F8 is resolved (`docs/limitations/00-index.md`).
 
 Log volume is bounded (ADR-020 clause 6) by the plugin-owned, provider-neutral,
 thread-safe `LogThrottle`: it admits at most 5 records per category and event

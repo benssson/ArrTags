@@ -94,26 +94,3 @@ passes through, and preserves it again.
   still preserving the current artwork for the other pass-through reasons (missing
   metadata, ineligible match, unavailable source); that changes ADR-009/ADR-003
   behaviour and needs an ADR update and coverage tests.
-
-### F8. The specific render classification is not surfaced in the artwork log
-
-The single artwork-boundary log line emits only the bounded outcome and the
-generic reason (for example `Artwork generation for item <id> completed with
-RenderPassThrough: The render passed through; the current artwork is preserved.`).
-The specific bounded classification the result already carries - the
-`PassThroughReason` (`NoMetadata`, `NoDisplayableValue`, `IneligibleSurface`,
-`MatchNotEligible`, `SourceUnavailable`), the `FailureReason`, or the
-`SourceFailureReason` - is not emitted, so two attempts with completely different
-causes are indistinguishable in the host log.
-
-- Evidence: `src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs` `LogOutcome`
-  emits only the outcome and reason, while `src/ArrTags/Artwork/ArtworkGenerationResult.cs`
-  exposes `PassThroughReason`, `FailureReason`, and `SourceFailureReason`; operator
-  analysis, 2026-09-25.
-- Consequence: diagnosing why no badge was rendered requires eliminating causes
-  from other log lines (or reproducing with tests) instead of reading the reason
-  directly; the empty-allowlist case in F7 is one example. The classifications are
-  bounded, non-secret enums, so including them is compatible with the ADR-020
-  clause 4 redaction contract; the fix is a small logging change plus tests. It is
-  narrower than F3 (no bounded metrics/diagnostic-status surface) and is not
-  proposed as a replacement for it.

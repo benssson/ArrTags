@@ -20,10 +20,10 @@ outline, and verification requirements are defined in
 (Phases 9-14) is complete and archived. The v1.2 decision records ADR-022 through
 ADR-028 are **accepted** (`Accepted (v1.2)`); decision gates DG-19, DG-20, and
 DG-21 (mechanisms for F4, F6, and F7) are resolved by the accepted plan and their
-ADRs, so their dependent tasks are no longer gated. F3, F4, F6, F7, and F8 are
+ADRs, so their dependent tasks are no longer gated. F3, F4, F6, and F7 are
 promoted by v1.2 and remain **Open** until their resolving phase records the
-resolution; F5 is accepted as a known shipped limitation (not Open) and is not
-promoted.
+resolution; F8 was promoted by v1.2 and is resolved by Phase 15 (task 15.4). F5
+is accepted as a known shipped limitation (not Open) and is not promoted.
 
 The orchestrator determines the active scope from this pointer. When a new scope
 is accepted, its plan is placed under `docs/planning/`, this pointer is updated
@@ -95,7 +95,7 @@ logging security review.
 - [x] 15.1 Bounded log-subject policy and helper
 - [x] 15.2 Thread the bounded log subject through the identity-bearing and fallback sites
 - [x] 15.3 Emit the bounded render classification in the artwork log
-- [ ] 15.4 Logging documentation, ADR-020 amendment, and security review
+- [x] 15.4 Logging documentation, ADR-020 amendment, and security review
 **Authoritative Phase 15 execution order:** 15.1, 15.2, 15.3, 15.4
 **Phase acceptance criteria:** the file-name-only subject (bounded, control
 characters stripped, item-id fallback) is emitted where a path is available and
@@ -367,7 +367,7 @@ an implementation assumption.
 | v1.1: logging creates a secret-exposure path. | A secret appears in host logs. | ADR-020's redaction contract, per-level redaction tests, bounded volume, and a dedicated logging security review (tasks 10.2, 10.3). |
 | v1.1: the output-affecting renderer changes are versioned inconsistently. | Stale artwork or a broken fingerprint/golden oracle. | Goals B and E are one phase with a single coordinated schema/`RenderVersion` advance and one golden regeneration (task 12.4), with fail-closed goldens and no auto-approval path. |
 | v1.1: the inventory cache serves stale metadata as current. | Incorrect badges after a provider change. | Bounded TTL and ArrTags-side invalidation from the complete trigger set; the cache stays non-authoritative with bounded last-known-good (ADR-018, tasks 11.1-11.3). |
-| v1.2: the log subject exposes a directory path or a sensitive file name. | A filesystem layout or title leaks into the host log. | ADR-026 emits only the bounded file-name component with an item-id fallback, never a directory; redaction tests at every verbosity plus a fresh logging security review (tasks 15.1-15.4). |
+| v1.2: the log subject exposes a directory path or a sensitive file name. | A filesystem layout or title leaks into the host log. | ADR-026 emits only the bounded file-name component of a host-native media path, with an item-id fallback, never a directory; redaction tests at every verbosity plus a fresh logging security review (tasks 15.1-15.4). |
 | v1.2: the diagnostics endpoint leaks a secret or an unbounded payload. | Credential or item exposure, or a resource-exhaustion vector. | ADR-025: elevation-gated read-only endpoint, fixed bounded shape, no per-item listing, secret-free counters, and a dedicated security review (tasks 17.2 and 17.4). |
 | v1.2: the F4 coverage cursor corrupts or stalls reconciliation. | Some items never reconcile, or a run repeats the same prefix. | ADR-022's bounded `Cache`-authority `(SortName, itemId)` cursor with a scope reset and a start fallback on a missing/torn/out-of-range record, the bounded enqueue-outcome vocabulary that does not stall on coalesce/in-flight and stops at the first overflow; coverage tests (tasks 19.1 and 19.2). |
 | v1.2: the F6 re-enqueue loops, is coalesced away, or duplicates work. | Queue churn, duplicated rendering, or the post-save re-render still being dropped. | ADR-023's `ConfigurationStale` discard classification, the re-enqueue after the in-flight slot is released, the current-version bound, and the unchanged version-blind key and per-surface single-flight; coalescing coverage tests (tasks 19.3 and 19.4). |

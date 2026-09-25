@@ -145,7 +145,18 @@ webhook, and lifecycle boundaries through the plugin-owned `IArrTagsLog<T>`
 facade, which emits only bounded, already-redacted values under the ADR-020
 clause 4 redaction contract and applies the shared repetition suppressor; the
 bounded log-volume limit row is recorded in section 12 (ADR-020 clause 6). The
-`Warning` default keeps normal operation quiet.
+allowed value set includes the bounded log subject added by the ADR-026
+amendment to ADR-020 clause 4: the media file-name component only
+(`Path.GetFileName`), with control scalars removed and bounded to 128 Unicode
+scalar values, and the Jellyfin item identifier in `D` format as the fallback
+when no usable name is available. An explicit directory, drive, share, or
+full-path exclusion applies; the exclusion is host-native-path scoped, because
+`Path.GetFileName` uses host-platform separator semantics (on the pinned Linux
+host a Windows-style backslash string is a single file name rather than a
+path). The artwork-boundary line also carries the
+specific bounded render classification (`PassThroughReason`, `FailureReason`,
+or `SourceFailureReason`) when the result has one. The `Warning` default keeps
+normal operation quiet.
 
 ### Bounded post-save reconciliation
 
