@@ -92,7 +92,7 @@ identity-bearing sites and explicit fallbacks at the sites without an identity;
 the render classification on the artwork log line; the ADR-020 amendment and the
 logging security review.
 **Tasks:**
-- [ ] 15.1 Bounded log-subject policy and helper
+- [x] 15.1 Bounded log-subject policy and helper
 - [ ] 15.2 Thread the bounded log subject through the identity-bearing and fallback sites
 - [ ] 15.3 Emit the bounded render classification in the artwork log
 - [ ] 15.4 Logging documentation, ADR-020 amendment, and security review
