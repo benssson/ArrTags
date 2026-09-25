@@ -1,5 +1,9 @@
 {
   "task": "15.1",
+  "title": "Bounded log-subject policy and helper",
+  "phase": 15,
+  "status": "COMPLETE",
+  "commit": "ba159c6",
   "subagents": [
     {
       "role": "implementation-worker",
