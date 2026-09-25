@@ -24,6 +24,12 @@ permissions:
   - action: edit
     resource: "Directory.Build.props"
     effect: deny
+  - action: edit
+    resource: "artifacts/**"
+    effect: deny
+  - action: edit
+    resource: "ArrTags.slnx"
+    effect: deny
 model: opencode-go/deepseek-v4.1-flash#high
 ---
 

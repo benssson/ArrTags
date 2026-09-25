@@ -45,6 +45,8 @@ Maintain compatibility with the project's declared Jellyfin and .NET versions.
   single-file documents remain as pointer stubs so historical references resolve.
 - Agent reports (paths, status/severity enums, attempt rule) are defined in
   `docs/agent-contracts.md`; follow it and each agent's own schema.
+- Read-only agents deny the `edit` action (with narrow report/temp exceptions);
+  `shell` stays available, so this is a guardrail, not a full sandbox.
 - Completed phases do not accumulate in `PLANS.md`; archive them verbatim to
   `docs/plan/archive/`.
 - Run `scripts/check-docs.sh` before committing documentation changes.

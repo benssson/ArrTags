@@ -447,7 +447,7 @@ Structure:
     {
       "role": "implementation-worker | implementation-reviewer | test-quality-reviewer | security-reviewer | phase-reviewer | release-reviewer | live-host-verifier | architecture-reviewer | jellyfin-expert | arr-api-researcher | documentation-maintainer | implementation-planner",
       "attempt": 1,
-      "outcome": "COMPLETE | APPROVED | APPROVED_WITH_FINDINGS | PASS_WITH_FINDINGS | CHANGES_REQUIRED | BLOCKED | FAILED | VERIFIED | PARTIAL | CONSISTENT | INCONSISTENT | NEEDS_RESEARCH | NEEDS_USER_INPUT",
+      "outcome": "COMPLETE | APPROVED | APPROVED_WITH_FINDINGS | APPROVED_WITH_ACCEPTED_LIMITATIONS | PASS_WITH_FINDINGS | CHANGES_REQUIRED | BLOCKED | FAILED | VERIFIED | PARTIAL | CONSISTENT | INCONSISTENT | NEEDS_RESEARCH | NEEDS_USER_INPUT",
       "execution": {
         "agent": "<agent name>",
         "model": "<model>",

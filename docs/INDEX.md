@@ -11,7 +11,7 @@ adding a release must not grow the always-read set.
 | Normative reference | Rare | Human-edited; decisions recorded as ADRs | `docs/architecture/`, `docs/data-model/`, `docs/decisions/` |
 | Plan | Per phase | `PLANS.md` (active scope) + `docs/plan/state.json` | `PLANS.md` |
 | Status | Per task/phase | `docs/plan/state.json` | rendered into `docs/status.md` and the `PLANS.md` milestone table |
-| History / evidence | Append-only | Never rewritten | `docs/changelog/`, `docs/implementation/`, `docs/reviews/`, `docs/research/` |
+| History / evidence | Append-only (research notes updatable) | Never rewritten to fit newer status/paths | `docs/changelog/`, `docs/implementation/`, `docs/reviews/`, `docs/research/` |
 | Product goals | Rare | Human-edited | `GOALS.md` |
 
 **One editable source per fact.** A fact may appear in `docs/status.md` or the
