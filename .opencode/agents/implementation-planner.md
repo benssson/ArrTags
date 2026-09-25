@@ -290,10 +290,12 @@ orchestrator can parse them:
 * A single line of the exact form
   `**Authoritative Phase N execution order:** <task ids>`.
 
-Record the phase set and each task's `done` flag in `docs/plan/state.json`. The
-`## Milestone Status` table in `PLANS.md` is generated from `state.json`; render
-it with `dotnet run scripts/render-docs-state.cs` and never hand-edit between its
-markers.
+Record the phase set and each task's `done` flag in `docs/plan/state.json`.
+Also add a `releases[]` entry for the release with `status: "PLANNED"`, set each
+phase's `release`, `status`, `gate`, and `execution_order[]`, and leave `tag`
+empty until the phase gate passes. The `## Milestone Status` table in `PLANS.md`
+is generated from `state.json`; render it with
+`dotnet run scripts/render-docs-state.cs` and never hand-edit between its markers.
 
 Also persist a mapping table from any pre-existing flat task list in the accepted
 plan (for example a flat task list in the accepted plan document) to the new

@@ -37,6 +37,7 @@ Before doing any work:
    * `PLANS.md`
    * `docs/plan/state.json`
    * `docs/plan/README.md`
+   * `docs/agent-contracts.md`
    * `README.md`
    * `docs/planning/*.md` (the accepted release/scope plan, if one is present)
 3. Read relevant architecture, design, research, decision, and implementation-state documents. Start from `docs/INDEX.md` and read only what the task needs; do not read the whole corpus.
@@ -171,6 +172,20 @@ specialist reports with the work they support. Do not ask a specialist to
 calculate token usage, cache usage, or cost; the orchestrator records those
 independently.
 
+Delegate specialist reviews through `docs/agent-contracts.md`: state the report
+path (per-task by default; a release-scope audit goes to `final-review/`) and the
+status enum, and require the contract's attempt/overwrite rule.
+
+Trigger specialist research, and record its report as task evidence, when a task:
+
+* introduces or depends on a new Jellyfin API, lifecycle, or platform assumption
+  → `jellyfin-expert`;
+* changes a provider API contract, version range, or webhook payload
+  → `arr-api-researcher`.
+
+If a trigger applies and the report is absent, require it before proceeding, or
+record why it is not needed.
+
 ## Worker Delegation
 
 Delegate the selected task to `implementation-worker`.
@@ -186,6 +201,10 @@ Provide the worker with:
 * The expected validation requirements.
 
 Tell the worker explicitly that it must stop rather than guess if user input is required.
+
+When returning a task for correction, pass the reviewer's findings verbatim
+(finding id, severity, detail, evidence, recommended action) and require a
+`rework` entry per finding with closure evidence. Do not paraphrase findings.
 
 Do not ask the worker to calculate token usage, cache usage, runtime cost, or other execution statistics. The orchestrator records those independently from runtime/session metadata.
 
@@ -572,7 +591,8 @@ A task is not eligible for commitment until the worker and reviewer reports have
 Before committing, verify:
 
 1. The worker completion report exists.
-2. The reviewer report exists.
+2. The reviewer report exists (or the task is listed in
+   `docs/implementation/review-exemptions.json` with a covering review).
 3. `docs/implementation/<task-id>/orchestration.json` exists and records every
    subagent invocation and attempt, with a rework entry for each correction round.
 4. The persisted reports are internally consistent with the actual repository state.
@@ -583,6 +603,10 @@ Before committing, verify:
 9. The final git diff contains only changes belonging to the task.
 
 The reviewer report is the authoritative record of independent review. Do not commit based solely on the reviewer's conversational response if the required report was not successfully persisted.
+
+Do not commit a task without an approved `implementation-reviewer` report unless
+it is an explicit exemption recorded in
+`docs/implementation/review-exemptions.json`.
 
 After the commit succeeds, record the commit hash in the task's implementation state.
 
