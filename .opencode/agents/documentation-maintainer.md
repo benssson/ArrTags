@@ -26,6 +26,7 @@ verifies your changes.
 * `docs/status.md`
 * `PLANS.md`
 * `docs/plan/state.json`
+* `docs/plan/README.md`
 * `docs/changelog/`
 * `docs/limitations/`
 * `docs/decisions/` (the index and the relevant ADR)

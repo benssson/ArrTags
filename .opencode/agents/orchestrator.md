@@ -37,6 +37,7 @@ Before doing any work:
    * `docs/status.md`
    * `PLANS.md`
    * `docs/plan/state.json`
+   * `docs/plan/README.md`
    * `README.md`
    * `docs/planning/*.md` (the accepted release/scope plan, if one is present)
 3. Read relevant architecture, design, research, decision, and implementation-state documents. Start from `docs/INDEX.md` and read only what the task needs; do not read the whole corpus.

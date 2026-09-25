@@ -19,7 +19,10 @@ Read the repository's authoritative project instructions and relevant context, i
 
 * `AGENTS.md`
 * `GOALS.md`
+* `docs/INDEX.md`
+* `docs/status.md`
 * `PLANS.md`
+* `docs/plan/state.json` and `docs/plan/README.md` (plan-state schema)
 * `README.md`
 * Architecture and design documentation.
 * Relevant research.

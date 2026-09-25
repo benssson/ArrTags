@@ -16,9 +16,11 @@
 //
 // Exit codes: 0 success, 2 stale or malformed input, 3 marker missing.
 
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 var root = Directory.GetCurrentDirectory();
 var check = Environment.GetCommandLineArgs().Contains("--check");
@@ -83,7 +85,7 @@ status.Add(activePhases.Count > 0
     ? $"**Active phases:** {string.Join(", ", activePhases.Select(p => $"Phase {p!["id"]}"))}; all other phases are complete."
     : $"**Phases:** all {phases.Count} complete ({completeIds.Min()}-{completeIds.Max()}); Gates {completeIds.Min()}-{completeIds.Max()} met. Completed plans are archived in `docs/plan/archive/`.");
 status.Add("");
-status.Add($"**Open limitations:** {open.Count} ({string.Join(", ", open.Select(o => $"`{o}`"))}); see `docs/limitations.md`.");
+status.Add($"**Open limitations:** {open.Count} ({string.Join(", ", open.Select(o => $"`{o}`"))}); see `docs/limitations/00-index.md`.");
 
 var milestone = new List<string>
 {
@@ -124,4 +126,79 @@ if (stale.Count > 0)
     Console.Error.WriteLine($"stale generated blocks: {string.Join(", ", stale)}");
     return 2;
 }
+
+if (check)
+{
+    var scopeNode = state["active_scope"];
+    var planningDir = Path.Combine(root, "docs", "planning");
+    if (scopeNode is not null && scopeNode.GetValueKind() == JsonValueKind.String)
+    {
+        if (!File.Exists(Path.Combine(root, (string)scopeNode!)))
+        {
+            Console.Error.WriteLine($"active_scope points to a missing plan: {scopeNode}");
+            return 2;
+        }
+    }
+    else
+    {
+        var plans = Directory.Exists(planningDir) ? Directory.GetFiles(planningDir, "*.md") : Array.Empty<string>();
+        if (plans.Length > 0)
+        {
+            Console.Error.WriteLine($"active_scope is null but docs/planning contains: {string.Join(", ", plans.Select(Path.GetFileName))}");
+            return 2;
+        }
+    }
+
+    var agreement = PlanAgreementErrors(state, File.ReadAllText(Path.Combine(root, "PLANS.md")));
+    if (agreement.Count > 0)
+    {
+        foreach (var e in agreement) Console.Error.WriteLine($"state/plan mismatch: {e}");
+        return 2;
+    }
+    Console.WriteLine("PLANS.md and state.json agree");
+}
 return 0;
+
+// For every phase present in PLANS.md, its task checkboxes must match state.json,
+// and every non-complete phase in state.json must be present in PLANS.md.
+List<string> PlanAgreementErrors(JsonNode state, string planText)
+{
+    var errors = new List<string>();
+    var phases = state["phases"]!.AsArray();
+    var present = new HashSet<int>();
+    foreach (Match m in Regex.Matches(planText, @"^### (\d+)\.\s", RegexOptions.Multiline))
+        present.Add(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture));
+
+    foreach (var p in phases)
+    {
+        var id = (int)p!["id"]!;
+        var status = (string?)p["status"] ?? "";
+        if (!present.Contains(id))
+        {
+            if (status != "COMPLETE")
+                errors.Add($"active phase {id} ({status}) has no '### {id}.' section in PLANS.md");
+            continue;
+        }
+        foreach (var t in p["tasks"]!.AsArray())
+        {
+            var tid = (string)t!["id"]!;
+            var done = (bool)t["done"]!;
+            var m = Regex.Match(planText, @"^- \[([ xX])\]\s+" + Regex.Escape(tid) + @"\b", RegexOptions.Multiline);
+            if (!m.Success)
+                errors.Add($"phase {id} has task {tid} in state.json but no checkbox in PLANS.md");
+            else if ((m.Groups[1].Value is "x" or "X") != done)
+                errors.Add($"task {tid}: PLANS.md checkbox does not match state.json done={done.ToString().ToLowerInvariant()}");
+        }
+    }
+
+    foreach (Match m in Regex.Matches(planText, @"^- \[([ xX])\]\s+(\d+\.\d+)\b", RegexOptions.Multiline))
+    {
+        var tid = m.Groups[2].Value;
+        var pid = int.Parse(tid.Split('.')[0], CultureInfo.InvariantCulture);
+        if (!present.Contains(pid)) continue;
+        var phase = phases.FirstOrDefault(x => (int)x!["id"]! == pid);
+        var known = phase?["tasks"]!.AsArray().Any(t => (string?)t!["id"] == tid) ?? false;
+        if (!known) errors.Add($"PLANS.md task {tid} is missing from state.json");
+    }
+    return errors;
+}

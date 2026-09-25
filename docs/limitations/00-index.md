@@ -8,6 +8,22 @@ still-current accepted items and verification/packaging limits are in
 [`archive.md`](archive.md). The former `docs/limitations.md` path remains as
 a pointer stub.
 
+This register exists so that no unsupported or unverified capability is
+presented as available. It covers the shipped V1 scope and the v1.1 work; the
+resolved items are retained in [`archive.md`](archive.md), with their resolving
+change, so the current-state record stays traceable. It was consolidated by
+Phase 7 task 7.6 from the deferred decisions previously scattered across
+`PLANS.md` (Post-V1 Backlog), the former `docs/implementation-readiness.md`,
+`docs/release/build-and-release.md`, and the Phase 6/7 review findings.
+
+It does **not** redefine V1 scope: the in-scope and out-of-scope lists in
+`GOALS.md` still govern. Items here are either deliberate V1 exclusions,
+implementation-time deferrals, verification gaps caused by the available
+environment, or resolved items retained for traceability. Each item names its
+evidence (an ADR, a task report under `docs/implementation/`, or a documented
+review finding). Architecture and accepted decisions remain authoritative in
+`docs/architecture/` and `docs/decisions/`.
+
 ## V1 success criteria status
 
 `GOALS.md` lists nine success criteria. The live verification task 7.3 and its

@@ -1,7 +1,8 @@
 # Changelog
 
-Completed work by release. Architecture and accepted limits live in
-`docs/architecture/`, `docs/data-model/`, and `docs/decisions/`; they are
+This changelog records completed milestones, their verification evidence, and
+current integration progress, by release. Architecture and accepted limits live
+in `docs/architecture/`, `docs/data-model/`, and `docs/decisions/`; they are
 referenced here, not duplicated. The former `docs/changelog.md` path remains as
 a pointer stub.
 

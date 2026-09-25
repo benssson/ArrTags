@@ -20,7 +20,7 @@ release security review `docs/implementation/14.4/security-review.json`; release
 
 **Phases:** all 14 complete (1-14); Gates 1-14 met. Completed plans are archived in `docs/plan/archive/`.
 
-**Open limitations:** 6 (`F3`, `F4`, `F5`, `F6`, `F7`, `F8`); see `docs/limitations.md`.
+**Open limitations:** 6 (`F3`, `F4`, `F5`, `F6`, `F7`, `F8`); see `docs/limitations/00-index.md`.
 <!-- END GENERATED: status -->
 
 ## Detail

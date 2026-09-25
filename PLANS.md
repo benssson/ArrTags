@@ -31,10 +31,12 @@ moved verbatim to [`docs/plan/archive/`](docs/plan/archive/).
   walk it from the first entry and select the first task that is not complete,
   after verifying that task's documented prerequisites. When the execution order
   reorders task numbers, the execution order wins.
-- Update task checkboxes and the status table as work lands; do not mark a
-  milestone complete until every acceptance criterion is verified.
-- Record decisions that change an architecture assumption in
-  `docs/decisions/00-index.md`, then update `docs/architecture/00-index.md` or
+- Update task checkboxes and `docs/plan/state.json` as work lands; do not mark a
+  milestone complete until every acceptance criterion is verified. `docs/status.md`
+  and the milestone table are generated from `state.json` (see
+  `docs/plan/README.md`).
+- Record decisions that change an architecture assumption as a new ADR under
+  `docs/decisions/`, then update `docs/architecture/00-index.md` or
   `docs/data-model/00-index.md` before implementation relies on them.
 - Keep provider DTOs, Jellyfin entities, credentials, and implementation
   details at their boundaries. The matching, metadata, rendering, and cache

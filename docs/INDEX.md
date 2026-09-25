@@ -36,8 +36,8 @@ specific task/phase report you need, never the whole tree.
 
 | Role | Read beyond the default |
 | --- | --- |
-| `orchestrator` | `PLANS.md` active scope + a phase's execution order, `docs/plan/state.json`, the target task's `docs/implementation/<task-id>/` reports |
-| `implementation-planner` | `GOALS.md`, `docs/architecture/`, `docs/data-model/`, `docs/decisions/`, `docs/limitations/` |
+| `orchestrator` | `PLANS.md` active scope + a phase's execution order, `docs/plan/README.md`, `docs/plan/state.json`, the target task's `docs/implementation/<task-id>/` reports |
+| `implementation-planner` | `GOALS.md`, `docs/plan/README.md`, `docs/architecture/`, `docs/data-model/`, `docs/decisions/`, `docs/limitations/` |
 | `implementation-worker` | The task's ADRs/sections in `docs/architecture/` and `docs/data-model/`, `docs/limitations/` |
 | `implementation-reviewer` | The task's requirements and ADRs, the diff, `docs/limitations/`, `docs/plan/state.json` |
 | `phase-reviewer` | The phase's tasks and execution order, the phase review JSON, `docs/plan/state.json` |
@@ -57,6 +57,7 @@ specific task/phase report you need, never the whole tree.
 | `GOALS.md` | Product goals and success criteria; per-release goal sections |
 | `PLANS.md` | The **active** plan only: scope pointer, active phases and tasks, execution orders, milestone table, decision gates, risks, backlog |
 | `docs/plan/state.json` | Canonical machine-readable plan/status state |
+| `docs/plan/README.md` | Plan-state schema, single-writer rules, and release lifecycle |
 | `docs/plan/archive/` | Completed release plans (verbatim history) |
 | `docs/status.md` | One-page current shipped state, rendered from `state.json` |
 | `docs/architecture/` | Normative architecture, one file per original section; `00-index.md` maps section numbers |

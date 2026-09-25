@@ -17,12 +17,13 @@ fail=0
 err() { echo "FAIL: $*" >&2; fail=1; }
 ok() { echo "ok: $*"; }
 
-# 1. Generated status blocks are current.
+# 1. Generated status blocks are current and plan state is consistent.
 if command -v dotnet >/dev/null 2>&1; then
-    if dotnet run scripts/render-docs-state.cs -- --check >/dev/null 2>&1; then
-        ok "generated status blocks are current"
+    if out=$(dotnet run scripts/render-docs-state.cs -- --check 2>&1); then
+        ok "generated status blocks are current; plan state is consistent"
     else
-        err "generated status blocks are stale (run: dotnet run scripts/render-docs-state.cs)"
+        err "documentation state check failed:"
+        printf '%s\n' "$out" | sed 's/^/    /' >&2
     fi
 else
     echo "skip: dotnet not on PATH; source /config/arrtags-env.sh to check generated blocks"
@@ -82,6 +83,7 @@ budget() { n=$(wc -l < "$1"); [ "$n" -le "$2" ] || err "$1 is $n lines (budget $
 budget PLANS.md 400
 budget docs/status.md 140
 budget docs/INDEX.md 220
+budget docs/plan/README.md 160
 ok "doc budget checked"
 
 # 8. Relative markdown links in current-state docs resolve.

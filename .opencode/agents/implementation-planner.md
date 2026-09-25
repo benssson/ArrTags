@@ -49,6 +49,7 @@ At minimum:
 * `docs/status.md`
 * `PLANS.md`
 * `docs/plan/state.json`
+* `docs/plan/README.md` (plan-state schema and single-writer rules)
 * `docs/planning/*.md` (the accepted release/scope plan, if one is present)
 * `docs/limitations/00-index.md` (current limitations and deferred items)
 * `docs/architecture/00-index.md`
