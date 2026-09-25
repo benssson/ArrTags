@@ -58,7 +58,14 @@ freshness, badge definitions, the renderer output policy, and the log
 verbosity); a few
 construction-captured limits (the artifact-size/decode limits and the render
 work-cache TTL/quota and retention values) still take effect only after a host
-restart. An invalid change is rejected, the last valid configuration stays
+restart. The page marks each restart-required setting with note text saying so,
+and shows a best-effort modal reminder when such a setting changes on save (the
+modal depends on the bundled web client; the always-present note text is the
+reliable indication). Byte-denominated limits are entered and displayed in a
+fixed binary unit per field (MB, or KB for the webhook payload), while the saved
+value stays the exact byte count; a value that does not land on the field's
+fixed step is rejected rather than rounded. An invalid change is rejected, the
+last valid configuration stays
 active, and the
 rejection is recorded as a bounded, secret-free entry in the Jellyfin Activity
 log. A successful save also requests a bounded post-save reconciliation, so
@@ -95,7 +102,7 @@ Other fields:
 | `Renderer` palette overrides | Optional `TechnicalBackground`, `TechnicalText`, `StatusBackground`, and `StatusText` colors (see below). |
 | `Renderer.Position` | Where the technical badge rail is anchored: `BottomLeft` (default), `TopLeft`, `TopRight`, `BottomRight`, or `Center`. The `UPGRADE` status pill stays top-right except for a `TopRight` rail, where it moves top-left. |
 | `Renderer.Size` | The preset badge size: `Medium` (default), `Small`, or `Large`. The size multiplies the width-based badge scale. |
-| `Limits` | The operational bounds (queue capacity, concurrency, timeouts, payload and artifact sizes, cache and retention windows). Defaults are validated when the configuration loads. |
+| `Limits` | The operational bounds (queue capacity, concurrency, timeouts, payload and artifact sizes, cache and retention windows). Defaults are validated when the configuration loads. Byte-denominated limits are displayed in a fixed binary unit (MB, or KB for the webhook payload) with their exact byte value persisted; a value off the field's fixed step is rejected. |
 
 `Renderer.Selectors` holds one entry per badge selector:
 

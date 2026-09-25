@@ -1,0 +1,48 @@
+{
+  "task": "16.6",
+  "title": "G6/G8 documentation and integration verification",
+  "phase": 16,
+  "status": "COMPLETE",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 1054749,
+        "output_tokens": 34052,
+        "reasoning_tokens": 43402,
+        "cache_read_tokens": 16666240,
+        "cache_write_tokens": 0,
+        "total_tokens": 17798443,
+        "cost_usd": 0.25468346999999997,
+        "duration_seconds": 1272,
+        "session_id": "ses_f254f00eaffeVXq5lVzyuNES25"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 80121,
+        "output_tokens": 8870,
+        "reasoning_tokens": 13294,
+        "cache_read_tokens": 1473536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1575821,
+        "cost_usd": 0.029737157999999993,
+        "duration_seconds": 514,
+        "session_id": "ses_f253b65cfffeU4eHQGdfTc2JQC"
+      }
+    }
+  ],
+  "rework": []
+}

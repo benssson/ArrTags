@@ -68,6 +68,13 @@ embeds no secret literal and only ever surfaces a secret value through the same
 administrator-gated configuration API that already returns it (ADR-016
 clause 2).
 
+The byte-denominated operational limits are presented in a fixed per-field
+binary unit (MB, or KB for the webhook payload limit) with the field's fixed
+step and display precision; the input declares the unit-labelled range in the
+same unit and its native `step` plus the explicit conversion check reject a
+value that is not an exact step multiple, while the persisted and internal
+values stay bytes (ADR-028 clause 1; task 16.1).
+
 The pinned static page-resource action carries no `[Authorize]`, the controller
 has no class-level `[Authorize]`, and there is no fallback authorization policy,
 so the page resource itself is reachable without authentication. ADR-016

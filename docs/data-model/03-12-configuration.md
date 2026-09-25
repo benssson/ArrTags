@@ -148,6 +148,20 @@ field. Task 9.5's Goal A integration verification exercises the full save ->
 activate -> bounded-reconcile flow without a live host, and limitation F2 is
 recorded as resolved.
 
+**Byte-limit display units (v1.2 task 16.1).** The seven byte-denominated
+`OperationalLimits` fields are presented on the settings page in a fixed binary
+unit per field (MB, or KB for `WebhookMaxPayloadBytes`) with a fixed step and
+display precision declared in the code-owned
+`src/ArrTags/Configuration/ByteLimitUnits.cs`; the page mirrors that mapping and
+converts a displayed value back to bytes before the save request. The displayed
+value is exact at every field's minimum, default, and maximum — the three 64 KiB
+minima display as `0.0625 MB` — because the step divides each bound; a value
+that is not an exact step multiple is rejected rather than rounded. The
+persisted XML and the internal `OperationalLimits` values remain bytes, so an
+existing `ArrTags.xml` loads unchanged; an in-range off-step legacy value is
+displayed at the fixed precision and is re-quantized or rejected on the next
+save (limitation `V12-G6-1` in `docs/limitations/00-index.md`).
+
 **Restart-required classification (v1.2 task 16.2).** The persisted
 configuration fields are classified under ADR-028 clause 2 by the code-owned
 `src/ArrTags/Configuration/RestartRequiredSettings.cs`: a setting is

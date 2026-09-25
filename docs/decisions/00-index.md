@@ -21,7 +21,7 @@ it; record a divergence or a superseding ADR instead. The former
 | ADR-013 | Supported Sonarr/Radarr Release Ranges and Optional-Field Compatibility Policy | Accepted | [`ADR-013.md`](ADR-013.md) |
 | ADR-014 | Plugin State Root Outside Jellyfin's Plugins Directory | Accepted | [`ADR-014.md`](ADR-014.md) |
 | ADR-015 | Host-Provided SkiaSharp Runtime for the Renderer | Accepted (supersedes the renderer-bundling parts of ADR-010) | [`ADR-015.md`](ADR-015.md) |
-| ADR-016 | Dashboard Settings UI and Runtime Configuration Activation | Accepted (v1.1) | [`ADR-016.md`](ADR-016.md) |
+| ADR-016 | Dashboard Settings UI and Runtime Configuration Activation | Accepted (v1.1; settings-page contract amended by ADR-028 (v1.2)) | [`ADR-016.md`](ADR-016.md) |
 | ADR-017 | Badge Value Allowlist | Accepted (v1.1) | [`ADR-017.md`](ADR-017.md) |
 | ADR-018 | Provider Inventory Cache and Library-Refresh-Driven Reconciliation | Accepted (v1.1) | [`ADR-018.md`](ADR-018.md) |
 | ADR-019 | Configurable Badge Size and Placement | Accepted (v1.1; supersedes the code-owned geometry and placement | [`ADR-019.md`](ADR-019.md) |

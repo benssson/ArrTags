@@ -1,0 +1,139 @@
+{
+  "task": "16.6",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "16.6-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The four new integration cases genuinely compose the real G6/G8 seams and are deterministic.",
+      "detail": "GoalG6G8IntegrationTests.cs composes real product seams rather than restating constants: operator display values are converted through the code-owned ByteLimitUnits/ByteLimitField mapping, serialized as a JSON-number Limits object, deserialized with the pinned JsonDefaults.Options (the same option set the GoalAIntegrationTests precedent uses for the elevation-gated PluginsController POST), passed through the real Plugin.UpdateConfiguration override (validate -> base persist -> activate), and read back from a real XML file boundary via TestXmlSerializer (a genuine System.Xml.Serialization wrapper). The two byte-path cases assert the exact bytes on the deserialized candidate, ConfigurationSnapshotService.Current, and the persisted file, and assert the store -> display -> store identity. The min/default/max case covers all seven fields and all three 64 KiB minima (ProviderResponseLimitBytes, SourceArtifactLimitBytes, DerivedArtifactLimitBytes display as 0.0625 MB). The two G8 cases compose the code-owned RestartRequiredSettings classification against the embedded page's restartRequiredFields mirror (exact equality), the static note markup (exact set and per-setting string, mixed clause iff mixed), the submit-handler detection domain, and the modal message. The intersection case pins the four restart-required byte limits across the mapping table, native input step, note, and reminder domain. Tests are deterministic (GUID temp root, disposed; no timing or concurrency), pass 4/4 focused and in both full-suite runs.",
+      "evidence": [
+        "tests/ArrTags.Tests/GoalG6G8IntegrationTests.cs",
+        "dotnet test --filter FullyQualifiedName~GoalG6G8IntegrationTests -> Failed 0, Passed 4, Skipped 0, Total 4"
+      ],
+      "recommended_action": "None; verification accepted."
+    },
+    {
+      "id": "16.6-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation",
+      "summary": "G6/G8 canonical reconciliation is complete and accurate with no stale claims on current-state surfaces.",
+      "detail": "All phase-16 checklist surfaces are updated consistently with the shipped behavior: ADR-028 gains a dated Implementation note (v1.2, tasks 16.1-16.6) containing only additions (git diff numstat 64 insertions / 0 deletions), placed after Consequences and before Rejected alternatives, matching the ADR-026 precedent (which has 'Implementation note (v1.2, tasks 15.1-15.4)' in the same position). Architecture 06 records the fixed per-field unit/step/precision and step-multiple rejection; architecture 12 records the unit round-trip and best-effort modal; data-model 03-12 documents display units with unchanged persisted bytes and V12-G6-1; README states MB/KB display with exact byte persistence, the note text, and the best-effort modal in its Limits row. The ADR-016 index row becomes 'Accepted (v1.1; settings-page contract amended by ADR-028 (v1.2))', matching the ADR-020 'clause 4 amended by ADR-026' precedent and the v1.2 plan rule ('older index rows are updated when their dependent work lands'); the ADR count stays 28. Reproduced stale-wording greps over README.md, docs/architecture/, docs/data-model/, docs/limitations/, docs/status.md, PLANS.md returned no matches for 'does not ship the web client', 'decided but not yet implemented'/'ships the note text only', or 'raw byte'.",
+      "evidence": [
+        "git diff -- docs/decisions/ADR-028.md docs/decisions/00-index.md docs/architecture/06-configuration-and-persisted-state.md docs/architecture/12-performance-and-operational-limits.md docs/data-model/03-12-configuration.md README.md",
+        "git diff --numstat -- docs/decisions/ADR-028.md -> 64\t0",
+        "grep for stale wording across current-state surfaces (no matches)"
+      ],
+      "recommended_action": "None; reconciliation accepted."
+    },
+    {
+      "id": "16.6-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirements/limitations",
+      "summary": "The three phase-16 limitations are registered per register convention and accurately classified as Accepted.",
+      "detail": "docs/limitations/accepted.md gains a 'v1.2 phase 16 accepted limitations (G6/G8)' section with stable IDs V12-G6-1, V12-G8-1, and V12-G8-2, each in the register's existing heading + Behaviour/Consequence/Evidence/Disposition form and citing task evidence (16.1 reviewer finding 16.1-F2; 16.4 spike; 16.2 reviewer finding 16.2-F2). docs/limitations/00-index.md adds three Accepted rows and updates the coverage sentence; docs/plan/state.json adds the three IDs to limitations.accepted. I independently verified accuracy of the classifications: ByteLimitField.TryParseDisplay and config.html's byteLimitToBytes both reject a non-step-multiple entered value (so V12-G6-1's re-quantize/reject description for legacy persisted off-step values is correct per the display rounding plus step check), RequestTimeoutSeconds is genuinely classified PerOperationNoConsumer in RestartRequiredSettings.cs with corroborating consumer evidence, and the modal is structurally verified only (V12-G8-1). None of the three is a blocker: each is a disclosed, low/informational residual explicitly required by the task, and none affects correctness, security, or persisted-state integrity. scripts/check-docs.sh section 4 ('limitations index covers all IDs') passes and section 1 ('plan state is consistent') passes.",
+      "evidence": [
+        "docs/limitations/accepted.md",
+        "docs/limitations/00-index.md",
+        "docs/plan/state.json limitations.accepted",
+        "src/ArrTags/Configuration/RestartRequiredSettings.cs (PerOperationNoConsumer RequestTimeoutSeconds)",
+        "scripts/check-docs.sh -> ok: limitations index covers all IDs"
+      ],
+      "recommended_action": "None; registrations accepted."
+    },
+    {
+      "id": "16.6-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/testing",
+      "summary": "The musl pinned-host correction is accurate and introduces no unsupported claim.",
+      "detail": "docs/testing/jellyfin-12-musl-test-host.md now states the pinned musl archive ships the bundled web client (jellyfin/jellyfin-web/, 2363 entries) and that --nowebclient only means the running host does not serve or exercise it. I independently re-ran 'tar tzf /tmp/arrtags-host-dl/jellyfin_12.0.tar.gz | grep -c ^jellyfin/jellyfin-web/' and got 2363, matching the documented figure. The added statement that the settings-page JavaScript and browser modal are not exercised by the live matrix is consistent with the launcher flag and with V12-G8-1. The correction is narrowly scoped to the previously inaccurate claim.",
+      "evidence": [
+        "git diff -- docs/testing/jellyfin-12-musl-test-host.md",
+        "tar tzf /tmp/arrtags-host-dl/jellyfin_12.0.tar.gz | grep -c '^jellyfin/jellyfin-web/' -> 2363"
+      ],
+      "recommended_action": "None; correction accepted."
+    },
+    {
+      "id": "16.6-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "state/documentation",
+      "summary": "State and generated surfaces are consistent; Phase 16 correctly remains PLANNED with no gate/tag/phase-complete claim.",
+      "detail": "docs/plan/state.json task 16.6 has done: true with reports ['docs/implementation/16.6/worker-report.json'], and phase 16 still has status 'PLANNED' with gate 'Gate 16' and tag 'v1.2.0-phase16' as the planned gate/tag (not a completion claim). PLANS.md ticks '- [x] 16.6 ...' and its Gate 16 text still reads as a future condition ('Met when ... the tag ... is created'). docs/status.md reports 'Active phases: Phase 16, ...'; docs/status.md has no working-tree diff, and 'dotnet run scripts/render-docs-state.cs' reports 'status.md: up to date' and 'PLANS.md: up to date' (twice). No changed document claims the phase complete, Gate 16 met, or a tag created. The changelog Task 16.6 entry records task status and the exact build/suite figures without a phase claim.",
+      "evidence": [
+        "git diff -- docs/plan/state.json PLANS.md",
+        "docs/plan/state.json phase 16 status == 'PLANNED'",
+        "dotnet run scripts/render-docs-state.cs -> status.md/PLANS.md up to date",
+        "git diff --name-only (docs/status.md absent)"
+      ],
+      "recommended_action": "None; the orchestrator retains Gate 16 and the tag."
+    },
+    {
+      "id": "16.6-F6",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The page's inline JavaScript conversion and modal are verified structurally only; server-side step rejection is not exercised end-to-end.",
+      "detail": "The page's byte conversion (config.html byteLimitToByte/byteLimitToDisplay) and the Dashboard.alert modal cannot be executed in this repository or environment (no JS runtime present; the pinned live host runs --nowebclient), so the integration cases pin them as exact strings over the embedded page resource and the conversion is exercised as real C# through ByteLimitUnits. A browser-level change that preserved those strings would not be caught, and a direct configuration POST bypassing the page would not hit the page's explicit step check (OperationalLimits.Validate enforces only the byte range). This is the intended design per ADR-028 clause 1 (the step check is owned by the settings conversion/validation path, task 16.1), and it is disclosed in the test class XML documentation, the changelog, and the register as V12-G8-1. No overclaim is made.",
+      "evidence": [
+        "tests/ArrTags.Tests/GoalG6G8IntegrationTests.cs class XML doc",
+        "docs/limitations/accepted.md V12-G8-1",
+        "docs/decisions/ADR-028.md clause 1"
+      ],
+      "recommended_action": "No change required for this task; the residual is correctly registered."
+    },
+    {
+      "id": "16.6-F7",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "documentation tooling",
+      "summary": "scripts/check-docs.sh section 9 reported the missing 16.6 reviewer report before this report was persisted; expected worker/reviewer sequencing.",
+      "detail": "Before this report existed, check-docs.sh passed its first eight sections and failed only section 9 with 'task 16.6 has a worker report but no reviewer report'. Writing this reviewer-report.json satisfies the pairing check. No implementation defect.",
+      "evidence": [
+        "scripts/check-docs.sh (eight ok sections + section 9 FAIL before this report)",
+        "docs/implementation/16.6/reviewer-report.json (this report)"
+      ],
+      "recommended_action": "None; re-run scripts/check-docs.sh after this report is persisted."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s)",
+    "dotnet test --filter FullyQualifiedName~GoalG6G8IntegrationTests -> Failed 0, Passed 4, Skipped 0, Total 4",
+    "./build.sh test (default) -> Failed 0, Passed 1756, Skipped 63, Total 1819",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin ./build.sh test -> Failed 0, Passed 1775, Skipped 44, Total 1819",
+    "tar tzf /tmp/arrtags-host-dl/jellyfin_12.0.tar.gz | grep -c '^jellyfin/jellyfin-web/' -> 2363",
+    "dotnet run scripts/render-docs-state.cs -> status.md: up to date; PLANS.md: up to date",
+    "scripts/check-docs.sh -> sections 1-8 ok; section 9 pending this report (see 16.6-F7)"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-028.md decision clauses (clause 1 units/step/precision; clause 2 binary classification) against the shipped ByteLimitUnits/ByteLimitField, config.html, and RestartRequiredSettings",
+    "ADR-026 Implementation note placement/format as the append-only precedent for the ADR-028 note",
+    "docs/planning/v1.2.md section 4 dependent-row rule and section 7 phase-16 documentation checklist",
+    "Pinned musl archive web-client contents (2363 jellyfin/jellyfin-web/ entries)"
+  ],
+  "documentation_checked": [
+    "README.md",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/data-model/03-12-configuration.md",
+    "docs/decisions/ADR-028.md",
+    "docs/decisions/00-index.md",
+    "docs/limitations/00-index.md",
+    "docs/limitations/accepted.md",
+    "docs/testing/jellyfin-12-musl-test-host.md",
+    "docs/changelog/v1.2.0.md",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/status.md (generated; unchanged, verified current)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

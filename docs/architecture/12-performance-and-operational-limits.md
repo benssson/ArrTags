@@ -61,6 +61,19 @@ clause 3; task 16.3). The per-consumer evidence is recorded in
 `OperationalLimits.RequestTimeoutSeconds` field is validated and persisted but
 has no runtime consumer (recorded in the same task 16.2 evidence).
 
+The byte-denominated limits are shown on the settings page in a fixed binary
+unit per field (MB, and KB for the inbound webhook payload) with the field's
+fixed step and display precision, so a range that spans 1 MiB stays in the field
+unit and shows the sub-1-MiB bound as a fraction (for example `0.0625 - 64 MB`);
+the displayed value round-trips to the exact byte value at every minimum,
+default, and maximum, and the persisted representation stays bytes (ADR-028
+clause 1; task 16.1). A value that does not land on the field's step is rejected
+by the explicit step-multiple check rather than rounded. The settings page also
+shows the best-effort web-only modal reminder when a restart-required setting
+changes, with the always-present note text as the fail-open behavior (ADR-028
+clause 4; task 16.5; see
+[section 6](06-configuration-and-persisted-state.md)).
+
 The plugin log verbosity is a bounded, validated level (`LogVerbosity`) that
 selects how much ArrTags writes through the host logging pipeline. It is applied
 without a restart from the current configuration snapshot, is excluded from the

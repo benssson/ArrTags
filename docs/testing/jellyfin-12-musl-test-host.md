@@ -96,9 +96,12 @@ exec ./jellyfin \
 ```
 
 `--nowebclient` is used because only the server-side API/plugin behavior is
-needed; the archive does not ship the web client. The host therefore has no web
-UI, which is sufficient for plugin discovery, install/upgrade/reload/uninstall,
-route, and image-response verification.
+needed; the pinned musl archive does ship the bundled web client
+(`jellyfin/jellyfin-web/`, 2363 entries in the pinned archive), but the flag
+means the running host does not serve or exercise it. The host therefore has no
+web UI, which is sufficient for plugin discovery, install/upgrade/reload/
+uninstall, route, and image-response verification; the settings-page JavaScript
+and the browser modal are not exercised by this live matrix.
 
 ## Verification
 

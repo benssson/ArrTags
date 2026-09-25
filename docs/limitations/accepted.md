@@ -698,3 +698,88 @@ pre-14.3 framing, while task 14.3 is complete and passed all eight matrix rows.
 - Consequence: those sentences understate completed verification; no claim is
   overstated. Correct in the next documentation-only pass; no code or rebuild
   impact.
+
+## v1.2 phase 16 accepted limitations (G6/G8)
+
+### V12-G6-1. A legacy in-range off-step byte limit is re-quantized or rejected on the next settings save (LOW, accepted)
+
+The pre-16.1 settings page accepted any in-range integer for the seven
+byte-denominated limits, so an upgraded `plugins/configurations/ArrTags.xml`
+(or a hand-edited one) can carry a value that is not a multiple of its field's
+ADR-028 display step - for example 100000 for `ProviderResponseLimitBytes`.
+
+- Behaviour: such a value loads, validates, activates, and serializes unchanged
+  and is displayed at the field's fixed precision. On the next save the page
+  converts the displayed value back with the explicit step-multiple check: for
+  the whole-KiB and whole-MiB fields (`WebhookMaxPayloadBytes`,
+  `RenderCacheQuotaBytes`, `ArtifactStorageQuotaBytes`, `InventoryCacheMaxBytes`)
+  the display rounds to a whole unit, so the save writes the nearest whole unit,
+  adjusting the value by at most half a display unit; for the three
+  64-KiB-step MB fields (`ProviderResponseLimitBytes`, `SourceArtifactLimitBytes`,
+  `DerivedArtifactLimitBytes`) the save is rejected (native and page validity
+  message) until the operator enters a step multiple, because the rounded
+  displayed value is not a step multiple.
+- Consequence: an upgraded configuration holding such a value must have the
+  affected 64-KiB-step field edited to a step multiple before any settings save
+  succeeds, and an off-step whole-unit field value is adjusted on the next save.
+  The persisted XML is never rewritten without a save and the byte-range
+  semantics are unchanged; this is ADR-028 clause 1's reject-rather-than-round
+  behavior outside the exact min/default/max round-trip guarantee, not a
+  regression.
+- Evidence: ADR-028 clause 1; task 16.1 worker report and reviewer finding
+  16.1-F2; `tests/ArrTags.Tests/ByteLimitUnitsTests.AnExistingConfigurationWithAnOffStepByteValueStillLoadsUnchanged`;
+  `src/ArrTags/Configuration/config.html` (`byteLimitToBytes` step check).
+- Disposition: accepted for v1.2 (disclosed by task 16.1, registered by task
+  16.6); no code change.
+
+### V12-G8-1. The restart-required modal reminder is a best-effort web-client shim verified structurally, not executed (LOW, accepted)
+
+The modal reminder is implemented and shipped, but it cannot be executed by the
+test suite or the pinned live matrix. The repository deliberately has no
+JavaScript runtime, so `RestartRequiredReminderTests` and the task 16.6
+`GoalG6G8IntegrationTests` pin the reminder's call shape, placement, guard,
+detection domain, and message structurally over the embedded settings page; the
+modal itself is never executed. The pinned test host's launcher uses
+`--nowebclient`, so the documented live matrix does not serve the bundled web
+client either.
+
+- Precondition: a dashboard save that changes a restart-required setting, in a
+  jellyfin-web build that exposes `window.Dashboard.alert`.
+- Behaviour: the page calls `Dashboard.alert({ title, message })`, an
+  intentionally retained legacy compatibility shim with an in-source TODO to
+  remove it; it is a web-client surface, not a server plugin ABI, and it is
+  present only in jellyfin-web. The API's presence and modal semantics were
+  confirmed against the pinned host's bundled asset and the matching
+  jellyfin-web v12.0 source, not in a live browser.
+- Consequence: if a future web client renames or removes `window.Dashboard` or
+  its `alert` method, the reminder silently shows nothing; the always-present
+  per-setting note text remains and the save behavior is unchanged (ADR-028
+  clause 4 fail-open). Dismissing the modal with Escape or the backdrop leaves a
+  benign unhandled rejection in the browser console.
+- Evidence: `docs/research/jellyfin-expert/modal-notification-api.json` (task
+  16.4 spike); task 16.5 worker and reviewer reports; task 16.6 integration
+  verification; `docs/architecture/06-configuration-and-persisted-state.md`.
+- Disposition: accepted for v1.2; a live-browser probe would require serving the
+  bundled web client and logging in, which the pinned matrix does not do.
+
+### V12-G8-2. The global `OperationalLimits.RequestTimeoutSeconds` is inert (INFORMATIONAL, accepted)
+
+`OperationalLimits.RequestTimeoutSeconds` is validated, persisted, exposed on
+the settings page, and classified per-operation by the ADR-028 clause 2 audit,
+but no runtime consumer reads it.
+
+- Behaviour: editing the global field changes nothing at runtime and nothing
+  after a restart; the effective request timeout is the per-connection
+  `ArrConnectionConfiguration.RequestTimeoutSeconds`, which is carried into each
+  read client.
+- Consequence: the settings page shows a field whose change cannot take effect.
+  ADR-028 clause 2 is binary and classifies a setting with zero consumers as
+  per-operation (a restart would not apply it either), so the field carries no
+  restart note; the audit records the inert field explicitly rather than
+  omitting it.
+- Evidence: `src/ArrTags/Configuration/RestartRequiredSettings.cs` (the audited
+  no-consumer note); `docs/implementation/16.2/consumer-evidence.md` section 5;
+  `tests/ArrTags.Tests/RestartRequiredSettingsTests.OnlyTheAuditedInertSettingHasNoRuntimeConsumer`;
+  task 16.2 reviewer finding 16.2-F2.
+- Disposition: accepted for v1.2 as a pre-existing field; removing or aliasing
+  it is a separate change outside the phase-16 scope.
