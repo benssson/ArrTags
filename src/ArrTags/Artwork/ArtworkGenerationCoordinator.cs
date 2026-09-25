@@ -121,7 +121,9 @@ public sealed class ArtworkGenerationCoordinator
     /// Writes one bounded, secret-free artwork-boundary record. Only the bounded
     /// log subject (the primary media file name when a path is available, and
     /// otherwise the Jellyfin item identifier; ADR-026), the bounded generation
-    /// outcome, and the bounded non-secret reason are emitted; source bytes,
+    /// outcome, the specific bounded render classification when the result
+    /// carries one (the pass-through, render-failure, or source-read-failure
+    /// enum), and the bounded non-secret reason are emitted; source bytes,
     /// artifact paths, directories, provider payloads, and credentials are never
     /// available here (ADR-020 clause 4 as amended by ADR-026).
     /// </summary>
@@ -140,7 +142,39 @@ public sealed class ArtworkGenerationCoordinator
             LogLevel.Information,
             ArrTagsLogEvent.ArtworkGenerationCompleted,
             FormattableString.Invariant(
-                $"Artwork generation for item {subject} completed with {result.Outcome}: {result.Reason}"));
+                $"Artwork generation for item {subject} completed with {result.Outcome}{DescribeClassification(result)}: {result.Reason}"));
+    }
+
+    /// <summary>
+    /// Builds the bounded, non-secret classification qualifier for one generation
+    /// result: the specific <see cref="RenderPassThroughReason"/>,
+    /// <see cref="RenderFailureReason"/>, or
+    /// <see cref="ArtworkSourceReadFailureReason"/> the result carries, named by
+    /// its enum kind so two outcomes with different causes stay distinguishable,
+    /// or an empty string when the result carries no classification. Every value
+    /// is a bounded enum, so no exception message, provider payload, path, or
+    /// credential can be emitted (ADR-020 clause 4 as amended by ADR-026).
+    /// </summary>
+    /// <param name="result">The completed generation result.</param>
+    /// <returns>The bounded classification qualifier, or an empty string.</returns>
+    private static string DescribeClassification(ArtworkGenerationResult result)
+    {
+        if (result.PassThroughReason is { } passThroughReason)
+        {
+            return FormattableString.Invariant($" (PassThroughReason={passThroughReason})");
+        }
+
+        if (result.FailureReason is { } failureReason)
+        {
+            return FormattableString.Invariant($" (FailureReason={failureReason})");
+        }
+
+        if (result.SourceFailureReason is { } sourceFailureReason)
+        {
+            return FormattableString.Invariant($" (SourceFailureReason={sourceFailureReason})");
+        }
+
+        return string.Empty;
     }
 
     private async Task<ArtworkGenerationResult> GenerateCoreAsync(

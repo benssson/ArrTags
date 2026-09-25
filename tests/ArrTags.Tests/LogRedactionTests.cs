@@ -72,6 +72,8 @@ public sealed class LogRedactionTests
 
     private const string BodySentinel = "SENTINEL-REQUEST-BODY-6b2e";
 
+    private const string SourceDetailSentinel = "SENTINEL-SOURCE-DETAIL-4f7c";
+
     private const string ConnectionScopeId = "radarr-connection-scope";
 
     private static readonly Guid SonarrEpisodeItemId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
@@ -84,6 +86,7 @@ public sealed class LogRedactionTests
         IdentityNameSentinel,
         HeaderSentinel,
         BodySentinel,
+        SourceDetailSentinel,
     };
 
     public static IEnumerable<object[]> AllVerbosityLevels()
@@ -494,6 +497,103 @@ public sealed class LogRedactionTests
         AssertItemIdSubject(removal[0], ReconciliationFixtures.ItemId);
     }
 
+    // ---- F8 bounded render classification --------------------------------------
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogEmitsTheBoundedPassThroughClassification(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkClassificationAsync(capturing, verbosity, new FingerprintingRenderer());
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        Assert.Contains(
+            "completed with RenderPassThrough (PassThroughReason=NoMetadata): The render passed through",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogEmitsTheBoundedFailureClassification(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkClassificationAsync(
+            capturing,
+            verbosity,
+            new FixedResultRenderer(RenderResult.Failed(RenderFailureReason.DecodeFailed)));
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        Assert.Contains(
+            "completed with RenderFailed (FailureReason=DecodeFailed): The render failed",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogEmitsTheBoundedSourceFailureClassification(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkSourceFailureAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        Assert.Contains(
+            "completed with SourceUnavailable (SourceFailureReason=Unreadable): The active source image could not be used.",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogOmitsTheClassificationWhenTheResultCarriesNone(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkNoSourceAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        var message = capturing.Records[0].Message;
+        Assert.EndsWith(
+            "completed with NoSource: The image surface has no source artwork to render.",
+            message,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("PassThroughReason=", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("FailureReason=", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("SourceFailureReason=", message, StringComparison.Ordinal);
+    }
+
     // ---- A verbosity raise cannot expand a redacted value -----------------------
 
     [Fact]
@@ -841,15 +941,82 @@ public sealed class LogRedactionTests
 
     private static async Task DriveArtworkAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
     {
-        var repository = new StateRepository(CreateRoot());
         var host = new PipelineArtworkHost();
+
+        // The pre-task harness path: an invalid request (no badge definitions)
+        // blocks before the source read and carries no classification.
+        await DriveArtworkGenerationAsync(
+            capturing,
+            verbosity,
+            host,
+            host,
+            new FingerprintingRenderer(),
+            Array.Empty<BadgeDefinition>());
+    }
+
+    /// <summary>
+    /// Drives one artwork-boundary record with a valid request and a present
+    /// source, so the injected renderer's bounded result classification reaches
+    /// the artwork log line.
+    /// </summary>
+    private static Task DriveArtworkClassificationAsync(
+        CapturingLoggerProvider capturing,
+        LogVerbosity verbosity,
+        IRenderer renderer)
+    {
+        var host = new PipelineArtworkHost { CurrentBytes = PipelineArtworkHost.PngSignature };
+        return DriveArtworkGenerationAsync(
+            capturing, verbosity, host, host, renderer, BadgeDefinition.V1Default);
+    }
+
+    /// <summary>
+    /// Drives one artwork-boundary record whose result carries no classification:
+    /// a valid request with an absent source completes as <c>NoSource</c>.
+    /// </summary>
+    private static Task DriveArtworkNoSourceAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
+    {
+        var host = new PipelineArtworkHost();
+        return DriveArtworkGenerationAsync(
+            capturing, verbosity, host, host, new FingerprintingRenderer(), BadgeDefinition.V1Default);
+    }
+
+    /// <summary>
+    /// Drives one artwork-boundary record whose result carries the bounded source
+    /// read classification: the source read fails before any render.
+    /// </summary>
+    private static Task DriveArtworkSourceFailureAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
+    {
+        var writer = new PipelineArtworkHost();
+        return DriveArtworkGenerationAsync(
+            capturing,
+            verbosity,
+            new FailedSourceArtworkReader(),
+            writer,
+            new FingerprintingRenderer(),
+            BadgeDefinition.V1Default);
+    }
+
+    /// <summary>
+    /// Builds one artwork generation coordinator over the real publisher and state
+    /// stores with the supplied source reader, image writer, renderer, and badge
+    /// definitions, and runs one generation for the sentinel identity.
+    /// </summary>
+    private static async Task DriveArtworkGenerationAsync(
+        CapturingLoggerProvider capturing,
+        LogVerbosity verbosity,
+        IArtworkSourceReader reader,
+        IArtworkImageWriter writer,
+        IRenderer renderer,
+        IReadOnlyList<BadgeDefinition> badgeDefinitions)
+    {
+        var repository = new StateRepository(CreateRoot());
         var artifacts = new SourceArtifactStore(repository);
         var states = new PublishedArtworkStateStore(repository);
         var operations = new ArtworkOperationStore(repository);
-        var publisher = new ArtworkPublisher(host, host, artifacts, states, operations, new OperationalLimits());
+        var publisher = new ArtworkPublisher(reader, writer, artifacts, states, operations, new OperationalLimits());
         var coordinator = new ArtworkGenerationCoordinator(
-            host,
-            new FingerprintingRenderer(),
+            reader,
+            renderer,
             publisher,
             states,
             artifacts,
@@ -863,7 +1030,7 @@ public sealed class LogRedactionTests
             identity,
             match,
             metadata: null,
-            Array.Empty<BadgeDefinition>(),
+            badgeDefinitions,
             configurationFingerprint: "test-configuration-fingerprint");
 
         await coordinator.GenerateAsync(request, CancellationToken.None);
@@ -1444,6 +1611,37 @@ public sealed class LogRedactionTests
     }
 
     // ---- Test doubles ----------------------------------------------------------
+
+    private sealed class FixedResultRenderer : IRenderer
+    {
+        private readonly RenderResult _result;
+
+        public FixedResultRenderer(RenderResult result)
+        {
+            _result = result;
+        }
+
+        public Task<RenderResult> RenderAsync(RenderRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_result);
+        }
+    }
+
+    private sealed class FailedSourceArtworkReader : IArtworkSourceReader
+    {
+        public Task<ArtworkSourceReadResult> ReadAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(ArtworkSourceReadResult.Failed(
+                surface,
+                ArtworkSourceReadFailureReason.Unreadable,
+                "The source could not be read: " + SourceDetailSentinel));
+        }
+    }
 
     private sealed class TestTimeProvider : TimeProvider
     {

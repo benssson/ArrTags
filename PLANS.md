@@ -94,7 +94,7 @@ logging security review.
 **Tasks:**
 - [x] 15.1 Bounded log-subject policy and helper
 - [x] 15.2 Thread the bounded log subject through the identity-bearing and fallback sites
-- [ ] 15.3 Emit the bounded render classification in the artwork log
+- [x] 15.3 Emit the bounded render classification in the artwork log
 - [ ] 15.4 Logging documentation, ADR-020 amendment, and security review
 **Authoritative Phase 15 execution order:** 15.1, 15.2, 15.3, 15.4
 **Phase acceptance criteria:** the file-name-only subject (bounded, control
