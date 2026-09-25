@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Matching;
 using ArrTags.Media;
@@ -31,13 +32,16 @@ namespace ArrTags.Providers.Sonarr;
 /// episode or bulk file read that fails, keeps the existing direct read
 /// unchanged. The cache is never authoritative: a missing or expired set is
 /// re-read from the provider, and no provider conditional request or revision
-/// token is used.
+/// token is used. When the bounded diagnostics counters (ADR-025) are supplied,
+/// a read served by a retained cache entry records a cache hit and a read that
+/// reaches the provider records a cache miss.
 /// </remarks>
 public sealed class SonarrMetadataReader : IArrMetadataReader
 {
     private readonly IArrReadClientFactory _clients;
     private readonly IArrTagsLog<SonarrMetadataReader>? _log;
     private readonly ArrInventoryCacheProvider? _inventory;
+    private readonly DiagnosticsMetrics? _metrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SonarrMetadataReader"/> class.
@@ -45,15 +49,18 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
     /// <param name="clients">The connection-scoped read client factory.</param>
     /// <param name="log">The optional bounded, secret-free matching-boundary log.</param>
     /// <param name="inventory">The optional bounded provider inventory cache (ADR-018); when absent the reader keeps the direct provider read.</param>
+    /// <param name="metrics">The optional bounded diagnostics counters (ADR-025); when absent no cache hit/miss counter is recorded.</param>
     /// <exception cref="ArgumentNullException">The factory is <see langword="null"/>.</exception>
     public SonarrMetadataReader(
         IArrReadClientFactory clients,
         IArrTagsLog<SonarrMetadataReader>? log = null,
-        ArrInventoryCacheProvider? inventory = null)
+        ArrInventoryCacheProvider? inventory = null,
+        DiagnosticsMetrics? metrics = null)
     {
         _clients = clients ?? throw new ArgumentNullException(nameof(clients));
         _log = log;
         _inventory = inventory;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -89,6 +96,8 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
 
         if (cache is null)
         {
+            // The cache is unavailable, so the read has to reach the provider.
+            _metrics?.RecordCacheMiss();
             var libraryResult = await client.GetSeriesAsync(cancellationToken).ConfigureAwait(false);
             if (!libraryResult.IsSuccess || libraryResult.Value is null)
             {
@@ -102,6 +111,7 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
         {
             // A fresh or bounded last-known-good observation set serves every
             // work item in the window without a provider library read.
+            _metrics?.RecordCacheHit();
             return ReadFromObservations(identity, connection, cached.Records);
         }
 
@@ -112,9 +122,13 @@ public sealed class SonarrMetadataReader : IArrMetadataReader
         {
             if (cache.TryGet(connection.ConnectionId, DateTimeOffset.UtcNow, out cached) && cached is not null)
             {
+                // The population another work item completed serves this read.
+                _metrics?.RecordCacheHit();
                 return ReadFromObservations(identity, connection, cached.Records);
             }
 
+            // The cache could not serve the read, so it reaches the provider.
+            _metrics?.RecordCacheMiss();
             population = await PopulateAsync(connection, client, cache, cancellationToken).ConfigureAwait(false);
         }
 

@@ -4,6 +4,7 @@ using System.Net.Http;
 using ArrTags.Artwork;
 using ArrTags.Concurrency;
 using ArrTags.Configuration;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Providers;
@@ -68,6 +69,17 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateLibraryWorkQueue);
         serviceCollection.TryAddSingleton<IWorkHintSink>(
             static serviceProvider => serviceProvider.GetRequiredService<LibraryWorkQueue>());
+
+        // ADR-025 clauses 3 and 4: the bounded, secret-free, process-lifetime
+        // diagnostics counters and the fixed-shape snapshot provider. The
+        // counters are fed only at existing bounded boundaries, and the future
+        // administrator status endpoint resolves the snapshot provider.
+        // Registration performs no provider, rendering, or library work.
+        serviceCollection.TryAddSingleton<DiagnosticsMetrics>();
+        serviceCollection.TryAddSingleton<DiagnosticsSnapshotProvider>(
+            static serviceProvider => new DiagnosticsSnapshotProvider(
+                serviceProvider.GetRequiredService<DiagnosticsMetrics>(),
+                serviceProvider.GetRequiredService<LibraryWorkQueue>()));
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
         serviceCollection.TryAddSingleton<IMediaLibraryEnumerator, JellyfinMediaLibraryEnumerator>();
         serviceCollection.TryAddSingleton(CreateMetadataStateStore);
@@ -392,7 +404,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<ArtworkPublisher>(),
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<SourceArtifactStore>(),
-            serviceProvider.GetRequiredService<IArrTagsLog<ArtworkGenerationCoordinator>>());
+            serviceProvider.GetRequiredService<IArrTagsLog<ArtworkGenerationCoordinator>>(),
+            serviceProvider.GetRequiredService<DiagnosticsMetrics>());
     }
 
     private static ArtifactRetention CreateArtifactRetention(IServiceProvider serviceProvider)

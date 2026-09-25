@@ -1,0 +1,159 @@
+{
+  "task": "17.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the ADR-025 clause 3/4 bounded diagnostics metrics model and its instrumentation (Phase 17 task 17.1, goal F3). New src/ArrTags/Diagnostics/ contains the fixed-shape secret-free model: DiagnosticsSnapshot (nine fields: QueueDepth, QueueInFlight, SonarrHealth, RadarrHealth, MatchingFailures, CacheHits, CacheMisses, RenderFailures, StaleMetadataTransitions), MatchingFailureCounts (NotFound/Ambiguous/Unsupported), RenderFailureCounts (one named long per RenderFailureReason value, 18 in enum order), DiagnosticsMetrics (thread-safe process-lifetime counters: Interlocked counts, Volatile two-slot provider-health array, no allocation on an increment) and DiagnosticsSnapshotProvider.GetSnapshot() (composes the snapshot from the counters plus the existing LibraryWorkQueue.Count/InFlightCount properties; no provider/render/library/I-O work). Every snapshot property type is int, long, a bounded enum, or one of the two fixed count records; there is no string, path, item identity, collection, array, or per-item listing. Counters are recorded only at existing bounded boundaries: Radarr/Sonarr metadata readers record a cache hit when a retained inventory-cache entry serves the read and a cache miss when the read has to reach the provider (cold population or direct read); ConcurrencyLimitedArrMetadataReader<TReader> records the bounded per-connection health (Healthy on success, ArrConnectionHealthMapping.FromErrorCode(error.Code) on failure) and the new shared mapping replaces the duplicated private ToHealth in RadarrClient/SonarrClient with no behaviour change; MetadataReconciliationProcessor records the read's matching classification (only NotFound/Ambiguous/Unsupported) and counts a fresh-to-stale transition exactly once when a fresh record is written as explicit stale last-known-good; ArtworkGenerationCoordinator records the bounded RenderFailureReason of a RenderFailed result (a pass-through is not a failure). ArrTagsServiceRegistrator registers DiagnosticsMetrics and DiagnosticsSnapshotProvider as singletons (provider factory resolves the queue) and passes the metrics to the coordinator factory; reflection-registered readers, decorators, and the processor receive it through a new optional constructor parameter. No endpoint, route, HTTP surface, page markup, persisted configuration, OperationalLimits semantics, queue/cache semantics, or dependency is added. Tests: DiagnosticsSnapshotTests (8 cases) and DiagnosticsInstrumentationTests (16 cases) = 24 new cases; default suite Failed 0 / Passed 1780 / Skipped 63 / Total 1843 (baseline Failed 0 / Passed 1756 / Skipped 63 / Total 1819; +24 passed / +24 total, 0 new skips). Eleven test-sensitivity probes were run and reverted (see test_sensitivity). Documentation: changelog Phase 17/task 17.1 entry, PLANS.md checkbox 17.1, state.json task done/report/updated_utc; render-docs-state up to date; check-docs PASS. Host-guarded run not performed: ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment. F3 stays open until 17.4.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx).",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1780, Skipped: 63, Total: 1843, Duration: 18 s - ArrTags.Tests.dll (net10.0)'. Pre-task baseline on the same tree (commit eb0c8ba, before any change) was 'Failed: 0, Passed: 1756, Skipped: 63, Total: 1819'; delta +24 passed / +24 total, 0 new skips.",
+    "Focused run: dotnet test ArrTags.slnx --configuration Release --no-build --filter 'FullyQualifiedName~ArrTags.Tests.Diagnostics' -> 'Passed! - Failed: 0, Passed: 24, Skipped: 0, Total: 24'.",
+    "ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the host-guarded run was not performed; the default run reports the 63 host-guarded skips. No host-guarded fact was changed by this task.",
+    "Test-sensitivity probes (each temporary edit followed by a focused diagnostics run, then reverted): (A) removing the Radarr reader's cache-hit recording -> 1 failure (CacheHitAndMissAreCountedAtTheInventoryBoundary); (B) removing the cold-population cache-miss recording -> 1 failure (same test); (C) swapping the NotFound/Ambiguous capture arguments in DiagnosticsMetrics -> 2 failures (MatchingFailuresAreCountedByClassification for NotFound and Ambiguous); (D) removing the stale-transition recording -> 1 failure (StaleMetadataTransitionIsCountedOncePerFreshRecord); (E) removing the render-failure recording in ArtworkGenerationCoordinator -> 3 failures (RenderFailureIsCountedByBoundedClassification for DecodeFailed, EncodeFailed, Cancelled); (F) flattening ArrConnectionHealthMapping.FromErrorCode to Unknown -> 3 failures (ProviderHealthIsRecordedPerConnection for AuthenticationFailed, ProviderUnavailable, ProviderIncompatible); (G) swapping the queue depth/in-flight arguments in DiagnosticsSnapshotProvider -> 1 failure (QueueDepthAndInFlightComeFromTheBoundedWorkQueue); (H) adding a temporary string property to DiagnosticsSnapshot -> 3 failures (SnapshotExposesExactlyTheFixedCounterSet, SnapshotGraphCarriesOnlyCountsAndBoundedEnums, SnapshotGraphExposesNoStringPathArrayOrCollectionCarrier); (I) adding a temporary extra long counter property -> 1 failure (SnapshotExposesExactlyTheFixedCounterSet only); (J) pinning the provider-health slot to Sonarr -> 5 failures (the 4 ProviderHealthIsRecordedPerConnection cases plus CountersAreThreadSafeAndReportExactTotals); (L) adding a temporary IReadOnlyList<long> property -> 3 failures (the same three shape/secret-freedom tests). All probes were reverted; the final build/test run above is on the reverted tree and a scoped search for 'TemporaryProbe' finds no match in src/ArrTags or tests/ArrTags.Tests sources.",
+    "The concurrent exact-total check (CountersAreThreadSafeAndReportExactTotals) is a stress check: removing one Interlocked call would not be reliably detectable, so no sensitivity probe is claimed for it; the deterministic per-boundary probes above carry the counter-path sensitivity.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. This run was before this report file was persisted; the worker/reviewer pairing in section 9 is satisfied when the orchestrator's implementation-reviewer report is added (same pattern as task 16.1).",
+    "git diff / git status inspection -> eight modified tracked source files (ArtworkGenerationCoordinator.cs, ArrTagsServiceRegistrator.cs, RadarrClient.cs, RadarrMetadataReader.cs, SonarrClient.cs, SonarrMetadataReader.cs, ConcurrencyLimitedArrMetadataReader.cs, MetadataReconciliationProcessor.cs) plus three modified tracked documentation files (PLANS.md, docs/changelog/v1.2.0.md, docs/plan/state.json), six new source files (five under src/ArrTags/Diagnostics/ plus src/ArrTags/Providers/ArrConnectionHealthMapping.cs), two new test files, and this report; no probe residue, no unrelated file changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Diagnostics/DiagnosticsSnapshot.cs",
+    "src/ArrTags/Diagnostics/MatchingFailureCounts.cs",
+    "src/ArrTags/Diagnostics/RenderFailureCounts.cs",
+    "src/ArrTags/Diagnostics/DiagnosticsMetrics.cs",
+    "src/ArrTags/Diagnostics/DiagnosticsSnapshotProvider.cs",
+    "src/ArrTags/Providers/ArrConnectionHealthMapping.cs",
+    "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs",
+    "src/ArrTags/Providers/Radarr/RadarrClient.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrClient.cs",
+    "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs",
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs",
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "tests/ArrTags.Tests/DiagnosticsSnapshotTests.cs",
+    "tests/ArrTags.Tests/DiagnosticsInstrumentationTests.cs",
+    "PLANS.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "docs/implementation/17.1/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "A bounded, secret-free, fixed-shape diagnostics snapshot model exists with the fixed counter set (queue depth/in-flight, provider health, matching failures, cache hits/misses, render failures by bounded classification, stale metadata); no per-item array and no unbounded collection.",
+      "evidence": "DiagnosticsSnapshot has exactly nine public instance properties (QueueDepth, QueueInFlight, SonarrHealth, RadarrHealth, MatchingFailures, CacheHits, CacheMisses, RenderFailures, StaleMetadataTransitions); MatchingFailureCounts has exactly NotFound/Ambiguous/Unsupported; RenderFailureCounts has exactly one named long property per RenderFailureReason value (18). DiagnosticsSnapshotTests.SnapshotExposesExactlyTheFixedCounterSet, MatchingFailureCountsExposeTheBoundedClassificationSet, RenderFailureCountsExposeOneCountPerDeclaredReason (which also pins enum contiguity), SnapshotGraphCarriesOnlyCountsAndBoundedEnums and SnapshotGraphExposesNoStringPathArrayOrCollectionCarrier pin the shape and reject any array/collection/string carrier; probes H, I, and L show those tests fail when a string, an extra counter, or an IReadOnlyList<long> carrier is added."
+    },
+    {
+      "criterion": "The counters are fed by instrumentation at the existing bounded boundaries; where a counter did not exist, a bounded process-lifetime counter is added (not per-item history).",
+      "evidence": "Instrumentation sites: RadarrMetadataReader/SonarrMetadataReader (cache hit/miss at the inventory-cache decision; three recording points each), ConcurrencyLimitedArrMetadataReader<TReader> (per-connection health from the bounded read outcome), MetadataReconciliationProcessor (matching classification after the read; stale transition on the KeepLastKnownGoodAsStale write), ArtworkGenerationCoordinator (render-failure classification from the bounded RenderFailed result). DiagnosticsMetrics stores only counts and two fixed health slots (Interlocked/Volatile), never per-item state; the queue depth/in-flight comes from the existing LibraryWorkQueue properties. DiagnosticsInstrumentationTests exercises each path: CacheHitAndMissAreCountedAtTheInventoryBoundary (1 miss for the cold provider population, 1 hit for the retained-entry read), MatchingFailuresAreCountedByClassification (all five MediaMatchStatus values), StaleMetadataTransitionIsCountedOncePerFreshRecord, RenderFailureIsCountedByBoundedClassification (3 reasons) plus RenderPassThroughIsNotCountedAsAFailure, and ProviderHealthIsRecordedPerConnection (success plus four error codes). Probes A-G and J show each recording path is load-bearing."
+    },
+    {
+      "criterion": "The snapshot contains no secret, path, item name, item id list, provider payload, or credential; verify by inspecting the model's field types (counts/bounded enums only).",
+      "evidence": "SnapshotGraphCarriesOnlyCountsAndBoundedEnums recursively walks the closed property graph of DiagnosticsSnapshot/MatchingFailureCounts/RenderFailureCounts and asserts every node is int, long, ArrConnectionHealth, or one of the three model types; SnapshotGraphExposesNoStringPathArrayOrCollectionCarrier additionally rejects string/Guid/Uri/DateTimeOffset, arrays, and IEnumerable. The counters store no free text: RecordRenderFailure stores only the enum index, RecordMatchingFailure only the bounded classification, RecordProviderHealth only the bounded health enum in a two-slot array, and the readers/processor/coordinator pass no path, identity, payload, or message into any recording call. Probes H and L show the guards fail on a temporary string or collection member."
+    },
+    {
+      "criterion": "The model is resolvable from DI and can be served without blocking (17.2 will call it); thread-safe.",
+      "evidence": "ArrTagsServiceRegistrator registers DiagnosticsMetrics and DiagnosticsSnapshotProvider as singletons; DiagnosticsSnapshotTests.SnapshotProviderIsResolvableFromTheRegistratorWithoutProviderWork builds the service provider from the real RegisterServices call, asserts the descriptor and its implementation factory, resolves DiagnosticsSnapshotProvider, and reads a snapshot with all-zero counters. DiagnosticsSnapshotProvider.GetSnapshot() reads only the metrics' in-memory counters and the queue's existing bounded lock-protected Count/InFlightCount properties; no I/O, provider, render, or library call exists on the path (probe G shows the queue arguments are load-bearing). CountersAreThreadSafeAndReportExactTotals runs 4096 concurrent iterations of every recording path and asserts exact totals."
+    },
+    {
+      "criterion": "Unit tests cover: the fixed shape/bounded set, counter increment paths at each boundary (hit/miss, render failure by reason, matching failure by classification, stale metadata, queue depth/in-flight), and secret-freedom (no string/path carrier).",
+      "evidence": "24 new cases: DiagnosticsSnapshotTests (8: exact fixed set, matching classification set, render reason set + contiguity, bounded graph, secret-freedom graph, queue depth/in-flight, concurrency, DI) and DiagnosticsInstrumentationTests (16: cache hit/miss, 5 matching classifications, stale once, 3 render reasons, pass-through negative, 5 provider-health outcomes). Probes A-L demonstrate the individual cases fail when their behaviour is removed or a forbidden member type is added."
+    },
+    {
+      "criterion": "Build passes with 0 warnings; the default test suite passes with no new failures/skips.",
+      "evidence": "'. /config/arrtags-env.sh && ./build.sh build' -> 0 Warning(s) 0 Error(s); '. /config/arrtags-env.sh && ./build.sh test' -> Failed 0, Passed 1780, Skipped 63, Total 1843 against the pre-task baseline Failed 0, Passed 1756, Skipped 63, Total 1819 (+24 passed, 0 new skips)."
+    },
+    {
+      "criterion": "Documentation reconciliation: docs/changelog/v1.2.0.md gets a Phase 17 task 17.1 entry, PLANS.md checkbox 17.1 is ticked, and docs/plan/state.json task 17.1 gets done=true with the report path and an updated updated_utc; render-docs-state and check-docs run before persisting the report; no phase gate or tag applied.",
+      "evidence": "docs/changelog/v1.2.0.md gains the '## Phase 17 - Read-only diagnostics status surface (v1.2)' section with the task 17.1 entry; PLANS.md line 155 is '- [x] 17.1 ...'; state.json has \"done\": true, \"reports\": [\"docs/implementation/17.1/worker-report.json\"], and \"updated_utc\": \"2026-09-25T23:44:32Z\" (the observed UTC time). 'dotnet run scripts/render-docs-state.cs' -> status.md and PLANS.md up to date; 'scripts/check-docs.sh' -> check-docs: PASS (nine ok sections). Phase 17 status remains PLANNED and no tag was created."
+    },
+    {
+      "criterion": "Task constraints: no endpoint, route, HTTP surface, or page markup; no dependency; no persisted configuration schema or OperationalLimits change; no change to queue/coalescing or cache semantics; registration performs no provider/render/library work.",
+      "evidence": "No controller/route/page file is touched and no csproj/package reference changes; PluginConfiguration/OperationalLimits/PluginConfigurationValidator have no diff; LibraryWorkQueue and ArrInventoryCache have no diff; the registration additions are two TryAddSingleton descriptors plus one factory argument and perform no resolution or I/O at registration time."
+    },
+    {
+      "criterion": "Phase 17 acceptance criterion this task contributes to: the surface returns a fixed counter set (queue depth/in-flight, provider health, matching failures, cache hits/misses, render failures, stale metadata) with no secret, path, item name, provider payload, or unbounded collection.",
+      "evidence": "The model half is delivered and pinned by the fixed-set and secret-freedom tests above; the endpoint, elevation gate, and panel halves belong to tasks 17.2 and 17.3, and F3 resolution is task 17.4."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "What exactly counts as a cache miss, given the task text 'count a hit when a cache serves the read and a miss when the direct read path is used'?",
+      "chosen": "A hit is recorded when a retained cache entry serves the read (either TryGet branch); a miss is recorded once when the read has to reach the provider, which covers both the cold population and the direct-read fallback (and the cache-unavailable path). The reader does not record a second hit for the populate path.",
+      "basis": "ADR-025 clause 3 requires cache hits and misses; instrumenting only ReadDirectAsync would leave every cold population (the common path) uncounted, so the metric would not describe cache effectiveness. The reader is the existing bounded boundary that knows whether a retained entry served the read.",
+      "impact": "An operator sees one miss per provider library read and one hit per cache-served read; no cache, queue, or coalescing behaviour changes, and the counters are process-lifetime only."
+    },
+    {
+      "question": "Where does provider connection health come from, given that ArrConnectionCatalog always constructs ArrConnection with ArrConnectionHealth.Unknown and no production probe updates it?",
+      "chosen": "The bounded two-slot registry in DiagnosticsMetrics records the last observed read outcome per provider kind: a successful read records Healthy and a failed read maps its bounded ArrProviderError code through ArrConnectionHealthMapping.FromErrorCode. The snapshot exposes SonarrHealth/RadarrHealth.",
+      "basis": "ADR-025 clause 3 requires provider connection health as a bounded per-connection value; ArrConnection.Health is immutable and unset in production, so reusing it as-is would always report Unknown. The reconciliation read is the existing bounded observation point, and the mapping is the same classification the clients already used for probes (now shared, behaviour unchanged).",
+      "impact": "The value is the last observed read outcome for the provider's current connection, starts as Unknown after each restart, and is never a per-item or per-connection list; the two slots are bounded by the fixed ArrProviderKind set. A connection whose base URL changes is still represented by its provider kind."
+    },
+    {
+      "question": "Is 'stale metadata count' a current gauge of stale records or a process-lifetime transition count?",
+      "chosen": "A process-lifetime count of fresh-to-stale transitions recorded at the MetadataReconciliationProcessor.KeepLastKnownGoodAsStale write. A record already stale is not counted again.",
+      "basis": "ADR-025 clause 4 says a counter that does not exist is added as a bounded process-lifetime counter rather than retaining per-item history; a current stale-record gauge would require an unbounded scan of the persisted per-item store, which the snapshot provider is explicitly forbidden from doing.",
+      "impact": "The snapshot reports how many stale last-known-good transitions this process has made, not how many records are currently stale; the value resets on restart and is monotonic within a process."
+    },
+    {
+      "question": "Which MediaMatchStatus values are 'matching failures'?",
+      "chosen": "Only NotFound, Ambiguous, and Unsupported are counted, matching the delegation; Matched and Stale record nothing.",
+      "basis": "The delegation names (NotFound/Ambiguous/Unsupported); ADR-025 clause 3 fixes the counter set and adding a classification would require a new decision.",
+      "impact": "Stale match outcomes are visible only through the existing metadata state/logging surfaces, not the matching-failure counters."
+    },
+    {
+      "question": "Which boundary records render failures: the raw IRenderer or the artwork generation coordinator?",
+      "chosen": "ArtworkGenerationCoordinator records the bounded RenderFailureReason of an ArtworkGenerationResult whose outcome is RenderFailed; pass-through and other outcomes record nothing.",
+      "basis": "The coordinator is the existing bounded boundary that already classifies render failures for diagnostics (its log emits the same RenderFailureReason), and it also covers RenderError synthesized for a null render result or a renderer exception. Recording inside the renderer would miss those and would need per-renderer plumbing.",
+      "impact": "A renderer invoked outside the coordinator is not counted; the production path always goes through the coordinator, and no reason text is ever captured."
+    },
+    {
+      "question": "Are the queue depth and in-flight values read as one transactional pair?",
+      "chosen": "No. GetSnapshot reads LibraryWorkQueue.Count and InFlightCount as two independent point-in-time observations of bounded integers through the queue's existing lock-protected properties.",
+      "basis": "The task requires reusing the existing bounded queue API without changing queue semantics or adding a new racy/unbounded API; the two values can be microseconds apart.",
+      "impact": "The reported pair is an approximation of one instant, never a claim of transactional consistency; each value is individually synchronized and bounded by QueueCapacity."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A: removing the Radarr reader's cache-hit recording failed CacheHitAndMissAreCountedAtTheInventoryBoundary (1); reverted.",
+    "Probe B: removing the cold-population cache-miss recording failed CacheHitAndMissAreCountedAtTheInventoryBoundary (1); reverted.",
+    "Probe C: swapping the NotFound/Ambiguous capture arguments in DiagnosticsMetrics failed MatchingFailuresAreCountedByClassification for NotFound and Ambiguous (2); reverted.",
+    "Probe D: removing the stale-transition recording failed StaleMetadataTransitionIsCountedOncePerFreshRecord (1); reverted.",
+    "Probe E: removing the render-failure recording in ArtworkGenerationCoordinator failed RenderFailureIsCountedByBoundedClassification for DecodeFailed, EncodeFailed, and Cancelled (3); reverted.",
+    "Probe F: flattening ArrConnectionHealthMapping.FromErrorCode to Unknown failed ProviderHealthIsRecordedPerConnection for AuthenticationFailed, ProviderUnavailable, and ProviderIncompatible (3); reverted.",
+    "Probe G: swapping the queue depth/in-flight arguments in DiagnosticsSnapshotProvider failed QueueDepthAndInFlightComeFromTheBoundedWorkQueue (1); reverted.",
+    "Probe H: adding a temporary string property to DiagnosticsSnapshot failed SnapshotExposesExactlyTheFixedCounterSet, SnapshotGraphCarriesOnlyCountsAndBoundedEnums, and SnapshotGraphExposesNoStringPathArrayOrCollectionCarrier (3); reverted.",
+    "Probe I: adding a temporary extra long counter property failed SnapshotExposesExactlyTheFixedCounterSet only (1); reverted.",
+    "Probe J: pinning the provider-health slot to Sonarr failed the four ProviderHealthIsRecordedPerConnection cases and CountersAreThreadSafeAndReportExactTotals (5); reverted.",
+    "Probe L: adding a temporary IReadOnlyList<long> property failed the three shape/secret-freedom tests (3); reverted.",
+    "The concurrent exact-total check cannot be probed reliably: removing a single Interlocked call may still pass under contention, so no sensitivity claim is made for it; the deterministic per-boundary probes above carry the counter-path sensitivity."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md (new Phase 17 section and task 17.1 entry)",
+      "PLANS.md (task 17.1 checkbox ticked; generated milestone table unchanged because the phase gate is the orchestrator's)",
+      "docs/plan/state.json (task 17.1 done=true, reports path, updated_utc)"
+    ],
+    "old_values_removed": [
+      "PLANS.md '- [ ] 17.1 Bounded diagnostics metrics model and instrumentation' is now '- [x] ...'.",
+      "docs/plan/state.json task 17.1 no longer has \"done\": false and no longer lacks the reports array.",
+      "docs/plan/state.json updated_utc no longer reads 2026-09-25T22:45:27Z.",
+      "No old counter-set or capability wording existed for this phase; the architecture section 12 F3 limitation paragraph and docs/limitations/open.md F3 remain accurate until 17.4 records F3 resolved."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The endpoint, elevation gate, panel, and F3 resolution are deliberately absent: ADR-025 clauses 1, 2, and 6 belong to tasks 17.2, 17.3, and 17.4. DiagnosticsSnapshotProvider is the DI-resolvable read model those tasks consume; F3 stays Open in docs/limitations/open.md until 17.4.",
+    "Provider health is the last observed reconciliation-read outcome, not a scheduled probe: precondition - no read has completed since process start (or the provider is disabled). Behaviour - the corresponding SonarrHealth/RadarrHealth slot stays ArrConnectionHealth.Unknown. Consequence - an operator cannot distinguish 'never observed' from 'unclassifiable read error' in the snapshot; a scheduled probe or an explicit never-observed state would need a new decision because the health slots are bounded by ArrProviderKind.",
+    "StaleMetadataTransitions is a process-lifetime transition count, not a current gauge: precondition - records already in the stale state. Behaviour - only a fresh record written as stale increments it; a stale record is never counted again, and records made stale by any future path other than KeepLastKnownGoodAsStale would not be counted. Consequence - the value is monotonic within one process and does not describe how many records are stale right now; a current gauge would require an unbounded store scan, which ADR-025 clause 4 excludes.",
+    "Cache miss counts a read that had to reach the provider, including a failed provider read and the cache-unavailable path: consequence - CacheMisses counts provider-read attempts, not successful provider reads, and a long provider outage raises misses while hits stay flat. No new failure counter was added because ADR-025 clause 3 fixes the counter set.",
+    "The snapshot is a point-in-time approximation: queue depth and in-flight are two independent reads, and the counters are read without a global transaction, so a snapshot can combine values from slightly different instants. Each value is individually bounded and synchronized.",
+    "No host-guarded run was performed (ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment); the DI resolution test builds the service provider from the real registrator but does not boot a Jellyfin host, so host-side discovery of the (future) 17.2 controller is unverified here.",
+    "The provider-health read-outcome recording is exercised through ConcurrencyLimitedArrMetadataReader<TReader> with a stub reader; the production clients' probe-result mapping is covered by the existing client tests (unchanged behaviour), but no live provider is contacted."
+  ],
+  "ready_for_next_task": true
+}

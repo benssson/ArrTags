@@ -152,7 +152,7 @@ bounded sources; an elevation-gated read-only endpoint; the read-only settings
 panel; ADR-025, canonical documentation, and a security review of the endpoint
 and panel.
 **Tasks:**
-- [ ] 17.1 Bounded diagnostics metrics model and instrumentation
+- [x] 17.1 Bounded diagnostics metrics model and instrumentation
 - [ ] 17.2 Administrator-authenticated status endpoint
 - [ ] 17.3 Read-only status panel on the settings page
 - [ ] 17.4 F3 documentation and security review

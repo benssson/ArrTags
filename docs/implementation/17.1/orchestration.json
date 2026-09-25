@@ -1,0 +1,48 @@
+{
+  "task": "17.1",
+  "title": "Bounded diagnostics metrics model and instrumentation",
+  "phase": 17,
+  "status": "IN_PROGRESS",
+  "commit": null,
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 599489,
+        "output_tokens": 51583,
+        "reasoning_tokens": 58033,
+        "cache_read_tokens": 24146304,
+        "cache_write_tokens": 0,
+        "total_tokens": 24855409,
+        "cost_usd": 0.228131862,
+        "duration_seconds": 1738,
+        "session_id": "ses_f2522fc54ffeCiwz1AfGl3iJS0"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 96712,
+        "output_tokens": 10762,
+        "reasoning_tokens": 15094,
+        "cache_read_tokens": 2239744,
+        "cache_write_tokens": 0,
+        "total_tokens": 2362312,
+        "cost_usd": 0.03673963199999999,
+        "duration_seconds": 408,
+        "session_id": "ses_f25083b4dffeybA9T0puLL2KFh"
+      }
+    }
+  ],
+  "rework": []
+}

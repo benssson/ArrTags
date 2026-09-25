@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Concurrency;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Providers;
@@ -15,9 +16,10 @@ namespace ArrTags.Reconciliation;
 /// permits for the resolved connection, delegates the read unchanged, and
 /// releases the permits when the read completes. The wrapped reader keeps all
 /// provider DTO handling inside the provider layer; this decorator adds only the
-/// bounded concurrency boundary. The generic reader parameter gives each provider
-/// a distinct closed registration so the DI enumerable registration stays
-/// idempotent and unambiguous.
+/// bounded concurrency boundary and, when the bounded diagnostics counters are
+/// supplied, the bounded per-connection health observation (ADR-025). The
+/// generic reader parameter gives each provider a distinct closed registration
+/// so the DI enumerable registration stays idempotent and unambiguous.
 /// </summary>
 /// <typeparam name="TReader">The concrete provider-neutral reader to bound.</typeparam>
 public sealed class ConcurrencyLimitedArrMetadataReader<TReader> : IArrMetadataReader
@@ -26,6 +28,7 @@ public sealed class ConcurrencyLimitedArrMetadataReader<TReader> : IArrMetadataR
     private readonly TReader _inner;
     private readonly ProviderConcurrencyLimiter _limiter;
     private readonly IArrTagsLog<ConcurrencyLimitedArrMetadataReader<TReader>>? _log;
+    private readonly DiagnosticsMetrics? _metrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConcurrencyLimitedArrMetadataReader{TReader}"/> class.
@@ -33,15 +36,18 @@ public sealed class ConcurrencyLimitedArrMetadataReader<TReader> : IArrMetadataR
     /// <param name="inner">The provider-neutral reader to bound.</param>
     /// <param name="limiter">The provider concurrency limiter resolved from the current configuration snapshot.</param>
     /// <param name="log">The optional bounded, secret-free provider-boundary log.</param>
+    /// <param name="metrics">The optional bounded diagnostics counters (ADR-025); when supplied the bounded provider connection health is recorded from the read outcome.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public ConcurrencyLimitedArrMetadataReader(
         TReader inner,
         ProviderConcurrencyLimiter limiter,
-        IArrTagsLog<ConcurrencyLimitedArrMetadataReader<TReader>>? log = null)
+        IArrTagsLog<ConcurrencyLimitedArrMetadataReader<TReader>>? log = null,
+        DiagnosticsMetrics? metrics = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _limiter = limiter ?? throw new ArgumentNullException(nameof(limiter));
         _log = log;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -59,8 +65,31 @@ public sealed class ConcurrencyLimitedArrMetadataReader<TReader> : IArrMetadataR
             .AcquireAsync(connection.ConnectionId, cancellationToken)
             .ConfigureAwait(false);
         var result = await _inner.ReadAsync(identity, connection, cancellationToken).ConfigureAwait(false);
+        RecordProviderHealth(connection, result);
         LogReadOutcome(connection, result);
         return result;
+    }
+
+    /// <summary>
+    /// Records the bounded provider connection health observed by the read: a
+    /// successful read is healthy, and a failed read maps its bounded
+    /// <see cref="ArrProviderError"/> code through
+    /// <see cref="ArrConnectionHealthMapping"/>. Only the provider kind and the
+    /// bounded health enum are stored; no provider payload, path, item name, or
+    /// credential is involved.
+    /// </summary>
+    private void RecordProviderHealth(ArrConnection connection, ArrMetadataReadResult result)
+    {
+        if (_metrics is null)
+        {
+            return;
+        }
+
+        var health = result.Error is { } error
+            ? ArrConnectionHealthMapping.FromErrorCode(error.Code)
+            : ArrConnectionHealth.Healthy;
+
+        _metrics.RecordProviderHealth(connection.Provider.Kind, health);
     }
 
     /// <summary>

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Providers;
@@ -37,6 +38,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     private readonly IReadOnlyDictionary<ArrProviderKind, IArrMetadataReader> _readers;
     private readonly MetadataStateStore _store;
     private readonly IArrTagsLog<MetadataReconciliationProcessor>? _log;
+    private readonly DiagnosticsMetrics? _metrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MetadataReconciliationProcessor"/> class.
@@ -46,6 +48,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     /// <param name="readers">The provider-neutral reconciliation readers, one per provider.</param>
     /// <param name="store">The metadata state store.</param>
     /// <param name="log">The optional bounded, secret-free metadata-boundary log.</param>
+    /// <param name="metrics">The optional bounded diagnostics counters (ADR-025); when supplied the matching-failure classification and stale-metadata transition counts are recorded.</param>
     /// <exception cref="ArgumentNullException">A required dependency is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">More than one reader is registered for a provider.</exception>
     public MetadataReconciliationProcessor(
@@ -53,12 +56,14 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         IMediaLibraryResolver library,
         IEnumerable<IArrMetadataReader> readers,
         MetadataStateStore store,
-        IArrTagsLog<MetadataReconciliationProcessor>? log = null)
+        IArrTagsLog<MetadataReconciliationProcessor>? log = null,
+        DiagnosticsMetrics? metrics = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _library = library ?? throw new ArgumentNullException(nameof(library));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _log = log;
+        _metrics = metrics;
         ArgumentNullException.ThrowIfNull(readers);
 
         var map = new Dictionary<ArrProviderKind, IArrMetadataReader>();
@@ -166,6 +171,14 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
 
             return MetadataReconciliationResult.Processed(
                 WorkProcessingResult.Terminal("The provider read failed."));
+        }
+
+        // The read outcome carries the bounded matching classification. Only the
+        // NotFound, Ambiguous, and Unsupported outcomes are matching failures;
+        // a matched or stale outcome records nothing.
+        if (read.Match?.Status is { } matchStatus)
+        {
+            _metrics?.RecordMatchingFailure(matchStatus);
         }
 
         if (!read.IsSuccess || read.Match is null)
@@ -391,6 +404,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             }
 
             _store.Write(entry.ToStale());
+            _metrics?.RecordStaleMetadata();
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {

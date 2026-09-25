@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Rendering;
 using ArrTags.State;
@@ -46,6 +47,7 @@ public sealed class ArtworkGenerationCoordinator
     private readonly PublishedArtworkStateStore _states;
     private readonly SourceArtifactStore _artifacts;
     private readonly IArrTagsLog<ArtworkGenerationCoordinator>? _log;
+    private readonly DiagnosticsMetrics? _metrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArtworkGenerationCoordinator"/> class.
@@ -56,6 +58,7 @@ public sealed class ArtworkGenerationCoordinator
     /// <param name="states">The authoritative published-artwork state store used for retained-source selection.</param>
     /// <param name="artifacts">The authoritative retained source-artifact store used for retained-source selection.</param>
     /// <param name="log">The optional bounded, secret-free artwork-boundary log.</param>
+    /// <param name="metrics">The optional bounded diagnostics counters (ADR-025); when supplied each render-failure classification is counted.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public ArtworkGenerationCoordinator(
         IArtworkSourceReader reader,
@@ -63,7 +66,8 @@ public sealed class ArtworkGenerationCoordinator
         ArtworkPublisher publisher,
         PublishedArtworkStateStore states,
         SourceArtifactStore artifacts,
-        IArrTagsLog<ArtworkGenerationCoordinator>? log = null)
+        IArrTagsLog<ArtworkGenerationCoordinator>? log = null,
+        DiagnosticsMetrics? metrics = null)
     {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
@@ -71,6 +75,7 @@ public sealed class ArtworkGenerationCoordinator
         _states = states ?? throw new ArgumentNullException(nameof(states));
         _artifacts = artifacts ?? throw new ArgumentNullException(nameof(artifacts));
         _log = log;
+        _metrics = metrics;
     }
 
     /// <summary>
@@ -111,6 +116,14 @@ public sealed class ArtworkGenerationCoordinator
             {
                 result = ArtworkGenerationResult.Blocked("The artwork generation could not be completed safely.");
             }
+        }
+
+        // The bounded, non-secret render-failure classification is recorded at
+        // this single boundary; no reason text, item identity, path, payload, or
+        // credential is ever captured by the counter (ADR-025 clause 3).
+        if (result.Outcome == ArtworkGenerationOutcome.RenderFailed && result.FailureReason is { } failureReason)
+        {
+            _metrics?.RecordRenderFailure(failureReason);
         }
 
         LogOutcome(request, result);

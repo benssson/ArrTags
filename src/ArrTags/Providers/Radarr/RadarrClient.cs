@@ -78,7 +78,9 @@ public sealed class RadarrClient : IRadarrReadClient
 
         if (!result.IsSuccess)
         {
-            return ArrConnectionProbeResult.Failed(ToHealth(result.Error!), result.Error!);
+            return ArrConnectionProbeResult.Failed(
+                ArrConnectionHealthMapping.FromErrorCode(result.Error!.Code),
+                result.Error!);
         }
 
         var status = result.Value!;
@@ -419,17 +421,6 @@ public sealed class RadarrClient : IRadarrReadClient
                 ArrProviderErrorCode.InvalidResponse,
                 ArrErrorRetryability.Never,
                 "The provider returned an unexpected response status."),
-        };
-    }
-
-    private static ArrConnectionHealth ToHealth(ArrProviderError error)
-    {
-        return error.Code switch
-        {
-            ArrProviderErrorCode.AuthenticationFailed => ArrConnectionHealth.AuthenticationFailed,
-            ArrProviderErrorCode.ProviderUnavailable => ArrConnectionHealth.Unavailable,
-            ArrProviderErrorCode.ProviderIncompatible => ArrConnectionHealth.Incompatible,
-            _ => ArrConnectionHealth.Unknown,
         };
     }
 }
