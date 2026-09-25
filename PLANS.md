@@ -44,9 +44,11 @@ moved verbatim to [`docs/plan/archive/`](docs/plan/archive/).
 
 ## Milestone Status
 
+<!-- BEGIN GENERATED: milestone-status -->
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
 | — | No active milestone | — | No release scope is currently accepted for planning. |
+<!-- END GENERATED: milestone-status -->
 
 Completed milestones and their gates are recorded in
 [`docs/plan/archive/`](docs/plan/archive/) and in `docs/plan/state.json`.
