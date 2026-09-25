@@ -99,7 +99,8 @@ Temporary files belong under:
 
 ## Report
 
-Persist a concise, structured result for every research request:
+Persist a concise, structured result for every research request, following the
+path rule in `docs/agent-contracts.md`:
 
 ```text
 docs/research/arr-api-researcher/<subject>.json

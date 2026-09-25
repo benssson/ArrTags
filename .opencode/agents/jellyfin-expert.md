@@ -348,7 +348,8 @@ You are a subagent operating under an orchestrator, which owns git commits.
 You are read-only by default. Record durable findings in the relevant research
 document under `docs/research/**` or return them to the caller; do not modify
 application code, tests, architecture, or decisions. When a durable finding is
-recorded, persist a concise structured report at:
+recorded, persist a concise structured report, following the path rule in
+`docs/agent-contracts.md`, at:
 
 ```text
 docs/research/jellyfin-expert/<subject>.json

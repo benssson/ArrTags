@@ -118,6 +118,16 @@ done < <(find . -name '*.md' \
     -not -path './docs/research/*' -not -path './docs/plan/archive/*' | sort)
 [ "$link_fail" -eq 0 ] && ok "current-state links resolve"
 
+# 9. Agent report contracts.
+if [ -f scripts/check-agents.sh ]; then
+    if out=$(bash scripts/check-agents.sh 2>&1); then
+        ok "agent report contracts conform"
+    else
+        err "agent contract check failed:"
+        printf '%s\n' "$out" | sed 's/^/    /' >&2
+    fi
+fi
+
 if [ "$fail" -eq 0 ]; then
     echo "check-docs: PASS"
 else
