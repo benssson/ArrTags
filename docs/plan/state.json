@@ -751,7 +751,7 @@
       "id": 15,
       "name": "Plugin log subject identifier and render classification",
       "release": "1.2.0",
-      "status": "PLANNED",
+      "status": "COMPLETE",
       "gate": "Gate 15",
       "tag": "v1.2.0-phase15",
       "execution_order": [
@@ -765,19 +765,25 @@
           "id": "15.1",
           "done": true,
           "name": "Bounded log-subject policy and helper",
-          "reports": ["docs/implementation/15.1/worker-report.json"]
+          "reports": [
+            "docs/implementation/15.1/worker-report.json"
+          ]
         },
         {
           "id": "15.2",
           "done": true,
           "name": "Thread the bounded log subject through the identity-bearing and fallback sites",
-          "reports": ["docs/implementation/15.2/worker-report.json"]
+          "reports": [
+            "docs/implementation/15.2/worker-report.json"
+          ]
         },
         {
           "id": "15.3",
           "done": true,
           "name": "Emit the bounded render classification in the artwork log",
-          "reports": ["docs/implementation/15.3/worker-report.json"]
+          "reports": [
+            "docs/implementation/15.3/worker-report.json"
+          ]
         },
         {
           "id": "15.4",

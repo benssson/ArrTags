@@ -18,7 +18,7 @@ SHA-256 `85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`; MD5 
 **Verification:** live pinned-host matrix `docs/implementation/14.3/live-verification.json`;
 release security review `docs/implementation/14.4/security-review.json`; release review `docs/implementation/final-review/release-review.json`.
 
-**Active phases:** Phase 15, Phase 16, Phase 17, Phase 18, Phase 19, Phase 20, Phase 21; all other phases are complete.
+**Active phases:** Phase 16, Phase 17, Phase 18, Phase 19, Phase 20, Phase 21; all other phases are complete.
 
 **Open limitations:** 4 (`F3`, `F4`, `F6`, `F7`); see `docs/limitations/00-index.md`.
 <!-- END GENERATED: status -->
