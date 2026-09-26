@@ -1,5 +1,9 @@
 {
   "task": "18.1",
+  "title": "Extra Large enum, geometry factor, and settings dropdown ordering",
+  "phase": 18,
+  "status": "COMPLETE",
+  "commit": "81ecbb7",
   "subagents": [
     {
       "role": "implementation-worker",
