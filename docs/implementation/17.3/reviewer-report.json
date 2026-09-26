@@ -1,0 +1,125 @@
+{
+  "task": "17.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Independent review of task 17.3 (read-only diagnostics status panel on the embedded settings page, Phase 17 / goal F3 / ADR-025 clauses 2-5). Approved. The page addition implements the ADR-025 clause 2 panel correctly: one elevation-gated GET ArrTags/Status via ApiClient, rendering the fixed 28-leaf counter set derived from DiagnosticsSnapshot/MatchingFailureCounts/RenderFailureCounts/ArrConnectionHealth; fail-closed rendering (static-hidden empty container, object-only guard, rejection and caught-exception clears, bounded 0/Unknown fallbacks, no response string in the DOM); no form control, configuration property, write verb, polling/retry, or save-path change; and PascalCase/string-enum response paths that match the endpoint wire format (verified against JsonDefaults.Options and the pinned host web-client bundle). I re-ran the build (0 warnings / 0 errors), the focused class (Failed 0 / Passed 6), and the full default suite (Failed 0 / Passed 1794 / Skipped 64 / Total 1858); ARRTAGS_JELLYFIN_HOST_DIR is unset so the 64 host-guarded skips are unchanged and not claimed as passes. I independently reproduced five worker probes in an isolated worktree (route drift, raw count reader, added <input>, removed display:none, dropped clear calls); each failed exactly the intended test and the page was restored byte-identically. Documentation/state is consistent (changelog entry, PLANS.md checkbox 17.3, state.json done/reports/updated_utc); Phase 17 remains PLANNED and no gate/tag was applied.",
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/verification",
+      "summary": "The panel's inline JavaScript is verified structurally, not executed at runtime.",
+      "detail": "The repository has no JavaScript runtime and the pinned live matrix runs --nowebclient, so the fetch/render/DOM behavior cannot be executed here. This is a real residual, but it is inherent to the existing settings-page-test style, is honestly disclosed in the worker report's known_limitations and the changelog, and the plan assigns the F3 security review (task 17.4) to adjudicate it. Independently corroborated the load-bearing runtime assumption against the pinned host bundle: ApiClient.ajax delegates to fetch (key:\"ajax\",value:function(e,t){return e?this.fetch(e,t):...}); fetch rejects on status >= 400 and on dataType 'json' parse failure (t.status<400?...?t.json():t:Promise.reject(t)); and ApiClient.getUrl prepends the server address with a '/' separator (key:\"getUrl\" ... n=r||this._serverAddress ... n+='/' ...).",
+      "evidence": [
+        "/tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/node_modules.jellyfin-apiclient.bundle.js (ajax/fetch/getUrl definitions inspected)",
+        "docs/implementation/17.3/worker-report.json known_limitations[0]",
+        "docs/changelog/v1.2.0.md task 17.3 entry"
+      ],
+      "recommended_action": "No change required for 17.3; leave the residual to the plan-assigned 17.4 security review."
+    },
+    {
+      "id": "R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "compatibility/response-contract",
+      "summary": "Panel response paths are PascalCase and health values are string enum names; verified against the pinned host JSON options.",
+      "detail": "The page indexes QueueDepth, MatchingFailures.NotFound, RenderFailures.<reason>, SonarrHealth, etc., and compares health against the enum names. This only works if the endpoint serializes PascalCase with string enums. I confirmed: (a) JsonDefaults.Options.PropertyNamingPolicy is null, i.e. PascalCase (pinned by ConfigurationRoundTripTests.PinnedPostDeserializationOptionsArePascalCase and docs/research/jellyfin-12-architecture.md 9.3); (b) the passing 17.2 test SerializedSnapshotCarriesExactlyTheFixedCounterPathsAndNoStringArrayOrSecretCarrier serializes the snapshot with JsonDefaults.Options and reads SonarrHealth via GetString() == 'Healthy', so enums are string-serialized; (c) the 17.2 MVC harness mirrors the host by copying that naming policy and adding JsonStringEnumConverter. The page table matches those names exactly.",
+      "evidence": [
+        "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs:62",
+        "tests/ArrTags.Tests/DiagnosticsStatusEndpointTests.cs:189-203,461-467",
+        "docs/research/jellyfin-12-architecture.md:827-831"
+      ],
+      "recommended_action": "None; recorded so the dependency is not re-litigated."
+    },
+    {
+      "id": "R3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation-scope",
+      "summary": "F3 canonical docs (register, architecture 11/12, README, ADR-025 note) still describe the surface as unimplemented; deferred to 17.4 by plan.",
+      "detail": "This is the plan-assigned task 17.4 scope (the F3 documentation and security review). The task under review was explicitly limited to the panel plus the changelog/PLANS/state surfaces. F3 remains Open in docs/status.md and docs/limitations/open.md, which is the correct current state until 17.4 completes. Not a defect of 17.3.",
+      "evidence": [
+        "PLANS.md:158 ('[ ] 17.4 F3 documentation and security review')",
+        "docs/status.md:23 ('Open limitations: 4 (F3, F4, F6, F7)')",
+        "docs/implementation/17.3/worker-report.json known_limitations[2]"
+      ],
+      "recommended_action": "None for 17.3; resolved by 17.4 as planned."
+    }
+  ],
+  "per_criterion_verification": [
+    {
+      "criterion": "1. Panel fetches elevation-gated GET ArrTags/Status via ApiClient and renders the fixed counter set (queue depth/in-flight, provider health, matching failures, cache hits/misses, render failures, stale metadata), with the table derived from the C# contract.",
+      "verdict": "PASS",
+      "evidence": "src/ArrTags/Configuration/config.html declares var diagnosticsCounters with 28 entries (QueueDepth, QueueInFlight; SonarrHealth, RadarrHealth; MatchingFailures.NotFound/Ambiguous/Unsupported; CacheHits, CacheMisses; 18 RenderFailures.<reason>; StaleMetadataTransitions) and diagnosticsLoad issues exactly one ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('ArrTags/Status'), dataType: 'json' }). I enumerated DiagnosticsSnapshot/MatchingFailureCounts/RenderFailureCounts/ArrConnectionHealth properties and confirmed the 28-leaf set matches exactly, with kind:'health' on the two ArrConnectionHealth fields. Focused test PageDeclaresExactlyTheFixedEndpointCounterSet and PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow pass."
+    },
+    {
+      "criterion": "2. Fail-closed: rejected/unauthorized (401/403), unavailable (404/500), or malformed body renders no data and no error surface; the served page starts hidden/empty.",
+      "verdict": "PASS",
+      "evidence": "The panel div is <div id=\"diagnosticsPanel\" style=\"display:none;\"></div>; diagnosticsLoad calls diagnosticsClearPanel() before the request; the success then-handler is wrapped in try/catch that clears; the second then argument clears; diagnosticsRenderPanel returns early unless the body is a non-array object; diagnosticsClearPanel writes only textContent='' and display='none'. The pinned web client's fetch rejects on status >= 400 and on dataType 'json' parse failure, so none of 401/403/404/500/malformed reaches the render. Probes C (drop clears) and G (remove display:none) each failed PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed exactly."
+    },
+    {
+      "criterion": "3. Read-only: no input/select/textarea/button/form field, no configuration property, no write verb, no save-path change, no polling/retry; existing page tests and byte-limit/restart-required/save logic unchanged.",
+      "verdict": "PASS",
+      "evidence": "The section body contains no <input/<select/<textarea/<button/<form; the JS block contains no config. reference and no getPluginConfiguration/updatePluginConfiguration; only GET is used. The page diff is 167 insertions / 0 deletions, so no existing behavior was edited. The full suite passes (1794/0/64/1858), including the pre-existing DashboardSettingsPageTests page-contract/byte-limit/restart-required/sentinel tests. Probe F (added <input>) failed PageAddsNoSettingsFieldNoWritePathAndNoSaveWiring exactly."
+    },
+    {
+      "criterion": "4. Secret-free; no free-form response string rendered (only bounded counts/bounded enum names from a fixed table; safe fallbacks for missing fields).",
+      "verdict": "PASS",
+      "evidence": "Only textContent assignments are panel clear '', group heading/label from the fixed table, and valueElement.textContent from diagnosticReadCount (typeof number && isFinite ? value : 0) or diagnosticReadHealth (whitelist equality else 'Unknown'). The render iterates only the fixed table, never response keys; snapshot[ direct indexing, JSON.parse/stringify, Object.keys, for...in, and innerHTML are absent. Probe D (raw count) and E (raw health; worker) fail PageRendersCountsAndHealthOnlyThroughBoundedFallbacks."
+    },
+    {
+      "criterion": "5. Structural tests genuinely pin the behavior and are meaningful; probes credible.",
+      "verdict": "PASS",
+      "evidence": "The 6 structural cases derive the expected counter set and health whitelist by reflection over the C# model types and the route from ArrTagsStatusController.RoutePrefix, so a model/route/table drift fails. I independently reproduced probes B (route drift), C (dropped clear calls), D (raw count reader), F (added input), and G (no display:none) in an isolated worktree (/tmp/17.3-review, since removed); each produced exactly one failure of the intended test, and the page restored byte-identically. Structural-only verification is honestly disclosed and matches the existing page-test style (see finding R1)."
+    },
+    {
+      "criterion": "6. No overreach into 17.4 and no endpoint change.",
+      "verdict": "PASS",
+      "evidence": "git diff --stat 28c679d -- src/ArrTags/Diagnostics src/ArrTags/PluginLifecycle is empty (endpoint untouched). Tracked changes are exactly config.html, PLANS.md, docs/changelog/v1.2.0.md, docs/plan/state.json; untracked additions are the new test and the 17.3 report directory. No page-resource/route/authorization/registration change."
+    },
+    {
+      "criterion": "7. docs/changelog/v1.2.0.md entry, PLANS.md checkbox 17.3, state.json task 17.3 done/reports/updated_utc; phase 17 still PLANNED with no gate/tag.",
+      "verdict": "PASS",
+      "evidence": "Changelog has '### Task 17.3 - Read-only status panel on the settings page' at line 910 following the 17.1/17.2 entries; PLANS.md:157 is '- [x] 17.3 ...'; state.json task 17.3 has done:true, reports:[docs/implementation/17.3/worker-report.json], and updated_utc 2026-09-26T00:40:51Z; phase 17 status is PLANNED with gate 'Gate 17' and no tag. 'dotnet run scripts/render-docs-state.cs' reports status.md and PLANS.md up to date."
+    },
+    {
+      "criterion": "Build passes 0 warnings; default suite has no new failures/skips.",
+      "verdict": "PASS",
+      "evidence": "'. /config/arrtags-env.sh && ./build.sh build' -> 'Build succeeded. 0 Warning(s) 0 Error(s)'. 'ARRTAGS_JELLYFIN_HOST_DIR' unset; './build.sh test' (after build) -> 'Failed: 0, Passed: 1794, Skipped: 64, Total: 1858'. Focused class -> 6 passed. +6 passed/+6 total over the arithmetically consistent post-17.2 baseline of 1788, 0 new failures, 0 new skips."
+    }
+  ],
+  "validation_run": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s) 0 Error(s)",
+    ". /config/arrtags-env.sh && ./build.sh test -> Failed: 0, Passed: 1794, Skipped: 64, Total: 1858 (ARRTAGS_JELLYFIN_HOST_DIR unset; host-guarded skips unchanged)",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter 'FullyQualifiedName~ArrTags.Tests.DiagnosticsStatusPanelTests' -> Failed: 0, Passed: 6",
+    "Isolated worktree /tmp/17.3-review (HEAD 28c679d + the task's config.html and test): restore/build OK, focused baseline 6/6; five reproduced probes (B route drift, C dropped clears, D raw count, F added input, G removed display:none) each failed exactly the intended test; page restored byte-identically; worktree removed",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> status.md: up to date; PLANS.md: up to date",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> initially FAIL only on 'task 17.3 has a worker report but no reviewer report'; this reviewer report resolves that pairing",
+    "Pinned web-client bundle inspection (read-only): ajax->fetch, reject on status >= 400 and JSON parse failure, getUrl server-address concatenation"
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/DiagnosticsStatusPanelTests.cs (6 structural cases; derived counter set, bounded fallbacks, endpoint GET, fail-closed branches, no settings/write/save wiring, placement)",
+    "tests/ArrTags.Tests/DiagnosticsStatusEndpointTests.cs (17.2 harness/route/authorization/JSON-options facts the panel builds on)",
+    "tests/ArrTags.Tests/ConfigurationRoundTripTests.cs (JsonDefaults.Options PascalCase pin) and LogVerbosityTests",
+    "Full default suite (1858 total) including the pre-existing DashboardSettingsPageTests page-contract tests"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-025.md clauses 1-6",
+    "docs/research/jellyfin-12-architecture.md sections 9.3 (PluginsController/JsonDefaults.Options PascalCase) and 8 (dashboard page-resource/inline-script/CSP)",
+    "docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json (JsonDefaults.Options naming)",
+    "Pinned host web client bundle /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/node_modules.jellyfin-apiclient.bundle.js (ApiClient.ajax/fetch/getUrl)"
+  ],
+  "documentation_checked": [
+    "docs/changelog/v1.2.0.md (Task 17.3 entry)",
+    "PLANS.md (checkbox 17.3; Phase 17 status; milestone table)",
+    "docs/plan/state.json (task 17.3 done/reports; updated_utc; phase 17 PLANNED/gate)",
+    "docs/status.md (regenerated, up to date)",
+    "docs/implementation/17.3/worker-report.json and orchestration.json",
+    "docs/limitations/open.md F3 and docs/agent-contracts.md (scope check)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

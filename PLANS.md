@@ -154,7 +154,7 @@ and panel.
 **Tasks:**
 - [x] 17.1 Bounded diagnostics metrics model and instrumentation
 - [x] 17.2 Administrator-authenticated status endpoint
-- [ ] 17.3 Read-only status panel on the settings page
+- [x] 17.3 Read-only status panel on the settings page
 - [ ] 17.4 F3 documentation and security review
 **Authoritative Phase 17 execution order:** 17.1, 17.2, 17.3, 17.4
 **Phase acceptance criteria:** the endpoint is read-only, requires elevation, and

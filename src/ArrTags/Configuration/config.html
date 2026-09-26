@@ -291,6 +291,12 @@
                         </div>
                     </div>
 
+                    <div class="verticalSection" id="diagnosticsSection">
+                        <h2>Diagnostics</h2>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Read-only process counters for this Jellyfin session. Process-lifetime counters reset when Jellyfin restarts.</div>
+                        <div id="diagnosticsPanel" style="display:none;"></div>
+                    </div>
+
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
                     </div>
@@ -497,6 +503,165 @@
                 return values;
             };
 
+            // ADR-025 clauses 2 and 3 (Phase 17 task 17.3): the read-only
+            // diagnostics panel renders only the fixed bounded counter set from
+            // the elevation-gated GET ArrTags/Status endpoint. Every group and
+            // label is a fixed page literal; a count renders only after the
+            // bounded numeric check below, and a health value only when it is
+            // one of the declared ArrConnectionHealth names, so a free-form
+            // response string is never rendered. The panel stays hidden and
+            // empty until a bounded snapshot has rendered, so a rejected,
+            // unauthorized, unavailable, or malformed response leaves no data
+            // and no error surface (fail-closed). Adding or removing a counter
+            // requires a new decision (ADR-025 clause 3). This block adds no
+            // input, no form field, no settings property, and no save-path
+            // change.
+            var diagnosticsCounters = [
+                { id: 'diagnosticsQueueDepth', group: 'Update queue', label: 'Queue depth', path: 'QueueDepth' },
+                { id: 'diagnosticsQueueInFlight', group: 'Update queue', label: 'In-flight work', path: 'QueueInFlight' },
+                { id: 'diagnosticsSonarrHealth', group: 'Provider health', label: 'Sonarr', path: 'SonarrHealth', kind: 'health' },
+                { id: 'diagnosticsRadarrHealth', group: 'Provider health', label: 'Radarr', path: 'RadarrHealth', kind: 'health' },
+                { id: 'diagnosticsMatchingFailuresNotFound', group: 'Matching failures', label: 'Not found', path: 'MatchingFailures.NotFound' },
+                { id: 'diagnosticsMatchingFailuresAmbiguous', group: 'Matching failures', label: 'Ambiguous', path: 'MatchingFailures.Ambiguous' },
+                { id: 'diagnosticsMatchingFailuresUnsupported', group: 'Matching failures', label: 'Unsupported', path: 'MatchingFailures.Unsupported' },
+                { id: 'diagnosticsCacheHits', group: 'Inventory cache', label: 'Cache hits', path: 'CacheHits' },
+                { id: 'diagnosticsCacheMisses', group: 'Inventory cache', label: 'Cache misses', path: 'CacheMisses' },
+                { id: 'diagnosticsRenderFailuresInvalidRequest', group: 'Render failures', label: 'Invalid request', path: 'RenderFailures.InvalidRequest' },
+                { id: 'diagnosticsRenderFailuresMalformedSource', group: 'Render failures', label: 'Malformed source', path: 'RenderFailures.MalformedSource' },
+                { id: 'diagnosticsRenderFailuresSourceByteLimitExceeded', group: 'Render failures', label: 'Source byte limit exceeded', path: 'RenderFailures.SourceByteLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresSourceDimensionLimitExceeded', group: 'Render failures', label: 'Source dimension limit exceeded', path: 'RenderFailures.SourceDimensionLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresOutputDimensionLimitExceeded', group: 'Render failures', label: 'Output dimension limit exceeded', path: 'RenderFailures.OutputDimensionLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresOutputByteLimitExceeded', group: 'Render failures', label: 'Output byte limit exceeded', path: 'RenderFailures.OutputByteLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresColorPolicyInvalid', group: 'Render failures', label: 'Color policy invalid', path: 'RenderFailures.ColorPolicyInvalid' },
+                { id: 'diagnosticsRenderFailuresContrastTooLow', group: 'Render failures', label: 'Contrast too low', path: 'RenderFailures.ContrastTooLow' },
+                { id: 'diagnosticsRenderFailuresDecodeFailed', group: 'Render failures', label: 'Decode failed', path: 'RenderFailures.DecodeFailed' },
+                { id: 'diagnosticsRenderFailuresUnsupportedInput', group: 'Render failures', label: 'Unsupported input', path: 'RenderFailures.UnsupportedInput' },
+                { id: 'diagnosticsRenderFailuresUnsupportedColorProfile', group: 'Render failures', label: 'Unsupported color profile', path: 'RenderFailures.UnsupportedColorProfile' },
+                { id: 'diagnosticsRenderFailuresFontUnavailable', group: 'Render failures', label: 'Font unavailable', path: 'RenderFailures.FontUnavailable' },
+                { id: 'diagnosticsRenderFailuresFontInvalid', group: 'Render failures', label: 'Font invalid', path: 'RenderFailures.FontInvalid' },
+                { id: 'diagnosticsRenderFailuresLayoutFailed', group: 'Render failures', label: 'Layout failed', path: 'RenderFailures.LayoutFailed' },
+                { id: 'diagnosticsRenderFailuresEncodeFailed', group: 'Render failures', label: 'Encode failed', path: 'RenderFailures.EncodeFailed' },
+                { id: 'diagnosticsRenderFailuresNativeAssetUnavailable', group: 'Render failures', label: 'Native asset unavailable', path: 'RenderFailures.NativeAssetUnavailable' },
+                { id: 'diagnosticsRenderFailuresRenderError', group: 'Render failures', label: 'Render error', path: 'RenderFailures.RenderError' },
+                { id: 'diagnosticsRenderFailuresCancelled', group: 'Render failures', label: 'Cancelled', path: 'RenderFailures.Cancelled' },
+                { id: 'diagnosticsStaleMetadataTransitions', group: 'Metadata freshness', label: 'Stale metadata transitions', path: 'StaleMetadataTransitions' }
+            ];
+
+            // The declared ArrConnectionHealth names. Any other response value
+            // renders as Unknown, never as the raw response text.
+            var diagnosticsHealthNames = ['Unknown', 'Healthy', 'Unavailable', 'AuthenticationFailed', 'Incompatible'];
+
+            var diagnosticsPanelElement = function () {
+                return document.querySelector('#diagnosticsPanel');
+            };
+
+            var diagnosticsClearPanel = function () {
+                var panel = diagnosticsPanelElement();
+                if (!panel) {
+                    return;
+                }
+
+                panel.textContent = '';
+                panel.style.display = 'none';
+            };
+
+            var diagnosticsReadValue = function (snapshot, path) {
+                var parts = path.split('.');
+                var value = snapshot;
+                for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+                    if (!value || typeof value !== 'object') {
+                        return undefined;
+                    }
+                    value = value[parts[partIndex]];
+                }
+                return value;
+            };
+
+            var diagnosticsReadCount = function (snapshot, path) {
+                var value = diagnosticsReadValue(snapshot, path);
+                return typeof value === 'number' && isFinite(value) ? value : 0;
+            };
+
+            var diagnosticsReadHealth = function (snapshot, path) {
+                var value = diagnosticsReadValue(snapshot, path);
+                for (var healthIndex = 0; healthIndex < diagnosticsHealthNames.length; healthIndex++) {
+                    if (value === diagnosticsHealthNames[healthIndex]) {
+                        return diagnosticsHealthNames[healthIndex];
+                    }
+                }
+                return 'Unknown';
+            };
+
+            var diagnosticsRenderPanel = function (snapshot) {
+                // Only a bounded JSON object can be rendered; a null, array,
+                // string, or number response leaves the panel cleared and hidden.
+                if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+                    return;
+                }
+
+                var panel = diagnosticsPanelElement();
+                if (!panel) {
+                    return;
+                }
+
+                var groups = {};
+
+                for (var counterIndex = 0; counterIndex < diagnosticsCounters.length; counterIndex++) {
+                    var entry = diagnosticsCounters[counterIndex];
+                    var list = groups[entry.group];
+                    if (!list) {
+                        var groupElement = document.createElement('div');
+                        groupElement.className = 'diagnosticsGroup';
+                        var heading = document.createElement('h3');
+                        heading.textContent = entry.group;
+                        groupElement.appendChild(heading);
+                        list = document.createElement('div');
+                        list.className = 'diagnosticsList';
+                        groupElement.appendChild(list);
+                        panel.appendChild(groupElement);
+                        groups[entry.group] = list;
+                    }
+
+                    var row = document.createElement('div');
+                    row.className = 'diagnosticsRow';
+                    row.id = entry.id;
+                    var label = document.createElement('span');
+                    label.className = 'diagnosticsLabel';
+                    label.textContent = entry.label + ': ';
+                    var valueElement = document.createElement('span');
+                    valueElement.className = 'diagnosticsValue';
+                    valueElement.textContent = entry.kind === 'health'
+                        ? diagnosticsReadHealth(snapshot, entry.path)
+                        : String(diagnosticsReadCount(snapshot, entry.path));
+                    row.appendChild(label);
+                    row.appendChild(valueElement);
+                    list.appendChild(row);
+                }
+
+                panel.style.display = '';
+            };
+
+            var diagnosticsLoad = function () {
+                // The panel is cleared while the request is in flight and stays
+                // hidden unless a snapshot renders; one request per page show,
+                // with no retry or polling.
+                diagnosticsClearPanel();
+
+                ApiClient.ajax({
+                    type: 'GET',
+                    url: ApiClient.getUrl('ArrTags/Status'),
+                    dataType: 'json'
+                }).then(function (snapshot) {
+                    try {
+                        diagnosticsRenderPanel(snapshot);
+                    } catch (error) {
+                        diagnosticsClearPanel();
+                    }
+                }, function () {
+                    diagnosticsClearPanel();
+                });
+            };
+
             document.querySelector('#configPage')
                 .addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
@@ -556,6 +721,8 @@
 
                         Dashboard.hideLoadingMsg();
                     });
+
+                    diagnosticsLoad();
                 });
 
             document.querySelector('.configForm')
