@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 17",
   "tokens": {
-    "input": 254304,
-    "output": 30472,
+    "input": 263746,
+    "output": 35434,
     "reasoning": 1417,
     "cache": {
-      "read": 11057536,
+      "read": 14041728,
       "write": 0
     }
   },
-  "total_tokens": 11343729,
-  "cost_usd": 0.09042490800000003,
+  "total_tokens": 14342325,
+  "cost_usd": 0.10377098400000004,
   "duration_seconds": 1,
   "first_recorded_at": "2026-09-25T23:55:23Z",
-  "last_updated_at": "2026-09-26T01:37:46Z",
+  "last_updated_at": "2026-09-26T01:46:58Z",
   "updates": [
     {
       "at": "2026-09-25T23:55:23Z",
@@ -46,6 +46,13 @@
       "total_tokens": 11343729,
       "duration_seconds": 1,
       "note": "Phase 17 task 17.4 complete: docs+security review, worker/reviewer APPROVED, committed a6f7777"
+    },
+    {
+      "at": "2026-09-26T01:46:58Z",
+      "cost_usd": 0.10377098400000004,
+      "total_tokens": 14342325,
+      "duration_seconds": 1,
+      "note": "Phase 17 complete: all 4 tasks committed, phase review APPROVED_WITH_FINDINGS (no BLOCKER/HIGH), Gate 17 applied, tag v1.2.0-phase17 created"
     }
   ]
 }
