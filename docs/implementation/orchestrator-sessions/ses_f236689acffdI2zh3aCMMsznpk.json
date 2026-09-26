@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "start phase 18",
   "tokens": {
-    "input": 92887,
-    "output": 6351,
-    "reasoning": 4154,
+    "input": 138416,
+    "output": 13037,
+    "reasoning": 9746,
     "cache": {
-      "read": 1728000,
+      "read": 4182784,
       "write": 0
     }
   },
-  "total_tokens": 1831392,
-  "cost_usd": 0.02539335,
+  "total_tokens": 4343983,
+  "cost_usd": 0.046953852000000004,
   "duration_seconds": 1,
   "first_recorded_at": "2026-09-26T07:36:00Z",
-  "last_updated_at": "2026-09-26T07:36:00Z",
+  "last_updated_at": "2026-09-26T08:09:25Z",
   "session_note": "This phase is orchestrated from the primary `build` session, not the dedicated `orchestrator` agent. `.opencode/scripts/record-orchestrator-session.sh` refuses a non-orchestrator session, so the figures were collected with the same authoritative mechanism (`.opencode/scripts/collect-session-usage.sh` keyed by this session id) and recorded here verbatim; no value is estimated.",
   "updates": [
     {
@@ -26,6 +26,13 @@
       "total_tokens": 1831392,
       "duration_seconds": 1,
       "note": "Phase 18 task 18.1 complete: worker + reviewer APPROVED, committed 81ecbb7"
+    },
+    {
+      "at": "2026-09-26T08:09:25Z",
+      "cost_usd": 0.046953852000000004,
+      "total_tokens": 4343983,
+      "duration_seconds": 1,
+      "note": "Phase 18 task 18.2 complete: golden coverage + version-decision verified under pinned native runtime, worker + reviewer APPROVED, committed 41b3a94"
     }
   ]
 }
