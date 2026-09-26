@@ -1,0 +1,137 @@
+{
+  "phase": "17",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "P17-F1",
+      "severity": "LOW",
+      "status": "open",
+      "area": "orchestration / record-keeping",
+      "description": "The phase aggregate `aggregate.cost_usd` (1.0008492080000001) is not the exact sum of the per-task `cost_usd` values it claims to sum. The exact sum of the eleven per-subagent `execution.cost_usd` values in docs/implementation/17.1..17.4/orchestration.json is 1.0008492599999999 (per-task subtotals 17.1 = 0.26487149399999999, 17.2 = 0.16841078400000004, 17.3 = 0.15843295199999996, 17.4 = 0.40913402999999998), a discrepancy of 5.2e-8. The aggregate's own note lists the same values and states '= 1.000849208', which is itself arithmetically off by 5.2e-8. This is materially smaller than the phase-16 P16-F2 mismatch (0.0295) and is an advisory metric only, with no functional or gate impact; the other aggregate fields are consistent (task_count 4, review_rounds 5, rework_rounds 1, subagent_invocations 11).",
+      "detail": "The aggregate JSON uses rounded values for two of the 17.4 subagents (worker attempt 1 as 0.122437506 vs the file's 0.12243750599999997, reviewer attempt 1 as 0.036446382 vs 0.036446381999999986), which does not by itself explain a 5.2e-8 gap (double-precision rounding at magnitude ~1 is ~2.2e-16). The stated figure and the note's sum are both a small mis-add of the listed values.",
+      "evidence": [
+        "docs/implementation/phase-17/orchestration.json:26-33 (aggregate cost_usd 1.0008492080000001 and the summing note)",
+        "docs/implementation/17.1/orchestration.json (0.228131862 + 0.03673963199999999)",
+        "docs/implementation/17.2/orchestration.json (0.11448442800000004 + 0.05392635599999999)",
+        "docs/implementation/17.3/orchestration.json (0.12320794799999997 + 0.03522500399999999)",
+        "docs/implementation/17.4/orchestration.json (0.12243750599999997 + 0.167990838 + 0.036446381999999986 + 0.050248518 + 0.032010786)",
+        "Independent awk sum of the four task files = 1.0008492599999999"
+      ],
+      "recommended_action": "Reconcile the aggregate `cost_usd` against the per-task records (or state the basis if an invocation outside the four task files is intended). Advisory metric only; no functional impact."
+    },
+    {
+      "id": "P17-F2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "testing / panel boundary coverage",
+      "description": "The diagnostics panel's well-formed-but-wrong-shape-object fallback path has no structural test. `PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed` only covers the null / non-object / array guard, the rejection clear, and the caught-exception clear; there is no case for a well-formed JSON object of an unexpected or partial shape (for example `{}` or `{\"QueueDepth\":5}`), which the shipped code renders as the full fixed 28-row table with 0/`Unknown` fallback values (config.html:595-641, 568-593). The security review SR-17.4-01 recommended option (a) tighten the wording 'and add a structural test for the wrong-shape-object case either way'; the attempt-2 correction chose option (a) documentation-only and did not add the test (recorded by the 17.4 reviewer as I1). The behaviour is deliberate, documented, and non-security-relevant (no free-form text, no secret, no error surface), so this is a bounded coverage residual rather than a defect.",
+      "detail": "The corrected documentation (README.md:148-151, architecture 11/12, archive F3, ADR-025 implementation note) now accurately describes the fallback table, so the documentation claim and the code agree. The gap is solely that the fallback rendering is pinned by prose rather than by an executable structural assertion over the embedded page text.",
+      "evidence": [
+        "tests/ArrTags.Tests/DiagnosticsStatusPanelTests.cs:151-186 (fail-closed case covers only non-object bodies)",
+        "src/ArrTags/Configuration/config.html:595-600 (object-only guard) and 568-593 (0/'Unknown' bounded readers) and 641 (panel shown for any other object)",
+        "docs/implementation/17.4/security-review.json SR-17.4-01 recommended_action",
+        "docs/implementation/17.4/reviewer-report.attempt-2.json finding I1"
+      ],
+      "recommended_action": "Add a structural test asserting the wrong-shape-object ('{}') fallback table rendering and visibility, or explicitly accept the prose-only pin in the limitation register. Not required for the phase gate."
+    },
+    {
+      "id": "P17-F3",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation / code-comment consistency",
+      "description": "The shipped code comment at src/ArrTags/Configuration/config.html:512-514 still states that 'a rejected, unauthorized, unavailable, or malformed response leaves no data'. After the SR-17.4-01 correction the canonical documentation distinguishes an unparseable or non-object response (panel cleared, fail-closed) from a well-formed but unexpected or partial-shape object (fixed table with 0/'Unknown' fallback), so the comment is now less precise than the documentation and than the shipped behaviour for the wrong-shape case. It is a code comment only: not user-visible, not persisted, and not a claim the project ships. The 17.4 worker attempt 2 and reviewer attempt 2 recorded it as an out-of-scope residual because the delegated correction was documentation-only and prohibited production-code changes.",
+      "detail": "The comment is accurate for a genuinely unparseable or non-object body; it overstates only for the well-formed wrong-shape object, which the corrected documentation now covers. Aligning it requires a one-line code-comment edit outside Phase 17 scope.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html:512-514 (the unqualified comment)",
+        "README.md:146-153; docs/architecture/11-failure-consistency-and-security-policy.md:63-68; docs/architecture/12-performance-and-operational-limits.md:192-199; docs/limitations/archive.md:202-210; docs/decisions/ADR-025.md:107-113 (the corrected, qualified wording)",
+        "docs/implementation/17.4/worker-report.attempt-2.json known_limitations[0] and reviewer-report.attempt-2.json finding I3"
+      ],
+      "recommended_action": "Optionally align the code comment with the qualified documentation wording in a future code change; not required for the phase gate."
+    },
+    {
+      "id": "P17-I1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "verification bounds (disclosed and correctly assigned)",
+      "description": "The two F3 live-verification bounds are genuine and correctly disclosed rather than overclaimed. (1) The panel's inline JavaScript is not executed by the suite or the pinned live matrix (no JavaScript runtime in the repository; the pinned host runs `--nowebclient`), so the panel is verified structurally against the endpoint model and the pinned jellyfin-web source; this is registered as accepted limitation V12-F3-1. (2) The host-guarded fact `EndpointUsesThePinnedHostAdministratorGatingPolicy` is skipped here because `ARRTAGS_JELLYFIN_HOST_DIR` is unset, so the live host-side AuthorizationMiddleware path is not confirmed; the in-process MVC pipeline instead reproduces 401/403/200 and the pinned host policy definition was read from source. The v1.2 plan assigns the live endpoint/panel verification to Phase 21 task 21.4; that matrix runs `--nowebclient` (which does not affect the server-side endpoint authorization but does mean it will not execute the panel JS). The process-lifetime semantics are disclosed in ADR-025, the archive entry, README, and the changelog.",
+      "detail": "Both bounds are stated in the ADR-025 implementation note, the F3 archive verification-bounds paragraph, the task 17.4 changelog entry, and V12-F3-1. The endpoint authorization residual is a legitimate host-environment boundary; the F3 acceptance criterion's 'host-guarded confirmation' is therefore not yet demonstrated live, only structurally plus in-process, and remains satisfiable at Phase 21.4.",
+      "evidence": [
+        "docs/decisions/ADR-025.md:119-128; docs/limitations/archive.md:219-227; docs/changelog/v1.2.0.md:1068-1083",
+        "docs/limitations/accepted.md:787-835 (V12-F3-1) and docs/limitations/00-index.md:108",
+        "tests/ArrTags.Tests/DiagnosticsStatusEndpointTests.cs:256-274 (skipped host-guarded fact), 206-254 (in-process 401/403/200)",
+        "docs/planning/v1.2.md:428-435 (Phase 21 task 21.4 live verification) and docs/testing/jellyfin-12-musl-test-host.md (--nowebclient)"
+      ],
+      "recommended_action": "No action for Phase 17; carry the live endpoint/panel check into Phase 21 task 21.4."
+    }
+  ],
+  "tasks_checked": [
+    "17.1 worker-report.json + reviewer-report.json (APPROVED, no blockers) + orchestration.json (commit 885ee7a, 2 subagents, no rework)",
+    "17.2 worker-report.json + reviewer-report.json (APPROVED, no blockers) + orchestration.json (commit 79bf8df, 2 subagents, no rework)",
+    "17.3 worker-report.json + reviewer-report.json (APPROVED, no blockers) + orchestration.json (commit b8000a0, 2 subagents, no rework)",
+    "17.4 worker-report.json + worker-report.attempt-2.json + reviewer-report.json + reviewer-report.attempt-2.json (both APPROVED) + security-review.json (PASS_WITH_FINDINGS, no BLOCKER/HIGH) + orchestration.json (commit a6f7777, 5 subagents, rework entry for the security-finding correction)"
+  ],
+  "commits_checked": [
+    "eb0c8ba (phase base)",
+    "885ee7a (17.1 bounded diagnostics metrics model and instrumentation)",
+    "79bf8df (17.2 administrator-authenticated status endpoint)",
+    "b8000a0 (17.3 read-only status panel on the settings page)",
+    "a6f7777 (17.4 F3 documentation reconciliation and security review)",
+    "bbd0031, 28c679d, 6a9b798, bf2b156 (orchestrator commit-hash/session bookkeeping)",
+    "HEAD bf2b156170801de46ffd5cf215b8366e67fc90a8; working tree clean except the untracked phase-17 review directory"
+  ],
+  "requirements_checked": [
+    "PLANS.md Phase 17 objective, deliverables, authoritative execution order 17.1-17.4, phase acceptance criteria, and Gate 17",
+    "docs/planning/v1.2.md Goal F3 acceptance criteria (bounded secret-free snapshot; admin-only endpoint with host-guarded confirmation; read-only panel rendering the six counter groups; read-only endpoint with no write route/secret/path/item name/provider payload/unbounded collection; security review) and section 9 verification requirements (V1.2-4)",
+    "ADR-025 clauses 1-6 (endpoint, panel/fail-closed, bounded counter set, bounded shape, no new configuration, security review) and its v1.2 implementation note",
+    "GOALS.md V1.2 pointer (F3 resolved; V1 success criteria unchanged)",
+    "docs/limitations/open.md F3 removed, archive.md F3 resolution, 00-index.md F3 Resolved, state.json limitations (F3 open->resolved; V12-F3-1 accepted)"
+  ],
+  "architecture_checked": [
+    "docs/architecture/04-plugin-components-and-boundaries.md (new 'Diagnostics snapshot' row; existing 'Diagnostics status controller' row matches the shipped route)",
+    "docs/architecture/11-failure-consistency-and-security-policy.md (read-only elevation-gated surface, fail-closed panel, secret-freedom, security-review pointer)",
+    "docs/architecture/12-performance-and-operational-limits.md (shipped surface replaces the 'not yet implemented' F3 paragraph; nine top-level fields/28 leaf paths; process-lifetime semantics; counter-set contract)",
+    "src/ArrTags/Diagnostics/{DiagnosticsSnapshot,DiagnosticsMetrics,DiagnosticsSnapshotProvider,MatchingFailureCounts,RenderFailureCounts,ArrTagsStatusController}.cs",
+    "src/ArrTags/Providers/ArrConnectionHealthMapping.cs and the Radarr/Sonarr client probe mapping (single bounded error-code mapping)",
+    "src/ArrTags/Configuration/config.html diagnostics section/block (static-hidden, fixed 28-row table, bounded readers, clear-on-reject)",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (DiagnosticsMetrics/DiagnosticsSnapshotProvider singleton wiring; metrics injected into the metadata readers, concurrency-limited reader, reconciliation processor, and artwork coordinator)",
+    "ADR-016 clause 6 anonymous static page resource unchanged; no new configuration or save route"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-12-architecture.md sections 2.2 (plugin controller discovery via ApplicationHost.GetApiPluginAssemblies) and 9.2/9.3 (page resource and RequiresElevation policy), cross-checked against the shipped controller/route and the security review's pinned-host source reading",
+    "Webhook controller route convention (ArrTags/Webhook) confirming the ArrTags/Status route shape",
+    "docs/implementation/17.4/security-review.json SR-17.4-04 host JSON precondition (PascalCase names, string enums) and SR-17.4-03 authorization-evidence assessment"
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json (phase 17 status PLANNED, gate Gate 17, tag v1.2.0-phase17; all four tasks done with reports; F3 in resolved; V12-F3-1 in accepted)",
+    "PLANS.md (17.1-17.4 checkboxes ticked; F3 resolved paragraph; generated milestone block agrees with state.json)",
+    "docs/status.md (regenerated; Open limitations: 3 (F4, F6, F7); Phase 17 active)",
+    "docs/changelog/v1.2.0.md (Phase 17 / tasks 17.1-17.4 entries; exact build/suite figures)",
+    "docs/limitations/{open,archive,accepted,00-index}.md (F3 removed/resolved; V12-F3-1 registered in the V12-G8-1 pattern)",
+    "README.md (Diagnostics panel subsection: read-only, admin-only, process-lifetime, qualified fail-closed wording with the 0/'Unknown' fallback)",
+    "docs/decisions/ADR-025.md (append-only implementation note; decision clauses 1-6 byte-unchanged) and docs/decisions/00-index.md (ADR-025 row unchanged)",
+    "scripts/check-docs.sh PASS (nine ok sections) and scripts/render-docs-state.cs -- --check exit 0"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/phase-17/orchestration.json (status COMPLETE, tasks 17.1-17.4, task_commits match the four implementation commits, 11 subagents, review_rounds 5 / rework_rounds 1 / subagent_invocations 11 consistent, gate_status PENDING_PHASE_REVIEW, phase_reviewer outcome null)",
+    "Per-task orchestration.json for 17.1-17.4 (commit, status, subagent attempts/outcomes, execution metadata) consistent with the worker/reviewer reports",
+    "17.4 rework correctly preserved as a rework entry plus worker/reviewer attempt-2 subagents with attempt markers, not overwritten by the final approved reports; state.json lists both worker reports and the security review",
+    "Aggregate cost_usd inconsistent with the exact per-task sum (finding P17-F1)"
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 11,
+    "total_attempts": 11,
+    "correction_rounds": 1
+  },
+  "verification": {
+    "build": ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s) 0 Error(s)",
+    "default_suite": ". /config/arrtags-env.sh && ./build.sh test (ARRTAGS_JELLYFIN_HOST_DIR unset) -> Failed: 0, Passed: 1794, Skipped: 64, Total: 1858, Duration ~18 s (matches the task-17.4 recorded figures)",
+    "check_docs": ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections, check-docs: PASS, exit 0",
+    "render_docs_state": ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check -> status.md/PLANS.md up to date, PLANS.md and state.json agree, exit 0",
+    "phase_gate": "git tag has no v1.2.0-phase17 (no phase-17 tag applied); state.json phase 17 status PLANNED with gate Gate 17 and tag v1.2.0-phase17; phase orchestration gate_status PENDING_PHASE_REVIEW",
+    "independent_checks": "Read all six Diagnostics source files, the endpoint/panel/snapshot/instrumentation tests, the 17.4 security review, the per-task and phase orchestration records, and the phase diff; independently summed the orchestration costs (awk) and inspected the DI wiring and docs diffs."
+  },
+  "summary": "Phase 17 (Goal F3, ADR-025) is complete and Gate 17 is met: all four tasks 17.1-17.4 have reviewed commits, worker/reviewer evidence, and per-task orchestration records, and the phase aggregate exists with gate_status PENDING_PHASE_REVIEW. Independent inspection confirms the shipped code matches the ADR-025 contract and the canonical documents: ArrTagsStatusController is a class-level [Authorize(Policy = Policies.RequiresElevation)] GET-only route with no [AllowAnonymous] and no write verb, returning the fixed-shape DiagnosticsSnapshot (nine top-level fields / 28 leaf paths: queue depth and in-flight, Sonarr/Radarr ArrConnectionHealth, three MediaMatchStatus failure classifications, cache hits/misses, 18 RenderFailureReason classifications, and stale-metadata transitions); the model graph carries only int/long/bounded enums (the tests pin the 28-leaf serialized shape and the two enum string leaves), so no secret, path, item name, identifier list, provider payload, or unbounded collection can be serialized, and the counters are recorded only at existing bounded boundaries (verified in code and by the instrumentation tests). The read-only panel on the anonymous settings page is static-hidden and empty until a bounded snapshot renders, uses only fixed literals plus the bounded numeric/enum readers via textContent, and clears on rejection or an unparseable/non-object body; it adds no input, settings field, or save wiring. Metrics are wired into all instrumentation sites through the plugin DI registrator, and the integration-boundary tests (endpoint pipeline 401/403/200, panel structure, snapshot shape, instrumentation at each boundary) are meaningful and non-vacuous. The clause 6 security review is PASS_WITH_FINDINGS with no open BLOCKER/HIGH: SR-17.4-01 is genuinely closed by the attempt-2 documentation-precision correction (the unconditional 'malformed' wording is gone from all five documentation surfaces and the 0/'Unknown' fallback is stated), and SR-17.4-02 is closed by the correctly registered accepted limitation V12-F3-1 (accepted.md, 00-index.md, state.json). F3 is recorded resolved (open.md removed, archive.md resolution, 00-index Resolved, state.json limitations, status.md regenerated), the honest verification bounds (panel JS not executed; host-guarded authorization fact skipped; process-lifetime counters) are disclosed, the build and full default suite reproduce Failed 0 / Passed 1794 / Skipped 64 / Total 1858, and check-docs.sh and render-docs-state --check pass. Phase 17 remains PLANNED with gate Gate 17 / tag v1.2.0-phase17 and no tag applied, as required before the orchestrator's gate step. No BLOCKER or HIGH is open. Three LOW findings are recorded as non-blocking residuals: the aggregate cost figure is not the exact sum of the per-task records (P17-F1, ~5.2e-8), the wrong-shape-object panel fallback has no structural test (P17-F2), and the config.html code comment retains the pre-correction wording (P17-F3); none affects correctness, security, or the gate. Verdict: APPROVED_WITH_FINDINGS; phase complete and ready for the next phase."
+}
