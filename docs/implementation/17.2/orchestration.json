@@ -2,8 +2,8 @@
   "task": "17.2",
   "title": "Administrator-authenticated status endpoint",
   "phase": 17,
-  "status": "IN_PROGRESS",
-  "commit": null,
+  "status": "COMPLETE",
+  "commit": "79bf8df",
   "subagents": [
     {
       "role": "implementation-worker",
