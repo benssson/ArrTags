@@ -2,8 +2,8 @@
   "task": "17.3",
   "title": "Read-only status panel on the settings page",
   "phase": 17,
-  "status": "IN_PROGRESS",
-  "commit": null,
+  "status": "COMPLETE",
+  "commit": "b8000a0",
   "subagents": [
     {
       "role": "implementation-worker",
