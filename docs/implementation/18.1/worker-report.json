@@ -1,0 +1,121 @@
+{
+  "task": "18.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Added BadgeSize.ExtraLarge = 3 (factor 2.0 relative to Medium) and the BadgeGeometry.ExtraLargeSizeFactor = 2.0 const plus the SizeFactor switch arm; confirmed the unchanged ComputeEffectiveScale clamp bounds factor 2.0 and extended its safe-area coverage; left RendererConfiguration.Validate unchanged because Enum.IsDefined already accepts the new member and added the required validation coverage as tests; reordered the settings dropdown to Small, Medium, Large, Extra Large and added value=\"ExtraLarge\". No version constants advanced (CurrentRendererVersion stays 3, CurrentSchemaVersion stays 2), no fingerprint code changed, and no committed golden was modified. Tests: +5 focused cases (geometry factor/scale, safe-area sweep and clamp, validation/resolution/fingerprint, dropdown order, output fingerprint).",
+  "validation": [
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~BadgeSizePositionTests|FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~RenderFingerprintTests|FullyQualifiedName~DashboardSettingsPageTests\" -> Failed 0, Passed 115, Skipped 2, Total 117.",
+    "Probe: removed the BadgeSize.ExtraLarge switch arm in BadgeGeometry.SizeFactor -> BadgeSizePositionTests Failed 9, Passed 36, Skipped 0, Total 45; reverted.",
+    "Probe: made RendererConfiguration.Validate reject BadgeSize.ExtraLarge -> RendererConfigurationTests Failed 1, Passed 38, Skipped 0, Total 39; reverted.",
+    "Probe: made RendererConfigurationFingerprint skip ExtraLarge -> RendererConfigurationTests Failed 1, Passed 38, Skipped 0, Total 39; reverted.",
+    "Probe: swapped the Large and Extra Large <option> elements -> DashboardSettingsPageTests Failed 1, Passed 8, Skipped 2, Total 11; reverted.",
+    "Probe: disabled the ComputeEffectiveScale safe-area clamp -> BadgeSizePositionTests Failed 5, Passed 40, Skipped 0, Total 45; reverted.",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1799, Skipped 64, Total 1863 (pre-task baseline after 17.4 in docs/changelog/v1.2.0.md: Failed 0, Passed 1794, Skipped 64, Total 1858; +5 passed / +5 total).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~RenderGoldenTests|FullyQualifiedName~RendererCrossRuntimeTests\" -> Failed 0, Passed 2, Skipped 5, Total 7 (golden pixel comparisons environment-skipped: no native Skia runtime).",
+    "git status --short tests/ArrTags.Tests/Goldens/ -> empty (no committed golden added, removed, or modified).",
+    "dotnet run scripts/render-docs-state.cs -> status.md: up to date, PLANS.md: up to date (both blocks).",
+    "scripts/check-docs.sh -> check-docs: PASS (all nine sections), on the tree before this worker report was persisted.",
+    "grep for the old current-state wording (\"Small/Medium/Large, default\", \"Medium` (default), `Small`, or `Large`\", \"plus `Small` and `Large`\", \"0.75`, `1.0`, and `1.5`\") -> removed from README.md, docs/architecture/09-persisted-artwork-rendering.md, docs/data-model/03-06-badgedefinition.md, docs/data-model/03-12-configuration.md; the remaining hit at docs/data-model/03-12-configuration.md:101 and the docs/data-model/03-08-renderresult.md factor list are inside version-labelled v1.1 historical implementation notes owned by task 18.3."
+  ],
+  "changed_files": [
+    "src/ArrTags/Rendering/BadgeSize.cs",
+    "src/ArrTags/Rendering/BadgeGeometry.cs",
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/BadgeSizePositionTests.cs",
+    "tests/ArrTags.Tests/DashboardSettingsPageTests.cs",
+    "tests/ArrTags.Tests/RendererConfigurationTests.cs",
+    "tests/ArrTags.Tests/RenderFingerprintTests.cs",
+    "README.md",
+    "docs/architecture/09-persisted-artwork-rendering.md",
+    "docs/data-model/03-06-badgedefinition.md",
+    "docs/data-model/03-12-configuration.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "PLANS.md"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "BadgeSize.ExtraLarge exists with a 2.0 factor relative to Medium.",
+      "evidence": "src/ArrTags/Rendering/BadgeSize.cs adds ExtraLarge = 3 with the factor documented; src/ArrTags/Rendering/BadgeGeometry.cs adds ExtraLargeSizeFactor = 2.0 and the switch arm; BadgeSizePositionTests.EachPresetSizeScalesTheGeometryByItsCodeOwnedFactor gains [InlineData(BadgeSize.ExtraLarge, 2.0, 96.0)] (2.0x the Medium 48 px pill on a 1000 px poster) and SizeFactorIsCodeOwned asserts SizeFactor(ExtraLarge) == 2.0 and (int)BadgeSize.ExtraLarge == 3."
+    },
+    {
+      "criterion": "BadgeGeometry.SizeFactor is extended for the new member (the switch currently throws for an unknown value).",
+      "evidence": "BadgeSize.ExtraLarge => ExtraLargeSizeFactor arm added; (BadgeSize)99 still throws (existing Assert.Throws passes). Probe removing the arm failed 9 BadgeSizePositionTests cases (Failed 9, Passed 36, Skipped 0, Total 45)."
+    },
+    {
+      "criterion": "RendererConfiguration validation coverage for the new value is added (the existing Enum.IsDefined check accepts a defined member).",
+      "evidence": "RendererConfigurationTests.ValidatorAcceptsDefinedExtraLargeBadgeSizeAndTheFingerprintIncludesIt: an ExtraLarge configuration validates, resolves onto RendererOutputPolicy.Size, differs from the Medium default in the renderer configuration fingerprint, and (BadgeSize)99 is still rejected. Production RendererConfiguration.Validate is unchanged (Enum.IsDefined covers the new member). Probe making Validate reject ExtraLarge failed that fact (Failed 1, Passed 38, Skipped 0, Total 39)."
+    },
+    {
+      "criterion": "The effective scale is clamped to the safe area (an Extra Large badge falls back to shorten/omit rather than overflowing).",
+      "evidence": "ComputeEffectiveScale's existing clamp min(width,height)/(2*OuterInset) bounds any factor; it is unchanged (the unclamped ExtraLarge scale is at most 4.0*2.0=8.0). SafeAreaClampReducesTheEffectiveScaleOnAShortPoster gains [InlineData(BadgeSize.ExtraLarge, 1000, 44, 44.0/48.0)] and [InlineData(BadgeSize.ExtraLarge, 2000, 150, 150.0/48.0)]; NoPillPaintsOutsideTheSafeAreaOnNarrowAndShortPosters now sweeps ExtraLarge across five anchors and six dimensions. Probe disabling the clamp failed 5 clamp cases including both ExtraLarge cases (Failed 5, Passed 40, Skipped 0, Total 45)."
+    },
+    {
+      "criterion": "The settings dropdown order is Small, Medium, Large, Extra Large.",
+      "evidence": "src/ArrTags/Configuration/config.html rendererSize options are reordered and value=\"ExtraLarge\" labelled \"Extra Large\" is added; DashboardSettingsPageTests.PageOrdersTheBadgeSizeOptionsSmallMediumLargeExtraLarge asserts the in-select index order and the label. Probe swapping Large/Extra Large failed that fact (Failed 1, Passed 8, Skipped 2, Total 11)."
+    },
+    {
+      "criterion": "Small/Medium/Large renders are unchanged and the fingerprint includes a non-default size.",
+      "evidence": "The diff touches no Small/Medium/Large switch arm, factor constant, clamp, layout, renderer, or fingerprint code (only the new const/arm and tests); git status shows tests/ArrTags.Tests/Goldens/ unmodified (thirteen committed PNGs and manifest.json byte-identical to the committed revision) and the default suite passes 1799/64/1863. RenderFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint now asserts ExtraLarge differs from the default output fingerprint, and the new RendererConfigurationTests fact asserts ExtraLarge differs in the renderer configuration fingerprint. Pixel-level golden byte-identity and new Extra Large goldens are task 18.2; golden and cross-runtime pixel comparisons are environment-skipped here (Failed 0, Passed 2, Skipped 5, Total 7)."
+    },
+    {
+      "criterion": "ADR-027 clause 4 version decision preserved: RenderVersion.CurrentRendererVersion and RendererConfiguration.CurrentSchemaVersion do not advance.",
+      "evidence": "src/ArrTags/Rendering/RenderVersion.cs still declares CurrentRendererVersion = 3 and src/ArrTags/Configuration/RendererConfiguration.cs still declares CurrentSchemaVersion = 2; neither file is in the diff; no fingerprint code changed."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Which documentation surfaces this task must update versus leave to task 18.3 (whose acceptance criterion owns 'The canonical documentation and the ADR-019 supersession note record Extra Large and the version decision').",
+      "chosen": "Updated the current-state size enumerations that the new member made inaccurate (README Renderer.Size row, docs/architecture/09 V1 rendering-contract bullet and configuration paragraph, docs/data-model/03-06 placement bullet, docs/data-model/03-12 renderingPolicy table row) and left the explicitly version-labelled v1.1 implementation notes, the ADR-019 supersession note, and new ADR-027/v1.2 implementation notes to task 18.3.",
+      "basis": "The task-specific Definition of Done conditional ('Update README.md only if it documents the size options; update docs/architecture//docs/data-model/ only if this task makes the normative text inaccurate') plus AGENTS.md history-immutability for the labelled v1.1 notes and the plan-assigned 18.3 documentation acceptance criterion.",
+      "impact": "Docs are accurate for the new member now; 18.3 still owns the version-decision recording, ADR-019 supersession note, and v1.2 implementation notes."
+    },
+    {
+      "question": "With Small first in the dropdown (ADR-027 clause 3), a browser without the page's populate JavaScript would show Small selected instead of the Medium default.",
+      "chosen": "Keep the ADR-mandated order with no selected attribute; the existing pageshow populate path always sets #rendererSize from config.Renderer.Size and the submit path always reads that select, so the saved value is unaffected.",
+      "basis": "ADR-027 clause 3 fixes the order; the page read/write paths at src/ArrTags/Configuration/config.html lines 691 and 798 are unchanged.",
+      "impact": "UI-only transient before the configuration loads; no persisted or rendered behavior change."
+    }
+  ],
+  "test_sensitivity": [
+    "Removing the BadgeSize.ExtraLarge switch arm in BadgeGeometry.SizeFactor made the extended geometry, safe-area sweep, and clamp tests fail: BadgeSizePositionTests Failed 9, Passed 36, Skipped 0, Total 45 (probe reverted).",
+    "Making RendererConfiguration.Validate reject BadgeSize.ExtraLarge made the new validation fact fail: RendererConfigurationTests Failed 1, Passed 38, Skipped 0, Total 39 (probe reverted).",
+    "Making RendererConfigurationFingerprint skip ExtraLarge made the new validation/fingerprint fact fail: RendererConfigurationTests Failed 1, Passed 38, Skipped 0, Total 39 (probe reverted).",
+    "Swapping the Large and Extra Large dropdown options made the structural page-order fact fail: DashboardSettingsPageTests Failed 1, Passed 8, Skipped 2, Total 11 (probe reverted).",
+    "Disabling the ComputeEffectiveScale safe-area clamp made the clamp theory fail, including both new ExtraLarge cases: BadgeSizePositionTests Failed 5, Passed 40, Skipped 0, Total 45 (probe reverted).",
+    "The dropdown option ordering itself is a static-file property with no production code branch, so its sensitivity probe is the structural page test above (swapping the HTML fails the test); the page's inline JavaScript is not executed here (no JavaScript runtime), so no behavioral JS test exists to probe."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/changelog/v1.2.0.md",
+      "README.md",
+      "docs/architecture/09-persisted-artwork-rendering.md",
+      "docs/data-model/03-06-badgedefinition.md",
+      "docs/data-model/03-12-configuration.md"
+    ],
+    "old_values_removed": [
+      "README.md Renderer.Size row: '`Medium` (default), `Small`, or `Large`' now includes `ExtraLarge`.",
+      "docs/architecture/09-persisted-artwork-rendering.md: '(Small/Medium/Large, default Medium)' (V1 rendering contract) now reads Small/Medium/Large/Extra Large.",
+      "docs/architecture/09-persisted-artwork-rendering.md: 'plus `Small` and `Large`' and factor list '(`0.75`, `1.0`, and `1.5`)' now include `ExtraLarge` and `2.0`.",
+      "docs/data-model/03-06-badgedefinition.md: '(Small/Medium/Large, default Medium)' now reads Small/Medium/Large/Extra Large.",
+      "docs/data-model/03-12-configuration.md renderingPolicy row: '(Small/Medium/Large, default medium)' now reads Small/Medium/Large/Extra Large and notes ADR-027.",
+      "Not removed (deferred to task 18.3, deliberate): the v1.1-labelled implementation notes at docs/data-model/03-12-configuration.md:101 and docs/data-model/03-08-renderresult.md:56-62 remain historical records, as do the ADR-019 supersession note and new v1.2 implementation notes."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "Golden-oracle pixel/byte-identity verification against the committed goldens and the new Extra Large golden coverage are task 18.2: in this workspace the golden and cross-runtime pixel comparisons are skipped because no native Skia runtime is available (focused run Failed 0, Passed 2, Skipped 5, Total 7). This task proves only that the committed golden files are unmodified and that the non-golden geometry, validation, fingerprint, and page-structure coverage passes.",
+    "The settings page's inline JavaScript is not executed by the suite or the documented live matrix (the repository has no JavaScript runtime and the pinned host runs --nowebclient); the dropdown order, option value, and label are verified structurally against the embedded page resource, not in a live browser.",
+    "The ADR-019 supersession note, the v1.2 implementation notes in docs/data-model/, and the version-decision recording remain task 18.3 (per its acceptance criterion); this task updated only the current-state size enumerations the new member made inaccurate."
+  ],
+  "ready_for_next_task": true
+}

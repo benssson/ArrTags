@@ -55,6 +55,7 @@ public class BadgeSizePositionTests
     [InlineData(BadgeSize.Small, 0.75, 36.0)]
     [InlineData(BadgeSize.Medium, 1.0, 48.0)]
     [InlineData(BadgeSize.Large, 1.5, 72.0)]
+    [InlineData(BadgeSize.ExtraLarge, 2.0, 96.0)]
     public void EachPresetSizeScalesTheGeometryByItsCodeOwnedFactor(BadgeSize size, double expectedScale, double expectedHeight)
     {
         var layout = Build(
@@ -76,6 +77,11 @@ public class BadgeSizePositionTests
         Assert.Equal(0.75, BadgeGeometry.SizeFactor(BadgeSize.Small), 6);
         Assert.Equal(1.0, BadgeGeometry.SizeFactor(BadgeSize.Medium), 6);
         Assert.Equal(1.5, BadgeGeometry.SizeFactor(BadgeSize.Large), 6);
+        Assert.Equal(2.0, BadgeGeometry.SizeFactor(BadgeSize.ExtraLarge), 6);
+
+        // ADR-027 clause 1 pins the explicit numeric value.
+        Assert.Equal(3, (int)BadgeSize.ExtraLarge);
+
         Assert.Throws<ArgumentOutOfRangeException>(() => BadgeGeometry.SizeFactor((BadgeSize)99));
     }
 
@@ -268,7 +274,7 @@ public class BadgeSizePositionTests
     [InlineData(BadgePosition.Center)]
     public void NoPillPaintsOutsideTheSafeAreaOnNarrowAndShortPosters(BadgePosition position)
     {
-        var sizes = new[] { BadgeSize.Small, BadgeSize.Medium, BadgeSize.Large };
+        var sizes = new[] { BadgeSize.Small, BadgeSize.Medium, BadgeSize.Large, BadgeSize.ExtraLarge };
         var dimensions = new[] { (240, 600), (320, 480), (500, 750), (1000, 150), (1000, 1500), (2000, 3000) };
 
         foreach (var size in sizes)
@@ -308,6 +314,8 @@ public class BadgeSizePositionTests
     [InlineData(BadgeSize.Medium, 3000, 120, 120.0 / 48.0)]
     [InlineData(BadgeSize.Large, 1000, 40, 40.0 / 48.0)]
     [InlineData(BadgeSize.Small, 1000, 30, 30.0 / 48.0)]
+    [InlineData(BadgeSize.ExtraLarge, 1000, 44, 44.0 / 48.0)]
+    [InlineData(BadgeSize.ExtraLarge, 2000, 150, 150.0 / 48.0)]
     public void SafeAreaClampReducesTheEffectiveScaleOnAShortPoster(
         BadgeSize size, int width, int height, double expectedScale)
     {

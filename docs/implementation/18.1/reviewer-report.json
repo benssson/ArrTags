@@ -1,0 +1,73 @@
+{
+  "task": "18.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "18.1-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation-scope",
+      "summary": "The v1.1-labelled implementation notes and the ADR-019 supersession note were deliberately deferred to task 18.3.",
+      "detail": "docs/data-model/03-12-configuration.md:96-116 and docs/data-model/03-08-renderresult.md:54-74 still enumerate only Small/Medium/Large and factors 0.75/1.0/1.5, but both sections are explicitly labelled as v1.1 implementation notes (task 12.3). AGENTS.md makes history immutable, and the orchestrator's task boundary assigns the canonical reconciliation and the ADR-019 supersession note to task 18.3. The current-state surfaces this task owns (README.md Renderer.Size row, docs/architecture/09-persisted-artwork-rendering.md V1-contract bullet and configuration paragraph, docs/data-model/03-06-badgedefinition.md placement bullet, docs/data-model/03-12-configuration.md renderingPolicy row) were all updated to include ExtraLarge/2.0. No unlabelled current-state enumeration still omits Extra Large.",
+      "evidence": [
+        "git diff -- docs/architecture/09-persisted-artwork-rendering.md docs/data-model/03-06-badgedefinition.md docs/data-model/03-12-configuration.md README.md",
+        "grep 'Small/Medium/Large' over docs (remaining hits are archives, planning, decision records, and the version-labelled v1.1 notes)"
+      ],
+      "recommended_action": "None for 18.1; task 18.3 owns the supersession note and the v1.1-note reconciliation."
+    },
+    {
+      "id": "18.1-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "settings-ui",
+      "summary": "Reordering Small first means a no-JavaScript browser would implicitly select Small before the page populates from config.",
+      "detail": "No option carries a selected attribute, so the browser selects the first option (Small) before the pageshow handler runs. src/ArrTags/Configuration/config.html:692 always sets #rendererSize from config.Renderer.Size during populate and line 799 always reads the select on submit, so the persisted and rendered value is unaffected. ADR-027 clause 3 mandates this exact order, so the behavior is required rather than a defect; the worker recorded the same interpretation.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html:163-168 (options, no selected)",
+        "src/ArrTags/Configuration/config.html:692 and :799 (populate/submit round-trip)"
+      ],
+      "recommended_action": "None; the ADR-mandated order is implemented and the round-trip path is unchanged."
+    },
+    {
+      "id": "18.1-F3",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "documentation-precision",
+      "summary": "Label spelling differs between surfaces (README 'ExtraLarge', architecture/configuration 'Extra Large').",
+      "detail": "README.md uses the enum token ExtraLarge while docs/architecture/09 and docs/data-model/03-12 use the human label Extra Large. This is a cosmetic precision inconsistency, not a correctness defect; the enum member name and the UI label are correctly distinguished throughout.",
+      "evidence": [
+        "README.md:104",
+        "docs/architecture/09-persisted-artwork-rendering.md:393,491",
+        "docs/data-model/03-12-configuration.md:12"
+      ],
+      "recommended_action": "Optional wording alignment if desired; not required for 18.1."
+    }
+  ],
+  "tests_checked": [
+    "dotnet test (focused: BadgeSizePositionTests|RendererConfigurationTests|RenderFingerprintTests|DashboardSettingsPageTests) -> Failed 0, Passed 115, Skipped 2, Total 117 (reproduced the worker's focused count exactly).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build (full suite) -> Failed 0, Passed 1799, Skipped 64, Total 1863 (matches worker report; baseline after 17.4 in docs/changelog/v1.2.0.md is 1794/64/1858, so +5 passed / +5 total / 0 new skips).",
+    "Inspected the new/changed cases: BadgeSizePositionTests.EachPresetSizeScalesTheGeometryByItsCodeOwnedFactor [InlineData(ExtraLarge,2.0,96.0)], SizeFactorIsCodeOwned (2.0 and (int)ExtraLarge==3), NoPillPaintsOutsideTheSafeAreaOnNarrowAndShortPosters ExtraLarge sweep, SafeAreaClampReducesTheEffectiveScaleOnAShortPoster ExtraLarge cases (1000x44 -> 44/48; 2000x150 -> 150/48) with clamp-binding assertions.",
+    "Inspected RendererConfigurationTests.ValidatorAcceptsDefinedExtraLargeBadgeSizeAndTheFingerprintIncludesIt (validates, resolves onto RendererOutputPolicy.Size, renderer-configuration fingerprint differs from default, (BadgeSize)99 still rejected).",
+    "Inspected RenderFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint ExtraLarge assertion and DashboardSettingsPageTests.PageOrdersTheBadgeSizeOptionsSmallMediumLargeExtraLarge structural order/label assertion."
+  ],
+  "research_checked": [
+    "ADR-027 clauses 1-6 (factor 2.0, small/medium/large/extra large dropdown order, no version advance, SizeFactor switch + validation coverage).",
+    "ADR-019 clause 3 (Small/Medium/Large and 0.75/1.0/1.5 baseline, effectiveScale = clamp(width/1000,0.5,4.0)*sizeFactor, safe-area clamp).",
+    "docs/planning/v1.2.md G7 (DG-16) acceptance criteria.",
+    "docs/reviews/architecture/v1.2-plan.attempt-2.json AR-V12-20 (task 18.1 must extend BadgeGeometry.SizeFactor and validation coverage) — implemented as required."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 18.1 done=true with reports=[docs/implementation/18.1/worker-report.json]; Phase 18 remains PLANNED (gate not applied).",
+    "PLANS.md: 18.1 checkbox ticked; milestone/scope generated blocks unchanged.",
+    "docs/status.md: generated block inspected; correctly unchanged (active phases/release, not per-task counts).",
+    "docs/changelog/v1.2.0.md: Phase 18 task 18.1 entry appended with evidence, sensitivity probes, and validation counts.",
+    "README.md, docs/architecture/09-persisted-artwork-rendering.md, docs/data-model/03-06-badgedefinition.md, docs/data-model/03-12-configuration.md: current-state size enumerations now include Extra Large/2.0.",
+    "scripts/render-docs-state.cs -- --check -> status.md up to date, PLANS.md up to date, PLANS.md and state.json agree (exit 0).",
+    "scripts/check-docs.sh: all sections pass except the expected pre-reviewer agent-contract 'task 18.1 has a worker report but no reviewer report' check, which this persisted report resolves."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

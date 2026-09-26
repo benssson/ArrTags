@@ -180,7 +180,7 @@ decision with golden coverage.
 clamping; the dropdown ordering; the ADR-027 version decision (no advance,
 existing goldens byte-identical, new Extra Large goldens); documentation.
 **Tasks:**
-- [ ] 18.1 Extra Large enum, geometry factor, and settings dropdown ordering
+- [x] 18.1 Extra Large enum, geometry factor, and settings dropdown ordering
 - [ ] 18.2 Golden coverage and version-decision verification
 - [ ] 18.3 G7 documentation and integration verification
 **Authoritative Phase 18 execution order:** 18.1, 18.2, 18.3

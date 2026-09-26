@@ -84,6 +84,12 @@ public static class BadgeGeometry
     public const double LargeSizeFactor = 1.5;
 
     /// <summary>
+    /// The code-owned geometry factor for <see cref="BadgeSize.ExtraLarge"/>. It
+    /// is twice the <see cref="MediumSizeFactor"/> (ADR-027 clause 1).
+    /// </summary>
+    public const double ExtraLargeSizeFactor = 2.0;
+
+    /// <summary>
     /// Returns the code-owned geometry factor for one preset badge size.
     /// </summary>
     /// <param name="size">The preset badge size.</param>
@@ -96,6 +102,7 @@ public static class BadgeGeometry
             BadgeSize.Small => SmallSizeFactor,
             BadgeSize.Medium => MediumSizeFactor,
             BadgeSize.Large => LargeSizeFactor,
+            BadgeSize.ExtraLarge => ExtraLargeSizeFactor,
             _ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unknown badge size."),
         };
     }

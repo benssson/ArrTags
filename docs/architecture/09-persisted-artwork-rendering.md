@@ -390,10 +390,10 @@ boundary is summarized here so implementation does not infer a second policy:
   center, default bottom-left) with a two-row rail; the status pill is top-right
   except when the anchor is top-right, then top-left. The rail has no more than
   three pills per row. Rows stack away from the anchored edge and align to the
-  anchored side. The global preset size (Small/Medium/Large, default Medium)
-  multiplies the reference geometry. Reference geometry is based on a 1000 pixel
-  width and scales by `clamp(width / 1000, 0.5, 4.0)` times the code-owned size
-  factor, clamped so the badge still fits the safe area.
+  anchored side. The global preset size (Small/Medium/Large/Extra Large, default
+  Medium) multiplies the reference geometry. Reference geometry is based on a
+  1000 pixel width and scales by `clamp(width / 1000, 0.5, 4.0)` times the
+  code-owned size factor, clamped so the badge still fits the safe area.
 - Labels are single-line, bounded to 24 Unicode scalar values after
   normalization, and end-truncated with `...`. Unknown values are omitted, not
   rendered as claims or placeholders.
@@ -488,8 +488,9 @@ The global badge position and size (ADR-019) are the only other
 configuration-derived placement values. `RendererConfiguration.Position`
 (`BottomLeft` default, plus `TopLeft`, `TopRight`, `BottomRight`, and `Center`)
 positions the technical rail; `RendererConfiguration.Size` (`Medium` default,
-plus `Small` and `Large`) multiplies the width-based scale by a code-owned
-factor (`0.75`, `1.0`, and `1.5`). Rows stack away from the anchored edge
+plus `Small`, `Large`, and `ExtraLarge`) multiplies the width-based scale by a
+code-owned factor (`0.75`, `1.0`, `1.5`, and `2.0`). Rows stack away from the
+anchored edge
 (downward for top anchors, upward for bottom anchors, vertically centered for
 `Center`) and align to the anchored side. The status pill stays top-right except
 when the anchor is `TopRight`, then top-left, so the two never overlap. Both

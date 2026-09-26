@@ -40,8 +40,8 @@ arbitrary markup:
   center, default bottom-left) with at most two rows and three pills per row;
   rows stack away from the anchored edge and align to the anchored side. Upgrade
   status is an independent pill that is top-right except when the anchor is
-  top-right, then top-left. The global preset size (Small/Medium/Large, default
-  Medium) multiplies the reference geometry.
+  top-right, then top-left. The global preset size (Small/Medium/Large/Extra
+  Large, default Medium) multiplies the reference geometry.
 - The final label is limited to 24 Unicode scalar values after whitespace and
   control-character normalization; end truncation uses `...`.
 - A configured color must pass the 4.5:1 text/background contrast check. Badge

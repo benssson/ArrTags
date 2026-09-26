@@ -173,6 +173,7 @@ public class RenderFingerprintTests
         AssertOutputDiffers(BuildInput(policy: new RenderOutputPolicy { Position = BadgePosition.Center }));
         AssertOutputDiffers(BuildInput(policy: new RenderOutputPolicy { Size = BadgeSize.Small }));
         AssertOutputDiffers(BuildInput(policy: new RenderOutputPolicy { Size = BadgeSize.Large }));
+        AssertOutputDiffers(BuildInput(policy: new RenderOutputPolicy { Size = BadgeSize.ExtraLarge }));
 
         // The V1 default is identity-neutral, so an explicit default policy has
         // the same output fingerprint as the code-owned default.
