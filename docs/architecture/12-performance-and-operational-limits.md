@@ -170,11 +170,36 @@ non-source, and not referenced by a non-terminal or recovery-blocked operation)
 so the authoritative quota can be reused, while the retained source baseline of
 a live session and the active image are never reclaimed.
 
-Metrics or diagnostic status should distinguish queue depth, API health,
-matching failures, cache hits/misses, render failures, and stale metadata
-without exposing credentials or full external payloads. A bounded, secret-free
-status/diagnostic surface is not yet implemented and is documented as an open
-limitation in `docs/limitations/00-index.md`.
+The bounded, secret-free diagnostics status surface (ADR-025; open limitation F3
+resolved by Phase 17 task 17.4) is the supported in-product view of these
+counters. One class-level elevation-gated read-only plugin route,
+`GET ArrTags/Status`, returns the fixed-shape `DiagnosticsSnapshot`: nine
+top-level fields and 28 leaf paths, namely the update-queue depth and in-flight
+count; the last observed Sonarr and Radarr connection health (bounded
+`ArrConnectionHealth`); the three non-matched `MediaMatchStatus` classifications
+(`NotFound`, `Ambiguous`, `Unsupported`); provider-inventory cache hits and
+misses; one render-failure count per declared `RenderFailureReason` (18
+classifications); and the fresh-to-stale metadata-transition count. Every value
+is a count or a bounded enum: no path, item name, item identifier list, provider
+payload, credential, secret value, or unbounded collection is serialized, and
+there is no per-item array. Counters are recorded only at existing bounded
+boundaries and are in-memory and process-lifetime: they are never persisted,
+reset on restart, and report current process state rather than durable history.
+The counter set is a contract; adding or removing a counter requires a new
+decision (ADR-025 clause 3). The endpoint is read-only: it never mutates
+configuration, work, or artwork and adds no write route or configuration
+setting. The settings-page panel that renders the snapshot is served from the
+anonymous static page resource but obtains its data solely from that
+elevation-gated route; it renders no data and no error surface when the route is
+unauthorized or unavailable or the response is unparseable or not a JSON object
+(fail-closed). A well-formed but unexpected or partial-shape object instead
+renders the fixed 28-row table with the documented bounded fallback (a missing
+or non-numeric count as `0`, an unrecognized health value as `Unknown`), so the
+panel never shows free-form response text and no error surface is ever
+displayed. The endpoint and panel
+carry the fresh security review required by ADR-025 clause 6, recorded at
+`docs/implementation/17.4/security-review.json`; F3 is recorded as resolved in
+`docs/limitations/00-index.md`.
 
 The provider concurrency (per connection and global) and render concurrency
 limits are enforced at their boundaries, not merely validated. Each provider

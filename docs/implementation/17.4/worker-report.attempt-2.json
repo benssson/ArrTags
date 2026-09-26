@@ -1,0 +1,122 @@
+{
+  "task": "17.4",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction attempt 2 for task 17.4, closing the two non-blocking LOW findings in docs/implementation/17.4/security-review.json. SR-17.4-01 (recommended option (a), documentation precision): the unconditional panel wording was tightened in README.md:148, docs/architecture/11-failure-consistency-and-security-policy.md:63-68, docs/architecture/12-performance-and-operational-limits.md:192-198, the docs/limitations/archive.md F3 entry (lines 204-209), and the ADR-025 implementation note (lines 108-112), so each now separates an unparseable or non-object response (panel cleared, fail-closed) from a well-formed but unexpected or partial-shape object (fixed counter table with the documented bounded fallback: a missing or non-numeric count renders 0, an unrecognized health value renders Unknown). The fallback is stated explicitly in README, architecture 11, architecture 12, and the archive F3 entry. No production or test code changed. SR-17.4-02: accepted limitation V12-F3-1 registered in the V12-G8-1 pattern - a new '## v1.2 phase 17 accepted limitations (F3)' section with a '### V12-F3-1. The read-only diagnostics panel is verified structurally, not executed (LOW, accepted)' entry in docs/limitations/accepted.md carrying precondition/behaviour/consequence/evidence/disposition (docs/limitations/accepted.md:787-835), the matching row appended after V12-G8-2 in docs/limitations/00-index.md:108, and 'V12-F3-1' appended to docs/plan/state.json limitations.accepted (line 1117). docs/status.md and the PLANS.md milestone block were regenerated with scripts/render-docs-state.cs, which reports both up to date because limitations.accepted is not a rendered input (only limitations.open is); scripts/check-docs.sh passes (nine ok sections). The wording was verified against the shipped functions in src/ArrTags/Configuration/config.html:568-663 before editing.",
+  "validation": [
+    "Reviewed the shipped panel functions before writing any wording: src/ArrTags/Configuration/config.html:558-566 (clear sets textContent empty and display none), 568-593 (diagnosticsReadCount returns 0 for any non-number/non-finite value; diagnosticsReadHealth returns Unknown unless the value equals one of the five declared ArrConnectionHealth names), 595-600 (the guard returns only for null/array/non-object; any other object proceeds), 609-641 (all 28 fixed rows render and the panel is shown), 644-662 (clear before the request; clear on promise rejection; clear on caught render exception).",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date', 'PLANS.md: up to date' (twice). The generated blocks are already current because the renderer consumes limitations.open only (scripts/render-docs-state.cs:57, 90); the limitations.accepted list and task reports are not rendered inputs.",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform') and 'check-docs: PASS', exit 0. Run once after the full edit set and once after the final docs/plan/state.json reports/updated_utc edit; both PASS. A further run after this report is persisted also PASSED (same nine ok sections).",
+    "Sensitivity probe C (the limitations-index coverage guard behind the new register row): temporarily deleting the '| `V12-F3-1` |' row from docs/limitations/00-index.md while the accepted.md V12-F3-1 heading remained made scripts/check-docs.sh print 'FAIL: limitation V12-F3-1 missing from index' and 'check-docs: FAIL' (exit 1). The file was restored byte-identically (cmp against the /tmp/17.4/00-index.md.bak backup passed).",
+    "ADR clause preservation: 'git diff --numstat -- docs/decisions/ADR-025.md' -> '51 0' (insertions/deletions vs HEAD). The ADR-025 change is insertions only, and the only edited lines are inside the uncommitted v1.2 implementation note (lines 105-112); decision clauses 1-6, Consequences, Rejected alternatives, and References are byte-unchanged.",
+    "Stale-wording sweep: grep for 'malformed response', 'malformed body', and 'or malformed' over README.md, docs/architecture, docs/limitations, docs/decisions/ADR-025.md, PLANS.md, and docs/status.md leaves only the production-code comment src/ArrTags/Configuration/config.html:514 ('unauthorized, unavailable, or malformed response leaves no data'), which is code and out of scope for this documentation-only correction; all five documentation surfaces named by SR-17.4-01 now carry the qualified wording.",
+    "Constraint check: 'git status --porcelain -- src tests' is empty (exit 0) - no production or test file changed. 'git status --porcelain' shows the 13 files already modified by attempt 1 plus the new docs/implementation/17.4/ tree; attempt 2 materially changed 8 existing files plus the new attempt report, and did not touch docs/implementation/17.4/security-review.json, reviewer-report.json, worker-report.json, orchestration.json, or any immutable review/history file.",
+    "No build or implementation test was run in this attempt: the correction is documentation and plan-state only and no source or test file changed, so the relevant validation is the docs gates (render-docs-state and check-docs) above; the attempt-1 worker report's suite record is not re-claimed or re-run here."
+  ],
+  "changed_files": [
+    "README.md",
+    "docs/architecture/11-failure-consistency-and-security-policy.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/limitations/archive.md",
+    "docs/decisions/ADR-025.md",
+    "docs/limitations/accepted.md",
+    "docs/limitations/00-index.md",
+    "docs/plan/state.json",
+    "docs/implementation/17.4/worker-report.attempt-2.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "SR-17.4-01 (option (a)): README.md, docs/architecture/11, docs/architecture/12, the archive F3 entry, and the ADR-025 implementation note distinguish an unparseable or non-object response (panel cleared, fail-closed) from a well-formed but unexpected/partial-shape object (fixed table with 0/'Unknown' fallback), and the fallback is stated explicitly in README, architecture 11/12, and the archive F3 entry.",
+      "evidence": "README.md:148 now reads 'an unparseable or non-object response leaves the panel showing no data' and lines 149-151 state 'A well-formed response of an unexpected or partial shape instead renders the fixed counter table with its fallback values: a missing or non-numeric count shows as `0` and an unrecognized health value as `Unknown`.' docs/architecture/11:65-68 distinguishes 'unparseable or not a JSON object (fail-closed)' from 'A well-formed but unexpected or partial-shape object ... bounded fallback values (a missing or non-numeric count as `0`, an unrecognized health value as `Unknown`)'. docs/architecture/12:194-198 has the same split and names the fixed 28-row table. docs/limitations/archive.md:204-209 has the F3-entry equivalent. docs/decisions/ADR-025.md:108-112 has the implementation-note equivalent ('clears on a rejected/unavailable request or an unparseable or non-object body, while a well-formed but unexpected or partial-shape object renders the fixed table with the bounded fallback values'). The 'malformed' unconditional wording is gone from all five surfaces (grep sweep). No production or test file changed."
+    },
+    {
+      "criterion": "SR-17.4-02: accepted limitation V12-F3-1 registered in the V12-G8-1 pattern with heading plus precondition/behaviour/consequence/evidence/disposition, the matching row added to docs/limitations/00-index.md after V12-G8-2, 'V12-F3-1' appended to docs/plan/state.json limitations.accepted, the generated status surfaces regenerated with scripts/render-docs-state.cs, and scripts/check-docs.sh PASSES.",
+      "evidence": "docs/limitations/accepted.md:787 adds '## v1.2 phase 17 accepted limitations (F3)'; lines 789-835 add the V12-F3-1 entry with the intro paragraph and the five labelled parts (Precondition, Behaviour, Consequence, Evidence, Disposition), mirroring V12-G8-1 at lines 735-763, and citing ADR-025's implementation note, the archive F3 verification bounds, the changelog 17.4 entry, DiagnosticsStatusPanelTests.cs, docs/planning/v1.2.md section 9 (Phase 21 task 21.4), and security-review.json SR-17.4-02. docs/limitations/00-index.md:108 is the new Accepted row directly after V12-G8-2. docs/plan/state.json limitations.accepted now ends 'V12-G8-1', 'V12-G8-2', 'V12-F3-1' (line 1117). The renderer reports 'status.md: up to date' and 'PLANS.md: up to date'; scripts/check-docs.sh prints nine ok sections and 'check-docs: PASS'."
+    },
+    {
+      "criterion": "Constraints: documentation and plan-state only; docs/implementation/17.4/security-review.json and all reviewer/worker reports immutable; no overclaim and no weakened disclosure.",
+      "evidence": "'git status --porcelain -- src tests' empty. The registered entry keeps the honest disclosure (the panel JavaScript is not executed by the suite or the pinned live matrix; a runtime/browser behaviour change would not be caught) and adds no stronger claim: it reproduces the security review's precondition/behaviour/consequence framing and records the Phase 21 task 21.4 --nowebclient boundary rather than implying later live execution. The security-review, reviewer, and attempt-1 worker reports were not written to by this attempt."
+    },
+    {
+      "criterion": "Definition-of-Done documentation reconciliation: canonical surfaces updated, old values removed, and check-docs run.",
+      "evidence": "This report's documentation_reconciliation block lists the surfaces and the old wording searched for; the check-docs run and the sensitivity probe are recorded in validation. The renderer was run after the state edit (up to date); check-docs was run after the final state edit and again after this report was persisted, both PASS."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The delegation directs a precision edit to the ADR-025 implementation note, while ADR text is otherwise immutable history.",
+      "chosen": "Precision-edited only the v1.2 implementation note that task 17.4 added (still uncommitted); decision clauses 1-6, Consequences, Rejected alternatives, and References were left byte-unchanged.",
+      "basis": "The delegation explicitly says 'do not rewrite ADR-025's decision clauses; the implementation note is append-only and already exists, so only precision-edit its new wording'.",
+      "impact": "The note now matches the shipped panel behaviour; no decision semantics changed (numstat 51 insertions / 0 deletions vs HEAD)."
+    },
+    {
+      "question": "Where does the V12-F3-1 entry sit inside docs/limitations/accepted.md?",
+      "chosen": "Appended a new '## v1.2 phase 17 accepted limitations (F3)' section at the end of the file and placed the V12-F3-1 entry under it.",
+      "basis": "The file already groups v1.2 phase-specific accepted limitations under phase headings ('## v1.2 phase 16 accepted limitations (G6/G8)' holds V12-G6-1, V12-G8-1, V12-G8-2), and V12-F3-1 is a Phase 17 finding, so it does not belong under the phase-16 heading.",
+      "impact": "Presentation only; the 00-index row and the state.json list place V12-F3-1 after V12-G8-2 exactly as directed."
+    },
+    {
+      "question": "Should docs/plan/state.json task 17.4 reports list the new attempt-2 report, and should the top-level updated_utc be refreshed?",
+      "chosen": "Appended docs/implementation/17.4/worker-report.attempt-2.json to the task 17.4 reports array and set updated_utc to 2026-09-26T01:27:45Z.",
+      "basis": "The task 16.2 precedent lists both worker-report.json and worker-report.attempt-2.json in its reports array, and the schema's updated_utc records when the state was last written; neither field is a renderer input, so no generated text changes.",
+      "impact": "The canonical state records the correction attempt; docs/status.md and PLANS.md stay byte-identical (renderer reports up to date)."
+    },
+    {
+      "question": "The shipped page's in-code comment at src/ArrTags/Configuration/config.html:512-514 still says a 'malformed response leaves no data'.",
+      "chosen": "Left unchanged.",
+      "basis": "The delegation states 'Do not touch production code or tests', and SR-17.4-01's recommended option (a) lists only README.md, architecture 11/12, the archive F3 entry, and the ADR-025 implementation note.",
+      "impact": "A code comment retains wording that the corrected documentation now qualifies. It is not a user-visible or persisted claim; aligning it would need a separate code change outside this task's scope (recorded under known_limitations)."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe C: temporarily removing the '| `V12-F3-1` |' row from docs/limitations/00-index.md while the V12-F3-1 heading remained in docs/limitations/accepted.md made scripts/check-docs.sh fail with 'FAIL: limitation V12-F3-1 missing from index' (check-docs: FAIL, exit 1); the file was restored byte-identically (cmp passed). This proves the limitations-index coverage guard behind the new register row is load-bearing.",
+    "The generated-block consistency guard was exercised by check-docs step 1 ('generated status blocks are current; plan state is consistent'), which runs 'dotnet run scripts/render-docs-state.cs -- --check'; it passed after the state.json edit.",
+    "No production behaviour changed and no test changed in this attempt (documentation and plan-state only), so code-level test-sensitivity probing is not applicable. The documentation wording has no executable guard; its correctness was established by re-reading the shipped functions at src/ArrTags/Configuration/config.html:568-663 and by the security review's code-path reading recorded in SR-17.4-01."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "README.md (Diagnostics panel subsection: unparseable/non-object vs wrong/partial shape with the 0/'Unknown' fallback)",
+      "docs/architecture/11-failure-consistency-and-security-policy.md (panel fail-closed wording qualified and fallback stated)",
+      "docs/architecture/12-performance-and-operational-limits.md (panel fail-closed wording qualified and fallback stated)",
+      "docs/limitations/archive.md (F3 entry panel paragraph qualified and fallback stated)",
+      "docs/decisions/ADR-025.md (implementation note only; decision clauses untouched)",
+      "docs/limitations/accepted.md (new phase-17 section and V12-F3-1 entry)",
+      "docs/limitations/00-index.md (V12-F3-1 row after V12-G8-2)",
+      "docs/plan/state.json (limitations.accepted appended; task 17.4 reports gains the attempt-2 path; updated_utc refreshed)",
+      "docs/status.md and the PLANS.md milestone block (regenerated: renderer reports both up to date; limitations.accepted is not a rendered input)"
+    ],
+    "old_values_removed": [
+      "README.md: 'a non-administrator, an unavailable endpoint, or a malformed response leaves the panel showing no data' is gone; it now distinguishes the unparseable/non-object case and states the fallback table.",
+      "docs/architecture/11: 'renders no data when the route is unauthorized, unavailable, or malformed (fail-closed)' is gone.",
+      "docs/architecture/12: 'it renders no data and no error surface when the route is unauthorized, unavailable, or malformed (fail-closed)' is gone.",
+      "docs/limitations/archive.md: 'a rejected or unavailable request and a malformed body leave it cleared' is gone.",
+      "docs/decisions/ADR-025.md: 'clears on a rejected/unavailable request or a malformed body' is gone.",
+      "docs/plan/state.json: limitations.accepted no longer ends at 'V12-G8-2'; task 17.4 reports no longer lists only worker-report.json; updated_utc is no longer 2026-09-26T01:06:22Z.",
+      "Residual (out of scope, recorded): src/ArrTags/Configuration/config.html:514 still contains 'unauthorized, unavailable, or malformed response leaves no data' in a code comment; the only remaining grep match for the old wording."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    {
+      "finding_id": "SR-17.4-01",
+      "closure": "Applied recommended option (a): all five named surfaces now separate an unparseable or non-object response (panel cleared, fail-closed) from a well-formed but unexpected/partial-shape object (fixed table with the documented bounded fallback), and the 0/'Unknown' fallback is stated explicitly in README.md, docs/architecture/11, docs/architecture/12, and the archive F3 entry. No production code or test was changed.",
+      "evidence": "README.md:148-151; docs/architecture/11-failure-consistency-and-security-policy.md:65-68; docs/architecture/12-performance-and-operational-limits.md:194-198; docs/limitations/archive.md:204-209; docs/decisions/ADR-025.md:108-112; grep sweep shows the unconditional 'malformed response/body' wording remains only in the out-of-scope production comment src/ArrTags/Configuration/config.html:514; 'git status --porcelain -- src tests' empty."
+    },
+    {
+      "finding_id": "SR-17.4-02",
+      "closure": "Registered accepted limitation V12-F3-1 in the V12-G8-1 pattern: a new '## v1.2 phase 17 accepted limitations (F3)' section and V12-F3-1 entry (heading plus precondition/behaviour/consequence/evidence/disposition) in docs/limitations/accepted.md, the matching Accepted row after V12-G8-2 in docs/limitations/00-index.md, 'V12-F3-1' appended to docs/plan/state.json limitations.accepted, and the generated status surfaces regenerated with scripts/render-docs-state.cs; no new enum value invented and no code change.",
+      "evidence": "docs/limitations/accepted.md:787-835; docs/limitations/00-index.md:108; docs/plan/state.json:1117; renderer output 'status.md: up to date', 'PLANS.md: up to date'; scripts/check-docs.sh nine ok sections and 'check-docs: PASS' (exit 0); sensitivity probe C failed as expected when the index row was removed and the file was restored byte-identically."
+    }
+  ],
+  "known_limitations": [
+    "The production-code comment src/ArrTags/Configuration/config.html:512-514 still reads '... unauthorized, unavailable, or malformed response leaves no data ...'. Exact behaviour and precondition: only the documentation surfaces named by SR-17.4-01 were corrected because the delegation prohibits production-code changes, so the code comment retains the unqualified wording. Consequence: documentation and the code comment now differ in precision; no user-visible, security, or persisted-state effect, and a separate code change would be needed to align the comment.",
+    "The registered V12-F3-1 limitation itself remains in force: the panel's inline JavaScript is not executed by the suite or the pinned live matrix (--nowebclient), so a runtime or browser behaviour change in ApiClient.ajax/getUrl or the page script would not be caught in this phase. It is now recorded in docs/limitations/accepted.md rather than silently accepted.",
+    "No build or implementation test was run in this attempt because no production or test file changed; the attempt-1 worker report's suite record stands and is not re-validated here."
+  ],
+  "ready_for_next_task": true
+}

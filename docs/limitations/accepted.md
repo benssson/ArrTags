@@ -783,3 +783,53 @@ but no runtime consumer reads it.
   task 16.2 reviewer finding 16.2-F2.
 - Disposition: accepted for v1.2 as a pre-existing field; removing or aliasing
   it is a separate change outside the phase-16 scope.
+
+## v1.2 phase 17 accepted limitations (F3)
+
+### V12-F3-1. The read-only diagnostics panel is verified structurally, not executed (LOW, accepted)
+
+The read-only "Diagnostics" panel on the settings page is implemented and
+shipped (ADR-025; Phase 17 tasks 17.1-17.4), but its inline JavaScript cannot be
+executed by the test suite or the pinned live matrix. The repository deliberately
+has no JavaScript runtime, so `DiagnosticsStatusPanelTests` pins the fixed
+counter table (derived from and checked against the C# `DiagnosticsSnapshot`,
+`MatchingFailureCounts`, and `RenderFailureCounts` model), the
+`ApiClient.ajax`/`ApiClient.getUrl('ArrTags/Status')` call pair (confirmed
+against the pinned bundled web-client source), the bounded count/health readers,
+and the fail-closed branches structurally over the embedded settings page; the
+fetch, the web client's rejection path, the DOM construction, and the no-data
+rendering are never executed. The pinned test host's launcher uses
+`--nowebclient`, so the documented live matrix does not serve the bundled web
+client either.
+
+- Precondition: an authenticated administrator opening the settings page in a
+  running jellyfin-web/12.0 build that exposes `ApiClient.ajax` and
+  `ApiClient.getUrl`, with the elevation-gated `GET ArrTags/Status` endpoint
+  available.
+- Behaviour: the panel fetches once per page show with no retry or polling,
+  renders only the fixed 28-row counter table with bounded values (a missing or
+  non-numeric count as `0`; a health value only from the declared
+  `ArrConnectionHealth` names, otherwise `Unknown`), and clears on a rejected or
+  unavailable request or an unparseable or non-object body; a well-formed but
+  unexpected or partial-shape object renders the fixed table with the fallback
+  values. The call shape and DOM behavior were confirmed structurally against
+  the endpoint model and the pinned bundled web-client source, not in a live
+  browser.
+- Consequence: if a future web client changes `ApiClient.ajax`,
+  `ApiClient.getUrl`, or the page script's runtime behavior, the panel would
+  silently render nothing or clear instead, and neither the suite nor the pinned
+  live matrix would catch it. The endpoint remains read-only, bounded, and
+  secret-free, and no other surface depends on the panel. The v1.2 plan assigns
+  live verification of the status panel and endpoint to Phase 21 task 21.4, but
+  that matrix runs `--nowebclient`, so it does not execute the panel's inline
+  JavaScript either; this is a standing v1.2 verification limitation rather than
+  a phase-verification boundary.
+- Evidence: the `docs/decisions/ADR-025.md` implementation note (verification
+  bounds); the F3 verification bounds in `docs/limitations/archive.md`; the task
+  17.4 entry in `docs/changelog/v1.2.0.md`;
+  `tests/ArrTags.Tests/DiagnosticsStatusPanelTests.cs`; `docs/planning/v1.2.md`
+  section 9 (Phase 21 task 21.4); `docs/implementation/17.4/security-review.json`
+  SR-17.4-02.
+- Disposition: accepted for v1.2; a live-browser probe would require serving the
+  bundled web client and logging in, which the pinned matrix does not do.
+  Registered by the Phase 17 task 17.4 security-review follow-up (SR-17.4-02).

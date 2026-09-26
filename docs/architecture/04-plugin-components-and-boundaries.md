@@ -17,6 +17,7 @@
 | Render work cache | Avoid repeated generation before publication where useful | Optional, bounded, fingerprint-keyed work state; not the client response path |
 | Webhook controller | Accept authenticated low-latency Arr hints | Anonymous plugin route; validates the shared secret with a constant-time lease comparison and a bounded payload, then submits to a bounded intake; never trusts payload as source of truth (ADR-012) |
 | Webhook intake | Resolve accepted hints and feed the bounded work queue off the request path | Bounded, coalescing, non-blocking; resolves only already-known provider-record associations and never publishes, mutates artwork, or calls Arr |
+| Diagnostics snapshot | Assemble the fixed-shape, secret-free process-lifetime counters from existing bounded sources | In-memory `DiagnosticsMetrics`/`DiagnosticsSnapshotProvider` singleton; counts and bounded enums only; never per-item, persisted, or I/O-performing (ADR-025) |
 | Diagnostics status controller | Serve the bounded, secret-free diagnostics snapshot to an authenticated administrator | Elevation-gated read-only plugin route (`GET ArrTags/Status`, ADR-025); fixed counter set only; never mutates configuration, work, or artwork |
 | Scheduled task | Manual and periodic full reconciliation | Cancellable, progress-reporting, retry-safe |
 | Post-scan task | Reconciliation after a Jellyfin media-library scan | Jellyfin `ILibraryPostScanTask`; bounded, cancellable, progress-reporting |

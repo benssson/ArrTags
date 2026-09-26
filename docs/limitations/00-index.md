@@ -62,13 +62,13 @@ review are separate and are not declared by this document.
 
 | ID | Title | Status | Section |
 | --- | --- | --- | --- |
-| `F3` | No bounded, secret-free metrics/diagnostic-status surface | Open | [`open.md`](open.md) |
 | `F4` | Reconciliation coverage is bounded by `QueueCapacity` | Open | [`open.md`](open.md) |
 | `F5` | The renderer depends on a host-supplied SkiaSharp with no bundled fallback | Accepted | [`accepted.md`](accepted.md) |
 | `F6` | Version-blind work coalescing can drop a post-save re-render | Open | [`open.md`](open.md) |
 | `F7` | An empty resolved badge selection preserves the previous ArrTags badge instead of restoring the original | Open | [`open.md`](open.md) |
 | `F1` | Provider inventory/catalogue cache | Resolved | [`archive.md`](archive.md) |
 | `F2` | A saved configuration change is activated at runtime and re-renders existing posters via the bounded post-save trigger | Resolved | [`archive.md`](archive.md) |
+| `F3` | No bounded, secret-free metrics/diagnostic-status surface | Resolved | [`archive.md`](archive.md) |
 | `F8` | The specific render classification is not surfaced in the artwork log | Resolved | [`archive.md`](archive.md) |
 | `V1` | No live Sonarr or Radarr instance | Accepted | [`accepted.md`](accepted.md) |
 | `V2` | ADR-010 non-canonical cross-runtime comparison is unselected and unrun | Accepted | [`accepted.md`](accepted.md) |
@@ -105,3 +105,4 @@ review are separate and are not declared by this document.
 | `V12-G6-1` | A legacy in-range off-step byte limit is re-quantized or rejected on the next settings save (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-G8-1` | The restart-required modal reminder is a best-effort web-client shim verified structurally, not executed (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-G8-2` | The global `OperationalLimits.RequestTimeoutSeconds` is inert (INFORMATIONAL, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F3-1` | The read-only diagnostics panel is verified structurally, not executed (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |

@@ -1,0 +1,145 @@
+{
+  "task": "17.4",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Reconciled the F3 canonical documentation for the shipped read-only diagnostics surface and recorded F3 resolved (Phase 17 task 17.4). No production or test code changed. docs/limitations/open.md loses the F3 entry; docs/limitations/archive.md gains the F3 resolution entry (the elevation-gated read-only GET ArrTags/Status endpoint, the fixed nine-field/28-leaf counter set as the ADR-025 clause 3 contract, process-lifetime never-persisted counters, the fail-closed read-only settings-page panel, the evidence list, the verification bounds, and the historical consequence, including that adding or removing a counter requires a new decision); docs/limitations/00-index.md row F3 is now Resolved/archive.md in the resolved group after F2; docs/plan/state.json moves F3 from limitations.open to limitations.resolved and sets task 17.4 done=true with reports=['docs/implementation/17.4/worker-report.json'] and updated_utc 2026-09-26T01:06:22Z; the regenerated docs/status.md reports three open limitations (F4, F6, F7). docs/architecture/12-performance-and-operational-limits.md replaces the 'not yet implemented' F3 paragraph with the shipped surface; docs/architecture/11-failure-consistency-and-security-policy.md records the administrator-visible read-only surface and its fail-closed panel alongside the existing authorization/secret prose; docs/architecture/04-plugin-components-and-boundaries.md gains the Diagnostics snapshot component row (the 17.2 Diagnostics status controller row was verified accurate and is unchanged); README.md gains a bounded 'Diagnostics panel' subsection and names the panel in the settings-page coverage sentence; docs/decisions/ADR-025.md gains an append-only 'Implementation note (v1.2, tasks 17.1-17.4)' (0 removed lines; all decision clauses byte-unchanged) and the decisions index row is unchanged because no shipped-status convention exists there; PLANS.md records F3 as resolved by Phase 17 (task 17.4) in the v1.2 status paragraph and ticks the 17.4 checkbox; docs/changelog/v1.2.0.md gains the task 17.4 entry. The security review assigned by the plan is delegated by the orchestrator to the security-reviewer and is named at docs/implementation/17.4/security-review.json (this task documents the contract and the path without asserting a verdict). Verification bounds are stated honestly in the archive entry, the ADR-025 note, and the changelog: the panel's inline JavaScript is not executed here (the repository has no JavaScript runtime and the pinned live matrix runs --nowebclient), the endpoint's host-guarded pinned-host policy-name fact is skipped (ARRTAGS_JELLYFIN_HOST_DIR unset), so the live host-side authorization is not confirmed in this environment, and the counters are process-lifetime only. Build 0 warnings/0 errors; default suite Failed 0, Passed 1794, Skipped 64, Total 1858 (unchanged from the post-17.3 baseline); render-docs-state up to date and check-docs PASS (nine sections) before this report is persisted. Phase 17 remains PLANNED with no gate or tag applied.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx).",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed!  - Failed:     0, Passed:  1794, Skipped:    64, Total:  1858, Duration: 18 s - ArrTags.Tests.dll (net10.0)'. No production or test code changed, so this equals the post-17.3 baseline recorded in docs/changelog/v1.2.0.md task 17.3 (Failed 0, Passed 1794, Skipped 64, Total 1858). The host-guarded fact ArrTags.Tests.DiagnosticsStatusEndpointTests.EndpointUsesThePinnedHostAdministratorGatingPolicy is among the 64 skips: ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so no host-guarded run was performed.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> first run 'status.md: rendered' (the generated F3 open-limitation line changed), 'PLANS.md: up to date' (twice); final check run 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree'.",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform') and 'check-docs: PASS', exit 0. Run twice (after the main edit set and after the final changelog precision edit); both PASS. Both runs were before this worker report was persisted, so the agent-contract worker/reviewer pairing check for 17.4 is not yet exercised; it is satisfied when the orchestrator's implementation-reviewer report is added (the same pattern as tasks 15.4 and 16.1-16.6).",
+    "Post-persistence confirmation (the expected state): after this worker-report.json was written, scripts/check-docs.sh prints the same nine ok sections and the only failure is the agent-contract worker/reviewer pairing ('FAIL: task 17.4 has a worker report but no reviewer report'), with 'check-agents: FAIL' / 'check-docs: FAIL' and exit 1. This is exactly the pre-reviewer state the task describes; it is satisfied when the orchestrator's implementation-reviewer report is added.",
+    "Sensitivity probe A (the limitations-index coverage guard this task's F3 row update depends on): temporarily removed the '| `F3` |' row from docs/limitations/00-index.md while the F3 heading in docs/limitations/archive.md remained; scripts/check-docs.sh printed 'FAIL: limitation F3 missing from index' and 'check-docs: FAIL', exit 1. The file was restored byte-identically (cmp against the /tmp/17.4/00-index.md backup passed).",
+    "Sensitivity probe B (the generated-block task/checkbox consistency guard): temporarily set docs/plan/state.json task 17.4 'done' to false while PLANS.md remained '- [x] 17.4 ...'; 'dotnet run scripts/render-docs-state.cs -- --check' exited 2 with 'state/plan mismatch: task 17.4: PLANS.md checkbox does not match state.json done=false'. state.json was restored byte-identically (cmp against the /tmp/17.4/state.json backup passed) and the re-run printed 'PLANS.md and state.json agree' with exit 0.",
+    "Targeted stale-claim grep (acceptance criterion): 'grep -rn \"not yet implemented\" PLANS.md README.md docs/status.md docs/architecture docs/limitations docs/decisions/ADR-025.md' -> no matches. A broader sweep for 'not implemented'/'no ... status surface' over current-state surfaces found only unrelated or historical matches: docs/architecture/08 (the still-open F4 statement), docs/limitations/open.md heading ('deferred, not implemented'), docs/limitations/accepted.md SEC-related prose, docs/planning/v1.2.md ('not implemented by v1.2' about F5), README/status generic 'does not yet' register wording, and the docs/limitations/archive.md historical consequence plus the ADR-025 Context clause (historical ADR text, not rewritten). 'grep -n \"^### F3\" docs/limitations/*.md' matches only docs/limitations/archive.md:169; docs/limitations/00-index.md:71 is '| `F3` | No bounded, secret-free metrics/diagnostic-status surface | Resolved | [`archive.md`](archive.md) |'; docs/status.md reads 'Open limitations: 3 (`F4`, `F6`, `F7`)'; the architecture-12 'not yet implemented' prose is gone.",
+    "git status --porcelain / git diff --stat inspection: 12 modified files (PLANS.md, README.md, docs/architecture/04-plugin-components-and-boundaries.md, docs/architecture/11-failure-consistency-and-security-policy.md, docs/architecture/12-performance-and-operational-limits.md, docs/changelog/v1.2.0.md, docs/decisions/ADR-025.md, docs/limitations/00-index.md, docs/limitations/archive.md, docs/limitations/open.md, docs/plan/state.json, docs/status.md) plus this new report; 266 insertions / 30 deletions. 'git status --porcelain -- src tests' is empty: no production or test code changed. No probe residue (the cmp restores verified byte identity), and the pre-existing docs/implementation/17.4/orchestration.json was not modified by this task.",
+    "ADR-025 clause preservation check: 'git diff -- docs/decisions/ADR-025.md' shows one insertion block only ('### Implementation note (v1.2, tasks 17.1-17.4)' after the Consequences section, ADR-028/ADR-026 style) with 0 removed lines; the Decision clauses 1-6, Consequences, Rejected alternatives, and References texts are byte-unchanged."
+  ],
+  "changed_files": [
+    "PLANS.md",
+    "README.md",
+    "docs/architecture/04-plugin-components-and-boundaries.md",
+    "docs/architecture/11-failure-consistency-and-security-policy.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/decisions/ADR-025.md",
+    "docs/limitations/00-index.md",
+    "docs/limitations/archive.md",
+    "docs/limitations/open.md",
+    "docs/plan/state.json",
+    "docs/status.md",
+    "docs/implementation/17.4/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "F3 is recorded as resolved: removed from open.md, moved to archive.md with evidence, index row updated, and state.json limitations.open no longer lists F3 (and resolved does).",
+      "evidence": "docs/limitations/open.md now starts at '### F4.'; 'grep -n \"^### F3\" docs/limitations/*.md' matches only docs/limitations/archive.md:169, whose entry carries the shipped behavior, the evidence list (source, tests, reports, the security-review path), the verification bounds, and the historical consequence, and records the ADR-025 clause 3 counter-set contract ('adding or removing a counter requires a new decision'); docs/limitations/00-index.md:71 reads '| `F3` | No bounded, secret-free metrics/diagnostic-status surface | Resolved | [`archive.md`](archive.md) |' in the resolved group after F2; docs/plan/state.json limitations.open is ['F4','F6','F7'] and limitations.resolved is ['F1','F2','F3','F8']."
+    },
+    {
+      "criterion": "The F3 open-limitation prose in architecture 12 is replaced with an accurate description of the shipped surface; architecture 11 and 04 accurately reflect the new surface; README covers the panel accurately; ADR-025 carries an append-only implementation note and its clauses are unchanged.",
+      "evidence": "docs/architecture/12-performance-and-operational-limits.md now describes the elevation-gated read-only GET ArrTags/Status route, the nine-field/28-leaf fixed counter set, process-lifetime in-memory semantics, the read-only fixed-shape secret-free contract, the clause 3 counter contract, the fail-closed panel, the security-review path, and the F3 resolution; the previous 'not yet implemented' sentences are gone (grep). docs/architecture/11 adds a bounded paragraph on the administrator-visible read-only surface and its fail-closed panel. docs/architecture/04 adds the 'Diagnostics snapshot' row with the in-memory singleton boundary and keeps the verified 17.2 'Diagnostics status controller' row unchanged. README.md gains the 'Diagnostics panel' subsection (read-only, process-lifetime counters, administrator-only endpoint, resets on restart, no data when unauthorized/unavailable) and names the panel in the page-coverage sentence. The ADR-025 diff is a single insertion (0 removed lines) after Consequences; the Decision clauses are byte-unchanged, and the decisions index row is unchanged (no shipped-status convention; ADR-025 is already Accepted (v1.2))."
+    },
+    {
+      "criterion": "No stale claim remains: run a targeted grep for now-false statements (e.g. 'not yet implemented' near F3/diagnostics/status) and record the result.",
+      "evidence": "Recorded in validation: 'grep -rn \"not yet implemented\" PLANS.md README.md docs/status.md docs/architecture docs/limitations docs/decisions/ADR-025.md' -> no matches; the only remaining 'no bounded, secret-free' matches are the archive historical-consequence sentence and the ADR-025 Context clause (immutable ADR text), both correct in their frames; F3 headings exist only in archive.md; status.md reports 3 open limitations (F4, F6, F7); PLANS.md no longer lists F3 among items that remain Open."
+    },
+    {
+      "criterion": "No production code or test change in this task.",
+      "evidence": "'git status --porcelain -- src tests' is empty; 'git diff --stat' lists exactly the 12 documentation/state files (266 insertions / 30 deletions) plus the new report under docs/implementation/17.4/. The default suite is unchanged from the post-17.3 baseline (Failed 0, Passed 1794, Skipped 64, Total 1858), confirming no test assembly change."
+    },
+    {
+      "criterion": "render-docs-state up to date and check-docs PASS.",
+      "evidence": "The final 'dotnet run scripts/render-docs-state.cs -- --check' prints 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree', exit 0; 'scripts/check-docs.sh' prints nine ok sections and 'check-docs: PASS' (run after the full edit set and again after the final changelog edit). Probes A and B show both guards reject seeded violations and the files were restored byte-identically."
+    },
+    {
+      "criterion": "PLANS.md checkbox 17.4 ticked, state.json task 17.4 done/reports/updated_utc, F3 moved; phase 17 still PLANNED with no gate/tag applied.",
+      "evidence": "PLANS.md line '- [x] 17.4 F3 documentation and security review'; docs/plan/state.json task 17.4 has 'done': true, 'reports': ['docs/implementation/17.4/worker-report.json'], updated_utc '2026-09-26T01:06:22Z'; phase 17 still has 'status': 'PLANNED', 'gate': 'Gate 17', 'tag': 'v1.2.0-phase17' (untouched); the generated milestone table still shows Phase 17 PLANNED and the renderer reports PLANS.md up to date. Probe B confirms the checkbox/state pair is guarded."
+    },
+    {
+      "criterion": "The report names docs/implementation/17.4/security-review.json as the security-review artifact location so the orchestrator's security-reviewer produces it there.",
+      "evidence": "This report names the path in the summary and known_limitations; the canonical docs also name it (docs/architecture/11, docs/architecture/12, the ADR-025 implementation note, the F3 archive entry, and the changelog 17.4 entry). The review is not authored or asserted by this task; state.json task 17.4 reports intentionally lists only the worker report, and the orchestrator adds the security-review path when it lands (the task 15.4 convention)."
+    },
+    {
+      "criterion": "Phase 17 acceptance criterion this task owns: F3 is recorded as resolved (PLANS.md Phase 17 acceptance criteria / Gate 17).",
+      "evidence": "F3 is Resolved in docs/limitations/00-index.md and docs/limitations/archive.md, removed from docs/limitations/open.md, moved in docs/plan/state.json (open -> resolved), and the regenerated docs/status.md reports three open limitations; PLANS.md's v1.2 status paragraph records 'F3 was promoted by v1.2 and is resolved by Phase 17 (task 17.4)'. The remaining Gate 17 conditions (the security review with no open BLOCKER/HIGH, the phase review, and the v1.2.0-phase17 tag) are owned by the orchestrator and are not claimed here."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Where should the F3 row sit in docs/limitations/00-index.md now that it is resolved?",
+      "chosen": "Moved out of the open group into the resolved group between F2 and F8, so the open group stays F4/F5/F6/F7 ascending and the resolved group stays F1/F2/F3/F8 ascending.",
+      "basis": "The task directs the table to keep its existing sort with resolved items grouped; the resolved group was already ascending (F1, F2, F8), and the task 15.4 precedent moved the resolved F8 row into the resolved group rather than leaving it in numeric position among open rows.",
+      "impact": "Presentation only; the index coverage check and state.json resolved list (F1, F2, F3, F8) now agree with the row order."
+    },
+    {
+      "question": "Should the structural-only panel verification and the skipped host-guarded authorization fact be registered as a new accepted-limitation ID (for example V12-F3-1), given the V12-G8-1 precedent?",
+      "chosen": "No new accepted-limitation ID is registered by this task. The two residuals and the process-lifetime semantics are stated precisely in the F3 archive resolution entry, the ADR-025 implementation note, and the changelog 17.4 entry in the V12-G8-1 precondition/behaviour/consequence style, and the fresh ADR-025 clause 6 security review is the plan-assigned adjudication point.",
+      "basis": "The task's explicit documentation-change list for 17.4 does not include docs/limitations/accepted.md or a new ID; the v1.2 plan section 9 assigns pinned-host live verification of the status panel and endpoint to Phase 21 (task 21.4), so this is a phase-verification boundary rather than a standing accepted limitation; and adding an ID would also require index and state.json.limitations.accepted updates beyond the task's stated scope.",
+      "impact": "No product semantics or persisted state change; the limitation-register membership is unchanged apart from F3 moving to resolved. If the security or phase reviewer judges the structural-only panel verification a standing accepted limitation, registering e.g. V12-F3-1 (accepted.md + index + state.json) remains a reviewer/orchestrator follow-up, and the honest statements already exist in three canonical surfaces."
+    },
+    {
+      "question": "Should docs/planning/v1.2.md's plan-policy sentence ('F3, F4, F6, F7, and F8 ... remain Open until their resolving phase lands and records the resolution') be updated now that F3 (and earlier F8) resolved?",
+      "chosen": "Left unchanged.",
+      "basis": "The accepted scope plan is the plan-time record; the F8 precedent shows task 15.4 updated the PLANS.md status paragraph and the register/status surfaces but not the planning document. PLANS.md is the status surface and was updated.",
+      "impact": "The planning document continues to read as accepted at plan time; no current-status surface carries a stale F3-open claim (the PLANS.md paragraph, the register, state.json, and status.md are all current)."
+    },
+    {
+      "question": "Should the docs/decisions/00-index.md ADR-025 row note the shipped status?",
+      "chosen": "Left as 'Accepted (v1.2)'.",
+      "basis": "The instruction permits an update only if an established convention exists; the index notes amendments and supersessions (ADR-016/ADR-020 rows) and never shipped status, and no ADR-022..ADR-028 row carries a shipped annotation.",
+      "impact": "Index unchanged; the shipped record lives in the ADR-025 implementation note, the architecture files, the register, and the changelog."
+    },
+    {
+      "question": "The task's file checklist for 17.4 does not name PLANS.md, but the v1.2 status paragraph carried a now-false statement ('F3, F4, F6, and F7 ... remain Open').",
+      "chosen": "Updated the paragraph to 'F4, F6, and F7 are promoted by v1.2 and remain Open ...; F3 was promoted by v1.2 and is resolved by Phase 17 (task 17.4), and F8 ... by Phase 15 (task 15.4)' and ticked the 17.4 checkbox.",
+      "basis": "The acceptance criterion 'no stale claim remains' plus the task 15.4 precedent, which made exactly this F8 edit to the same paragraph when F8 resolved; PLANS.md is a canonical current-state surface and the phase acceptance criterion requires F3 recorded as resolved.",
+      "impact": "PLANS.md stays within its 400-line budget (currently 396 lines) and its F3 statement now agrees with state.json, the register, and status.md."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A: temporarily removing the '| `F3` |' row from docs/limitations/00-index.md (while the F3 archive heading remained) made scripts/check-docs.sh fail with 'FAIL: limitation F3 missing from index' (check-docs: FAIL, exit 1); the file was restored byte-identically (cmp passed). This proves the limitations-index coverage check the F3 row update depends on is load-bearing.",
+    "Probe B: temporarily setting docs/plan/state.json task 17.4 'done' to false while PLANS.md kept the '- [x] 17.4' checkbox made 'dotnet run scripts/render-docs-state.cs -- --check' exit 2 with 'state/plan mismatch: task 17.4: PLANS.md checkbox does not match state.json done=false'; state.json was restored byte-identically (cmp passed) and the check then reported 'PLANS.md and state.json agree'. This proves the generated-block consistency guard behind the acceptance criterion is load-bearing.",
+    "No new production behaviour and no new or changed test exist in this task (documentation and plan-state only; the suite is Failed 0, Passed 1794, Skipped 64, Total 1858, unchanged from the post-17.3 baseline), so code-level test-sensitivity probing is not applicable; the two probes above cover the documentation guards this task's acceptance criteria rely on."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json (F3 moved open -> resolved; task 17.4 done=true with reports and updated_utc)",
+      "PLANS.md (17.4 checkbox ticked; v1.2 status paragraph records F3 resolved by Phase 17)",
+      "docs/changelog/v1.2.0.md (new '### Task 17.4 - F3 documentation and security review' entry)",
+      "docs/limitations/open.md (F3 entry removed)",
+      "docs/limitations/archive.md (F3 resolution entry added with evidence, verification bounds, and historical consequence)",
+      "docs/limitations/00-index.md (F3 row now Resolved/archive.md, grouped with the resolved rows)",
+      "README.md (Diagnostics panel subsection; page-coverage sentence names the panel)",
+      "docs/architecture/04-plugin-components-and-boundaries.md (Diagnostics snapshot row added)",
+      "docs/architecture/11-failure-consistency-and-security-policy.md (read-only surface and fail-closed panel paragraph added)",
+      "docs/architecture/12-performance-and-operational-limits.md (F3 open-limitation paragraph replaced with the shipped surface description)",
+      "docs/decisions/ADR-025.md (append-only implementation note; no clause rewritten)",
+      "docs/status.md (generated: Open limitations now 3 (F4, F6, F7))"
+    ],
+    "old_values_removed": [
+      "docs/limitations/open.md: the '### F3.' section and its evidence/consequence bullets are gone (the functional/open list now starts at F4).",
+      "docs/limitations/00-index.md: the F3 row no longer reads 'Open | [`open.md`](open.md)'; it reads 'Resolved | [`archive.md`](archive.md)'.",
+      "docs/plan/state.json: 'F3' is no longer in limitations.open; task 17.4 is no longer '\"done\": false' without reports; updated_utc is no longer 2026-09-26T00:40:51Z.",
+      "docs/status.md: 'Open limitations: 4 (`F3`, `F4`, `F6`, `F7`)' is gone; it reads 'Open limitations: 3 (`F4`, `F6`, `F7`)'.",
+      "docs/architecture/12-performance-and-operational-limits.md: 'A bounded, secret-free status/diagnostic surface is not yet implemented' is gone.",
+      "PLANS.md: 'F3, F4, F6, and F7 are promoted by v1.2 and remain **Open**' is gone; the 17.4 checkbox is '[x]'.",
+      "README.md: the settings-page coverage sentence no longer omits the diagnostics panel; the Known-limitations section was re-read and carries no F3/diagnostics statement that became stale."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "Security-review handoff (not performed by this task). Precondition: the orchestrator delegates the ADR-025 clause 6 endpoint/panel security review to the security-reviewer after this worker report. Consequence: until docs/implementation/17.4/security-review.json is recorded, Gate 17's 'security review recorded with no open BLOCKER/HIGH' condition is unmet; the canonical docs and this report only name the path and no verdict is asserted. state.json task 17.4 reports lists the worker report only; adding the security-review path when it lands follows the task 15.4 convention (both paths in reports).",
+    "The panel's inline JavaScript is not executed by the suite or the documented live matrix. Precondition: the repository deliberately has no JavaScript runtime, this environment has none, and the pinned live matrix runs --nowebclient. Consequence: the fetch, DOM construction, rejection path, and fail-closed no-data rendering are pinned structurally against the endpoint model and the pinned bundled web-client source; a runtime/browser behavior change in ApiClient.ajax or the page script would not be caught by the suite in this phase.",
+    "The endpoint's live host-side authorization is not confirmed in this environment. Precondition: ARRTAGS_JELLYFIN_HOST_DIR is unset. Behaviour: the default suite skips ArrTags.Tests.DiagnosticsStatusEndpointTests.EndpointUsesThePinnedHostAdministratorGatingPolicy (one of the 64 skips), while the in-process MVC pipeline tests cover anonymous 401, authenticated non-administrator 403, and authenticated administrator 200. Consequence: the pinned-host policy equality is not re-verified here; the v1.2 plan assigns pinned-host live verification (including the status endpoint) to Phase 21 task 21.4, and that matrix runs --nowebclient, so it does not execute the panel's JavaScript either.",
+    "Register decision: no accepted-limitation ID was registered for the two residuals above (see interpretations). If the security or phase reviewer judges the structural-only panel verification a standing limitation, adding e.g. V12-F3-1 to docs/limitations/accepted.md plus the index and state.json.limitations.accepted remains an orchestrator/reviewer follow-up; the honest statements already exist in the archive entry, the ADR-025 note, and the changelog.",
+    "Out-of-scope pre-existing observation (not changed): docs/data-model/03-08-renderresult.md line 51 still reads 'Task 12.1 does not yet apply the filter to rendering; the renderer filtering order is task 12.2.' while task 12.2 is complete per docs/changelog/v1.1.0.md. It is unrelated to F3/diagnostics/status and outside this task's file scope, so it was left for the orchestrator/documentation maintainer rather than editing an unrelated file.",
+    "The counters are process-lifetime only: they reset on restart and are never persisted, so the surface reports current process state and no durable history, per-item listing, or export. This is the accepted ADR-025 shape, not a defect of this task."
+  ],
+  "ready_for_next_task": true
+}

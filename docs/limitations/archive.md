@@ -165,3 +165,73 @@ open BLOCKER/HIGH).
 - Historical consequence: before task 15.3, diagnosing why no badge was rendered
   required eliminating causes from other log lines (or reproducing with tests);
   two attempts with different causes were indistinguishable in the host log.
+
+### F3. No bounded, secret-free metrics/diagnostic-status surface
+
+**Status:** Resolved (v1.2 Phase 17; the bounded metrics model is task 17.1, the
+elevation-gated endpoint is task 17.2, the read-only panel is task 17.3, and the
+canonical documentation reconciliation, the register resolution, and the
+security review are task 17.4).
+
+The shipped read-only diagnostics surface is a "Diagnostics" panel on the
+existing settings page backed by one administrator-authenticated plugin route,
+`GET ArrTags/Status` (`ArrTagsStatusController`, class-level
+`[Authorize(Policy = Policies.RequiresElevation)]`; ADR-025 clauses 1-5). The
+route returns the fixed-shape `DiagnosticsSnapshot`: nine top-level fields and 28
+leaf paths, namely the update-queue depth and in-flight count; the last observed
+Sonarr and Radarr connection health (bounded `ArrConnectionHealth`); the three
+non-matched `MediaMatchStatus` classifications (`NotFound`, `Ambiguous`,
+`Unsupported`); provider-inventory cache hits and misses; one render-failure
+count per declared `RenderFailureReason` (18 classifications); and the
+fresh-to-stale metadata-transition count. Every value is a count or a bounded
+enum: no path, item name, item identifier list, provider payload, credential,
+secret value, or unbounded collection is serialized, and there is no per-item
+array. The counters are recorded only at existing bounded boundaries
+(inventory-cache hit/miss in the Radarr and Sonarr metadata readers,
+per-connection health in the concurrency-limited reader, matching classification
+and the stale transition in `MetadataReconciliationProcessor`, and render failure
+in `ArtworkGenerationCoordinator`), are in-memory and process-lifetime, and are
+never persisted, so they reset on restart and report current process state rather
+than durable history. The counter set is a contract: adding or removing a
+counter requires a new decision (ADR-025 clause 3). The endpoint is read-only (a
+single read route, no write verb, no mutation of configuration, work, or
+artwork, and no configuration setting).
+
+The panel is part of the anonymous static settings-page resource but obtains its
+data solely from the elevation-gated route, so an authenticated administrator is
+required to see any value. It is fail-closed: the container is static-hidden and
+empty until a bounded snapshot renders; a rejected or unavailable request and an
+unparseable or non-object body leave it cleared. A well-formed but unexpected or
+partial-shape object instead renders the fixed 28-row counter table with the
+documented bounded fallback (a missing or non-numeric count as `0`, an
+unrecognized health value as `Unknown`); counts render only after the bounded
+numeric check, and a health value renders only when it is a declared
+`ArrConnectionHealth` name. The panel adds no input, form field, or save wiring
+and contains no secret literal.
+
+- Evidence: `src/ArrTags/Diagnostics/DiagnosticsSnapshot.cs`,
+  `MatchingFailureCounts.cs`, `RenderFailureCounts.cs`, `DiagnosticsMetrics.cs`,
+  `DiagnosticsSnapshotProvider.cs`, and `ArrTagsStatusController.cs`;
+  `src/ArrTags/Configuration/config.html` (the `diagnosticsSection` block and its
+  fail-closed load path); the tasks 17.1-17.3 worker reports and changelog
+  entries; `tests/ArrTags.Tests/DiagnosticsSnapshotTests.cs`,
+  `DiagnosticsInstrumentationTests.cs`, `DiagnosticsStatusEndpointTests.cs`, and
+  `DiagnosticsStatusPanelTests.cs`; ADR-025 with its v1.2 implementation note;
+  `docs/implementation/17.4/worker-report.json`; the ADR-025 clause 6 security
+  review at `docs/implementation/17.4/security-review.json`.
+- Verification bounds (not overstating the resolution): the panel's inline
+  JavaScript is not executed by the suite or the documented live matrix (the
+  repository deliberately has no JavaScript runtime and the pinned host runs
+  `--nowebclient`), so the panel behavior is verified structurally against the
+  endpoint model and the pinned web-client source; the endpoint authorization is
+  pinned by the in-process MVC pipeline tests, while the host-guarded
+  policy-name fact is skipped in this environment (`ARRTAGS_JELLYFIN_HOST_DIR`
+  unset), so the live host-side authorization is not confirmed here; and the
+  counters are process-lifetime only.
+- Historical consequence: before Phase 17, queue depth, provider health,
+  matching, cache, rendering, and stale-metadata counters existed internally but
+  there was no bounded, secret-free status surface; ADR-020 clause 7 scopes
+  logging as a diagnostic mechanism rather than a metrics/status surface, so
+  operators had no supported in-product view. The panel and endpoint now provide
+  that view without exposing credentials or full external payloads, and
+  architecture section 12 records the shipped shape.

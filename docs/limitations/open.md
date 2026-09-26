@@ -2,18 +2,6 @@
 
 ## Functional and operational limitations (deferred, not implemented)
 
-### F3. No bounded, secret-free metrics/diagnostic-status surface
-
-Queue depth, provider health, matching, cache, rendering, and stale-data
-counters exist internally, but there is no bounded, secret-free user-facing or
-diagnostic status surface.
-
-- Evidence: `docs/architecture/12-performance-and-operational-limits.md`
-  (documented as an open limitation here); `PLANS.md` Post-V1 Backlog.
-- Consequence: operators have no supported in-product view of queue depth or
-  provider health. Architecture section 12 states this as a recommendation, not
-  a hard V1 gate.
-
 ### F4. Reconciliation coverage is bounded by `QueueCapacity`
 
 The scheduled and post-scan scopes are enumerated from the start of a

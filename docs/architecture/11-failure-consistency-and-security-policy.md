@@ -54,3 +54,19 @@ the emitted data shape is identical at every verbosity level, and log output is
 bounded by the code-owned `LogThrottle` (section 12). ADR-012
 resolves the route exposure, authentication transport, payload policy, replay
 handling, rate policy, and administration flow that ADR-005 left open.
+
+ArrTags also exposes a read-only diagnostics status surface (ADR-025). The
+class-level elevation-gated `GET ArrTags/Status` route returns a fixed-shape,
+bounded, secret-free snapshot of process-lifetime counters and never mutates
+configuration, work, or artwork; it adds no write route and no configuration
+setting. The settings-page panel that renders it is served from the anonymous
+static page resource, obtains its data solely from that route, and renders no
+data when the route is unauthorized or unavailable or the response is
+unparseable or not a JSON object (fail-closed). A well-formed but unexpected or
+partial-shape object instead renders the fixed counter table with the bounded
+fallback values (a missing or non-numeric count as `0`, an unrecognized health
+value as `Unknown`), so no free-form response text is ever written; the response
+carries no path, item name, item identifier list, provider payload, credential,
+`SecretLease` value, or unbounded collection. The fresh security
+review of the endpoint and panel required by ADR-025 clause 6 is recorded at
+`docs/implementation/17.4/security-review.json`.

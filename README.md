@@ -47,8 +47,8 @@ configuration API, so the plugin no longer has to be configured by editing XML b
 hand. The page covers the provider connections and their API keys, the webhook
 secret, the Movie/Episode poster flags, the enabled-library scope, the renderer
 selectors/templates and their value allowlists, the badge position and size, the
-palette overrides, the operational limits, and the
-bounded log verbosity.
+palette overrides, the operational limits, the bounded log verbosity, and the
+read-only diagnostics panel.
 
 The page itself embeds no secret and only shows a secret value that Jellyfin's
 existing administrator configuration API already returns. A saved change is
@@ -134,6 +134,23 @@ The four defaults are the code-owned ADR-009/ADR-010 output policy
 (`src/ArrTags/Rendering/RenderOutputPolicy.cs`). A changed palette is
 output-affecting because it participates in the render fingerprint, so the next
 reconciliation re-renders the affected posters with the new colors.
+
+### Diagnostics panel
+
+The settings page also shows a read-only **Diagnostics** panel with bounded,
+process-lifetime counters for the current Jellyfin session: update-queue depth
+and in-flight work; the last observed Sonarr and Radarr connection health;
+matching failures (not found, ambiguous, unsupported); provider-inventory cache
+hits and misses; render failures by bounded classification; and stale-metadata
+transitions. The panel adds no setting and changes no saved value. Its data
+comes from an administrator-only plugin endpoint (`GET /ArrTags/Status`), so it
+is visible only to an authenticated administrator. A non-administrator, an
+unavailable endpoint, or an unparseable or non-object response leaves the panel
+showing no data. A well-formed response of an unexpected or partial shape
+instead renders the fixed counter table with its fallback values: a missing or
+non-numeric count shows as `0` and an unrecognized health value as `Unknown`.
+The counters are process-lifetime: they reset when Jellyfin restarts and are
+never persisted.
 
 ### Minimal `ArrTags.xml` example
 
