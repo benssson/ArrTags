@@ -1,0 +1,73 @@
+{
+  "task": "20.2",
+  "title": "F7 coverage tests",
+  "phase": 20,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 20.2 adds coverage tests over behaviour already implemented and reviewed in task 20.1, which itself reused the pinned-host-verified guarded restore/removal protocol. No new Jellyfin 12 platform behaviour, provider contract, or first-time ADR-against-host implementability question governs a criterion; the tests exercise the existing durable operation journal, recovery gate, and fence decisions with in-process fakes and a state-root reconstruction.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 243064,
+        "output_tokens": 28409,
+        "reasoning_tokens": 43332,
+        "cache_read_tokens": 17535360,
+        "cache_write_tokens": 0,
+        "total_tokens": 17850165,
+        "cost_usd": 0.13211028,
+        "duration_seconds": 1111,
+        "session_id": "ses_f16cab32affe4lBqo0vTobPh5t"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 75288,
+        "output_tokens": 11991,
+        "reasoning_tokens": 6828,
+        "cache_read_tokens": 3318347,
+        "cache_write_tokens": 0,
+        "total_tokens": 3412454,
+        "cost_usd": 0,
+        "duration_seconds": 463,
+        "session_id": "ses_f16b940aeffe9IE7Pgmu9Tt6Vr"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 63972,
+        "output_tokens": 15317,
+        "reasoning_tokens": 11355,
+        "cache_read_tokens": 3807841,
+        "cache_write_tokens": 0,
+        "total_tokens": 3898485,
+        "cost_usd": 0,
+        "duration_seconds": 569,
+        "session_id": "ses_f16b1d95fffeFtQnSCqMMo4kbD"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": "Test-only task: git diff src/ is empty. Runtime figures are the authoritative OpenCode server values for each child session (read directly from the running server because the collect-session-usage.sh CLI cannot talk to this server instance). implementation-reviewer and test-quality-reviewer reported cost_usd 0 (the provider's runtime value), recorded as-is. No rework: the implementation-reviewer approved attempt 1 with no open findings. The test-quality-reviewer's open findings are LOW/INFORMATIONAL; TQR-20.2-01 (recovery-resume absent-baseline removal not separately proven) and the architecture-09 removal-wording gap are carried to task 20.3, and the three unexercised defensive coordinator branches are recorded unclaimed for the phase review."
+}

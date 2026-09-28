@@ -1,0 +1,165 @@
+{
+  "task": "20.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "AR-20.2-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The required direct-publisher absent-baseline test reaches the internal ArtworkPublisher.RestoreAsync through a name-based reflection helper, so the coverage is correct but coupled to the method's exact name and signature.",
+      "detail": "The test assembly has no InternalsVisibleTo and the production boundary must stay internal (ADR-024 clause 2), so the worker added a test-local `RestoreAsync(ArtworkPublisher, ArtworkLifecycleFence)` helper that resolves `typeof(ArtworkPublisher).GetMethod(\"RestoreAsync\", BindingFlags.Instance | BindingFlags.NonPublic)` and invokes it on the same instance with the same arguments. `Assert.NotNull(method)` prevents a silent no-op if the method disappears, and reflection over non-public members is already an established pattern in this test project (for example EnhancedCoexistenceTests.cs:240, ConfigurationRoundTripTests.cs:153). The cost is that a rename or an added overload becomes a runtime failure (or an AmbiguousMatchException) rather than a compile error; the assertions themselves are unaffected. This is a test-only mechanism and no production visibility was widened.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArtworkPublisherTests.cs (RestoreAsync reflection helper and its XML doc comment)",
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:510-514 (single internal RestoreAsync overload; internal boundary unchanged)",
+        "grep: no InternalsVisibleTo in src/ or tests/; reflection precedent in EnhancedCoexistenceTests.cs:240 and ConfigurationRoundTripTests.cs:153",
+        "git diff src/ -> empty"
+      ],
+      "recommended_action": "None required. If the project later grants the test assembly internals access, replace the helper with a direct call; the assertions stay identical."
+    },
+    {
+      "id": "AR-20.2-02",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The crash-recoverability case models the restart by reconstructing the services over the same state root, not by killing and restarting a process; the limitation is stated honestly and the reconstruction is genuine.",
+      "detail": "CoordinatorDrivenRestorationIsResumedByTheOrdinaryRecoveryGate interrupts the save with an injected InvalidOperationException thrown from the fake host before any bytes are applied. Inspection of the production path confirms this is the only way the durable state can be left behind: ExecuteRestorationAsync has already written the RestorePending state and the Prepared/MutationStarted Restoration operation, and the exception is not an OperationCanceledException, so it escapes ExecuteRestorationAsync and RestoreCoreAsync and is contained by RestoreAsync's bounded catch, which persists nothing further (src/ArrTags/Artwork/ArtworkPublisher.cs:725-734, 547-552). The test then builds a fresh StateRepository, SourceArtifactStore, PublishedArtworkStateStore, ArtworkOperationStore, ArtworkPublisher and ArtworkReconciler over the same root; the stores read from disk on every Read (src/ArrTags/State/StateRepository.cs:58-64, src/ArrTags/Artwork/PublishedArtworkStateStore.cs:66-70), so nothing of the interrupted attempt is carried in memory. The resumed reconcile is a real decision-table pass: the operation is non-terminal, LastOperationId does not match, the observed image matches neither ObservedAfter nor CandidateAfter, and ExpectedBeforeIdentity still compares Owned, which yields ArtworkRecoveryAction.Resume and the restoration branch of ResumeRecoveryAsync. The assertions go beyond `OperationId != null` (which TQR-20.1-02 flagged as insufficient): they assert the durable Kind=Restoration, LifecycleFence=Normal, IsTerminal=false, State=RestorePending, zero completed mutations before the restart, and after the restart Completed/IsCommitted, the same OperationId, exactly one save of the retained baseline, and state Restored. The worker states plainly that this is not a real process restart.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArtworkReconcilerTests.cs (CoordinatorDrivenRestorationIsResumedByTheOrdinaryRecoveryGate, fresh services over the same root)",
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:640-665 (state and operation written before the mutation), :725-734 (only OperationCanceledException is caught at the mutation), :547-552 (bounded outer catch writes nothing), :1266-1271 (restoration branch of ResumeRecoveryAsync)",
+        "src/ArrTags/Artwork/ArtworkRecoveryDecisions.cs:44-100 (Resume requires a non-terminal operation, no durable final state, and an owned before-identity match)",
+        "src/ArrTags/State/StateRepository.cs:58-64 and src/ArrTags/Artwork/PublishedArtworkStateStore.cs:66-70 (every read hits disk; no in-memory cache)"
+      ],
+      "recommended_action": "None. Keep the wording honest: the case proves durable-record recoverability through the ordinary recovery gate, not process-level restart survival; a real process-kill leg belongs to live pinned-host verification in Phase 21."
+    },
+    {
+      "id": "AR-20.2-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing",
+      "summary": "The genuine non-empty NoFittingBadge coordinator case is ARRTAGS_SKIA_COMPAT-guarded and therefore absent from the default suite; the guard is a real environment requirement, the skip is reported, and I confirmed 1/1 under the pinned native oracle.",
+      "detail": "NonFittingSelectionOnAnOwnedSessionPassesThroughAsNoFittingBadgeWithoutMutation is [SkiaNativeFact], which sets Skip unless ARRTAGS_SKIA_COMPAT=1 (tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:142-153). The guard is honest: the case constructs a real SkiaBadgeRenderer and encodes/decodes an SKBitmap through RendererBehaviorFixtures.CreateOpaquePng(10, 10), which cannot run without the pinned native runtime, exactly like the pre-existing decode-dependent siblings. I ran it in the default configuration (reported as an explicit [SKIP] line, 1 skip) and under the repository's pinned probe sysroot with ARRTAGS_SKIA_COMPAT=1 (Failed 0, Passed 1, Skipped 0, Total 1), so the case genuinely executes there. The selection it uses is real and non-empty: the coordinator Request() supplies RenderTestFixtures.BuildMetadata() with quality, resolution, codec and source values, and at 10x10 the layout engine cannot fit any pill, which is the same deterministic construction the 20.1 renderer-level case uses. In the default configuration the NoFittingBadge preserve guarantee therefore rests on the 20.1 FakeRenderer theory row, which does run; the native case closes TQR-20.1-03's single-configuration request for the native configuration. No ADR-024 behavior is claimed verified by the default suite on the strength of the skip alone.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:603-647 (the [SkiaNativeFact] case) and :451-476 (the 20.1 theory row that covers NoFittingBadge in the default suite)",
+        "tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:142-153 (the guard)",
+        "tests/ArrTags.Tests/RendererBehaviorFixtures.cs:84-98 (CreateOpaquePng needs the native runtime)",
+        "default run: Failed 0, Passed 1926, Skipped 66, Total 1992 with the case printed as [SKIP]",
+        "pinned-oracle run of the focused case: Failed 0, Passed 1, Skipped 0, Total 1"
+      ],
+      "recommended_action": "None. Do not later describe the default configuration as proving the non-empty layout-failure guarantee end to end; the native case only executes under the oracle configuration."
+    },
+    {
+      "id": "AR-20.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "workflow",
+      "summary": "docs/plan/state.json must additionally list this reviewer report before the agent-contract check passes; that is the post-review orchestrator step under docs/agent-contracts.md clause 5.",
+      "detail": "On the current tree scripts/check-docs.sh fails only on the two agent-contract lines, both emitted from the same condition: 'task 20.2 has a worker report but no reviewer report' and the state-evidence line that requires any reports entry matching 'reviewer-report' (scripts/check-agents.sh:112-150). The first clears when this report is written; the second clears when the orchestrator adds docs/implementation/20.2/reviewer-report.json to the task's reports array, matching the 20.1 entry. All other check-docs sections pass, and dotnet run scripts/render-docs-state.cs reports both generated blocks up to date (status.md unchanged; the PLANS.md milestone table unchanged because Phase 20 stays PLANNED until its gate passes). The worker's state edit (done=true, reports=[worker-report.json]) is correct and complete for its own scope.",
+      "evidence": [
+        "scripts/check-docs.sh output (every section ok except the two agent-contract lines)",
+        "docs/plan/state.json 20.2 entry (done=true, reports=[docs/implementation/20.2/worker-report.json])",
+        "docs/plan/state.json 20.1 entry (worker + reviewer + test-quality reports listed)",
+        "dotnet run scripts/render-docs-state.cs -> 'status.md: up to date', 'PLANS.md: up to date'"
+      ],
+      "recommended_action": "The orchestrator should add docs/implementation/20.2/reviewer-report.json to the 20.2 reports array in docs/plan/state.json and write docs/implementation/20.2/orchestration.json as for the other Phase 20 tasks."
+    },
+    {
+      "id": "AR-20.2-05",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation",
+      "summary": "The F7 limitation register entry, the Phase 20 changelog entry, the ADR-009/ADR-003 amendment notes, and the architecture-09 coordinator-attributed removal wording remain outstanding; PLANS.md assigns them to task 20.3.",
+      "detail": "docs/limitations/open.md still lists F7 as Open with the preserve-only description, and docs/architecture/09-persisted-artwork-rendering.md still reads as though the coordinator drives the absent-baseline removal. The latter is inaccurate in the sense TQR-20.1-04 recorded: the removal branch is publisher-path-only, because ReadRetainedSource returns an Absent result for an absent baseline so GenerateCoreAsync returns NoSource before rendering (src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:346-349, 213-219); the new absent-baseline test documents exactly that in its opening comment. PLANS.md line 247 assigns 20.3 to 'F7 documentation and integration verification' and the worker report's documentation_reconciliation states the deferral explicitly. This is a required precondition for 20.3, not a defect of 20.2.",
+      "evidence": [
+        "PLANS.md:243-247 (20.3 F7 documentation and integration verification)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:346-349 (absent baseline returns Absent from ReadRetainedSource)",
+        "tests/ArrTags.Tests/ArtworkPublisherTests.cs (absent-baseline test comment recording the same fact)",
+        "docs/implementation/20.1/test-quality-review.json finding TQR-20.1-04",
+        "docs/implementation/20.2/worker-report.json documentation_reconciliation.old_values_removed[3]"
+      ],
+      "recommended_action": "Task 20.3 must attribute the absent-baseline removal to the publisher path in docs/architecture/09, resolve the F7 register entry, add the Phase 20 changelog entry, and record the ADR-009/ADR-003 amendment notes."
+    },
+    {
+      "id": "AR-20.2-06",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "testing",
+      "summary": "Two defensive coordinator branches from TQR-20.1-04 remain uncovered: the fence-read catch and the null-reconciliation guard in RestoreEmptySelectionAsync, plus the invalid-state branch of HasOwnedPublishedSession.",
+      "detail": "RestoreEmptySelectionAsync converts an exception from ArtworkLifecycleFenceStore.Read into a pass-through, and maps a null reconciliation result to Blocked; the invalid/quarantined state read in HasOwnedPublishedSession is treated as not owned. None is in the task's acceptance list, none is documented as a required behavior beyond fail-closed preservation, and the result-level null guard the task does own is covered by ArtworkGenerationResultTests.NullReconciliationIsRejected. Recording so Gate 20 is not read as proving these branches; closing them would require fault injection into a store seam that does not exist.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:486-530 (fence-read catch, null-reconciliation guard)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:460-465 (invalid-state branch of HasOwnedPublishedSession)",
+        "tests/ArrTags.Tests/ArtworkGenerationResultTests.cs:82-87 (the result-level null guard the task owns)"
+      ],
+      "recommended_action": "None for this task; recorded as known unexercised defensive branches."
+    }
+  ],
+  "acceptance_criteria_reviewed": [
+    {
+      "criterion": "1. Direct publisher absent-baseline removal (explicit Phase 20 acceptance criterion)",
+      "verdict": "satisfied",
+      "evidence": "tests/ArrTags.Tests/ArtworkPublisherTests.cs AbsentBaselineRestorationRemovesTheArrtagsImageWithoutSaveOrUpdate builds a synthetic persisted Published state through the new PublishedState(active, sourceBytes: null) helper (CaptureSession with an Absent source identity and no artifact, then CommitPublication whose active identity matches what the fake host reports so the ownership revalidation is Owned), then calls the internal RestoreAsync(..., Normal, ...) directly. It asserts Completed + IsCommitted, RemoveCalls==1, SaveCalls==0, UpdateCalls==0, SavedBytes/SavedContentType null, host CurrentBytes null (the fake's RemoveImageAsync nulls it, so a removal is not invisible), PhaseAtRemove == MutationStarted (write-ahead before the mutation), the durable operation Kind=Restoration / Phase=Committed / CandidateAfterPresence=Absent / CandidateAfterContentSha256 null / SourceArtifactId null / LifecycleFence=Normal / matching OperationId, and the state Restored with SourcePresence=Absent and both identities released. The removal boundary is therefore proven and no save or item update can be hiding. Independent sensitivity: with the production removal branch replaced by an unconditional SaveImageAsync in a throwaway copy of the tree (/tmp/20.2/probe), the test fails (Expected Completed, Actual RecoveryBlocked), so it cannot pass for the wrong reason. The test's own comment correctly records that the coordinator cannot reach this branch."
+    },
+    {
+      "criterion": "2. Coordinator coverage matrix",
+      "verdict": "satisfied",
+      "evidence": "Owned empty selection restoring the retained baseline is 20.1's EmptySelectionOnAnOwnedSessionRestoresTheRetainedBaseline, now strengthened with RemoveCalls==0 and the durable operation's Kind=Restoration / Phase=Committed / LifecycleFence=Normal / OperationId. The non-owned empty selection stays a pass-through (20.1, with ReconciliationOutcome null as the isolating assertion, now also annotated in the diff). The five other reasons keep the 20.1 theory (NoMetadata, NoFittingBadge, IneligibleSurface, MatchNotEligible, SourceUnavailable) with unchanged save/update/remove counts and a retained Published state. The one genuinely new leg is the native NoFittingBadge case using a real SkiaBadgeRenderer and a non-empty resolved selection that cannot fit on a 10x10 baseline; it is honestly native-guarded, skips in the default suite, and passes 1/1 under the pinned oracle."
+    },
+    {
+      "criterion": "3. Fence variants",
+      "verdict": "satisfied",
+      "evidence": "Permitted: EmptySelectionRestorationIsPermittedUnderDisableAndUninstallFences (coordinator, theory Disable/Uninstall, asserts Restored/Completed, the retained baseline written, RemoveCalls==0, and a committed Restoration operation carrying the active fence) and RestorationIsPermittedUnderDisableAndUninstallFences (publisher, theory, same fence on the operation). Refused with no mutation: NonRestorableFencePreservesAnOwnedSessionWithoutMutation (20.1, ItemRemoved via the coordinator) and the new publisher second layer RestorationIsRefusedUnderTheItemRemovedFenceWithoutMutation (NothingToReconcile, zero save/update/remove, host bytes unchanged, Published state kept, no operation record). Invalid/unreadable fence record: InvalidFenceRecordPreservesAnOwnedSessionWithoutMutation writes a corrupt authoritative fence record so ArtworkLifecycleFenceStore.Read returns ArtworkLifecycleFenceState.Invalid (IsValid=false, Fence=Uninstall) and asserts pass-through, ReconciliationOutcome null, no mutation, retained Published state, and that only the original Publication operation exists. Independent sensitivity: dropping IsValid from the coordinator guard made exactly this test fail (Expected RenderPassThrough, Actual Restored) while the 20.1 ItemRemoved case still passed, so the new case isolates the fail-closed guard and the publisher-layer case isolates the second layer. The worker's interpretation that an 'invalid record' can only be observed at the store read is correct."
+    },
+    {
+      "criterion": "4. Crash recoverability through the ordinary recovery gate",
+      "verdict": "satisfied",
+      "evidence": "tests/ArrTags.Tests/ArtworkReconcilerTests.cs CoordinatorDrivenRestorationIsResumedByTheOrdinaryRecoveryGate: a Normal-fence coordinator (no fence store) drives the empty-selection restoration, the injected save failure leaves RestorePending plus a non-terminal Restoration operation with zero completed mutations, and fresh stores/publisher/reconciler over the same root resume it through ArtworkRecoveryDecisions -> ArtworkReconciler.ReconcileAsync -> ExecuteRecoveryAsync -> ResumeRecoveryAsync -> ResumeRestorationAsync to Completed/Committed with the same OperationId and exactly one save of the retained baseline. The seeded state uses a helper whose active identity matches the fake host's reported bytes so the resume passes the ownership revalidation. Independent sensitivity: changing the restoration branch condition in ResumeRecoveryAsync to ArtworkOperationKind.Publication made the test fail (Expected Completed, Actual RecoveryBlocked). This closes the TQR-20.1-02 gap that OperationId != null does not establish recoverability."
+    },
+    {
+      "criterion": "5. Bounded result mapping",
+      "verdict": "satisfied",
+      "evidence": "tests/ArrTags.Tests/ArtworkGenerationResultTests.cs (new file) covers Completed->Restored, Cancelled->Cancelled, NothingToReconcile->RenderPassThrough, and OwnershipLost/OwnershipUnknown/RecoveryBlocked->Blocked, asserting ReconciliationOutcome, the retained NoDisplayableValue pass-through reason, the reason text, the OperationId, a null state, and Preserved false only for the completed mapping; plus the committed-state identity case, the refused-restoration classification, and the null-reconciliation guard. The mapping asserted matches ArtworkGenerationResult.FromRestoration exactly, and the test does not restate the implementation as a tautology only: it pins the retained pass-through reason and the Preserved contract, which are the caller-visible guarantees."
+    },
+    {
+      "criterion": "6. Missing-fence-store default drives Normal",
+      "verdict": "satisfied",
+      "evidence": "MissingFenceStoreDrivesTheRestoreUnderTheNormalFence builds ArtworkGenerationCoordinator without the fences argument after a real publication and asserts Restored/Completed, the retained baseline written, and a committed Restoration operation with LifecycleFence=Normal. Independent sensitivity: changing the coordinator's null default to ArtworkLifecycleFenceState.Invalid failed this test (Expected Restored, Actual RenderPassThrough) while the fence-store-backed 20.1 restore case still passed, so the case isolates the null default and closes TQR-20.1-01."
+    },
+    {
+      "criterion": "Scope and production diff",
+      "verdict": "satisfied",
+      "evidence": "git status shows only PLANS.md, docs/plan/state.json, three existing test files, the new ArtworkGenerationResultTests.cs, and docs/implementation/20.2/. git diff --numstat shows the three test files at 170/152/114 insertions with zero deletions, so no existing assertion was removed or weakened; the PLANS.md/state.json changes are the checkbox and the task status. git diff src/ is empty."
+    }
+  ],
+  "tests_checked": [
+    "dotnet build tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Default suite (dotnet test --configuration Release --no-build): Failed 0, Passed 1926, Skipped 66, Total 1992, matching the worker's reported numbers exactly, with the new native case printed as an explicit [SKIP].",
+    "Forced-native pinned-oracle suite (LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=... XDG_DATA_DIRS=...): Failed 0, Passed 2013, Skipped 21, Total 2034, matching the worker's reported numbers exactly.",
+    "Focused pinned-oracle run of NonFittingSelectionOnAnOwnedSessionPassesThroughAsNoFittingBadgeWithoutMutation: Failed 0, Passed 1, Skipped 0, Total 1 (the native case genuinely executes under the oracle).",
+    "Focused default run of the four touched classes (ArtworkPublisherTests, ArtworkGenerationCoordinatorTests, ArtworkReconcilerTests, ArtworkGenerationResultTests): Failed 0, Passed 91, Skipped 1, Total 92.",
+    "Reviewer probe A (independent, in a throwaway copy at /tmp/20.2/probe): removal branch replaced by an unconditional SaveImageAsync -> AbsentBaselineRestorationRemovesTheArrtagsImageWithoutSaveOrUpdate fails (Expected Completed, Actual RecoveryBlocked).",
+    "Reviewer probe B (independent): ResumeRecoveryAsync restoration branch changed to ArtworkOperationKind.Publication -> CoordinatorDrivenRestorationIsResumedByTheOrdinaryRecoveryGate fails (Expected Completed, Actual RecoveryBlocked).",
+    "Reviewer probe C (independent): coordinator null-fence-store default changed to Invalid -> MissingFenceStoreDrivesTheRestoreUnderTheNormalFence fails (Expected Restored, Actual RenderPassThrough) while EmptySelectionOnAnOwnedSessionRestoresTheRetainedBaseline passes.",
+    "Reviewer probe D (independent): coordinator refusal condition changed to fenceState.IsValid && !fenceState.AllowsNewRestoration -> InvalidFenceRecordPreservesAnOwnedSessionWithoutMutation fails (Expected RenderPassThrough, Actual Restored) while the 20.1 ItemRemoved case passes.",
+    "The host-guarded leg (ARRTAGS_JELLYFIN_HOST_DIR) was not run; the pinned Jellyfin host is not present in this environment and the task does not claim it."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-024.md clauses 1-8 against the tests: the NoDisplayableValue discriminator, the single internal RestoreAsync entry point, the crash-recoverable requirement, the preserve list including NoFittingBadge, and the non-owned pass-through all match what the tests assert.",
+    "docs/planning/v1.2.md Goal F7 acceptance criteria and section 9 verification requirements: every F7 criterion including the direct publisher absent-baseline test is now covered by a test in the 20.1 + 20.2 set.",
+    "docs/limitations/open.md F7 and docs/implementation/20.1/test-quality-review.json TQR-20.1-01..05: each gap assigned to 20.2 (null fence store default, RemoveCalls/Kind=Restoration plus the reconciler resume, the single-configuration NoFittingBadge case, the FromRestoration matrix, the fence variants, the absent-baseline removal) is closed; the architecture-09 wording item is correctly deferred to 20.3.",
+    "No external or upstream research was required: the task is test-only against in-repository production behavior already covered by 20.1's acceptance review."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 20.2 done=true with reports [docs/implementation/20.2/worker-report.json] and updated_utc advanced; the reviewer report still needs to be added to reports (AR-20.2-04).",
+    "PLANS.md: '- [x] 20.2 F7 coverage tests'; the generated milestone table is outside the diff and render-docs-state reports it up to date.",
+    "dotnet run scripts/render-docs-state.cs: 'status.md: up to date' and 'PLANS.md: up to date' (Phase 20 correctly stays PLANNED until Gate 20).",
+    "scripts/check-docs.sh: all sections ok except the two expected agent-contract lines, both caused by the not-yet-listed/absent reviewer report (AR-20.2-04).",
+    "docs/limitations/open.md (F7 still Open) and the Phase 20 changelog/ADR amendment notes: verified as assigned to task 20.3 by PLANS.md, so not a 20.2 defect (AR-20.2-05)."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "summary": "Task 20.2 delivers all six assigned coverage requirements as test-only work with an empty production diff. I verified each claim against the test sources rather than the report: the direct absent-baseline publisher test reaches the removal branch (synthetic persisted Published state with SourcePresence=Absent and no artifact) and pins the removal boundary, the write-ahead phase before it, the committed Restoration operation, and zero save/item-update calls; the coordinator matrix is complete and the new NoFittingBadge leg uses a real SkiaBadgeRenderer with a genuinely non-empty selection that cannot fit, honestly native-guarded, skipping in the default suite and passing 1/1 under the pinned oracle; the fence variants cover both the coordinator guard and the publisher's second layer, plus the fail-closed invalid record; the crash-recoverability case reconstructs the services over the same durable root and genuinely exercises ArtworkRecoveryDecisions -> ArtworkReconciler -> ResumeRestorationAsync rather than inferring recoverability from an OperationId; the bounded result mapping and the missing-fence-store default are both covered. I reproduced all four of the worker's sensitivity probes independently in a throwaway copy, each failing exactly the intended test, and independently reproduced the default suite (1926/66/1992) and the forced-native pinned-oracle suite (2013/21/2034) with zero failures. The only open workflow item is that the orchestrator must add this report to the 20.2 reports array, which is the documented post-review step. APPROVED; ready for 20.3.",
+  "ready_for_next_task": true
+}

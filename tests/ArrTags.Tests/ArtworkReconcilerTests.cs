@@ -6,6 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Artwork;
 using ArrTags.Configuration;
+using ArrTags.Matching;
+using ArrTags.Media;
+using ArrTags.Metadata;
 using ArrTags.Rendering;
 using ArrTags.State;
 using Microsoft.Extensions.DependencyInjection;
@@ -434,6 +437,69 @@ public sealed class ArtworkReconcilerTests : IDisposable
         Assert.Equal(ArtworkOperationPhase.Committed, _operations.Read(_item, Surface).Value!.Phase);
     }
 
+    [Fact]
+    public async Task CoordinatorDrivenRestorationIsResumedByTheOrdinaryRecoveryGate()
+    {
+        // The synthetic active identity must match what the fake host reports
+        // for the current bytes so the restoration's ownership revalidation
+        // succeeds (the default PublishedState helper records a different image
+        // tag, which the shared ownership comparer treats as a change).
+        _states.Write(PublishedStateWithActive(_derived));
+        _host.CurrentBytes = _derived;
+
+        // The coordinator (a Normal-fence caller, no lifecycle-fence store)
+        // drives the empty-selection restoration. The save call fails as an
+        // interrupted process would fail it: the durable state is RestorePending
+        // and the Restoration operation is left non-terminal, which is exactly
+        // what survives a restart.
+        var renderer = new PassThroughRenderer();
+        var coordinator = new ArtworkGenerationCoordinator(_host, renderer, _publisher, _states, _artifacts);
+        _host.ThrowOnSaveOnce = true;
+
+        var driving = await coordinator.GenerateAsync(GenerationRequest(), CancellationToken.None);
+
+        Assert.Equal(ArtworkGenerationOutcome.Blocked, driving.Outcome);
+        Assert.Equal(1, renderer.Calls);
+        var durable = _operations.Read(_item, Surface).Value!;
+        Assert.Equal(ArtworkOperationKind.Restoration, durable.Kind);
+        Assert.Equal(ArtworkLifecycleFence.Normal, durable.LifecycleFence);
+        Assert.False(durable.IsTerminal);
+        Assert.Equal(ArtworkPublicationState.RestorePending, _states.Read(_item, Surface).Value!.State);
+        Assert.Equal(0, _host.SaveCalls);
+        Assert.Equal(0, _host.RemoveCalls);
+
+        // Restart: fresh stores and services over the same state root, resumed
+        // by the ordinary recovery gate exactly as a lifecycle-drain restoration
+        // is resumed.
+        var restartedRepository = new StateRepository(_root);
+        var restartedArtifacts = new SourceArtifactStore(restartedRepository);
+        var restartedStates = new PublishedArtworkStateStore(restartedRepository);
+        var restartedOperations = new ArtworkOperationStore(restartedRepository);
+        var restartedPublisher = new ArtworkPublisher(
+            _host,
+            _host,
+            restartedArtifacts,
+            restartedStates,
+            restartedOperations,
+            new OperationalLimits());
+        var restartedReconciler = new ArtworkReconciler(_host, restartedStates, restartedOperations, restartedPublisher);
+
+        var resumed = await restartedReconciler.ReconcileAsync(_item, Surface, CancellationToken.None);
+
+        Assert.Equal(ArtworkReconciliationOutcome.Completed, resumed.Outcome);
+        Assert.True(resumed.IsCommitted);
+        Assert.Equal(durable.OperationId, resumed.OperationId);
+        Assert.Equal(1, _host.SaveCalls);
+        Assert.Equal(_source, _host.SavedBytes);
+        Assert.Equal(1, _host.UpdateCalls);
+        Assert.Equal(0, _host.RemoveCalls);
+
+        var committed = restartedOperations.Read(_item, Surface).Value!;
+        Assert.Equal(ArtworkOperationKind.Restoration, committed.Kind);
+        Assert.Equal(ArtworkOperationPhase.Committed, committed.Phase);
+        Assert.Equal(ArtworkPublicationState.Restored, restartedStates.Read(_item, Surface).Value!.State);
+    }
+
     // ---- No work and bounded failure -------------------------------------------
 
     [Fact]
@@ -623,6 +689,21 @@ public sealed class ArtworkReconcilerTests : IDisposable
         return PublishedArtworkStateTransitions.RequestRestore(PublishedState(), At.AddDays(1)).State;
     }
 
+    private PublishedArtworkState PublishedStateWithActive(byte[] activeBytes)
+    {
+        var session = PublishedArtworkStateTransitions
+            .CaptureSession(null, _item, Surface, Identity(_source), ArtworkStateFixtures.Artifact(_source), At)
+            .State;
+        return PublishedArtworkStateTransitions
+            .CommitPublication(
+                session,
+                Identity(activeBytes),
+                ArtworkHashes.ComputeSha256(Encoding.UTF8.GetBytes("published-fingerprint")),
+                RenderVersion.CurrentRendererVersion,
+                At)
+            .State;
+    }
+
     private static ActiveImageIdentity Identity(byte[] bytes, string tag = "tag-1")
     {
         return new ActiveImageIdentity(
@@ -634,6 +715,19 @@ public sealed class ArtworkReconcilerTests : IDisposable
             150,
             DateTimeOffset.UnixEpoch,
             tag);
+    }
+
+    private ArtworkGenerationRequest GenerationRequest()
+    {
+        var identity = new MediaIdentity(_item, MediaItemType.Movie);
+        return new ArtworkGenerationRequest(
+            _item,
+            Surface,
+            identity,
+            RenderTestFixtures.BuildMatch(identity),
+            RenderTestFixtures.BuildMetadata(),
+            BadgeDefinition.V1Default,
+            "CONFIG-TEST");
     }
 
     private static ArtworkSourceReadResult CurrentResult(byte[] bytes)
@@ -672,6 +766,18 @@ public sealed class ArtworkReconcilerTests : IDisposable
         }
     }
 
+    private sealed class PassThroughRenderer : IRenderer
+    {
+        public int Calls { get; private set; }
+
+        public Task<RenderResult> RenderAsync(RenderRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Calls++;
+            return Task.FromResult(RenderResult.PassThrough(RenderPassThroughReason.NoDisplayableValue));
+        }
+    }
+
     private sealed class FakeArtworkHost : IArtworkSourceReader, IArtworkImageWriter
     {
         public byte[]? CurrentBytes { get; set; }
@@ -679,6 +785,8 @@ public sealed class ArtworkReconcilerTests : IDisposable
         public bool ApplySave { get; set; } = true;
 
         public bool ThrowOnRead { get; set; }
+
+        public bool ThrowOnSaveOnce { get; set; }
 
         public Func<ArtworkImageSurface, ArtworkSourceReadResult>? ReadOverride { get; set; }
 
@@ -726,6 +834,12 @@ public sealed class ArtworkReconcilerTests : IDisposable
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (ThrowOnSaveOnce)
+            {
+                ThrowOnSaveOnce = false;
+                throw new InvalidOperationException("The save call failed before any bytes were applied.");
+            }
+
             SaveCalls++;
             SavedBytes = content.ToArray();
             if (ApplySave)

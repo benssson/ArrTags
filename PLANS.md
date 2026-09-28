@@ -244,7 +244,7 @@ unchanged preservation for the other pass-through reasons; ADR-024 plus ADR-009
 and ADR-003 amendment notes; coverage tests.
 **Tasks:**
 - [x] 20.1 Empty-selection restore/removal behavior
-- [ ] 20.2 F7 coverage tests
+- [x] 20.2 F7 coverage tests
 - [ ] 20.3 F7 documentation and integration verification
 **Authoritative Phase 20 execution order:** 20.1, 20.2, 20.3
 **Phase acceptance criteria:** an owned empty selection restores the baseline, or
