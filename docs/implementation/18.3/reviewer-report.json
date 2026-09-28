@@ -1,0 +1,104 @@
+{
+  "task": "18.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F-18.3-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation accuracy / ADR index convention",
+      "summary": "The worker's stated basis that 'index rows mirror the ADR status lines' is loose, but the resulting ADR-019 index row is correct and convention-consistent.",
+      "detail": "ADR-016 and ADR-020 carry amendment annotations in their 00-index.md rows while their own ADR status lines remain plain 'Accepted (v1.1)', so the index row is the amended-status surface, not a literal mirror of the status line. The applied ADR-019 row ('Accepted (v1.1; clause 3 extended by ADR-027 (v1.2); supersedes the code-owned geometry and placement clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010)') correctly mirrors ADR-019.md's own status text and follows the ADR-016/ADR-020 amended-row style, and it repairs the previously truncated sentence visible in git diff. The rationale wording is imprecise but the artifact is accurate.",
+      "evidence": [
+        "docs/decisions/00-index.md:27",
+        "docs/decisions/ADR-019.md:3-8",
+        "docs/decisions/00-index.md ADR-016/ADR-020 rows (amended-row convention)",
+        "git diff docs/decisions/00-index.md (old row truncated mid-sentence)"
+      ],
+      "recommended_action": "No change required; informational only."
+    },
+    {
+      "id": "F-18.3-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation reconciliation / current-state surfaces",
+      "summary": "The ADR-019 index-row truncation repaired here was pre-existing, not introduced by this task; the repair is accurate and within the task's index-accuracy requirement.",
+      "detail": "git diff shows the pre-task row ended at '...supersedes the code-owned geometry and placement' with no closing text. 00-index.md is a current-state surface (not version-labelled history), so completing the row to match ADR-019's status is appropriate for the task's 'accurate ADR list/status' requirement and does not violate history immutability.",
+      "evidence": [
+        "git diff -- docs/decisions/00-index.md",
+        "docs/decisions/00-index.md:27"
+      ],
+      "recommended_action": "No change required; informational only."
+    },
+    {
+      "id": "F-18.3-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing evidence",
+      "summary": "The report honestly discloses that no new sensitivity probe was run because this is a documentation+verification task with no production/test change.",
+      "detail": "test_sensitivity states no new probe was required or run and attributes the G7 behavior sensitivity to tasks 18.1-18.2 (whose numbers match their persisted reports). This is an acceptable and honest disclosure for a documentation/verification task per the review brief.",
+      "evidence": [
+        "docs/implementation/18.3/worker-report.json test_sensitivity",
+        "docs/implementation/18.1/worker-report.json test_sensitivity",
+        "docs/implementation/18.2/worker-report.json test_sensitivity"
+      ],
+      "recommended_action": "No change required; informational only."
+    }
+  ],
+  "tests_checked": [
+    "Pinned native golden oracle (reviewer re-run): `LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=/tmp/arrtags-skia-probe/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/arrtags-skia-probe/sysroot/usr/share dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~RenderGoldenTests\"` -> Failed 0, Passed 17, Skipped 0, Total 17.",
+    "Focused G7 run (reviewer re-run): filter `DashboardSettingsPageTests|BadgeSizePositionTests|RendererConfigurationTests|RenderFingerprintTests` under the pinned native runtime -> Failed 0, Passed 115, Skipped 2, Total 117; both skips are the [JellyfinHostFact] pinned-dashboard facts.",
+    "Default suite (reviewer re-run): `source /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1799, Skipped 64, Total 1863.",
+    "`git status --short tests/ArrTags.Tests/Goldens/` -> empty after the reviewer's test runs (no committed golden or manifest entry modified).",
+    "`git diff --stat src/` -> empty; `RenderVersion.CurrentRendererVersion = 3` (src/ArrTags/Rendering/RenderVersion.cs:23); `RendererConfiguration.CurrentSchemaVersion = 2` (src/ArrTags/Configuration/RendererConfiguration.cs:34).",
+    "`dotnet run scripts/render-docs-state.cs -- --check` -> status.md up to date; PLANS.md up to date; PLANS.md and state.json agree."
+  ],
+  "research_checked": [
+    "docs/planning/v1.2.md Goal G7 and section 7 Phase 18 documentation row (required document set).",
+    "docs/decisions/ADR-027.md decision clauses 1-6 and the new Implementation note (v1.2, tasks 18.1-18.3); figures cross-checked against docs/implementation/18.1/worker-report.json and 18.2/worker-report.json.",
+    "docs/decisions/ADR-019.md clauses 1-7 and status line, and the new Extension note (v1.2, ADR-027; task 18.3).",
+    "Implementation-note convention in ADR-025.md:81, ADR-026.md:94, ADR-028.md:136 (all '### Implementation note (v1.2, tasks ...)', placed after Consequences and before Rejected alternatives) - matches ADR-027.md:59 placement.",
+    "Source pins: BadgeSize.ExtraLarge = 3 (src/ArrTags/Rendering/BadgeSize.cs:39); BadgeGeometry.ExtraLargeSizeFactor = 2.0 and switch arm (src/ArrTags/Rendering/BadgeGeometry.cs:90,105); config.html dropdown order with value=\"ExtraLarge\" (src/ArrTags/Configuration/config.html:163-167).",
+    "Test class/method names cited by the changelog: RenderFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint (RenderFingerprintTests.cs:170), RendererConfigurationTests.RendererFingerprintIsSensitiveToBadgePositionAndSize (RendererConfigurationTests.cs:553), RendererConfigurationTests.ValidatorAcceptsDefinedExtraLargeBadgeSizeAndTheFingerprintIncludesIt (RendererConfigurationTests.cs:590), DashboardSettingsPageTests.PageOrdersTheBadgeSizeOptionsSmallMediumLargeExtraLarge (DashboardSettingsPageTests.cs:190)."
+  ],
+  "documentation_checked": [
+    "docs/decisions/ADR-019.md - extension note appended (lines 81-100); all clause text above unchanged (diff is pure insertion).",
+    "docs/decisions/ADR-027.md - implementation note inserted after Consequences (lines 59-98), before Rejected alternatives; no clause rewritten.",
+    "docs/decisions/00-index.md:27 - ADR-019 row completed with clause-3-extension annotation.",
+    "docs/data-model/03-06-badgedefinition.md - placement row adds 'ADR-019, extended by ADR-027 with the Extra Large preset'.",
+    "docs/data-model/03-08-renderresult.md - v1.1 task 12.3 note (lines 54-81) retained verbatim; v1.2 task 18.3 note appended at line 83.",
+    "docs/data-model/03-12-configuration.md - v1.1 task 12.3 paragraph (lines 96-116) retained verbatim; v1.2 Extra Large paragraph appended at line 118.",
+    "docs/architecture/09-persisted-artwork-rendering.md - size/factor enumeration includes ExtraLarge/2.0 (lines 490-492); v1.2 version-decision paragraph appended (lines 515-521).",
+    "docs/changelog/v1.2.0.md - Task 18.3 entry (lines 1326-1444).",
+    "README.md:104 - Renderer.Size row already documents Medium (default), Small, Large, ExtraLarge; contains no dropdown-order statement, so no change needed.",
+    "docs/plan/state.json - updated_utc bumped to 2026-09-28T08:21:28Z; task 18.3 done=true with reports=[docs/implementation/18.3/worker-report.json]; phase 18 status PLANNED, gate 'Gate 18', tag 'v1.2.0-phase18' untouched.",
+    "PLANS.md:185 - 18.3 checkbox ticked; generated blocks verified by render-docs-state --check.",
+    "docs/status.md - generated; 'Active phases: Phase 18...' remains correct while Phase 18 is PLANNED."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding_id": "resumed-attempt-1-unverified-partial-edits (from worker report attempt 2)",
+      "reviewer_assessment": "Verified. The interrupted attempt-1 partial edits are present and correct; the reviewer independently confirmed all 10 documentation surfaces, the history-immutability rule (03-08/03-12 v1.1 notes retained verbatim, additions only), and the executed validation counts.",
+      "closure_evidence": "git diff (additions only for the version-labelled history files; no deletions in 03-08/03-12/ADR-019); reviewer re-runs of the golden, focused G7, and default suites all match the claimed counts."
+    },
+    {
+      "finding_id": "resumed-attempt-1-changelog-class-names (from worker report attempt 2)",
+      "reviewer_assessment": "Verified. The changelog now cites the real classes RenderFingerprintTests and RendererConfigurationTests.",
+      "closure_evidence": "grep of tests/ArrTags.Tests/RenderFingerprintTests.cs:15 and RendererConfigurationTests.cs:20; cited methods exist at the stated line numbers."
+    },
+    {
+      "finding_id": "resumed-attempt-1-index-row-precision (from worker report attempt 2)",
+      "reviewer_assessment": "Verified. The ADR-019 index row matches ADR-019.md's own status text; the condensed phrase was corrected.",
+      "closure_evidence": "docs/decisions/00-index.md:27 vs docs/decisions/ADR-019.md:3-8."
+    },
+    {
+      "finding_id": "resumed-attempt-1-updated-utc (from worker report attempt 2)",
+      "reviewer_assessment": "Verified. state.json updated_utc was bumped from 2026-09-26T07:57:43Z to 2026-09-28T08:21:28Z.",
+      "closure_evidence": "git diff docs/plan/state.json; render-docs-state --check passes."
+    }
+  ],
+  "ready_for_next_task": true
+}

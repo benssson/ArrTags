@@ -182,7 +182,7 @@ existing goldens byte-identical, new Extra Large goldens); documentation.
 **Tasks:**
 - [x] 18.1 Extra Large enum, geometry factor, and settings dropdown ordering
 - [x] 18.2 Golden coverage and version-decision verification
-- [ ] 18.3 G7 documentation and integration verification
+- [x] 18.3 G7 documentation and integration verification
 **Authoritative Phase 18 execution order:** 18.1, 18.2, 18.3
 **Phase acceptance criteria:** Extra Large renders at 2.0x Medium and never
 paints outside the safe area; the dropdown order is Small, Medium, Large, Extra

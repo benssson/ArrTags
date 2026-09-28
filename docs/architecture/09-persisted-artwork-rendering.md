@@ -512,6 +512,13 @@ auto-update, or auto-approval path. The nine default-configuration goldens keep
 byte-identical PNGs because the default reproduces the V1 output, while their
 output fingerprints advance with the renderer version, and anchor/size goldens
 were added (`top-left`, `top-right-large`, `bottom-right-small`, and `center`).
+The v1.2 Extra Large addition (ADR-027, task 18.1) does not repeat that advance:
+`RendererConfiguration.Size` also accepts `ExtraLarge` (factor `2.0`), neither
+`RendererConfiguration.CurrentSchemaVersion` (2) nor
+`RenderVersion.CurrentRendererVersion` (3) changes, the default `Medium` output
+is unchanged, the existing committed Small/Medium/Large goldens remain
+byte-identical, and two Extra Large goldens (`bottom-left-extra-large`,
+`full-rail-extra-large`) were added (task 18.2).
 Renderer validation uses
 synthetic fixtures, decoded-pixel goldens, same-runtime byte determinism, and
 explicit cross-runtime anti-aliasing tolerances as defined by ADR-010.

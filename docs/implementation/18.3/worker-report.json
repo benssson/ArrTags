@@ -1,0 +1,169 @@
+{
+  "task": "18.3",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "G7 documentation and integration verification (final Phase 18 task), resumed from an interrupted attempt-1 that left unverified partial documentation edits and no persisted report. Every partial edit was inspected and verified against ADR-027, ADR-019, the Phase 18 checklist, and the repository's history-immutability rules; four inaccuracies were corrected (two wrong test class names in the changelog entry, the ADR-019 index-row supersession phrasing, and the missing state.json updated_utc bump). The completed documentation reconciliation adds the ADR-019 extension note, the ADR-027 implementation note (following the ADR-025/026/028 convention), scoped v1.2 notes in data-model 03-06/03-08/03-12 without rewriting the version-labelled v1.1 history, an architecture 09 version-decision paragraph, an accurate ADR-019 index row, the changelog 18.3 entry, and the state.json/PLANS.md 18.3 completion (Phase 18 left PLANNED, no gate or tag). The integration verification was executed, not asserted: the pinned native golden oracle is Failed 0, Passed 17, Skipped 0, Total 17 with the two new Extra Large fixtures passing case-by-case and the 13 existing goldens unchanged; the default suite is Failed 0, Passed 1799, Skipped 64, Total 1863; the focused G7 run (settings-page structure, geometry factor/validation, fingerprints) is Failed 0, Passed 115, Skipped 2, Total 117; RenderVersion.CurrentRendererVersion is still 3 and RendererConfiguration.CurrentSchemaVersion still 2; and render-docs-state/check-docs pass. No production, test, fixture, manifest, or golden file was modified by this task.",
+  "validation": [
+    "`source /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Default suite: `source /config/arrtags-env.sh && ./build.sh test` -> Passed! - Failed: 0, Passed: 1799, Skipped: 64, Total: 1863, Duration: 16 s (same as the 18.1/18.2 baseline).",
+    "Pinned native golden oracle (exact task command: `LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=/tmp/arrtags-skia-probe/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/arrtags-skia-probe/sysroot/usr/share dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~RenderGoldenTests\"`) -> Failed 0, Passed 17, Skipped 0, Total 17. The detailed-logger run lists the 15 fixture cases (the 13 pre-existing Small/Medium/Large goldens plus `bottom-left-extra-large` and `full-rail-extra-large`) and the two facts `CommittedGoldenManifestIsCompleteAndSelfConsistent` and `AChangedGoldenPixelFailsTheExactGoldenComparison`, all passed. The native runtime is available in this workspace; it was not reported unavailable.",
+    "Focused G7 integration run under the pinned native runtime (filter `FullyQualifiedName~DashboardSettingsPageTests|FullyQualifiedName~BadgeSizePositionTests|FullyQualifiedName~RendererConfigurationTests|FullyQualifiedName~RenderFingerprintTests`) -> Failed 0, Passed 115, Skipped 2, Total 117; the two skips are `DashboardSettingsPageTests.PinnedDashboardControllerPageResourceIsAnonymousAndTheListIsElevationGated` and `DashboardSettingsPageTests.PinnedDashboardControllerServesTheArrTagsSettingsPage` (both `[JellyfinHostFact]`, requiring `ARRTAGS_JELLYFIN_HOST_DIR`).",
+    "Golden byte-identity: `git status --short tests/ArrTags.Tests/Goldens/` -> empty (no committed PNG or manifest entry differs from the committed revision; the oracle reproduces them byte-exactly).",
+    "No production change: `git diff --stat src/` -> empty; `RenderVersion.CurrentRendererVersion` is 3 (src/ArrTags/Rendering/RenderVersion.cs:23) and `RendererConfiguration.CurrentSchemaVersion` is 2 (src/ArrTags/Configuration/RendererConfiguration.cs:34).",
+    "`dotnet run scripts/render-docs-state.cs -- --check` -> `status.md: up to date`, `PLANS.md: up to date` (both blocks), `PLANS.md and state.json agree`.",
+    "`scripts/check-docs.sh` -> `check-docs: PASS` (all nine sections) on the tree before this report was persisted; after persistence only section 9's worker/reviewer pairing for 18.3 remains, which the orchestrator's implementation-reviewer report satisfies (the documented 15.4/16.x/18.1/18.2 pattern).",
+    "Stale-wording searches over README.md, docs/architecture, docs/data-model, docs/decisions/00-index.md, docs/status.md, PLANS.md, docs/limitations, and docs/testing: `Medium, Small, Large` -> no matches; `Small`, or `Large` -> only docs/data-model/03-12-configuration.md:101 inside the version-labelled v1.1 task 12.3 paragraph (the v1.2 paragraph follows at line 118); `Small` and `Large` -> no matches; factor list `0.75`, `1.0`, `1.5` -> only docs/architecture/09-persisted-artwork-rendering.md:492, which now includes `2.0`. PLANS.md:339 DG-13 is the v1.1 decision record, with DG-16 (PLANS.md:342) recording the G7 extension. docs/data-model/03-08-renderresult.md:56 is inside the version-labelled v1.1 task 12.3 note, with the v1.2 note at line 83.",
+    "Diff inspection: `git diff --stat` -> 10 files changed (202 insertions, 6 deletions) before this report was persisted; the changes are the documentation surfaces listed in changed_files plus this report. No production, test, golden, manifest, architecture-index, data-model-index, or limitations file is touched."
+  ],
+  "changed_files": [
+    "docs/decisions/ADR-019.md",
+    "docs/decisions/ADR-027.md",
+    "docs/decisions/00-index.md",
+    "docs/architecture/09-persisted-artwork-rendering.md",
+    "docs/data-model/03-06-badgedefinition.md",
+    "docs/data-model/03-08-renderresult.md",
+    "docs/data-model/03-12-configuration.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/implementation/18.3/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "ADR-019 carries a supersession/extension note recording that ADR-027 extends clause 3 (adds ExtraLarge = 3, factor 2.0, order Small/Medium/Large/Extra Large) and referencing ADR-027 and task 18.3.",
+      "evidence": "docs/decisions/ADR-019.md lines 81-100: `### Extension note (v1.2, ADR-027; task 18.3)` records the clause 3 extension (`ExtraLarge = 3`, factor `2.0`, dropdown order), the unchanged effective-scale/safe-area/position/rail/no-per-selector clauses, and the clause 4 version decision; no clause text above is rewritten. Style follows ADR-020's `Amendment note (v1.2, ADR-026; task 15.4)`."
+    },
+    {
+      "criterion": "ADR-027 carries a scoped task 18.3-covering implementation note only if the shipped-v1.2 ADR convention has one.",
+      "evidence": "The convention exists (ADR-025:81, ADR-026:94, ADR-028:136 all have `Implementation note (v1.2, tasks ...)`), so docs/decisions/ADR-027.md lines 59-98 keeps the `### Implementation note (v1.2, tasks 18.1-18.3)` section; its 18.2 figures (pre-task Failed 0/Passed 15/Total 15, post-task Failed 0/Passed 17/Total 17) match docs/implementation/18.2/worker-report.json and its 18.3 figures match the executions recorded here."
+    },
+    {
+      "criterion": "docs/data-model 03-06, 03-08, and 03-12 reconcile Extra Large/2.0 in scoped v1.2 notes without rewriting the v1.1 history.",
+      "evidence": "docs/data-model/03-06-badgedefinition.md:17 `placement` row now references `ADR-019, extended by ADR-027 with the Extra Large preset`; docs/data-model/03-08-renderresult.md:83 adds a `v1.2 task 18.3 implementation note (ADR-027; extends the v1.1 task 12.3 note above)` while the v1.1 note (lines 54-81) is retained verbatim; docs/data-model/03-12-configuration.md:118 adds the `Extra Large preset (v1.2 task 18.3; ADR-027, extending ADR-019 clause 3)` paragraph while the v1.1 task 12.3 paragraph (lines 96-116) is retained verbatim."
+    },
+    {
+      "criterion": "docs/architecture/09-persisted-artwork-rendering.md and README.md are accurate for Extra Large; only real staleness is fixed (18.1 updated them).",
+      "evidence": "docs/architecture/09-persisted-artwork-rendering.md:491-492 lists `Small`, `Large`, and `ExtraLarge` with factor `0.75`, `1.0`, `1.5`, and `2.0`, and lines 515-521 record the v1.2 version decision; README.md:104 documents `Medium` (default), `Small`, `Large`, or `ExtraLarge` (ADR-027) and contains no dropdown-order statement. The stale-wording searches found no un-scoped old size/factor list or order, so no README change was needed."
+    },
+    {
+      "criterion": "docs/decisions/00-index.md is an accurate ADR list/status, including the ADR-019 extension.",
+      "evidence": "docs/decisions/00-index.md:27 records `Accepted (v1.1; clause 3 extended by ADR-027 (v1.2); supersedes the code-owned geometry and placement clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010)`, matching docs/decisions/ADR-019.md:3-8 plus the extension note and the ADR-016/ADR-020 amended-row convention; this also repairs the row's previously truncated status text. `scripts/check-docs.sh` reports `ok: decisions index (28 ADRs)`."
+    },
+    {
+      "criterion": "docs/changelog/v1.2.0.md records the 18.3 entry.",
+      "evidence": "docs/changelog/v1.2.0.md `### Task 18.3 - G7 documentation and integration verification` records the documentation reconciliation, the integration verification, the validation counts, and the sensitivity provenance; the numbers were corrected/verified against the executions in this task (including fixing two wrong test class names to `RenderFingerprintTests` and `RendererConfigurationTests`)."
+    },
+    {
+      "criterion": "docs/plan/state.json marks 18.3 done with its report path and PLANS.md ticks the 18.3 checkbox; phase status/gate/tag are not changed.",
+      "evidence": "docs/plan/state.json 18.3 entry has `\"done\": true` with `reports: [\"docs/implementation/18.3/worker-report.json\"]`; PLANS.md:185 `- [x] 18.3 G7 documentation and integration verification`; Phase 18 remains `\"status\": \"PLANNED\"` with gate `Gate 18` and tag `v1.2.0-phase18` untouched; `render-docs-state.cs --check` passes."
+    },
+    {
+      "criterion": "Integration verification executed: the pinned native golden oracle reproduces the committed goldens (existing 13 byte-identical) and the two new Extra Large goldens match.",
+      "evidence": "RenderGoldenTests under the pinned native runtime: Failed 0, Passed 17, Skipped 0, Total 17; case-level output shows all 15 fixture cases passed including `bottom-left-extra-large` and `full-rail-extra-large`; `git status --short tests/ArrTags.Tests/Goldens/` is empty."
+    },
+    {
+      "criterion": "Default suite and the settings-page structural (dropdown order/value), geometry factor/validation, and fingerprint tests pass.",
+      "evidence": "`./build.sh test` -> Failed 0, Passed 1799, Skipped 64, Total 1863; focused native run -> Failed 0, Passed 115, Skipped 2, Total 117 covering `DashboardSettingsPageTests.PageOrdersTheBadgeSizeOptionsSmallMediumLargeExtraLarge` (in-select order and `>Extra Large</option>`) and `PageExposesAndRoundTripsTheGlobalBadgePlacement`, `BadgeSizePositionTests` (factor `2.0`, `(int)ExtraLarge == 3`, 96 px geometry, clamp bind, 5-anchor x 6-dimension sweep), `RendererConfigurationTests.ValidatorAcceptsDefinedExtraLargeBadgeSizeAndTheFingerprintIncludesIt`, and `RenderFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint`."
+    },
+    {
+      "criterion": "Nothing advanced RenderVersion.CurrentRendererVersion (3) or RendererConfiguration.CurrentSchemaVersion (2).",
+      "evidence": "src/ArrTags/Rendering/RenderVersion.cs:23 `CurrentRendererVersion = 3`; src/ArrTags/Configuration/RendererConfiguration.cs:34 `CurrentSchemaVersion = 2`; `git diff --stat src/` is empty."
+    },
+    {
+      "criterion": "Phase 18 criterion verified by this task: Extra Large renders at 2.0x Medium and never paints outside the safe area.",
+      "evidence": "The focused native run passes BadgeSizePositionTests including `EachPresetSizeScalesTheGeometryByItsCodeOwnedFactor` ([InlineData(BadgeSize.ExtraLarge, 2.0, 96.0)]), `SafeAreaClampReducesTheEffectiveScaleOnAShortPoster` (two ExtraLarge clamp cases), and `NoPillPaintsOutsideTheSafeAreaOnNarrowAndShortPosters` (5 anchors x 6 dimensions x 4 sizes), and the golden oracle matches the two committed Extra Large PNGs byte-exactly."
+    },
+    {
+      "criterion": "Phase 18 criterion verified by this task: new Extra Large goldens are deterministic and the fingerprint includes the non-default size.",
+      "evidence": "The oracle passes `GoldenMatchesDecodedPixelsBytesDimensionsAndFingerprint(name: \"bottom-left-extra-large\")` and `(name: \"full-rail-extra-large\")` against the committed hashes/fingerprints; `RenderFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint` and `RendererConfigurationTests.ValidatorAcceptsDefinedExtraLargeBadgeSizeAndTheFingerprintIncludesIt` pass in the focused run (Failed 0, Passed 115, Skipped 2, Total 117). Cross-process byte determinism was verified by task 18.2's `RenderDeterminismTests` run (Failed 0, Passed 5, Skipped 0, Total 5) and was not re-run here."
+    },
+    {
+      "criterion": "Phase 18 acceptance criterion owned by 18.3: the version decision is recorded.",
+      "evidence": "ADR-019 extension note (clause 4 paragraph), ADR-027 implementation note (clause 4 bullet), docs/data-model/03-08:83, docs/data-model/03-12:118, and docs/architecture/09:515-521 all record the no-advance decision with the byte-identity evidence; the oracle execution confirms the existing goldens still reproduce."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The prior attempt's partial edit had repaired the truncated ADR-019 index row with a condensed supersession phrase; which wording should the row carry?",
+      "chosen": "Use ADR-019's own status-line wording: `supersedes the code-owned geometry and placement clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010`, prefixed by the `clause 3 extended by ADR-027 (v1.2)` annotation.",
+      "basis": "Index rows mirror the ADR status lines (the ADR-016 and ADR-020 amended-row convention) and the task requires an accurate status; the pre-existing row was truncated mid-sentence from the initial split commit, so no original full wording was lost by choosing the faithful text.",
+      "impact": "Documentation only: the decisions index now states the full supersession scope; the changelog entry was updated to quote the final row text."
+    },
+    {
+      "question": "Should the Extra Large/2.0 facts be folded into the existing v1.1 data-model notes or appended as version-labelled v1.2 notes?",
+      "chosen": "Append scoped v1.2 notes/paragraphs after the version-labelled v1.1 notes (the prior attempt's structure, verified and kept).",
+      "basis": "AGENTS.md / docs/INDEX.md history-immutability for version-labelled notes, the task's explicit 'do not rewrite historical entries; append scoped v1.2 notes', and the ADR-020 amendment-note style.",
+      "impact": "The v1.1 notes remain the verbatim historical record of the three-preset state; the v1.2 notes carry the current state. No semantic change."
+    },
+    {
+      "question": "Should state.json's updated_utc be bumped by a task-status edit (the prior attempt omitted it)?",
+      "chosen": "Bump it to the edit time (2026-09-28T08:21:28Z), following the 18.1 and 18.2 diffs.",
+      "basis": "Every prior task-status commit bumped updated_utc; docs/plan/README.md documents it as the state-file update marker.",
+      "impact": "State metadata only; render-docs-state --check still reports the generated blocks up to date and in agreement."
+    }
+  ],
+  "test_sensitivity": [
+    "This task adds no production or test behavior (documentation-only change plus re-running existing suites), so there is no new behavior to break and no new sensitivity probe was required or run; its claims are either execution-verified (counts, constants, byte-identity) or documentation-only.",
+    "The G7 behavior sensitivity was established by tasks 18.1-18.2 and is unchanged: removing the `BadgeGeometry.SizeFactor` switch arm failed 9 BadgeSizePositionTests cases; making `RendererConfiguration.Validate` reject `ExtraLarge` failed the new validation fact (Failed 1); skipping the renderer-configuration fingerprint entry failed the same fact (Failed 1); swapping the `Large`/`Extra Large` dropdown options failed the structural order fact (Failed 1); disabling the `ComputeEffectiveScale` safe-area clamp failed 5 clamp cases; and corrupting, mutating, or removing a new golden failed 2 oracle cases each. Those probes were not re-run because they mutate production/test/golden files outside this documentation task's boundary and the behavior under test did not change.",
+    "The documentation edits themselves (ADR/data-model/architecture/index/changelog prose) have no test sensitivity; their accuracy was verified by reading against ADR-027/ADR-019 and by the stale-wording searches recorded in the validation list.",
+    "Version-decision claims are value pins verified by inspection (`git diff --stat src/` empty; the two constants read 3 and 2), not by a runtime probe."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/decisions/ADR-019.md",
+      "docs/decisions/ADR-027.md",
+      "docs/decisions/00-index.md",
+      "docs/architecture/09-persisted-artwork-rendering.md",
+      "docs/data-model/03-06-badgedefinition.md",
+      "docs/data-model/03-08-renderresult.md",
+      "docs/data-model/03-12-configuration.md",
+      "docs/changelog/v1.2.0.md",
+      "docs/plan/state.json",
+      "PLANS.md"
+    ],
+    "old_values_removed": [
+      "`Medium, Small, Large` (the old dropdown order) -> no matches in README.md, docs/architecture, docs/data-model, docs/decisions/00-index.md, docs/status.md, PLANS.md, docs/limitations, docs/testing.",
+      "`Small`, or `Large` (size enum omitting Extra Large) -> the only hit, docs/data-model/03-12-configuration.md:101, is inside the version-labelled v1.1 task 12.3 paragraph, immediately followed by the v1.2 Extra Large paragraph at line 118 (correctly scoped, not current-state).",
+      "`Small` and `Large` / `plus `Small` and `Large`` -> no matches in the searched current-state surfaces (docs/architecture/09 now reads `plus `Small`, `Large`, and `ExtraLarge``).",
+      "Factor list `0.75`, `1.0`, `1.5` without `2.0` -> the only current-state hit, docs/architecture/09-persisted-artwork-rendering.md:492, now includes `2.0`.",
+      "Truncated ADR-019 index row `...supersedes the code-owned geometry and placement` -> replaced with the full clause-3-extension status sentence.",
+      "docs/status.md and the PLANS.md milestone table were verified current by `dotnet run scripts/render-docs-state.cs -- --check` (`up to date`; `PLANS.md and state.json agree`); no generated block needed regeneration.",
+      "docs/limitations/ and docs/testing/ contain no G7/Extra Large reference, so no limitation or live-verification surface is affected by this change."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    {
+      "finding_id": "resumed-attempt-1-unverified-partial-edits",
+      "closure": "The interrupted attempt-1 left 10 modified documentation files with no report and no verification. Each partial edit was inspected against ADR-027, ADR-019, the Phase 18 checklist, and the history-immutability/convention rules; the ADR-019 extension note, ADR-027 implementation note, data-model scoped notes, architecture paragraph, state.json/PLANS.md completion, and the changelog entry substance were verified correct and kept. All validation was then executed and the report persisted.",
+      "evidence": "git diff inspection; docs/decisions/ADR-025.md:81, ADR-026.md:94, ADR-028.md:136 (implementation-note convention); docs/decisions/ADR-020.md:96 (amendment-note style); the validation commands in this report."
+    },
+    {
+      "finding_id": "resumed-attempt-1-changelog-class-names",
+      "closure": "The partial changelog entry named `RendererFingerprintTests.BadgePositionAndSizeChangeTheOutputFingerprint` and `RendererFingerprintTests.RendererFingerprintIsSensitiveToBadgePositionAndSize`. The actual classes are `RenderFingerprintTests` (tests/ArrTags.Tests/RenderFingerprintTests.cs:170) and `RendererConfigurationTests` (tests/ArrTags.Tests/RendererConfigurationTests.cs:553). The bullet now names the real classes and states exactly which test pins what (ExtraLarge output-fingerprint difference and explicit-default identity; ExtraLarge renderer-configuration difference; the existing explicit-default identity-neutrality fact).",
+      "evidence": "grep/read of both test files; the focused native run passes both facts (Failed 0, Passed 115, Skipped 2, Total 117)."
+    },
+    {
+      "finding_id": "resumed-attempt-1-index-row-precision",
+      "closure": "The ADR-019 index row's supersession phrase was condensed to `...clauses of ADR-009 and ADR-010`; it now matches ADR-019's own status text (`...clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010`), and the changelog quotation of the row was updated to match.",
+      "evidence": "docs/decisions/00-index.md:27 vs docs/decisions/ADR-019.md:3-8; changelog entry re-read."
+    },
+    {
+      "finding_id": "resumed-attempt-1-updated-utc",
+      "closure": "docs/plan/state.json's `updated_utc` still held 18.2's timestamp; it was bumped to `2026-09-28T08:21:28Z`, following the 18.1/18.2 diffs.",
+      "evidence": "docs/plan/state.json:3; `render-docs-state.cs -- --check` passes after the edit."
+    }
+  ],
+  "known_limitations": [
+    "The settings page's inline JavaScript is not executed by the suite or the documented live matrix (the repository has no JavaScript runtime), so the dropdown order, option value, and label are pinned structurally against the embedded page resource, not in a live browser.",
+    "The two Extra Large golden fixtures execute only in the `ARRTAGS_SKIA_COMPAT=1` forced-native run; in the default `./build.sh test` the native theories remain one environment skip each, so the default 0/1799/64/1863 totals are unchanged (pre-existing accepted limitation P12R-F1). The committed Extra Large PNGs were produced by a one-off generator outside the repository in task 18.2 and are verified here read-only against the committed manifest.",
+    "After this report is persisted, `scripts/check-docs.sh` section 9 (via `scripts/check-agents.sh`) reports `task 18.3 has a worker report but no reviewer report` until the orchestrator adds the implementation-reviewer report; check-docs PASSed on the tree before persistence, and the pairing pattern is the same as tasks 15.4/16.1-16.6/18.1/18.2.",
+    "Phase 18 is not complete: the phase review and the `v1.2.0-phase18` tag are not part of this task. Tasks 19-21 remain open."
+  ],
+  "ready_for_next_task": true
+}

@@ -24,7 +24,7 @@ it; record a divergence or a superseding ADR instead. The former
 | ADR-016 | Dashboard Settings UI and Runtime Configuration Activation | Accepted (v1.1; settings-page contract amended by ADR-028 (v1.2)) | [`ADR-016.md`](ADR-016.md) |
 | ADR-017 | Badge Value Allowlist | Accepted (v1.1) | [`ADR-017.md`](ADR-017.md) |
 | ADR-018 | Provider Inventory Cache and Library-Refresh-Driven Reconciliation | Accepted (v1.1) | [`ADR-018.md`](ADR-018.md) |
-| ADR-019 | Configurable Badge Size and Placement | Accepted (v1.1; supersedes the code-owned geometry and placement | [`ADR-019.md`](ADR-019.md) |
+| ADR-019 | Configurable Badge Size and Placement | Accepted (v1.1; clause 3 extended by ADR-027 (v1.2); supersedes the code-owned geometry and placement clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010) | [`ADR-019.md`](ADR-019.md) |
 | ADR-020 | Plugin Logging and Configurable Verbosity | Accepted (v1.1; clause 4 amended by ADR-026 (v1.2)) | [`ADR-020.md`](ADR-020.md) |
 | ADR-021 | Administrator-Visible Configuration-Rejection Surfacing | Accepted (v1.1) | [`ADR-021.md`](ADR-021.md) |
 | ADR-022 | Successive-Run Reconciliation Coverage | Accepted (v1.2) | [`ADR-022.md`](ADR-022.md) |

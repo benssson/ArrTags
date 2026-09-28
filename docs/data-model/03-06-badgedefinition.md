@@ -14,7 +14,7 @@ the current item's metadata.
 | `textTemplate` | Bounded display template | Optional | Configuration | Formatting rule after values are normalized; no provider DTO paths. |
 | `allowedValues` | Bounded string list | Optional | Configuration | Per-selector value allowlist (ADR-017); empty means no restriction. At most 32 entries, each at most 64 characters; entries are trimmed, blank entries and control characters are rejected, and case-insensitive duplicates are rejected. Matching is a case-insensitive ordinal exact match against the resolved pre-template value; no substring, wildcard, prefix, or regular-expression matching. |
 | `style` | Badge style value | Yes | Configuration | Opaque palette, text, font, and contrast policy; V1 geometry is defined by ADR-009. |
-| `placement` | Placement value | Yes | Configuration | V1 poster anchor, bounded rail packing, margins, and scale. The global position and size (ADR-019) are configurable; packing and the safe area remain bounded and code-owned. |
+| `placement` | Placement value | Yes | Configuration | V1 poster anchor, bounded rail packing, margins, and scale. The global position and size (ADR-019, extended by ADR-027 with the Extra Large preset) are configurable; packing and the safe area remain bounded and code-owned. |
 | `visibilityPolicy` | Image/item/client surface policy | Yes | Configuration | V1 is poster-oriented and not user-specific. |
 | `customValueRules` | Optional bounded rules | Optional | Configuration | Maps approved custom metadata to a visual value. |
 

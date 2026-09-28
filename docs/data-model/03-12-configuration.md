@@ -115,6 +115,8 @@ path (the nine default-configuration PNGs are byte-unchanged while their output
 fingerprints advance with the renderer version, and anchor/size goldens were
 added).
 
+**Extra Large preset (v1.2 task 18.3; ADR-027, extending ADR-019 clause 3).** The v1.1 task 12.3 paragraph above remains the historical record of the three-preset v1.1 state and its coordinated schema/version advance. `BadgeSize` gains `ExtraLarge = 3` with the code-owned factor `2.0`, so the persisted `Size` is `Medium` (default), `Small`, `Large`, or `ExtraLarge`, and the settings page orders the preset options Small, Medium, Large, Extra Large with the option value `ExtraLarge`. ADR-027 clause 4 records the v1.2 version decision: this addition does **not** advance `RendererConfiguration.CurrentSchemaVersion` (still `2`) or `RenderVersion.CurrentRendererVersion` (still `3`), because the default `Medium` output is unchanged and a non-default size is already included in both the renderer configuration fingerprint and the render fingerprint, so selecting Extra Large republishes only the selecting items. The existing committed Small/Medium/Large goldens remain byte-identical, and two Extra Large goldens (`bottom-left-extra-large`, `full-rail-extra-large`) were added by task 18.2. Size remains global renderer policy, not per selector.
+
 **Runtime activation (task 9.3).** The persisted `PluginConfiguration` is the
 candidate supplied to `Plugin.UpdateConfiguration`. The override validates the
 candidate before the base implementation persists anything (using the same
