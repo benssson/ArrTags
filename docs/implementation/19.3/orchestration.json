@@ -3,7 +3,7 @@
   "title": "F6 mechanism confirmation and stale-basis re-enqueue implementation",
   "phase": 19,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "65db3a5",
   "subagents": [
     {
       "role": "implementation-worker",
