@@ -3,7 +3,7 @@
   "title": "F4 successive-run coverage tests",
   "phase": 19,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "2db423f",
   "subagents": [
     {
       "role": "implementation-worker",
