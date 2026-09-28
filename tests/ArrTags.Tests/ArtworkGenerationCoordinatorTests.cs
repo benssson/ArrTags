@@ -33,6 +33,7 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
     private readonly SourceArtifactStore _artifacts;
     private readonly PublishedArtworkStateStore _states;
     private readonly ArtworkOperationStore _operations;
+    private readonly ArtworkLifecycleFenceStore _fences;
     private readonly FakeArtworkHost _host = new();
     private readonly FakeRenderer _renderer = new();
     private readonly ArtworkPublisher _publisher;
@@ -46,8 +47,9 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
         _artifacts = new SourceArtifactStore(_repository);
         _states = new PublishedArtworkStateStore(_repository);
         _operations = new ArtworkOperationStore(_repository);
+        _fences = new ArtworkLifecycleFenceStore(_repository);
         _publisher = new ArtworkPublisher(_host, _host, _artifacts, _states, _operations, new OperationalLimits());
-        _coordinator = new ArtworkGenerationCoordinator(_host, _renderer, _publisher, _states, _artifacts);
+        _coordinator = new ArtworkGenerationCoordinator(_host, _renderer, _publisher, _states, _artifacts, fences: _fences);
     }
 
     // ---- Published path ---------------------------------------------------------
@@ -131,9 +133,13 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
         Assert.Equal(ArtworkGenerationOutcome.RenderPassThrough, result.Outcome);
         Assert.Equal(RenderPassThroughReason.NoDisplayableValue, result.PassThroughReason);
         Assert.True(result.Preserved);
+        // No owned published session exists, so the empty selection is never a
+        // restore obligation and no restoration was driven (ADR-024 clause 6).
+        Assert.Null(result.ReconciliationOutcome);
         Assert.Equal(1, _renderer.Calls);
         Assert.Equal(0, _host.SaveCalls);
         Assert.Equal(0, _host.UpdateCalls);
+        Assert.Equal(0, _host.RemoveCalls);
         Assert.Equal(StateReadStatus.Missing, _states.Read(Item, Surface).Status);
     }
 
@@ -397,6 +403,90 @@ public sealed class ArtworkGenerationCoordinatorTests : IDisposable
         Assert.True(result.Preserved);
         Assert.Equal(1, _renderer.Calls);
         Assert.Equal(1, _host.SaveCalls);
+    }
+
+    // ---- Empty-selection restoration (ADR-024) ----------------------------------
+
+    [Fact]
+    public async Task EmptySelectionOnAnOwnedSessionRestoresTheRetainedBaseline()
+    {
+        var original = Png(1);
+        _host.CurrentBytes = original;
+        _renderer.Result = Rendered(Png(2));
+        var published = await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+        Assert.Equal(ArtworkGenerationOutcome.Published, published.Outcome);
+
+        _renderer.Result = RenderResult.PassThrough(RenderPassThroughReason.NoDisplayableValue);
+        var result = await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(ArtworkGenerationOutcome.Restored, result.Outcome);
+        Assert.Equal(ArtworkReconciliationOutcome.Completed, result.ReconciliationOutcome);
+        Assert.Equal(RenderPassThroughReason.NoDisplayableValue, result.PassThroughReason);
+        Assert.False(result.Preserved);
+        Assert.NotNull(result.OperationId);
+        Assert.Equal(original, _host.SavedBytes);
+        Assert.Equal(2, _host.SaveCalls);
+        Assert.Equal(2, _host.UpdateCalls);
+
+        var state = _states.Read(Item, Surface).Value!;
+        Assert.Equal(ArtworkPublicationState.Restored, state.State);
+        Assert.Equal(ArtworkImagePresence.Present, state.SourcePresence);
+        Assert.Null(state.ActiveImageIdentity);
+        Assert.Equal(original, _host.CurrentBytes);
+        Assert.Equal(ArtworkPublicationState.Restored, result.State!.State);
+    }
+
+    [Theory]
+    [InlineData(RenderPassThroughReason.NoMetadata)]
+    [InlineData(RenderPassThroughReason.NoFittingBadge)]
+    [InlineData(RenderPassThroughReason.IneligibleSurface)]
+    [InlineData(RenderPassThroughReason.MatchNotEligible)]
+    [InlineData(RenderPassThroughReason.SourceUnavailable)]
+    public async Task OtherPassThroughReasonsPreserveAnOwnedSession(RenderPassThroughReason reason)
+    {
+        _host.CurrentBytes = Png(1);
+        _renderer.Result = Rendered(Png(2));
+        await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+        var saves = _host.SaveCalls;
+        var updates = _host.UpdateCalls;
+
+        _renderer.Result = RenderResult.PassThrough(reason);
+        var result = await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(ArtworkGenerationOutcome.RenderPassThrough, result.Outcome);
+        Assert.Equal(reason, result.PassThroughReason);
+        Assert.Null(result.ReconciliationOutcome);
+        Assert.True(result.Preserved);
+        Assert.Equal(saves, _host.SaveCalls);
+        Assert.Equal(updates, _host.UpdateCalls);
+        Assert.Equal(0, _host.RemoveCalls);
+        Assert.Equal(ArtworkPublicationState.Published, _states.Read(Item, Surface).Value!.State);
+    }
+
+    [Fact]
+    public async Task NonRestorableFencePreservesAnOwnedSessionWithoutMutation()
+    {
+        _host.CurrentBytes = Png(1);
+        _renderer.Result = Rendered(Png(2));
+        await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+        var saves = _host.SaveCalls;
+        var updates = _host.UpdateCalls;
+
+        // A confirmed item removal forbids every image mutation, so the empty
+        // selection stays a preserve with no restore call.
+        _fences.Set(ArtworkLifecycleFence.ItemRemoved, "test-fence");
+        _renderer.Result = RenderResult.PassThrough(RenderPassThroughReason.NoDisplayableValue);
+
+        var result = await _coordinator.GenerateAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(ArtworkGenerationOutcome.RenderPassThrough, result.Outcome);
+        Assert.Equal(RenderPassThroughReason.NoDisplayableValue, result.PassThroughReason);
+        Assert.Null(result.ReconciliationOutcome);
+        Assert.True(result.Preserved);
+        Assert.Equal(saves, _host.SaveCalls);
+        Assert.Equal(updates, _host.UpdateCalls);
+        Assert.Equal(0, _host.RemoveCalls);
+        Assert.Equal(ArtworkPublicationState.Published, _states.Read(Item, Surface).Value!.State);
     }
 
     // ---- State and boundary hygiene ---------------------------------------------

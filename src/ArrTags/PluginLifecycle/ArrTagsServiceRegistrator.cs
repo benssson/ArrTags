@@ -412,7 +412,8 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<SourceArtifactStore>(),
             serviceProvider.GetRequiredService<IArrTagsLog<ArtworkGenerationCoordinator>>(),
-            serviceProvider.GetRequiredService<DiagnosticsMetrics>());
+            serviceProvider.GetRequiredService<DiagnosticsMetrics>(),
+            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>());
     }
 
     private static ArtifactRetention CreateArtifactRetention(IServiceProvider serviceProvider)

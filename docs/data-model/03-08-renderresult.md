@@ -92,3 +92,22 @@ artwork. Missing metadata and an ineligible match remain renderer pass-through
 states and produce no badge and no mutation. The coordinator supplies the exact
 observed source to the publisher so the retained provenance baseline matches the
 render source.
+
+**v1.2 task 20.1 implementation note (ADR-024; extends the Phase 5 note above).**
+The Phase 5 text above remains the historical task 5.8 record. An owned
+`Published` session whose resolved selection is empty is a restore obligation,
+not a preserve: the `ArtworkGenerationCoordinator` drives the internal
+`ArtworkPublisher.RestoreAsync` under the current durable lifecycle fence through
+the guarded, crash-recoverable `ArtworkOperation` protocol, so the retained
+source baseline is restored or the ArrTags image is removed when the baseline was
+absent. `ArtworkGenerationOutcome` adds `Restored` for the completed
+restoration/removal — besides `Published`, the only outcome that changes the
+active artwork — and `ArtworkGenerationResult` carries the bounded
+`ArtworkReconciliationOutcome` (`Completed` for a verified restore/removal and
+otherwise the bounded refusal or uncertainty classification) plus the
+`NoDisplayableValue` render pass-through reason that drove the obligation. The
+renderer adds the distinct `RenderPassThroughReason.NoFittingBadge` for a
+non-empty selection whose layout is empty; that reason and every other
+pass-through reason preserve the current artwork, and a non-owned item is never
+mutated. The change is not a render output change: `RenderVersion` and the
+renderer-configuration schema do not advance, and no fingerprint input changes.

@@ -14,12 +14,17 @@ namespace ArrTags.Artwork;
 /// composes the host source adapter, the renderer, and the durable publisher for
 /// one Jellyfin item and one V1 image surface: it observes the current source,
 /// builds the renderer input, renders one derived poster, and only publishes when
-/// the render is complete. Every other path - an absent source, an unavailable,
-/// unsupported, or oversized source, a render pass-through (including missing or
-/// ineligible metadata), a failed render, or a publication that does not complete
-/// - leaves the currently usable artwork byte-for-byte unchanged and performs no
-/// image mutation. The coordinator never calls Jellyfin directly; the publisher
-/// owns all image mutation.
+/// the render is complete. An owned published session whose resolved selection is
+/// empty is a restore obligation, not a preserve (ADR-024): the coordinator
+/// drives the internal <see cref="ArtworkPublisher.RestoreAsync(Guid, ArtworkImageSurface, ArtworkLifecycleFence, CancellationToken)"/>
+/// under the current durable lifecycle fence, restoring the retained baseline or
+/// removing the ArrTags image when the baseline was absent. Every other path - an
+/// absent source, an unavailable, unsupported, or oversized source, a render
+/// pass-through that is not the owned empty-selection obligation, a failed
+/// render, or a publication that does not complete - leaves the currently usable
+/// artwork byte-for-byte unchanged and performs no image mutation. The
+/// coordinator never calls Jellyfin directly; the publisher owns all image
+/// mutation.
 /// </summary>
 /// <remarks>
 /// The source observed for the render is the exact observation supplied to the
@@ -35,7 +40,14 @@ namespace ArrTags.Artwork;
 /// re-capturing the derived image. When no usable session exists the coordinator
 /// observes the active surface, which is then the retained baseline. Missing
 /// metadata and an ineligible match rely on the renderer's existing pass-through
-/// conventions and produce no badge and no mutation. Cancellation is honored and
+/// conventions and produce no badge and no mutation. An owned published session
+/// whose resolved selection is empty drives the guarded, crash-recoverable
+/// restoration path through the publisher's internal
+/// <see cref="ArtworkPublisher.RestoreAsync(Guid, ArtworkImageSurface, ArtworkLifecycleFence, CancellationToken)"/>
+/// entry point under the current durable lifecycle fence, so the restore or
+/// removal is recorded as a durable <see cref="ArtworkOperation"/> and resumed by
+/// the ordinary recovery gate after a restart; a non-restorable or invalid fence
+/// performs no mutation. Cancellation is honored and
 /// no exception escapes into a Jellyfin operation. No event, queue, or
 /// library-scan wiring is added here: Phase 6 drives this entry point.
 /// </remarks>
@@ -48,6 +60,7 @@ public sealed class ArtworkGenerationCoordinator
     private readonly SourceArtifactStore _artifacts;
     private readonly IArrTagsLog<ArtworkGenerationCoordinator>? _log;
     private readonly DiagnosticsMetrics? _metrics;
+    private readonly ArtworkLifecycleFenceStore? _fences;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArtworkGenerationCoordinator"/> class.
@@ -59,6 +72,7 @@ public sealed class ArtworkGenerationCoordinator
     /// <param name="artifacts">The authoritative retained source-artifact store used for retained-source selection.</param>
     /// <param name="log">The optional bounded, secret-free artwork-boundary log.</param>
     /// <param name="metrics">The optional bounded diagnostics counters (ADR-025); when supplied each render-failure classification is counted.</param>
+    /// <param name="fences">The durable active lifecycle fence used to drive an empty-selection restoration, or <see langword="null"/> to assume a normal fence.</param>
     /// <exception cref="ArgumentNullException">A dependency is <see langword="null"/>.</exception>
     public ArtworkGenerationCoordinator(
         IArtworkSourceReader reader,
@@ -67,7 +81,8 @@ public sealed class ArtworkGenerationCoordinator
         PublishedArtworkStateStore states,
         SourceArtifactStore artifacts,
         IArrTagsLog<ArtworkGenerationCoordinator>? log = null,
-        DiagnosticsMetrics? metrics = null)
+        DiagnosticsMetrics? metrics = null,
+        ArtworkLifecycleFenceStore? fences = null)
     {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
@@ -76,6 +91,7 @@ public sealed class ArtworkGenerationCoordinator
         _artifacts = artifacts ?? throw new ArgumentNullException(nameof(artifacts));
         _log = log;
         _metrics = metrics;
+        _fences = fences;
     }
 
     /// <summary>
@@ -222,10 +238,21 @@ public sealed class ArtworkGenerationCoordinator
         var render = await RenderAsync(request, sourceImage, cancellationToken).ConfigureAwait(false);
         if (render.Status == RenderStatus.PassThrough)
         {
-            // Missing metadata, an ineligible match, or another ADR-009
-            // pass-through: preserve the current artwork and do not publish.
+            var passThroughReason = render.PassThroughReason ?? RenderPassThroughReason.NoDisplayableValue;
+            if (passThroughReason == RenderPassThroughReason.NoDisplayableValue
+                && HasOwnedPublishedSession(request))
+            {
+                // An owned published session whose resolved selection is now
+                // empty is a restore obligation, not a preserve (ADR-024).
+                return await RestoreEmptySelectionAsync(request, passThroughReason, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            // Missing metadata, an ineligible match, a non-fitting layout, or
+            // another ADR-009 pass-through: preserve the current artwork and do
+            // not publish.
             return ArtworkGenerationResult.PassThrough(
-                render.PassThroughReason ?? RenderPassThroughReason.NoDisplayableValue,
+                passThroughReason,
                 "The render passed through; the current artwork is preserved.");
         }
 
@@ -418,6 +445,89 @@ public sealed class ArtworkGenerationCoordinator
             ArtworkPublicationOutcome.InvalidRequest => ArtworkGenerationResult.BlockedByPublication(publication),
             _ => ArtworkGenerationResult.PublicationNotCompleted(publication),
         };
+    }
+
+    /// <summary>
+    /// Determines whether the item/surface currently has an owned published
+    /// ArrTags session, which makes an empty resolved selection a restore
+    /// obligation rather than a preserve (ADR-024 clause 2). An invalid state
+    /// record is treated as not owned so no restoration is driven from an
+    /// unreadable state; the guarded restoration path re-reads the state under
+    /// the per-subject gate before any mutation.
+    /// </summary>
+    /// <param name="request">The canonical generation input.</param>
+    /// <returns><see langword="true"/> when a live owned published session exists.</returns>
+    private bool HasOwnedPublishedSession(ArtworkGenerationRequest request)
+    {
+        var stateRead = _states.Read(request.JellyfinItemId, request.ImageSurface);
+        return stateRead.Status is not (StateReadStatus.InvalidQuarantined or StateReadStatus.InvalidDiscarded)
+            && stateRead.Value is { State: ArtworkPublicationState.Published };
+    }
+
+    /// <summary>
+    /// Drives the guarded restoration for an owned published session whose render
+    /// passed through with an empty resolved selection. It uses only the internal
+    /// <see cref="ArtworkPublisher.RestoreAsync(Guid, ArtworkImageSurface, ArtworkLifecycleFence, CancellationToken)"/>
+    /// entry point under the current durable lifecycle fence, so the restore or
+    /// removal is recorded as a durable <see cref="ArtworkOperation"/> and
+    /// resumed by the ordinary recovery gate after a restart. A non-restorable or
+    /// invalid fence performs no mutation and preserves the current artwork
+    /// (ADR-024 clauses 2, 4, and 7).
+    /// </summary>
+    /// <param name="request">The canonical generation input.</param>
+    /// <param name="passThroughReason">The empty-selection pass-through reason that drove the obligation.</param>
+    /// <param name="cancellationToken">The cancellation signal.</param>
+    /// <returns>The bounded generation result.</returns>
+    private async Task<ArtworkGenerationResult> RestoreEmptySelectionAsync(
+        ArtworkGenerationRequest request,
+        RenderPassThroughReason passThroughReason,
+        CancellationToken cancellationToken)
+    {
+        ArtworkLifecycleFenceState fenceState;
+        try
+        {
+            fenceState = _fences is null ? ArtworkLifecycleFenceState.Normal : _fences.Read();
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return ArtworkGenerationResult.PassThrough(
+                passThroughReason,
+                "The active lifecycle fence could not be read; the current artwork is preserved.");
+        }
+
+        if (!fenceState.AllowsNewRestoration)
+        {
+            // A confirmed item removal forbids every image mutation and an
+            // invalid fence record fails closed, so the empty selection stays a
+            // preserve with no restore call.
+            return ArtworkGenerationResult.PassThrough(
+                passThroughReason,
+                "The active lifecycle fence refuses restoration; the current artwork is preserved.");
+        }
+
+        ArtworkReconciliationResult? reconciliation;
+        try
+        {
+            reconciliation = await _publisher
+                .RestoreAsync(request.JellyfinItemId, request.ImageSurface, fenceState.Fence, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return ArtworkGenerationResult.Blocked(
+                "The empty-selection restoration could not be completed safely.");
+        }
+
+        if (reconciliation is null)
+        {
+            return ArtworkGenerationResult.Blocked("The restoration returned no bounded result.");
+        }
+
+        return ArtworkGenerationResult.FromRestoration(reconciliation, passThroughReason);
     }
 
     private static bool TryValidate(ArtworkGenerationRequest request, out string reason)

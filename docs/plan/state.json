@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated_utc": "2026-09-28T13:52:34Z",
+  "updated_utc": "2026-09-28T17:45:32Z",
   "active_scope": "docs/planning/v1.2.md",
   "active_scope_note": "v1.2 (Phases 15-21) is accepted: goals G6-G9 and limitations F3, F4, F6, F7, F8. Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)). DG-19, DG-20, and DG-21 (the F4, F6, and F7 mechanisms) are resolved by the v1.2 plan and their ADRs, so their dependent tasks are no longer gated. F5 is accepted as a known shipped limitation (reclassified from Open) and is excluded.",
   "releases": [
@@ -1296,8 +1296,13 @@
       "tasks": [
         {
           "id": "20.1",
-          "done": false,
-          "name": "Empty-selection restore/removal behavior"
+          "done": true,
+          "name": "Empty-selection restore/removal behavior",
+          "reports": [
+            "docs/implementation/20.1/worker-report.json",
+            "docs/implementation/20.1/reviewer-report.json",
+            "docs/implementation/20.1/test-quality-review.json"
+          ]
         },
         {
           "id": "20.2",

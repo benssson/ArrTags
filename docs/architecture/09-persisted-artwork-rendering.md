@@ -259,15 +259,21 @@ Task 5.8 implements the generation step as the provider-neutral
 `ArtworkGenerationCoordinator`, which composes the host source adapter, the
 renderer, and the publisher for one item and V1 surface. It observes the current
 source, builds the renderer input, and publishes only a `Rendered` result; an
-absent source, a failed source read, a render pass-through (including missing
-metadata or an ineligible match), and a failed render all leave the current
-usable artwork unchanged and perform no image mutation. Missing metadata and an
+absent source, a failed source read, a failed render, and every pass-through
+other than the owned empty-selection restore obligation leave the current usable
+artwork unchanged and perform no image mutation. Missing metadata and an
 ineligible match use the existing ADR-009 renderer pass-through convention rather
 than a new badge policy. A pass-through also occurs when the resolved selection
-is empty (for example a selector allowlist that excludes the item), and because
-a previously published badge is the current usable artwork it is preserved
-rather than restored; that operator-visible consequence is documented as an open
-limitation (`docs/limitations/00-index.md` F7). The coordinator never calls Jellyfin
+is empty (for example a selector allowlist that excludes the item) and,
+distinctly, when a non-empty selection cannot fit the safe area after shortening
+and omission (`NoFittingBadge`). For an owned published session the
+empty-selection reason is a restore obligation rather than a preserve (ADR-024):
+the coordinator drives the internal `ArtworkPublisher.RestoreAsync` under the
+current durable lifecycle fence through the guarded, crash-recoverable
+`ArtworkOperation` protocol, restoring the retained source baseline or removing
+the ArrTags image when the baseline was absent. `NoFittingBadge` and every other
+pass-through reason still preserve the current artwork, and a non-owned item is
+never mutated. The coordinator never calls Jellyfin
 directly. For source consistency, the exact source observation used for the
 render is supplied
 to the publisher's new-session capture, so the retained provenance baseline and

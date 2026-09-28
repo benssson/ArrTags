@@ -223,7 +223,11 @@ public sealed class SkiaBadgeRenderer : IRenderer
 
             if (layout.IsEmpty)
             {
-                return RenderResult.PassThrough(RenderPassThroughReason.NoDisplayableValue);
+                // The selection was not empty (the empty case returned before
+                // decoding), so nothing fit the safe area after shortening and
+                // omission. This is a layout pass-through, never the
+                // empty-selection restore obligation (ADR-024).
+                return RenderResult.PassThrough(RenderPassThroughReason.NoFittingBadge);
             }
 
             var scale = layout.Scale;

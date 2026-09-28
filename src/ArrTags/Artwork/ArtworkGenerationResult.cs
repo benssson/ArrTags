@@ -6,10 +6,12 @@ namespace ArrTags.Artwork;
 /// <summary>
 /// The immutable, bounded result of one artwork generation attempt. A published
 /// result carries the committed <see cref="PublishedArtworkState"/> and the
-/// durable operation identifier; every preservation outcome carries a bounded,
-/// non-secret reason plus the safe renderer/reader classification that caused it.
-/// It never contains source bytes, a partial artifact, a path, a provider
-/// payload, a Jellyfin entity, or a credential.
+/// durable operation identifier; a restored result carries the committed state,
+/// the bounded reconciliation outcome, and the durable restoration operation
+/// identifier; every preservation outcome carries a bounded, non-secret reason
+/// plus the safe renderer/reader classification that caused it. It never
+/// contains source bytes, a partial artifact, a path, a provider payload, a
+/// Jellyfin entity, or a credential.
 /// </summary>
 public sealed class ArtworkGenerationResult
 {
@@ -21,7 +23,8 @@ public sealed class ArtworkGenerationResult
         RenderFailureReason? failureReason,
         ArtworkPublicationOutcome? publicationOutcome,
         string? operationId,
-        PublishedArtworkState? state)
+        PublishedArtworkState? state,
+        ArtworkReconciliationOutcome? reconciliationOutcome = null)
     {
         Outcome = outcome;
         Reason = reason;
@@ -31,6 +34,7 @@ public sealed class ArtworkGenerationResult
         PublicationOutcome = publicationOutcome;
         OperationId = operationId;
         State = state;
+        ReconciliationOutcome = reconciliationOutcome;
     }
 
     /// <summary>
@@ -46,9 +50,11 @@ public sealed class ArtworkGenerationResult
 
     /// <summary>
     /// Gets a value indicating whether the currently usable artwork was left
-    /// unchanged. It is the inverse of <see cref="Published"/>.
+    /// unchanged by this attempt. It is false only for
+    /// <see cref="ArtworkGenerationOutcome.Published"/> and
+    /// <see cref="ArtworkGenerationOutcome.Restored"/>.
     /// </summary>
-    public bool Preserved => !Published;
+    public bool Preserved => Outcome is not (ArtworkGenerationOutcome.Published or ArtworkGenerationOutcome.Restored);
 
     /// <summary>
     /// Gets a bounded, non-secret explanation of the outcome.
@@ -63,9 +69,10 @@ public sealed class ArtworkGenerationResult
     public ArtworkSourceReadFailureReason? SourceFailureReason { get; }
 
     /// <summary>
-    /// Gets the safe render pass-through reason when the outcome is
-    /// <see cref="ArtworkGenerationOutcome.RenderPassThrough"/>, or
-    /// <see langword="null"/>.
+    /// Gets the safe render pass-through reason when the render passed through,
+    /// including the <see cref="RenderPassThroughReason.NoDisplayableValue"/>
+    /// pass-through that drove an empty-selection restoration, or
+    /// <see langword="null"/> when the render did not pass through.
     /// </summary>
     public RenderPassThroughReason? PassThroughReason { get; }
 
@@ -89,8 +96,19 @@ public sealed class ArtworkGenerationResult
     public string? OperationId { get; }
 
     /// <summary>
-    /// Gets the committed published artwork state when the outcome is
-    /// <see cref="ArtworkGenerationOutcome.Published"/>, or <see langword="null"/>.
+    /// Gets the bounded reconciliation outcome when the empty-selection
+    /// restore/removal obligation was driven through
+    /// <see cref="ArtworkPublisher.RestoreAsync"/>, or <see langword="null"/>
+    /// when no restoration was driven.
+    /// <see cref="ArtworkReconciliationOutcome.Completed"/> is the only value
+    /// that changed the active artwork.
+    /// </summary>
+    public ArtworkReconciliationOutcome? ReconciliationOutcome { get; }
+
+    /// <summary>
+    /// Gets the committed artwork state when the outcome is
+    /// <see cref="ArtworkGenerationOutcome.Published"/> or
+    /// <see cref="ArtworkGenerationOutcome.Restored"/>, or <see langword="null"/>.
     /// </summary>
     public PublishedArtworkState? State { get; }
 
@@ -178,6 +196,52 @@ public sealed class ArtworkGenerationResult
             null,
             null,
             null);
+    }
+
+    /// <summary>
+    /// Creates a result for the empty-selection restore/removal obligation of an
+    /// owned published session (ADR-024). The bounded
+    /// <see cref="ArtworkReconciliationOutcome"/> classifies what happened:
+    /// <see cref="ArtworkReconciliationOutcome.Completed"/> produces
+    /// <see cref="ArtworkGenerationOutcome.Restored"/> and is the only outcome
+    /// that changed the active artwork; a cancellation produces
+    /// <see cref="ArtworkGenerationOutcome.Cancelled"/>; a refused or
+    /// unnecessary restoration
+    /// (<see cref="ArtworkReconciliationOutcome.NothingToReconcile"/>, for
+    /// example a lifecycle-fence refusal or a state that changed before the
+    /// guarded protocol ran) keeps the render pass-through classification;
+    /// every other reconciliation outcome produces
+    /// <see cref="ArtworkGenerationOutcome.Blocked"/>. The render pass-through
+    /// reason that drove the obligation is retained.
+    /// </summary>
+    /// <param name="reconciliation">The bounded restoration result.</param>
+    /// <param name="passThroughReason">The render pass-through reason that drove the restoration.</param>
+    /// <returns>A bounded generation result for the driven restoration.</returns>
+    /// <exception cref="ArgumentNullException">The reconciliation is <see langword="null"/>.</exception>
+    public static ArtworkGenerationResult FromRestoration(
+        ArtworkReconciliationResult reconciliation,
+        RenderPassThroughReason passThroughReason)
+    {
+        ArgumentNullException.ThrowIfNull(reconciliation);
+
+        var outcome = reconciliation.Outcome switch
+        {
+            ArtworkReconciliationOutcome.Completed => ArtworkGenerationOutcome.Restored,
+            ArtworkReconciliationOutcome.Cancelled => ArtworkGenerationOutcome.Cancelled,
+            ArtworkReconciliationOutcome.NothingToReconcile => ArtworkGenerationOutcome.RenderPassThrough,
+            _ => ArtworkGenerationOutcome.Blocked,
+        };
+
+        return new ArtworkGenerationResult(
+            outcome,
+            reconciliation.Reason,
+            null,
+            passThroughReason,
+            null,
+            null,
+            reconciliation.OperationId,
+            reconciliation.State,
+            reconciliation.Outcome);
     }
 
     /// <summary>

@@ -1,0 +1,106 @@
+{
+  "task": "20.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "AR-20.1-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "The restore discriminator inherits a pre-existing null-reason default of NoDisplayableValue, which is now fail-open toward mutation rather than toward a preserve.",
+      "detail": "ArtworkGenerationCoordinator.GenerateCoreAsync computes `var passThroughReason = render.PassThroughReason ?? RenderPassThroughReason.NoDisplayableValue;` and then restores on equality with NoDisplayableValue. The `??` default is pre-existing (it only chose the reported reason before), but its new consequence is that an unspecified pass-through reason would be treated as the empty-selection restore discriminator. This is unreachable in production: RenderResult.PassThrough validates `Enum.IsDefined(reason)` and is the only producer of RenderStatus.PassThrough (SkiaBadgeRenderer and ConcurrencyLimitedRenderer delegate); the coordinator additionally re-reads ownership inside the publisher's guarded path, so a wrong restore would still be ownership-checked. The stricter form would be to require an explicit NoDisplayableValue and treat an absent reason as a preserve. Not an open requirement; noted for a future hardening pass.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:241-249",
+        "src/ArrTags/Rendering/RenderResult.cs:142-150 (PassThrough requires a defined reason)",
+        "grep: RenderPassThroughReason is produced only in SkiaBadgeRenderer and consumed in RenderResult/ArtworkGenerationResult"
+      ],
+      "recommended_action": "Optional: gate the restore on an explicitly observed NoDisplayableValue rather than the defaulted local, or add a defensive comment that the default is unreachable because RenderResult.PassThrough requires a defined reason."
+    },
+    {
+      "id": "AR-20.1-02",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "correctness",
+      "summary": "A driven restoration that is verified as blocked after the image write was issued maps to ArtworkGenerationOutcome.Blocked with Preserved=true; this inherits the publisher's existing bounded reconciliation semantics.",
+      "detail": "ArtworkGenerationResult.FromRestoration maps Completed -> Restored, Cancelled -> Cancelled, NothingToReconcile -> RenderPassThrough, and every other reconciliation outcome -> Blocked. Inspection of ArtworkPublisher.ExecuteRestorationAsync shows the only outcomes it can return are Completed, Cancelled, RecoveryBlocked, OwnershipLost, and OwnershipUnknown, so the mapping loses nothing. For RecoveryBlocked after a landed save the generation result therefore reads Preserved=true while the publisher's own reason text reports the failure and the committed state is RestorePending/RestoreBlocked. This is the pre-existing publisher classification vocabulary that ADR-024 clause 7 builds on, not a classification introduced or weakened by this task, and the honest per-case reason text is carried on the result.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationResult.cs (FromRestoration switch)",
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:683-841 (possible reconciliation outcomes of ExecuteRestorationAsync)"
+      ],
+      "recommended_action": "None for this task. If a later task wants Preserved to be strictly truthful under an unverified restoration, the publisher's blocked-after-mutation classification (not this task's result factory) is the place to revisit."
+    },
+    {
+      "id": "AR-20.1-03",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation",
+      "summary": "docs/limitations/open.md still describes F7 as a preserve-only limitation, which is now stale for the owned empty-selection case; the delegation assigns that reconciliation to task 20.3.",
+      "detail": "docs/limitations/open.md:9 and :22 still say a NoDisplayableValue pass-through preserves the previous ArrTags badge indefinitely. That is no longer true for an owned Published session, and the ADR-024 behaviour is now described in docs/architecture/09. The Phase 20 plan and the task delegation assign the F7 register update, the changelog entry, and the ADR-009/ADR-003 amendment notes to task 20.3, so this is not a defect of 20.1; it is a required precondition for 20.3. Flagged so the orchestrator does not treat the register as current after this task.",
+      "evidence": [
+        "docs/limitations/open.md:9,22",
+        "PLANS.md:243-245 (20.3 F7 documentation and integration verification)",
+        "docs/implementation/20.1/worker-report.json known_limitations[0]"
+      ],
+      "recommended_action": "Task 20.3 must refresh the F7 register entry (description and status), the Phase 20 changelog entry, and the ADR-009/ADR-003 amendment notes."
+    },
+    {
+      "id": "AR-20.1-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "workflow",
+      "summary": "scripts/check-agents.sh requires docs/plan/state.json to list the task's reviewer-report path once it exists; the worker correctly listed only its own report, so the orchestrator must add the reviewer evidence.",
+      "detail": "Running scripts/check-docs.sh on the current tree fails only on the two agent-contract lines: 'task 20.1 has a worker report but no reviewer report' and the state-evidence line that demands the reviewer report be listed in state.json reports. Every other check-docs section passes and the generated blocks are current. The second message is emitted by the same missing-file condition (scripts/check-agents.sh:150 requires any reports entry matching 'reviewer-report'), so it is expected while the review is in flight. The worker's state.json edit (done=true, reports=[worker-report.json]) is correct and complete for its own scope; the reviewer-report path is the post-review orchestrator/state step under docs/agent-contracts.md clause 5.",
+      "evidence": [
+        "scripts/check-docs.sh output (all sections ok except the two agent-contract lines)",
+        "scripts/check-agents.sh:112-150",
+        "docs/agent-contracts.md:20-26",
+        "docs/plan/state.json (20.1 done=true, reports=[docs/implementation/20.1/worker-report.json])"
+      ],
+      "recommended_action": "Add docs/implementation/20.1/reviewer-report.json to the 20.1 reports array in docs/plan/state.json when this review is accepted, then re-run scripts/check-docs.sh."
+    },
+    {
+      "id": "AR-20.1-05",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "testing",
+      "summary": "The owned-restore test does not assert RemoveCalls == 0, but the absence of a removal is already proven by the current-bytes assertion.",
+      "detail": "ArtworkGenerationCoordinatorTests.EmptySelectionOnAnOwnedSessionRestoresTheRetainedBaseline asserts SaveCalls == 2, UpdateCalls == 2, SavedBytes == the original baseline, and _host.CurrentBytes == original. FakeArtworkHost.RemoveImageAsync sets CurrentBytes to null, so a removal would fail the current-bytes assertion. The explicit RemoveCalls == 0 assertion present in the preserve tests is therefore a redundancy, not a coverage gap; no change required.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:409-434",
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:674-683 (FakeArtworkHost.RemoveImageAsync nulls CurrentBytes)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "dotnet build -c Release -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build -> Failed 0, Passed 1908, Skipped 65, Total 1973 (matches the worker's reported post-change count exactly).",
+    "Targeted filter (ArtworkGenerationCoordinatorTests|RendererBehaviorFailureTests|SkiaBadgeRendererDecisionTests|ArtworkReconcilerTests|ArtworkPublisherTests) -> Failed 0, Passed 95, Skipped 3, Total 98; the three skips are the pre-existing ARRTAGS_SKIA_COMPAT-guarded native renderer cases including the new NonFittingSelectionPassesThroughAsNoFittingBadge.",
+    "Pinned native oracle run of RendererBehaviorFailureTests (LD_LIBRARY_PATH/FONTCONFIG_PATH/XDG_DATA_DIRS from the recorded probe sysroot, ARRTAGS_SKIA_COMPAT=1) -> Failed 0, Passed 14, Skipped 0, Total 14, independently reproducing the worker's claim that the new NoFittingBadge case passes only under the native runtime.",
+    "dotnet run scripts/render-docs-state.cs --check -> status.md and PLANS.md generated blocks up to date, PLANS.md and state.json agree.",
+    "./scripts/check-docs.sh -> all sections ok except the two expected agent-contract reviewer-report lines (see AR-20.1-04).",
+    "Inspected the new/changed tests for meaningfulness: EmptySelectionOnAnOwnedSessionRestoresTheRetainedBaseline (real publish-then-restore drive asserting the baseline bytes, call counts, committed Restored state and released ActiveImageIdentity), OtherPassThroughReasonsPreserveAnOwnedSession (five-reason theory against a genuinely published owned session, asserting unchanged call counts, ReconciliationOutcome null, and the retained Published state), NonRestorableFencePreservesAnOwnedSessionWithoutMutation (durable ItemRemoved fence, zero save/update/remove calls), the extended non-owned RenderPassThroughPreservesArtworkWithoutPublication (now also asserts ReconciliationOutcome null and RemoveCalls 0), and the native-guarded NonFittingSelectionPassesThroughAsNoFittingBadge (assertion reachable only through the new NoFittingBadge branch, so it cannot pass for the wrong reason).",
+    "The ARRTAGS_SKIA_COMPAT guard is honest: SkiaNativeFactAttribute skips unless the variable is exactly 1, and the new test is skipped in the default environment exactly like its pre-existing siblings."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-024.md clauses 1-8 against the implementation: the discriminator is the resolved-selection-empty condition (SkiaBadgeRenderer.cs:83-86 keeps NoDisplayableValue, :224-231 emits NoFittingBadge); clause 2's single restore entry point is the pre-existing internal ArtworkPublisher.RestoreAsync; clause 3/4's crash-recoverable protocol is the durable ArtworkOperation write in RestoreCoreAsync; clause 7 requires no RenderVersion advance and the diff touches no version, schema, or golden file.",
+    "docs/decisions/ADR-002/ADR-003 restoration triggers and ownership semantics: ArtworkPublisher.RestoreAsync still acquires ArtworkSubjectGate, refuses when a non-terminal durable operation exists (RecoveryBlocked), re-validates the active image immediately before mutation, and commits only after a verified readback (ArtworkPublisher.cs:510-841).",
+    "Crash-recoverability of the driven restore: RestoreCoreAsync writes the ArtworkOperation (Kind=Restoration, Phase=Prepared, generation = prior + 1) before any external mutation; ArtworkRecoveryDecisions.Evaluate resumes a non-terminal Restoration whose active image still matches the expected before identity (the publication-fence refusal at ArtworkRecoveryDecisions.cs:87-93 is restricted to Kind=Publication, so a Normal-fence restoration is not blocked on resume); ArtworkReconciler routes Resume to ArtworkPublisher.ExecuteRecoveryAsync, which dispatches Kind=Restoration to ResumeRestorationAsync -> the same ExecuteRestorationAsync. The pre-existing ArtworkReconcilerTests.RestorationResumeExecutesTheGuardedRestoration covers that resume; adding a new restart test for the coordinator-driven case is explicitly task 20.2 work.",
+    "docs/planning/v1.2.md Goal F7 acceptance criteria: the coordinator's unreachability of the absent-baseline removal (ReadRetainedSource returns Absent for a Published state with SourcePresence Absent, so GenerateCoreAsync returns NoSource before rendering) is the plan's own stated, accepted constraint, with the direct-publisher absent-baseline test assigned to 20.2 - not a 20.1 defect.",
+    "ADR-024 clause 6 / owned-vs-non-owned gate: HasOwnedPublishedSession requires a readable state record and ArtworkPublicationState.Published; an invalid/quarantined/discarded record is treated as not owned (fail-closed to a preserve), and the publisher independently re-reads the state under the per-subject gate before mutating.",
+    "ADR-024 clause 3 / fence: ArtworkLifecycleFenceState.AllowsNewRestoration = IsValid && (Normal|Disable|Uninstall), so a confirmed item removal and an invalid fence record both refuse; the coordinator refuses before calling RestoreAsync and the publisher refuses again as a second layer. The optional ArtworkLifecycleFenceStore parameter (null -> Normal) mirrors ArtworkPublisher exactly, and ArrTagsServiceRegistrator passes the registered durable store (TryAddSingleton at ArrTagsServiceRegistrator.cs:115, consumed at :416)."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 20.1 done=true with reports [docs/implementation/20.1/worker-report.json]; updated_utc advanced. The milestone table and phase status are intentionally unchanged (Phase 20 remains in progress until 20.2/20.3 and Gate 20).",
+    "PLANS.md: the 20.1 checkbox is [x]; the generated milestone table is byte-identical to what render-docs-state generates, and PLANS.md and state.json agree per the generator check.",
+    "docs/architecture/09-persisted-artwork-rendering.md: the now-false 'preserved rather than restored' sentence and its F7-open pointer were removed and replaced by the accurate ADR-024 behavior (owned empty selection drives the internal ArtworkPublisher.RestoreAsync under the current durable fence through the guarded ArtworkOperation protocol; NoFittingBadge and the other reasons preserve; a non-owned item is never mutated). No overclaim: the absent-baseline removal is stated as the publisher's behavior, which is what the publisher does.",
+    "docs/data-model/03-08-renderresult.md: an appended, clearly dated v1.2 task 20.1 note adds Restored, ReconciliationOutcome, and NoFittingBadge and states that RenderVersion, the renderer-configuration schema, and fingerprint inputs do not change; the historical Phase 5 note is preserved as the task 5.8 record per the document's existing convention.",
+    "README.md and docs/architecture/06, /12: no statement is invalidated by this change (the only restoration wording in README is the uninstall drain, still true; the classification-emission references in 06 and 12 are unaffected).",
+    "Historical surfaces (docs/implementation/**, docs/reviews/**, docs/changelog/**, ADR text) were correctly left untouched; their pre-existing 'NoFittingBadge is owned by task 20.1' statements are forward references that this task now fulfills."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}
