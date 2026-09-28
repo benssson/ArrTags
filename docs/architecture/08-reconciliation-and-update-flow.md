@@ -96,14 +96,26 @@ the retained observation sets, with the inventory TTL as the bounded fallback.
 
 All reconciliation triggers (events, webhooks, post-scan, and manual/periodic
 scheduled) enqueue the same bounded work hints through the bounded, coalescing
-queue, so reconciliation is bounded by `QueueCapacity` (ADR-004). The scheduled
-and post-scan scopes are enumerated from the start of a deterministic order and
-the queue drops overflow, so a single run over a scope larger than
-`QueueCapacity` covers a bounded prefix; successive runs overlap rather than
-advancing. Making successive runs cover the whole scope (a persisted enumeration
-cursor, stale/unknown-only enqueue, or direct pipeline drive) is not implemented
-and is documented as an open limitation in `docs/limitations/00-index.md` rather than
-presented as solved.
+queue, so reconciliation is bounded by `QueueCapacity` (ADR-004). The accepted
+mechanism for covering a scope larger than `QueueCapacity` across successive runs
+is a persisted reconciliation cursor (ADR-022, as amended for clause 3 by
+ADR-029): the scheduled and post-scan scopes advance a bounded, `Cache`-authority
+`(SortName, itemId)` cursor over the candidate order and wrap at the end, while
+events, webhooks, per-item triggers, and the post-save trigger are unchanged and
+do not read or write it. The pinned Jellyfin 12 host orders the candidate query by
+`SortName` ascending then raw `Name` ascending (not by the item id) and offers no
+keyset/after-key predicate, so the resume is identity-anchored: the run walks the
+host-ordered pages from the start until it locates the record's unique `itemId`,
+then returns the page strictly after it, and resets to the start when the anchor
+cannot be located (ADR-029). One run is therefore bounded by the server-wide
+candidate count plus `QueueCapacity` with an `O(offset)` page-reach resume, not by
+a constant; a full round-robin cycle performs cumulative skip work quadratic in
+the candidate count, and rows tying on the exact `(SortName, Name)` pair have no
+host-guaranteed relative order (the registered cost and tie caveats). This
+whole-scope mechanism is **not implemented yet**: tasks 19.1-19.2 of Phase 19
+implement and test it, and F4 is documented as an open limitation in
+`docs/limitations/00-index.md` until Phase 19 lands and task 19.5 finalizes the
+resolution; it is not presented as solved here.
 
 Coalescing is version-blind: the queue key is the item, connection, and image
 surface, so a redundant hint is coalesced regardless of the configuration version

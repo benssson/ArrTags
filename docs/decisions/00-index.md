@@ -27,10 +27,11 @@ it; record a divergence or a superseding ADR instead. The former
 | ADR-019 | Configurable Badge Size and Placement | Accepted (v1.1; clause 3 extended by ADR-027 (v1.2); supersedes the code-owned geometry and placement clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010) | [`ADR-019.md`](ADR-019.md) |
 | ADR-020 | Plugin Logging and Configurable Verbosity | Accepted (v1.1; clause 4 amended by ADR-026 (v1.2)) | [`ADR-020.md`](ADR-020.md) |
 | ADR-021 | Administrator-Visible Configuration-Rejection Surfacing | Accepted (v1.1) | [`ADR-021.md`](ADR-021.md) |
-| ADR-022 | Successive-Run Reconciliation Coverage | Accepted (v1.2) | [`ADR-022.md`](ADR-022.md) |
+| ADR-022 | Successive-Run Reconciliation Coverage | Accepted (v1.2; clause 3 amended by ADR-029 (v1.2)) | [`ADR-022.md`](ADR-022.md) |
 | ADR-023 | Version-Aware Post-Save Re-Render | Accepted (v1.2) | [`ADR-023.md`](ADR-023.md) |
 | ADR-024 | Empty-Selection Artwork Restoration | Accepted (v1.2) | [`ADR-024.md`](ADR-024.md) |
 | ADR-025 | Read-Only Diagnostics Status Surface | Accepted (v1.2) | [`ADR-025.md`](ADR-025.md) |
 | ADR-026 | Human-Readable Log Subject Identifier | Accepted (v1.2) | [`ADR-026.md`](ADR-026.md) |
 | ADR-027 | Extra Large Badge Size | Accepted (v1.2) | [`ADR-027.md`](ADR-027.md) |
 | ADR-028 | Limit Display Units and Restart-Required Settings Surfacing | Accepted (v1.2) | [`ADR-028.md`](ADR-028.md) |
+| ADR-029 | Identity-Anchored Reconciliation Cursor (Amendment to ADR-022 Clause 3) | Accepted (v1.2) | [`ADR-029.md`](ADR-029.md) |

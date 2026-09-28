@@ -195,19 +195,19 @@ oracle verifies the version decision, the phase review is approved, and the tag
 
 ### 19. Reconciliation coverage and version-aware coalescing
 
-**Goal:** F4 and F6 (ADR-022; ADR-023). **Decision gates:** DG-19 and DG-20 are
+**Goal:** F4 and F6 (ADR-022 as amended by ADR-029; ADR-023). **Decision gates:** DG-19 and DG-20 are
 resolved by the accepted ADRs, so the Phase 19 implementation tasks are no longer
 gated.
 **Objective:** Guarantee successive-run coverage of a scope larger than
 `QueueCapacity` and stop a post-save re-render from being dropped by version-blind
 coalescing.
-**Deliverables:** the accepted F4 mechanism (ADR-022, Accepted (v1.2): a persisted
+**Deliverables:** the accepted F4 mechanism (ADR-022 as amended by ADR-029, Accepted (v1.2): a persisted
 `(SortName, itemId)` cursor plus a bounded enqueue-outcome vocabulary and
 resume-capable enumerator) with a bounded `Cache`-authority state record and
 scope-reset rule; coverage tests including the coalesce/in-flight/overflow and
 library-mutation cases; the accepted F6 mechanism (ADR-023, Accepted (v1.2): a
 `ConfigurationStale` discard classification with a bounded re-enqueue after the
-in-flight slot is released); coalescing coverage tests; ADR-022/ADR-023 and the
+in-flight slot is released); coalescing coverage tests; ADR-022 (as amended by ADR-029)/ADR-023 and the
 architecture documentation.
 **Tasks:**
 - [ ] 19.1 F4 mechanism confirmation and persisted-cursor implementation
