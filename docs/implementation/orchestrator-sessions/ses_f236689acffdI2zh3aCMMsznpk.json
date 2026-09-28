@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "start phase 18",
   "tokens": {
-    "input": 138416,
-    "output": 13037,
-    "reasoning": 9746,
+    "input": 303764,
+    "output": 20756,
+    "reasoning": 13002,
     "cache": {
-      "read": 4182784,
+      "read": 6352640,
       "write": 0
     }
   },
-  "total_tokens": 4343983,
-  "cost_usd": 0.046953852000000004,
-  "duration_seconds": 1,
+  "total_tokens": 6690162,
+  "cost_usd": 0.08485061999999999,
+  "duration_seconds": 3107,
   "first_recorded_at": "2026-09-26T07:36:00Z",
-  "last_updated_at": "2026-09-26T08:09:25Z",
+  "last_updated_at": "2026-09-28T08:30:30Z",
   "session_note": "This phase is orchestrated from the primary `build` session, not the dedicated `orchestrator` agent. `.opencode/scripts/record-orchestrator-session.sh` refuses a non-orchestrator session, so the figures were collected with the same authoritative mechanism (`.opencode/scripts/collect-session-usage.sh` keyed by this session id) and recorded here verbatim; no value is estimated.",
   "updates": [
     {
@@ -33,6 +33,13 @@
       "total_tokens": 4343983,
       "duration_seconds": 1,
       "note": "Phase 18 task 18.2 complete: golden coverage + version-decision verified under pinned native runtime, worker + reviewer APPROVED, committed 41b3a94"
+    },
+    {
+      "at": "2026-09-28T08:30:30Z",
+      "cost_usd": 0.08485061999999999,
+      "total_tokens": 6690162,
+      "duration_seconds": 3107,
+      "note": "Phase 18 task 18.3 complete: G7 docs + integration verification; worker attempt 1 failed on a usage limit and was resumed as attempt 2 (partial edits verified/corrected); reviewer APPROVED, committed 58b1781. All three Phase 18 tasks now have worker+reviewer reports and commits."
     }
   ]
 }
