@@ -1,0 +1,177 @@
+{
+  "phase": "19",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "PR-19-01",
+      "severity": "MEDIUM",
+      "status": "noted",
+      "area": "architecture/future-risk: F4 resume cost",
+      "description": "The shipped F4 resume is O(offset) ordered rows per run and O(N^2/QueueCapacity) cumulative skip work per full cycle, where N is the server-wide movie+episode candidate count (the enumerator query is not library-scoped). This work executes on every scheduled (default 12h) and post-scan run.",
+      "detail": "The pinned Jellyfin 12.0.0 host exposes no keyset/after-key predicate and no identifier-stable candidate order, so the identity-anchored locate must walk host-ordered pages from offset 0. ADR-029 clause 3 explicitly accepts this as the cost of the only host-supported mechanism and registers it; task 19.5 recorded it as accepted residual V12-F4-1 (MEDIUM) with a per-library (ParentId-scoped) enumerator + per-library cursors noted as the possible future mitigation. The code matches the accepted mechanism (JellyfinMediaLibraryEnumerator.ResumeCandidatesAsync walks bounded pages; JellyfinMediaLibraryEnumerator.CreateQuery sets only Recursive/IncludeItemTypes/OrderBy, i.e. server-wide). This is a material future risk for large libraries but it is user-approved, registered, and does not block Gate 19.",
+      "evidence": [
+        "docs/decisions/ADR-029.md:106-119 (registered residual 1 and consequences)",
+        "docs/limitations/accepted.md:844-875 (V12-F4-1, MEDIUM, accepted)",
+        "docs/limitations/00-index.md:109 (V12-F4-1)",
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json findings F7/F10 and answers.3_resume_capability",
+        "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs:65-129",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:166-343"
+      ],
+      "recommended_action": "None for Gate 19; the cost is honestly registered and accepted. Carry V12-F4-1 into the release review, and consider the registered per-library-enumerator mitigation as post-v1.2 backlog if load proves it necessary."
+    },
+    {
+      "id": "PR-19-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "orchestration aggregate",
+      "description": "The phase-level orchestration aggregate docs/implementation/phase-19/orchestration.json does not exist, while every completed v1.2 phase (15, 16, 17, 18) has one combining the per-task invocations, aggregate sums, and the phase-reviewer invocation.",
+      "detail": "docs/implementation/phase-19/ contains only this phase-review.json; docs/implementation/phase-15..18/ each contain an orchestration.json. The five per-task orchestration.json files (19.1-19.5) exist and are individually complete and internally consistent (roles, attempts, outcomes, commit hashes, rework entries). The missing artifact is orchestrator bookkeeping and does not affect the implementation, tests, or canonical status surfaces, so it does not block the gate; it is expected to be produced when the orchestrator applies Gate 19.",
+      "evidence": [
+        "ls docs/implementation/phase-19/ -> only phase-review.json (this report)",
+        "docs/implementation/phase-15/orchestration.json, phase-16/orchestration.json, phase-17/orchestration.json, phase-18/orchestration.json (all present)",
+        "docs/implementation/19.1/orchestration.json .. docs/implementation/19.5/orchestration.json (per-task records present and consistent)"
+      ],
+      "recommended_action": "Orchestrator: create docs/implementation/phase-19/orchestration.json (per-task invocations, aggregate, and this phase-reviewer invocation) when applying Gate 19, matching the phase-15..18 form."
+    },
+    {
+      "id": "PR-19-03",
+      "severity": "LOW",
+      "status": "open",
+      "area": "test-quality: single-flight evidence",
+      "description": "Task 19.4's chain facts assert processor.PeakConcurrency(subjectKey) == 1 while every fact builds the worker with workerCount: 1, so that assertion cannot fail regardless of queue mechanics, and the 19.4 worker report cites it as 'chain-level single-flight' proof.",
+      "detail": "The authoritative single-flight evidence is the queue-level fact WorkItemKeyRemainsVersionBlindAndSingleFlightIsPerItemConnectionAndSurface, which exercises the real LibraryWorkQueue directly (version-only difference coalesces; a distinct surface is admitted while the primary key is in flight). The behavior is covered; the chain-fact assertion is redundant and the worker-report wording slightly overstates it. This is an open LOW already recorded by the 19.4 test-quality review (TQ-19.4-01) and does not affect any phase acceptance criterion.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:99-102,114 (workerCount 1 and PeakConcurrency == 1)",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:600-652 (real-queue version-blind/single-flight fact)",
+        "docs/implementation/19.4/test-quality-review.json TQ-19.4-01 (LOW, open)",
+        "docs/implementation/19.4/worker-report.json acceptance_criteria[7] evidence"
+      ],
+      "recommended_action": "No change required for Gate 19. If hardened later, run two or more workers for the chain assertion or attribute single-flight solely to the queue-level fact."
+    },
+    {
+      "id": "PR-19-04",
+      "severity": "LOW",
+      "status": "open",
+      "area": "test-quality: determinism window",
+      "description": "The no-extra-pass guard in both the 19.3 and 19.4 matrices is a fixed 250 ms wall-clock window (AssertStableAsync); a defect whose extra pass is delayed beyond 250 ms would escape it.",
+      "detail": "The window is bounded and asserts on every 10 ms sample (it cannot pass vacuously), and the defects the matrices detect are synchronous in-process enqueues, so the residual risk is low. This is the open LOW TQ-19.4-02. The matrices re-ran green repeatedly under the task reviewers and my independent focused runs.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:774-782 (AssertStableAsync)",
+        "tests/ArrTags.Tests/StaleBasisReenqueueTests.cs:397-405 (same helper)",
+        "docs/implementation/19.4/test-quality-review.json TQ-19.4-02 (LOW, open)"
+      ],
+      "recommended_action": "No change required for Gate 19. If the suite is hardened later, prefer a quiescence signal over a fixed wall-clock window."
+    },
+    {
+      "id": "PR-19-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "verification bounds: no live host for F4/F6",
+      "description": "Phase 19 did not run the pinned Jellyfin host: the F4 matrix uses a DispatchProxy ILibraryManager double (documented (SortName, Name) ordinal order, StartIndex/Limit paging) rather than the host SQL or its collation, and the F6 matrix drives the in-process save/queue/worker/processor chain. No live run is claimed.",
+      "detail": "This is honestly registered (accepted residual V12-F4-5 citing TQ-19.2-01; the archive and changelog verification-bounds paragraphs; the default suite's 64 pre-existing host/native/golden skips). The v1.2 plan's section 9 live-verification list names the status panel/endpoint, MB/KB settings round-trip, Extra Large size, and the logging subject, not F4/F6, so Phase 19's documented requirement (coverage tests pass) is met without a live run.",
+      "evidence": [
+        "docs/limitations/accepted.md:947-970 (V12-F4-5)",
+        "docs/limitations/archive.md:274-291 (F4 verification bounds)",
+        "docs/changelog/v1.2.0.md:1581-1589 (residuals and verification bounds)",
+        "docs/planning/v1.2.md:435-438 (Phase 21 live-verification list)",
+        "docs/implementation/19.2/worker-report.json known_limitations; docs/implementation/19.5/worker-report.json known_limitations"
+      ],
+      "recommended_action": "None for Gate 19. If feasible, task 21.4 could additionally exercise the cursor/resume against the pinned host to close V12-F4-5's live-verification gap."
+    },
+    {
+      "id": "PR-19-06",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "architecture review status",
+      "description": "docs/reviews/architecture/adr-022-clause-3-conformance.json remains reviewer_status CHANGES_REQUIRED with findings AR-ADR022C3-01/02/07 (HIGH) and -03/04 (MEDIUM) marked open. Its recommended identity-anchored amendment was adopted via the user-approved ADR-029 and recorded by the amendment planning record, so no unresolved HIGH remains.",
+      "detail": "The file is an immutable pre-implementation review of record (docs/INDEX.md history rule). Its findings AR-ADR022C3-01 (clause 3 not implementable as written), -02 (per-run bound must be stated explicitly), and -07 (decision ownership/ADR-029 overlap) were resolved by the user-approved amendment; -03/-04 are the registered cost/tie residuals. The amendment record and orchestrator session document the approval; ADR-029 is now present. No action is required, but readers should not mistake the historical CHANGES_REQUIRED status for an open phase finding.",
+      "evidence": [
+        "docs/reviews/architecture/adr-022-clause-3-conformance.json:1-5,189-196 (advisory; decision for user/orchestrator)",
+        "docs/decisions/ADR-029.md:1-6,41-46 (amends only clause 3; accepted)",
+        "docs/implementation/planning/v1.2-f4-clause-3-amendment.json:6-33 (user-approved; ADR-029 accepted)",
+        "docs/implementation/orchestrator-sessions/ses_f18cb3ad3ffeBrK869BaYhNPaQ.json:36-42",
+        "docs/decisions/00-index.md:30 (ADR-022 clause 3 amended by ADR-029)"
+      ],
+      "recommended_action": "None; history is not rewritten and the resolution is recorded in ADR-029 and the amendment planning record."
+    },
+    {
+      "id": "PR-19-07",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation: accepted-plan snapshot",
+      "description": "docs/planning/v1.2.md Goal F4 'Current state' still describes the pre-F4 behavior, and its acceptance criterion does not restate the page-reach bound; the shipped bound lives in ADR-029 and architecture section 8.",
+      "detail": "The v1.2 plan is the accepted planning-context document, not a canonical current-state surface (docs/INDEX.md), and the amendment record deliberately left the F4 acceptance-criterion text unchanged because the bound is documented in ADR-029 and the architecture. This is the same class of INFORMATIONAL observation the Phase 18 review recorded for the plan snapshot; no phase-19 action is warranted.",
+      "evidence": [
+        "docs/planning/v1.2.md:194-226 (F4 goal/current state/criteria)",
+        "docs/implementation/planning/v1.2-f4-clause-3-amendment.json:48-49,138-139 (criterion text intentionally unchanged)",
+        "docs/architecture/08-reconciliation-and-update-flow.md:111-121 (shipped bound)",
+        "docs/INDEX.md:11-20 (single editable source per fact)"
+      ],
+      "recommended_action": "None; leave the accepted plan intact. The v1.2 plan is archived at release completion."
+    }
+  ],
+  "tasks_checked": [
+    "19.1 F4 mechanism confirmation and persisted-cursor implementation",
+    "19.2 F4 successive-run coverage tests",
+    "19.3 F6 mechanism confirmation and stale-basis re-enqueue implementation",
+    "19.4 F6 coalescing coverage tests",
+    "19.5 F4/F6 documentation and integration verification"
+  ],
+  "commits_checked": [
+    "5093f2a Implement 19.1 (worker + reviewer reports, orchestration.json, cursor/resume/enqueue-boundary production, tests, PLANS.md, state.json)",
+    "2db423f Implement 19.2 (new SuccessiveRunCoverageMatrixTests, reports, orchestration.json, PLANS.md, state.json)",
+    "65db3a5 Implement 19.3 (DiscardReason/WorkProcessingResult/LibraryWorkWorker/MetadataReconciliationProcessor, tests, reports, PLANS.md, state.json)",
+    "4ba029d Implement 19.4 (new CoalescingCoverageMatrixTests, reports, orchestration.json, PLANS.md, state.json)",
+    "478de28 Implement 19.5 (architecture 08, limitations open/archive/accepted/00-index, changelog v1.2.0, PLANS.md, state.json, reports, orchestration.json)",
+    "d59d0a1 / 106e9d6 / 4462da4 (F4 amendment evidence: host-order research, architecture review, ADR-029 + normative surfaces)",
+    "6bfb871 / 2fe0adb / e6d52c8 / 40d18cc / 48a87dc (orchestrator commit-hash/session records only; orchestration.json commit fields and orchestrator session)"
+  ],
+  "requirements_checked": [
+    "F4 acceptance criteria (docs/planning/v1.2.md:213-226): round-robin coverage over QueueCapacity with one run bounded; coalesced/in-flight covered; stop at first overflow; bounded secret-free (SortName, itemId) Cache cursor; scope reset; missing/torn/out-of-range reset; event/webhook/per-item/post-save exclusion; coverage tests include coalesce/in-flight/overflow/library-mutation",
+    "F6 acceptance criteria (docs/planning/v1.2.md:243-260): exactly one current-version re-enqueue for ConfigurationStale after the in-flight slot is released; bounded/no-loop; stopped/full queue drop; non-version discard does not re-enqueue; ineligible/absent second pass; version-blind WorkItemKey and single-flight unchanged; coalescing coverage tests",
+    "PLANS.md Phase 19 acceptance criteria and Gate 19 (lines 219-230)",
+    "Goal F4/F6 resolution must be recorded (GOALS.md v1.2 pointer; PLANS.md F4/F6 promoted-Open statement; docs/planning/v1.2.md section 9 verification requirements)"
+  ],
+  "architecture_checked": [
+    "docs/architecture/08-reconciliation-and-update-flow.md:97-146 (F4 cursor/enqueue-outcome/identity-anchored resume/bound; F6 DiscardReason/re-enqueue/artwork-stage residual) - accurate",
+    "docs/architecture/06-configuration-and-persisted-state.md (plugin-state/record-kind wording remains accurate for a new Cache record; no enumeration to staleness)",
+    "src/ArrTags/Reconciliation/LibraryReconciliationService.cs, ReconciliationCursorStore.cs, ReconciliationCursor.cs, ReconciliationCursorPosition.cs, ReconciliationScopeIdentity.cs",
+    "src/ArrTags/Media/IMediaLibraryEnumerator.cs, JellyfinMediaLibraryEnumerator.cs",
+    "src/ArrTags/Updates/WorkHintEnqueueOutcome.cs, LibraryWorkQueue.cs, WorkItemKey.cs, LibraryWorkWorker.cs, DiscardReason.cs, WorkProcessingResult.cs",
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs (12 discard sites classified)",
+    "No conflict found between the execution order (19.1-19.5) and the documented task dependencies."
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json (F1-F10: SortName ASC, Name ASC; no identifier tie-break; no keyset/after-key predicate; StartIndex->SQL LIMIT/OFFSET; server-wide query) - implementation matches",
+    "docs/reviews/architecture/adr-022-clause-3-conformance.json (recommended M1 identity-anchored bounded-linear-skip; bound N+QueueCapacity; residuals) - adopted via ADR-029",
+    "docs/implementation/planning/v1.2-f4-clause-3-amendment.json (residuals F4-R1..R4 and 12 verification requirements for 19.2) - traced to the registered V12-F4-* IDs and the 19.2 matrix facts"
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json - phase 19 status PLANNED, gate record absent, no phase tag applied; tasks 19.1-19.5 done with report paths; limitations.open=[F7], resolved includes F4/F6, accepted includes V12-F4-1..V12-F4-6 and V12-F6-1/V12-F6-2",
+    "PLANS.md - Phase 19 checkboxes all [x]; milestone table (generated) shows Phase 19 PLANNED; agrees with state.json",
+    "docs/status.md - regenerated; 'Open limitations: 1 (F7)'",
+    "docs/limitations/open.md - F4/F6 removed; only F7 remains",
+    "docs/limitations/archive.md - F4/F6 resolved entries with tasks, decisions, evidence, residuals",
+    "docs/limitations/accepted.md - eight phase-19 residuals registered with severities matching their sources",
+    "docs/limitations/00-index.md - F4/F6 Resolved; eight accepted residual rows present",
+    "docs/changelog/v1.2.0.md - Phase 19 entry records shipped F4/F6, residuals, suite counts, verification bounds",
+    "README.md - no F4/F6/coverage/coalescing statement; correctly unchanged",
+    "scripts/check-docs.sh - PASS (all nine sections)"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/19.1/orchestration.json - 7 invocations, rework entry R-19.1-01, commit 5093f2a; consistent with worker/reviewer attempts 1-2",
+    "docs/implementation/19.2/orchestration.json - 3 invocations, commit 2db423f; reviewer APPROVED, test-quality PASS_WITH_FINDINGS",
+    "docs/implementation/19.3/orchestration.json - 2 invocations, commit 65db3a5; reviewer APPROVED",
+    "docs/implementation/19.4/orchestration.json - 3 invocations, commit 4ba029d; reviewer APPROVED, test-quality PASS_WITH_FINDINGS",
+    "docs/implementation/19.5/orchestration.json - 4 invocations, rework entry R-19.5-01, commit 478de28; both worker attempts and both reviewer attempts preserved",
+    "docs/implementation/phase-19/orchestration.json - ABSENT (see PR-19-02); per-task records are complete and consistent"
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 19,
+    "total_attempts": 19,
+    "correction_rounds": 2
+  },
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 19 is complete and approved with findings. All five tasks in the authoritative execution order 19.1-19.5 passed the worker -> reviewer (with test-quality reviewers on 19.2/19.4) -> commit pipeline; each has a preserved attempt-1 report, a rework attempt where applicable (19.1 R-19.1-01 MEDIUM, 19.5 R-19.5-01 MEDIUM, both visibly closed in attempt-2 reports plus orchestration rework entries), and a commit whose contents match the reviewed change set (5093f2a, 2db423f, 65db3a5, 4ba029d, 478de28). I independently inspected the shipped implementation and it conforms to ADR-022 as amended by ADR-029 (persisted bounded Cache-authority (SortName, itemId) cursor; identity-anchored resume by unique itemId via bounded linear skip with no after-key host predicate; Accepted/Coalesced/InFlight covered, Overflow/Stopped stop with the cursor advanced only over the covered prefix; wrap; scheduled/post-scan only; scope and missing/torn reset) and to ADR-023 (bounded DiscardReason; exactly one current-version re-enqueue for ConfigurationStale after CompleteProcessing releases the in-flight slot; stopped/full bounded drop; version-blind WorkItemKey and single-flight unchanged). F4 and F6 are correctly removed from the open register and recorded resolved, each qualified by honestly registered, source-severity-matched residuals (V12-F4-1..6, V12-F6-1..2) consistent across open.md/archive.md/accepted.md/00-index.md/state.json; architecture section 8 and the Phase 19 changelog are accurate and non-overclaiming about the O(offset)/O(N^2) bound, the exact-(SortName, Name)-tie caveat, the unlocatable-anchor reset, the cache-TTL interaction, the overlapping-run effect, the host-order internal-detail risk, the artwork-stage window, and the unlogged bounded drop. I reproduced the validation independently: build 0 warnings / 0 errors; default suite Failed 0 / Passed 1901 / Skipped 64 / Total 1965; F4 focused 90/90; F6 focused 44/44; scripts/check-docs.sh PASS. Phase 19 in docs/plan/state.json remains status PLANNED with no gate_record and no v1.2.0-phase19 tag; the orchestrator applies the gate. No BLOCKER or HIGH finding is open; the remaining findings are one MEDIUM (the already-registered, user-accepted F4 skip cost over the server-wide candidate set) and LOW/INFORMATIONAL items (missing phase orchestration aggregate to be created at gate time, two open test-quality LOWs, the absent live-host run, the historical architecture-review status, and the accepted-plan snapshot). The phase is complete and ready for Phase 20."
+}

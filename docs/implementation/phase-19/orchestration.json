@@ -1,0 +1,81 @@
+{
+  "phase": 19,
+  "name": "Reconciliation coverage and version-aware coalescing",
+  "release": "1.2.0",
+  "status": "COMPLETE",
+  "tasks": ["19.1", "19.2", "19.3", "19.4", "19.5"],
+  "task_commits": {
+    "19.1": "5093f2a",
+    "19.2": "2db423f",
+    "19.3": "65db3a5",
+    "19.4": "4ba029d",
+    "19.5": "478de28"
+  },
+  "supporting_commits": {
+    "f4_host_order_research": "d59d0a1",
+    "f4_clause3_architecture_review": "106e9d6",
+    "adr_029_amendment_and_surfaces": "4462da4"
+  },
+  "subagents": [
+    {"role": "jellyfin-expert", "task": "19.1", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.063833898, "total_tokens": 4554935, "duration_seconds": 685},
+    {"role": "architecture-reviewer", "task": "19.1", "attempt": 1, "outcome": "CHANGES_REQUIRED", "cost_usd": 0.03588126, "total_tokens": 1318178, "duration_seconds": 350},
+    {"role": "implementation-planner", "task": "19.1", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.028793196, "total_tokens": 1285608, "duration_seconds": 206},
+    {"role": "implementation-worker", "task": "19.1", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.318184362, "total_tokens": 54224325, "duration_seconds": 2878},
+    {"role": "implementation-reviewer", "task": "19.1", "attempt": 1, "outcome": "CHANGES_REQUIRED", "cost_usd": 0.080695482, "total_tokens": 4275947, "duration_seconds": 704},
+    {"role": "implementation-worker", "task": "19.1", "attempt": 2, "outcome": "COMPLETE", "cost_usd": 0.044205858, "total_tokens": 2710876, "duration_seconds": 576},
+    {"role": "implementation-reviewer", "task": "19.1", "attempt": 2, "outcome": "APPROVED", "cost_usd": 0.01751841, "total_tokens": 732892, "duration_seconds": 183},
+    {"role": "implementation-worker", "task": "19.2", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.179873838, "total_tokens": 21530588, "duration_seconds": 1986},
+    {"role": "implementation-reviewer", "task": "19.2", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.035296494, "total_tokens": 2018307, "duration_seconds": 360},
+    {"role": "test-quality-reviewer", "task": "19.2", "attempt": 1, "outcome": "PASS_WITH_FINDINGS", "cost_usd": 0.04932075, "total_tokens": 3843044, "duration_seconds": 919},
+    {"role": "implementation-worker", "task": "19.3", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.174628488, "total_tokens": 17692048, "duration_seconds": 2815},
+    {"role": "implementation-reviewer", "task": "19.3", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.03921645, "total_tokens": 2897046, "duration_seconds": 492},
+    {"role": "implementation-worker", "task": "19.4", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.180900972, "total_tokens": 21911879, "duration_seconds": 1842},
+    {"role": "implementation-reviewer", "task": "19.4", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.038853708, "total_tokens": 2493608, "duration_seconds": 446},
+    {"role": "test-quality-reviewer", "task": "19.4", "attempt": 1, "outcome": "PASS_WITH_FINDINGS", "cost_usd": 0.05066598, "total_tokens": 3933265, "duration_seconds": 819},
+    {"role": "implementation-worker", "task": "19.5", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.106652142, "total_tokens": 10673388, "duration_seconds": 769},
+    {"role": "implementation-reviewer", "task": "19.5", "attempt": 1, "outcome": "CHANGES_REQUIRED", "cost_usd": 0.049603056, "total_tokens": 2013207, "duration_seconds": 240},
+    {"role": "implementation-worker", "task": "19.5", "attempt": 2, "outcome": "COMPLETE", "cost_usd": 0.03007473, "total_tokens": 1491407, "duration_seconds": 242},
+    {"role": "implementation-reviewer", "task": "19.5", "attempt": 2, "outcome": "APPROVED", "cost_usd": 0.019516968, "total_tokens": 750961, "duration_seconds": 221}
+  ],
+  "aggregate": {
+    "task_count": 5,
+    "review_rounds": 7,
+    "test_quality_review_rounds": 2,
+    "rework_rounds": 2,
+    "subagent_invocations": 19,
+    "cost_usd": 1.543716042,
+    "total_tokens": 160361509,
+    "note": "Per-subagent figures are the authoritative runtime values recorded in docs/implementation/<task>/orchestration.json; this aggregate is the exact sum of those execution values (19.1 0.589112466 / 69,102,761 tok over 7 invocations; 19.2 0.264491082 / 27,391,939 tok over 3; 19.3 0.213844938 / 20,589,094 tok over 2; 19.4 0.27042066 / 28,338,752 tok over 3; 19.5 0.205846896 / 14,938,963 tok over 4). Rework rounds: 19.1 worker attempt 2 (R-19.1-01, the Stopped-outcome evidence gap) and 19.5 worker attempt 2 (R-19.5-01, V12-F4-5 severity). review_rounds counts the seven implementation-reviewer invocations. Supporting pre-task work: jellyfin-expert host-order research for F4 (report committed d59d0a1), architecture-reviewer ADR-022 clause-3 conformance (106e9d6), and implementation-planner recording ADR-029 (4462da4). The phase-reviewer invocation is recorded separately below and is not part of this per-task aggregate."
+  },
+  "phase_reviewer": {
+    "role": "phase-reviewer",
+    "attempt": 1,
+    "outcome": "APPROVED_WITH_FINDINGS",
+    "execution": {
+      "agent": "phase-reviewer",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "variant": "high",
+      "input_tokens": 227043,
+      "output_tokens": 11910,
+      "reasoning_tokens": 22366,
+      "cache_read_tokens": 8863488,
+      "cache_write_tokens": 0,
+      "total_tokens": 9124807,
+      "cost_usd": 0.081212514,
+      "duration_seconds": 368,
+      "session_id": "ses_f17bcbd28ffetkLLsDPL600txj"
+    }
+  },
+  "gate": "Gate 19",
+  "tag": "v1.2.0-phase19",
+  "gate_status": "MET",
+  "phase_review_findings": {
+    "PR-19-01": "MEDIUM, noted: F4 resume is O(offset)/O(N^2/QueueCapacity) over the server-wide candidate set; registered as V12-F4-1 (accepted) and carried for the release review.",
+    "PR-19-02": "LOW, open: phase aggregate orchestration record was absent; resolved by this file at Gate 19.",
+    "PR-19-03": "LOW, open: chain facts assert a vacuous PeakConcurrency==1 at workerCount 1; the authoritative single-flight evidence is the real-queue key fact (tracked; recorded in docs/implementation/19.4/test-quality-review.json TQ-19.4-01).",
+    "PR-19-04": "LOW, open: the anti-extra-pass guard uses a fixed 250 ms stability window (tracked; TQ-19.4-02).",
+    "PR-19-05": "INFORMATIONAL, noted: no live host run for F4/F6 (registered).",
+    "PR-19-06": "INFORMATIONAL, resolved: the historical architecture review status is superseded by the approved ADR-029.",
+    "PR-19-07": "INFORMATIONAL, noted: accepted-plan snapshot wording."
+  }
+}
