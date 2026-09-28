@@ -1,0 +1,152 @@
+{
+  "phase": "20",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "PR-20-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "requirements traceability / documentation",
+      "description": "Goal F7's acceptance criterion (docs/planning/v1.2.md section 2) requires 'ADR-009 and ADR-002/ADR-003 amendment notes are recorded'. Task 20.3 recorded the ADR-009 and ADR-003 amendment notes (and updated their decisions-index rows) but recorded no ADR-002 note, and the ADR-002 index row still reads bare 'Accepted'. ADR-024 clause 8 and its status line extend 'the ADR-002/ADR-003 restoration trigger set', and ADR-002 is precisely the ADR that defines that trigger set (disable/uninstall enters RestorePending, a present baseline is restored, an absent baseline is removed, item removal enters Removed). A reader of ADR-002 alone therefore still sees the pre-v1.2 trigger set. The omission originates in the plan of record: PLANS.md Phase 20 deliverables ('ADR-024 plus ADR-009 and ADR-003 amendment notes') and the v1.2 section 7 documentation checklist ('ADR-009.md and ADR-003.md (supersession/extension notes)') both drop ADR-002, so the planner's task set inherited a narrower list than the F7 goal criterion states.",
+      "evidence": [
+        "docs/planning/v1.2.md:290-292 (F7 acceptance criterion names 'ADR-009 and ADR-002/ADR-003 amendment notes')",
+        "docs/planning/v1.2.md:401 (Phase 20 documentation checklist names only ADR-009 and ADR-003)",
+        "PLANS.md:244 (Phase 20 deliverable names 'ADR-024 plus ADR-009 and ADR-003 amendment notes')",
+        "docs/decisions/ADR-002.md:56-65 (ADR-002 defines the restoration trigger set: disable/uninstall -> RestorePending, restore/remove, item removal -> Removed)",
+        "docs/decisions/ADR-002.md (no amendment note; grep for 'ADR-024'/'amendment' returns nothing)",
+        "docs/decisions/00-index.md:10-11 (ADR-003 row records 'restoration trigger set extended by ADR-024 (v1.2)'; ADR-002 row is unchanged 'Accepted')",
+        "docs/decisions/ADR-024.md:3-4,82-83 (ADR-024 status and clause 8 extend the ADR-002/ADR-003 restoration trigger set)",
+        "docs/implementation/20.3/worker-report.json acceptance_criteria[1] (records only the ADR-009 and ADR-003 notes)"
+      ],
+      "recommended_action": "Record an ADR-002 amendment note (addition-only, no clause rewritten) stating that ADR-024 extends ADR-002's restoration trigger set with the owned empty-selection obligation through the same crash-recoverable protocol, and update the ADR-002 row in docs/decisions/00-index.md, matching the ADR-003 treatment. Because the v1.2 plan is itself internally inconsistent here, also reconcile the wording (either extend the Phase 20 documentation checklist / PLANS.md deliverable to name ADR-002, or, if the omission was intentional, record the user's decision narrowing the F7 criterion). Do not silently amend the criterion. Phase 21 task 21.2 (canonical documentation reconciliation) is the natural owner if this is carried forward."
+    },
+    {
+      "id": "PR-20-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "phase orchestration record",
+      "description": "The phase-level aggregate docs/implementation/phase-20/orchestration.json states in its aggregate.note that 'The phase-reviewer invocation is recorded separately below and is not part of this per-task aggregate', but the file contains no 'below' section: its subagents array holds only the nine task-level invocations and the file ends at supporting_commits. Phases 15 and 19 finalize this by adding a phase-reviewer subagent entry when the gate is applied; phase 16-18 do not, so the convention is itself inconsistent. The aggregate's per-task sums are otherwise exact and consistent with the three task records.",
+      "evidence": [
+        "docs/implementation/phase-20/orchestration.json:209 (note text) and the file's end (no phase-reviewer invocation section)",
+        "docs/implementation/phase-15/orchestration.json (subagents includes a phase-reviewer entry)",
+        "docs/implementation/phase-19/orchestration.json (subagents includes the phase-reviewer role)",
+        "docs/implementation/phase-16/orchestration.json, phase-17, phase-18 (no phase-reviewer entry)"
+      ],
+      "recommended_action": "Orchestrator: when committing docs/implementation/phase-20/orchestration.json with the gate, either add the phase-reviewer invocation under subagents (as phase 15/19 do) or reword the note so it does not reference a section that is absent."
+    }
+  ],
+  "tasks_checked": [
+    "20.1 Empty-selection restore/removal behavior (commit fd37a73; worker/reviewer/test-quality reports; orchestration.json)",
+    "20.2 F7 coverage tests (commit 24b1c47; worker/reviewer/test-quality reports; orchestration.json; test-only, git diff src/ empty)",
+    "20.3 F7 documentation and integration verification (commit 1bd9a82; worker/reviewer/test-quality reports; orchestration.json)",
+    "Authoritative Phase 20 execution order 20.1, 20.2, 20.3 (PLANS.md:249, state.json phases[20].execution_order, phase orchestration tasks[]) all agree; no required task skipped"
+  ],
+  "commits_checked": [
+    "fd37a73 Implement 20.1 Empty-selection restore/removal behavior",
+    "24b1c47 Implement 20.2 F7 coverage tests",
+    "1bd9a82 Implement 20.3 F7 documentation and integration verification",
+    "457982e Record 20.1 commit hash and orchestrator session",
+    "261960f Record 20.2 commit hash and orchestrator session",
+    "d2e9cb6 Record 20.3 commit hash and orchestrator session",
+    "Phase diff b2c39d6..1bd9a82: 38 files, +2835/-99; git diff src/ at 24b1c47 empty; no attempt-2/rework reports anywhere under docs/implementation/20.* or phase-20"
+  ],
+  "requirements_checked": [
+    "F7 owned empty-selection restores the retained baseline through the internal ArtworkPublisher.RestoreAsync under the current durable fence - satisfied (ArtworkGenerationCoordinator.RestoreEmptySelectionAsync; ArtworkGenerationCoordinatorTests.EmptySelectionOnAnOwnedSessionRestoresTheRetainedBaseline)",
+    "F7 absent-baseline removal through the guarded protocol - satisfied as written (explicit direct-publisher test ArtworkPublisherTests.AbsentBaselineRestorationRemovesTheArrtagsImageWithoutSaveOrUpdate with a synthetic persisted Published/Absent state; plus the 20.3 recovery-gate resume RestorationWithAnAbsentBaselineIsResumedAsARemoval)",
+    "F7 other pass-through reasons preserve the current artwork with no mutation, including a non-empty layout-empty selection (NoFittingBadge) - satisfied (SkiaBadgeRenderer layout.IsEmpty -> NoFittingBadge; coordinator restores only on NoDisplayableValue; OtherPassThroughReasonsPreserveAnOwnedSession theory; native NoFittingBadge coordinator/renderer cases under the pinned oracle)",
+    "F7 non-owned empty selection stays a pass-through - satisfied (HasOwnedPublishedSession requires a valid Published record; RenderPassThroughPreservesArtworkWithoutPublication asserts ReconciliationOutcome null and no mutation)",
+    "F7 restore is crash-recoverable and resumed by the ordinary recovery gate - satisfied at the durable-record level (durable Kind=Restoration write-ahead; CoordinatorDrivenRestorationIsResumedByTheOrdinaryRecoveryGate). Bound: simulation reconstructs services over the same state root, not a process kill (stated honestly).",
+    "F7 coverage tests pass - satisfied (independently reproduced default suite Failed 0 / Passed 1927 / Skipped 66 / Total 1993; F7-focused 103/4/107; forced-native oracle 2014/21/2035 per reviewer reports)",
+    "F7 recorded as resolved in the limitations register - satisfied (docs/limitations/00-index.md F7 Resolved -> archive.md; open.md records no open limitations; state.json limitations.resolved contains F7)",
+    "F7 'ADR-009 and ADR-002/ADR-003 amendment notes are recorded' - PARTIALLY satisfied; the ADR-002 note is missing (see PR-20-01)"
+  ],
+  "architecture_checked": [
+    "docs/architecture/09-persisted-artwork-rendering.md publication-flow step 4/owned-empty-selection paragraph: the coordinator drives ArtworkPublisher.RestoreAsync under the current fence; the absent-baseline leg is correctly attributed to the publisher and stated unreachable through the coordinator (ReadRetainedSource returns Absent -> NoSource), matching src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:213-218,345-349",
+    "Boundary: coordinator composes source adapter/renderer/publisher; only the publisher mutates images; the restore entry point is the pre-existing internal ArtworkPublisher.RestoreAsync (introduced in task 5.9), so no second restore path is introduced and no Jellyfin ABI is newly assumed",
+    "No subject-gate reentrancy: ArtworkGenerationCoordinator does not hold ArtworkSubjectGate; the publisher acquires/releases it (ArtworkPublisher.cs:525-556), the reconciler acquires it separately (ArtworkReconciler.cs:104), and ArtworkRecoveringWorkItemProcessor releases it before delegating to the coordinator - no deadlock path",
+    "Discriminator single-source: RenderPassThroughReason.NoDisplayableValue is produced only at SkiaBadgeRenderer.cs:85 (selection.IsEmpty, before source decode); NoFittingBadge only at :230 (layout.IsEmpty); ConcurrencyLimitedRenderer delegates unchanged. The coordinator's '?? NoDisplayableValue' default (AR-20.1-01) is unreachable because RenderResult.PassThrough rejects an undefined reason",
+    "No render-output change: no RenderVersion, RendererConfiguration schema, fingerprint, or golden file differs; ArtworkGenerationOutcome.Restored / ArtworkGenerationResult.ReconciliationOutcome are runtime-only and not persisted or fingerprinted (ADR-024 clause 7)",
+    "Post-restore lifecycle: a completed restore commits ArtworkPublicationState.Restored with the pre-restore SourcePresence; the planner then treats it as un-owned and re-drives generation, which yields a copy-free pass-through (selection still empty) with no mutation; re-enabling a value re-publishes from the observed surface - consistent with ADR-024 and the pre-existing pass-through semantics (no new correctness or loop risk beyond the pre-existing repeated-generation behavior)"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-024.md clauses 1-8 against the shipped code: discriminator, single internal RestoreAsync entry point, Normal-fence crash-recoverable protocol, preserve list including NoFittingBadge, non-owned pass-through, no RenderVersion advance - all confirmed in source",
+    "docs/decisions/ADR-009.md and ADR-003.md amendment notes are addition-only and quote the superseded ADR-009 clause verbatim; no accepted clause text is rewritten",
+    "ADR-002 (Guarded Artwork Ownership and Restoration) defines the restoration trigger set ADR-024 extends, but carries no amendment note (PR-20-01)",
+    "Conformance precondition: all three tasks recorded conformance.required=false with a reasoned basis (20.1/20.2/20.3 orchestration.json). 20.1 reuses the already-pinned and live-verified item-image save/remove ABI (task 5.1, task 14.3); no new Jellyfin 12 platform behaviour, provider contract, or first-time ADR-against-host implementability question governs a criterion, so the determination is supported",
+    "Implementation assumptions that remain unresolved-but-bounded and are stated honestly: absent-baseline removal is publisher/recovery-gate only (not coordinator-reachable); native NoFittingBadge cases execute only under ARRTAGS_SKIA_COMPAT=1; no live pinned-host verification in Phase 20 (Phase 21 task 21.4 owns the full live matrix)"
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: tasks 20.1-20.3 done=true with worker+reviewer+test-quality report arrays; limitations.open [] and resolved contains F7; phase 20 still status PLANNED with no gate_record and no tag created (matches the required pre-gate state)",
+    "PLANS.md: 20.1-20.3 checkboxes [x]; generated milestone table '20 ... PLANNED ... Gate 20'; active-scope paragraph corrected to the resolved-by-phase wording; render-docs-state --check reports PLANS.md/state.json agree",
+    "docs/status.md: regenerated; 'Open limitations: none'; generated block current",
+    "docs/changelog/v1.2.0.md: Phase 20 section with 20.1/20.2/20.3 subsections and measured counts; numbers match the committed worker/reviewer evidence and my own rerun",
+    "docs/limitations/: open.md contains no F7 and states no open limitations; archive.md carries the F7 resolution entry with evidence and verification bounds; 00-index.md F7 row Resolved/archive.md",
+    "docs/architecture/09-persisted-artwork-rendering.md: coordinator-attributed removal wording corrected to the publisher; NoSource unreachability and the restore obligation documented",
+    "docs/data-model/03-08-renderresult.md: v1.2 task 20.1 note adds Restored/ReconciliationOutcome/NoFittingBadge and states no RenderVersion/schema/fingerprint change; historical Phase 5 note preserved",
+    "README.md: no F7/empty-selection statement exists and none is stale; AllowedValues wording remains accurate (the new user-visible restore-on-empty behavior is not documented there but is not required by the Phase 20 documentation checklist; Phase 21 task 21.2 owns README)",
+    "docs/planning/v1.2.md:29-34 still reads 'F3, F4, F6, F7, and F8 ... remain Open until their resolving phase lands and records the resolution'; it is a conditional statement and not one of the named canonical current-state surfaces (already assessed by 20.3's reviewer as REV-20.3-01, INFORMATIONAL)"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/20.1/orchestration.json: status COMPLETE, commit fd37a73, conformance.required=false with reason, 3 invocations (attempt 1 each), rework []",
+    "docs/implementation/20.2/orchestration.json: status COMPLETE, commit 24b1c47, conformance.required=false with reason, 3 invocations (attempt 1 each), rework []",
+    "docs/implementation/20.3/orchestration.json: status COMPLETE, commit 1bd9a82, conformance.required=false with reason, 3 invocations (attempt 1 each), rework []",
+    "docs/implementation/phase-20/orchestration.json: tasks 20.1-20.3, task_commits and supporting_commits consistent; aggregate sums recomputed and exact (9 invocations; cost 0.439314888; tokens 79809509; duration 7019s); status IN_PROGRESS, gate_status PENDING_PHASE_REVIEW, phase_review_status PENDING (legal pre-gate shape since status is not COMPLETE); aggregate.note dangling 'below' reference recorded as PR-20-02",
+    "No BLOCKED/FAILED/NEEDS_RESEARCH invocation; no correction round hidden (no attempt-2 reports; rework arrays empty)"
+  ],
+  "gate_conformance": {
+    "gate_text_audited": "Gate 20: Met when tasks 20.1-20.3 meet their acceptance criteria, the coverage tests pass, the phase review is approved, and the tag `v1.2.0-phase20` is created. Resolves F7.",
+    "matches_plan_of_record": true,
+    "amendment": null,
+    "basis": "The gate text is quoted verbatim from PLANS.md:259-261 and is unchanged: the applied gate is the accepted plan's Gate 20, with no gate or criterion amended at gate time and no recorded user amendment (amendment is null). The phase's own acceptance criteria (PLANS.md:250-258) are met as written: an owned empty selection restores the baseline or removes the image through the crash-recoverable protocol and the internal ArtworkPublisher.RestoreAsync entry point resumed by the ordinary recovery gate (20.1/20.2 tests, plus the 20.3 reconciler resume); the other pass-through reasons, including the non-empty NoFittingBadge case, preserve the current artwork with no mutation; a non-owned empty selection stays a pass-through; the absent-baseline removal is exercised by a direct publisher test with a synthetic persisted Published state without a baseline; coverage tests pass (independently reproduced) and F7 is recorded as resolved. The one caveat is that the Goal F7 acceptance criterion in docs/planning/v1.2.md:290-292 additionally names an ADR-002 amendment note, and the plan of record's Phase 20 deliverable list itself narrows that to ADR-009 and ADR-003 only; the ADR-002 note was not recorded. That narrowing is a plan-internal inconsistency and a partially satisfied goal criterion, recorded as PR-20-01 (MEDIUM); it is a documentation traceability gap, not a weakening of the applied gate text, and it does not require a user amendment to the gate. The limitation status is honest: F7 is recorded Resolved against shipped code and reproduced tests, and the verification bounds (publisher-only absent-baseline path, native NoFittingBadge cases under the pinned oracle, no live host run in Phase 20) are stated rather than overclaimed."
+  },
+  "agent_process": {
+    "scope": "phase-20",
+    "measurements": {
+      "tasks": "20.1, 20.2, 20.3",
+      "subagent_invocations_total": "9",
+      "subagent_invocations_per_task": "20.1=3, 20.2=3, 20.3=3",
+      "role_mix": "implementation-worker 3, implementation-reviewer 3, test-quality-reviewer 3; no jellyfin-expert/architecture-reviewer/security-reviewer invocation",
+      "first_pass_approval_rate": "3/3 (100%): every implementation-reviewer attempt 1 returned APPROVED",
+      "review_outcomes": "implementation-reviewer 3x APPROVED; test-quality-reviewer 3x PASS_WITH_FINDINGS (LOW/INFORMATIONAL only)",
+      "correction_rounds": "0 (no rework entries; no attempt-2 reports)",
+      "cost_usd_total": "0.439314888 (worker 0.183296808 / 0.13211028 / 0.1239078; both review roles recorded cost_usd 0 as the provider runtime value)",
+      "duration_seconds_total": "7019",
+      "duration_seconds_by_invocation": "20.1 worker 1301, impl-review 284, tqr 348; 20.2 worker 1111, impl-review 463, tqr 569; 20.3 worker 837, impl-review 1006, tqr 1100",
+      "expensive_outliers": "20.1 worker $0.183 / 1301s; 20.3 test-quality 1100s and 20.3 implementation-review 1006s (documentation-heavy closing task)",
+      "blocked_failed_needs_research_invocations": "none",
+      "conformance_preconditions": "all three tasks recorded conformance.required=false with an explicit reason; no specialist precondition invocation was required or made"
+    },
+    "observations": [
+      {
+        "observation": "The 20.1 task delegation quoted a stale expected suite baseline (1853 passed / 64 skipped / 1917 total, the task 19.1-era count). The worker measured its own pre-change baseline (1901/64/1965), stated the discrepancy, and used the measured figure, so no error reached the state record, but the stale number had to be detected and corrected against the delegation.",
+        "evidence": [
+          "docs/implementation/20.1/worker-report.json validation[0] ('This differs from the 1853/64/1917 figure quoted in the task delegation, which was the task 19.1-era count')",
+          "docs/implementation/20.1/worker-report.json acceptance_criteria[6] (delta computed against the measured baseline)",
+          ".opencode/agents/implementation-worker.md:451-452 (a new count must be consistent with the stated baseline)"
+        ],
+        "proposed_change": ".opencode/agents/orchestrator.md (Worker Delegation section): instruct that a task delegation must not quote absolute historical suite totals; require the worker to measure and state its own pre-change baseline, and if a count is quoted it must be generated from the current tree immediately before dispatch.",
+        "rationale": "A stale delegated baseline is a small but repeated source of confusion: the worker prompt treats the stated baseline as the consistency anchor, so a stale value pushes every task to spend time reconciling delegation text against reality. Removing absolute counts from delegations costs nothing and eliminates the mismatch."
+      },
+      {
+        "observation": "The contract's documented metadata-collection path was unusable for all three tasks: .opencode/scripts/collect-session-usage.sh could not reach the running server (the opencode CLI reports a V2 health mismatch), so for 20.1, 20.2, and 20.3 the orchestrator read the authoritative session objects directly from the running server and recorded the real values (no nulls, no estimates). The workaround worked and the recorded figures are consistent, but the wrapper's failure is environmental and repeatable.",
+        "evidence": [
+          "docs/implementation/20.1/orchestration.json notes",
+          "docs/implementation/20.2/orchestration.json notes",
+          "docs/implementation/20.3/orchestration.json notes",
+          ".opencode/scripts/collect-session-usage.sh:62-73 (api_get delegates to `opencode api get`, the CLI that is broken in this environment)",
+          ".opencode/agents/orchestrator.md:336-352 (the script is the contract's documented collection path)"
+        ],
+        "proposed_change": ".opencode/scripts/collect-session-usage.sh: replace the `opencode api get` call in api_get() with a direct HTTP request (for example `curl -fsS`) to the resolved server URL's /api/session/<id> endpoint, keeping the existing OPENCODE_SERVER/port discovery, so metadata collection does not depend on the broken `opencode` CLI.",
+        "rationale": "The orchestrator prompt makes the wrapper the authoritative path and forbids estimation; if the wrapper silently depends on a broken CLI, every task forces a manual alternative and raises the risk that a future orchestrator records nulls instead of real values. A curl-based read of the same endpoint keeps the authoritative source while removing the CLI dependency."
+      }
+    ]
+  },
+  "rework_summary": {
+    "total_subagent_invocations": 9,
+    "total_attempts": 9,
+    "correction_rounds": 0
+  },
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 20 (Empty-selection artwork restoration, Goal F7, ADR-024) is complete and the gate can be applied. All three tasks in the authoritative execution order (20.1, 20.2, 20.3) are done with a commit, a worker report, an APPROVED implementation review, a PASS_WITH_FINDINGS test-quality review, and a per-invocation orchestration record; the phase-level aggregate exists and its sums are exact. There were no correction rounds and no BLOCKED/FAILED/NEEDS_RESEARCH invocation; implementation reviews approved on attempt 1 (3/3) and the test-quality reviews' LOW/INFORMATIONAL residuals were closed or honestly carried. I independently rebuilt the tree, reran the F7-focused classes (103 passed / 4 skipped / 107) and the full default suite (Failed 0 / Passed 1927 / Skipped 66 / Total 1993), and ran check-docs.sh (PASS). Architecturally the phase stays inside the documented boundaries: the discriminator is single-sourced (NoDisplayableValue only for an empty resolved selection at SkiaBadgeRenderer.cs:85; NoFittingBadge only for a non-empty layout-empty selection at :230), the only restore entry point is the pre-existing internal ArtworkPublisher.RestoreAsync, no subject-gate reentrancy or deadlock path exists, the absent-baseline leg is correctly attributed to the publisher (not coordinator) in the corrected architecture text, and no RenderVersion/schema/fingerprint/golden changed. Platform assumptions are bounded and honest: the save/remove ABI was pinned in task 5.1 and live-verified in task 14.3, native NoFittingBadge cases run only under ARRTAGS_SKIA_COMPAT=1, and no live host run is part of this phase. The pre-gate phase state is correct: Phase 20 is still PLANNED in state.json and PLANS.md with no v1.2.0-phase20 tag and no gate_record. Two findings remain, neither blocking: PR-20-01 (MEDIUM) - the Goal F7 criterion names an ADR-002 amendment note that was not recorded (the plan's own Phase 20 deliverable list drops ADR-002), so ADR-002 and its index row still show only the pre-v1.2 restoration trigger set; PR-20-02 (LOW) - the phase aggregate's note references a phase-reviewer section the draft does not contain. The gate text is the plan's Gate 20 verbatim, unamended, and the delivered result does not weaken it. APPROVED_WITH_FINDINGS; ready for the next phase."
+}

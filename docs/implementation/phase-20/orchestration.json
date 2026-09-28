@@ -1,0 +1,220 @@
+{
+  "phase": 20,
+  "name": "Empty-selection artwork restoration",
+  "release": "1.2.0",
+  "status": "IN_PROGRESS",
+  "tasks": [
+    "20.1",
+    "20.2",
+    "20.3"
+  ],
+  "task_commits": {
+    "20.1": "fd37a73",
+    "20.2": "24b1c47",
+    "20.3": "1bd9a82"
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 297748,
+        "output_tokens": 38185,
+        "reasoning_tokens": 60609,
+        "cache_read_tokens": 26452736,
+        "cache_write_tokens": 0,
+        "total_tokens": 26849278,
+        "cost_usd": 0.183296808,
+        "duration_seconds": 1301,
+        "session_id": "ses_f16efe1baffeZJO6VF4nRH1ot0"
+      },
+      "task": "20.1"
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 68256,
+        "output_tokens": 9968,
+        "reasoning_tokens": 6950,
+        "cache_read_tokens": 1618986,
+        "cache_write_tokens": 0,
+        "total_tokens": 1704160,
+        "cost_usd": 0,
+        "duration_seconds": 284,
+        "session_id": "ses_f16d7223fffeEVDqbvPuBb0rHt"
+      },
+      "task": "20.1"
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 64687,
+        "output_tokens": 8573,
+        "reasoning_tokens": 10800,
+        "cache_read_tokens": 1813198,
+        "cache_write_tokens": 0,
+        "total_tokens": 1897258,
+        "cost_usd": 0,
+        "duration_seconds": 348,
+        "session_id": "ses_f16d257d9ffecSZ5MClJlYcDsW"
+      },
+      "task": "20.1"
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 243064,
+        "output_tokens": 28409,
+        "reasoning_tokens": 43332,
+        "cache_read_tokens": 17535360,
+        "cache_write_tokens": 0,
+        "total_tokens": 17850165,
+        "cost_usd": 0.13211028,
+        "duration_seconds": 1111,
+        "session_id": "ses_f16cab32affe4lBqo0vTobPh5t"
+      },
+      "task": "20.2"
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 75288,
+        "output_tokens": 11991,
+        "reasoning_tokens": 6828,
+        "cache_read_tokens": 3318347,
+        "cache_write_tokens": 0,
+        "total_tokens": 3412454,
+        "cost_usd": 0,
+        "duration_seconds": 463,
+        "session_id": "ses_f16b940aeffe9IE7Pgmu9Tt6Vr"
+      },
+      "task": "20.2"
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 63972,
+        "output_tokens": 15317,
+        "reasoning_tokens": 11355,
+        "cache_read_tokens": 3807841,
+        "cache_write_tokens": 0,
+        "total_tokens": 3898485,
+        "cost_usd": 0,
+        "duration_seconds": 569,
+        "session_id": "ses_f16b1d95fffeFtQnSCqMMo4kbD"
+      },
+      "task": "20.2"
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 251764,
+        "output_tokens": 34161,
+        "reasoning_tokens": 38163,
+        "cache_read_tokens": 14249600,
+        "cache_write_tokens": 0,
+        "total_tokens": 14573688,
+        "cost_usd": 0.1239078,
+        "duration_seconds": 837,
+        "session_id": "ses_f16a78171ffeNwfV7WtlcjXTug"
+      },
+      "task": "20.3"
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 70267,
+        "output_tokens": 12109,
+        "reasoning_tokens": 8715,
+        "cache_read_tokens": 3445738,
+        "cache_write_tokens": 0,
+        "total_tokens": 3536829,
+        "cost_usd": 0,
+        "duration_seconds": 1006,
+        "session_id": "ses_f169a4d6effeh4aBdhAFz5qo9V"
+      },
+      "task": "20.3"
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 78139,
+        "output_tokens": 16889,
+        "reasoning_tokens": 49956,
+        "cache_read_tokens": 5942208,
+        "cache_write_tokens": 0,
+        "total_tokens": 6087192,
+        "cost_usd": 0,
+        "duration_seconds": 1100,
+        "session_id": "ses_f168aa21cffeEd33sHA6MOasdz"
+      },
+      "task": "20.3"
+    }
+  ],
+  "aggregate": {
+    "task_count": 3,
+    "subagent_invocations": 9,
+    "implementation_worker_invocations": 3,
+    "review_rounds": 3,
+    "test_quality_review_rounds": 3,
+    "rework_rounds": 0,
+    "first_pass_approval_rate": "3/3 (100%): every implementation-reviewer attempt 1 returned APPROVED",
+    "cost_usd": 0.439314888,
+    "total_tokens": 79809509,
+    "duration_seconds_total": 7019,
+    "note": "Per-subagent figures are the authoritative runtime values recorded in docs/implementation/<task>/orchestration.json; this aggregate is the exact sum of those execution values. No rework rounds and no BLOCKED/FAILED/NEEDS_RESEARCH invocation. implementation-reviewer and test-quality-reviewer sessions reported cost_usd 0 (the provider runtime value, recorded as-is). The phase-reviewer invocation is recorded separately below and is not part of this per-task aggregate."
+  },
+  "gate": "Gate 20",
+  "gate_status": "PENDING_PHASE_REVIEW",
+  "phase_review": "docs/implementation/phase-20/phase-review.json",
+  "phase_review_status": "PENDING",
+  "supporting_commits": {
+    "20.1_orchestrator_record": "457982e",
+    "20.2_orchestrator_record": "261960f",
+    "20.3_orchestrator_record": "d2e9cb6"
+  }
+}

@@ -66,8 +66,51 @@
         "duration_seconds": 1100,
         "session_id": "ses_f168aa21cffeEd33sHA6MOasdz"
       }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 74381,
+        "output_tokens": 12485,
+        "reasoning_tokens": 13330,
+        "cache_read_tokens": 1117056,
+        "cache_write_tokens": 0,
+        "total_tokens": 1217252,
+        "cost_usd": 0.029997318,
+        "duration_seconds": 236,
+        "session_id": "ses_f166e98ddffexyeXkx4nbZPXzA"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 38862,
+        "output_tokens": 10218,
+        "reasoning_tokens": 24422,
+        "cache_read_tokens": 1212290,
+        "cache_write_tokens": 0,
+        "total_tokens": 1285792,
+        "cost_usd": 0,
+        "duration_seconds": 366,
+        "session_id": "ses_f166ac1d6ffeky3qLblrZr4zMw"
+      }
     }
   ],
-  "rework": [],
-  "notes": "Runtime figures are the authoritative OpenCode server values for each child session (read directly from the running server because the collect-session-usage.sh CLI cannot talk to this server instance). implementation-reviewer and test-quality-reviewer reported cost_usd 0 (the provider's runtime value), recorded as-is. No rework: the implementation-reviewer approved attempt 1 with no open findings; the test-quality-reviewer returned PASS_WITH_FINDINGS with INFORMATIONAL findings only. TQR-20.2-01 was closed by the new ArtworkReconcilerTests.RestorationWithAnAbsentBaselineIsResumedAsARemoval case. This task also corrected the architecture-09 absent-baseline removal wording flagged by the task 20.1 test-quality audit."
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Phase-reviewer finding PR-20-01 (open, MEDIUM): Goal F7 requires ADR-009 and ADR-002/ADR-003 amendment notes; task 20.3 attempt 1 recorded ADR-009 and ADR-003 but no ADR-002 note, and the plan-of-record deliverable list had dropped ADR-002. The worker added the addition-only ADR-002 amendment note and index row and reconciled the PLANS.md Phase 20 deliverable to name ADR-002; the implementation-reviewer re-review (attempt 2) verified PR-20-01 closed. No tests changed in this correction, so no test-quality re-audit was required."
+    }
+  ],
+  "notes": "Runtime figures are the authoritative OpenCode server values for each child session (read directly from the running server because the collect-session-usage.sh CLI cannot talk to this server instance). implementation-reviewer and test-quality-reviewer reported cost_usd 0 (the provider's runtime value), recorded as-is. Attempt 1 had no open implementation-reviewer findings; the test-quality-reviewer returned PASS_WITH_FINDINGS with INFORMATIONAL findings only. Task 20.3 then ran one correction round (worker attempt 2 + implementation-reviewer attempt 2) to close phase-reviewer finding PR-20-01 (missing ADR-002 amendment note): the worker added the addition-only ADR-002 note and its decisions-index row and reconciled the PLANS.md Phase 20 deliverable, and the re-review approved. TQR-20.2-01 was closed by the new ArtworkReconcilerTests.RestorationWithAnAbsentBaselineIsResumedAsARemoval case. This task also corrected the architecture-09 absent-baseline removal wording flagged by the task 20.1 test-quality audit. No test-quality re-audit was required for the documentation-only correction."
 }

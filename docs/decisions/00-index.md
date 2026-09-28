@@ -7,7 +7,7 @@ it; record a divergence or a superseding ADR instead. The former
 | ADR | Title | Status | File |
 | --- | --- | --- | --- |
 | ADR-001 | Persisted Derived Poster Artwork | Accepted | [`ADR-001.md`](ADR-001.md) |
-| ADR-002 | Guarded Artwork Ownership and Restoration | Accepted | [`ADR-002.md`](ADR-002.md) |
+| ADR-002 | Guarded Artwork Ownership and Restoration | Accepted (restoration trigger set extended by ADR-024 (v1.2)) | [`ADR-002.md`](ADR-002.md) |
 | ADR-003 | Crash-Recoverable Artwork Publication | Accepted (restoration trigger set extended by ADR-024 (v1.2)) | [`ADR-003.md`](ADR-003.md) |
 | ADR-004 | Foundation Operational Limits and Defaults | Accepted | [`ADR-004.md`](ADR-004.md) |
 | ADR-005 | Versioned Secret Access Boundary | Accepted | [`ADR-005.md`](ADR-005.md) |

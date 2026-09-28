@@ -1,0 +1,204 @@
+{
+  "phase": "20",
+  "attempt": 2,
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "PR-20-01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "requirements traceability / documentation",
+      "description": "Attempt 1 recorded that Goal F7's acceptance criterion ('ADR-009 and ADR-002/ADR-003 amendment notes are recorded', docs/planning/v1.2.md:290-292) named an ADR-002 note that had not been recorded. The correction is genuine and independently verified. docs/decisions/ADR-002.md now carries '### Amendment note (v1.2, ADR-024; task 20.3)' inserted between 'Deferred from this ADR' and 'References'; the change is a single insertion hunk (17 additions, 0 deletions per git diff), so no State-transition, Consequence, or Deferred clause is rewritten. The note states that ADR-024 extends ADR-002's restoration trigger set with the owned empty-selection obligation through the same crash-recoverable ArtworkOperation protocol and the ordinary recovery gate, with a present baseline restored and an absent baseline removed, deferring to ADR-002's own State transitions for the semantics. docs/decisions/00-index.md:10 now reads 'Accepted (restoration trigger set extended by ADR-024 (v1.2))', identical wording to the ADR-003 row at :11. PLANS.md:243-244 now reads 'ADR-024 plus ADR-009, ADR-002, and ADR-003 amendment notes' (the diff is a 2-line rewrap in the Deliverables paragraph only; Gate 20 and the Phase acceptance criteria are byte-identical). docs/planning/v1.2.md is absent from git status/diff, so no goal text or criterion was altered to fit the result. Goal F7's enumerated criterion is therefore satisfied on its own terms.",
+      "evidence": [
+        "git diff -- docs/decisions/ADR-002.md (single insertion hunk, 17/0, note at docs/decisions/ADR-002.md:92-107)",
+        "docs/decisions/ADR-002.md:48-66 (the unrewritten trigger set/State transitions the note extends)",
+        "docs/decisions/00-index.md:10 vs :11 (identical ADR-024 status wording)",
+        "PLANS.md:240-258 (deliverable now names ADR-002; Gate 20 and Phase acceptance criteria unchanged; whole-file diff is one 2-line hunk)",
+        "docs/planning/v1.2.md absent from `git status --porcelain`; F7 criterion at :290-292 now satisfied",
+        "docs/implementation/20.3/reviewer-report.attempt-2.json (independent re-review; RV2-20.3-01 resolved)"
+      ],
+      "recommended_action": "None. Mark PR-20-01 closed. The residual narrow enumerations elsewhere are recorded separately as PR-20-05."
+    },
+    {
+      "id": "PR-20-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "phase orchestration record",
+      "description": "Still outstanding in the current file, as the task brief asked me to confirm. docs/implementation/phase-20/orchestration.json's aggregate.note ends '... The phase-reviewer invocation is recorded separately below and is not part of this per-task aggregate.', but the file has no section after the subagents array: it contains only the nine task-level invocations and then jumps to aggregate/gate/supporting_commits. The phase-reviewer invocation (attempt 1 or attempt 2) is not recorded anywhere in the aggregate. Phases 15 and 19 include a phase-reviewer subagent entry; phases 16-18 do not, so the project convention is itself inconsistent.",
+      "evidence": [
+        "docs/implementation/phase-20/orchestration.json:209 (note text) and the file end at :215-220 (no 'below' section)",
+        "docs/implementation/phase-15/orchestration.json and docs/implementation/phase-19/orchestration.json (subagents include a phase-reviewer entry)",
+        "docs/implementation/phase-16/orchestration.json, phase-17, phase-18 (no phase-reviewer entry)"
+      ],
+      "recommended_action": "Orchestrator: when finalizing/committing docs/implementation/phase-20/orchestration.json with the gate, either add the phase-reviewer invocation(s) under subagents (as phase 15/19 do) or reword the note so it does not reference an absent section. This is a pre-gate draft artifact, so it does not block approval."
+    },
+    {
+      "id": "PR-20-03",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "phase orchestration record / correction visibility",
+      "description": "The phase-level aggregate is now inconsistent with the task records and hides the correction round. The task brief stated the aggregate 'was updated with the attempt-2 invocations and a rework entry'; it was not. docs/implementation/phase-20/orchestration.json still records the pre-correction figures: subagent_invocations 9, rework_rounds 0, first_pass_approval_rate 3/3, and aggregate cost_usd 0.439314888 / total_tokens 79809509 / duration_seconds_total 7019. The corrected task-level records sum to 11 invocations (20.1=3, 20.2=3, 20.3=5), one rework entry (in docs/implementation/20.3/orchestration.json), cost_usd 0.469312206, total_tokens 82312553, and duration_seconds 7621. The aggregate's `phase_review` field also still points to docs/implementation/phase-20/phase-review.json, not this attempt-2 report. The contract (docs/agent-contracts.md 'Phase-level orchestration record') requires the aggregate to be consistent with the task records, and requires a correction round to be visible as a rework entry plus an incremented attempt; at the aggregate level the correction is currently invisible. The aggregate is a pre-gate draft (status IN_PROGRESS, gate_status PENDING_PHASE_REVIEW), so this must be reconciled in the gate commit rather than treated as a code defect.",
+      "evidence": [
+        "docs/implementation/phase-20/orchestration.json:197-209 (9 subagents, rework_rounds 0, cost 0.439314888, tokens 79809509, duration 7019) and :213 (phase_review -> phase-review.json)",
+        "docs/implementation/20.3/orchestration.json:70-114 (attempt-2 worker/reviewer invocations and the rework array)",
+        "jq sum over the three task files: invocations=11, cost=0.469312206, tokens=82312553, duration=7621, rework_entries=1",
+        "docs/agent-contracts.md:78-90 (aggregate must carry the same per-invocation shape and be consistent)"
+      ],
+      "recommended_action": "Orchestrator: when finalizing the aggregate for the Gate 20 commit, recompute and set subagent_invocations 11, rework_rounds 1, first_pass_approval_rate (3/3 initial reviews, with the 20.3 attempt-2 re-review recorded), cost_usd 0.469312206, total_tokens 82312553, duration_seconds_total 7621; append the 20.3 attempt-2 invocations and the rework; and repoint phase_review to the applied review report. Add a mechanical guard so this cannot recur (see agent_process observation 2)."
+    },
+    {
+      "id": "PR-20-04",
+      "severity": "LOW",
+      "status": "open",
+      "area": "task orchestration record",
+      "description": "docs/implementation/20.3/orchestration.json's `notes` field still ends '... No rework: the implementation-reviewer approved attempt 1 with no open findings; ...', which directly contradicts the file's own newly added `rework` array (one attempt-2 entry caused by PR-20-01) and its attempt-2 invocations. The corrected facts are present in `subagents` and `rework`, but the prose summary was not updated and is now inaccurate.",
+      "evidence": [
+        "docs/implementation/20.3/orchestration.json:109-114 (rework array) vs :115 (notes 'No rework: ...')",
+        "docs/implementation/20.3/orchestration.json:70-107 (attempt-2 worker and implementation-reviewer invocations)"
+      ],
+      "recommended_action": "Orchestrator/worker: update the 20.3 `notes` to describe the attempt-2 correction round, or remove the absolute 'No rework' claim so it cannot contradict the structured array. Non-blocking (a stale descriptive line; the structured record is correct)."
+    },
+    {
+      "id": "PR-20-05",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation consistency (residual narrow enumerations)",
+      "description": "Three narrower enumerations still name only ADR-009/ADR-003, so an accepted-plan reader or a limitations reader does not see ADR-002 named. (a) docs/planning/v1.2.md:389 (V1.2-7 traceability row) and :401 (section 7 Phase 20 documentation checklist) name only 'ADR-009/ADR-003 amendment notes'. (b) docs/limitations/archive.md:371's F7 evidence list reads 'the ADR-009 and ADR-003 amendment notes'. (c) docs/decisions/ADR-024.md:141's implementation note says 'Task 20.3 recorded the ADR-009 and ADR-003 amendment notes'. These do not weaken any gate or criterion: the F7 goal criterion is satisfied, PLANS.md (the active plan of record) is reconciled, and the ADR-002 note/index row exist. (c) is ADR text, which AGENTS.md declares immutable, so leaving it is the correct treatment; (b) remains factually true but incomplete; (a) is an accepted-plan projection. The phase's own re-reviewer recorded the same set as INFORMATIONAL (RV2-20.3-02). None is a material open finding against Gate 20.",
+      "evidence": [
+        "docs/planning/v1.2.md:389, :401 (only ADR-009/ADR-003 named)",
+        "docs/limitations/archive.md:371 (evidence list names only ADR-009/ADR-003)",
+        "docs/decisions/ADR-024.md:141 (immutable ADR text; names only ADR-009/ADR-003)",
+        "docs/implementation/20.3/reviewer-report.attempt-2.json RV2-20.3-02 (same residuals, INFORMATIONAL)",
+        "docs/planning/v1.2.md:290-292 (F7 criterion itself is satisfied)"
+      ],
+      "recommended_action": "Planner/Phase 21 task 21.2 (canonical documentation reconciliation): widen v1.2.md:389,401 and docs/limitations/archive.md:371 to name ADR-002. Do not edit ADR-024 text. Not required to approve Phase 20."
+    },
+    {
+      "id": "PR-20-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation process / immutability rule",
+      "description": "The correction edited docs/changelog/v1.2.0.md (added an ADR-002 bullet and widened the 00-index bullet), and AGENTS.md/docs/INDEX.md list docs/changelog/** among the immutable history surfaces. The edit is confined to the unreleased Phase 20 / Task 20.3 subsection (the record of the very task being corrected), is additive/accurate, and rewrites no earlier release entry; the phase was not gated or released, so the entry is arguably still a working record rather than settled history. No material impact, but the deviation from the stated immutability rule is recorded for transparency.",
+      "evidence": [
+        "git diff -- docs/changelog/v1.2.0.md (8 additions / 3 deletions, all inside the Task 20.3 subsection docs/changelog/v1.2.0.md:1706-1731)",
+        "AGENTS.md (History is immutable: ... docs/changelog/**); docs/INDEX.md:87-94 (same)",
+        "docs/implementation/20.3/worker-report.attempt-2.json interpretations (worker's rationale for the in-place correction)"
+      ],
+      "recommended_action": "None required. If the project wants changelog edits to be strictly append-only even for the active unreleased phase, record that clarification in AGENTS.md; otherwise no action."
+    }
+  ],
+  "tasks_checked": [
+    "20.1 Empty-selection restore/removal behavior (commit fd37a73; worker/reviewer/test-quality reports; orchestration.json) - unchanged by the correction, no src/ or tests/ drift",
+    "20.2 F7 coverage tests (commit 24b1c47; worker/reviewer/test-quality reports; orchestration.json) - unchanged; test-only task",
+    "20.3 F7 documentation and integration verification (commit 1bd9a82; attempt-1 reports plus the attempt-2 worker/reviewer reports; orchestration.json with rework) - correction verified",
+    "Authoritative Phase 20 execution order 20.1, 20.2, 20.3 agrees across PLANS.md:249, state.json phases[20].execution_order, and the phase orchestration tasks[]; no required task skipped",
+    "Correction files present and coherent: docs/implementation/20.3/worker-report.attempt-2.json, docs/implementation/20.3/reviewer-report.attempt-2.json, and the 20.3 rework entry"
+  ],
+  "commits_checked": [
+    "fd37a73 Implement 20.1 Empty-selection restore/removal behavior",
+    "24b1c47 Implement 20.2 F7 coverage tests",
+    "1bd9a82 Implement 20.3 F7 documentation and integration verification",
+    "457982e / 261960f / d2e9cb6 Record 20.1/20.2/20.3 commit hash and orchestrator session",
+    "Working tree vs HEAD: only PLANS.md, docs/changelog/v1.2.0.md, docs/decisions/00-index.md, docs/decisions/ADR-002.md, docs/implementation/20.3/orchestration.json, docs/plan/state.json modified, plus untracked docs/implementation/20.3/*.attempt-2.json and docs/implementation/phase-20/; `git diff --stat HEAD -- src tests` is empty (no source or test change)",
+    "No v1.2.0-phase20 tag exists; the correction is uncommitted, as expected pre-gate"
+  ],
+  "requirements_checked": [
+    "F7 owned empty-selection restores the retained baseline through the internal ArtworkPublisher.RestoreAsync under the current durable fence - satisfied (task 20.1; attempt-1 evidence stands, no code changed since)",
+    "F7 absent-baseline removal through the guarded protocol - satisfied as written (direct publisher test with a synthetic persisted Published/Absent state; plus the 20.3 recovery-gate resume test)",
+    "F7 other pass-through reasons preserve the current artwork with no mutation, including a non-empty layout-empty selection (NoFittingBadge) - satisfied (task 20.1/20.2; unchanged)",
+    "F7 non-owned empty selection stays a pass-through - satisfied (unchanged)",
+    "F7 restore is crash-recoverable and resumed by the ordinary recovery gate - satisfied at the durable-record level (unchanged; bound stated honestly: simulation over the same state root)",
+    "F7 coverage tests pass - satisfied on attempt-1 evidence (default Failed 0 / Passed 1927 / Skipped 66 / Total 1993; F7-focused 103/4/107; forced-native oracle), unaffected because the correction changes no code or test",
+    "F7 recorded as resolved in the limitations register - satisfied (docs/limitations/00-index.md F7 Resolved; open.md records no open limitations; state.json limitations.resolved contains F7)",
+    "F7 'ADR-009 and ADR-002/ADR-003 amendment notes are recorded' (docs/planning/v1.2.md:290-292) - now fully satisfied; the ADR-002 note is recorded and its index row updated (PR-20-01 resolved)"
+  ],
+  "architecture_checked": [
+    "docs/architecture/09-persisted-artwork-rendering.md publication-flow/owned-empty-selection wording attributes the restore to ArtworkPublisher.RestoreAsync and the absent-baseline leg to the publisher (not the coordinator), matching source; unchanged by the correction and no code drift",
+    "Boundary: no second restore path introduced; the ADR-002 amendment note names the ArtworkGenerationCoordinator driver, the durable Kind=Restoration write-ahead record, and the ArtworkRecoveryDecisions -> ArtworkReconciler -> publisher ResumeRestorationAsync chain, consistent with ADR-024 and the shipped code",
+    "No RenderVersion/schema/fingerprint/golden change; no Jellyfin ABI newly assumed (a docs-only correction, `git diff HEAD -- src tests` empty)",
+    "Authoritative execution order (20.1, 20.2, 20.3) is internally consistent with the documented dependencies (20.3 depends on the 20.1/20.2 behavior/coverage); no conflict with documented dependencies found"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-024.md status line and clause 8 extend the ADR-002/ADR-003 restoration trigger set; the new ADR-002 note's premise is supported",
+    "docs/decisions/ADR-002.md:48-66 defines the restoration trigger set the note extends; the note defers to it rather than restating stronger semantics",
+    "docs/decisions/ADR-009.md and ADR-003.md amendment notes remain addition-only and are unchanged; the new ADR-002 note matches their style/position",
+    "Conformance precondition: all three tasks still record conformance.required=false with a reasoned basis; no new Jellyfin 12 platform behaviour, provider contract, or first-time ADR-against-host question was introduced by a docs-only correction, so no specialist precondition invocation was required",
+    "Bounded/unsupported-but-honest assumptions unchanged: absent-baseline removal is publisher/recovery-gate only; native NoFittingBadge cases run only under ARRTAGS_SKIA_COMPAT=1; no live pinned-host verification in Phase 20 (Phase 21 task 21.4 owns it)"
+  ],
+  "documentation_checked": [
+    "docs/decisions/ADR-002.md - addition-only amendment note (17/0), style/position matching ADR-003/ADR-009; verified by git diff and read",
+    "docs/decisions/00-index.md - ADR-002 row reconciled to the ADR-003 wording; scripts/check-docs.sh 'decisions index (29 ADRs)' PASS",
+    "PLANS.md - Phase 20 Deliverables now names ADR-002; the whole-file diff is one 2-line hunk in the Deliverables paragraph; Gate 20 (lines 259-261) and Phase acceptance criteria (250-258) byte-identical; milestone table and state.json agree (render-docs-state --check)",
+    "docs/plan/state.json - task 20.3 reports lists all five paths (worker-report.json, worker-report.attempt-2.json, reviewer-report.json, reviewer-report.attempt-2.json, test-quality-review.json); updated_utc advanced; phase 20 status PLANNED with no gate_record key",
+    "docs/status.md - unchanged and current; generated block matches state.json (render-docs-state --check 'up to date'); 'Active phases: Phase 20, Phase 21', 'Open limitations: none'",
+    "docs/limitations/ - open.md records no open limitations; archive.md carries the F7 resolution; 00-index F7 Resolved; archive.md:371 enumeration is incomplete (PR-20-05, LOW)",
+    "docs/changelog/v1.2.0.md - Phase 20/Task 20.3 entry gains the ADR-002 bullet and widens the 00-index bullet; confined to the unreleased Phase 20 entry (PR-20-06, INFORMATIONAL)",
+    "docs/planning/v1.2.md - confirmed untouched by the correction; F7 criterion satisfied; sections 6/7 rows remain narrow (PR-20-05, LOW)",
+    "README.md - no F7/empty-selection statement exists and none is stale; not required by the Phase 20 checklist (Phase 21 task 21.2 owns README)",
+    "Validation: scripts/check-docs.sh PASS (nine sections), scripts/check-agents.sh PASS, render-docs-state.cs --check reports PLANS.md and state.json agree - all rerun independently in this attempt"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/20.1/orchestration.json: status COMPLETE, commit fd37a73, conformance.required=false with reason, 3 invocations (attempt 1), rework []",
+    "docs/implementation/20.2/orchestration.json: status COMPLETE, commit 24b1c47, conformance.required=false with reason, 3 invocations (attempt 1), rework []",
+    "docs/implementation/20.3/orchestration.json: status COMPLETE, commit 1bd9a82, conformance.required=false with reason, 5 invocations (attempt 1: worker/implementation-reviewer/test-quality-reviewer; attempt 2: worker/implementation-reviewer), rework [PR-20-01] - correction visible as rework + incremented attempt, not overwritten; notes stale (PR-20-04)",
+    "docs/implementation/phase-20/orchestration.json: tasks 20.1-20.3, task_commits and supporting_commits consistent; BUT the aggregate is stale - 9 invocations, rework_rounds 0, first_pass 3/3, cost 0.439314888 / tokens 79809509 / duration 7019, and phase_review -> phase-review.json (should be phase-review.attempt-2.json); the corrected task sums are 11 invocations, 1 rework, cost 0.469312206 / tokens 82312553 / duration 7621 (PR-20-03, MEDIUM); aggregate.note still dangles 'below' (PR-20-02, LOW); status IN_PROGRESS, gate_status PENDING_PHASE_REVIEW, phase_review_status PENDING (legal pre-gate shape)",
+    "No BLOCKED/FAILED/NEEDS_RESEARCH invocation in any task record; the only correction round is task 20.3 attempt 2, caused by phase-review finding PR-20-01"
+  ],
+  "gate_conformance": {
+    "gate_text_audited": "Gate 20: Met when tasks 20.1-20.3 meet their acceptance criteria, the coverage tests pass, the phase review is approved, and the tag `v1.2.0-phase20` is created. Resolves F7.",
+    "matches_plan_of_record": true,
+    "amendment": null,
+    "basis": "The text is quoted verbatim from PLANS.md:259-261 as it stands now and is unchanged by the correction (the PLANS.md diff is a single 2-line hunk in the Deliverables paragraph at :240-244; Gate 20 and the Phase acceptance criteria at :250-258 are byte-identical). The applied gate is therefore the accepted plan's Gate 20, with no criterion weakened, narrowed, or replaced, and no user amendment was made or needed (amendment is null). Every Phase 20 acceptance criterion is met as written: an owned empty selection restores the baseline or removes the image through the crash-recoverable protocol and the internal ArtworkPublisher.RestoreAsync entry point resumed by the ordinary recovery gate (20.1, 20.2, and the 20.3 reconciler-resume test); the other pass-through reasons, including the non-empty NoFittingBadge case, preserve the current artwork with no mutation; a non-owned empty selection stays a pass-through; the absent-baseline removal is exercised by a direct publisher test with a synthetic persisted Published state without a baseline; coverage tests pass (independently reproduced in attempt 1); and F7 is recorded as resolved. The Goal F7 criterion's enumerated documentation item (ADR-009 and ADR-002/ADR-003 amendment notes) is now fully satisfied: the ADR-002 note and its index row are recorded and the plan of record names ADR-002. The tag v1.2.0-phase20 does not yet exist, which is the expected pre-gate state: the orchestrator creates it when applying the gate, exactly as the gate text prescribes. The limitation status is honest: F7 is recorded Resolved against shipped code and reproduced tests, and the verification bounds (publisher-only absent-baseline path, native NoFittingBadge cases under the pinned oracle, no live host run in Phase 20) are stated rather than overclaimed. No criterion was weakened to fit the delivered result. The residual narrow enumerations in v1.2.md sections 6/7 and limitations/archive.md (PR-20-05) do not weaken the gate.",
+    "tag_created": false,
+    "tag_creation_owner": "orchestrator, on gate application"
+  },
+  "agent_process": {
+    "scope": "phase-20",
+    "measurements": {
+      "tasks": "20.1, 20.2, 20.3",
+      "subagent_invocations_total": "11 task-level (20.1=3, 20.2=3, 20.3=5); plus 2 phase-reviewer attempts by this role, not recorded in the task aggregate",
+      "subagent_invocations_per_task": "20.1=3, 20.2=3, 20.3=5 (attempt 1: implementation-worker, implementation-reviewer, test-quality-reviewer; attempt 2: implementation-worker, implementation-reviewer)",
+      "role_mix": "implementation-worker 4, implementation-reviewer 4, test-quality-reviewer 3; no jellyfin-expert/architecture-reviewer/security-reviewer invocation",
+      "first_pass_approval_rate": "3/3 (100%): implementation-reviewer attempt 1 returned APPROVED for 20.1, 20.2, and 20.3; the 20.3 attempt-2 re-review also returned APPROVED",
+      "review_outcomes": "implementation-reviewer 3x APPROVED (attempt 1) + 1x APPROVED (20.3 attempt 2); test-quality-reviewer 3x PASS_WITH_FINDINGS (LOW/INFORMATIONAL only)",
+      "correction_rounds": "1 (task 20.3 attempt 2), caused by phase-reviewer finding PR-20-01 (missing ADR-002 amendment note / plan-of-record narrowing)",
+      "cost_usd_total": "0.469312206 (workers 0.183296808 / 0.13211028 / 0.1239078 / 0.029997318; all reviewer sessions recorded cost_usd 0 as the provider runtime value)",
+      "duration_seconds_total": "7621 (20.1=1933, 20.2=2143, 20.3=3545)",
+      "expensive_outliers": "20.1 worker $0.183 / 1301s; 20.3 test-quality 1100s and 20.3 implementation-review 1006s; the 20.3 correction was cheap (worker+reviewer, 602s, $0.029997318)",
+      "blocked_failed_needs_research_invocations": "none (task-level); no honest-or-wasted external block to assess",
+      "aggregate_record_state": "docs/implementation/phase-20/orchestration.json still records the pre-correction 9 invocations / rework_rounds 0 / cost 0.439314888 / tokens 79809509 / 7019s, inconsistent with the corrected task records (PR-20-03)"
+    },
+    "observations": [
+      {
+        "observation": "The only correction round (task 20.3 attempt 2) was caused by a rule gap, not an implementation error: the task 20.3 acceptance criteria inherited the plan-of-record's narrowed documentation list (ADR-009 and ADR-003), the 20.3 implementation-reviewer approved attempt 1 against those delegated criteria, and only the phase-reviewer's comparison against the owning Goal F7 criterion (docs/planning/v1.2.md:290-292, which names ADR-002/ADR-003) surfaced the omission. A task-level reviewer judged the task against the delegation's restated criteria rather than the governing goal criterion text. Likely cost: one correction round (2 invocations, 602s, $0.029997318).",
+        "evidence": [
+          "docs/implementation/20.3/orchestration.json:109-114 (rework entry citing PR-20-01)",
+          "docs/implementation/20.3/reviewer-report.json (attempt-1 APPROVED against the delegated criteria)",
+          "docs/planning/v1.2.md:290-292 (owning criterion names ADR-002/ADR-003) vs PLANS.md:243-244 pre-correction (deliverable named only ADR-009/ADR-003)",
+          "docs/implementation/phase-20/phase-review.json:10-21 (attempt-1 PR-20-01 root-cause: the plan of record dropped ADR-002)"
+        ],
+        "proposed_change": ".opencode/agents/implementation-reviewer.md: add a required step that the reviewer reads the owning goal/acceptance criterion text (not only the delegation's restated criteria) and verifies the task against every item it enumerates; and .opencode/agents/implementation-planner.md: require each task's deliverable/criteria list to be a superset of the items enumerated in the goal criterion it implements.",
+        "rationale": "The rework was avoidable at the task gate. Cross-checking the task against the governing criterion text would have caught the missing ADR-002 note when 20.3 attempt 1 was reviewed, before the phase gate, and would also make enumerations like v1.2.md:389/401 and limitations/archive.md:371 (PR-20-05) visible at planning time."
+      },
+      {
+        "observation": "No mechanical guard verifies that the phase aggregate matches the task records. scripts/check-agents.sh reported 'phase gate conformance and orchestration shape checked' PASS while docs/implementation/phase-20/orchestration.json was stale: it still recorded 9 invocations and rework_rounds 0, hiding the 20.3 correction round, and its note referenced a phase-reviewer section that does not exist. Aggregate sums (invocations, rework count, cost, tokens, duration) and the referenced-section integrity are not recomputed from the task files.",
+        "evidence": [
+          "docs/implementation/phase-20/orchestration.json:197-215 (stale aggregate: 9 invocations, rework_rounds 0, dangling note)",
+          "docs/implementation/20.3/orchestration.json:70-114 (5 invocations, one rework)",
+          "scripts/check-agents.sh output (independent run: PASS, including 'phase gate conformance and orchestration shape checked')",
+          "docs/agent-contracts.md:78-90 (aggregate consistency requirement)"
+        ],
+        "proposed_change": "scripts/check-agents.sh: add a from-phase-20 check that recomputes the phase aggregate from docs/implementation/<task>/orchestration.json (per-task invocation count, rework count, first-pass approval rate, and cost/token/duration sums) and fails on mismatch; also fail when aggregate.note references a named section (for example 'below') that is absent. Update docs/agent-contracts.md Enforcement scope accordingly.",
+        "rationale": "Both PR-20-02 and PR-20-03 are exactly the class of error a guard would catch deterministically. Without it, a correction round can be silently omitted from the committed phase record, and the phase gate can be applied with an inconsistent execution record, which is the failure mode the contract's rework-visibility rule exists to prevent."
+      }
+    ]
+  },
+  "rework_summary": {
+    "total_subagent_invocations": 11,
+    "total_attempts": 11,
+    "correction_rounds": 1
+  },
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Supersedes the attempt-1 review. Phase 20 (Empty-selection artwork restoration, Goal F7, ADR-024) remains complete after the corrective round. PR-20-01 (MEDIUM) is genuinely closed and independently verified: docs/decisions/ADR-002.md gained a 17-line insertion-only amendment note in the same style/position as the ADR-003/ADR-009 notes; the ADR-002 decisions-index row now carries the identical ADR-024 status wording as ADR-003; and the PLANS.md Phase 20 Deliverables line now names ADR-002. The Gate 20 text and Phase acceptance criteria are byte-identical, docs/planning/v1.2.md is untouched, and no criterion was weakened to fit the result - so Goal F7's own criterion is now satisfied on its terms. All three tasks (20.1 fd37a73, 20.2 24b1c47, 20.3 1bd9a82) are done with worker/reviewer/test-quality evidence and per-invocation orchestration records; the correction is visible in the 20.3 record as a rework entry plus attempt-2 worker/reviewer reports, and state.json lists all five 20.3 reports. The diff since attempt 1 is documentation/state only (`git diff HEAD -- src tests` empty); Phase 20 is still PLANNED with no v1.2.0-phase20 tag and no gate_record; check-docs.sh, check-agents.sh, and render-docs-state --check all pass on independent run. Gate 20 is the plan of record's gate verbatim, unamended. Remaining findings are non-blocking: PR-20-03 (MEDIUM) - the phase aggregate was not updated as the brief stated and still shows 9 invocations / rework_rounds 0, hiding the correction, and its phase_review field still points at the attempt-1 report; it must be recomputed in the Gate 20 commit; PR-20-02 (LOW) - the aggregate note still dangles a 'below' section; PR-20-04 (LOW) - the 20.3 orchestration notes still assert 'No rework'; PR-20-05 (LOW) - residual narrow enumerations in v1.2.md sections 6/7 and limitations/archive.md do not name ADR-002 (Phase 21.2 owner); PR-20-06 (INFORMATIONAL) - the changelog edit deviates from the stated immutability rule but is confined to the unreleased Phase 20 entry. No BLOCKER or HIGH is open, so phase_complete and ready_for_next_phase are true; APPROVED_WITH_FINDINGS. The orchestrator must reconcile the phase aggregate when finalizing the gate commit."
+}

@@ -240,8 +240,8 @@ reasons, including a non-empty selection that cannot fit (`NoFittingBadge`).
 **Deliverables:** the empty-selection restore/removal behavior through the guarded
 lifecycle protocol and the internal `ArtworkPublisher.RestoreAsync` entry point; a
 distinct `NoFittingBadge` pass-through reason for a non-empty layout-empty render;
-unchanged preservation for the other pass-through reasons; ADR-024 plus ADR-009
-and ADR-003 amendment notes; coverage tests.
+unchanged preservation for the other pass-through reasons; ADR-024 plus ADR-009,
+ADR-002, and ADR-003 amendment notes; coverage tests.
 **Tasks:**
 - [x] 20.1 Empty-selection restore/removal behavior
 - [x] 20.2 F7 coverage tests
