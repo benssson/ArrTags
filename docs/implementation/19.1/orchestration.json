@@ -3,7 +3,7 @@
   "title": "F4 mechanism confirmation and persisted-cursor implementation",
   "phase": 19,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "5093f2a",
   "subagents": [
     {
       "role": "jellyfin-expert",

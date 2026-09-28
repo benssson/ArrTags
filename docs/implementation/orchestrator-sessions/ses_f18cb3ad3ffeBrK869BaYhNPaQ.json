@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 19",
   "tokens": {
-    "input": 135866,
-    "output": 12656,
-    "reasoning": 33857,
+    "input": 180297,
+    "output": 20709,
+    "reasoning": 40900,
     "cache": {
-      "read": 2584576,
+      "read": 4810752,
       "write": 0
     }
   },
-  "total_tokens": 2766955,
-  "cost_usd": 0.05601472800000001,
+  "total_tokens": 5052658,
+  "cost_usd": 0.07841550600000001,
   "duration_seconds": 2,
   "first_recorded_at": "2026-09-28T09:08:25Z",
-  "last_updated_at": "2026-09-28T09:30:09Z",
+  "last_updated_at": "2026-09-28T10:45:32Z",
   "updates": [
     {
       "at": "2026-09-28T09:08:25Z",
@@ -39,6 +39,13 @@
       "total_tokens": 2766955,
       "duration_seconds": 2,
       "note": "Recorded F4 ADR-029 amendment (ADR-022 clause 3) via implementation-planner; normative surfaces reconciled, check-docs PASS."
+    },
+    {
+      "at": "2026-09-28T10:45:32Z",
+      "cost_usd": 0.07841550600000001,
+      "total_tokens": 5052658,
+      "duration_seconds": 2,
+      "note": "Phase 19 task 19.1 COMPLETE and committed (5093f2a): F4 persisted cursor + identity-anchored resume + enqueue-outcome vocabulary; worker/reviewer rework round (R-19.1-01) resolved and APPROVED."
     }
   ]
 }
