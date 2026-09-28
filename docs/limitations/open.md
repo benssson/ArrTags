@@ -2,54 +2,6 @@
 
 ## Functional and operational limitations (deferred, not implemented)
 
-### F4. Reconciliation coverage is bounded by `QueueCapacity`
-
-The scheduled and post-scan scopes are enumerated from the start of a
-deterministic order and the queue drops overflow, so a single run over a scope
-larger than `QueueCapacity` (default 512) covers only a bounded prefix.
-Successive runs re-cover the same prefix rather than advancing; there is no
-persisted enumeration cursor, stale/unknown-only enqueue, or direct pipeline
-drive.
-
-- Evidence: Phase 6 review MEDIUM item; `docs/architecture/08-reconciliation-and-update-flow.md`;
-  `PLANS.md` Post-V1 Backlog.
-- Consequence: for a scope larger than `QueueCapacity`, some items are not
-  reconciled by a single run and successive runs do not guarantee full
-  coverage. Event, webhook, and per-item triggers are not affected.
-
-### F6. Version-blind work coalescing can drop a post-save re-render
-
-A configuration save activates the new snapshot (`Plugin.UpdateConfiguration` ->
-`ConfigurationSnapshotService.TryReplace`) and then requests the bounded
-post-save reconciliation, which enqueues a work hint carrying the new
-configuration version for each eligible item. The queue key is the item,
-connection, and image surface and deliberately excludes the configuration
-version, and the queue coalesces any hint whose key is already pending or in
-flight. A new-version hint for an item that was already pending or in flight
-under the previous version is therefore dropped, and the outstanding item then
-discards itself at processing time as a stale basis and is completed without
-re-enqueueing. The item keeps its previously published artwork (rendered under
-the old settings) until a later trigger (library event, webhook, post-scan,
-post-save, or scheduled run) enqueues it with the current version.
-
-- Evidence: code trace of `src/ArrTags/Plugin.cs` (activate then request
-  reconciliation), `src/ArrTags/Updates/WorkItemKey.cs` (the key excludes the
-  configuration version), `src/ArrTags/Updates/LibraryWorkQueue.cs` (coalesce a
-  key already pending or in flight), `src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs`
-  (version-mismatch discard) and `src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs`
-  (artwork-stage version guard), and `src/ArrTags/Updates/WorkProcessingResult.cs`
-  (a discard is a non-retryable completed outcome); operator analysis,
-  2026-09-25.
-- Consequence: immediately after a settings change, an item whose work happened
-  to be pending or in flight at save time is not re-rendered by the post-save
-  trigger and updates only on the next trigger that admits it. No work or
-  artwork is lost and the current artwork is preserved. It is distinct from F4:
-  F4 is bounded coverage of a scope larger than `QueueCapacity`, whereas F6 is a
-  missed re-render for an item the trigger did reach. Candidate fixes (upgrade
-  the pending item on coalesce, re-enqueue on a stale-basis discard, or make the
-  key version-aware) change ADR-004 coalescing behavior and require an ADR update
-  and coverage tests.
-
 ### F7. An empty resolved badge selection preserves the previous ArrTags badge instead of restoring the original
 
 When the enabled selectors and their allowlists resolve no displayable value,

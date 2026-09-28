@@ -96,13 +96,19 @@ the retained observation sets, with the inventory TTL as the bounded fallback.
 
 All reconciliation triggers (events, webhooks, post-scan, and manual/periodic
 scheduled) enqueue the same bounded work hints through the bounded, coalescing
-queue, so reconciliation is bounded by `QueueCapacity` (ADR-004). The accepted
+queue, so reconciliation is bounded by `QueueCapacity` (ADR-004). The installed
 mechanism for covering a scope larger than `QueueCapacity` across successive runs
-is a persisted reconciliation cursor (ADR-022, as amended for clause 3 by
-ADR-029): the scheduled and post-scan scopes advance a bounded, `Cache`-authority
-`(SortName, itemId)` cursor over the candidate order and wrap at the end, while
-events, webhooks, per-item triggers, and the post-save trigger are unchanged and
-do not read or write it. The pinned Jellyfin 12 host orders the candidate query by
+is the persisted reconciliation cursor (ADR-022, as amended for clause 3 by
+ADR-029; tasks 19.1-19.2): the scheduled and post-scan scopes advance a bounded,
+`Cache`-authority `(SortName, itemId)` cursor over the candidate order and wrap at
+the end, while events, webhooks, per-item triggers, and the post-save trigger are
+unchanged and do not read or write it. At the enqueue boundary the bounded
+outcome vocabulary (`Accepted`, `Coalesced`, `InFlight`, `Overflow`, `Stopped`)
+distinguishes covered work from a stop: `Accepted`, `Coalesced`, and `InFlight`
+are covered and the run continues, an inspected item that correctly needs no work
+is covered and does not stall the cursor, and the first `Overflow` or `Stopped`
+stops the run with the cursor advanced only over the covered prefix (ADR-022
+clauses 1-2). The pinned Jellyfin 12 host orders the candidate query by
 `SortName` ascending then raw `Name` ascending (not by the item id) and offers no
 keyset/after-key predicate, so the resume is identity-anchored: the run walks the
 host-ordered pages from the start until it locates the record's unique `itemId`,
@@ -111,20 +117,33 @@ cannot be located (ADR-029). One run is therefore bounded by the server-wide
 candidate count plus `QueueCapacity` with an `O(offset)` page-reach resume, not by
 a constant; a full round-robin cycle performs cumulative skip work quadratic in
 the candidate count, and rows tying on the exact `(SortName, Name)` pair have no
-host-guaranteed relative order (the registered cost and tie caveats). This
-whole-scope mechanism is **not implemented yet**: tasks 19.1-19.2 of Phase 19
-implement and test it, and F4 is documented as an open limitation in
-`docs/limitations/00-index.md` until Phase 19 lands and task 19.5 finalizes the
-resolution; it is not presented as solved here.
+host-guaranteed relative order (the registered cost and tie caveats, accepted
+residuals `V12-F4-1` and `V12-F4-2` in `docs/limitations/00-index.md`).
 
-Coalescing is version-blind: the queue key is the item, connection, and image
-surface, so a redundant hint is coalesced regardless of the configuration version
-it carries. A post-save hint carrying the new configuration version is therefore
-coalesced away when the item already has pending or in-flight work under the
-previous version, and that outstanding item then discards itself as a stale basis
-and is completed without re-enqueueing; the item is re-rendered on the next
-trigger rather than by the save. This is a known open limitation
-(`docs/limitations/00-index.md` F6) and is not presented as solved.
+Coalescing is deliberately version-blind: the queue key is the item, connection,
+and image surface, so a redundant hint is coalesced regardless of the
+configuration version it carries, and single-flight per item and image surface is
+unchanged. The installed F6 mechanism (ADR-023; task 19.3) closes the dropped
+post-save re-render at the discard boundary instead of changing the key: a
+discard carries a bounded `DiscardReason` (`ConfigurationStale`, `ItemMissing`,
+`Ineligible`, `ConnectionChanged`, `IdentityUnavailable`), and exactly one
+classification, `ConfigurationStale` (the work item's carried configuration
+version is no longer current at the discard point, covering both the initial
+version check and the pre-publication version re-check), causes the worker to
+re-enqueue exactly one fresh work item at the current configuration version for
+the same key, after the in-flight slot is released so the enqueue cannot be
+coalesced away. The fresh item carries the current version, so the effective bound
+is one re-enqueue per (item, connection, image surface, configuration version) and
+it cannot loop; a discard with any other classification, a same-version discard, a
+stopped queue, and a full queue do not re-enqueue, and a stopped or full queue
+drops the re-enqueue rather than blocking. An item whose work was pending or in
+flight when a save activated the new version is therefore re-rendered by the
+save. One narrow window is unchanged and registered as the accepted residual
+`V12-F6-1`: when the configuration version advances between the metadata-state
+publication and the artwork stage of the same pass, the artwork-stage version
+guard returns the successful metadata-publication result (not a discard), so that
+pass performs no artwork work and the new artwork applies on the item's next
+trigger.
 
 The installed webhook boundary (`src/ArrTags/Webhooks`, ADR-012) realizes this
 contract. `ArrTagsWebhookController` is an anonymous plugin route

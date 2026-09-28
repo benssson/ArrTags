@@ -20,7 +20,7 @@ release security review `docs/implementation/14.4/security-review.json`; release
 
 **Active phases:** Phase 19, Phase 20, Phase 21; all other phases are complete.
 
-**Open limitations:** 3 (`F4`, `F6`, `F7`); see `docs/limitations/00-index.md`.
+**Open limitations:** 1 (`F7`); see `docs/limitations/00-index.md`.
 <!-- END GENERATED: status -->
 
 ## Detail

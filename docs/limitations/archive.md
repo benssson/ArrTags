@@ -235,3 +235,105 @@ and contains no secret literal.
   operators had no supported in-product view. The panel and endpoint now provide
   that view without exposing credentials or full external payloads, and
   architecture section 12 records the shipped shape.
+
+### F4. Reconciliation coverage is bounded by `QueueCapacity`
+
+**Status:** Resolved (v1.2 Phase 19; the persisted cursor is task 19.1, the
+successive-run coverage matrix is task 19.2, and the canonical documentation
+reconciliation and limitation resolution are task 19.5). The mechanism is
+ADR-022 as amended for clause 3 by ADR-029.
+
+The scheduled and post-scan whole-scope triggers now advance a persisted,
+bounded `Cache`-authority `(SortName, itemId)` reconciliation cursor over the
+candidate order and wrap at the end, so successive runs cover a scope larger
+than `QueueCapacity` round-robin instead of re-covering the same prefix. The
+cursor is a single bounded, versioned, integrity-checked record (fixed kind
+`reconciliation-cursor`) carrying only the scope identity and the position, and
+it resets to the start on an enabled-library/item-type scope change and on a
+missing or torn record. The bounded enqueue boundary reports the ADR-022 clause 1
+outcome vocabulary (`Accepted`, `Coalesced`, `InFlight`, `Overflow`, `Stopped`);
+`Accepted`, `Coalesced`, and `InFlight` are covered (a coalesced or in-flight
+duplicate does not stall the run), an inspected item that correctly needs no work
+is covered, and the first `Overflow` or `Stopped` stops the run with the cursor
+advanced only over the covered prefix. Events, webhooks, per-item triggers, and
+the post-save trigger do not read or write the cursor. Because the pinned
+Jellyfin 12 host orders the candidate query by `SortName` then raw `Name` and
+offers no keyset/after-key predicate, the resume is identity-anchored: the run
+walks the host-ordered pages from the start until it locates the record's unique
+`itemId`, returns the page strictly after it, and resets to the start when the
+anchor cannot be located (a removed or no-longer-enumerated item).
+
+- Evidence: tasks 19.1 and 19.2 worker/reviewer reports;
+  `docs/architecture/08-reconciliation-and-update-flow.md`; ADR-022 as amended by
+  ADR-029; `src/ArrTags/Reconciliation/ReconciliationCursorStore.cs` and
+  `LibraryReconciliationService.cs`, `src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs`,
+  `src/ArrTags/Updates/WorkHintEnqueueOutcome.cs`, and `LibraryWorkQueue.cs`;
+  `ReconciliationCursorStoreTests`, `ReconciliationCursorResumeTests`,
+  `MediaLibraryResumeTests`, `SuccessiveRunCoverageMatrixTests`, and
+  `LibraryWorkQueueTests`.
+- Verification bounds and registered residuals: the coverage matrix drives the
+  real enumerator, reconciliation service, cursor store, and bounded queue over
+  an `ILibraryManager` double that reproduces the pinned host's documented
+  `(SortName, Name)` order and `StartIndex`/`Limit` paging; it does not run the
+  host SQL and no live pinned-host run is claimed. The registered residuals are
+  accepted items `V12-F4-1` (per-run resume is `O(offset)` rows and a full cycle
+  is `O(N²/QueueCapacity)` cumulative skip work over the server-wide candidate
+  count `N`), `V12-F4-2` (rows tying on the exact `(SortName, Name)` pair have
+  no host-guaranteed order), `V12-F4-3` (the cursor is a `Cache` record subject
+  to render-cache age pruning), `V12-F4-4` (an unlocatable anchor resets the run
+  to the start), `V12-F4-5` (the host order is an internal implementation
+  detail), and `V12-F4-6` (overlapping whole-scope runs are not cross-run
+  locked), each in `docs/limitations/00-index.md`.
+- Historical consequence: before Phase 19, every scheduled/post-scan run
+  re-enumerated from index zero and the queue dropped overflow, so a scope larger
+  than `QueueCapacity` was covered only by its prefix and successive runs
+  overlapped on that prefix. Event, webhook, and per-item triggers were never
+  affected.
+
+### F6. Version-blind work coalescing can drop a post-save re-render
+
+**Status:** Resolved (v1.2 Phase 19; the `DiscardReason` classification and the
+stale-basis re-enqueue are task 19.3, the coalescing coverage matrix is task
+19.4, and the canonical documentation reconciliation and limitation resolution
+are task 19.5). The mechanism is ADR-023.
+
+A discard now carries a bounded `DiscardReason` (`ConfigurationStale`,
+`ItemMissing`, `Ineligible`, `ConnectionChanged`, `IdentityUnavailable`), and
+exactly one classification, `ConfigurationStale` (the work item's carried
+configuration version is no longer current at the discard point, covering both
+the initial version check and the pre-publication version re-check), causes the
+worker to re-enqueue exactly one fresh work item at the current configuration
+version for the same `WorkItemKey`. The re-enqueue happens after
+`CompleteProcessing` releases the in-flight slot, so it cannot be coalesced away;
+the fresh item carries the current version, so the effective bound is one
+re-enqueue per (item, connection, image surface, configuration version) and it
+cannot loop. A non-`ConfigurationStale` discard, a same-version discard, a
+stopped queue, and a full queue do not re-enqueue (a stopped or full queue drops
+the re-enqueue rather than blocking), and `WorkItemKey`, the version-blind
+coalescing, and per-item/surface single-flight are unchanged. An item whose work
+was pending or in flight when a save activated the new version is therefore
+re-rendered by the save instead of waiting for the next trigger.
+
+- Evidence: tasks 19.3 and 19.4 worker/reviewer reports; ADR-023;
+  `docs/architecture/08-reconciliation-and-update-flow.md`;
+  `src/ArrTags/Updates/DiscardReason.cs`, `WorkProcessingResult.cs`,
+  `LibraryWorkWorker.cs`, `LibraryWorkQueue.cs`, and `WorkItemKey.cs`;
+  `src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs`;
+  `StaleBasisReenqueueTests`, `CoalescingCoverageMatrixTests`,
+  `MetadataReconciliationProcessorTests`, and `LibraryWorkQueueTests`; the task
+  6.8 `Phase6Harness` durable-store/renderer/publisher integration.
+- Verification bounds and registered residuals: the coverage matrix drives the
+  real `Plugin.UpdateConfiguration` save path, the real post-save trigger and
+  bounded queue, the real hosted worker, and the real composed processor chain;
+  it does not use a live host and the default suite skips the host-guarded facts
+  (no live pinned-host run is claimed). Two residuals are registered as accepted
+  items in `docs/limitations/00-index.md`: `V12-F6-1` (the configuration version
+  advancing between the metadata-state publication and the artwork stage of the
+  same pass is unchanged; that pass performs no artwork work and the new artwork
+  applies on the item's next trigger) and `V12-F6-2` (the bounded drop of the
+  re-enqueue is not logged or counted).
+- Historical consequence: before task 19.3, a post-save hint carrying the new
+  configuration version was coalesced away when the item already had pending or
+  in-flight work under the previous version, and the outstanding item discarded
+  itself as a stale basis and completed without re-enqueueing, so the item kept
+  its old artwork until a later trigger admitted it.

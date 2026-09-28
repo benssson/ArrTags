@@ -833,3 +833,210 @@ client either.
 - Disposition: accepted for v1.2; a live-browser probe would require serving the
   bundled web client and logging in, which the pinned matrix does not do.
   Registered by the Phase 17 task 17.4 security-review follow-up (SR-17.4-02).
+
+## v1.2 phase 19 accepted limitations (F4/F6)
+
+The F4 and F6 mechanisms are resolved by Phase 19 (tasks 19.1-19.5; ADR-022 as
+amended by ADR-029 and ADR-023). The residuals below are the accepted bounds of
+the shipped mechanisms, each derived from the ADR consequences and the phase
+reviews; the mechanisms are not presented as unbounded.
+
+### V12-F4-1. The reconciliation resume is O(offset) per run and O(N²/`QueueCapacity`) per full cycle (MEDIUM, accepted)
+
+The pinned Jellyfin 12 host offers no keyset/after-key predicate, so the resume
+locates the persisted cursor's unique `itemId` by walking the host-ordered pages
+from the start of the order (the ADR-029 bounded linear skip). A run therefore
+reads ordered rows proportional to the boundary item's position, and a full
+round-robin cycle performs cumulative skip work quadratic in the candidate count.
+
+- Behaviour: one scheduled/post-scan run's resume work is `O(offset)` ordered
+  rows (bounded by the server-wide candidate count plus `QueueCapacity`, not by a
+  constant); a full cycle over `N` candidates is `O(N²/QueueCapacity)` cumulative
+  skip work. `N` is the **server-wide** movie+episode candidate count because the
+  enumerator query is not library-scoped
+  (`JellyfinMediaLibraryEnumerator` uses a recursive `IncludeItemTypes` query
+  with no `ParentId`/library scope), so a late-cycle resume scans a large prefix
+  even for a small enabled-library scope.
+- Consequence: a very large library takes several reconciliation intervals to
+  cover completely and each late-cycle run spends skip work proportional to its
+  offset; this is the accepted cost of the only host-supported mechanism
+  (ADR-029 clause 3 and its registered residual 1), not a defect. No runtime cost
+  measurement was performed; the structural `N + QueueCapacity` bound and its
+  growth with `N` are asserted by
+  `SuccessiveRunCoverageMatrixTests.OneRunPageReachTracksTheServerWideCandidateCountPlusQueueCapacity`.
+- Evidence: ADR-029 Consequences (registered residual 1) and the amendment
+  record `docs/implementation/planning/v1.2-f4-clause-3-amendment.json` (F4-R1,
+  AR-ADR022C3-03); tasks 19.1 and 19.2 worker reports;
+  `src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs`;
+  `tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs`.
+- Disposition: accepted for v1.2. A per-library (`ParentId`-scoped) enumerator
+  with one cursor per enabled library is a possible future mitigation of the skip
+  cost, but it changes the server-wide query and the single fixed cursor record,
+  so it is out of scope (ADR-029 rejected alternatives).
+
+### V12-F4-2. Rows tying on the exact `(SortName, Name)` pair have no host-guaranteed order (MEDIUM, accepted)
+
+The pinned host's effective candidate order is `SortName` ascending then raw
+`Name` ascending, which is not a guaranteed strict total order, and no supported
+configuration yields an identifier tie-break.
+
+- Precondition: two candidate rows share the exact `(SortName, Name)` pair.
+- Behaviour: coverage is guaranteed for rows strictly ordered by that pair and is
+  best-effort for rows that tie, which have no host-guaranteed relative order. A
+  page boundary inside a tie can re-cover, or in a persistently ordered tie skip,
+  an item across a cycle; the ordered-page enumerate/locate mechanism cannot
+  distinguish the tied rows.
+- Consequence: a tied row may receive no work in a cycle (it is retried in a
+  later cycle, because the cursor wraps) or receive bounded duplicate work; no
+  strictly ordered item is skipped. This is ADR-029 clause 5's registered
+  residual and is exercised as a deferral, never asserted as covered, by
+  `SuccessiveRunCoverageMatrixTests.ExactSortNameNameTiesAreBestEffortAndNotCoveredWithinTheCycle`.
+- Evidence: ADR-029 clauses 1 and 5 and Consequences (registered residual 2); the
+  amendment record F4-R2 (AR-ADR022C3-04); tasks 19.1 and 19.2 worker/reviewer
+  reports; `docs/research/jellyfin-expert/reconciliation-cursor-host-order.json`.
+- Disposition: accepted for v1.2. A host-ordered identifier tie-break does not
+  exist in the supported query surface.
+
+### V12-F4-3. The cursor is a `Cache` record subject to render-cache age pruning (LOW, accepted)
+
+`ReconciliationCursorStore` writes the cursor under `StateAuthority.Cache`
+(ADR-022 clause 4), and `StateRetentionService.RunRetentionPass` exempts only
+`MetadataStateStore.RecordKind` from the cache age TTL, so the cursor is subject
+to the render-cache retention pass.
+
+- Precondition: the effective whole-scope reconciliation interval is longer than
+  the configured `RenderCacheTtlMinutes` (default 1440 minutes = 24 h; floor 1
+  minute). Under the shipped defaults the interval is 12 h
+  (`ArrTagsReconciliationTask.DefaultInterval`), so the cursor is rewritten
+  before it can expire.
+- Behaviour: when the record is pruned, `ReconciliationCursorStore.Read` observes
+  a miss and the next whole-scope run resets to the start of the candidate order,
+  re-covering a cycle's prefix from the beginning (the ADR-022 clause 4/5
+  missing-record semantics).
+- Consequence: a bounded re-cover, not a failure or a skip: every item is still
+  covered round-robin across the following runs. The interaction is recorded
+  rather than fixed (task 19.1 reviewer finding R-19.1-02); no state is corrupted.
+- Evidence: task 19.1 reviewer report R-19.1-02;
+  `src/ArrTags/Reconciliation/ReconciliationCursorStore.cs` (the `Cache` write);
+  `src/ArrTags/PluginLifecycle/StateRetentionService.cs` (only the metadata-state
+  kind is exempt); `src/ArrTags/State/StateRetention.cs` (cache age TTL).
+- Disposition: accepted for v1.2; no code change. A cursor exemption (or a
+  per-record retention class) is a possible future hardening.
+
+### V12-F4-4. An unlocatable cursor anchor resets the run to the start (LOW, accepted)
+
+ADR-029 clause 4 resets the cursor to the start when the boundary item cannot be
+located (it was removed or left the movie/episode candidate enumeration, or the
+host order changed) instead of failing the run.
+
+- Precondition: the persisted boundary item is removed or is no longer a
+  movie/episode candidate between runs.
+- Behaviour: the locate walk reaches the end of the candidate order and reports
+  `AnchorNotFound`; the run then enumerates from index 0 and rewrites the cursor
+  from that run's coverage.
+- Consequence: one cycle's prefix is re-covered after the anchor is lost (a
+  bounded but visible cost). An item that merely becomes service-ineligible while
+  remaining an enumerable movie/episode candidate is still located by identity,
+  so the cursor does not reset for that reason. This is ADR-029 clause 4 and its
+  registered residual 3; the reset and no-failure behavior are covered by
+  `SuccessiveRunCoverageMatrixTests.UnlocatableAnchorResetsToTheStartAndTheRunDoesNotFail`.
+- Evidence: ADR-029 clause 4 and Consequences (registered residual 3); the
+  amendment record F4-R3 (AR-ADR022C3-05); task 19.2 worker/reviewer reports.
+- Disposition: accepted for v1.2; no code change.
+
+### V12-F4-5. The resume relies on the pinned host's internal candidate order (LOW, accepted)
+
+The identity-anchored locate walk requires the host's effective candidate order
+(`SortName` ascending, raw `Name` ascending) to locate the anchor's position.
+This order is an internal Jellyfin implementation detail with no plugin
+compatibility promise.
+
+- Precondition: a future Jellyfin host changes its default candidate ordering or
+  collation.
+- Behaviour: the mechanism degrades to a rescan or a reset to the start, not to a
+  wrong result: a changed order either still contains the anchor (the locate walk
+  finds its new position) or reports `AnchorNotFound`, which resets the cursor per
+  `V12-F4-4`.
+- Consequence: a host update can cost a bounded re-cover; coverage (round-robin)
+  is retained, and the plugin does not depend on cross-version ordering
+  stability. The unit coverage matrix reproduces the documented order over an
+  `ILibraryManager` double with an ordinal comparer, not the host SQL collation
+  (a recorded test substitute, TQ-19.2-01), and no live pinned-host run of the
+  mechanism was performed in Phase 19.
+- Evidence: ADR-029 clauses 1, 3, and 4 and Consequences (registered residual 4);
+  the amendment record F4-R4;
+  `docs/research/jellyfin-expert/reconciliation-cursor-host-order.json`; task
+  19.2 test-quality review TQ-19.2-01.
+- Disposition: accepted for v1.2; no code change.
+
+### V12-F4-6. Overlapping whole-scope runs are not cross-run locked (INFORMATIONAL, accepted)
+
+`LibraryReconciliationService` is a singleton with no cross-run lock: each run
+reads the cursor once at start and `AdvanceCursor` persists only the position that
+run itself covered (task 19.1 reviewer finding R-19.1-04).
+
+- Precondition: two whole-scope runs (for example a manual scheduled run and a
+  post-scan run) overlap.
+- Behaviour: the later writer can move the persisted cursor back to an earlier
+  covered position, but never forward past an item neither run covered.
+- Consequence: the next run re-covers the overlap: bounded extra work, not a
+  state-integrity failure and not a skip. No change was required or made.
+- Evidence: task 19.1 reviewer report R-19.1-04;
+  `src/ArrTags/Reconciliation/LibraryReconciliationService.cs` (one cursor read
+  per run; the advance covers that run's own covered prefix).
+- Disposition: accepted for v1.2; no code change.
+
+### V12-F6-1. The configuration version can advance between the metadata publication and the artwork stage of the same pass (LOW, accepted)
+
+`ArtworkPublishingWorkItemProcessor` re-checks the carried configuration version
+after the metadata state is published and before the artwork decision. That check
+returns the successful metadata-publication result rather than a discard, so the
+worker does not re-enqueue for it.
+
+- Precondition: a configuration save advances the version after the metadata
+  processor's pre-publication version re-check has passed but before the artwork
+  stage of the same pass runs (the item's post-save hint was coalesced in that
+  window).
+- Behaviour: that pass still publishes the metadata state under the pre-save
+  version, performs no artwork work, and returns success; there is no
+  `DiscardReason` and no re-enqueue, so the new artwork applies when the item is
+  next processed by any trigger (library event, webhook, post-save, post-scan, or
+  scheduled run).
+- Consequence: the same F6 symptom (an item not re-rendered by the save) remains
+  for this narrow, race-only window; the pending/in-flight case named by the
+  limitation is fixed. ADR-023 clause 1 deliberately scopes `ConfigurationStale`
+  to discards, and its rejected alternative forbids extending re-enqueueing to a
+  successful-but-stale pass, so the window is accepted rather than silently
+  unsuccessful.
+- Evidence: task 19.3 reviewer finding 19.3-F1; task 19.3 worker report
+  (interpretations and known limitations);
+  `src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs` (the version guard
+  returns the reconciliation result); `docs/decisions/ADR-023.md` clause 1 and
+  its rejected alternative.
+- Disposition: accepted for v1.2 (registered by task 19.5); no code change. A
+  worker-level or artwork-stage re-enqueue is explicitly out of ADR-023's scope.
+
+### V12-F6-2. The stale-basis re-enqueue's bounded drop is not logged or counted (INFORMATIONAL, accepted)
+
+`LibraryWorkWorker.ReenqueueStaleBasis` enqueues the fresh current-version item
+with `_ = _queue.Enqueue(...)` and ignores the returned bounded
+`WorkHintEnqueueOutcome`; no log record and no diagnostics counter is written for
+the re-enqueue or its outcome.
+
+- Precondition: the configuration-stale discard occurs while the queue is stopped
+  (lifecycle fence or shutdown) or at capacity.
+- Behaviour: the bounded enqueue reports `Stopped`/`Overflow` and the re-enqueue
+  is dropped per ADR-023 clause 3; the worker writes no record of the drop, and
+  the ADR-025 diagnostics counters (queue depth/in-flight and the bounded
+  classifications) do not include it.
+- Consequence: the item keeps its previously published artwork until a later
+  trigger (library event, webhook, post-save, post-scan, or scheduled run) admits
+  it, and an operator has no diagnostic that the post-save re-render was dropped.
+  The drop itself is bounded and deliberately accepted by ADR-023 clause 3, so
+  this is an observability residual, not a correctness defect.
+- Evidence: `src/ArrTags/Updates/LibraryWorkWorker.cs` (`ReenqueueStaleBasis`);
+  ADR-023 clause 3; the ADR-025 counter-set contract (`docs/decisions/ADR-025.md`
+  clause 3).
+- Disposition: accepted for v1.2 (registered by task 19.5); no code change. A
+  bounded log record (or counter) for the dropped re-enqueue is possible future
+  hardening.

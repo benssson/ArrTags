@@ -1,0 +1,109 @@
+{
+  "task": "19.5",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R-19.5-01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "Requirement / limitations-register accuracy: residual severity (V12-F4-5)",
+      "summary": "Resolved: V12-F4-5 is now labelled LOW on both current-state register surfaces, matching its documented source severities (amendment record F4-R4 LOW and architecture review AR-ADR022C3-05 LOW), and the corrected basis is stated in the attempt-2 worker report.",
+      "detail": "The attempt-2 rework re-labels V12-F4-5 from INFORMATIONAL to LOW in exactly the two surfaces named by the attempt-1 required change: docs/limitations/00-index.md:113 now reads '| `V12-F4-5` | The resume relies on the pinned host's internal candidate order (LOW, accepted) | ...' and docs/limitations/accepted.md:947 now reads '### V12-F4-5. The resume relies on the pinned host's internal candidate order (LOW, accepted)'. The documented source severities independently verify the correction: docs/implementation/planning/v1.2-f4-clause-3-amendment.json lines 79-84 record F4-R4 with severity LOW (source_finding AR-ADR022C3-05), and docs/reviews/architecture/adr-022-clause-3-conformance.json:68-80 records AR-ADR022C3-05 severity LOW. The attempt-2 report's interpretations[0].basis states the corrected rule (severity copied from the source finding), removing the attempt-1 self-contradiction. The seven other residuals are unchanged and still correctly classified: 00-index.md:109-116 and the corresponding accepted.md headings read V12-F4-1 MEDIUM, V12-F4-2 MEDIUM, V12-F4-3 LOW, V12-F4-4 LOW, V12-F4-6 INFORMATIONAL, V12-F6-1 LOW, V12-F6-2 INFORMATIONAL - identical to the attempt-1 mapping. No other residual content changed, and the changelog (docs/changelog/v1.2.0.md:1541-1543) and archive.md:284 name V12-F4-5 without a severity, so no historical text needed rewriting. Impact was documentation/register accuracy only, and it is now closed.",
+      "evidence": [
+        "docs/limitations/00-index.md:113 -> '(LOW, accepted)'",
+        "docs/limitations/accepted.md:947 -> '### V12-F4-5. ... (LOW, accepted)'",
+        "docs/implementation/planning/v1.2-f4-clause-3-amendment.json:79-84 (F4-R4 severity LOW, source_finding AR-ADR022C3-05)",
+        "docs/reviews/architecture/adr-022-clause-3-conformance.json:68-80 (AR-ADR022C3-05 severity LOW)",
+        "docs/implementation/19.5/worker-report.attempt-2.json:59-64 (corrected interpretations/basis)",
+        "docs/limitations/00-index.md:109-116 and accepted.md:844/877/900/926/947/972/989/1019 (seven other residuals unchanged)",
+        "grep for 'V12-F4-5.*INFORMATIONAL' matches only the preserved attempt-1 worker report and the attempt-1 reviewer finding text, no current-state surface"
+      ],
+      "recommended_action": "None; the finding is closed."
+    },
+    {
+      "id": "R-19.5-02",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "Register accuracy: V12-F4-4 precondition vs ADR-029 residual 3 wording",
+      "summary": "Carried forward from attempt 1: V12-F4-4 narrows ADR-029 residual 3's wording but discloses the service-ineligible distinction explicitly and matches the shipped implementation, so no change is required.",
+      "detail": "Unchanged by the rework. The accepted entry docs/limitations/accepted.md:926-946 states the removed/no-longer-a-movie/episode-candidate precondition and explains that an item which remains an enumerable Movie/Episode candidate but becomes service-ineligible is still located by identity, so the cursor does not reset. This matches the shipped locate-by-itemId implementation and the 19.2 test-quality interpretation TQ-19.2-02, so the register is more precise than the ADR wording rather than inaccurate. No action required.",
+      "evidence": [
+        "docs/limitations/accepted.md:926-946",
+        "docs/decisions/ADR-029.md:80-83 and 115-116",
+        "docs/implementation/19.2/test-quality-review.json:19-29 (TQ-19.2-02)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "R-19.5-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "Verification reproduction",
+      "summary": "Re-run on attempt 2: default suite 0/1901/64/1965, F4 filter 0/90/0/90, F6 filter 0/44/0/44, and scripts/check-docs.sh PASS (all nine sections), with the register/state surfaces internally consistent apart from the now-closed R-19.5-01.",
+      "detail": "Independently reproduced on the reworked tree. state.json task 19.5 is done:true and lists both worker-report.json and worker-report.attempt-2.json; limitations.open=['F7'], resolved=['F1','F2','F3','F4','F6','F8'], and accepted contains each of V12-F4-1..V12-F4-6 and V12-F6-1/V12-F6-2 exactly once (grep count 1 in 00-index.md, accepted.md, and state.json; no duplicates). Phase 19 remains PLANNED with gate 'Gate 19', tag 'v1.2.0-phase19', no gate_record. open.md retains only the F7 '### F' heading; archive.md carries the F4/F6 resolved entries; PLANS.md ticks only the 19.5 checkbox; docs/status.md shows one open limitation (F7). git status shows the same nine documentation files as attempt 1 plus the untracked docs/implementation/19.5/ report directory, with no src/, tests/, docs/decisions, docs/reviews, docs/research, docs/planning, or README change.",
+      "evidence": [
+        "./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (independently reproduced)",
+        "F4 filter (SuccessiveRunCoverageMatrixTests|ReconciliationCursorResumeTests|ReconciliationCursorStoreTests|MediaLibraryResumeTests|LibraryWorkQueueTests) -> Failed 0, Passed 90, Skipped 0, Total 90",
+        "F6 filter (CoalescingCoverageMatrixTests|StaleBasisReenqueueTests|MetadataReconciliationProcessorTests) -> Failed 0, Passed 44, Skipped 0, Total 44",
+        "scripts/check-docs.sh -> 'check-docs: PASS' (nine ok sections)",
+        "git status --short; git diff --stat (nine docs files, no src/tests change)",
+        "docs/plan/state.json: task 19.5 (lines ~1007-1015), limitations (~1136-1155), phase 19 (lines 959-1015)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "R-19.5-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "Changelog accuracy: V12-F4-5 source attribution",
+      "summary": "The Phase 19 changelog attributes V12-F4-5 to test-quality finding TQ-19.2-01, which is consistent with the amendment-record source F4-R4/AR-ADR022C3-05 and with TQ-19.2-01's own text; no discrepancy and no change required.",
+      "detail": "docs/changelog/v1.2.0.md:1541-1543 attributes V12-F4-5 ('the resume relies on the pinned host's internal candidate order') to 'task 19.2 test-quality finding TQ-19.2-01'. The 19.2 test-quality review's TQ-19.2-01 is the host-order-fidelity finding, whose description explicitly states 'the live-host verifier / task 19.5 own the host-order residual (F4-R4)' (docs/implementation/19.2/test-quality-review.json:6-16). The amendment record F4-R4 is the same residual (host order is an internal implementation detail), so the changelog attribution and the register's evidence traces agree. The changelog names no severity for V12-F4-5, so the attempt-2 re-label required no changelog edit. Recorded for audit only.",
+      "evidence": [
+        "docs/changelog/v1.2.0.md:1541-1543",
+        "docs/implementation/19.2/test-quality-review.json:6-16 (TQ-19.2-01 owns the host-order residual F4-R4)",
+        "docs/implementation/planning/v1.2-f4-clause-3-amendment.json:79-84 (F4-R4)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (independently rerun; unchanged from attempt 1 and the post-19.4 baseline, as expected for a documentation-only rework).",
+    "dotnet test --filter 'SuccessiveRunCoverageMatrixTests|ReconciliationCursorResumeTests|ReconciliationCursorStoreTests|MediaLibraryResumeTests|LibraryWorkQueueTests' -> Failed 0, Passed 90, Skipped 0, Total 90 (independently rerun; unchanged).",
+    "dotnet test --filter 'CoalescingCoverageMatrixTests|StaleBasisReenqueueTests|MetadataReconciliationProcessorTests' -> Failed 0, Passed 44, Skipped 0, Total 44 (independently rerun; unchanged).",
+    "scripts/check-docs.sh (with /config/arrtags-env.sh sourced) -> 'check-docs: PASS' on generated status blocks, compatibility stubs, decisions index (29 ADRs), limitations index (all IDs), architecture/data-model indexes, artifact identity, doc budget, current-state links, and agent report contracts.",
+    "Inspected (not rerun) the 19.1-19.4 worker/reviewer/test-quality reports that carry the phase behaviour sensitivity; this task's rework changes no production or test code, so those results still hold and no new behaviour mutation probe is required."
+  ],
+  "research_checked": [
+    "docs/implementation/planning/v1.2-f4-clause-3-amendment.json residual_limitations F4-R1..R4 (lines 56-84): confirmed F4-R1 MEDIUM, F4-R2 MEDIUM, F4-R3 LOW, F4-R4 LOW, and F4-R4 source_finding AR-ADR022C3-05, which validates the corrected V12-F4-5 severity.",
+    "docs/reviews/architecture/adr-022-clause-3-conformance.json:68-80: confirmed AR-ADR022C3-05 severity LOW (host-order stability across Jellyfin versions), the source of the corrected label.",
+    "docs/implementation/19.2/test-quality-review.json:6-16: confirmed TQ-19.2-01 is the host-order-fidelity finding that owns F4-R4, making the changelog attribution of V12-F4-5 consistent.",
+    "docs/decisions/ADR-029.md clauses 1-5 and Consequences: re-confirmed the architecture F4 paragraph and V12-F4-1..V12-F4-5 match the host order, identity-anchored bounded linear skip, reset-on-unlocatable-anchor, tie caveat, and the four registered residuals; the bound remains stated as server-wide N + QueueCapacity with O(offset)/O(N^2/QueueCapacity) cost.",
+    "Source inspection (unchanged from attempt 1) for the residuals derived from code: ReconciliationCursorStore.cs (Cache write), StateRetentionService.cs (only MetadataStateStore exempt), LibraryWorkWorker.cs ReenqueueStaleBasis (ignored bounded outcome, V12-F6-2), ArtworkPublishingWorkItemProcessor.cs (version guard returns success not discard, V12-F6-1), JellyfinMediaLibraryEnumerator.cs (server-wide recursive query, V12-F4-1)."
+  ],
+  "documentation_checked": [
+    "docs/limitations/00-index.md:113: V12-F4-5 now '(LOW, accepted)'; rows 109-116 cover all eight residuals with the correct severities; F4/F6 moved to Resolved (archive.md) and F7 remains the only open F entry.",
+    "docs/limitations/accepted.md:947: V12-F4-5 heading now '(LOW, accepted)'; the v1.2 phase 19 accepted limitations section (837-1046) still presents eight residuals with Behaviour/Precondition, Consequence, Evidence, and Disposition, and the seven other severities are unchanged.",
+    "docs/limitations/open.md: only the F7 '### F' heading remains (F4/F6 entries removed).",
+    "docs/limitations/archive.md:239-339: the F4 and F6 resolved entries remain in the F3 style, naming tasks 19.1-19.5, the decisions, evidence, verification bounds, and residuals V12-F4-1..V12-F4-6 / V12-F6-1..V12-F6-2.",
+    "docs/plan/state.json: task 19.5 done:true with reports ['docs/implementation/19.5/worker-report.json','docs/implementation/19.5/worker-report.attempt-2.json']; updated_utc advanced to 2026-09-28T13:37:41Z; limitations.open=['F7'], resolved includes F4/F6, accepted contains the eight IDs once each; phase 19 status PLANNED, gate 'Gate 19', tag 'v1.2.0-phase19', no gate_record.",
+    "PLANS.md: only the 19.5 checkbox changed; the milestone table was not hand-edited and check-docs reports the generated blocks current.",
+    "docs/status.md: 'Open limitations: 1 (F7)', regenerated and consistent with state.json.",
+    "docs/changelog/v1.2.0.md:1446-1594: the Phase 19 / task 19.5 entry records the shipped F4/F6 mechanisms, the residual registrations, the suite counts (default 0/1901/64/1965; F4 0/90/0/90; F6 0/44/0/44), the honest verification-bounds paragraph, and attributes V12-F4-5 to TQ-19.2-01 (consistent with F4-R4); no overclaim and no severity statement needing the rework.",
+    "docs/architecture/08-reconciliation-and-update-flow.md:94-150: the F4/F6 paragraphs describe the shipped mechanisms, state the F4 bound as server-wide candidate count + QueueCapacity with an O(offset) resume, and name the accepted residuals without overclaim.",
+    "README.md: makes no F4/F6/cursor/coalescing statement (grep), so it is correctly unchanged and not in the changed set.",
+    "git status confirms no change to src/, tests/, docs/decisions/**, docs/reviews/**, docs/research/**, docs/planning/**, docs/plan/archive/**, or README.md."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding_id": "R-19.5-01",
+      "attempt": 1,
+      "required": "Re-label V12-F4-5 as LOW in docs/limitations/00-index.md:113 and docs/limitations/accepted.md:947 so its severity matches the documented source (amendment record F4-R4 and architecture review AR-ADR022C3-05, both LOW), and correct the worker report's stated basis; no production, test, ADR, or state.json limitations change.",
+      "closure": "Closed. Both surfaces now read '(LOW, accepted)' for V12-F4-5 (00-index.md:113; accepted.md:947). The attempt-2 worker report states the corrected basis (F4-R4 LOW; AR-ADR022C3-05 LOW) and the attempt-1 worker report was preserved unchanged per the agent-contracts no-overwrite rule. No other residual's severity or content changed; the seven other severities remain V12-F4-1 MEDIUM, V12-F4-2 MEDIUM, V12-F4-3 LOW, V12-F4-4 LOW, V12-F4-6 INFORMATIONAL, V12-F6-1 LOW, V12-F6-2 INFORMATIONAL.",
+      "evidence": "docs/limitations/00-index.md:113; docs/limitations/accepted.md:947; docs/implementation/19.5/worker-report.attempt-2.json:59-64 (interpretations) and :94-100 (rework[0]); docs/implementation/planning/v1.2-f4-clause-3-amendment.json:79-84; docs/reviews/architecture/adr-022-clause-3-conformance.json:68-80; scripts/check-docs.sh -> PASS."
+    }
+  ],
+  "ready_for_next_task": true
+}

@@ -1,0 +1,152 @@
+{
+  "task": "19.5",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Phase 19's closing documentation and integration verification task, with no production or test change. The architecture section 8 F4 paragraph now describes the shipped persisted bounded Cache-authority (SortName, itemId) cursor with the identity-anchored bounded linear skip, the enqueue-outcome vocabulary and advance rule, the explicit page-reach/offset bound, and the registered cost/tie caveats (ADR-022 as amended by ADR-029; tasks 19.1-19.2); the F6 paragraph now describes the shipped bounded DiscardReason classification and the exactly-one current-version re-enqueue for ConfigurationStale after the in-flight slot is released, with the stopped/full-queue bounded drop, the unchanged version-blind WorkItemKey/single-flight, and the artwork-stage window named as the accepted residual V12-F6-1 (ADR-023; tasks 19.3-19.4). F4 and F6 are removed from docs/limitations/open.md, added as resolved entries in docs/limitations/archive.md (resolving tasks 19.1-19.5, decisions, evidence, verification bounds), and moved to Resolved in docs/limitations/00-index.md and docs/plan/state.json (open is now only F7). Eight bounded residuals are registered as accepted items with evidence: V12-F4-1 (O(offset) per-run / O(N²/QueueCapacity) per-cycle skip over the server-wide candidate count N), V12-F4-2 (exact (SortName, Name) ties have no host-guaranteed order), V12-F4-3 (the cursor is a Cache record subject to render-cache age pruning; reviewer R-19.1-02), V12-F4-4 (an unlocatable anchor resets the run to the start), V12-F4-5 (the resume relies on the pinned host's internal candidate order; TQ-19.2-01), V12-F4-6 (overlapping whole-scope runs are not cross-run locked; reviewer R-19.1-04), V12-F6-1 (the configuration version can advance between the metadata publication and the artwork stage of the same pass; reviewer 19.3-F1), and V12-F6-2 (the bounded drop of the re-enqueue is not logged or counted). docs/changelog/v1.2.0.md gains the Phase 19 entry recording the shipped F4/F6 (tasks 19.1-19.4, with ADR-029), the residual registrations, and the integration evidence; README.md was checked and makes no F4/F6 statement, so it is unchanged. Integration verification: build 0 warnings / 0 errors; default suite Failed 0, Passed 1901, Skipped 64, Total 1965 (the post-19.4 baseline, 0 new skips); F4-focused filter Failed 0, Passed 90, Skipped 0, Total 90; F6-focused filter Failed 0, Passed 44, Skipped 0, Total 44; render-docs-state current and scripts/check-docs.sh PASS (limitations-index seed probe: removing the V12-F4-1 row fails the section; restored and re-passed). docs/plan/state.json marks 19.5 done with this report and PLANS.md ticks the 19.5 checkbox; the phase status/gate/tag are left to the orchestrator.",
+  "validation": [
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (post-19.4 baseline unchanged: this task changes no production or test code, 0 new skips).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~SuccessiveRunCoverageMatrixTests|FullyQualifiedName~ReconciliationCursorResumeTests|FullyQualifiedName~ReconciliationCursorStoreTests|FullyQualifiedName~MediaLibraryResumeTests|FullyQualifiedName~LibraryWorkQueueTests\" -> Failed 0, Passed 90, Skipped 0, Total 90.",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~CoalescingCoverageMatrixTests|FullyQualifiedName~StaleBasisReenqueueTests|FullyQualifiedName~MetadataReconciliationProcessorTests\" -> Failed 0, Passed 44, Skipped 0, Total 44.",
+    "dotnet run scripts/render-docs-state.cs -> 'status.md: rendered' (the only content change is the generated open-limitations line) then 'PLANS.md: up to date' (both generated blocks current).",
+    "scripts/check-docs.sh on the tree with every documentation edit in place but before this worker report was written -> 'check-docs: PASS' (all sections: generated status blocks current and plan state consistent, compatibility stubs, decisions index 29 ADRs, limitations index, architecture/data-model indexes, artifact identity, doc budget, current-state links, agent report contracts).",
+    "Seed probe for the new register rows: removed the '| `V12-F4-1` |' row from docs/limitations/00-index.md -> scripts/check-docs.sh failed section 4 with 'FAIL: limitation V12-F4-1 missing from index'; the row was restored (byte-identical copy at /tmp/19.5/00-index.bak) and scripts/check-docs.sh re-ran 'check-docs: PASS'.",
+    "git status --short -> exactly the nine documentation files modified (PLANS.md, docs/architecture/08-reconciliation-and-update-flow.md, docs/changelog/v1.2.0.md, docs/limitations/00-index.md, docs/limitations/accepted.md, docs/limitations/archive.md, docs/limitations/open.md, docs/plan/state.json, docs/status.md) plus the new docs/implementation/19.5/worker-report.json; git diff --stat shows no src/ or tests/ change.",
+    "Old-wording sweep on the current-state surfaces: grep for 'not implemented yet' and 'known open limitation|not presented as solved' in docs/architecture and docs/limitations returns none; grep for open F4/F6 rows in docs/limitations/00-index.md returns only the Resolved rows; docs/status.md now renders 'Open limitations: 1 (`F7`)'.",
+    "scripts/check-docs.sh after this worker report is persisted: expected to fail only the agent-contract worker/reviewer pairing line ('task 19.5 has a worker report but no reviewer report'), which the orchestrator's implementation-reviewer report closes (the established transient pattern for tasks 15.4-19.4); all other sections pass."
+  ],
+  "changed_files": [
+    "docs/architecture/08-reconciliation-and-update-flow.md",
+    "docs/limitations/open.md",
+    "docs/limitations/archive.md",
+    "docs/limitations/accepted.md",
+    "docs/limitations/00-index.md",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/status.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/implementation/19.5/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Architecture section 8 F4 paragraph: replace the 'not implemented yet' wording with the shipped description (persisted bounded Cache-authority (SortName, itemId) cursor; identity-anchored resume via bounded linear skip; the explicit page-reach/offset bound; the registered cost/tie caveats; scheduled/post-scan only), referencing ADR-022 as amended by ADR-029; no overclaim.",
+      "evidence": "docs/architecture/08-reconciliation-and-update-flow.md lines 97-120: 'The installed mechanism ... is the persisted reconciliation cursor (ADR-022, as amended for clause 3 by ADR-029; tasks 19.1-19.2)', the scheduled/post-scan trigger exclusion, the enqueue-outcome vocabulary and covered-vs-stop advance rule (ADR-022 clauses 1-2), the host (SortName, Name) order and identity-anchored locate with reset on an unlocatable anchor (ADR-029), and 'One run is therefore bounded by the server-wide candidate count plus QueueCapacity with an O(offset) page-reach resume, not by a constant; ... accepted residuals V12-F4-1 and V12-F4-2 in docs/limitations/00-index.md'. The old strings 'not implemented yet' and 'not presented as solved' are absent (grep sweep)."
+    },
+    {
+      "criterion": "Architecture section 8 F6 paragraph: replace the 'known open limitation ... not presented as solved' wording with the shipped behavior (bounded DiscardReason classification at the discard boundary; exactly one fresh current-version re-enqueue for ConfigurationStale after the in-flight slot is released; stopped/full queue drops it; version-blind WorkItemKey and single-flight unchanged), referencing ADR-023 and noting the artwork-stage residual.",
+      "evidence": "docs/architecture/08-reconciliation-and-update-flow.md lines 122-145: 'Coalescing is deliberately version-blind ... single-flight ... is unchanged. The installed F6 mechanism (ADR-023; task 19.3) ... a discard carries a bounded DiscardReason ... exactly one classification, ConfigurationStale ... re-enqueue exactly one fresh work item at the current configuration version ... after the in-flight slot is released ... the effective bound is one re-enqueue per (item, connection, image surface, configuration version) ... a stopped or full queue drops the re-enqueue rather than blocking ... One narrow window is unchanged and registered as the accepted residual V12-F6-1'."
+    },
+    {
+      "criterion": "docs/limitations/open.md: remove the F4 and F6 sections (they move to resolved).",
+      "evidence": "docs/limitations/open.md now contains only the F7 section under the functional heading (git diff shows the 48-line F4/F6 removal; the file's only '### F' heading is F7)."
+    },
+    {
+      "criterion": "docs/limitations/archive.md: add resolved F4 and F6 entries in the established style, naming the resolving tasks (19.1-19.4; 19.5 for the resolution) and decisions (ADR-022 as amended by ADR-029; ADR-023), the evidence, and the residual IDs.",
+      "evidence": "docs/limitations/archive.md gains '### F4. Reconciliation coverage is bounded by QueueCapacity' (Status: Resolved, v1.2 Phase 19; cursor task 19.1, coverage matrix task 19.2, resolution task 19.5; ADR-022 as amended by ADR-029; shipped behavior; evidence naming ReconciliationCursorStoreTests/ReconciliationCursorResumeTests/MediaLibraryResumeTests/SuccessiveRunCoverageMatrixTests/LibraryWorkQueueTests; verification bounds naming V12-F4-1..V12-F4-6; historical consequence) and '### F6. Version-blind work coalescing can drop a post-save re-render' (Status: Resolved; tasks 19.3/19.4/19.5; ADR-023; evidence naming StaleBasisReenqueueTests/CoalescingCoverageMatrixTests/MetadataReconciliationProcessorTests; residuals V12-F6-1/V12-F6-2; historical consequence)."
+    },
+    {
+      "criterion": "docs/limitations/accepted.md: register the bounded residuals as accepted items with evidence, derived from ADR-029's Consequences and the phase reviews; expected at minimum the F4 cost and tie residuals and the F6 artwork-stage residual, plus any additional bounded residual the reviews support.",
+      "evidence": "docs/limitations/accepted.md gains '## v1.2 phase 19 accepted limitations (F4/F6)' with eight entries, each carrying Behaviour/Precondition, Consequence, Evidence, and Disposition: V12-F4-1 (ADR-029 residual 1 / F4-R1 / AR-ADR022C3-03), V12-F4-2 (ADR-029 clause 5 residual 2 / F4-R2 / AR-ADR022C3-04), V12-F4-3 (reviewer R-19.1-02 cache-retention/TTL interaction), V12-F4-4 (ADR-029 residual 3 / F4-R3), V12-F4-5 (ADR-029 residual 4 / F4-R4 and the TQ-19.2-01 host-collation substitute), V12-F4-6 (reviewer R-19.1-04 overlapping runs), V12-F6-1 (reviewer 19.3-F1 artwork-stage window), and V12-F6-2 (the bounded unlogged drop, derived from LibraryWorkWorker.ReenqueueStaleBasis discarding the WorkHintEnqueueOutcome under ADR-023 clause 3 and the ADR-025 counter-set contract)."
+    },
+    {
+      "criterion": "docs/limitations/00-index.md: move F4/F6 to Resolved (archive.md) and add the new residual rows (Accepted).",
+      "evidence": "docs/limitations/00-index.md: the F4 and F6 rows now read 'Resolved | archive.md' and sit in the resolved group (after F3, before F8); eight new 'V12-F4-1'..'V12-F6-2' rows are appended with Accepted/archive links. scripts/check-docs.sh section 4 ('limitations index covers all IDs') passes and the seed probe removing the V12-F4-1 row fails it."
+    },
+    {
+      "criterion": "docs/plan/state.json limitations: remove F4/F6 from open (leaving F7), add them to resolved, and add the residual IDs to accepted; set task 19.5 done/reports.",
+      "evidence": "docs/plan/state.json: limitations.open is [\"F7\"]; limitations.resolved is [\"F1\",\"F2\",\"F3\",\"F4\",\"F6\",\"F8\"]; limitations.accepted ends with V12-F4-1..V12-F4-6, V12-F6-1, V12-F6-2; task 19.5 is done:true with reports [docs/implementation/19.5/worker-report.json]; updated_utc 2026-09-28T13:25:24Z. dotnet run scripts/render-docs-state.cs --check (inside check-docs.sh) confirms PLANS.md and state.json agree and the generated blocks are current."
+    },
+    {
+      "criterion": "docs/changelog/v1.2.0.md: append the Phase 19 entry with F4 and F6 shipped (tasks 19.1-19.4, with ADR-029), the residuals registered, the suite counts, and the focused test evidence.",
+      "evidence": "docs/changelog/v1.2.0.md gains '## Phase 19 - Reconciliation coverage and version-aware coalescing (v1.2)' and '### Task 19.5 - F4/F6 documentation and integration verification' (150 added lines) with the F4 shipped description (19.1-19.2; ADR-022 as amended by ADR-029), the F6 shipped description (19.3-19.4; ADR-023), the documentation-reconciliation checklist (including the eight residual registrations), the integration evidence (default 0/1901/64/1965; F4 filter 0/90/0/90; F6 filter 0/44/0/44), and the honest residual/verification-bounds paragraph."
+    },
+    {
+      "criterion": "README.md: update the Known limitations section only if it currently presents F4/F6 as open; do not otherwise rewrite README.",
+      "evidence": "grep over README.md for 'F4', 'F6', 'cursor', 'coalesc' finds no F4/F6/coalescing/coverage statement (the known-limitations bullets are F1/F5/V3/V1-V5 only), so README.md is not in the changed set (git status); its pre-existing stale 'owned by task 14.3' wording is the separately accepted V11-G4 and was deliberately left untouched per the task's README constraint."
+    },
+    {
+      "criterion": "Integration verification: run the full default suite and the F4/F6 focused test filters (the coverage matrices and the cursor/coalescing facts), record the counts, and confirm scripts/check-docs.sh and dotnet run scripts/render-docs-state.cs pass/are current.",
+      "evidence": "Build 0 warnings/0 errors; default suite Failed 0, Passed 1901, Skipped 64, Total 1965; F4 focus (SuccessiveRunCoverageMatrixTests, ReconciliationCursorResumeTests, ReconciliationCursorStoreTests, MediaLibraryResumeTests, LibraryWorkQueueTests) Failed 0, Passed 90, Skipped 0, Total 90; F6 focus (CoalescingCoverageMatrixTests, StaleBasisReenqueueTests, MetadataReconciliationProcessorTests) Failed 0, Passed 44, Skipped 0, Total 44; render-docs-state rendered/current; check-docs PASS on the full documentation tree before the worker report was persisted."
+    },
+    {
+      "criterion": "Constraints: no production behaviour or test change; no ADR text, docs/reviews/**, docs/research/**, or docs/implementation/** history rewrite; do not rewrite the docs/planning/v1.2.md F4/F6 acceptance-criterion text; do not set the phase gate/status/tag; no new dependency; no unrelated edits; check-docs passes.",
+      "evidence": "git status --short lists exactly the nine documentation files plus this report; git diff --stat shows no src/ or tests/ change and no docs/decisions, docs/reviews, docs/research, or docs/implementation file modification; docs/planning/v1.2.md is unchanged (not in the changed set); docs/plan/state.json phase 19 remains status PLANNED with tag v1.2.0-phase19 and no gate_record; PLANS.md changed only the 19.5 checkbox line; the change set is the task's work items only; scripts/check-docs.sh PASS (pre-report)."
+    },
+    {
+      "criterion": "Phase 19 acceptance-criterion contribution: the F4/F6 coverage tests pass (round-robin over QueueCapacity, coalesce/in-flight/overflow-stop, scope reset and library-mutation stability, trigger exclusion, the ConfigurationStale re-enqueue after slot release, non-version no-re-enqueue, unchanged key/single-flight) and F4/F6 are recorded resolved with their residuals; the gate/tag remain the orchestrator's.",
+      "evidence": "The F4-focused run (0/90/0/90) includes SuccessiveRunCoverageMatrixTests (19 cases: round-robin 14 candidates / QueueCapacity 3, identity-anchor resume, coalesce/in-flight/overflow/stopped, scope resets, trigger exclusion, N+QueueCapacity page reach, tie residual) and ReconciliationCursorResumeTests (21 cases); the F6-focused run (0/44/0/44) includes CoalescingCoverageMatrixTests (15 cases: save-while-pending/in-flight re-render, after-slot-release ordering, bounded drops, version-blind key/single-flight) and StaleBasisReenqueueTests (11 cases); F4/F6 are Resolved in open.md/archive.md/00-index.md/state.json with residuals registered. state.json phase 19 status/gate/tag are unchanged (PLANNED), so the gate is not set by this task."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How many F4 residuals should be registered, and should all four of ADR-029's 'Registered residual limitations' become accepted items?",
+      "chosen": "All four ADR-029 registered residuals (cost, ties, unlocatable-anchor reset, internal host order) plus the two review-derived residuals (R-19.1-02 cache-retention/TTL interaction, R-19.1-04 overlapping runs), for six F4 accepted items.",
+      "basis": "The task says to derive the residuals from ADR-029's Consequences and the phase reviews and names the two MEDIUMs as the expected minimum; ADR-029 explicitly registers residuals 1-4 as 'recorded, not covered cases', so resolving F4 without carrying all four into the register would drop accepted bounds. R-19.1-02 and R-19.1-04 are bounded review residuals the task's examples invite.",
+      "impact": "Register/index/state entries only; no behaviour, persisted state, or user-visible configuration changes."
+    },
+    {
+      "question": "Whether the stale-basis re-enqueue's bounded drop being unlogged is a registerable residual.",
+      "chosen": "Yes: V12-F6-2 records that LibraryWorkWorker.ReenqueueStaleBasis discards the returned WorkHintEnqueueOutcome, so a Stopped/Overflow drop is neither logged nor counted; the item re-renders on a later trigger.",
+      "basis": "The task explicitly asks to check 'whether the re-enqueue's bounded outcome is logged'; source inspection shows '_ = _queue.Enqueue(...)' with no log call and no ADR-025 counter for it, while ADR-023 clause 3 deliberately accepts the bounded drop. Severity INFORMATIONAL because the drop is already accepted and the item is not permanently lost.",
+      "impact": "Register entry only; no code change. The architecture paragraph deliberately does not mention it (it is an observability bound, not a mechanism clause)."
+    },
+    {
+      "question": "How should the Phase 19 changelog record be shaped, given tasks 19.1-19.4 deliberately left the changelog to 19.5?",
+      "chosen": "One '## Phase 19' section with one '### Task 19.5 - F4/F6 documentation and integration verification' entry that documents the shipped F4 (19.1-19.2) and F6 (19.3-19.4) mechanisms as well as the 19.5 reconciliation.",
+      "basis": "The task instruction says 'append the Phase 19 entry' (singular) and the tasks 19.1-19.4 reports/allocation reserved the Phase 19 changelog entry for 19.5; no per-task Phase 19 entries exist to append to.",
+      "impact": "Historical-record layout only; every Phase 19 task and its evidence is represented."
+    },
+    {
+      "question": "What severity labels should the new residual items carry when the sources use different vocabularies?",
+      "chosen": "V12-F4-1 MEDIUM and V12-F4-2 MEDIUM (ADR-029 residual severities F4-R1/F4-R2); V12-F4-3 and V12-F4-4 LOW (R-19.1-02 and ADR-029 F4-R3 LOW); V12-F4-5, V12-F4-6, and V12-F6-2 INFORMATIONAL (ADR-029 F4-R4 / R-19.1-04 informational; no review severity existed for the logging item); V12-F6-1 LOW (reviewer finding 19.3-F1).",
+      "basis": "Severity is copied from the source finding (ADR-029's registered residual list, the amendment record severities F4-R1/F4-R2 MEDIUM and F4-R3/F4-R4 LOW, and the task reviewer/test-quality findings) rather than invented.",
+      "impact": "Register labels only."
+    }
+  ],
+  "test_sensitivity": [
+    "No new production behaviour or test was added by this task, so no new behaviour mutation probe is required. The phase behaviors' sensitivity is carried by tasks 19.1-19.4 and was independently reproduced by their reviewers: the F4 page-aligned-resume probe failed the identity-anchor fact (19.2 probe A), the Coalesced/InFlight-as-stop probes failed (19.2 probes B/I), the covered-prefix probe failed (19.2 probe C), the scope-check-bypass probe failed both theory cases (19.2 probe D), the PostSave-cursor-governed probe failed (19.2 probe E), the Stopped-clause removal failed (19.2 probe F), the ignored-offset page-reach probe failed (19.2 probe G), the unlocatable-anchor-reported-located probe failed (19.2 probe H), the non-advancing-cursor probe failed (19.2 probe J); for F6, moving the re-enqueue before CompleteProcessing failed 8 of 15 matrix cases (19.4 probe P1, also reproduced by the 19.3 and 19.4 reviewers) and the classification/stopped/full/version-bound probes each failed their facts (19.3 P2/P3/P6, 19.4 P2/P3/P4/P5). Nothing in this task changed production or tests, so those results still hold.",
+    "New documentation-guard probe (seed a violation, observe rejection, revert): removing the '| `V12-F4-1` |' row from docs/limitations/00-index.md made scripts/check-docs.sh fail its limitations-index section with 'FAIL: limitation V12-F4-1 missing from index' (exit non-zero); the row was restored byte-identically from /tmp/19.5/00-index.bak and scripts/check-docs.sh re-ran 'check-docs: PASS'. This shows the new register rows are enforced by the existing gate.",
+    "No runtime cost measurement is performed or claimed for V12-F4-1: the matrix asserts the structural N + QueueCapacity page-reach bound and its growth with N, not wall-clock/CPU cost; that limit is stated in the register item itself."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/architecture/08-reconciliation-and-update-flow.md",
+      "docs/limitations/open.md",
+      "docs/limitations/archive.md",
+      "docs/limitations/accepted.md",
+      "docs/limitations/00-index.md",
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/status.md (generated by scripts/render-docs-state.cs)",
+      "docs/changelog/v1.2.0.md",
+      "README.md (checked; no F4/F6 statement, not changed)"
+    ],
+    "old_values_removed": [
+      "docs/architecture/08-reconciliation-and-update-flow.md: 'This whole-scope mechanism is **not implemented yet**' and 'it is not presented as solved here' (F4 paragraph) removed; 'This is a known open limitation (`docs/limitations/00-index.md` F6) and is not presented as solved.' removed. Both old strings are absent on a current-state grep sweep.",
+      "docs/limitations/open.md: the F4 and F6 sections (48 lines) removed; F7 is the only remaining '### F' heading.",
+      "docs/limitations/00-index.md: the '| `F4` | ... | Open | [`open.md`]' and '| `F6` | ... | Open | [`open.md`]' rows replaced by 'Resolved | [`archive.md`]' rows in the resolved group; no 'Open' F4/F6 row remains.",
+      "docs/plan/state.json: limitations.open [\"F4\",\"F6\",\"F7\"] -> [\"F7\"]; limitations.resolved gains \"F4\" and \"F6\"; task 19.5 done false -> true with the report path; updated_utc advanced to 2026-09-28T13:25:24Z.",
+      "docs/status.md (generated): '**Open limitations:** 3 (`F4`, `F6`, `F7`)' -> '**Open limitations:** 1 (`F7`)'.",
+      "PLANS.md: '- [ ] 19.5 F4/F6 documentation and integration verification' -> '- [x] ...' (the old unchecked form is absent).",
+      "Historical records deliberately not rewritten: ADR text, docs/reviews/**, docs/research/**, docs/implementation/** (including the Phase 15.4/17.4 changelog entries that cite the then-open F3/F4/F6/F7 state), and the docs/planning/v1.2.md F4/F6 acceptance criteria.",
+      "README.md: no F4/F6/open-limitation statement exists to remove; deliberately unchanged (its stale task-14.3 wording is the separately accepted V11-G4)."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "No live pinned-host verification of F4/F6 is performed or claimed: the F4 coverage matrix drives the real enumerator over an ILibraryManager double that reproduces the pinned host's documented (SortName, Name) order and StartIndex/Limit paging (not the host SQL or its collation), the F6 matrix drives the composed in-process save/queue/worker/processor chain without a live Jellyfin or Arr instance, and the default suite keeps its 64 pre-existing host-guarded/native/golden skips. Those bounds are registered in the archive entries and accepted items.",
+    "V12-F4-1 records no runtime cost measurement: the O(offset)/O(N²/QueueCapacity) bound is structural (asserted by the matrix) and is stated as such; a cost benchmark is not part of Phase 19.",
+    "V12-F6-2 (the unlogged bounded drop of the re-enqueue) is derived from source inspection of LibraryWorkWorker.ReenqueueStaleBasis plus ADR-023 clause 3 and the ADR-025 counter-set contract; it was not a review finding, and its severity (INFORMATIONAL) reflects an observability bound over an already-accepted drop.",
+    "README.md retains the stale 'live pinned-host confirmation is owned by task 14.3' wording in its known-limitations section (task 14.3 is long complete); that is the separately registered V11-G4 and this task was constrained to update README only if it presented F4/F6 as open, which it does not.",
+    "The Phase 19 changelog is a single Task 19.5 entry covering the shipped 19.1-19.4 mechanisms (tasks 19.1-19.4 deliberately reserved the changelog to 19.5); it is not five per-task entries like Phases 15-18, and the 19.1-19.4 details rest on their worker/reviewer reports.",
+    "scripts/check-docs.sh with this worker report persisted fails only the agent-contract worker/reviewer pairing line ('task 19.5 has a worker report but no reviewer report') until the orchestrator's implementation-reviewer report is added; every other section passes. This is the established transient pattern for tasks 15.4-19.4.",
+    "The phase gate/status/tag (Gate 19, v1.2.0-phase19) were deliberately not set: the orchestrator applies them after the phase review, and state.json still records phase 19 as PLANNED."
+  ],
+  "ready_for_next_task": true
+}

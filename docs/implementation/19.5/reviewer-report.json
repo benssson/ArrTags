@@ -1,0 +1,89 @@
+{
+  "task": "19.5",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R-19.5-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "Requirement / limitations-register accuracy: residual severity (V12-F4-5)",
+      "summary": "V12-F4-5 (the pinned-host internal candidate order) is registered as INFORMATIONAL, but its documented source (amendment record F4-R4 and architecture review AR-ADR022C3-05) is LOW, and the worker report's own stated rule says F4-R4 is LOW - a mis-severity and a self-contradiction in the worker evidence.",
+      "detail": "The task requires the eight bounded residuals to be evidence-based and correctly classified in the register, and the review delegation explicitly asks to flag any residual that is mis-severitied. The project convention is that an accepted item's severity is copied from its source finding: V12-F3-1 is LOW because its source SR-17.4-02 is LOW (docs/implementation/17.4/security-review.json:25-26). For F4, the documented severities are in the amendment record `docs/implementation/planning/v1.2-f4-clause-3-amendment.json` residual_limitations: F4-R1 MEDIUM, F4-R2 MEDIUM, F4-R3 LOW, F4-R4 LOW (lines 56-84). F4-R4's own source finding AR-ADR022C3-05 is also LOW (docs/reviews/architecture/adr-022-clause-3-conformance.json:68-80). The register nevertheless labels V12-F4-5 INFORMATIONAL in both current-state surfaces (docs/limitations/00-index.md:113 and docs/limitations/accepted.md:947), and the worker report's `interpretations[3].chosen` says 'V12-F4-5 ... INFORMATIONAL (ADR-029 F4-R4 ...)' (worker-report.json:106). The same interpretation's `basis` (worker-report.json:107) states the rule as 'the amendment record severities F4-R1/F4-R2 MEDIUM and F4-R3/F4-R4 LOW' - i.e. the worker itself records F4-R4 as LOW and then labels the item INFORMATIONAL. Every other one of the eight residuals maps correctly (V12-F4-1 MEDIUM<-F4-R1 MEDIUM, V12-F4-2 MEDIUM<-F4-R2 MEDIUM, V12-F4-3 LOW<-R-19.1-02 LOW, V12-F4-4 LOW<-F4-R3 LOW, V12-F4-6 INFORMATIONAL<-R-19.1-04 INFORMATIONAL, V12-F6-1 LOW<-19.3-F1 LOW, V12-F6-2 INFORMATIONAL<-source inspection), so this is a single isolated classification error, not a systemic one. Impact is documentation/register accuracy only: no behaviour, state, or test is affected, and the ID set, names, register placement, and evidence traces are otherwise correct. It is a required correction because the register is the task's primary deliverable and the item's severity is a carried classification field, and because the worker's evidence for it is internally inconsistent.",
+      "evidence": [
+        "docs/implementation/planning/v1.2-f4-clause-3-amendment.json:79-84 (F4-R4 severity LOW)",
+        "docs/reviews/architecture/adr-022-clause-3-conformance.json:68-80 (AR-ADR022C3-05 severity LOW)",
+        "docs/limitations/00-index.md:113 ('| `V12-F4-5` | ... (INFORMATIONAL, accepted) |')",
+        "docs/limitations/accepted.md:947 ('### V12-F4-5. ... (INFORMATIONAL, accepted)')",
+        "docs/implementation/19.5/worker-report.json:106 (chosen: V12-F4-5 INFORMATIONAL)",
+        "docs/implementation/19.5/worker-report.json:107 (basis: 'F4-R3/F4-R4 LOW' - contradicts :106)",
+        "docs/implementation/17.4/security-review.json:25-26 + docs/limitations/accepted.md:789 (V12-F3-1 LOW copied from SR-17.4-02 LOW, the established convention)"
+      ],
+      "recommended_action": "Re-label V12-F4-5 as LOW in docs/limitations/accepted.md:947 (title) and docs/limitations/00-index.md:113 (row), and correct the worker report's stated basis so the register severity agrees with the amendment record F4-R4 / AR-ADR022C3-05. No production, test, ADR, or state.json change is required."
+    },
+    {
+      "id": "R-19.5-02",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "Register accuracy: V12-F4-4 precondition vs ADR-029 residual 3 wording",
+      "summary": "V12-F4-4 narrows ADR-029 residual 3's 'removing or making ineligible the boundary anchor' to 'removed or no longer a movie/episode candidate', but it discloses the service-ineligible distinction explicitly and matches the shipped implementation, so no change is required.",
+      "detail": "ADR-029 clause 4 / Consequences residual 3 says an anchor that 'was removed or became ineligible' resets the cursor. The shipped locate step matches the unique itemId, so an item that remains an enumerable Movie/Episode candidate but becomes service-ineligible is still located and the cursor does not reset; only removal or leaving the candidate enumeration resets. The accepted entry (docs/limitations/accepted.md:926-946) states this precondition and explains the distinction, and the same interpretation is independently recorded by the 19.2 test-quality review TQ-19.2-02 (docs/implementation/19.2/test-quality-review.json:19-29). The register is therefore more precise than the ADR wording rather than inaccurate, and the ID/title ('An unlocatable cursor anchor resets the run to the start') is correct. Recorded for audit only; no action required.",
+      "evidence": [
+        "docs/limitations/accepted.md:926-946 (precondition and service-ineligible explanation)",
+        "docs/decisions/ADR-029.md:80-83 and 115-116 (clause 4 / residual 3 wording)",
+        "docs/implementation/19.2/test-quality-review.json:19-29 (TQ-19.2-02, the locatability-vs-eligibility interpretation)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "R-19.5-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "Verification reproduction",
+      "summary": "All reported validation reproduced independently: default suite 0/1901/64/1965, F4 filter 0/90/0/90, F6 filter 0/44/0/44, and scripts/check-docs.sh passes every section except the expected worker/reviewer pairing line this report closes.",
+      "detail": "The task's integration evidence is accurate and the documentation surfaces are internally consistent apart from R-19.5-01. state.json limitations.open is ['F7'], resolved is ['F1','F2','F3','F4','F6','F8'], accepted contains each of V12-F4-1..V12-F4-6 and V12-F6-1/V12-F6-2 exactly once (grep count 1 each, no duplicates), task 19.5 is done with the worker report, PLANS.md ticks only the 19.5 checkbox, and phase 19 remains status PLANNED with gate 'Gate 19' and tag 'v1.2.0-phase19' and no gate_record. The architecture section 8 F4/F6 paragraphs describe the shipped mechanisms without overclaim (F4 bounded by server-wide N + QueueCapacity with an O(offset) resume, naming V12-F4-1/V12-F4-2; F6 names the artwork-stage residual V12-F6-1), the source-inspection residuals V12-F4-3 and V12-F6-2 were verified against ReconciliationCursorStore/StateRetentionService and LibraryWorkWorker.ReenqueueStaleBasis, and the changelog Phase 19 entry's counts and mechanism descriptions match the reports. git status shows exactly the nine documentation files plus the new docs/implementation/19.5/ report directory, with no src/, tests/, ADR, reviews, research, planning, or README change.",
+      "evidence": [
+        "./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (independently reproduced)",
+        "F4 filter (SuccessiveRunCoverageMatrixTests|ReconciliationCursorResumeTests|ReconciliationCursorStoreTests|MediaLibraryResumeTests|LibraryWorkQueueTests) -> Failed 0, Passed 90, Skipped 0, Total 90",
+        "F6 filter (CoalescingCoverageMatrixTests|StaleBasisReenqueueTests|MetadataReconciliationProcessorTests) -> Failed 0, Passed 44, Skipped 0, Total 44",
+        "scripts/check-docs.sh -> all sections pass except 'task 19.5 has a worker report but no reviewer report'",
+        "git status --short; git diff --stat (nine docs files, no src/tests change)",
+        "docs/plan/state.json:1093-1160 limitations and phase 19 (lines 959-1015)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (independently rerun; matches the worker's reported default-suite counts).",
+    "dotnet test --filter 'SuccessiveRunCoverageMatrixTests|ReconciliationCursorResumeTests|ReconciliationCursorStoreTests|MediaLibraryResumeTests|LibraryWorkQueueTests' -> Failed 0, Passed 90, Skipped 0, Total 90 (independently rerun; matches the reported F4 focus).",
+    "dotnet test --filter 'CoalescingCoverageMatrixTests|StaleBasisReenqueueTests|MetadataReconciliationProcessorTests' -> Failed 0, Passed 44, Skipped 0, Total 44 (independently rerun; matches the reported F6 focus).",
+    "scripts/check-docs.sh (with /config/arrtags-env.sh sourced) -> PASS on generated status blocks, compatibility stubs, decisions index (29 ADRs), limitations index (all IDs), architecture/data-model indexes, artifact identity, doc budget, and current-state links; FAIL only on the agent-contract worker/reviewer pairing line for 19.5, which this report closes.",
+    "Inspected (not rerun) the 19.1-19.4 worker/reviewer/test-quality reports that carry the phase behavior sensitivity; this task changes no production or test code, so those results still hold and no new behaviour mutation probe is required."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-029.md clauses 1-5 and Consequences: verified the architecture F4 paragraph and V12-F4-1..V12-F4-5 match the host order, identity-anchored bounded linear skip, reset-on-unlocatable-anchor, tie caveat, and the four registered residuals; the bound is stated as server-wide N + QueueCapacity with O(offset)/O(N^2/QueueCapacity) cost, not a constant.",
+    "docs/decisions/ADR-022.md clauses 1-7 and docs/decisions/ADR-023.md clauses 1-8: verified the architecture F4/F6 paragraphs match the enqueue-outcome vocabulary/advance rule, the Cache record and trigger exclusion, and the ConfigurationStale-only release-then-enqueue bound; no overclaim.",
+    "docs/implementation/planning/v1.2-f4-clause-3-amendment.json residual_limitations F4-R1..R4: traced V12-F4-1/2/3/4/5/6 to F4-R1/AR-ADR022C3-03, F4-R2/AR-ADR022C3-04, R-19.1-02, F4-R3, F4-R4/AR-ADR022C3-05, and R-19.1-04 respectively; this trace exposed the V12-F4-5 severity mismatch (R-19.5-01).",
+    "Source inspection for the two residuals derived from code: src/ArrTags/Reconciliation/ReconciliationCursorStore.cs:62,132 and src/ArrTags/PluginLifecycle/StateRetentionService.cs:145-147 (V12-F4-3 cache authority and non-exempt retention); src/ArrTags/Updates/LibraryWorkWorker.cs:252-266 ('_ = _queue.Enqueue(...)' ignores the bounded outcome, no log/counter, V12-F6-2); src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs:79-87 (version guard returns the successful result, not a discard, V12-F6-1); src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs:118-127 (server-wide Recursive query, no ParentId, V12-F4-1).",
+    "docs/decisions/ADR-025.md clause 3 counter set: confirmed the diagnostics counters do not include the stale-basis re-enqueue or its drop, supporting V12-F6-2's evidence."
+  ],
+  "documentation_checked": [
+    "docs/architecture/08-reconciliation-and-update-flow.md:94-146: F4 and F6 paragraphs describe the shipped mechanisms, the F4 bound is stated as server-wide candidate count + QueueCapacity with an O(offset) page-reach resume, and the artwork-stage residual V12-F6-1 is named; the old 'not implemented yet'/'not presented as solved'/'known open limitation' strings are absent.",
+    "docs/limitations/open.md: F4 and F6 sections removed; F7 is the only remaining '### F' heading.",
+    "docs/limitations/archive.md:235-339: F4 and F6 resolved entries in the F3 style, naming tasks 19.1-19.5, the decisions, evidence, verification bounds, and residuals V12-F4-1..V12-F4-6 / V12-F6-1..V12-F6-2.",
+    "docs/limitations/accepted.md:837-1046: eight accepted residuals present with Behaviour/Precondition, Consequence, Evidence, and Disposition; V12-F4-5 severity is the one mismatch (R-19.5-01).",
+    "docs/limitations/00-index.md:62-116: F4/F6 moved to Resolved/archive.md and eight accepted residual rows added; all eight IDs are covered by the index (check-docs section 4 passes).",
+    "docs/plan/state.json: limitations.open=['F7'], resolved includes F4/F6, accepted includes the eight IDs once each; task 19.5 done with reports=['docs/implementation/19.5/worker-report.json']; phase 19 status PLANNED, gate 'Gate 19', tag 'v1.2.0-phase19', no gate_record.",
+    "PLANS.md: only the 19.5 checkbox changed (git diff); the milestone table was not hand-edited and check-docs reports the generated blocks current.",
+    "docs/status.md: regenerated; 'Open limitations: 1 (F7)' (git diff), consistent with state.json and check-docs.",
+    "docs/changelog/v1.2.0.md:1445-1594: Phase 19 / task 19.5 entry records the shipped F4/F6 mechanisms, the residual registrations, the suite counts (default 0/1901/64/1965; F4 0/90/0/90; F6 0/44/0/44), and the honest verification-bounds paragraph; no overclaim found.",
+    "README.md: no F4/F6/cursor/coalescing/coverage statement (grep), so it is correctly unchanged; git status does not list it.",
+    "docs/planning/v1.2.md and docs/decisions/**, docs/reviews/**, docs/research/**: not in the changed set (git status); the F4/F6 acceptance-criterion text is unchanged and no ADR/history/review/research text was rewritten."
+  ],
+  "required_changes": [
+    "Re-label V12-F4-5 as LOW in docs/limitations/accepted.md:947 and docs/limitations/00-index.md:113 so its severity matches the documented source (amendment record F4-R4 and architecture review AR-ADR022C3-05, both LOW), and correct the worker report's stated basis (worker-report.json:106-107), which already records F4-R4 as LOW while labelling the item INFORMATIONAL. No production, test, ADR, or state.json change is required."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

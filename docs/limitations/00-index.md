@@ -62,13 +62,13 @@ review are separate and are not declared by this document.
 
 | ID | Title | Status | Section |
 | --- | --- | --- | --- |
-| `F4` | Reconciliation coverage is bounded by `QueueCapacity` | Open | [`open.md`](open.md) |
 | `F5` | The renderer depends on a host-supplied SkiaSharp with no bundled fallback | Accepted | [`accepted.md`](accepted.md) |
-| `F6` | Version-blind work coalescing can drop a post-save re-render | Open | [`open.md`](open.md) |
 | `F7` | An empty resolved badge selection preserves the previous ArrTags badge instead of restoring the original | Open | [`open.md`](open.md) |
 | `F1` | Provider inventory/catalogue cache | Resolved | [`archive.md`](archive.md) |
 | `F2` | A saved configuration change is activated at runtime and re-renders existing posters via the bounded post-save trigger | Resolved | [`archive.md`](archive.md) |
 | `F3` | No bounded, secret-free metrics/diagnostic-status surface | Resolved | [`archive.md`](archive.md) |
+| `F4` | Reconciliation coverage is bounded by `QueueCapacity` | Resolved | [`archive.md`](archive.md) |
+| `F6` | Version-blind work coalescing can drop a post-save re-render | Resolved | [`archive.md`](archive.md) |
 | `F8` | The specific render classification is not surfaced in the artwork log | Resolved | [`archive.md`](archive.md) |
 | `V1` | No live Sonarr or Radarr instance | Accepted | [`accepted.md`](accepted.md) |
 | `V2` | ADR-010 non-canonical cross-runtime comparison is unselected and unrun | Accepted | [`accepted.md`](accepted.md) |
@@ -106,3 +106,11 @@ review are separate and are not declared by this document.
 | `V12-G8-1` | The restart-required modal reminder is a best-effort web-client shim verified structurally, not executed (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-G8-2` | The global `OperationalLimits.RequestTimeoutSeconds` is inert (INFORMATIONAL, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-F3-1` | The read-only diagnostics panel is verified structurally, not executed (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F4-1` | The reconciliation resume is O(offset) per run and O(N²/`QueueCapacity`) per full cycle (MEDIUM, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F4-2` | Rows tying on the exact `(SortName, Name)` pair have no host-guaranteed order (MEDIUM, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F4-3` | The cursor is a `Cache` record subject to render-cache age pruning (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F4-4` | An unlocatable cursor anchor resets the run to the start (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F4-5` | The resume relies on the pinned host's internal candidate order (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F4-6` | Overlapping whole-scope runs are not cross-run locked (INFORMATIONAL, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F6-1` | The configuration version can advance between the metadata publication and the artwork stage of the same pass (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F6-2` | The stale-basis re-enqueue's bounded drop is not logged or counted (INFORMATIONAL, accepted) | Accepted | [`accepted.md`](accepted.md) |
