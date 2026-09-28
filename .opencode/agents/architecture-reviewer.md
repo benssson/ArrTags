@@ -9,7 +9,7 @@ permissions:
   - action: edit
     resource: "docs/reviews/**"
     effect: allow
-model: opencode-go/deepseek-v4.1-flash#high
+model: opencode/space-bunny-free#high
 ---
 
 # Architecture Reviewer

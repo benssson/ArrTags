@@ -1,7 +1,7 @@
 ---
 description: Independently reviews an implementation task against requirements, tests, architecture, and research
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash#high
+model: opencode/space-bunny-free#high
 permissions:
   - action: edit
     resource: "*"

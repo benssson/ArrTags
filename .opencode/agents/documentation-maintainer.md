@@ -30,7 +30,7 @@ permissions:
   - action: edit
     resource: "ArrTags.slnx"
     effect: deny
-model: opencode-go/deepseek-v4.1-flash#high
+model: opencode/space-bunny-free#high
 ---
 
 # Documentation Maintainer

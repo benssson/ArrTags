@@ -2,7 +2,7 @@
 
 description: Converts accepted goals, architecture, and data model into phases and dependency-ordered, testable implementation tasks, and maintains PLANS.md
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash#high
+model: opencode/space-bunny-free#high
 ---
 
 # Implementation Planner
