@@ -20,11 +20,11 @@ outline, and verification requirements are defined in
 (Phases 9-14) is complete and archived. The v1.2 decision records ADR-022 through
 ADR-028 are **accepted** (`Accepted (v1.2)`); decision gates DG-19, DG-20, and
 DG-21 (mechanisms for F4, F6, and F7) are resolved by the accepted plan and their
-ADRs, so their dependent tasks are no longer gated. F4, F6, and F7 are promoted
-by v1.2 and remain **Open** until their resolving phase records the resolution;
-F3 was promoted by v1.2 and is resolved by Phase 17 (task 17.4), and F8 was
-promoted by v1.2 and is resolved by Phase 15 (task 15.4). F5 is accepted as a
-known shipped limitation (not Open) and is not promoted.
+ADRs, so their dependent tasks are no longer gated. F4, F6, and F7 were promoted
+by v1.2 and are resolved by their phases: F4 and F6 by Phase 19 (task 19.5), and
+F7 by Phase 20 (task 20.3). F3 was promoted by v1.2 and is resolved by Phase 17
+(task 17.4), and F8 was promoted by v1.2 and is resolved by Phase 15 (task 15.4).
+F5 is accepted as a known shipped limitation (not Open) and is not promoted.
 
 The orchestrator determines the active scope from this pointer. When a new scope
 is accepted, its plan is placed under `docs/planning/`, this pointer is updated
@@ -245,7 +245,7 @@ and ADR-003 amendment notes; coverage tests.
 **Tasks:**
 - [x] 20.1 Empty-selection restore/removal behavior
 - [x] 20.2 F7 coverage tests
-- [ ] 20.3 F7 documentation and integration verification
+- [x] 20.3 F7 documentation and integration verification
 **Authoritative Phase 20 execution order:** 20.1, 20.2, 20.3
 **Phase acceptance criteria:** an owned empty selection restores the baseline, or
 removes the ArrTags image when the baseline was absent, through the

@@ -258,7 +258,8 @@ survives the fence.
 Task 5.8 implements the generation step as the provider-neutral
 `ArtworkGenerationCoordinator`, which composes the host source adapter, the
 renderer, and the publisher for one item and V1 surface. It observes the current
-source, builds the renderer input, and publishes only a `Rendered` result; an
+source, builds the renderer input, and acts only on a complete `Rendered` result
+(publishing it) or on the owned empty-selection restore obligation; an
 absent source, a failed source read, a failed render, and every pass-through
 other than the owned empty-selection restore obligation leave the current usable
 artwork unchanged and perform no image mutation. Missing metadata and an
@@ -270,10 +271,16 @@ and omission (`NoFittingBadge`). For an owned published session the
 empty-selection reason is a restore obligation rather than a preserve (ADR-024):
 the coordinator drives the internal `ArtworkPublisher.RestoreAsync` under the
 current durable lifecycle fence through the guarded, crash-recoverable
-`ArtworkOperation` protocol, restoring the retained source baseline or removing
-the ArrTags image when the baseline was absent. `NoFittingBadge` and every other
-pass-through reason still preserve the current artwork, and a non-owned item is
-never mutated. The coordinator never calls Jellyfin
+`ArtworkOperation` protocol. The publisher restores a present retained source
+baseline and, when the retained baseline is absent, removes the ArrTags image.
+The absent-baseline leg is not reachable through the coordinator's normal
+generation path: `ReadRetainedSource` reports the absent retained baseline
+(`Absent`), so the coordinator returns `NoSource` before rendering and never
+creates that restoration; the absent-baseline removal is exercised at the
+publisher with a synthetic persisted `Published` state without a baseline
+(task 20.2) and through the recovery-gate resume (task 20.3). `NoFittingBadge`
+and every other pass-through reason still preserve the current artwork, and a
+non-owned item is never mutated. The coordinator never calls Jellyfin
 directly. For source consistency, the exact source observation used for the
 render is supplied
 to the publisher's new-session capture, so the retained provenance baseline and

@@ -1,0 +1,73 @@
+{
+  "task": "20.3",
+  "title": "F7 documentation and integration verification",
+  "phase": 20,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 20.3 is documentation reconciliation and integration verification of behaviour already implemented and reviewed in 20.1/20.2. It adds no new Jellyfin 12 platform assumption, provider contract, or first-time ADR-against-host implementability question; it records the resolution of F7, adds ADR amendment notes without rewriting accepted text, corrects architecture wording, and adds one deterministic reconciler-resume regression test over the existing recovery gate.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 251764,
+        "output_tokens": 34161,
+        "reasoning_tokens": 38163,
+        "cache_read_tokens": 14249600,
+        "cache_write_tokens": 0,
+        "total_tokens": 14573688,
+        "cost_usd": 0.1239078,
+        "duration_seconds": 837,
+        "session_id": "ses_f16a78171ffeNwfV7WtlcjXTug"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 70267,
+        "output_tokens": 12109,
+        "reasoning_tokens": 8715,
+        "cache_read_tokens": 3445738,
+        "cache_write_tokens": 0,
+        "total_tokens": 3536829,
+        "cost_usd": 0,
+        "duration_seconds": 1006,
+        "session_id": "ses_f169a4d6effeh4aBdhAFz5qo9V"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 78139,
+        "output_tokens": 16889,
+        "reasoning_tokens": 49956,
+        "cache_read_tokens": 5942208,
+        "cache_write_tokens": 0,
+        "total_tokens": 6087192,
+        "cost_usd": 0,
+        "duration_seconds": 1100,
+        "session_id": "ses_f168aa21cffeEd33sHA6MOasdz"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": "Runtime figures are the authoritative OpenCode server values for each child session (read directly from the running server because the collect-session-usage.sh CLI cannot talk to this server instance). implementation-reviewer and test-quality-reviewer reported cost_usd 0 (the provider's runtime value), recorded as-is. No rework: the implementation-reviewer approved attempt 1 with no open findings; the test-quality-reviewer returned PASS_WITH_FINDINGS with INFORMATIONAL findings only. TQR-20.2-01 was closed by the new ArtworkReconcilerTests.RestorationWithAnAbsentBaselineIsResumedAsARemoval case. This task also corrected the architecture-09 absent-baseline removal wording flagged by the task 20.1 test-quality audit."
+}

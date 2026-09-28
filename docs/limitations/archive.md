@@ -337,3 +337,60 @@ re-rendered by the save instead of waiting for the next trigger.
   in-flight work under the previous version, and the outstanding item discarded
   itself as a stale basis and completed without re-enqueueing, so the item kept
   its old artwork until a later trigger admitted it.
+
+### F7. An empty resolved badge selection preserves the previous ArrTags badge instead of restoring the original
+
+**Status:** Resolved (v1.2 Phase 20; the discriminator and the restore/removal
+behavior are task 20.1, the coverage tests are task 20.2, and the canonical
+documentation reconciliation and limitation resolution are task 20.3). The
+mechanism is ADR-024.
+
+For an item/surface with a live owned published ArrTags session, an empty
+resolved badge selection is now a restore obligation rather than a preserve:
+`BadgeDefinitionResolver.Resolve` returns an empty selection, the renderer
+returns `PassThrough(NoDisplayableValue)`, and the `ArtworkGenerationCoordinator`
+drives the internal `ArtworkPublisher.RestoreAsync` entry point under the
+current durable lifecycle fence instead of returning before the publisher. The
+guarded, crash-recoverable `ArtworkOperation` protocol (ADR-003) is used
+unchanged: the durable `Kind=Restoration` operation is written before any
+mutation, a present retained source baseline is restored through the supported
+stream `SaveImage` API, and when the baseline is absent the ArrTags image is
+removed through the supported removal API; an interrupted restoration is resumed
+on restart by the ordinary recovery gate. `NoDisplayableValue` is narrowed to
+exactly an empty
+resolved selection, and a non-empty selection whose layout is empty (nothing
+fits the safe area after shorten/omit) is the distinct
+`RenderPassThroughReason.NoFittingBadge`, which preserves the current artwork
+with no mutation; every other pass-through reason and a non-owned session remain
+pass-throughs that mutate nothing. The generation result records the completed
+restoration as `ArtworkGenerationOutcome.Restored` plus the bounded
+`ArtworkReconciliationOutcome` and the driving reason; the change is not a render
+output change, so `RenderVersion`, the renderer-configuration schema, and the
+fingerprints do not advance.
+
+- Evidence: ADR-024 with its implementation note; the ADR-009 and ADR-003
+  amendment notes; tasks 20.1-20.3 worker/reviewer reports;
+  `docs/architecture/09-persisted-artwork-rendering.md` and
+  `docs/data-model/03-08-renderresult.md`;
+  `src/ArrTags/Rendering/RenderPassThroughReason.cs`, `SkiaBadgeRenderer.cs`,
+  `src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs`,
+  `ArtworkGenerationResult.cs`, and `ArtworkPublisher.cs`;
+  `tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs`,
+  `ArtworkPublisherTests.cs`, `ArtworkReconcilerTests.cs`,
+  `ArtworkGenerationResultTests.cs`, and `RendererBehaviorFailureTests.cs`.
+- Verification bounds (not overstating the resolution): the coverage runs
+  without a live host; the native `NoFittingBadge` coordinator case (the real
+  `SkiaBadgeRenderer` through the coordinator) executes only under the pinned
+  SkiaSharp oracle (`ARRTAGS_SKIA_COMPAT=1`) and is reported as an explicit skip
+  in the default suite; the absent-baseline removal is exercised at the publisher
+  (fresh) and through the recovery-gate resume with synthetic persisted
+  `Published` states, because the coordinator's normal generation path returns
+  `NoSource` before rendering for an absent retained baseline; and no live
+  pinned-host run is part of Phase 20 (the v1.2 live matrix is Phase 21).
+- Historical consequence: before Phase 20, narrowing a selector allowlist (or
+  otherwise making an item's values non-displayable) preserved the previous
+  ArrTags badge indefinitely: restoration ran only on item removal or the
+  lifecycle drain, and each later reconciliation resolved the same empty
+  selection, passed through, and preserved it again. An output-policy change
+  (for example global position or size) therefore never took effect for that
+  item. The stale badge is now removed or replaced by the retained baseline.

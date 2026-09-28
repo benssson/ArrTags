@@ -438,6 +438,61 @@ public sealed class ArtworkReconcilerTests : IDisposable
     }
 
     [Fact]
+    public async Task RestorationWithAnAbsentBaselineIsResumedAsARemoval()
+    {
+        // Phase 20 task 20.3 closes the absent-baseline resume gap registered by
+        // TQR-20.2-01: the removed ArrTags image is proven through the ordinary
+        // recovery gate, not only through the fresh publisher path. The
+        // coordinator cannot reach this case (its retained-source read reports
+        // Absent, so it returns NoSource before rendering), so the non-terminal
+        // Restoration operation and its RestorePending state are seeded directly.
+        _states.Write(RestorePendingStateWithoutABaseline(_derived));
+        _host.CurrentBytes = _derived;
+
+        var operation = new ArtworkOperation(
+            ArtworkTokens.Create(),
+            ArtworkOperationKind.Restoration,
+            _item,
+            Surface,
+            1,
+            Identity(_derived),
+            ArtworkImagePresence.Absent,
+            ArtworkImagePresence.Absent,
+            ArtworkOperationPhase.Prepared,
+            ArtworkLifecycleFence.Normal,
+            At,
+            At,
+            ownershipToken: ArtworkTokens.Create(),
+            priorPublicationToken: ArtworkTokens.Create(),
+            candidateAfterContentSha256: null,
+            sourceArtifactId: null);
+        _operations.Write(operation);
+
+        var result = await _reconciler.ReconcileAsync(_item, Surface, CancellationToken.None);
+
+        Assert.Equal(ArtworkReconciliationOutcome.Completed, result.Outcome);
+        Assert.True(result.IsCommitted);
+        Assert.Equal(operation.OperationId, result.OperationId);
+
+        // The removal is the only mutation: an absent baseline never touches the
+        // save or item-update APIs.
+        Assert.Equal(1, _host.RemoveCalls);
+        Assert.Equal(0, _host.SaveCalls);
+        Assert.Equal(0, _host.UpdateCalls);
+        Assert.Null(_host.CurrentBytes);
+
+        var committed = _operations.Read(_item, Surface).Value!;
+        Assert.Equal(ArtworkOperationKind.Restoration, committed.Kind);
+        Assert.Equal(ArtworkOperationPhase.Committed, committed.Phase);
+        Assert.Equal(ArtworkImagePresence.Absent, committed.CandidateAfterPresence);
+
+        var restored = _states.Read(_item, Surface).Value!;
+        Assert.Equal(ArtworkPublicationState.Restored, restored.State);
+        Assert.Equal(ArtworkImagePresence.Absent, restored.SourcePresence);
+        Assert.Null(restored.ActiveImageIdentity);
+    }
+
+    [Fact]
     public async Task CoordinatorDrivenRestorationIsResumedByTheOrdinaryRecoveryGate()
     {
         // The synthetic active identity must match what the fake host reports
@@ -687,6 +742,23 @@ public sealed class ArtworkReconcilerTests : IDisposable
     private PublishedArtworkState RestorePendingState()
     {
         return PublishedArtworkStateTransitions.RequestRestore(PublishedState(), At.AddDays(1)).State;
+    }
+
+    private PublishedArtworkState RestorePendingStateWithoutABaseline(byte[] activeBytes)
+    {
+        var capture = new ActiveImageIdentity(Surface, ArtworkImagePresence.Absent);
+        var session = PublishedArtworkStateTransitions
+            .CaptureSession(null, _item, Surface, capture, sourceArtifact: null, At)
+            .State;
+        var committed = PublishedArtworkStateTransitions
+            .CommitPublication(
+                session,
+                Identity(activeBytes),
+                ArtworkHashes.ComputeSha256(Encoding.UTF8.GetBytes("published-fingerprint")),
+                RenderVersion.CurrentRendererVersion,
+                At)
+            .State;
+        return PublishedArtworkStateTransitions.RequestRestore(committed, At.AddDays(1)).State;
     }
 
     private PublishedArtworkState PublishedStateWithActive(byte[] activeBytes)

@@ -8,13 +8,13 @@ it; record a divergence or a superseding ADR instead. The former
 | --- | --- | --- | --- |
 | ADR-001 | Persisted Derived Poster Artwork | Accepted | [`ADR-001.md`](ADR-001.md) |
 | ADR-002 | Guarded Artwork Ownership and Restoration | Accepted | [`ADR-002.md`](ADR-002.md) |
-| ADR-003 | Crash-Recoverable Artwork Publication | Accepted | [`ADR-003.md`](ADR-003.md) |
+| ADR-003 | Crash-Recoverable Artwork Publication | Accepted (restoration trigger set extended by ADR-024 (v1.2)) | [`ADR-003.md`](ADR-003.md) |
 | ADR-004 | Foundation Operational Limits and Defaults | Accepted | [`ADR-004.md`](ADR-004.md) |
 | ADR-005 | Versioned Secret Access Boundary | Accepted | [`ADR-005.md`](ADR-005.md) |
 | ADR-006 | V1 Badge Surfaces and Library Scope Identifier | Accepted | [`ADR-006.md`](ADR-006.md) |
 | ADR-007 | V1 Episode Numbering Policy for Number Fallback | Accepted | [`ADR-007.md`](ADR-007.md) |
 | ADR-008 | V1 Path Fallback Deferred | Accepted | [`ADR-008.md`](ADR-008.md) |
-| ADR-009 | V1 Badge Rendering Specification | Accepted (the geometry, placement, and scaling-model clauses are | [`ADR-009.md`](ADR-009.md) |
+| ADR-009 | V1 Badge Rendering Specification | Accepted (the geometry, placement, and scaling-model clauses are superseded by ADR-019 (v1.1); the empty-selection pass-through clause is superseded by ADR-024 (v1.2) for the owned-session case) | [`ADR-009.md`](ADR-009.md) |
 | ADR-010 | V1 Renderer Implementation Contract | Accepted (partially superseded by ADR-015: the SkiaSharp library | [`ADR-010.md`](ADR-010.md) |
 | ADR-011 | Jellyfin Enhanced Coexistence Policy | Accepted | [`ADR-011.md`](ADR-011.md) |
 | ADR-012 | Inbound Arr Webhook Boundary | Accepted | [`ADR-012.md`](ADR-012.md) |

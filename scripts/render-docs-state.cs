@@ -87,7 +87,9 @@ status.Add(activePhases.Count > 0
     ? $"**Active phases:** {string.Join(", ", activePhases.Select(p => $"Phase {p!["id"]}"))}; all other phases are complete."
     : $"**Phases:** all {phases.Count} complete ({completeIds.Min()}-{completeIds.Max()}); Gates {completeIds.Min()}-{completeIds.Max()} met. Completed plans are archived in `docs/plan/archive/`.");
 status.Add("");
-status.Add($"**Open limitations:** {open.Count} ({string.Join(", ", open.Select(o => $"`{o}`"))}); see `docs/limitations/00-index.md`.");
+status.Add(open.Count == 0
+    ? "**Open limitations:** none; see `docs/limitations/00-index.md`."
+    : $"**Open limitations:** {open.Count} ({string.Join(", ", open.Select(o => $"`{o}`"))}); see `docs/limitations/00-index.md`.");
 
 var milestone = new List<string>
 {
