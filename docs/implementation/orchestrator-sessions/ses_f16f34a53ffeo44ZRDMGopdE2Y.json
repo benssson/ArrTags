@@ -5,19 +5,19 @@
   "variant": "high",
   "title": "Phase 20 F7 empty-selection artwork restoration",
   "tokens": {
-    "input": 916078,
-    "output": 25364,
-    "reasoning": 24683,
+    "input": 1834555,
+    "output": 37724,
+    "reasoning": 44504,
     "cache": {
-      "read": 12406656,
+      "read": 17857920,
       "write": 0
     }
   },
-  "total_tokens": 13372781,
-  "cost_usd": 0.204623868,
+  "total_tokens": 19774703,
+  "cost_usd": 0.37805781,
   "duration_seconds": null,
   "first_recorded_at": "2026-09-28T18:08:54Z",
-  "last_updated_at": "2026-09-28T19:38:58Z",
+  "last_updated_at": "2026-09-28T20:08:23Z",
   "updates": [
     {
       "at": "2026-09-28T18:08:54Z",
@@ -39,6 +39,13 @@
       "total_tokens": 13372781,
       "duration_seconds": null,
       "note": "Phase 20 task 20.3 completed: F7 documentation/register resolution, ADR notes, changelog, and integration verification; reviewed APPROVED, test-quality audited PASS_WITH_FINDINGS, committed 1bd9a82. Cycle delta: +3,178,857 tokens, +$0.08737434. duration_seconds null for the same runtime-reporting reason. Next: phase-reviewer gate for Phase 20."
+    },
+    {
+      "at": "2026-09-28T20:08:23Z",
+      "cost_usd": 0.37805781,
+      "total_tokens": 19774703,
+      "duration_seconds": null,
+      "note": "Phase 20 gate closed: phase-reviewer attempt 1 APPROVED_WITH_FINDINGS (PR-20-01 open MEDIUM: missing ADR-002 amendment note); orchestrator ran a corrective round (20.3 worker attempt 2 + implementation-reviewer attempt 2, commit 247c33b) and re-applied the gate (phase-reviewer attempt 2 APPROVED_WITH_FINDINGS, PR-20-01 resolved), then applied Gate 20 and created the annotated tag v1.2.0-phase20 (gate record commit c5ff56c). Cycle delta: +6,401,922 tokens, +$0.173433942. F7 resolved; Phase 20 complete. duration_seconds null for the same runtime-reporting reason."
     }
   ]
 }
