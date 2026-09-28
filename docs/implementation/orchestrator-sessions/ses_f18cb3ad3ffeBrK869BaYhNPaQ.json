@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 19",
   "tokens": {
-    "input": 102466,
-    "output": 6988,
-    "reasoning": 23452,
+    "input": 112934,
+    "output": 9635,
+    "reasoning": 26921,
     "cache": {
-      "read": 1224064,
+      "read": 1851008,
       "write": 0
     }
   },
-  "total_tokens": 1356970,
-  "cost_usd": 0.037279392,
+  "total_tokens": 2000498,
+  "cost_usd": 0.04440002400000001,
   "duration_seconds": 2,
   "first_recorded_at": "2026-09-28T09:08:25Z",
-  "last_updated_at": "2026-09-28T09:08:25Z",
+  "last_updated_at": "2026-09-28T09:16:38Z",
   "updates": [
     {
       "at": "2026-09-28T09:08:25Z",
@@ -25,6 +25,13 @@
       "total_tokens": 1356970,
       "duration_seconds": 2,
       "note": "Phase 19 start: detected canonical-vs-experimental divergence; withdrew stray v1.2.0-phase19 tag after user decision (run fresh on v1.2, original ADR-022 / adopt neither); commissioned jellyfin-expert F4 host-order verification (report committed d59d0a1); stopping for user decision on the ADR-022-clause-3 non-implementability conflict."
+    },
+    {
+      "at": "2026-09-28T09:16:38Z",
+      "cost_usd": 0.04440002400000001,
+      "total_tokens": 2000498,
+      "duration_seconds": 2,
+      "note": "Phase 19: architecture review of ADR-022 clause 3 conformance complete (CHANGES_REQUIRED; recommends amending ADR to identity-anchored resume + explicit F4 bound). Stopping for user confirmation due to rejected-ADR-029 overlap."
     }
   ]
 }
