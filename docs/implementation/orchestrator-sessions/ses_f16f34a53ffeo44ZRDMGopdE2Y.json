@@ -5,19 +5,19 @@
   "variant": "high",
   "title": "Phase 20 F7 empty-selection artwork restoration",
   "tokens": {
-    "input": 192319,
-    "output": 11958,
-    "reasoning": 20071,
+    "input": 422564,
+    "output": 18617,
+    "reasoning": 22567,
     "cache": {
-      "read": 6445568,
+      "read": 9730176,
       "write": 0
     }
   },
-  "total_tokens": 6669916,
-  "cost_usd": 0.067365954,
+  "total_tokens": 10193924,
+  "cost_usd": 0.117249528,
   "duration_seconds": null,
   "first_recorded_at": "2026-09-28T18:08:54Z",
-  "last_updated_at": "2026-09-28T18:08:54Z",
+  "last_updated_at": "2026-09-28T18:47:15Z",
   "updates": [
     {
       "at": "2026-09-28T18:08:54Z",
@@ -25,6 +25,13 @@
       "total_tokens": 6669916,
       "duration_seconds": null,
       "note": "Phase 20 task 20.1 completed: empty-selection restore/removal behavior implemented, reviewed APPROVED, test-quality audited PASS_WITH_FINDINGS, committed fd37a73. duration_seconds recorded as null: the runtime reported 1s for 6,669,916 tokens, which is not a plausible wall-clock measurement. Values read directly from the running OpenCode server; the collect-session-usage.sh/record-orchestrator-session.sh CLIs cannot talk to this server instance (V2 health mismatch)."
+    },
+    {
+      "at": "2026-09-28T18:47:15Z",
+      "cost_usd": 0.117249528,
+      "total_tokens": 10193924,
+      "duration_seconds": null,
+      "note": "Phase 20 task 20.2 completed: F7 coverage tests added, reviewed APPROVED, test-quality audited PASS_WITH_FINDINGS, committed 24b1c47. Cycle delta: +3,523,996 tokens, +$0.049883574. duration_seconds null for the same runtime-reporting reason."
     }
   ]
 }

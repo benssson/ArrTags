@@ -3,7 +3,7 @@
   "title": "F7 coverage tests",
   "phase": 20,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "24b1c47",
   "conformance": {
     "required": false,
     "reason": "Task 20.2 adds coverage tests over behaviour already implemented and reviewed in task 20.1, which itself reused the pinned-host-verified guarded restore/removal protocol. No new Jellyfin 12 platform behaviour, provider contract, or first-time ADR-against-host implementability question governs a criterion; the tests exercise the existing durable operation journal, recovery gate, and fence decisions with in-process fakes and a state-root reconstruction.",
