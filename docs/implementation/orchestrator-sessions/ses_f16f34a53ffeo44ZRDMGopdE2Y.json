@@ -1,0 +1,30 @@
+{
+  "session_id": "ses_f16f34a53ffeo44ZRDMGopdE2Y",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "high",
+  "title": "Phase 20 F7 empty-selection artwork restoration",
+  "tokens": {
+    "input": 192319,
+    "output": 11958,
+    "reasoning": 20071,
+    "cache": {
+      "read": 6445568,
+      "write": 0
+    }
+  },
+  "total_tokens": 6669916,
+  "cost_usd": 0.067365954,
+  "duration_seconds": null,
+  "first_recorded_at": "2026-09-28T18:08:54Z",
+  "last_updated_at": "2026-09-28T18:08:54Z",
+  "updates": [
+    {
+      "at": "2026-09-28T18:08:54Z",
+      "cost_usd": 0.067365954,
+      "total_tokens": 6669916,
+      "duration_seconds": null,
+      "note": "Phase 20 task 20.1 completed: empty-selection restore/removal behavior implemented, reviewed APPROVED, test-quality audited PASS_WITH_FINDINGS, committed fd37a73. duration_seconds recorded as null: the runtime reported 1s for 6,669,916 tokens, which is not a plausible wall-clock measurement. Values read directly from the running OpenCode server; the collect-session-usage.sh/record-orchestrator-session.sh CLIs cannot talk to this server instance (V2 health mismatch)."
+    }
+  ]
+}

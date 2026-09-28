@@ -3,7 +3,7 @@
   "title": "Empty-selection restore/removal behavior",
   "phase": 20,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "fd37a73",
   "conformance": {
     "required": false,
     "reason": "Task 20.1 reuses the already-implemented and pinned-host-verified guarded artwork restoration/removal protocol (the internal ArtworkPublisher.RestoreAsync and the IArtworkImageWriter SaveImage/RemoveImage boundary, implemented in Phase 5 and exercised by the lifecycle drain and the task 14.3 live matrix). The task adds an internal discriminator (NoFittingBadge), an owned-session selection in the coordinator, a lifecycle-fence guard, and a bounded result classification; none of these introduces an unverified Jellyfin 12 platform behaviour, a Sonarr/Radarr API contract, or a first-time ADR-against-host implementability question.",
