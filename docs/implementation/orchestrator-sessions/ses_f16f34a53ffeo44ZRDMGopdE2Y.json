@@ -5,19 +5,19 @@
   "variant": "high",
   "title": "Phase 20 F7 empty-selection artwork restoration",
   "tokens": {
-    "input": 422564,
-    "output": 18617,
-    "reasoning": 22567,
+    "input": 916078,
+    "output": 25364,
+    "reasoning": 24683,
     "cache": {
-      "read": 9730176,
+      "read": 12406656,
       "write": 0
     }
   },
-  "total_tokens": 10193924,
-  "cost_usd": 0.117249528,
+  "total_tokens": 13372781,
+  "cost_usd": 0.204623868,
   "duration_seconds": null,
   "first_recorded_at": "2026-09-28T18:08:54Z",
-  "last_updated_at": "2026-09-28T18:47:15Z",
+  "last_updated_at": "2026-09-28T19:38:58Z",
   "updates": [
     {
       "at": "2026-09-28T18:08:54Z",
@@ -32,6 +32,13 @@
       "total_tokens": 10193924,
       "duration_seconds": null,
       "note": "Phase 20 task 20.2 completed: F7 coverage tests added, reviewed APPROVED, test-quality audited PASS_WITH_FINDINGS, committed 24b1c47. Cycle delta: +3,523,996 tokens, +$0.049883574. duration_seconds null for the same runtime-reporting reason."
+    },
+    {
+      "at": "2026-09-28T19:38:58Z",
+      "cost_usd": 0.204623868,
+      "total_tokens": 13372781,
+      "duration_seconds": null,
+      "note": "Phase 20 task 20.3 completed: F7 documentation/register resolution, ADR notes, changelog, and integration verification; reviewed APPROVED, test-quality audited PASS_WITH_FINDINGS, committed 1bd9a82. Cycle delta: +3,178,857 tokens, +$0.08737434. duration_seconds null for the same runtime-reporting reason. Next: phase-reviewer gate for Phase 20."
     }
   ]
 }

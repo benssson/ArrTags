@@ -3,7 +3,7 @@
   "title": "F7 documentation and integration verification",
   "phase": 20,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "1bd9a82",
   "conformance": {
     "required": false,
     "reason": "Task 20.3 is documentation reconciliation and integration verification of behaviour already implemented and reviewed in 20.1/20.2. It adds no new Jellyfin 12 platform assumption, provider contract, or first-time ADR-against-host implementability question; it records the resolution of F7, adds ADR amendment notes without rewriting accepted text, corrects architecture wording, and adds one deterministic reconciler-resume regression test over the existing recovery gate.",
