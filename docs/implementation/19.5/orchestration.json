@@ -3,7 +3,7 @@
   "title": "F4/F6 documentation and integration verification",
   "phase": 19,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "478de28",
   "subagents": [
     {
       "role": "implementation-worker",
