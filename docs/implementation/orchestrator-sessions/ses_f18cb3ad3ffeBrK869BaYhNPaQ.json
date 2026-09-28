@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 19",
   "tokens": {
-    "input": 112934,
-    "output": 9635,
-    "reasoning": 26921,
+    "input": 135866,
+    "output": 12656,
+    "reasoning": 33857,
     "cache": {
-      "read": 1851008,
+      "read": 2584576,
       "write": 0
     }
   },
-  "total_tokens": 2000498,
-  "cost_usd": 0.04440002400000001,
+  "total_tokens": 2766955,
+  "cost_usd": 0.05601472800000001,
   "duration_seconds": 2,
   "first_recorded_at": "2026-09-28T09:08:25Z",
-  "last_updated_at": "2026-09-28T09:16:38Z",
+  "last_updated_at": "2026-09-28T09:30:09Z",
   "updates": [
     {
       "at": "2026-09-28T09:08:25Z",
@@ -32,6 +32,13 @@
       "total_tokens": 2000498,
       "duration_seconds": 2,
       "note": "Phase 19: architecture review of ADR-022 clause 3 conformance complete (CHANGES_REQUIRED; recommends amending ADR to identity-anchored resume + explicit F4 bound). Stopping for user confirmation due to rejected-ADR-029 overlap."
+    },
+    {
+      "at": "2026-09-28T09:30:09Z",
+      "cost_usd": 0.05601472800000001,
+      "total_tokens": 2766955,
+      "duration_seconds": 2,
+      "note": "Recorded F4 ADR-029 amendment (ADR-022 clause 3) via implementation-planner; normative surfaces reconciled, check-docs PASS."
     }
   ]
 }
