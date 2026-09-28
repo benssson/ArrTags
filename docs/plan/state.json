@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated_utc": "2026-09-28T19:51:12Z",
+  "updated_utc": "2026-09-28T20:07:46Z",
   "active_scope": "docs/planning/v1.2.md",
   "active_scope_note": "v1.2 (Phases 15-21) is accepted: goals G6-G9 and limitations F3, F4, F6, F7, F8. Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)). DG-19, DG-20, and DG-21 (the F4, F6, and F7 mechanisms) are resolved by the v1.2 plan and their ADRs, so their dependent tasks are no longer gated. F5 is accepted as a known shipped limitation (reclassified from Open) and is excluded.",
   "releases": [
@@ -1285,9 +1285,10 @@
       "id": 20,
       "name": "Empty-selection artwork restoration",
       "release": "1.2.0",
-      "status": "PLANNED",
+      "status": "COMPLETE",
       "gate": "Gate 20",
       "tag": "v1.2.0-phase20",
+      "gate_record": "docs/implementation/phase-20/phase-review.attempt-2.json",
       "execution_order": [
         "20.1",
         "20.2",

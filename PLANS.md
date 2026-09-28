@@ -297,7 +297,6 @@ is created.
 <!-- BEGIN GENERATED: milestone-status -->
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
-| 20 | Empty-selection artwork restoration | PLANNED | Gate 20 |
 | 21 | v1.2 release | PLANNED | Gate 21 |
 <!-- END GENERATED: milestone-status -->
 
