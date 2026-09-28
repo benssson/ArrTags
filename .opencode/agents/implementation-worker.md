@@ -101,6 +101,20 @@ semantic decision you made alone.
 
 Never resolve genuine ambiguity by silently guessing.
 
+### Delegation boundary
+
+You cannot delegate. You are a subagent, and the environment's subagent depth
+limit is 1, so any attempt to spawn another subagent is refused with
+`Subagent depth limit reached (1)`. Do not try, and do not fall back to a
+detached CLI process to obtain a review.
+
+If the task needs a report from another agent — a security review, a host
+verification, a provider-contract check — do not attempt to produce or obtain it.
+Record exactly what is needed and why in `research_required`, and return
+`NEEDS_RESEARCH` (or `BLOCKED` if the task cannot proceed without it). The
+orchestrator delegates that specialist itself. Returning this status is correct
+and expected; attempting the delegation is the failure.
+
 ## Implementation
 
 Implement the smallest coherent change that satisfies the task and its acceptance criteria.

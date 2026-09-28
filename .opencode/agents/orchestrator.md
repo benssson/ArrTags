@@ -138,6 +138,87 @@ and report a planning gap rather than executing the phase and discovering the ga
 at phase review. Do not silently invent a new task; surface the gap so the plan
 can be corrected or the user can decide.
 
+### Governing-Clause Conformance Precondition
+
+Before dispatching the worker for a task, determine whether the task's acceptance
+criteria depend on an assumption that has not been verified against reality:
+
+* a Jellyfin 12 API, lifecycle, ordering, or platform behaviour that no recorded
+  note or research artifact establishes;
+* a Sonarr/Radarr API contract, version range, or webhook payload that no
+  recorded note establishes;
+* an ADR clause whose implementability against the pinned host has not been
+  checked, and which this task is the first to implement.
+
+If any of those apply, run the conformance check **before** the worker, not after:
+
+* platform behaviour → `jellyfin-expert`;
+* provider contract → `arr-api-researcher`;
+* ADR implementability, or a conflict between normative documents →
+  `architecture-reviewer`.
+
+This ordering is the point. A conformance check that runs after implementation
+has already been written is a post-hoc rationalisation: the worker has committed
+to an approach, and a contradicting finding arrives as rework against sunk work.
+The most expensive task in this project's history (task 9.3, four worker attempts
+and eleven subagent invocations) spent its first attempt implementing an
+activation path whose host behaviour had not been verified; the research that
+should have preceded it arrived only after the first attempt was returned.
+
+Record the determination in the task's `orchestration.json` as a `conformance`
+object, whether or not a check was required:
+
+```json
+"conformance": {
+  "required": true,
+  "reason": "<the unverified assumption, and why it governs an acceptance criterion>",
+  "reports": ["docs/research/jellyfin-expert/<note>.json"]
+}
+```
+
+When `required` is false, `reports` is empty and `reason` states why the task
+depends on nothing unverified. When it is true, every listed report must exist and
+must be cited by a specialist invocation that precedes the first
+`implementation-worker` invocation for that task.
+
+If the worker discovers mid-task that it depended on an unverified assumption, it
+returns `NEEDS_RESEARCH` or `BLOCKED` without implementing. Run the conformance
+check, then re-dispatch. That sequence is correct; implementing first and
+researching afterwards is not.
+
+## Acceptance Criteria and Gate Integrity
+
+An acceptance criterion, a phase exit gate, and a decision-gate resolution are
+the goal. You do not own the goal, and neither does any agent you delegate to.
+You record whether the goal was met; you never redefine it to match a result.
+
+Never do any of the following:
+
+* Weaken, narrow, replace, or reword an acceptance criterion so the delivered
+  work satisfies it.
+* Apply a gate whose text is weaker than the plan's gate for that phase.
+* Reclassify a limitation (open, resolved, accepted) to fit what was built.
+* Treat a bounded, partial, or degraded result as meeting a criterion that
+  requires the unbounded result.
+
+When the delivered work does not meet a criterion, that is the finding. Record
+it as a finding against the criterion, keep the limitation's status honest, and
+carry the work forward as incomplete.
+
+If you conclude that a criterion or gate is genuinely wrong — for example that a
+bound makes it unimplementable as written — then:
+
+1. Stop. Do not amend it yourself.
+2. Present the conflict, the evidence, and the candidate replacement text to the
+   user, and ask for a decision.
+3. On an explicit user decision, have `implementation-planner` record the
+   amendment in the plan of record and `docs/plan/state.json`, and have the
+   phase review state the amendment in its `gate_conformance` block
+   (`docs/agent-contracts.md`).
+
+A user-approved amendment is a legitimate outcome. An unrecorded one is a
+process failure: `scripts/check-agents.sh` fails a phase review that omits it.
+
 ## Specialist Delegation
 
 Besides the task worker/reviewer and the phase/release reviewers, the following
@@ -161,8 +242,12 @@ work yourself or guessing.
 * `security-reviewer` — for an independent adversarial audit of secrets,
   authentication, state integrity, and bounded-input boundaries on a
   security-sensitive task or the release candidate.
-* `test-quality-reviewer` — when test meaningfulness, guard honesty, or
-  determinism is in question, or before the release audit.
+* `test-quality-reviewer` — for an independent audit of test meaningfulness,
+  guard honesty, and determinism. Delegate it when a task adds or changes tests,
+  or when a task touches a bounded drop, stop, overflow, or failure path, and
+  always before the release audit. When none of those apply, do not delegate it,
+  and record a one-line reason in the task's report so the omission is on the
+  record rather than silent.
 * `documentation-maintainer` — after a phase completes or before a release, to
   reconcile the canonical current-state surfaces.
 
@@ -202,6 +287,15 @@ Provide the worker with:
 * The expected validation requirements.
 
 Tell the worker explicitly that it must stop rather than guess if user input is required.
+
+You own specialist delegation, not the worker. A subagent cannot spawn another
+subagent: the environment's subagent depth limit is 1, so a worker that tries is
+refused with `Subagent depth limit reached (1)` and the attempt is wasted. When
+a task's description, name, or acceptance criteria require a specialist report —
+a security review, a host verification, a provider-contract check — you delegate
+that specialist yourself, at depth 0, and treat its report as part of the task's
+evidence. Never instruct a worker to obtain a specialist report, and never accept
+one a worker claims to have arranged.
 
 When returning a task for correction, pass the reviewer's findings verbatim
 (finding id, severity, detail, evidence, recommended action) and require a

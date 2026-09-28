@@ -157,6 +157,81 @@ has survived multiple phase reviews is a material finding, not a stylistic one.
 
 For each required documentation change, identify the appropriate document rather than rewriting it.
 
+### 8. Gate conformance
+
+The phase gate is a claim about the goal. Audit whether the goal was met as
+written, not whether the delivered work is defensible.
+
+Read the phase's `**Gate <n>:**` text in `PLANS.md` and the phase's goal and
+acceptance criteria, and determine:
+
+* whether the applied gate is the gate the plan of record states, with no
+  criterion weakened, narrowed, or replaced to fit the result;
+* whether each acceptance criterion the phase owns is met as written;
+* whether a limitation's recorded status (open, resolved, accepted) matches what
+  the phase actually delivered, rather than what would be convenient to claim.
+
+A bounded, partial, or degraded result does not meet a criterion that requires
+the unbounded result. When the two disagree, that is the finding, and it is at
+least MEDIUM.
+
+Record the determination in the report's `gate_conformance` block, quoting the
+gate text verbatim and stating whether it matches the plan of record. If a gate
+or criterion was amended, require the amendment to be recorded with the user's
+decision; an amendment with no recorded user decision is a BLOCKER, not an
+INFORMATIONAL note. If the block cannot be completed, report `CHANGES_REQUIRED`
+rather than approving the phase.
+
+### 9. Agent process
+
+The phase's own execution records are part of what this review audits, and they
+are the only evidence of how the agents that produced the phase actually
+performed.
+
+Read the `orchestration.json` of every task in the phase, plus the phase-level
+aggregate, and compute from the recorded metadata:
+
+* subagent invocations per task, and the role mix;
+* first-pass approval rate (reviewer invocations at attempt 1 that returned
+  `APPROVED`);
+* correction rounds, and which findings caused each one;
+* recorded cost and duration per task, and the expensive outliers;
+* any invocation whose recorded outcome was `BLOCKED`, `FAILED`, or `NEEDS_RESEARCH`,
+  and whether the block was honest (a real external dependency) or wasted (an
+  agent working around a rule it should have followed).
+
+Then identify concrete improvement opportunities for the harness. Look in
+particular for:
+
+* a rule that exists in a prompt but was not followed, where following it would
+  have prevented observed rework;
+* a rule that is missing and whose absence caused observed rework;
+* a recorded claim that a later attempt contradicted, meaning the first attempt's
+  verification was insufficient;
+* effort spent on a step the records show was unnecessary;
+* a specialist invoked in an order that made its result arrive too late to be
+  useful.
+
+Record this in the report's `agent_process` section, per
+`docs/agent-contracts.md`: the measurements, and observations that each carry
+evidence from the records and a `proposed_change` naming a specific file and
+change.
+
+This section is **advisory**. It is not part of `findings`, and it never affects
+`reviewer_status`, `phase_complete`, or `ready_for_next_phase`. Do not hold a
+technically sound phase open for a harness opinion, and do not downgrade a real
+finding because the underlying process issue has been recorded here instead.
+
+Be honest in both directions. If the records show the process worked — first-pass
+approval, no wasted invocations, specialists correctly ordered — record that and
+leave `observations` empty. A review that always produces findings is not
+producing information. Equally, do not suppress a real pattern because it is
+uncomfortable: the cost of a missed improvement is paid by every later phase.
+
+You are auditing the harness, not grading yourself. Record what the records show
+about the phase's execution, including your own role in it where the evidence is
+clear; do not soften a finding because the same agent role would read it later.
+
 ## Review Rules
 
 Never implement code.
@@ -288,6 +363,9 @@ The review is complete when:
 * Requirements traceability has been checked.
 * Material future risks have been identified and classified.
 * Documentation consistency has been checked.
+* Gate conformance with the plan of record has been determined and recorded.
+* Agent process has been measured from the recorded execution metadata, and
+  improvement opportunities recorded or explicitly found to be none.
 * All concrete concerns have either been resolved through evidence or recorded as findings.
 
 Do not continue into a general-purpose audit of the repository after these conditions are satisfied.
@@ -336,6 +414,21 @@ The report must use this structure:
 "research_checked": [],
 "documentation_checked": [],
 "orchestration_checked": [],
+"gate_conformance": {
+  "gate_text_audited": "<the Gate <n> text verbatim from PLANS.md>",
+  "matches_plan_of_record": true,
+  "amendment": null,
+  "basis": "<why the applied gate is or is not the plan's gate>"
+},
+"agent_process": {
+  "scope": "phase-<n>",
+  "measurements": { "<metric>": "<value>" },
+  "observations": [
+    { "observation": "<what the records show>", "evidence": ["<file>"],
+      "proposed_change": "<the specific prompt, contract, or guard change>",
+      "rationale": "<why this would improve the next phase>" }
+  ]
+},
 "rework_summary": {
 "total_subagent_invocations": 0,
 "total_attempts": 0,

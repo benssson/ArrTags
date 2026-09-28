@@ -247,6 +247,55 @@ consequence and its evidence. Then make the release decision:
 Recommend the release actions (final version tag, release notes, push) but do
 not perform them.
 
+### 13. Agent process
+
+The release is also the last opportunity to improve the harness before the
+project's next scope begins. Audit how the agents that produced this release
+actually performed, using the recorded execution metadata.
+
+Read the `orchestration.json` of the tasks and phases in scope for this release,
+plus their phase-level aggregates, and compute from the recorded metadata:
+
+* subagent invocations per task, and the role mix across the release;
+* first-pass approval rate, and the distribution of correction rounds;
+* recorded cost and duration per phase, and the expensive outliers;
+* any invocation whose recorded outcome was `BLOCKED`, `FAILED`, or
+  `NEEDS_RESEARCH`, and whether each was an honest external dependency or a
+  harness failure;
+* the aggregate orchestrator cost across the release's sessions;
+* repeated instances of the same finding class, which indicate a harness gap
+  rather than a one-off.
+
+Then identify concrete improvement opportunities for the harness. Look in
+particular for:
+
+* a rule that exists in a prompt but was not followed, where following it would
+  have prevented observed rework;
+* a rule that is missing and whose absence caused observed rework;
+* an agent-contract or guard gap that let a defect or an inconsistency reach a
+  phase gate;
+* effort spent on a step the records show was unnecessary;
+* a specialist invoked in an order that made its result arrive too late to be
+  useful;
+* a role whose recorded outcomes suggest it is on the wrong model, or at the
+  wrong effort variant — but only where the evidence spans more than one
+  occurrence, and never on a single data point.
+
+Record this in the report's `agent_process` section, per
+`docs/agent-contracts.md`: the measurements, and observations that each carry
+evidence from the records and a `proposed_change` naming a specific file and
+change.
+
+This section is **advisory**. It is not part of `findings`, and it never affects
+`reviewer_status`, `release_decision`, or the accepted-limitations set. A release
+that is technically sound ships; the harness observations are carried forward to
+the next scope instead.
+
+Be honest in both directions. If the release's execution record is clean, record
+that and leave `observations` empty. A review that always produces findings is
+not producing information. Equally, do not suppress a real pattern: a gap found
+at release is far cheaper than the same gap found again in every later phase.
+
 ## Review Rules
 
 Never implement code.
@@ -387,6 +436,8 @@ The review is complete when:
 * Integration, architecture, and decision conformance have been evaluated.
 * Documentation consistency has been checked.
 * Every earlier finding has been reconciled.
+* Agent process has been measured from the recorded execution metadata, and
+  improvement opportunities recorded or explicitly found to be none.
 * Accepted limitations are enumerated.
 * A release decision and recommendation are recorded.
 * All concrete concerns have either been resolved through evidence or recorded
@@ -436,6 +487,18 @@ The report must use this structure:
   "architecture_checked": [],
   "documentation_checked": [],
   "findings_reconciliation": [],
+  "agent_process": {
+    "scope": "<release in scope>",
+    "measurements": { "<metric>": "<value>" },
+    "observations": [
+      {
+        "observation": "<what the records show>",
+        "evidence": ["<file>"],
+        "proposed_change": "<the specific prompt, contract, or guard change>",
+        "rationale": "<why this would improve the next scope>"
+      }
+    ]
+  },
   "limitations_accepted": [],
   "release_recommendation": "<tag, release notes, and push recommendation>",
   "summary": "<overall conclusion>"

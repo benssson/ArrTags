@@ -55,6 +55,13 @@ disagreements and `scripts/check-docs.sh` runs it.
 }
 ```
 
+`reports` lists the evidence reports committed for a task, not only the worker
+report. A task with a `worker-report.json` also lists its `reviewer-report.json`
+and every preserved `.attempt-<n>.json` of it, plus any `test-quality-review.json`,
+`security-review.json`, or `live-verification.json` that exists. See
+[`docs/agent-contracts.md`](../agent-contracts.md), which defines the set, and
+`scripts/check-agents.sh`, which enforces it.
+
 Status vocabulary for **phases**: `PLANNED`, `IN_PROGRESS`, `COMPLETE`,
 `BLOCKED`, `DEFERRED`, `OUT_OF_SCOPE`. Tasks use the boolean `done`. The
 orchestrator treats a task as complete only when `state.json` has

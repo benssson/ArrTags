@@ -248,32 +248,50 @@
         {
           "id": "4.7",
           "done": true,
-          "name": "Pin the SkiaSharp managed and Linux native asset packages to exact"
+          "name": "Pin the SkiaSharp managed and Linux native asset packages to exact",
+          "reports": [
+            "docs/implementation/4.7/reviewer-report.json"
+          ]
         },
         {
           "id": "4.8",
           "done": true,
-          "name": "Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the"
+          "name": "Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the",
+          "reports": [
+            "docs/implementation/4.8/reviewer-report.json"
+          ]
         },
         {
           "id": "4.9",
           "done": true,
-          "name": "Implement the provider-neutral renderer service and drawing engine: the"
+          "name": "Implement the provider-neutral renderer service and drawing engine: the",
+          "reports": [
+            "docs/implementation/4.9/reviewer-report.json"
+          ]
         },
         {
           "id": "4.6",
           "done": true,
-          "name": "Test dimensions, format behavior, truncation, layout, cancellation, and"
+          "name": "Test dimensions, format behavior, truncation, layout, cancellation, and",
+          "reports": [
+            "docs/implementation/4.6/reviewer-report.json"
+          ]
         },
         {
           "id": "4.10",
           "done": true,
-          "name": "Extend the immutable configuration model, snapshot, and validator with"
+          "name": "Extend the immutable configuration model, snapshot, and validator with",
+          "reports": [
+            "docs/implementation/4.10/reviewer-report.json"
+          ]
         },
         {
           "id": "4.11",
           "done": true,
-          "name": "Add golden-image, byte-determinism, PNG-contract, and cross-runtime"
+          "name": "Add golden-image, byte-determinism, PNG-contract, and cross-runtime",
+          "reports": [
+            "docs/implementation/4.11/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -301,57 +319,90 @@
         {
           "id": "5.1",
           "done": true,
-          "name": "Confirm the exact supported Jellyfin item-image publication ABI and"
+          "name": "Confirm the exact supported Jellyfin item-image publication ABI and",
+          "reports": [
+            "docs/implementation/5.1/reviewer-report.json"
+          ]
         },
         {
           "id": "5.2",
           "done": true,
-          "name": "Implement source-artwork provenance and guarded restoration state"
+          "name": "Implement source-artwork provenance and guarded restoration state",
+          "reports": [
+            "docs/implementation/5.2/reviewer-report.json"
+          ]
         },
         {
           "id": "5.3",
           "done": true,
-          "name": "Implement the Jellyfin host source adapter that reads the unindexed"
+          "name": "Implement the Jellyfin host source adapter that reads the unindexed",
+          "reports": [
+            "docs/implementation/5.3/reviewer-report.json"
+          ]
         },
         {
           "id": "5.4",
           "done": true,
-          "name": "Extend plugin packaging so the renderer's managed dependencies, Linux"
+          "name": "Extend plugin packaging so the renderer's managed dependencies, Linux",
+          "reports": [
+            "docs/implementation/5.4/reviewer-report.json"
+          ]
         },
         {
           "id": "5.5",
           "done": true,
-          "name": "Publish completed artwork through Jellyfin's supported item-image APIs;"
+          "name": "Publish completed artwork through Jellyfin's supported item-image APIs;",
+          "reports": [
+            "docs/implementation/5.5/reviewer-report.json"
+          ]
         },
         {
           "id": "5.6",
           "done": true,
-          "name": "Persist a durable `ArtworkOperation` before `SaveImage`, including"
+          "name": "Persist a durable `ArtworkOperation` before `SaveImage`, including",
+          "reports": [
+            "docs/implementation/5.6/reviewer-report.json"
+          ]
         },
         {
           "id": "5.7",
           "done": true,
-          "name": "Reconcile uncertain `SaveImage`, item update, and provenance"
+          "name": "Reconcile uncertain `SaveImage`, item update, and provenance",
+          "reports": [
+            "docs/implementation/5.7/reviewer-report.json"
+          ]
         },
         {
           "id": "5.8",
           "done": true,
-          "name": "Preserve the current usable artwork when source capture or rendering"
+          "name": "Preserve the current usable artwork when source capture or rendering",
+          "reports": [
+            "docs/implementation/5.8/reviewer-report.json"
+          ]
         },
         {
           "id": "5.9",
           "done": true,
-          "name": "Fence and drain publication operations during disable/uninstall, and"
+          "name": "Fence and drain publication operations during disable/uninstall, and",
+          "reports": [
+            "docs/implementation/5.9/reviewer-report.json"
+          ]
         },
         {
           "id": "5.10",
           "done": true,
-          "name": "Add the configured disable/limit policy for duplicate or overlapping"
+          "name": "Add the configured disable/limit policy for duplicate or overlapping",
+          "reports": [
+            "docs/implementation/5.10/reviewer-report.json"
+          ]
         },
         {
           "id": "5.11",
           "done": true,
-          "name": "Test Web and image-consuming clients through the supported server"
+          "name": "Test Web and image-consuming clients through the supported server",
+          "reports": [
+            "docs/implementation/5.11/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -377,47 +428,74 @@
         {
           "id": "6.1",
           "done": true,
-          "name": "Keep library event handlers short: validate relevance, enqueue a"
+          "name": "Keep library event handlers short: validate relevance, enqueue a",
+          "reports": [
+            "docs/implementation/6.1/reviewer-report.json"
+          ]
         },
         {
           "id": "6.2",
           "done": true,
-          "name": "Implement coalescing by item and connection, single-flight work, worker"
+          "name": "Implement coalescing by item and connection, single-flight work, worker",
+          "reports": [
+            "docs/implementation/6.2/reviewer-report.json"
+          ]
         },
         {
           "id": "6.3",
           "done": true,
-          "name": "Publish metadata state atomically only after current item/configuration"
+          "name": "Publish metadata state atomically only after current item/configuration",
+          "reports": [
+            "docs/implementation/6.3/reviewer-report.json"
+          ]
         },
         {
           "id": "6.4",
           "done": true,
-          "name": "Recover non-terminal artwork operations before accepting new work for"
+          "name": "Recover non-terminal artwork operations before accepting new work for",
+          "reports": [
+            "docs/implementation/6.4/reviewer-report.json"
+          ]
         },
         {
           "id": "6.5",
           "done": true,
-          "name": "Separate metadata freshness and bounded stale-last-known-good behavior"
+          "name": "Separate metadata freshness and bounded stale-last-known-good behavior",
+          "reports": [
+            "docs/implementation/6.5/reviewer-report.json"
+          ]
         },
         {
           "id": "6.6",
           "done": true,
-          "name": "Regenerate and republish only affected artwork when a metadata"
+          "name": "Regenerate and republish only affected artwork when a metadata",
+          "reports": [
+            "docs/implementation/6.6/reviewer-report.json"
+          ]
         },
         {
           "id": "6.7",
           "done": true,
-          "name": "Validate and bound webhook authentication, content, rate, and work"
+          "name": "Validate and bound webhook authentication, content, rate, and work",
+          "reports": [
+            "docs/implementation/6.7/reviewer-report.json"
+          ]
         },
         {
           "id": "6.8",
           "done": true,
-          "name": "Test restart, shutdown, corruption, outage, recovery, duplicate events,"
+          "name": "Test restart, shutdown, corruption, outage, recovery, duplicate events,",
+          "reports": [
+            "docs/implementation/6.8/reviewer-report.json"
+          ]
         },
         {
           "id": "6.9",
           "done": true,
-          "name": "Add scheduled (periodic and manual) and post-scan reconciliation that"
+          "name": "Add scheduled (periodic and manual) and post-scan reconciliation that",
+          "reports": [
+            "docs/implementation/6.9/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -442,42 +520,68 @@
         {
           "id": "7.1",
           "done": true,
-          "name": "Run all unit and integration tests against the exact declared versions."
+          "name": "Run all unit and integration tests against the exact declared versions.",
+          "reports": [
+            "docs/implementation/7.1/reviewer-report.attempt-2.json",
+            "docs/implementation/7.1/reviewer-report.json"
+          ]
         },
         {
           "id": "7.2",
           "done": true,
-          "name": "Verify the plugin installs, upgrades, reloads, and uninstalls safely."
+          "name": "Verify the plugin installs, upgrades, reloads, and uninstalls safely.",
+          "reports": [
+            "docs/implementation/7.2/reviewer-report.json"
+          ]
         },
         {
           "id": "7.3",
           "done": true,
-          "name": "Verify all success criteria in `GOALS.md`, including independent"
+          "name": "Verify all success criteria in `GOALS.md`, including independent",
+          "reports": [
+            "docs/implementation/7.3/reviewer-report.json"
+          ]
         },
         {
           "id": "7.4",
           "done": true,
-          "name": "Review logs, diagnostics, HTTP behavior, and persisted state for secret"
+          "name": "Review logs, diagnostics, HTTP behavior, and persisted state for secret",
+          "reports": [
+            "docs/implementation/7.4/reviewer-report.json"
+          ]
         },
         {
           "id": "7.5",
           "done": true,
-          "name": "Build the release package from a clean checkout and record the"
+          "name": "Build the release package from a clean checkout and record the",
+          "reports": [
+            "docs/implementation/7.5/reviewer-report.json"
+          ]
         },
         {
           "id": "7.6",
           "done": true,
-          "name": "Document known limitations and any deferred decision without presenting"
+          "name": "Document known limitations and any deferred decision without presenting",
+          "reports": [
+            "docs/implementation/7.6/reviewer-report.json"
+          ]
         },
         {
           "id": "7.7",
           "done": true,
-          "name": "Relocate the persisted plugin state root outside Jellyfin's"
+          "name": "Relocate the persisted plugin state root outside Jellyfin's",
+          "reports": [
+            "docs/implementation/7.7/reviewer-report.json"
+          ]
         },
         {
           "id": "7.8",
           "done": true,
-          "name": "Stop shipping the duplicate managed `SkiaSharp.dll` and native"
+          "name": "Stop shipping the duplicate managed `SkiaSharp.dll` and native",
+          "reports": [
+            "docs/implementation/7.8/reviewer-report.attempt-2.json",
+            "docs/implementation/7.8/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -502,32 +606,50 @@
         {
           "id": "8.1",
           "done": true,
-          "name": "Split `README.md` into an end-user guide and a preserved"
+          "name": "Split `README.md` into an end-user guide and a preserved",
+          "reports": [
+            "docs/implementation/8.1/reviewer-report.json"
+          ]
         },
         {
           "id": "8.2",
           "done": true,
-          "name": "Repoint the agent current-state references at `docs/project-status.md`."
+          "name": "Repoint the agent current-state references at `docs/project-status.md`.",
+          "reports": [
+            "docs/implementation/8.2/reviewer-report.json"
+          ]
         },
         {
           "id": "8.3",
           "done": true,
-          "name": "Correct the stale `build.yaml` metadata and bump the version to"
+          "name": "Correct the stale `build.yaml` metadata and bump the version to",
+          "reports": [
+            "docs/implementation/8.3/reviewer-report.json"
+          ]
         },
         {
           "id": "8.4",
           "done": true,
-          "name": "Add the Jellyfin plugin-repository manifest tooling and the release"
+          "name": "Add the Jellyfin plugin-repository manifest tooling and the release",
+          "reports": [
+            "docs/implementation/8.4/reviewer-report.json"
+          ]
         },
         {
           "id": "8.5",
           "done": true,
-          "name": "Update `docs/release/build-and-release.md` and `docs/changelog.md`."
+          "name": "Update `docs/release/build-and-release.md` and `docs/changelog.md`.",
+          "reports": [
+            "docs/implementation/8.5/reviewer-report.json"
+          ]
         },
         {
           "id": "8.6",
           "done": true,
-          "name": "Release-readiness verification, commit the generated `manifest.json`,"
+          "name": "Release-readiness verification, commit the generated `manifest.json`,",
+          "reports": [
+            "docs/implementation/8.6/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -549,27 +671,52 @@
         {
           "id": "9.1",
           "done": true,
-          "name": "Configuration round-trip spike (blocking prerequisite)."
+          "name": "Configuration round-trip spike (blocking prerequisite).",
+          "reports": [
+            "docs/implementation/9.1/reviewer-report.json",
+            "docs/implementation/9.1/test-quality-review.json"
+          ]
         },
         {
           "id": "9.2",
           "done": true,
-          "name": "Dashboard settings page and embedded page resource."
+          "name": "Dashboard settings page and embedded page resource.",
+          "reports": [
+            "docs/implementation/9.2/reviewer-report.json",
+            "docs/implementation/9.2/security-review.json"
+          ]
         },
         {
           "id": "9.3",
           "done": true,
-          "name": "Elevation-gated save path and runtime activation."
+          "name": "Elevation-gated save path and runtime activation.",
+          "reports": [
+            "docs/implementation/9.3/reviewer-report.attempt-2.json",
+            "docs/implementation/9.3/reviewer-report.attempt-3.json",
+            "docs/implementation/9.3/reviewer-report.attempt-4.json",
+            "docs/implementation/9.3/reviewer-report.json",
+            "docs/implementation/9.3/security-review.attempt-2.json",
+            "docs/implementation/9.3/security-review.json"
+          ]
         },
         {
           "id": "9.4",
           "done": true,
-          "name": "Bounded post-save reconciliation trigger."
+          "name": "Bounded post-save reconciliation trigger.",
+          "reports": [
+            "docs/implementation/9.4/reviewer-report.attempt-2.json",
+            "docs/implementation/9.4/reviewer-report.json",
+            "docs/implementation/9.4/test-quality-review.json"
+          ]
         },
         {
           "id": "9.5",
           "done": true,
-          "name": "Goal A documentation and integration verification."
+          "name": "Goal A documentation and integration verification.",
+          "reports": [
+            "docs/implementation/9.5/reviewer-report.attempt-2.json",
+            "docs/implementation/9.5/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -590,17 +737,31 @@
         {
           "id": "10.1",
           "done": true,
-          "name": "Logging foundation, verbosity configuration, and fingerprint exclusion."
+          "name": "Logging foundation, verbosity configuration, and fingerprint exclusion.",
+          "reports": [
+            "docs/implementation/10.1/reviewer-report-attempt-1.json",
+            "docs/implementation/10.1/reviewer-report.json",
+            "docs/implementation/10.1/test-quality-review-attempt-1.json",
+            "docs/implementation/10.1/test-quality-review.json"
+          ]
         },
         {
           "id": "10.2",
           "done": true,
-          "name": "Bounded, redacted log call sites and volume bounds."
+          "name": "Bounded, redacted log call sites and volume bounds.",
+          "reports": [
+            "docs/implementation/10.2/reviewer-report.json",
+            "docs/implementation/10.2/security-review.json"
+          ]
         },
         {
           "id": "10.3",
           "done": true,
-          "name": "SEC-5 rewrite, documentation, and logging security review."
+          "name": "SEC-5 rewrite, documentation, and logging security review.",
+          "reports": [
+            "docs/implementation/10.3/reviewer-report.json",
+            "docs/implementation/10.3/security-review.json"
+          ]
         }
       ]
     },
@@ -622,22 +783,45 @@
         {
           "id": "11.1",
           "done": true,
-          "name": "Inventory cache model, bounds, and limits."
+          "name": "Inventory cache model, bounds, and limits.",
+          "reports": [
+            "docs/implementation/11.1/reviewer-report.attempt-2.json",
+            "docs/implementation/11.1/reviewer-report.json",
+            "docs/implementation/11.1/security-review.attempt-2.json",
+            "docs/implementation/11.1/security-review.json",
+            "docs/implementation/11.1/test-quality-review.attempt-2.json",
+            "docs/implementation/11.1/test-quality-review.json"
+          ]
         },
         {
           "id": "11.2",
           "done": true,
-          "name": "Provider-client integration and bulk reads."
+          "name": "Provider-client integration and bulk reads.",
+          "reports": [
+            "docs/implementation/11.2/reviewer-report.attempt-2.json",
+            "docs/implementation/11.2/reviewer-report.json",
+            "docs/implementation/11.2/test-quality-review.attempt-2.json",
+            "docs/implementation/11.2/test-quality-review.json"
+          ]
         },
         {
           "id": "11.3",
           "done": true,
-          "name": "ArrTags-side invalidation."
+          "name": "ArrTags-side invalidation.",
+          "reports": [
+            "docs/implementation/11.3/reviewer-report.attempt-2.json",
+            "docs/implementation/11.3/reviewer-report.json",
+            "docs/implementation/11.3/test-quality-review.attempt-2.json",
+            "docs/implementation/11.3/test-quality-review.json"
+          ]
         },
         {
           "id": "11.4",
           "done": true,
-          "name": "Goal C documentation and integration verification."
+          "name": "Goal C documentation and integration verification.",
+          "reports": [
+            "docs/implementation/11.4/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -659,22 +843,45 @@
         {
           "id": "12.1",
           "done": true,
-          "name": "Allowlist configuration, bounds, validation, and fingerprint."
+          "name": "Allowlist configuration, bounds, validation, and fingerprint.",
+          "reports": [
+            "docs/implementation/12.1/reviewer-report.attempt-2.json",
+            "docs/implementation/12.1/reviewer-report.json",
+            "docs/implementation/12.1/test-quality-review.json"
+          ]
         },
         {
           "id": "12.2",
           "done": true,
-          "name": "Allowlist resolution and renderer filtering order."
+          "name": "Allowlist resolution and renderer filtering order.",
+          "reports": [
+            "docs/implementation/12.2/reviewer-report.attempt-2.json",
+            "docs/implementation/12.2/reviewer-report.attempt-3.json",
+            "docs/implementation/12.2/reviewer-report.json",
+            "docs/implementation/12.2/test-quality-review.json"
+          ]
         },
         {
           "id": "12.3",
           "done": true,
-          "name": "Badge size/position configuration and layout engine."
+          "name": "Badge size/position configuration and layout engine.",
+          "reports": [
+            "docs/implementation/12.3/reviewer-report.attempt-2.json",
+            "docs/implementation/12.3/reviewer-report.attempt-3.json",
+            "docs/implementation/12.3/reviewer-report.attempt-4.json",
+            "docs/implementation/12.3/reviewer-report.json",
+            "docs/implementation/12.3/test-quality-review.json"
+          ]
         },
         {
           "id": "12.4",
           "done": true,
-          "name": "Coordinated schema/`RenderVersion` advance, golden regeneration, and"
+          "name": "Coordinated schema/`RenderVersion` advance, golden regeneration, and",
+          "reports": [
+            "docs/implementation/12.4/reviewer-report.attempt-2.json",
+            "docs/implementation/12.4/reviewer-report.json",
+            "docs/implementation/12.4/test-quality-review.json"
+          ]
         }
       ]
     },
@@ -694,12 +901,19 @@
         {
           "id": "13.1",
           "done": true,
-          "name": "README palette documentation and v1.1 feature documentation."
+          "name": "README palette documentation and v1.1 feature documentation.",
+          "reports": [
+            "docs/implementation/13.1/reviewer-report.json"
+          ]
         },
         {
           "id": "13.2",
           "done": true,
-          "name": "Canonical current-state reconciliation sweep."
+          "name": "Canonical current-state reconciliation sweep.",
+          "reports": [
+            "docs/implementation/13.2/reviewer-report.attempt-1.json",
+            "docs/implementation/13.2/reviewer-report.json"
+          ]
         }
       ]
     },
@@ -723,22 +937,39 @@
         {
           "id": "14.1",
           "done": true,
-          "name": "Version bump and release metadata."
+          "name": "Version bump and release metadata.",
+          "reports": [
+            "docs/implementation/14.1/reviewer-report.json"
+          ]
         },
         {
           "id": "14.2",
           "done": true,
-          "name": "Release build, full suite, reproducible artifact, and release"
+          "name": "Release build, full suite, reproducible artifact, and release",
+          "reports": [
+            "docs/implementation/14.2/reviewer-report.attempt-1.json",
+            "docs/implementation/14.2/reviewer-report.json",
+            "docs/implementation/14.2/test-quality-review.attempt-1.json",
+            "docs/implementation/14.2/test-quality-review.json"
+          ]
         },
         {
           "id": "14.3",
           "done": true,
-          "name": "Live pinned-host verification."
+          "name": "Live pinned-host verification.",
+          "reports": [
+            "docs/implementation/14.3/live-verification.json",
+            "docs/implementation/14.3/reviewer-report.json"
+          ]
         },
         {
           "id": "14.4",
           "done": true,
-          "name": "Release security review."
+          "name": "Release security review.",
+          "reports": [
+            "docs/implementation/14.4/reviewer-report.json",
+            "docs/implementation/14.4/security-review.json"
+          ]
         },
         {
           "id": "14.5",
@@ -766,6 +997,8 @@
           "done": true,
           "name": "Bounded log-subject policy and helper",
           "reports": [
+            "docs/implementation/15.1/reviewer-report.json",
+            "docs/implementation/15.1/test-quality-review.json",
             "docs/implementation/15.1/worker-report.json"
           ]
         },
@@ -774,6 +1007,10 @@
           "done": true,
           "name": "Thread the bounded log subject through the identity-bearing and fallback sites",
           "reports": [
+            "docs/implementation/15.2/reviewer-report.attempt-2.json",
+            "docs/implementation/15.2/reviewer-report.json",
+            "docs/implementation/15.2/test-quality-review.attempt-2.json",
+            "docs/implementation/15.2/test-quality-review.json",
             "docs/implementation/15.2/worker-report.json"
           ]
         },
@@ -782,6 +1019,8 @@
           "done": true,
           "name": "Emit the bounded render classification in the artwork log",
           "reports": [
+            "docs/implementation/15.3/reviewer-report.json",
+            "docs/implementation/15.3/test-quality-review.json",
             "docs/implementation/15.3/worker-report.json"
           ]
         },
@@ -790,8 +1029,10 @@
           "done": true,
           "name": "Logging documentation, ADR-020 amendment, and security review",
           "reports": [
-            "docs/implementation/15.4/worker-report.json",
-            "docs/implementation/15.4/security-review.json"
+            "docs/implementation/15.4/reviewer-report.json",
+            "docs/implementation/15.4/security-review.attempt-2.json",
+            "docs/implementation/15.4/security-review.json",
+            "docs/implementation/15.4/worker-report.json"
           ]
         }
       ]
@@ -818,6 +1059,7 @@
           "done": true,
           "name": "Byte/unit conversion helper and per-field MB/KB mapping (explicit off-step rejection)",
           "reports": [
+            "docs/implementation/16.1/reviewer-report.json",
             "docs/implementation/16.1/worker-report.json"
           ]
         },
@@ -826,8 +1068,10 @@
           "done": true,
           "name": "Authoritative restart-required set with code evidence",
           "reports": [
-            "docs/implementation/16.2/worker-report.json",
-            "docs/implementation/16.2/worker-report.attempt-2.json"
+            "docs/implementation/16.2/reviewer-report.attempt-2.json",
+            "docs/implementation/16.2/reviewer-report.json",
+            "docs/implementation/16.2/worker-report.attempt-2.json",
+            "docs/implementation/16.2/worker-report.json"
           ]
         },
         {
@@ -835,6 +1079,7 @@
           "done": true,
           "name": "Restart-required note text on the settings page",
           "reports": [
+            "docs/implementation/16.3/reviewer-report.json",
             "docs/implementation/16.3/worker-report.json"
           ]
         },
@@ -843,6 +1088,7 @@
           "done": true,
           "name": "Modal-on-change research spike (jellyfin-expert)",
           "reports": [
+            "docs/implementation/16.4/reviewer-report.json",
             "docs/implementation/16.4/worker-report.json",
             "docs/research/jellyfin-expert/modal-notification-api.json"
           ]
@@ -852,6 +1098,7 @@
           "done": true,
           "name": "Modal-on-change implementation (fail-open to note text)",
           "reports": [
+            "docs/implementation/16.5/reviewer-report.json",
             "docs/implementation/16.5/worker-report.json"
           ]
         },
@@ -860,6 +1107,7 @@
           "done": true,
           "name": "G6/G8 documentation and integration verification",
           "reports": [
+            "docs/implementation/16.6/reviewer-report.json",
             "docs/implementation/16.6/worker-report.json"
           ]
         }
@@ -885,6 +1133,7 @@
           "done": true,
           "name": "Bounded diagnostics metrics model and instrumentation",
           "reports": [
+            "docs/implementation/17.1/reviewer-report.json",
             "docs/implementation/17.1/worker-report.json"
           ]
         },
@@ -893,6 +1142,7 @@
           "done": true,
           "name": "Administrator-authenticated status endpoint",
           "reports": [
+            "docs/implementation/17.2/reviewer-report.json",
             "docs/implementation/17.2/worker-report.json"
           ]
         },
@@ -901,6 +1151,7 @@
           "done": true,
           "name": "Read-only status panel on the settings page",
           "reports": [
+            "docs/implementation/17.3/reviewer-report.json",
             "docs/implementation/17.3/worker-report.json"
           ]
         },
@@ -909,9 +1160,11 @@
           "done": true,
           "name": "F3 documentation and security review",
           "reports": [
-            "docs/implementation/17.4/worker-report.json",
+            "docs/implementation/17.4/reviewer-report.attempt-2.json",
+            "docs/implementation/17.4/reviewer-report.json",
+            "docs/implementation/17.4/security-review.json",
             "docs/implementation/17.4/worker-report.attempt-2.json",
-            "docs/implementation/17.4/security-review.json"
+            "docs/implementation/17.4/worker-report.json"
           ]
         }
       ]
@@ -935,6 +1188,7 @@
           "done": true,
           "name": "Extra Large enum, geometry factor, and settings dropdown ordering",
           "reports": [
+            "docs/implementation/18.1/reviewer-report.json",
             "docs/implementation/18.1/worker-report.json"
           ]
         },
@@ -943,6 +1197,7 @@
           "done": true,
           "name": "Golden coverage and version-decision verification",
           "reports": [
+            "docs/implementation/18.2/reviewer-report.json",
             "docs/implementation/18.2/worker-report.json"
           ]
         },
@@ -951,6 +1206,7 @@
           "done": true,
           "name": "G7 documentation and integration verification",
           "reports": [
+            "docs/implementation/18.3/reviewer-report.json",
             "docs/implementation/18.3/worker-report.json"
           ]
         }
@@ -977,8 +1233,10 @@
           "done": true,
           "name": "F4 mechanism confirmation and persisted-cursor implementation",
           "reports": [
-            "docs/implementation/19.1/worker-report.json",
-            "docs/implementation/19.1/worker-report.attempt-2.json"
+            "docs/implementation/19.1/reviewer-report.attempt-2.json",
+            "docs/implementation/19.1/reviewer-report.json",
+            "docs/implementation/19.1/worker-report.attempt-2.json",
+            "docs/implementation/19.1/worker-report.json"
           ]
         },
         {
@@ -986,6 +1244,8 @@
           "done": true,
           "name": "F4 successive-run coverage tests",
           "reports": [
+            "docs/implementation/19.2/reviewer-report.json",
+            "docs/implementation/19.2/test-quality-review.json",
             "docs/implementation/19.2/worker-report.json"
           ]
         },
@@ -994,6 +1254,7 @@
           "done": true,
           "name": "F6 mechanism confirmation and stale-basis re-enqueue implementation",
           "reports": [
+            "docs/implementation/19.3/reviewer-report.json",
             "docs/implementation/19.3/worker-report.json"
           ]
         },
@@ -1002,6 +1263,8 @@
           "done": true,
           "name": "F6 coalescing coverage tests",
           "reports": [
+            "docs/implementation/19.4/reviewer-report.json",
+            "docs/implementation/19.4/test-quality-review.json",
             "docs/implementation/19.4/worker-report.json"
           ]
         },
@@ -1010,8 +1273,10 @@
           "done": true,
           "name": "F4/F6 documentation and integration verification",
           "reports": [
-            "docs/implementation/19.5/worker-report.json",
-            "docs/implementation/19.5/worker-report.attempt-2.json"
+            "docs/implementation/19.5/reviewer-report.attempt-2.json",
+            "docs/implementation/19.5/reviewer-report.json",
+            "docs/implementation/19.5/worker-report.attempt-2.json",
+            "docs/implementation/19.5/worker-report.json"
           ]
         }
       ]
