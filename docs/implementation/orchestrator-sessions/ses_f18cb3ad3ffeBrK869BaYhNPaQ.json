@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 19",
   "tokens": {
-    "input": 271519,
-    "output": 41377,
-    "reasoning": 54331,
+    "input": 286121,
+    "output": 46765,
+    "reasoning": 59745,
     "cache": {
-      "read": 14278784,
+      "read": 17551232,
       "write": 0
     }
   },
-  "total_tokens": 14646011,
-  "cost_usd": 0.14096230200000004,
+  "total_tokens": 17943863,
+  "cost_usd": 0.15945114600000007,
   "duration_seconds": 15667,
   "first_recorded_at": "2026-09-28T09:08:25Z",
-  "last_updated_at": "2026-09-28T13:44:54Z",
+  "last_updated_at": "2026-09-28T13:53:10Z",
   "updates": [
     {
       "at": "2026-09-28T09:08:25Z",
@@ -74,6 +74,13 @@
       "total_tokens": 14646011,
       "duration_seconds": 15667,
       "note": "Phase 19 task 19.5 COMPLETE and committed (478de28): F4/F6 documentation + limitation resolution with eight registered residuals; implementation-reviewer attempt 2 APPROVED."
+    },
+    {
+      "at": "2026-09-28T13:53:10Z",
+      "cost_usd": 0.15945114600000007,
+      "total_tokens": 17943863,
+      "duration_seconds": 15667,
+      "note": "Phase 19 COMPLETE: Gate 19 applied, phase review APPROVED_WITH_FINDINGS, annotated tag v1.2.0-phase19 created on ff37401; F4/F6 resolved with residuals V12-F4-1..6, V12-F6-1..2; phase aggregate orchestration.json added (PR-19-02)."
     }
   ]
 }
