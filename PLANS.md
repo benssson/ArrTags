@@ -210,7 +210,7 @@ library-mutation cases; the accepted F6 mechanism (ADR-023, Accepted (v1.2): a
 in-flight slot is released); coalescing coverage tests; ADR-022 (as amended by ADR-029)/ADR-023 and the
 architecture documentation.
 **Tasks:**
-- [ ] 19.1 F4 mechanism confirmation and persisted-cursor implementation
+- [x] 19.1 F4 mechanism confirmation and persisted-cursor implementation
 - [ ] 19.2 F4 successive-run coverage tests
 - [ ] 19.3 F6 mechanism confirmation and stale-basis re-enqueue implementation
 - [ ] 19.4 F6 coalescing coverage tests

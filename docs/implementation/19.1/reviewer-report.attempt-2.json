@@ -1,0 +1,119 @@
+{
+  "task": "19.1",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R-19.1-01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "Acceptance criterion 5 (cursor advance rule): the enqueue-returned Stopped stop path was not exercised by any test",
+      "summary": "Closed in attempt 2: ReconciliationCursorResumeTests.StoppedStopsAtTheFirstUncoveredItemAndAdvancesTheCursorOnlyOverTheCoveredPrefix drives a sink-returned WorkHintEnqueueOutcome.Stopped into the service and asserts the stop/advance behavior; the fact is independently sensitive to both mutations the attempt-1 finding named.",
+      "detail": "Attempt 1 found that the service's stop-on-enqueue-returned-Stopped path (LibraryReconciliationService.cs:253-254 and the Stopped -> Fenced mapping at 283-290) was never exercised: every OutcomeOverride script used only Accepted/Coalesced/InFlight/Overflow, and the separate lifecycle-fence stop is a different path. Attempt 2 adds tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:226-265, which scripts RecordingWorkHintSink.OutcomeOverride (tests/ArrTags.Tests/LibraryEventFixtures.cs:107,136-150) to return WorkHintEnqueueOutcome.Stopped for the mid-scope item items[2] on a Scheduled (cursor-governed) run. The new fact asserts: outcome Fenced; Inspected 3, Covered 2, Enqueued 2; the sink recorded only items[0] and items[1] (the stopped item produced no accepted hint); the persisted cursor is a Position record at the last covered item items[1] with the 'example movie' SortName hint (not items[2]); and the next run resumes at the stopped item via ResumeRequests (0,2), covers items[2..4], and completes. I traced both mutations named in R-19.1-01 against the restored production branch statically: (A) deleting the 'or WorkHintEnqueueOutcome.Stopped' clause makes items[2] fall through to covered++ and the run continue past it, ending Completed instead of Fenced and writing a wrapped/advanced cursor - the Assert.Equal(Fenced, first.Outcome) at line 243 fails; (B) keeping the Fenced stop but incrementing covered before the break makes first.Covered == 3 and the cursor Position items[2] - Assert.Equal(2, first.Covered) at line 245 and Assert.Equal(items[1], cursor.Position.ItemId) at line 252 fail. The worker's recorded Probe A/B results ('Expected: Fenced / Actual: Completed' and 'Expected: 2 / Actual: 3') are exactly consistent with this trace and both probes were reported reverted. The production stop branch at LibraryReconciliationService.cs:245-261 is intact with no probe residue (no debug markers; the Overflow-or-Stopped clause present at line 253-254; covered++/lastCovered bookkeeping after the break at lines 264-268). No production change was required, matching the attempt-1 review expectation.",
+      "evidence": [
+        "tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:226-265 (new fact; Stopped override for items[2]; Fenced/Covered 2/cursor items[1]/resume (0,2))",
+        "tests/ArrTags.Tests/LibraryEventFixtures.cs:107,136-150 (OutcomeOverride returns the scripted outcome; only Accepted is recorded)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:245-291 (restored stop branch: usesCursor && Overflow-or-Stopped -> stopOutcome/break; Stopped -> Fenced; cursor written before the break over the covered prefix)",
+        "Static mutation trace A: remove 'or WorkHintEnqueueOutcome.Stopped' -> run continues to Completed, Assert Fenced (line 243) fails",
+        "Static mutation trace B: covered++ before break -> Assert.Equal(2, first.Covered) (line 245) fails; cursor would be items[2], also failing line 252",
+        "Independently rerun ReconciliationCursorResumeTests -> Failed 0, Passed 21, Skipped 0, Total 21 (attempt-1 count was 20)"
+      ],
+      "recommended_action": "None; finding closed."
+    },
+    {
+      "id": "R-19.1-02",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "Persisted-cursor durability vs. cache retention",
+      "summary": "Unchanged from attempt 1: the cursor is a Cache record not exempt from render-cache TTL pruning; default-safe, deferred to 19.5.",
+      "detail": "Re-verified the production files carrying this interaction are untouched by the rework and the disposition is unchanged. ReconciliationCursorStore writes the cursor under StateAuthority.Cache (ReconciliationCursorStore.cs:132); StateRetentionService.RunRetentionPass exempts only MetadataStateStore.RecordKind (StateRetentionService.cs:147), so the cursor is subject to render-cache age pruning. Under the defaults (RenderCacheTtlMinutes 24h, ArrTagsReconciliationTask.DefaultInterval 12h) the cursor is rewritten before expiry, so the record survives; only an effective whole-scope interval longer than the configured TTL prunes it, causing a bounded restart-from-the-start, which is consistent with ADR-022's Cache 'missing resets to the start' semantics. Deferred to 19.2/19.5 integration verification as recorded in the attempt-1 report.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/ReconciliationCursorStore.cs:132 (StateAuthority.Cache write)",
+        "src/ArrTags/PluginLifecycle/StateRetentionService.cs:147 (only MetadataStateStore.RecordKind exempt)",
+        "src/ArrTags/State/StateRetention.cs:45-63 (age TTL deletion of non-exempt cache records)",
+        "docs/implementation/19.1/worker-report.attempt-2.json known_limitations (R-19.1-02 recorded, no action for 19.1)"
+      ],
+      "recommended_action": "None for 19.1; resolve or register the TTL-vs-interval interaction in task 19.5."
+    },
+    {
+      "id": "R-19.1-03",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "Current-state documentation honesty",
+      "summary": "Unchanged from attempt 1: docs/architecture/08 still says the mechanism is not implemented yet and F4 remains Open, deliberately deferred to 19.5.",
+      "detail": "Re-inspected: docs/architecture/08-reconciliation-and-update-flow.md:115-118 still states the whole-scope mechanism is 'not implemented yet: tasks 19.1-19.2 of Phase 19 implement and test it, and F4 is documented as an open limitation ... until Phase 19 lands and task 19.5 finalizes the resolution'. 19.2 tests are still pending, and the 19.1 delegation explicitly required this surface, the docs/limitations/open.md F4 entry, and the Phase 19 changelog entry to be reserved for 19.5. The rework made no docs/architecture, docs/limitations, or docs/changelog change, so this remains correct-by-deferral rather than stale.",
+      "evidence": [
+        "docs/architecture/08-reconciliation-and-update-flow.md:100-118",
+        "docs/limitations/open.md:5-18 (F4 still Open, unchanged)",
+        "git status --short docs/ -> only PLANS.md and docs/plan/state.json modified; no architecture/limitations/changelog change"
+      ],
+      "recommended_action": "None for 19.1; reconcile section 8 and the F4 limitation entry in task 19.5."
+    },
+    {
+      "id": "R-19.1-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "Concurrency / state consistency of the persisted cursor",
+      "summary": "Unchanged from attempt 1: overlapping whole-scope runs can cause a bounded re-cover but cannot skip an uncovered item.",
+      "detail": "Re-confirmed the production advance logic is unchanged by the rework: LibraryReconciliationService is a singleton with no cross-run lock; each run reads the cursor once at start and AdvanceCursor persists only the position of the item that run covered. If two runs overlap, the last writer can move the cursor back to an earlier covered position but never forward past an item neither run covered, so the next run re-covers the overlap. Bounded extra work, not a state-integrity failure; no action required.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:170,418-437 (single cursor read per run; AdvanceCursor writes only the run's own covered position)",
+        "docs/implementation/19.1/worker-report.attempt-2.json known_limitations (R-19.1-04 recorded, no change required)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "R-19.1-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "Rework hygiene / probe residue",
+      "summary": "LibraryReconciliationService.cs has a later mtime (10:36:52) than the new test and state.json, consistent with the worker's Probe A/B mutate-and-revert; the final content and the full suite are clean.",
+      "detail": "Because the task's production files are uncommitted relative to HEAD, attempt-1 vs attempt-2 content for the new/untracked production files cannot be diffed from version control. I therefore inspected the final production stop branch directly for probe residue: LibraryReconciliationService.cs:245-291 is correct (the Overflow-or-Stopped stop clause, the break before covered++/lastCovered, the Stopped -> Fenced mapping, the cursor write over the covered prefix), and a grep for probe/TODO/HACK markers in that file finds none. The file mtime is consistent with the two reverted probes, not with a lingering content change. No residue was found.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:245-291 (inspected; no residue)",
+        "grep -rn -i 'probe|TODO remove|XXX|HACK' src/ArrTags/Reconciliation/LibraryReconciliationService.cs -> no probe markers",
+        "stat mtimes: LibraryReconciliationService.cs 10:36:52 vs test 10:32:28 vs state.json 10:35:16 (probe-revert consistent)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently rerun).",
+    "./build.sh test -> Failed 0, Passed 1854, Skipped 64, Total 1918 (independently rerun; matches the worker's attempt-2 counts and the attempt-1 1853/1917 plus the +1 new fact).",
+    "dotnet test ... --filter \"FullyQualifiedName~ReconciliationCursorResumeTests\" -> Failed 0, Passed 21, Skipped 0, Total 21 (independently rerun; attempt-1 count was 20).",
+    "dotnet test ... --filter \"...ReconciliationCursorResumeTests|ReconciliationCursorStoreTests|MediaLibraryResumeTests|LibraryWorkQueueTests|ReconciliationTriggerTests|ConfigurationReconciliationTriggerTests|LogRedactionTests|GoalAIntegrationTests|StateBoundaryTests\" -> Failed 0, Passed 291, Skipped 0, Total 291 (independently rerun; attempt-1 count was 290).",
+    "Inspected (not rerun) the new fact and harness: ReconciliationCursorResumeTests.cs:226-265 and the CursorHarness/RecordingWorkHintSink (real StateRepository temp files, fake media enumerator, scripted outcome sink); statically traced both named mutations to assertion failures to confirm sensitivity.",
+    "Did not reintroduce mutation probes: the task restricted this reviewer to read-only outside the report file, so sensitivity was established by static trace against the restored production branch, corroborated by the worker's recorded Probe A/B failures."
+  ],
+  "research_checked": [
+    "No new research was required by the rework (test-only addition). Re-confirmed the attempt-1 research conclusions stand: the implementation matches ADR-022 (as amended by ADR-029) and docs/research/jellyfin-expert/reconciliation-cursor-host-order.json (StartIndex/Limit offset paging, no host after-key predicate, anchor located by unique itemId).",
+    "docs/decisions/ADR-029.md clause 2 and docs/decisions/ADR-022.md clause 2: the new fact's expected behavior (Stopped stops at the first uncovered item, cursor advances only over the covered prefix, next run resumes at the stopped item) matches the normative clauses; no research conclusion was changed."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 19.1 done=true with reports [docs/implementation/19.1/worker-report.json, docs/implementation/19.1/worker-report.attempt-2.json]; updated_utc 2026-09-28T10:35:09Z; no other task or phase status changed.",
+    "PLANS.md: task 19.1 checkbox '- [x]' (line 213); the generated milestone table and phase statuses were not hand-edited.",
+    "docs/status.md: render-docs-state --check (inside check-docs.sh with the SDK env sourced) reports the generated status blocks current and the plan state consistent; status.md carries only the historical v1.1.0 release suite counts, so the v1.2 in-progress 1917->1918 change does not appear on this surface (correct).",
+    "docs/architecture/08-reconciliation-and-update-flow.md: still states the mechanism is not implemented yet (deferred to 19.5, see R-19.1-03).",
+    "docs/limitations/open.md: F4 entry unchanged and still Open (reserved for 19.5).",
+    "docs/changelog/: unchanged; no Phase 19 entry added (reserved for 19.5).",
+    "README.md: no F4/cursor/coverage or suite-count statement, so no update required.",
+    "git status --short: changed set is exactly the attempt-1 set (production Reconciliation/Media/Updates files, the new test files, the test call-sites updated for the new constructor parameter, PLANS.md, docs/plan/state.json); the only attempt-2 delta is the new test fact and the state.json report list/updated_utc; no unrelated golden, configuration, renderer, provider, ADR, research, review, limitations, or changelog file differs.",
+    "docs/implementation/19.1/reviewer-report.json: attempt-1 report preserved byte-unchanged (not overwritten); this attempt-2 report is written to reviewer-report.attempt-2.json.",
+    "./scripts/check-docs.sh (with /config/arrtags-env.sh sourced) -> check-docs: PASS (generated status blocks current and plan state consistent; compatibility stubs; decisions index 29 ADRs; limitations index; architecture/data-model indexes; artifact identity; doc budget; current-state links; agent report contracts)."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding_id": "R-19.1-01",
+      "closure": "Verified closed. Attempt 2 added ReconciliationCursorResumeTests.StoppedStopsAtTheFirstUncoveredItemAndAdvancesTheCursorOnlyOverTheCoveredPrefix (tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:226-265) with no production change. The fact scripts the sink to return WorkHintEnqueueOutcome.Stopped for the mid-scope item items[2] and asserts Fenced, Inspected 3/Covered 2/Enqueued 2, only items[0..1] accepted, the cursor at the last covered item items[1], and the next run resuming at items[2] via (0,2) to Completed. Static trace of both mutations named by the finding (delete the Stopped stop clause -> Completed, failing Assert Fenced; covered++ before the break -> Covered 3 / cursor items[2], failing the Covered and cursor assertions) confirms the fact is independently sensitive; the worker's recorded Probe A/B failures match. Production stop branch inspected at LibraryReconciliationService.cs:245-291 with no probe residue. Full suite and focused filter independently rerun green at the claimed counts.",
+      "evidence": [
+        "tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:226-265 (new fact)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:245-291 (restored stop branch, no residue)",
+        "Independent: ./build.sh build 0/0; ./build.sh test 0/1854/64/1918; ReconciliationCursorResumeTests 21/21; focused filter 291/291",
+        "docs/plan/state.json task 19.1 reports list includes both worker reports"
+      ]
+    }
+  ],
+  "ready_for_next_task": true
+}

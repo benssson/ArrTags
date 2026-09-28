@@ -82,6 +82,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
                 serviceProvider.GetRequiredService<LibraryWorkQueue>()));
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
         serviceCollection.TryAddSingleton<IMediaLibraryEnumerator, JellyfinMediaLibraryEnumerator>();
+        serviceCollection.TryAddSingleton(CreateReconciliationCursorStore);
         serviceCollection.TryAddSingleton(CreateMetadataStateStore);
         serviceCollection.TryAddSingleton<IArrReadClientFactory, ArrReadClientFactory>();
 
@@ -254,6 +255,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<IMediaLibraryEnumerator>(),
             serviceProvider.GetRequiredService<IWorkHintSink>(),
             serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>(),
+            serviceProvider.GetRequiredService<ReconciliationCursorStore>(),
             serviceProvider.GetRequiredService<IArrTagsLog<LibraryReconciliationService>>(),
             serviceProvider.GetRequiredService<ArrInventoryCacheProvider>());
     }
@@ -288,6 +290,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
     private static MetadataStateStore CreateMetadataStateStore(IServiceProvider serviceProvider)
     {
         return new MetadataStateStore(serviceProvider.GetRequiredService<StateRepository>());
+    }
+
+    private static ReconciliationCursorStore CreateReconciliationCursorStore(IServiceProvider serviceProvider)
+    {
+        return new ReconciliationCursorStore(serviceProvider.GetRequiredService<StateRepository>());
     }
 
     private static JellyfinArtworkImageAccess CreateArtworkImageAccess(IServiceProvider serviceProvider)

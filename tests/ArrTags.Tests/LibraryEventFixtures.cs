@@ -93,7 +93,9 @@ internal sealed class FakeLibraryEventSource : ILibraryEventSource
 
 /// <summary>
 /// A recording <see cref="IWorkHintSink"/> double that captures the bounded
-/// hints a library-event handler enqueues.
+/// hints a library-event handler enqueues. An optional outcome override lets a
+/// test script the bounded enqueue outcome (coalesced, in-flight, overflow, or
+/// stopped) without a real queue; an accepted override result is recorded.
 /// </summary>
 internal sealed class RecordingWorkHintSink : IWorkHintSink
 {
@@ -101,6 +103,8 @@ internal sealed class RecordingWorkHintSink : IWorkHintSink
     private readonly List<LibraryWorkHint> _hints = new List<LibraryWorkHint>();
 
     public int Capacity { get; set; } = 512;
+
+    public Func<LibraryWorkHint, WorkHintEnqueueOutcome>? OutcomeOverride { get; set; }
 
     public int Count
     {
@@ -126,15 +130,34 @@ internal sealed class RecordingWorkHintSink : IWorkHintSink
 
     public bool TryEnqueue(in LibraryWorkHint hint)
     {
+        return Enqueue(in hint) == WorkHintEnqueueOutcome.Accepted;
+    }
+
+    public WorkHintEnqueueOutcome Enqueue(in LibraryWorkHint hint)
+    {
+        if (OutcomeOverride is { } outcome)
+        {
+            var result = outcome(hint);
+            if (result == WorkHintEnqueueOutcome.Accepted)
+            {
+                lock (_gate)
+                {
+                    _hints.Add(hint);
+                }
+            }
+
+            return result;
+        }
+
         lock (_gate)
         {
             if (_hints.Count >= Capacity)
             {
-                return false;
+                return WorkHintEnqueueOutcome.Overflow;
             }
 
             _hints.Add(hint);
-            return true;
+            return WorkHintEnqueueOutcome.Accepted;
         }
     }
 }

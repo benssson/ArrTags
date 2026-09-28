@@ -1111,6 +1111,7 @@ public sealed class LogRedactionTests
             enumerator,
             sink,
             fences,
+            new ReconciliationCursorStore(new StateRepository(CreateRoot())),
             BuildLog<LibraryReconciliationService>(capturing, verbosity));
 
         await service.ReconcileAsync(LibraryReconciliationSource.Scheduled, progress: null, CancellationToken.None);

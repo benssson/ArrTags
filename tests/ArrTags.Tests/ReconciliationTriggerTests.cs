@@ -73,7 +73,8 @@ public sealed class ReconciliationTriggerTests
             harness.Resolver,
             harness.Enumerator,
             harness.Queue,
-            harness.Fences);
+            harness.Fences,
+            harness.CursorStore);
 
         var result = await service.ReconcileAsync(
             LibraryReconciliationSource.Scheduled,
@@ -475,6 +476,7 @@ public sealed class ReconciliationTriggerTests
 
             Repository = new StateRepository(_root, Configuration.Current.Limits);
             Fences = new ArtworkLifecycleFenceStore(Repository);
+            CursorStore = new ReconciliationCursorStore(Repository);
             Resolver = new ReconciliationLibraryResolver();
             Enumerator = new FakeMediaLibraryEnumerator();
             Sink = new RecordingWorkHintSink();
@@ -487,6 +489,7 @@ public sealed class ReconciliationTriggerTests
                 Enumerator,
                 Sink,
                 Fences,
+                CursorStore,
                 log: null,
                 inventory: Inventory);
         }
@@ -496,6 +499,8 @@ public sealed class ReconciliationTriggerTests
         public StateRepository Repository { get; }
 
         public ArtworkLifecycleFenceStore Fences { get; }
+
+        public ReconciliationCursorStore CursorStore { get; }
 
         public ReconciliationLibraryResolver Resolver { get; }
 
@@ -577,8 +582,9 @@ public sealed class ReconciliationTriggerTests
 
 /// <summary>
 /// A bounded paged <see cref="IMediaLibraryEnumerator"/> double backed by an
-/// in-memory item list. It records every requested page and invokes an optional
-/// hook so a test can cancel or raise a fence during enumeration.
+/// in-memory item list. It records every requested page and resume page and
+/// invokes an optional hook so a test can cancel or raise a fence during
+/// enumeration.
 /// </summary>
 internal sealed class FakeMediaLibraryEnumerator : IMediaLibraryEnumerator
 {
@@ -586,7 +592,11 @@ internal sealed class FakeMediaLibraryEnumerator : IMediaLibraryEnumerator
 
     public List<(int Start, int Max)> Requests { get; } = new();
 
+    public List<(int Start, int Max)> ResumeRequests { get; } = new();
+
     public Action<int>? OnEnumerate { get; set; }
+
+    public Action<int>? OnResume { get; set; }
 
     public int CountCandidates() => Items.Count;
 
@@ -606,5 +616,52 @@ internal sealed class FakeMediaLibraryEnumerator : IMediaLibraryEnumerator
 
         Requests.Add((startIndex, maxItems));
         return Items.Skip(startIndex).Take(maxItems).ToArray();
+    }
+
+    public async Task<MediaLibraryResumeResult> ResumeCandidatesAsync(
+        Guid anchorItemId,
+        int maxItems,
+        CancellationToken cancellationToken)
+    {
+        if (anchorItemId == Guid.Empty)
+        {
+            return MediaLibraryResumeResult.AnchorNotFound();
+        }
+
+        var pageSize = maxItems < 1 ? 1 : maxItems;
+        var offset = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            OnResume?.Invoke(offset);
+
+            var page = Items.Skip(offset).Take(pageSize).ToArray();
+            ResumeRequests.Add((offset, pageSize));
+
+            if (page.Length == 0)
+            {
+                return MediaLibraryResumeResult.AnchorNotFound();
+            }
+
+            for (var index = 0; index < page.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (page[index].Id == anchorItemId)
+                {
+                    var startIndex = offset + index + 1;
+                    var candidates = Items.Skip(startIndex).Take(pageSize).ToArray();
+                    return MediaLibraryResumeResult.Located(startIndex, candidates);
+                }
+            }
+
+            if (page.Length < pageSize)
+            {
+                return MediaLibraryResumeResult.AnchorNotFound();
+            }
+
+            offset += page.Length;
+            await Task.Yield();
+        }
     }
 }

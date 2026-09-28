@@ -342,6 +342,77 @@ public class LibraryWorkQueueTests
         Assert.False(WorkProcessingResult.FromRetryability(ArrErrorRetryability.AfterConfiguration).IsRetryable);
     }
 
+    [Fact]
+    public async Task EnqueueReportsTheBoundedOutcomeVocabulary()
+    {
+        // ADR-022 clause 1: the enqueue boundary distinguishes a newly queued
+        // hint from a coalesced or in-flight duplicate and from a dropped or
+        // refused hint.
+        using var queue = new LibraryWorkQueue(2);
+        var duplicate = Guid.NewGuid();
+
+        Assert.Equal(
+            WorkHintEnqueueOutcome.Accepted,
+            queue.Enqueue(new LibraryWorkHint(duplicate, LibraryWorkReason.Added, 1)));
+        Assert.Equal(
+            WorkHintEnqueueOutcome.Coalesced,
+            queue.Enqueue(new LibraryWorkHint(duplicate, LibraryWorkReason.Updated, 2)));
+
+        var dequeued = await queue.DequeueAsync(CancellationToken.None);
+        Assert.Equal(duplicate, dequeued.Key.ItemId);
+        Assert.Equal(
+            WorkHintEnqueueOutcome.InFlight,
+            queue.Enqueue(new LibraryWorkHint(duplicate, LibraryWorkReason.Updated, 2)));
+
+        Assert.Equal(
+            WorkHintEnqueueOutcome.Accepted,
+            queue.Enqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
+        Assert.Equal(
+            WorkHintEnqueueOutcome.Accepted,
+            queue.Enqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
+        Assert.Equal(
+            WorkHintEnqueueOutcome.Overflow,
+            queue.Enqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
+
+        queue.CompleteProcessing(dequeued.Key);
+    }
+
+    [Fact]
+    public void EnqueueReportsStoppedWhenTheQueueStopsAccepting()
+    {
+        using var queue = new LibraryWorkQueue(4);
+        queue.StopAccepting();
+
+        Assert.Equal(
+            WorkHintEnqueueOutcome.Stopped,
+            queue.Enqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
+        Assert.False(queue.TryEnqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
+        Assert.Equal(0, queue.Count);
+    }
+
+    [Fact]
+    public void EnqueueRejectsMalformedHintsAsStopped()
+    {
+        // A malformed hint can never be a candidate: reporting it as stopped
+        // keeps a whole-scope run from silently skipping it.
+        using var queue = new LibraryWorkQueue(4);
+
+        Assert.Equal(WorkHintEnqueueOutcome.Stopped, queue.Enqueue(default(LibraryWorkHint)));
+        Assert.Equal(WorkHintEnqueueOutcome.Stopped, queue.Enqueue(default(LibraryWorkItem)));
+        Assert.Equal(0, queue.Count);
+    }
+
+    [Fact]
+    public void BooleanTryEnqueueMatchesTheBoundedOutcome()
+    {
+        using var queue = new LibraryWorkQueue(1);
+        var itemId = Guid.NewGuid();
+
+        Assert.True(queue.TryEnqueue(new LibraryWorkHint(itemId, LibraryWorkReason.Added, 1)));
+        Assert.False(queue.TryEnqueue(new LibraryWorkHint(itemId, LibraryWorkReason.Updated, 2)));
+        Assert.False(queue.TryEnqueue(new LibraryWorkHint(Guid.NewGuid(), LibraryWorkReason.Added, 1)));
+    }
+
     private static LibraryWorkWorker CreateWorker(
         LibraryWorkQueue queue,
         IWorkItemProcessor processor,

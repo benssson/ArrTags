@@ -1,0 +1,102 @@
+{
+  "task": "19.1",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R-19.1-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "Acceptance criterion 5 (cursor advance rule): Overflow/Stopped stop the run and advance only the covered prefix",
+      "summary": "The service's enqueue-returned Stopped stop path is not exercised by any test; only the Overflow stop (and the separate lifecycle-fence stop) is tested.",
+      "detail": "LibraryReconciliationService.cs:253-260 stops a cursor-governed run when the enqueue outcome is Overflow OR Stopped, and maps Stopped to LibraryReconciliationOutcome.Fenced (lines 283-290). The worker report's acceptance-criteria item 5 claims the tests establish 'Overflow/Stopped stop the run and the cursor advances only over the covered prefix' and cites ReconciliationCursorResumeTests.OverflowStopsAtTheFirstUncoveredItemAndAdvancesTheCursorOnlyOverTheCoveredPrefix, CancellationAdvancesTheCursorOnlyOverTheCoveredPrefix, and FenceStopAdvancesTheCursorOnlyOverTheCoveredPrefix. None of those exercises a sink returning WorkHintEnqueueOutcome.Stopped: the OutcomeOverride scripts use only Accepted/Coalesced/InFlight/Overflow (ReconciliationCursorResumeTests.cs:194-195, 231-236, 259-260, 402-403), and a repository-wide test search for WorkHintEnqueueOutcome.Stopped finds only LibraryWorkQueueTests.cs (the queue vocabulary), not the service. FenceStopAdvances... stops via AllowsNewWork() (the lifecycle fence), which is a different code path from the sink's Stopped return (LibraryWorkQueue returns Stopped only when its own _accepting==0 on shutdown, or for a malformed hint; a raised fence does not make the queue return Stopped). Consequence: deleting the 'or WorkHintEnqueueOutcome.Stopped' clause, or mis-handling the Stopped classification (e.g. covering the stopped item and continuing to wrap the cursor past it, exactly the class of defect probe P11 targeted), would leave the whole suite green. The production code is correct as written; the evidence for this named sub-behavior is missing, so the report's claim for criterion 5 is not fully established.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:253-260 (usesCursor && outcome is Overflow or Stopped -> stopOutcome/break)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:271-290 (Stopped -> LibraryReconciliationOutcome.Fenced, cursor advanced over covered prefix)",
+        "tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:194-195, 231-236, 259-260, 402-403 (OutcomeOverride never returns Stopped)",
+        "grep tests for WorkHintEnqueueOutcome.Stopped -> only tests/ArrTags.Tests/LibraryWorkQueueTests.cs:387,400,401",
+        "tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:313-339 (FenceStop uses the lifecycle fence via AllowsNewWork, not the sink's Stopped return)",
+        "docs/implementation/19.1/worker-report.json acceptance_criteria item 5 evidence list"
+      ],
+      "recommended_action": "Add one ReconciliationCursorResumeTests fact that scripts the sink to return WorkHintEnqueueOutcome.Stopped for a mid-scope item and asserts: outcome Fenced, the stopped item is not counted as Covered, the cursor is the last covered item (not the stopped item), and the following run resumes at the stopped item. No production change is required."
+    },
+    {
+      "id": "R-19.1-02",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "Persisted-cursor durability vs. cache retention",
+      "summary": "The reconciliation cursor is a Cache record that is not exempt from the render-cache TTL/quota retention, unlike MetadataStateStore, so it can be pruned between whole-scope runs and silently reset coverage.",
+      "detail": "ReconciliationCursorStore writes under StateAuthority.Cache (ReconciliationCursorStore.cs:132). StateRetentionService.RunRetentionPass exempts only MetadataStateStore.RecordKind (StateRetentionService.cs:147); StateRetention.ApplyCacheRetention then deletes every non-exempt cache *.json older than RenderCacheTtlMinutes (StateRetention.cs:45-63). The cursor is the only non-exempt Cache record (grep for StateAuthority.Cache: MetadataStateStore and ReconciliationCursorStore), so quota eviction is not a practical threat, but age pruning is: the default TTL is 24h (OperationalLimits.cs:131) versus the default 12h scheduled interval (ArrTagsReconciliationTask.cs:42), so under defaults the cursor's mtime is refreshed before expiry and it survives. If the effective whole-scope interval exceeds the configured TTL (a user-configurable Jellyfin interval; TTL floor 1 minute), the cursor is pruned and every cycle restarts from the beginning, which is the F4 behavior the mechanism exists to remove. This is consistent with the ADR's Cache-authority 'missing resets to the start' semantics and is default-safe, so it is recorded rather than blocking 19.1; it is an integration interaction not covered by the 19.1 acceptance criteria and belongs to the 19.2/19.5 coverage and integration verification.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/ReconciliationCursorStore.cs:132 (StateAuthority.Cache write)",
+        "src/ArrTags/PluginLifecycle/StateRetentionService.cs:147 (only MetadataStateStore.RecordKind exempt)",
+        "src/ArrTags/State/StateRetention.cs:45-63 (age TTL deletion of non-exempt cache records)",
+        "src/ArrTags/Configuration/OperationalLimits.cs:131 (RenderCacheTtlMinutes default 24h)",
+        "src/ArrTags/PluginLifecycle/ArrTagsReconciliationTask.cs:42 (DefaultInterval 12h)"
+      ],
+      "recommended_action": "Consider adding ReconciliationCursorStore.RecordKind to the exemptCacheKinds list (or documenting the TTL-vs-interval interaction as a registered limitation) in task 19.5; no action required for 19.1."
+    },
+    {
+      "id": "R-19.1-03",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "Current-state documentation honesty",
+      "summary": "docs/architecture/08 still states the whole-scope mechanism is 'not implemented yet'; this is now partly stale because 19.1 implemented it, but the orchestrator explicitly deferred the wording update to task 19.5.",
+      "detail": "docs/architecture/08-reconciliation-and-update-flow.md:115-118 says the mechanism 'is not implemented yet: tasks 19.1-19.2 of Phase 19 implement and test it'. After 19.1 the implementation exists (19.2 tests are still pending), so the sentence is partially inaccurate. The delegation for 19.1 explicitly required this surface to keep saying the mechanism is not implemented yet, with the F4 limitation entry (docs/limitations/open.md F4, still Open and unchanged) and the Phase 19 changelog entry reserved for 19.5. The worker report documents this deferral. No documentation change is required for 19.1; the architecture section 8 wording and the F4 limitation should be reconciled by 19.5.",
+      "evidence": [
+        "docs/architecture/08-reconciliation-and-update-flow.md:100-118",
+        "docs/limitations/open.md:5-18 (F4 unchanged, still Open)",
+        "docs/implementation/19.1/worker-report.json documentation_reconciliation.old_values_removed (explicit 19.5 deferral)",
+        "git status: no docs/architecture, docs/limitations, or docs/changelog changes in the task diff"
+      ],
+      "recommended_action": "None for 19.1; reconcile section 8 and the F4 limitation entry in task 19.5."
+    },
+    {
+      "id": "R-19.1-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "Concurrency / state consistency of the persisted cursor",
+      "summary": "Reviewed overlapping whole-scope runs: each run writes only a position it actually covered after reading its own starting cursor, so concurrency can cause a bounded re-cover (last writer moves the cursor back) but cannot skip an uncovered item.",
+      "detail": "LibraryReconciliationService is a singleton with no cross-run lock, and a manual/periodic scheduled run can overlap a post-scan run. Each run reads the cursor once at start (line 170), resumes from it, and persists only the position of the last item that run covered (AdvanceCursor, lines 418-437). If run A (from X) and run B (from X) overlap, whichever finishes last writes a position it covered, so the cursor can move back to an earlier covered position but never forward past an item either run did not cover; the next run re-covers the overlap. No skip is possible, so this is a bounded extra-work effect, not a state-integrity failure. No change is required; recorded for the audit trail.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:170 (single cursor read per run)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:418-437 (AdvanceCursor writes only the run's own covered position)",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:123,142-145 (singleton service plus scheduled task and hosted post-save/ lifecycle services)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently rerun).",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1853, Skipped 64, Total 1917 (independently rerun; matches the worker's reported numbers and the claimed +54 over the 18.3 baseline).",
+    "dotnet test ... --filter \"...ReconciliationCursorResumeTests|ReconciliationCursorStoreTests|MediaLibraryResumeTests|LibraryWorkQueueTests|ReconciliationTriggerTests|ConfigurationReconciliationTriggerTests|LogRedactionTests|GoalAIntegrationTests|StateBoundaryTests\" -> Failed 0, Passed 290, Skipped 0, Total 290 (independently rerun).",
+    "dotnet run scripts/render-docs-state.cs -> status.md: up to date, PLANS.md: up to date (both blocks).",
+    "./scripts/check-docs.sh -> only the expected 'task 19.1 has a worker report but no reviewer report' agent-contract pairing line fails; all other sections pass. This reviewer report closes that line.",
+    "Inspected (not rerun) the task's focused tests: MediaLibraryResumeTests, ReconciliationCursorStoreTests, ReconciliationCursorResumeTests, and the LibraryWorkQueueTests additions; verified the assertions exercise real behavior (real StateRepository temp files, DispatchProxy ILibraryManager host-order double, real LibraryWorkQueue over 6 candidates, byte-identical cursor file for PostSave).",
+    "Probe the worker reported (P1-P13): verified the mutated behaviors they name are asserted by the cited tests (e.g. P1 scope comparison by ScopeChangeResetsToTheStart, P9 wrap start by the wrap/resume facts, P12 write validation by WriteRejectsAnOutOfBoundsScope); did not rerun the probes."
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json: verified F1-F10 support ADR-029's mechanism -- effective order SortName ASC, Name ASC; no identifier tie-break (ItemSortBy has no Id); no keyset/after-key predicate (only StartIndex/Limit offset paging, AdjacentTo, and SortName-only name filters); StartIndex -> SQL LIMIT/OFFSET. Confirmed the implementation matches: JellyfinMediaLibraryEnumerator uses only StartIndex/Limit paging and locates the anchor by unique itemId.",
+    "docs/reviews/architecture/adr-022-clause-3-conformance.json: verified the recommended M1 mechanism and the explicit page-reach/offset bound (one run bounded by server-wide candidate count + QueueCapacity; O(N^2/QueueCapacity) per cycle) that ADR-029 registers as residual limitations.",
+    "docs/decisions/ADR-029.md clauses 1-5 vs the implementation: host order stated correctly; no host after-key predicate attempted; key is an ArrTags-side identity anchor located by unique itemId with SortName as a non-authoritative hint (service passes only anchor.ItemId to ResumeCandidatesAsync); unlocatable anchor resets to start; tie caveat and cost residuals registered.",
+    "docs/decisions/ADR-022.md clauses 1,2,4,5,6,7: verified unchanged in effect -- bounded WorkHintEnqueueOutcome vocabulary with boolean TryEnqueue retained (clause 1); covered-prefix advance with Overflow/Stopped stop and coalesced/in-flight/no-work coverage plus wrap and cancellation-prefix advance (clause 2); single fixed-kind/id Cache record with bounded payload, versioning, SHA-256 envelope integrity, and missing/torn/out-of-range reset observed as a Cache miss rather than quarantine (clause 4); scope reset on enabled-library set or supported item-type (badge surface) change (clause 5); Scheduled/PostScan only, PostSave unchanged (clause 6); bounded ReconciliationBatchSize pages with cancellation between and inside pages and a yield between pages (clause 7).",
+    "docs/planning/v1.2.md Goal F4 acceptance criteria and DG-19; PLANS.md Phase 19 acceptance -- verified the implementation targets those criteria and the full successive-run coverage matrix is explicitly deferred to 19.2."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 19.1 done=true with reports [docs/implementation/19.1/worker-report.json]; updated_utc advanced; no other task or phase status changed; format agrees with completed siblings 18.2/18.3.",
+    "PLANS.md: task 19.1 checkbox '- [ ]' -> '- [x]'; the generated milestone table and phase statuses were not hand-edited; render-docs-state reports both generated blocks current.",
+    "docs/status.md: regenerated (render-docs-state reports up to date); no overclaim (active phases still list Phase 19 and open limitations still list F4).",
+    "docs/architecture/08-reconciliation-and-update-flow.md: hosts the ADR-022/ADR-029 mechanism description (host order, identity-anchored resume, bound caveats) and still states the mechanism is not implemented yet -- per the 19.1 delegation, the wording update is deferred to 19.5 (see R-19.1-03).",
+    "docs/limitations/open.md: F4 entry unchanged and still Open (correctly reserved for 19.5).",
+    "docs/changelog/: unchanged (Phase 19 entry reserved for 19.5).",
+    "README.md: checked for an F4/cursor/coverage statement; none, so no update required.",
+    "git diff --stat over docs/decisions/docs/architecture/docs/limitations/docs/changelog/docs/research/docs/reviews: empty -- no ADR, research, review, or history text was rewritten.",
+    "git status: the changed set is exactly the F4 production files, the five test call-sites updated for the new constructor parameter, the new/extended test files, PLANS.md, and docs/plan/state.json; no unrelated files, golden, configuration, renderer, or provider file differs."
+  ],
+  "required_changes": [
+    "Add a ReconciliationCursorResumeTests fact that scripts the sink (or a stopped real LibraryWorkQueue) to return WorkHintEnqueueOutcome.Stopped mid-scope and asserts the run stops at that item with outcome Fenced, the stopped item is not counted as Covered, the cursor advances only over the covered prefix, and the next run resumes at the stopped item -- closing the criterion-5 evidence gap R-19.1-01. No production code change is required."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

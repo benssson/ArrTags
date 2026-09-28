@@ -129,6 +129,7 @@ internal static class ReconciliationFixtures
         {
             Id = itemId,
             Name = "Example Movie",
+            SortName = "example movie",
             ProductionYear = 2021,
             Path = "/media/movies/example.mkv",
             Location = LocationType.FileSystem,
@@ -145,6 +146,7 @@ internal static class ReconciliationFixtures
         {
             Id = itemId,
             Name = "Example Episode",
+            SortName = "example episode",
             SeriesId = seriesId,
             ParentIndexNumber = 2,
             IndexNumber = 5,
