@@ -3,7 +3,7 @@
   "title": "F6 coalescing coverage tests",
   "phase": 19,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "4ba029d",
   "subagents": [
     {
       "role": "implementation-worker",
