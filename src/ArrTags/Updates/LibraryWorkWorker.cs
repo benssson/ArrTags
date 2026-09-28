@@ -163,9 +163,10 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
                 continue;
             }
 
+            WorkProcessingResult? result = null;
             try
             {
-                await ProcessWithRetryAsync(item, cancellationToken).ConfigureAwait(false);
+                result = await ProcessWithRetryAsync(item, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -178,12 +179,17 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
             }
             finally
             {
+                // ADR-023 clause 3: the in-flight slot must be released before a
+                // stale-basis re-enqueue is attempted. A same-key enqueue while
+                // the key is still in flight is coalesced away, so the ordering
+                // is load-bearing; the re-enqueue is bounded and never blocks.
                 _queue.CompleteProcessing(item.Key);
+                ReenqueueStaleBasis(item, result);
             }
         }
     }
 
-    private async Task ProcessWithRetryAsync(LibraryWorkItem item, CancellationToken cancellationToken)
+    private async Task<WorkProcessingResult?> ProcessWithRetryAsync(LibraryWorkItem item, CancellationToken cancellationToken)
     {
         var limits = _configuration.Current.Limits;
         var maxAttempts = WorkRetryPolicy.ComputeAttemptCount(limits);
@@ -213,7 +219,7 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
             if (!result.IsRetryable || attempt == maxAttempts - 1)
             {
                 LogProcessed(item, result, attempt + 1);
-                return;
+                return result;
             }
 
             LogRetryScheduled(item, result, attempt + 1);
@@ -221,6 +227,42 @@ public sealed class LibraryWorkWorker : IHostedService, IDisposable
                 WorkRetryPolicy.ComputeBackoff(limits, attempt),
                 cancellationToken).ConfigureAwait(false);
         }
+
+        // Unreachable: the attempt count is always at least one, so the final
+        // iteration returns above.
+        return null;
+    }
+
+    /// <summary>
+    /// Re-enqueues exactly one fresh <see cref="LibraryWorkItem"/> at the current
+    /// configuration version when the processed item discarded with the
+    /// <see cref="DiscardReason.ConfigurationStale"/> classification (ADR-023
+    /// clauses 2-4). It is called only after the in-flight slot for the key has
+    /// been released. The enqueue is non-blocking, so a stopped or full queue
+    /// drops the re-enqueue (bounded) rather than blocking the worker. The fresh
+    /// item carries the current version, so it can never classify as
+    /// <see cref="DiscardReason.ConfigurationStale"/> again: the effective bound
+    /// is one re-enqueue per (item, connection, image surface, version) and no
+    /// per-key version storage is required. A stale classification whose item
+    /// already carries the current version is dropped rather than re-enqueued, so
+    /// even a misclassified discard cannot loop.
+    /// </summary>
+    /// <param name="item">The processed work item.</param>
+    /// <param name="result">The final processing result, or <see langword="null"/> when no result was produced.</param>
+    private void ReenqueueStaleBasis(LibraryWorkItem item, WorkProcessingResult? result)
+    {
+        if (result?.DiscardReason != DiscardReason.ConfigurationStale)
+        {
+            return;
+        }
+
+        var currentVersion = _configuration.Current.ConfigurationVersion;
+        if (item.ConfigurationVersion == currentVersion)
+        {
+            return;
+        }
+
+        _ = _queue.Enqueue(new LibraryWorkItem(item.Key, item.Reason, currentVersion));
     }
 
     /// <summary>

@@ -1,0 +1,61 @@
+{
+  "task": "19.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "19.3-F1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "scope / residual limitation ownership",
+      "summary": "The artwork-stage version guard is a success-but-stale path that leaves a narrow unfixed F6 window; it is correctly excluded by ADR-023 but is not registered in the limitations register and should be handled by 19.5.",
+      "detail": "ArtworkPublishingWorkItemProcessor.ProcessAsync (line 80: snapshot.ConfigurationVersion != item.ConfigurationVersion) returns reconciliation.ProcessingResult, i.e. the successful metadata-publication result, without artwork work. It is therefore not a discard and carries no DiscardReason, and the worker does not re-enqueue for it. ADR-023 clause 1 scopes ConfigurationStale to discards (the initial version check and the pre-publication re-check) and the rejected alternative explicitly forbids extending re-enqueue to successful-but-stale work, so the reading in the worker's interpretations[1] is faithful to the accepted decision. The residual operator-visible window is: a save lands after the metadata pre-publication re-check passed but before the artwork-stage version guard, so the item's post-save hint was coalesced, metadata is published under the pre-save version, artwork is skipped, and the pass returns success with no re-enqueue. This is the same F6 symptom (item in flight at save time not re-rendered by the save) in a narrower window, and it is unchanged from before the task. The worker recorded it in worker-report.known_limitations but task 19.5 owns the F6 limitation resolution and the current-state surfaces (docs/limitations/open.md and docs/architecture/08-reconciliation-and-update-flow.md) still describe F6 as open. This does not block 19.3: the v1.2/PLANS F6 acceptance criteria are phrased around a work item that 'discards with the ConfigurationStale classification', which is satisfied, and ADR-023 deliberately excludes successful-but-stale work. Recommended at 19.5: either register this residual (extend F6 or a new bounded ID) or explicitly document it as an accepted residual with the ADR-023 scope rationale so the F6 resolution is not an overclaim.",
+      "evidence": [
+        "src/ArrTags/Updates/ArtworkPublishingWorkItemProcessor.cs:79-87 (returns the successful result, no discard)",
+        "docs/decisions/ADR-023.md clause 1 (lines 48-55) and the rejected 'worker compares versions' alternative (lines 112-115)",
+        "docs/implementation/19.3/worker-report.json known_limitations[0] and interpretations[1]",
+        "docs/limitations/open.md F6 (still open); docs/architecture/08-reconciliation-and-update-flow.md:120-127 (still describes F6 as open)"
+      ],
+      "recommended_action": "At task 19.5, when resolving F6, register this artwork-stage window or explicitly document it as an accepted residual so the F6 resolution claim is accurate. No change required for 19.3."
+    },
+    {
+      "id": "19.3-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / discard-classification mapping",
+      "summary": "The provider-kind (kind == null) Ineligible discard and the paired pre-publication Ineligible/ConnectionChanged/identity-creation sites have no dedicated test; their classification is verified by inspection.",
+      "detail": "All 12 MetadataReconciliationProcessor discard sites carry a bounded DiscardReason (verified by grep and source inspection). Direct tests assert the initial ConfigurationStale, ItemMissing, Ineligible, ConnectionChanged, and IdentityUnavailable sites and the pre-publication ConfigurationStale, ItemMissing, and subject-mismatch IdentityUnavailable sites. The provider-kind site (MetadataReconciliationProcessor.cs:132-136) maps to Ineligible by inspection and is unreachable for supported identities (Series/Season fail badge-surface eligibility first), and the pre-publication TryCreate/IsEligible/ConnectionChanged sites map by inspection. Only ConfigurationStale affects worker behavior, so this is diagnostic-only and the acceptance criterion 'all relevant discard sites carry the correct classification' is met; 19.4's coalescing coverage matrix is the appropriate place for broader coverage.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:112,119,124,129,135,141,221,227,232,237,242,250",
+        "tests/ArrTags.Tests/MetadataReconciliationProcessorTests.cs:93-224 (classification assertions)",
+        "tests/ArrTags.Tests/StaleBasisReenqueueTests.cs:152-185 (non-version classification gate)"
+      ],
+      "recommended_action": "None required for 19.3."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independent rerun)",
+    "./build.sh test -> Failed 0, Passed 1886, Skipped 64, Total 1950 (independent rerun; matches the worker report exactly)",
+    "dotnet test --filter FullyQualifiedName~StaleBasisReenqueueTests -> Failed 0, Passed 11, Skipped 0, Total 11 (independent rerun)",
+    "Independent reproduction of probe P1 (ordering sensitivity): temporarily swapped ReenqueueStaleBasis before _queue.CompleteProcessing in the worker finally, rebuilt, and ran StaleBasisDiscardReenqueuesOneFreshItemAtTheCurrentVersion + AStaleBasisDiscardReenqueuesAndReRendersThePublishedPoster -> Failed 2, Passed 0, Total 2; source then restored byte-identical (md5 530445f1bd78324dee1178f4a2797ea5, matching pre-probe) and rebuilt; focused 11 re-ran green. Confirms the ADR-023 clause 3 mandated coverage test genuinely fails if the re-enqueue is issued before the slot is released.",
+    "Inspected test assertions: StaleBasisDiscardReenqueuesOneFreshItemAtTheCurrentVersion ({1,2}, same key/reason, peak concurrency 1), NonVersionDiscardsDoNotReenqueue (4 classification cases), ASameVersionStaleClassificationDoesNotRecur, AStoppedQueueDropsTheStaleBasisReenqueue, AFullQueueDropsTheStaleBasisReenqueue (capacity-1 filler), AStaleBasisDiscardReenqueuesAndReRendersThePublishedPoster (two renders, changed fingerprint), DiscardedCarriesTheClassificationAndStaysCompletedAndNonRetryable (undefined enum rejected), AReenqueueIssuedBeforeTheSlotIsReleasedWouldBeCoalescedAway (preReleaseOutcome == InFlight, queue.Count 0)."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-023.md clauses 1-8 checked against the implementation: bounded five-member enum, exactly one classification re-enqueues, release-then-enqueue ordering, current-version bound with no per-key storage, version check before eligibility, unchanged WorkItemKey/single-flight, unchanged post-save trigger, no secret/path payload.",
+    "Mechanism confirmation against shipped code: LibraryWorkQueue.Enqueue lines 168-173 (same-key in-flight -> InFlight, dropped), LibraryWorkQueue.CompleteProcessing lines 246-264 (decrements/removes the slot), LibraryWorkWorker pre-task release only in the finally (the ordering rationale), and every prior discard returning WorkProcessingResult.Completed(reason).",
+    "WorkItemKey.cs (lines 44-105) confirmed version-blind (ItemId, ConnectionId, Surface only); LibraryWorkQueue keys on WorkItemKey so coalescing/single-flight semantics are unchanged.",
+    "docs/planning/v1.2.md Goal F6 acceptance criteria (lines 228-260) and docs/limitations/open.md F6 (lines 20-51) checked for wording that the residual finding 19.3-F1 addresses."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 19.3 done=true with reports=[docs/implementation/19.3/worker-report.json]; updated_utc advanced; no other task/limitation changed (git diff checked).",
+    "PLANS.md: '- [x] 19.3 ...' checkbox matches state.json (git diff checked).",
+    "docs/status.md: unchanged and consistent (generated; contains no task-level 19.3 line).",
+    "scripts/check-docs.sh with the worker report present and before this reviewer report: passes generated-status/plan-state, decisions index, limitations index, architecture/data-model indexes, artifact identity, doc budget, current-state links; fails only the expected worker/reviewer pairing line for 19.3, which this report closes.",
+    "dotnet run scripts/render-docs-state.cs (via check-docs): generated status blocks current and plan state consistent.",
+    "No ADR/history/limitations/changelog/architecture rewrite: git status shows only state.json, PLANS.md, the two production files, WorkProcessingResult.cs, MetadataReconciliationProcessorTests.cs, DiscardReason.cs, StaleBasisReenqueueTests.cs, and docs/implementation/19.3/. Architecture 08 and limitations/open.md F6 remain open as 19.5 owns them."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

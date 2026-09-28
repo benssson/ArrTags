@@ -212,7 +212,7 @@ architecture documentation.
 **Tasks:**
 - [x] 19.1 F4 mechanism confirmation and persisted-cursor implementation
 - [x] 19.2 F4 successive-run coverage tests
-- [ ] 19.3 F6 mechanism confirmation and stale-basis re-enqueue implementation
+- [x] 19.3 F6 mechanism confirmation and stale-basis re-enqueue implementation
 - [ ] 19.4 F6 coalescing coverage tests
 - [ ] 19.5 F4/F6 documentation and integration verification
 **Authoritative Phase 19 execution order:** 19.1, 19.2, 19.3, 19.4, 19.5
