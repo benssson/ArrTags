@@ -1,0 +1,102 @@
+{
+  "subject": "Task 19.4 F6 coalescing coverage matrix (tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs) together with the 19.3 tests/ArrTags.Tests/StaleBasisReenqueueTests.cs, against ADR-023 clauses 1-8 and docs/planning/v1.2.md Goal F6 acceptance criteria",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "TQ-19.4-01",
+      "severity": "LOW",
+      "status": "open",
+      "area": "meaningfulness",
+      "description": "The chain facts' `PeakConcurrency(subjectKey) == 1` assertions are vacuous for the property they are cited as proving. Every fact builds the worker with `workerCount: 1`, so at most one `ProcessAsync` can ever run at a time and the per-key peak can never exceed 1 regardless of the queue's single-flight/coalescing behavior. The worker report's criterion 8 evidence cites them as 'chain-level single-flight' proof ('the worker never runs two items for one key concurrently'), which overstates what these assertions establish. The behavior itself is not uncovered: `WorkItemKeyRemainsVersionBlindAndSingleFlightIsPerItemConnectionAndSurface` exercises the real queue directly (same-key enqueue while in-flight returns InFlight, a distinct surface is admitted, a repeat of the pending surface coalesces), which is the authoritative single-flight mechanism. This is a weakened/redundant assertion plus a slight report overclaim, not a coverage gap.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:114,176,240,321,411 assert `Assert.Equal(1, processor.PeakConcurrency(subjectKey))`.",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:99-102,144-147,220-223,275-278,359-362,508-511,567-570 all pass `workerCount: 1`.",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:909-1015 ChainRecordingProcessor tracks peak per-key concurrency, so the tracker is correct but cannot observe >1 with one worker.",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:624-652 directly asserts the real queue's per-key/surface single-flight outcomes.",
+        "docs/implementation/19.4/worker-report.json criterion 8 evidence cites the peak-concurrency facts as chain-level single-flight."
+      ],
+      "recommended_action": "Attribute per-surface/per-key single-flight to the queue-level fact (and any existing LibraryWorkQueue/worker multi-worker tests); drop the 'chain-level single-flight' wording, or add a multi-worker fact if chain-level concurrency is intended to be claimed. No production change is implied."
+    },
+    {
+      "id": "TQ-19.4-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "determinism",
+      "description": "The no-extra-pass guard is `AssertStableAsync`, a fixed 250 ms wall-clock window that polls every 10 ms and asserts the observed call count on every sample. It is not a vacuous poll (it fails if the count changes during the window) and it is bounded, but it is time-based: a defect whose extra pass is delayed beyond 250 ms would escape the assertion. All defects this matrix is designed to detect (the stale-basis re-enqueue and its drops) are synchronous in-process enqueues, so the risk is low and the pattern matches the pre-existing 19.3 file. It is recorded for tracking rather than as a blocker.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:774-782 AssertStableAsync (DateTime.UtcNow + 250 ms, Task.Delay(10)).",
+        "tests/ArrTags.Tests/StaleBasisReenqueueTests.cs:397-405 uses the identical fixed-window helper.",
+        "Independent probes in the throwaway copy: P0 (no re-enqueue) and P1 (re-enqueue before slot release) each produced the expected failures immediately; the AssertStableAsync-dependent P2/P3/P4 also failed as expected, so the window does catch the intended defects."
+      ],
+      "recommended_action": "None required for this task. If the suite is hardened later, prefer a quiescence signal over a fixed wall-clock window; otherwise keep parity with the existing Phase 6/19.3 pattern."
+    },
+    {
+      "id": "TQ-19.4-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "The structural 'no version member' check is name-based: it only fails if a `WorkItemKey` property/field name contains 'Version'. A version-bearing member under another name would evade it. This is not a real gap because the load-bearing evidence is behavioral (equal keys and equal hashes for version-only differences, plus the real queue returning Coalesced/InFlight for version-only differences); the reflection check is a supplementary guard.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:616-622 name-contains-'Version' reflection assertion.",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:610-615,629-641 equality/hash and real-queue version-only coalescing assertions."
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "TQ-19.4-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "description": "The connection-changed changed-item case deliberately asserts no recorded post-save hint outcome (`if (mutation != \"connection-changed\")`), because saving with Radarr disabled makes the post-save reconciliation a bounded NoEnabledProvider no-op. The case still drives the real save activation, the real worker, and the real processor, and the second pass carries the real ConnectionChanged classification. This residual is disclosed in the worker report's known limitations rather than asserted away, and is honest.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:372-386 (connection-changed save, conditional post-save assertion).",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:106-116 returns NoEnabledProvider when no provider is enabled.",
+        "docs/implementation/19.4/worker-report.json known_limitations[1] records this."
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "TQ-19.4-05",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "coverage",
+      "description": "The Goal F6 criterion 'event, webhook, and per-item triggers are unchanged' has no new dedicated test in 19.4. This is appropriate: the task changed no production code (git diff shows only PLANS.md and docs/plan/state.json), so there is no behavior delta to test, and those triggers' existing tests remain authoritative. Recorded only so the absence is explicit.",
+      "evidence": [
+        "git diff --stat: only PLANS.md and docs/plan/state.json modified; src/ArrTags is byte-identical to the 19.3 commit.",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs contains no trigger-specific new cases."
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "matrix_observed": {
+    "default": "0 failed / 1901 passed / 64 skipped / 1965 total (./build.sh test, reproduced; build 0 warnings / 0 errors)",
+    "host_guarded": "not run in this audit (ARRTAGS_JELLYFIN_HOST_DIR unset; task claims no host-guarded facts and adds none)",
+    "forced_native": "not run in this audit (ARRTAGS_SKIA_COMPAT not exercised; task adds no native/golden facts)",
+    "focused_coalescing_matrix": "0 failed / 15 passed / 0 skipped / 15 total, green on 5 consecutive /tmp runs",
+    "focused_stale_basis_19_3": "0 failed / 11 passed / 0 skipped / 11 total, green on 3 consecutive runs",
+    "mutation_probes_reproduced_in_temp_copy": "P0 8/15 failed; P1 8/15 failed (same 8 stale-basis cases); P2 4/15 failed (exactly the four NonVersionDiscards cases); P3 1/15 failed (stopped queue); P4 1/15 failed (full queue); P5 1/1 failed (second version advance) - all matching the worker report",
+    "documented_release_matrix_note": "docs/release/build-and-release.md records the 1.1.0.0 matrix (default 1494/63/1557, host-guarded 1513/44/1557, forced-native 1575/20/1595), which predates the v1.2 work and is not the current v1.2 default count; the current default count is the 1901/64/1965 reproduced above"
+  },
+  "substitutes_checked": [
+    "ChainRecordingProcessor (tests/.../CoalescingCoverageMatrixTests.cs:910-1016): delegates every pass to the real composed Phase6Harness.Recovering chain (ArtworkRecoveringWorkItemProcessor -> ArtworkPublishingWorkItemProcessor -> MetadataReconciliationProcessor) and only records bounded items/results plus peak concurrency; it classifies nothing. The optional before-hook only mutates test world state (block/stop/fill), not the result.",
+    "ScriptedProcessor + ChainRecordingProcessor in NonVersionDiscardsDoNotReenqueue (tests/.../CoalescingCoverageMatrixTests.cs:429-479,1023-1036): the only scripted processor in the file. It is justified and minimal for the classification gate because the real processor checks item.ConfigurationVersion before resolve/eligibility (src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:109-114), so a real non-version discard for stale-versioned work cannot be produced. The real-chain no-re-enqueue for all four non-version classifications is separately covered by the second passes of the changed-item theory (tests/.../CoalescingCoverageMatrixTests.cs:400-410).",
+    "OutcomeRecordingSink (tests/.../CoalescingCoverageMatrixTests.cs:1044-1085): delegates Enqueue/TryEnqueue/Capacity/Count to the real LibraryWorkQueue and records the outcome the queue itself returned; it classifies nothing, so every asserted Coalesced/InFlight is a production outcome.",
+    "SaveChainHarness host-boundary doubles (tests/.../CoalescingCoverageMatrixTests.cs:794-900): real Plugin.UpdateConfiguration + real ConfigurationReconciliationTrigger + real LibraryReconciliationService over a real temp XML configuration; test doubles are limited to IApplicationPaths and IXmlSerializer (ConfigurationActivationTests.TestApplicationPaths/TestXmlSerializer), the FakeMediaLibraryEnumerator host enumerator, and the Phase6Harness host/reader/renderer doubles. The save/validate/activate/request-trigger path itself is production code.",
+    "Pending-state construction: fact 1 defers LibraryWorkWorker start until after the coalesced post-save outcome is observed, to make the pending state deterministic; fact 2 covers the running-worker in-flight case. Disclosed as a test scheduling choice (worker-report interpretations[0])."
+  ],
+  "skips_checked": [
+    "No [Fact(Skip=...)] or skip guard exists anywhere in CoalescingCoverageMatrixTests.cs or StaleBasisReenqueueTests.cs (grep for 'Skip' returns none); all 15 + 11 cases run in the default configuration.",
+    "Full default suite skipped count is unchanged at 64 after the task (baseline before 19.4 was also 64), so 19.4 adds no skip and hides no behavior; the 64 are the pre-existing host-guarded (ARRTAGS_JELLYFIN_HOST_DIR), native (ARRTAGS_SKIA_COMPAT), and golden (ARRTAGS_NONCANONICAL_GOLDENS) gates.",
+    "The disclosed residuals (classification-gate double, connection-changed no-op post-save run, polling-based drains, conservative item-absent classification) are recorded in the worker report's known_limitations and are accurate, not asserted away."
+  ],
+  "determinism_checked": [
+    "Focused 15-case matrix re-ran green 5 consecutive times; focused 19.3 11-case matrix re-ran green 3 consecutive times; no flake observed.",
+    "No wall-clock, date, network, filesystem-order, or process-state dependence: identical source and configuration inputs each run; no Thread.Sleep and no fixed-duration sleep except the bounded 250 ms stability window and the 10 ms poll cadence.",
+    "Bounded waits cannot hang and cannot pass vacuously: entered signals use direct TaskCompletionSource awaits with a 5 s WaitAsync bound (tests: 155,286,296,370); Phase6Wait.UntilAsync polls for at most 10 s and then asserts the final condition (Phase6Harness.cs:574-583); WaitForPostSaveHintAsync follows its poll with Assert.Single (tests: 702-710); AssertStableAsync asserts on every 10 ms sample.",
+    "All facts use workerCount 1, which removes worker-pool interleaving as an ordering source; the queue's per-key semantics are asserted directly. No shared mutable state between facts: each fact constructs its own SaveChainHarness/Phase6Harness over a unique temp directory, disposed by `using`.",
+    "Temp state is cleaned on dispose (SaveChainHarness.Dispose deletes its root and disposes the provider/serializer/harness; Phase6Harness.Dispose deletes its root), with bounded IOException/UnauthorizedAccessException containment, so no cross-test leakage.",
+    "Mutation-probe re-runs in an isolated /tmp copy reproduced the worker's exact failure profiles (P0 8/15, P1 8/15, P2 4/15, P3 1/15, P4 1/15, P5 1/1), confirming the assertions are load-bearing rather than incidentally passing."
+  ],
+  "summary": "The 19.4 matrix genuinely drives the production post-save chain: the real Plugin.UpdateConfiguration validate/persist/activate path, the real ConfigurationReconciliationTrigger and LibraryReconciliationService, the real bounded LibraryWorkQueue (via a delegating recording sink that returns the queue's own outcomes), the real hosted LibraryWorkWorker, and the real composed Phase 6 processor chain over durable stores. The only scripted processor is the disclosed classification-gate double, which is justified (the real processor checks version first) and minimal, and the real-chain no-re-enqueue for all four non-version classifications is separately covered by the changed-item theory's second passes. All eight claimed areas map to at least one genuine test, every mutation probe P0-P5 maps to a load-bearing assertion, and I independently reproduced all six probe failure profiles. I reproduced build 0/0, the full default suite 0 failed / 1901 passed / 64 skipped / 1965 total, and the focused 15-case matrix (green 5/5) and 19.3 11-case matrix (green 3/3) - matching the worker's numbers, with zero new skips. Two LOW findings remain: the chain-fact peak-concurrency assertions are vacuous at workerCount 1 (the real single-flight coverage is at the queue level, and the report's citation overstates them), and the anti-extra-pass guard is a fixed 250 ms wall-clock window. Neither undermines a claimed behavior; no BLOCKER or HIGH is open.",
+  "ready_for_next_task": true
+}
