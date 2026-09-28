@@ -15,7 +15,7 @@ permissions:
   - action: external_directory
     resource: "/tmp/*"
     effect: allow
-model: opencode/space-bunny-free#max
+model: opencode-go/deepseek-v4.1-flash#max
 ---
 
 # Release Reviewer
