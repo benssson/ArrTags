@@ -1,0 +1,100 @@
+{
+  "subject": "Task 19.2 F4 successive-run coverage matrix: tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs (new) plus the existing F4 files ReconciliationCursorResumeTests, ReconciliationCursorStoreTests, MediaLibraryResumeTests, LibraryWorkQueueTests (ADR-022 as amended by ADR-029; v1.2-f4-clause-3-amendment verification_requirements_for_19_2).",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "TQ-19.2-01",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "coverage/substitutes",
+      "description": "Host-order fidelity is supplied by the DispatchProxy ILibraryManager double (HostOrderedLibraryManager: SortName Ordinal ASC then raw Name Ordinal ASC), not by the pinned Jellyfin SQL query. It cannot reproduce host collation, SortName normalization, nullable SortName, or the unspecified tie-break; the fixtures are ASCII and the behavior under test (locate-by-itemId, strict-after, N+QueueCapacity bound) is host-collation-independent, so this is a registered substitute, not a false-confidence path. The worker report records it in known_limitations (it does not run the host SQL), and the live-host verifier / task 19.5 own the host-order residual (F4-R4).",
+      "evidence": [
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:1024-1090 HostOrderedLibraryManager.OrderBy(SortName, Ordinal).ThenBy(Name, Ordinal)",
+        "docs/implementation/19.2/worker-report.json known_limitations: 'uses an ILibraryManager double ... it does not run the host's SQL query'",
+        "docs/decisions/ADR-029.md clause 1 and registered residual 4 (host order is an internal implementation detail)"
+      ],
+      "recommended_action": "No change required for 19.2; the residual is registered and owned by 19.5/live-host verification."
+    },
+    {
+      "id": "TQ-19.2-02",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "Requirement 2's 'became ineligible' anchor is exercised as an item leaving the Movie/Episode candidate enumeration (a Movie retyped as a Series), not as a Movie/Episode that remains enumerable but becomes service-ineligible (remote location, no match). The worker documents this interpretation: an item that stays a candidate is still located by identity, so the cursor correctly does not reset. The enumerated-but-ineligible path is separately exercised by the existing 19.1 fact AnItemThatNeedsNoWorkIsCoveredAndDoesNotStallTheCursor, so the suite does not leave the distinction untested; only the wording of the new file's scenario label could invite a broader reading.",
+      "evidence": [
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:128-160 (removed / kind-changed theory; AddSeries is excluded by IsCandidate)",
+        "docs/implementation/19.2/worker-report.json interpretations[0] (locatability, not service eligibility, is the reset condition)",
+        "tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:292-319 AnItemThatNeedsNoWorkIsCoveredAndDoesNotStallTheCursor"
+      ],
+      "recommended_action": "No change required; the interpretation is recorded and the complementary case is covered by 19.1."
+    },
+    {
+      "id": "TQ-19.2-03",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "coverage",
+      "description": "For the post-save path, the literal requirement 'does not read ... the cursor' is established only by observable effects: no locate walk (Requests == [(0,2),(2,2)]) and a byte-identical cursor record. A hypothetical non-authoritative cursor read that did not affect enumeration would leave both assertions green. The reflection fact's absence check enumerates the per-item/trigger types, not the internal source branch of LibraryReconciliationService (which legitimately holds the store). The runtime consequence (no resume) is caught (mutation probe E, independently reproduced: PostSave made cursor-governed fails AcceptedItems).",
+      "evidence": [
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:445-466 PostSaveTriggerEnumeratesFromTheStartAndLeavesTheCursorUntouched",
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:539-581 OnlyWholeScopeTriggersReferenceTheCursorStore (checks the trigger types, positive control on LibraryReconciliationService's own constructor)",
+        "Independent probe E: adding LibraryReconciliationSource.PostSave to usesCursor -> PostSave test Failed 1/1, Expected [m01,m02,m03], Actual [m02,m03]"
+      ],
+      "recommended_action": "No change required (an unused read is behaviorally a no-op); if the literal read-exclusion must be proven, instrument the store with a read counter."
+    },
+    {
+      "id": "TQ-19.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism",
+      "description": "The webhook trigger-exclusion fact is the only wall-clock-dependent case. It uses a bounded condition poll (500 attempts x 10 ms, ~5 s maximum) and then asserts the condition was observed, so it can neither pass vacuously nor hang indefinitely; the other 18 cases are synchronous. Worker report documents this. Verified: WaitUntilAsync returns condition() after the loop and the caller asserts Assert.True, and the harness/loop cancels on StopAsync. No fixed sleep and no assertion depends on elapsed time.",
+      "evidence": [
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:499-537 (WebhookPath...), 736-749 WaitUntilAsync",
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:523-525 Assert.True(await WaitUntilAsync(...), ...)",
+        "Matrix filter ran 5 consecutive times: Passed 19/19 each run (no observed flake)"
+      ],
+      "recommended_action": "No action."
+    },
+    {
+      "id": "TQ-19.2-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "Verification requirement 11 lists 'yields per clause 7'; the suite asserts the batch/page bound, every page request == ReconciliationBatchSize, and cancellation inside and between pages, but does not (and structurally cannot, from a black-box test) assert the Task.Yield between pages. The yield is not externally observable behavior and the bounded-page assertions are the load-bearing part of the requirement.",
+      "evidence": [
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:584-651 (page-reach + in-walk cancellation)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:323 await Task.Yield(); src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs:114 await Task.Yield();"
+      ],
+      "recommended_action": "No action."
+    }
+  ],
+  "matrix_observed": {
+    "default": "Failed 0 / Passed 1873 / Skipped 64 / Total 1937 (reproduced: ./build.sh test on the final tree, 16 s)",
+    "host_guarded": "Not run for this task; the 19.2 tests are host-independent (no ARRTAGS_JELLYFIN_HOST_DIR-gated fact exists in the new file), so host-guarded status is unchanged by 19.2. The documented 1.1.0.0 host-guarded matrix in docs/release/build-and-release.md is a release-era record, not this task's matrix.",
+    "forced_native": "Not run for this task; the new matrix has no ARRTAGS_SKIA_COMPAT-gated fact, so forced-native status is unchanged by 19.2.",
+    "f4_matrix_focus": "Failed 0 / Passed 19 / Skipped 0 / Total 19 (dotnet test --filter FullyQualifiedName~SuccessiveRunCoverageMatrixTests; reproduced 5 consecutive times)",
+    "f4_combined_focus": "Failed 0 / Passed 167 / Skipped 0 / Total 167 (the worker's combined filter: SuccessiveRunCoverageMatrixTests|ReconciliationCursorResumeTests|ReconciliationCursorStoreTests|MediaLibraryResumeTests|LibraryWorkQueueTests|ReconciliationTriggerTests|ConfigurationReconciliationTriggerTests|LibraryUpdateBoundaryTests|WebhookResolutionTests|StateBoundaryTests)"
+  },
+  "substitutes_checked": [
+    "ILibraryManager -> HostOrderedLibraryManager DispatchProxy (serves (SortName, Name) Ordinal order, Movie/Episode candidate filter, StartIndex/Limit paging, records every page). Identified, documented, and adequate for the ArrTags-side behaviors; leave vs real host recorded by the worker.",
+    "IArrMetadataReader / IArtworkLifecycleCoordinator -> NoOpLifecycleCoordinator in the event fact (per-item path does not drain a fence). Only satisfies an unused boundary.",
+    "ReconciliationLibraryResolver over in-memory dictionaries (library/item resolution). Real production type.",
+    "StateRepository under a per-test temp root; ReconciliationCursorStore, ArtworkLifecycleFenceStore, LibraryReconciliationService, LibraryWorkQueue, JellyfinMediaLibraryEnumerator, ConfigurationSnapshotService, MetadataStateStore, WebhookIntake(Service), WebhookReconciliationResolver are the real production types.",
+    "QueueRecordingSink delegates every Enqueue to the real LibraryWorkQueue and records the outcome the queue returned; it classifies nothing itself, so Coalesced/InFlight/Overflow/Stopped asserted by tests are the real queue's outcomes.",
+    "WebhookIntakeService is the real hosted service driven through the real WebhookIntake; the only non-real element is the timing of observation (bounded poll), not the resolution or enqueue logic."
+  ],
+  "skips_checked": [
+    "SuccessiveRunCoverageMatrixTests.cs contains no Skip attribute (the two 'Skip' grep hits are LINQ Requests.Skip).",
+    "New file contributes 19 non-skipped cases: matrix focus Passed 19 / Skipped 0 / Total 19.",
+    "Default suite skip total 64, unchanged from the recorded 19.1 baseline; no skip was added on this task's account. None of the 12 required cases is a skipped/host-guarded test."
+  ],
+  "determinism_checked": [
+    "Matrix filter executed 5 consecutive times: 19/19 passed each run; no ordering, wall-clock, or filesystem-order flakiness observed.",
+    "Each CoverageHarness uses a unique Path.GetTempPath() directory and deletes it in Dispose; no shared mutable static state between facts.",
+    "Host order is computed by a pure stable sort on immutable fixture fields (Ordinal), independent of culture and filesystem order; ScopeIdentity normalizes with StringComparer.Ordinal.",
+    "The only asynchronous/unbounded-looking fact (webhook trigger exclusion) is a bounded 500 x 10 ms poll that asserts observation, so it cannot pass vacuously or hang (see TQ-19.2-04).",
+    "The round-robin while loop cannot spin forever: Assert.InRange(result.Covered, 1, capacity) fails on any zero-progress run, and duplicate/re-covered items still terminate the loop and fail Assert.Equal(items, coveredOrder).",
+    "Full default suite reproduced exactly: Failed 0 / Passed 1873 / Skipped 64 / Total 1937."
+  ],
+  "summary": "The 19.2 matrix is a genuine integration of the real JellyfinMediaLibraryEnumerator, the real LibraryReconciliationService, a real ReconciliationCursorStore over a temporary StateRepository, and the real LibraryWorkQueue; only ILibraryManager (and unused coordinator/metadata boundaries) are doubled, which is identified and registered rather than hidden. All 12 verification_requirements_for_19_2 cases map to facts that fail under the specific defect they claim to detect. I independently reproduced all ten mutation probes (A-J) in a scratch copy outside the repository: A (page-aligned resume), B (Coalesced treated as a stop), C (overflowed/stopped item counted covered), D (scope check bypassed), E (PostSave cursor-governed), F (Stopped clause removed), G (resume offset ignored), H (unlocatable anchor reported located), I (InFlight treated as a stop), and J (cursor always wrapped) each failed exactly the claimed fact(s), with the worker's expected/actual messages matched where reported. Requirements 3, 4, 7, 9, 10 and the N-dependent page-reach bound are asserted with load-bearing (not tautological) assertions; the tie residual is exercised honestly as a deferral and never asserted as covered, and the page-reach bound is asserted as N + QueueCapacity and demonstrably sensitive (probe G read 14 rows for N=8 > 11). No test is skipped on this task's account; the default suite reproduces Failed 0 / Passed 1873 / Skipped 64 / Total 1937 (+19 passed, +19 total, 0 new skips). No production code was changed. Findings are LOW/INFORMATIONAL only (host-order substitute, ineligibility wording, the literal post-save read-exclusion, the single bounded async poll, and the unobservable Task.Yield); none undermines confidence in the shipped behavior. No BLOCKER or HIGH remains, so the matrix is approved with minor findings.",
+  "ready_for_next_task": true
+}
