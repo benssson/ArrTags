@@ -3,7 +3,7 @@
   "title": "Live pinned-host verification",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "7ad12dc",
   "conformance": {
     "required": false,
     "reason": "Task 21.4 runs the pre-existing documented pinned-host end-to-end matrix against the already-implemented and reviewed v1.2 code, using the specialist live-host-verifier. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause; it is itself the live verification of established behaviour on the pinned 12.0.0 host. No pre-dispatch specialist conformance check is required.",
