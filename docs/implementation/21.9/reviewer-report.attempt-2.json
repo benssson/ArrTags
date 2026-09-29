@@ -1,0 +1,174 @@
+{
+  "task": "21.9",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "summary": "Re-review of the attempt-2 rework for task 21.9. The single open MEDIUM finding from attempt 1 (R-21.9-1) is resolved: I verified independently that the F-21.9-6 caveat in docs/testing/jellyfin-12-musl-test-host.md:396-410 and the F-21.9-6 detail/evidence/recommended_action/correction fields in docs/implementation/21.9/live-verification.json now attribute the post-fixture-edit observation to the ADR-022 durable reconciliation cursor rather than to the provider inventory cache, and that the new mechanism is accurate rather than a fresh overclaim. Specifically I confirmed against the source that a scheduled/post-scan run really can miss an item that a post-save run covers: src/ArrTags/Reconciliation/LibraryReconciliationService.cs:151 sets usesCursor only for Scheduled or PostScan; the run resumes from the persisted anchor (ReadCursor at 163, ResumeAsync at 368-388), and the enumeration loop breaks out as soon as a page returns fewer than batchSize items (lines 312-317), so a run whose anchor sits mid-order covers only the suffix of the candidate order and the rest is left to the next run. That is exactly the 'coverage guarantee is across successive runs, not a single run' semantics ADR-022 clause 7 states, and it makes the documented procedure instruction correct. I also confirmed the exclusion of the cache mechanism is correct and is now stated explicitly: LibraryReconciliationService.cs:139 calls InvalidateInventory() unconditionally at the top of every ReconcileAsync run for all sources, and tests/ArrTags.Tests/ReconciliationTriggerTests.cs:254 (ReconciliationInvalidatesTheInventoryForEverySource) loops PostScan, Scheduled and PostSave asserting each discards the retained observation sets, which is the ADR-018 clause 3 contract. The false claim is gone: grep for 'inventory cache still serves', 'Invalidate the provider inventory cache' and 'because the provider inventory' returns 0 matches in both files, and the only surviving 'inventory cache' mentions are the corrected negative statement at jellyfin-12-musl-test-host.md:406, an unrelated 21.4-section description at line 294, the corrected 14.3 evidence sentence and the R-21.9-1 correction field. The practical instruction (issue one configuration save after a fixture edit) is retained verbatim in both surfaces. Non-regression verified: the package block (619,636 bytes, sha256 3e59cb06..., md5 f3b50a91..., 7 entries, identity_matches true) still matches the on-disk artifact, which I re-hashed independently; the eight matrix rows L1-L8 are all PASS with overall_verdict VERIFIED; F-21.9-1 through F-21.9-5 keep their severities and texts; docs/implementation/21.4/ is untouched (last commit 7ad12dc); and the working-tree delta is exactly PLANS.md, docs/plan/state.json, docs/testing/jellyfin-12-musl-test-host.md plus the untracked docs/implementation/21.9/, with src/, tests/ and manifest.json unmodified, so no code, test, artifact or release-state change was introduced by the rework. The worker report at docs/implementation/21.9/worker-report.attempt-2.json carries attempt 2 and a rework entry for R-21.9-1 with the exact corrected wording and closure evidence, and the attempt-1 report is preserved unmodified. One workflow item remains open for whoever folds this review in, as it did after attempt 1: docs/plan/state.json must list the reviewer reports, so scripts/check-docs.sh still FAILs on exactly one line until it does. I recorded that as a noted finding rather than a blocker because the report could not exist before the review and the state.json reports array is worker-owned under the docs/plan/README.md single-writer rule.",
+  "findings": [
+    {
+      "id": "R-21.9-1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "correctness / documented workflow",
+      "summary": "The F-21.9-6 procedure note no longer attributes the stale post-fixture-edit observation to the provider inventory cache; the false mechanism is gone and the replacement mechanism (the ADR-022 cursor) is accurate against the source.",
+      "detail": "Attempt 1 recorded that the note asserted 'Otherwise the inventory cache still serves the pre-edit observation', which LibraryReconciliationService.ReconcileAsync contradicts by calling InvalidateInventory() unconditionally at line 139 for every source. The corrected bullet at docs/testing/jellyfin-12-musl-test-host.md:396-410 now reads 'The reason is the ADR-022 durable reconciliation cursor, not cache staleness: a scheduled (or post-scan) run resumes from the persisted cursor anchor and covers the library round-robin across successive runs, so a single scheduled run is not guaranteed to re-cover an edited item, while the post-save trigger is deliberately excluded from the cursor and always enumerates from the start (ADR-022 clause 6). Every reconciliation, including a scheduled one, already invalidates the provider inventory at the top of its run (ADR-018 clause 3), so the pre-edit observation was not served from the inventory cache.' I verified each clause of that sentence against the code rather than accepting it. (1) Cursor scoping: LibraryReconciliationService.cs:151 is 'var usesCursor = source is LibraryReconciliationSource.Scheduled or LibraryReconciliationSource.PostScan;', matching ADR-022 clause 6, so a PostSave run takes the scope == null path and starts at index 0 while Scheduled/PostScan read the cursor at line 163 and resume via ResumeAsync (368-388). (2) That a single run can miss an item: after resuming, the loop takes the prefetched resume page, and at lines 312-317 it breaks out with wrapped = true as soon as page.Count < batchSize. A run anchored mid-order therefore covers only the suffix of the candidate order and leaves the earlier items to the next run, which is precisely the ADR-022 clause 7 statement that the coverage guarantee is across successive runs rather than a single run. (3) The cache exclusion: line 139 InvalidateInventory() runs before the cursor logic for all sources, and ReconciliationTriggerTests.cs:254 loops PostScan, Scheduled and PostSave asserting each discards the retained observation sets, which is the ADR-018 clause 3 contract the code comment at 130-138 states in prose. (4) The practical instruction is preserved unchanged in both the procedure doc and the live-verification report. The old wording is removed from both surfaces: 'grep -c' for 'inventory cache still serves', 'Invalidate the provider inventory cache' and 'because the provider inventory' returns 0 in both files. The F-21.9-6 'correction' field in live-verification.json records the original attribution and why it was replaced, so the audit trail of the wrong mechanism survives inside the task's own report. The worker's interpretation entry also shows it noticed that the run's 'still produced RenderPassThrough' log attribution is ambiguous and deliberately avoided asserting that the specific 15:20:23Z run never enumerated the item, which is the right level of care.",
+      "evidence": [
+        "docs/testing/jellyfin-12-musl-test-host.md:396-410 - corrected 'Issue one configuration save after a fixture edit' bullet naming ADR-022 clause 6 and ADR-018 clause 3",
+        "docs/implementation/21.9/live-verification.json:163,166,169,170 - corrected F-21.9-6 detail part (2), evidence bullets 2 and 3, recommended_action and the new correction field",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:139 - unconditional InvalidateInventory() at the top of every run, with the comment at 130-138 naming post-scan, scheduled/manual and post-save",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:151 - usesCursor = source is Scheduled or PostScan",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:163-183 - ReadCursor and the resume branch that sets startIndex and prefetched",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:312-317 - 'if (page.Count < batchSize) { wrapped = true; break; }', the point at which a mid-order run stops before the items before its anchor",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:418-437 - AdvanceCursor writes null on wrap, so the next run restarts at the head of the order",
+        "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:254 - ReconciliationInvalidatesTheInventoryForEverySource, looping PostScan, Scheduled and PostSave",
+        "docs/decisions/ADR-022.md:105-113 - clause 6 text: the post-save trigger 'always enumerates from the start and leaves the cursor untouched'",
+        "docs/decisions/ADR-022.md:114-118 - clause 7: 'The coverage guarantee is across successive runs, not a single run'",
+        "grep -c 'inventory cache still serves|Invalidate the provider inventory cache|because the provider inventory' over both edited files - 0 matches in each",
+        "jq empty on docs/implementation/21.9/live-verification.json and docs/implementation/21.9/worker-report.attempt-2.json - both valid"
+      ],
+      "recommended_action": "None required; R-21.9-1 is closed. See R-21.9-5 for an optional phrasing softening on a later edit."
+    },
+    {
+      "id": "R-21.9-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "agent contract / state.json reports",
+      "summary": "docs/plan/state.json task 21.9 reports still omits the reviewer reports, so scripts/check-docs.sh FAILs on exactly that one line; the worker was right to apply the prescribed three-entry array rather than pre-emptively listing a report that did not exist.",
+      "detail": "scripts/check-agents.sh requires any task with a worker-report.json to list a reports entry matching 'reviewer-report' in docs/plan/state.json. Task 21.9 currently lists only [live-verification.json, worker-report.attempt-2.json, worker-report.json], so 'bash scripts/check-docs.sh' exits 1 with a single agent-contract line: 'FAIL: task 21.9 has a reviewer report on disk but docs/plan/state.json does not list it in reports'. Every other section reports ok, including compatibility stubs, decisions index (29 ADRs), limitations index coverage, architecture/data-model indexes, artifact identity agreement, doc budget, current-state links, 'generated status blocks are current; plan state is consistent' and 'worker/reviewer report pairing checked'. This is the same transient condition recorded as R-21.9-2 in attempt 1, and the worker's decision to follow the prescribed array exactly rather than listing the attempt-1 reviewer report was correct under the docs/agent-contracts.md item 5 pairing rule as it stood when the edit was made. docs/plan/README.md assigns the task reports array to the worker, so the reviewer does not edit it. Once this attempt-2 review is folded in, the array should list, per docs/agent-contracts.md item 5 (worker plus its reviewer-report.json with every preserved .attempt-<n>.json), docs/implementation/21.9/live-verification.json, docs/implementation/21.9/reviewer-report.attempt-2.json, docs/implementation/21.9/reviewer-report.json, docs/implementation/21.9/worker-report.attempt-2.json and docs/implementation/21.9/worker-report.json, after which check-docs passes.",
+      "evidence": [
+        "bash scripts/check-docs.sh - exit 1, single failing line 'FAIL: task 21.9 has a reviewer report on disk but docs/plan/state.json does not list it in reports'",
+        "scripts/check-agents.sh:128-152 - the state.json reports requirement for reviewer reports",
+        "docs/agent-contracts.md 'Where reports go' item 5 - reports lists the evidence reports, at minimum worker plus reviewer with every preserved .attempt-<n>.json",
+        "docs/plan/README.md single-writer table - state.json task done/reports is worker-written",
+        "docs/plan/state.json task 21.9 reports - three entries, no reviewer-report entry",
+        "precedent: tasks 19.1, 19.5, 21.4 and 21.7 list their reviewer reports alongside the worker report"
+      ],
+      "recommended_action": "Fold this review into docs/plan/state.json task 21.9 reports (worker or orchestrator), listing both preserved reviewer reports, then re-run scripts/check-docs.sh to confirm PASS."
+    },
+    {
+      "id": "R-21.9-3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "verification bounds",
+      "summary": "The rework did not alter any matrix row, verdict, package identity or other finding, so the attempt-1 bound assessment (F-21.9-4 structural-only items, redirect transport not live-observable) carries forward unchanged and remains honest.",
+      "detail": "The attempt-2 diff to docs/implementation/21.9/live-verification.json is confined to the F-21.9-6 object and the 'UNCHANGED vs CHANGED METADATA' note, both of which repeat the corrected mechanism. I confirmed the untouched remainder directly: the matrix still holds exactly eight rows L1 through L8, every one with verdict PASS, and overall_verdict is still VERIFIED. The package block is unchanged and still matches the artifact on disk, which I re-hashed and re-listed myself rather than relying on the report. F-21.9-4 still bounds the settings-page unit conversion, the diagnostics panel and the Extra Large clamp path as structural or unit-test-only, and still records that the task 21.7 redirect fix is not observable on this host because the committed mock answers plain HTTP 200; those bounds were registered before this task and the corrected build neither adds nor hides a surface. Nothing in this rework broadened any of those claims.",
+      "evidence": [
+        "grep -o '\"id\": \"L[0-9]\",' - exactly L1..L8 present once each",
+        "grep -o '\"verdict\": \"[A-Z]*\"' - eight PASS verdicts",
+        "sha256sum/md5sum/stat artifacts/ArrTags_1.2.0.0.zip - 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277 / f3b50a91c7cb63d9560316d8abe2f9dc / 619,636 bytes; unzip -l tail - 7 files",
+        "docs/implementation/21.9/live-verification.json - F-21.9-1..F-21.9-6 present with severities INFORMATIONAL, LOW, INFORMATIONAL, INFORMATIONAL, INFORMATIONAL, LOW",
+        "git diff --stat HEAD - docs/testing/jellyfin-12-musl-test-host.md shows 62 insertions and no deletions, so the 21.4 and v1.2 cautions section bodies were not rewritten"
+      ],
+      "recommended_action": "None required."
+    },
+    {
+      "id": "R-21.9-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope and report hygiene",
+      "summary": "The rework is documentation-only and correctly scoped: no code, test, artifact, manifest or release-state change, the task 21.4 report is untouched, and no secret appears in either 21.9 report.",
+      "detail": "git diff --name-only HEAD lists exactly PLANS.md, docs/plan/state.json and docs/testing/jellyfin-12-musl-test-host.md, with docs/implementation/21.9/ untracked; git status --porcelain over src, tests and manifest.json is empty, so no product or test file was touched by the rework and no build or packaging step ran. git status --porcelain docs/implementation/21.4/ is empty and the last commit touching docs/implementation/21.4/live-verification.json is still 7ad12dc, so the superseded run remains the historical record. docs/plan/state.json changes are confined to updated_utc and the task 21.9 done/reports fields; current_release is still 1.1.0.0 / v1.1.0 and Phase 21 status, gate and tag are untouched, which is correct because release state belongs to task 21.6. The PLANS.md delta is the single task-21.9 checkbox. No credential literal appears in either 21.9 report: the six credential sites remain '<admin>' placeholders, the mock logs only apiKey=valid / apiKey=missing-unenforced, and the report states the admin token, throwaway password and both mock API keys are recorded neither in the repository nor in the report.",
+      "evidence": [
+        "git diff --name-only HEAD - PLANS.md, docs/plan/state.json, docs/testing/jellyfin-12-musl-test-host.md",
+        "git status --porcelain src tests manifest.json - empty",
+        "git status --porcelain docs/implementation/21.4/ - empty; git log --oneline -1 -- docs/implementation/21.4/live-verification.json - 7ad12dc",
+        "git diff -- docs/plan/state.json - only updated_utc and the 21.9 done/reports block; current_release and the Phase 21 gate unchanged",
+        "git diff -- PLANS.md - only the '- [x] 21.9' checkbox",
+        "grep for credential literals in both 21.9 reports - placeholders only"
+      ],
+      "recommended_action": "None required."
+    },
+    {
+      "id": "R-21.9-5",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation precision",
+      "summary": "The corrected bullet is defensible as written, but the sentence 'The reason is the ADR-022 durable reconciliation cursor' asserts a cause slightly more firmly than the run's own log sentence ('still produced RenderPassThrough ... for the sparse movie') supports; a softer phrasing would be more precise on a later edit.",
+      "detail": "The mechanism the note relies on is verified real, and the general statement 'a single scheduled run is not guaranteed to re-cover an edited item' is true of the implementation. What is not established is that the cursor is the cause of the specific 15:20:23Z observation, because the same paragraph records that the scheduled run after the edit still emitted a RenderPassThrough line for the sparse movie, which reads as the item having been enumerated and rendered. The worker recognised this and deliberately avoided claiming the run never enumerated the item, which is why I treat this as precision rather than as a repeat of R-21.9-1: nothing stated is false, the procedure instruction is correct and actionable, and a verifier following it reaches the right procedure. If this section is next edited, changing 'The reason is the ADR-022 durable reconciliation cursor' to something like 'A likely reason is the ADR-022 durable reconciliation cursor' would match the evidence exactly, and the section's pointer to 'the completion report is docs/implementation/21.9/worker-report.json' could be updated to name the attempt-2 rework report as well. I am not requiring either change now.",
+      "evidence": [
+        "docs/testing/jellyfin-12-musl-test-host.md:396-410 - 'The reason is the ADR-022 durable reconciliation cursor' followed by 'In this run a scheduled task after the edit still produced RenderPassThrough (PassThroughReason=NoDisplayableValue) for the sparse movie'",
+        "docs/implementation/21.9/live-verification.json:166 - same observation recorded with the timestamps 15:20:23Z and 15:21:40Z",
+        "docs/implementation/21.9/worker-report.attempt-2.json - interpretation entry recording the deliberate choice not to assert that the 15:20:23Z run never enumerated the item"
+      ],
+      "recommended_action": "Optional, on a later edit of that section: soften the causal wording and extend the report pointer to the attempt-2 worker report."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The full documented matrix is re-run against an archive whose SHA-256 equals task 21.8's.",
+      "verdict": "MET",
+      "evidence": "Unchanged by the rework and re-verified independently: sha256sum and md5sum of artifacts/ArrTags_1.2.0.0.zip return 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277 and f3b50a91c7cb63d9560316d8abe2f9dc over 619,636 bytes with unzip -l showing 7 files, matching docs/release/build-and-release.md 'Release artifact identity', the task 21.8 record and manifest.json versions[0].checksum. The live-verification package block still carries the same identity with identity_matches true, and the run used the documented provisioning script against a fresh prefix /tmp/arrtags-21.9."
+    },
+    {
+      "criterion": "Per-row results plus the installed artifact identity are recorded in docs/implementation/21.9/live-verification.json.",
+      "verdict": "MET",
+      "evidence": "Still eight rows L1-L8, all PASS, with overall_verdict VERIFIED, unchanged by the rework. The file remains valid JSON. The rework's edits are confined to the F-21.9-6 object and one note, so the per-row command/observed/verdict content is the attempt-1 evidence this reviewer already inspected row by row."
+    },
+    {
+      "criterion": "The task 21.4 report is unmodified.",
+      "verdict": "MET",
+      "evidence": "git status --porcelain docs/implementation/21.4/ is empty and the last commit touching docs/implementation/21.4/live-verification.json is still 7ad12dc. The testing document keeps the Superseded-candidate blockquote above the 21.4 section and states that the 21.4 section remains the record of the superseded build."
+    },
+    {
+      "criterion": "If a row cannot pass it is reported honestly.",
+      "verdict": "MET",
+      "evidence": "No row failed and the non-executable surfaces stay bounded rather than claimed: F-21.9-4 still limits the settings-page JavaScript, the diagnostics panel and the Extra Large clamp path to structural or unit-test evidence and still records the redirect transport as not live-observable against the committed mock. The rework did not broaden any claim. The one honesty defect this reviewer raised in attempt 1, the mechanism asserted in the F-21.9-6 caveat, is now corrected in both surfaces and the correction is recorded in the report's own 'correction' field."
+    },
+    {
+      "criterion": "The attempt-2 rework closes R-21.9-1 with the corrected mechanism stated accurately and consistently across both current-state surfaces.",
+      "verdict": "MET",
+      "evidence": "docs/testing/jellyfin-12-musl-test-host.md:396-410 and the F-21.9-6 fields in live-verification.json now agree: the ADR-022 cursor (scheduled/post-scan resume from the persisted anchor, round-robin across successive runs, post-save always enumerating from the start, ADR-022 clause 6) is the stated reason; every reconciliation including a scheduled one already invalidates the provider inventory per ADR-018 clause 3; the pre-edit observation was therefore not served from the inventory cache; and the practical instruction to issue one configuration save after a fixture edit is unchanged. I verified the new mechanism against LibraryReconciliationService.cs:151, the resume branch at 163-183, the early break at 312-317, AdvanceCursor at 418-437, ADR-022 clauses 6 and 7, the unconditional InvalidateInventory at line 139 and its guard test at ReconciliationTriggerTests.cs:254."
+    },
+    {
+      "criterion": "Attempt numbering, report preservation and state.json reports follow docs/agent-contracts.md.",
+      "verdict": "MET (with one noted follow-up, R-21.9-2)",
+      "evidence": "docs/implementation/21.9/worker-report.attempt-2.json carries attempt 2 with a rework entry for R-21.9-1 containing the exact corrected wording of both surfaces and its closure evidence; worker-report.json and reviewer-report.json are preserved unmodified, and this attempt is written to reviewer-report.attempt-2.json rather than overwriting the attempt-1 CHANGES_REQUIRED outcome. state.json task 21.9 carries the prescribed three-entry reports array and an advanced updated_utc, which was the correct state at the time of the edit; it still needs the two reviewer-report paths added, which is the recorded follow-up."
+    },
+    {
+      "criterion": "Current-state surfaces are consistent with the repository and no generated block was hand-edited.",
+      "verdict": "MET",
+      "evidence": "'. /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check' exits 0 with 'status.md: up to date', 'PLANS.md: up to date' (twice) and 'PLANS.md and state.json agree'. PLANS.md shows only the 21.9 checkbox change; docs/status.md is unmodified because the milestone table does not change at task granularity; the Phase 21 gate, tag and current_release (still 1.1.0.0 / v1.1.0) are correctly left to task 21.6. No new limitation row was needed because V12-G6-1, V12-G8-1 and V12-G8-2 were already Accepted."
+    }
+  ],
+  "tests_checked": [
+    "No test run was required or re-executed: the rework changes documentation and state only, touching no source, test, manifest or artifact, so the task 21.8 suite evidence (default 1,937 passed / 2,003 total, host-guarded 1,957 / 2,003, forced-native 2,024 / 2,045) remains valid and the plugin under test is the same corrected archive 21.8 validated. This matches the attempt-2 worker's stated validation-rerun rule.",
+    "Read tests/ArrTags.Tests/ReconciliationTriggerTests.cs:240-275, ReconciliationInvalidatesTheInventoryForEverySource, which loops PostScan, Scheduled and PostSave and asserts each discards the retained observation sets; this is the guard test that makes the original cache attribution impossible and that the corrected text now relies on.",
+    "Read src/ArrTags/Reconciliation/LibraryReconciliationService.cs:120-200 and 300-345 plus AdvanceCursor at 418-437 and ResumeAsync at 368-388, to confirm the corrected mechanism: cursor only for Scheduled/PostScan, unconditional inventory invalidation first, resume from the persisted anchor, and the page.Count < batchSize early break that lets a single mid-order run leave earlier items to the next run.",
+    "Read src/ArrTags/Providers/ArrInventoryCache.cs (Invalidate at 208, InvalidateAll at 227) and the InvalidateInventory wrapper at 482 to confirm invalidation is unconditional and best-effort rather than source-conditional.",
+    "bash scripts/check-docs.sh - exit 1 with exactly one failing agent-contract line (task 21.9 reviewer report not yet listed in state.json); all other sections ok, including artifact identity agreement (sha256, md5, bytes) and current-state links.",
+    "'. /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check' - 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree', exit 0.",
+    "jq empty on docs/implementation/21.9/live-verification.json and docs/implementation/21.9/worker-report.attempt-2.json - both valid JSON.",
+    "sha256sum, md5sum and unzip -l on artifacts/ArrTags_1.2.0.0.zip - identity re-derived on disk rather than taken from the report."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-022.md:95-118 - clauses 5, 6 and 7 read verbatim and compared against the code: clause 6 matches usesCursor at line 151 and the 'always enumerates from the start and leaves the cursor untouched' post-save wording; clause 7's 'coverage guarantee is across successive runs, not a single run' is the clause the corrected procedure note relies on.",
+    "docs/decisions/ADR-018.md:52-56 - clause 3, the ArrTags-side invalidation trigger set (webhooks, Jellyfin library refresh/post-scan, scheduled/manual reconciliation, bounded TTL), which is the contract the corrected text cites when excluding the cache explanation.",
+    "docs/agent-contracts.md 'Where reports go' items 3 and 5 plus the implementation-reviewer row - used to confirm the attempt-2 file naming, that attempt 1's CHANGES_REQUIRED outcome must not be overwritten, and that the state.json reports array must list the reviewer reports.",
+    "docs/plan/README.md single-writer table - confirmed the state.json task done/reports edits stayed inside the worker-owned surface and that release state and the v1.2.0 tag belong to task 21.6, which is why this rework correctly leaves them alone.",
+    "docs/implementation/14.3/live-verification.json row L3 observed text - verified the corrected F-21.9-6 evidence bullet 3 is an accurate paraphrase ('every reconciliation discards the retained observation sets (LibraryReconciliationService.InvalidateInventory)' and the post-save and library-refresh windows each produced fresh provider reads), replacing the previous bullet that mischaracterised 14.3 as recording the same cache-invalidation requirement.",
+    "docs/decisions/ADR-022.md consequences and src/ArrTags/Reconciliation/ReconciliationCursorStore.cs:113-133 - confirmed the durable cursor stores only a bounded (SortName, itemId) anchor, so the corrected procedure note's mechanism carries no path, payload or credential concern."
+  ],
+  "documentation_checked": [
+    "PLANS.md - only the '- [x] 21.9 Live pinned-host verification of the corrected artifact' checkbox changed; generated milestone and active-scope blocks untouched and verified current by render-docs-state.cs --check.",
+    "docs/plan/state.json - task 21.9 done true with reports [live-verification.json, worker-report.attempt-2.json, worker-report.json]; updated_utc advanced to 2026-09-29T16:26:21Z; Phase 21 status, gate and tag and current_release (1.1.0.0 / v1.1.0, live_verification 14.3) correctly unchanged; reviewer-report paths still to be added (R-21.9-2).",
+    "docs/status.md - regenerated state verified current by render-docs-state.cs --check; the file itself is unmodified because the milestone table does not change at task granularity.",
+    "docs/testing/jellyfin-12-musl-test-host.md - full diff inspected: 62 insertions, no deletions. The Superseded-candidate blockquote over the 21.4 section, the 'Corrected v1.2 live matrix (Phase 21 task 21.9)' section and the 'Corrected v1.2 cautions' subsection with the corrected second bullet at 396-410. The V1, v1.1 and 21.4 section bodies and the pre-existing 'v1.2 cautions' are unrewritten, and line 294's inventory-cache description belongs to the untouched 21.4 material.",
+    "docs/implementation/21.9/live-verification.json - package block, host block, timestamps, all eight matrix rows and F-21.9-1 through F-21.9-5 confirmed unchanged; only F-21.9-6 (detail part 2, evidence bullets 2 and 3, recommended_action, new correction field) and the 'UNCHANGED vs CHANGED METADATA' note were edited.",
+    "docs/implementation/21.9/worker-report.attempt-2.json - attempt 2, status COMPLETE, validation entries, changed_files, five acceptance_criteria with evidence, three interpretations, test_sensitivity, documentation_reconciliation and the rework entry for R-21.9-1 with full closure text; all consistent with the diff and with what I observed independently.",
+    "docs/implementation/21.9/worker-report.json and reviewer-report.json - preserved unmodified; attempt 1's CHANGES_REQUIRED outcome is intact and the audit trail is unbroken.",
+    "docs/limitations/00-index.md - V12-G6-1, V12-G8-1 and V12-G8-2 already Accepted, so no limitation row was required and none was added.",
+    "docs/release/build-and-release.md 'Release artifact identity' - still agrees with the on-disk archive; not modified by this task or this rework."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding_id": "R-21.9-1",
+      "raised_in_attempt": 1,
+      "closed_in_attempt": 2,
+      "status": "resolved",
+      "closure_evidence": "docs/testing/jellyfin-12-musl-test-host.md:396-410 now attributes the need for a configuration save after a fixture edit to the ADR-022 durable reconciliation cursor rather than to cache staleness, states that a scheduled or post-scan run resumes from the persisted cursor anchor and covers the library round-robin across successive runs while the post-save trigger always enumerates from the start (ADR-022 clause 6), and states explicitly that every reconciliation including a scheduled one already invalidates the provider inventory at the top of its run (ADR-018 clause 3) so the pre-edit observation was not served from the inventory cache. The matching F-21.9-6 detail part (2), evidence bullets 2 and 3 and recommended_action in docs/implementation/21.9/live-verification.json carry the same corrected mechanism, a 'correction' field records the original attribution and why it was replaced, and the 'UNCHANGED vs CHANGED METADATA' note was corrected to match. The practical instruction to issue one configuration save after a fixture edit is unchanged, and the underlying run observation is preserved. The previous wording is absent: grep for 'inventory cache still serves', 'Invalidate the provider inventory cache' and 'because the provider inventory' returns 0 matches in both files. Verified as accurate rather than a new overclaim against src/ArrTags/Reconciliation/LibraryReconciliationService.cs:139, :151, :163-183, :312-317 and :418-437, tests/ArrTags.Tests/ReconciliationTriggerTests.cs:254, and ADR-022 clauses 6 and 7. No matrix row, verdict, package identity, other finding, or the task 21.4 report was altered, and no code, test, manifest, artifact or release-state file was touched.",
+      "verified_by": "implementation-reviewer, attempt 2"
+    }
+  ],
+  "reviewer_blockers": [],
+  "ready_for_next_task": true
+}

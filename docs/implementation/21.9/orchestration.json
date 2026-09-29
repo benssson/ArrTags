@@ -1,0 +1,121 @@
+{
+  "task": "21.9",
+  "title": "Live pinned-host verification of the corrected artifact",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.9 re-runs the pre-existing documented pinned-host matrix against the corrected artifact via the specialist live-host-verifier, and records the result. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "live-host-verifier",
+      "attempt": 1,
+      "outcome": "VERIFIED",
+      "execution": {
+        "agent": "live-host-verifier",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 215811,
+        "output_tokens": 42109,
+        "reasoning_tokens": 13507,
+        "cache_read_tokens": 7956043,
+        "cache_write_tokens": 0,
+        "total_tokens": 8227470,
+        "cost_usd": 0,
+        "duration_seconds": 1693,
+        "session_id": "ses_f124bc142ffeuEFsmUvLZ8yN5b"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 123722,
+        "output_tokens": 19241,
+        "reasoning_tokens": 23928,
+        "cache_read_tokens": 2551040,
+        "cache_write_tokens": 0,
+        "total_tokens": 2717931,
+        "cost_usd": 0.052112820000000004,
+        "duration_seconds": 415,
+        "session_id": "ses_f1231bdb3ffeHGLGpHpihfQ1j4"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 79418,
+        "output_tokens": 50080,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 5533824,
+        "cache_write_tokens": 0,
+        "total_tokens": 5663322,
+        "cost_usd": 0,
+        "duration_seconds": 2348,
+        "session_id": "ses_f122b49f9ffelh0oroyxQ7dUbZ"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 106379,
+        "output_tokens": 18697,
+        "reasoning_tokens": 34758,
+        "cache_read_tokens": 3193600,
+        "cache_write_tokens": 0,
+        "total_tokens": 3353434,
+        "cost_usd": 0.057610650000000006,
+        "duration_seconds": 612,
+        "session_id": "ses_f12074428ffeDO1v1W97XGUgRs"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 54071,
+        "output_tokens": 106808,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 3244672,
+        "cache_write_tokens": 0,
+        "total_tokens": 3405551,
+        "cost_usd": 0,
+        "duration_seconds": 2494,
+        "session_id": "ses_f11fdafd7ffed8XLVHN05uIihn"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Implementation review attempt 1 returned CHANGES_REQUIRED with finding R-21.9-1 (MEDIUM): the F-21.9-6 procedure note attributed a stale post-fixture-edit observation to the provider inventory cache, but every reconciliation invalidates that cache unconditionally (LibraryReconciliationService.cs:139, ReconciliationTriggerTests.cs, ADR-018 clause 3); the consistent mechanism is the ADR-022 durable reconciliation cursor (scheduled/post-scan resume from the persisted anchor and cover the library round-robin across successive runs; the post-save trigger always enumerates from the start). The worker corrected the mechanism in docs/testing/jellyfin-12-musl-test-host.md and in live-verification.json F-21.9-6 while preserving the observation and the practical instruction. Implementation review attempt 2 returned APPROVED with R-21.9-1 resolved."
+    }
+  ],
+  "notes": [
+    "Corrected artifact matrix: docs/implementation/21.9/live-verification.json overall_verdict VERIFIED, rows L1-L8 all PASS, package SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277 / MD5 f3b50a91c7cb63d9560316d8abe2f9dc / 619,636 bytes / 7 entries, matching task 21.8 and docs/release/build-and-release.md. This supersedes the task 21.4 pre-fix candidate (50580499.../619,538), which is now marked superseded in the testing doc.",
+    "Task 21.8 finding 21.8-TQ-1 closed: docs/testing/jellyfin-12-musl-test-host.md marks the 21.4 candidate superseded and adds the corrected 21.9 section.",
+    "New procedure finding F-21.9-6 (LOW) recorded in the corrected v1.2 section; its mechanism was corrected per R-21.9-1. Carried open findings: F-21.9-2 (OwnershipLost recovery gap), F-21.9-5 (uninstall residue), F-21.9-4 (structural-only surfaces on the --nowebclient host; the task 21.7 redirect fix is not live-observable because the committed mock never redirects).",
+    "Release state boundaries observed: current_release, releases[1.2.0].status, docs/status.md release state, the changelog, manifest.json, the artifact, and the v1.2.0 tag remain task 21.6/21.10."
+  ]
+}

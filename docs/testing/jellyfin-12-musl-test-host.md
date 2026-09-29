@@ -307,6 +307,16 @@ F-14.3-1 through F-14.3-4 in `docs/implementation/14.3/live-verification.json`.
 
 ## v1.2 live matrix (Phase 21 task 21.4)
 
+> **Superseded candidate (pre-fix build).** This section records the
+> `artifacts/ArrTags_1.2.0.0.zip` build from before the task 21.7 SEC-21.5-01
+> transport fix (619,538 bytes, SHA-256
+> `505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762`). That
+> build followed provider HTTP redirects and could re-send `X-Api-Key` to the
+> `3xx Location` origin; use the corrected
+> [task 21.9 matrix](#corrected-v12-live-matrix-phase-21-task-219) below for any
+> v1.2 release claim. The rest of this section stays as the historical record of
+> the task 21.4 artifact.
+
 Task 21.4 re-ran the pinned-host end-to-end verification for the v1.2 release
 candidate (`artifacts/ArrTags_1.2.0.0.zip`, 619,538 bytes, SHA-256
 `505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762`) against a
@@ -346,3 +356,55 @@ checks.
   artwork, but the host-owned `data/plugins/configurations/ArrTags.xml` and the
   already-loaded controller instance in the running process survive until the
   next restart; after that restart `/ArrTags/Status` returns `404`.
+
+## Corrected v1.2 live matrix (Phase 21 task 21.9)
+
+Task 21.9 re-ran the pinned-host end-to-end verification for the corrected v1.2
+release candidate (`artifacts/ArrTags_1.2.0.0.zip`, 619,636 bytes, SHA-256
+`3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277`, MD5
+`f3b50a91c7cb63d9560316d8abe2f9dc`, 7 entries) produced by task 21.8 after the
+task 21.7 SEC-21.5-01 transport fix, against a fresh prefix
+(`/tmp/arrtags-21.9`). The verified identity equals `docs/release/build-and-release.md`
+"Release artifact identity" and the `manifest.json` 1.2.0.0 checksum. The
+machine-readable matrix is `docs/implementation/21.9/live-verification.json` (all
+eight rows L1-L8 pass; `overall_verdict: VERIFIED`); the completion report is
+`docs/implementation/21.9/worker-report.json`. The task 21.4 section above remains
+the record of the superseded build, and the V1 and v1.1 sections remain the record
+for Phases 7 and 14.
+
+The corrected matrix reuses the task 21.4 rows unchanged (install/load, settings
+page and elevation gating, the G6/G8 byte-unit settings surface, the G7 Extra
+Large size, the F3 diagnostics endpoint and panel, the G9 bounded log subject and
+render classification, provider outage, restart/uninstall) and adds no new row.
+The task 21.7 redirect transport change is not observable on this host because
+the committed mock fixture answers plain HTTP 200 without redirects; that path is
+covered by the repository's `ProviderRedirectTransportTests`, not by the live
+matrix (F-21.9-4).
+
+### Corrected v1.2 cautions
+
+The `v1.2 cautions` above (complete library and sidecar setup before the first
+publication; the uninstall residue) apply unchanged to the corrected matrix. The
+task 21.9 run added two procedure notes (F-21.9-6, LOW):
+
+- **Configure only through `POST /Plugins/{guid}/Configuration`.** The base task
+  7.3 step 2 instruction to hand-write
+  `PREFIX/data/plugins/configurations/ArrTags.xml` and restart is superseded for
+  v1.2: configure through the elevation-gated API save (or the documented startup
+  wizard), never by hand-editing `ArrTags.xml`, so the verifier exercises the
+  shipped save path.
+- **Issue one configuration save after a fixture edit.** After changing a
+  provider fixture, issue one configuration save (the post-save trigger) rather
+  than relying on the scheduled reconciliation task alone. The reason is the
+  ADR-022 durable reconciliation cursor, not cache staleness: a scheduled (or
+  post-scan) run resumes from the persisted cursor anchor and covers the library
+  round-robin across successive runs, so a single scheduled run is not
+  guaranteed to re-cover an edited item, while the post-save trigger is
+  deliberately excluded from the cursor and always enumerates from the start
+  (ADR-022 clause 6). Every reconciliation, including a scheduled one, already
+  invalidates the provider inventory at the top of its run (ADR-018 clause 3),
+  so the pre-edit observation was not served from the inventory cache. In this
+  run a scheduled task after the edit still produced
+  `RenderPassThrough (PassThroughReason=NoDisplayableValue)` for the sparse
+  movie, and the changed record was published only after the additional save,
+  so a verifier could wrongly conclude that changed metadata does not republish.
