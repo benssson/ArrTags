@@ -9,10 +9,10 @@ still-current accepted items and verification/packaging limits are in
 a pointer stub.
 
 This register exists so that no unsupported or unverified capability is
-presented as available. It covers the shipped V1 scope and the v1.1 work; the
-v1.2 additions accepted so far are appended as their phase tasks land. The
-resolved items are retained in [`archive.md`](archive.md), with their resolving
-change, so the current-state record stays traceable. It was consolidated by
+presented as available. It covers the shipped V1 scope, the v1.1 work, and the
+v1.2 additions implemented by Phases 15-20. The resolved items are retained in
+[`archive.md`](archive.md), with their resolving change, so the current-state
+record stays traceable. It was consolidated by
 Phase 7 task 7.6 from the deferred decisions previously scattered across
 `PLANS.md` (Post-V1 Backlog), the former `docs/implementation-readiness.md`,
 `docs/release/build-and-release.md`, and the Phase 6/7 review findings.
@@ -101,7 +101,7 @@ review are separate and are not declared by this document.
 | `V11-G1` | The badge value allowlist (Goal B) was not exercised live (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V11-G2` | Phase-review LOW residuals (accepted, tracked) | Accepted | [`accepted.md`](accepted.md) |
 | `V11-G3` | Carried release LOWs from the `1.0.1.0` audit (accepted) | Accepted | [`accepted.md`](accepted.md) |
-| `V11-G4` | Stale "owned by task 14.3" pending phrasing in a few current-state surfaces (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V11-G4` | Stale "owned by task 14.3" pending phrasing retained in archived history (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-G6-1` | A legacy in-range off-step byte limit is re-quantized or rejected on the next settings save (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-G8-1` | The restart-required modal reminder is a best-effort web-client shim verified structurally, not executed (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-G8-2` | The global `OperationalLimits.RequestTimeoutSeconds` is inert (INFORMATIONAL, accepted) | Accepted | [`accepted.md`](accepted.md) |

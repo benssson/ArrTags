@@ -35,7 +35,10 @@ the bounded, read-only bytes descriptor defined by ADR-010; the Jellyfin host
 adapter that supplies it remains Phase 5 work. `PluginConfigurationSnapshot`
 exposes the validated definitions, the effective `RenderOutputPolicy`, and the
 secret-free renderer configuration fingerprint that feeds
-`RenderRequest.configurationFingerprint`.
+`RenderRequest.configurationFingerprint`. The Phase 4 text above remains the
+historical task 4.9/4.10 record; the Jellyfin host adapter it defers to shipped
+with the Phase 5 `ArtworkGenerationCoordinator` work (see the Phase 5 note
+below).
 
 **v1.1 task 12.1 implementation note:** `BadgeSelectorConfiguration` and the
 resolved `BadgeDefinition` carry the bounded `AllowedValues` allowlist (ADR-017).
@@ -49,7 +52,9 @@ identity-neutral; an empty allowlist means no restriction and adds nothing to
 the fingerprint (identity-neutral relative to a non-empty allowlist), though the
 coordinated v1.1 schema advance still changes the default configuration
 fingerprint. Task 12.1 does not yet apply the filter to rendering; the renderer
-filtering order is task 12.2.
+filtering order is task 12.2. The v1.1 task 12.1 text above remains the
+historical record; the renderer filtering it defers to was implemented in
+task 12.2.
 
 **v1.1 task 12.3 implementation note:** `RendererConfiguration` gains the global
 `Position` (`BadgePosition`: `BottomLeft` default, `TopLeft`, `TopRight`,

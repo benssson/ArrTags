@@ -170,9 +170,9 @@ non-source, and not referenced by a non-terminal or recovery-blocked operation)
 so the authoritative quota can be reused, while the retained source baseline of
 a live session and the active image are never reclaimed.
 
-The bounded, secret-free diagnostics status surface (ADR-025; open limitation F3
-resolved by Phase 17 task 17.4) is the supported in-product view of these
-counters. One class-level elevation-gated read-only plugin route,
+The bounded, secret-free diagnostics status surface (ADR-025; the formerly open
+limitation F3, resolved by Phase 17 task 17.4) is the supported in-product view
+of these counters. One class-level elevation-gated read-only plugin route,
 `GET ArrTags/Status`, returns the fixed-shape `DiagnosticsSnapshot`: nine
 top-level fields and 28 leaf paths, namely the update-queue depth and in-flight
 count; the last observed Sonarr and Radarr connection health (bounded

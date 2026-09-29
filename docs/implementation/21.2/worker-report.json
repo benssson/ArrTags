@@ -1,0 +1,140 @@
+{
+  "task": "21.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Task 21.2 canonical documentation reconciliation for v1.2. Verified every v1.2-relevant editable current-state surface against the shipped Phases 15-20 work and corrected the stale statements found, with no change to architecture, data-model, or decisions content that was already current. Corrected: GOALS.md's V1.2 pointer no longer says the decision records are '(proposed pending acceptance)' (now 'ADR-022 onward ... (accepted; `Accepted (v1.2)`)', which also covers the accepted ADR-029 amendment); README.md's F1 known-limitations bullet and the two F1 lines in docs/limitations/archive.md now record the task 14.3 live pinned-host confirmation as completed (`PASS`) instead of 'owned by task 14.3' (the correction V11-G4's disposition called for); the V11-G4 entry and its index row now record that only immutable archived history retains the old phrasing; docs/limitations/00-index.md's intro no longer describes the v1.2 additions as in-flight; docs/architecture/12 no longer labels F3 an 'open limitation'. Verified with no change needed: F3, F4, F6, F7, F8 are Resolved with resolving evidence in docs/limitations/archive.md and the index (open.md records none), F5 is Accepted (reclassified from Open) and excluded, decisions index ADR-022..ADR-029 are all Accepted (v1.2) with their amendment/supersession relations, architecture sections 04/06/08/09/11/12 and data-model 03-06/03-08/03-12 already reflect G6/G7/G8/G9/F3/F4/F6/F7/F8, and README already documents the v1.2 capabilities (Extra Large size, MB/KB limits with exact-byte persistence, restart-required note text plus the best-effort modal, the read-only diagnostics panel, the bounded file-name log subject, and the bounded render classification). PLANS.md task 21.2 checkbox and docs/plan/state.json task done/reports/updated_utc were updated; render-docs-state --check confirms no generated block changed. scripts/check-docs.sh PASS (all nine sections) on the final tree before this report was written. No production or test code changed; the full test suite was not run (documentation-only task, explicitly not required).",
+  "validation": [
+    "dotnet run scripts/render-docs-state.cs -- --check -> 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree', exit 0 (run after the PLANS.md/state.json task update).",
+    "scripts/check-docs.sh (run on the final tree before docs/implementation/21.2/worker-report.json was written) -> 'check-docs: PASS', exit 0, nine ok sections: generated status blocks current/plan state consistent; compatibility stubs checked; decisions index (29 ADRs); limitations index covers all IDs; architecture and data-model indexes checked; artifact identity agrees (sha256, md5, bytes); doc budget checked; current-state links resolve; agent report contracts conform.",
+    "Sensitivity probe 1 (limitations-index guard): deleted the '| `V11-G4` |' row from docs/limitations/00-index.md -> scripts/check-docs.sh exit 1 with 'FAIL: limitation V11-G4 missing from index'; the row was restored byte-identically (cmp -s against the pre-probe copy).",
+    "Sensitivity probe 2 (current-state link guard): retargeted the new '](archive.md)' markdown link in docs/limitations/accepted.md to '](archive-MISSING.md)' -> scripts/check-docs.sh exit 1 with 'FAIL: dangling link in ./docs/limitations/accepted.md -> archive-MISSING.md'; the file was restored byte-identically (cmp -s).",
+    "Sensitivity probe 3 (plan-state agreement guard): reverted the PLANS.md 21.2 checkbox to '- [ ]' while state.json has done=true -> dotnet run scripts/render-docs-state.cs -- --check exit 2 with 'state/plan mismatch: task 21.2: PLANS.md checkbox does not match state.json done=true'; PLANS.md was restored byte-identically and --check re-run PASS ('PLANS.md and state.json agree').",
+    "Old-value sweep: grep -rn for 'proposed pending', 'ADR-022 through ADR-028', 'is owned by task 14.3', 'remains owned by task 14.3', 'owned by task 14.3 pending phrasing in a few current-state', 'open limitation F3', and 'accepted so far are appended' over GOALS.md, README.md, docs/architecture, docs/data-model, docs/limitations, docs/decisions/00-index.md, PLANS.md, and docs/status.md -> no match in any corrected surface; the only remaining 'ADR-022..ADR-028' strings are PLANS.md:65 and docs/status.md:10 (the planner-owned active-scope note, recorded in known_limitations, not one of the enumerated reconciliation surfaces).",
+    "git diff --stat -> 8 tracked files changed, 38 insertions(+), 29 deletions(-): GOALS.md, PLANS.md, README.md, docs/architecture/12-performance-and-operational-limits.md, docs/limitations/00-index.md, docs/limitations/accepted.md, docs/limitations/archive.md, docs/plan/state.json. git status --porcelain shows no other changed tracked files; the only untracked path is docs/implementation/21.2/ (this report). No immutable-history path (docs/implementation/**, docs/reviews/**, docs/changelog/**, docs/plan/archive/**, ADR text, docs/research/**) was modified.",
+    "Target-file existence check: test -f docs/implementation/14.3/live-verification.json (the newly cited evidence path in README.md and docs/limitations/archive.md) -> exists; its 'overall_verdict' is 'PASS' (read from the file).",
+    "Not run (not part of this documentation task): ./build.sh build and ./build.sh test (no production or test code changed, so no build or behavioral rerun applies); the host-guarded suite and the v1.2 live pinned-host matrix (tasks 21.3/21.4); the v1.2 release build/artifact identity and checksums (task 21.3); the release changelog, manifest commit, current-release block, and tag (task 21.6).",
+    "Post-report run: scripts/check-docs.sh with docs/implementation/21.2/worker-report.json on disk fails only the two contract-mandated agent-pairing lines, quoted from the run: 'FAIL: task 21.2 has a worker report but no reviewer report (add an exemption only if covered)' and 'FAIL: task 21.2 has a reviewer report on disk but docs/plan/state.json does not list it in reports' (the second is the script's fixed message for a task that has a worker report while state.json lists no reviewer-report path). This is the same transient state recorded by tasks 15.4/16.x and 21.1 and closed by the orchestrator when the implementation-reviewer report is committed; all other sections still pass. This is why the PASS above is recorded for the tree before the report existed."
+  ],
+  "changed_files": [
+    "GOALS.md",
+    "PLANS.md",
+    "README.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/limitations/00-index.md",
+    "docs/limitations/accepted.md",
+    "docs/limitations/archive.md",
+    "docs/plan/state.json",
+    "docs/implementation/21.2/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The canonical current-state surfaces (README, architecture, data-model, limitations, decisions index, GOALS) describe the v1.2 state with no stale claim.",
+      "evidence": "GOALS.md lines 102-106 now read 'V1.2 decisions are recorded as ADR-022 onward ... (accepted; `Accepted (v1.2)`)'. README.md F1 bullet line 225 now reads 'The live pinned-host confirmation completed in task 14.3 (`docs/implementation/14.3/live-verification.json`, `PASS`)'. docs/limitations/00-index.md intro now says the register 'covers the shipped V1 scope, the v1.1 work, and the v1.2 additions implemented by Phases 15-20'. docs/limitations/archive.md F1 lines (16-17 and 66-67) now record the completed confirmation. docs/architecture/12 line 173 now reads 'the formerly open limitation F3, resolved by Phase 17 task 17.4'. Verified already-current with no change: docs/decisions/00-index.md (ADR-022..ADR-029 all Accepted (v1.2), amendment/supersession relations on ADR-002/003/009/016/019/020/022); architecture 04 (diagnostics controller/snapshot components), 06 (MB/KB limits, restart-required set/notes/modal, log subject), 08 (persisted cursor + enqueue outcomes, ConfigurationStale re-enqueue), 09 (Extra Large + empty-selection restore/NoFittingBadge), 11 (diagnostics endpoint security), 12 (byte units, restart-required classification, log subject/classification, diagnostics panel; formerly-open F3 wording now corrected); data-model 03-06, 03-08, 03-12 (Extra Large, restore result, MB/KB units, restart-required); README's v1.2 capability sections (Diagnostics panel, ExtraLarge, Limits units, LogVerbosity subject). Old-value sweep over all these files returns no match for the removed phrasings."
+    },
+    {
+      "criterion": "F3, F4, F6, F7, and F8 are recorded Resolved (with their resolving evidence).",
+      "evidence": "docs/limitations/00-index.md rows: F3/F4/F6/F7/F8 all 'Resolved' pointing at archive.md (rows 68-72), and docs/limitations/open.md states 'No open limitations are currently recorded'. docs/limitations/archive.md sections F8 (line 128), F3 (169), F4 (239), F6 (293), F7 (341) each carry 'Status: Resolved', the resolving phase/tasks, the shipped behaviour, the decision reference, an Evidence list (reports, source files, tests), and the verification bounds/residuals. docs/plan/state.json limitations.resolved contains F3, F4, F6, F7, F8."
+    },
+    {
+      "criterion": "F5 remains Accepted (reclassified from Open) and excluded.",
+      "evidence": "docs/limitations/00-index.md row 65: 'F5 ... Accepted | accepted.md'. docs/limitations/accepted.md F5 section states 'Disposition: accepted by explicit user decision for v1.2 and reclassified from Open to Accepted ... Excluded from v1.2 (see docs/planning/v1.2.md section 10) and matching README's known shipped limitation framing'. docs/planning/v1.2.md section 10 records the exclusion; README's Requirements section cites F5; the exclusions register remains unchanged for the V1 deliberate exclusions. docs/plan/state.json limitations.accepted contains F5."
+    },
+    {
+      "criterion": "GOALS.md: the V1.2 ADRs are no longer described as proposed; other stale v1.2 framing fixed while the V1/V1.1 sections stay intact.",
+      "evidence": "GOALS.md V1.1 section (lines 92-97) and all V1 goal sections are byte-unchanged; only the V1.2 pointer's final sentence changed. 'grep -rn proposed' over GOALS.md/README.md/docs/architecture/docs/data-model/docs/limitations/docs/decisions/00-index.md/PLANS.md returns no match."
+    },
+    {
+      "criterion": "The limitations register's index and underlying sections agree, and no v1.2 capability is still described as missing/open.",
+      "evidence": "check-docs.sh section 'limitations index covers all IDs' PASS (every ### ID in open/accepted/exclusions/archive has an index row); the index rows for F1-F8, F5, V12-G6-1, V12-G8-1/2, V12-F3-1, V12-F4-1..6, V12-F6-1/2 all match their section titles and statuses; state.json's limitations block matches (open: [], resolved F1-F4/F6-F8, accepted includes F5 and all V12-* IDs). Architecture/README no longer claim any v1.2 capability is absent: G6/G7/G8/G9/F3/F4/F6/F7/F8 are described as shipped in the sections listed above."
+    },
+    {
+      "criterion": "Decisions index: all ADR-022..ADR-029 are accepted with their amendment/supersession relations recorded; no stale 'proposed' status.",
+      "evidence": "docs/decisions/00-index.md rows 30-37: ADR-022 'Accepted (v1.2; clause 3 amended by ADR-029 (v1.2))', ADR-023/024/025/026/027/028 'Accepted (v1.2)', ADR-029 'Accepted (v1.2)'; the older rows record the dependent relations (ADR-002/ADR-003 extended by ADR-024, ADR-009 empty-selection clause superseded by ADR-024, ADR-016 amended by ADR-028, ADR-019 clause 3 extended by ADR-027, ADR-020 clause 4 amended by ADR-026). 'grep -rn proposed' over the index returns no match; check-docs.sh confirms 29 index rows == 29 ADR files."
+    },
+    {
+      "criterion": "Architecture and data-model reflect the v1.2 changes (G6, G7, G8, G9/F8, F3, F4, F6, F7) and no surface still claims pre-v1.2 behaviour that v1.2 changed.",
+      "evidence": "Architecture: 06 lines 60-67 (MB/KB units, off-step rejection, bytes persisted), 125-174 (restart-required set, note text, modal), 206-213 (ADR-026 log subject); 08 lines 99-146 (persisted (SortName,itemId) cursor + enqueue-outcome vocabulary + ConfigurationStale re-enqueue, V12-F4/F6 residuals); 09 lines 258-283 (owned empty-selection restore via ArtworkPublisher.RestoreAsync, NoFittingBadge preserved) and 504-533 (ExtraLarge 2.0, Small/Medium/Large/Extra Large order, no RenderVersion advance, Extra Large goldens); 11 lines 58-72 (elevation-gated read-only diagnostics route, fail-closed panel); 12 lines 38-75 (restart-required classification/modal; byte units), 77-102 (log subject + render classification), 173-202 (diagnostics surface). Data-model: 03-06 (size/position incl. Extra Large), 03-08 (Extra Large render result, empty-selection restoration result), 03-12 (byte-limit display units, restart-required classification). Searches for 'not implemented', 'remains open', 'no restart indication', 'raw byte counts', and pre-v1.2 size orderings return no stale claim; the one 'open limitation F3' label in architecture 12 was corrected to 'formerly open'."
+    },
+    {
+      "criterion": "README.md reflects the v1.2 capabilities.",
+      "evidence": "README already covers the diagnostics panel (lines 138-153), ExtraLarge in the Renderer.Size row (line 104), MB/KB limits with exact bytes and off-step rejection (lines 63-67, 105), restart-required note text plus best-effort modal (lines 60-66), the bounded file-name log subject with item-id fallback and no directory/full path (line 97), and the configuration paragraph's restart-required construction-captured set. The one stale README claim found (F1 'owned by task 14.3') was corrected; the manual-install section's v1.1 artifact filename/tag is deliberately deferred to task 21.3 (recorded in known_limitations)."
+    },
+    {
+      "criterion": "Update the Phase 21 task 21.2 checkbox in PLANS.md and set done/reports for task 21.2 in docs/plan/state.json per the single-writer rules; do not hand-edit generated blocks.",
+      "evidence": "PLANS.md line 278 '- [x] 21.2 Canonical documentation reconciliation'; docs/plan/state.json task 21.2 done=true with reports ['docs/implementation/21.2/worker-report.json'] and updated_utc 2026-09-29T09:43:20Z -> 2026-09-29T09:58:30Z. dotnet run scripts/render-docs-state.cs -- --check reports 'status.md: up to date' and 'PLANS.md and state.json agree' (no generated block changed, none hand-edited)."
+    },
+    {
+      "criterion": "Validation: scripts/check-docs.sh must PASS, render-docs-state --check must pass, and the diff must contain only in-scope files with no unrelated or immutable-history changes.",
+      "evidence": "scripts/check-docs.sh -> 'check-docs: PASS', exit 0 on the final tree before this report was written; render-docs-state --check -> exit 0; git diff --stat -> 8 files, 38 insertions(+), 29 deletions(-), all in the delegated surfaces; no immutable-history path modified."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How should the V1.2 GOALS pointer name the accepted decision-record set, given ADR-029 was added after the planning-time 'ADR-022 through ADR-028' text?",
+      "chosen": "Changed the pointer to 'ADR-022 onward' (with '(accepted; `Accepted (v1.2)`)'), mirroring the existing V1.1 sentence 'V1.1 decisions are recorded as ADR-016 onward'.",
+      "basis": "The decisions index lists ADR-029 as an accepted v1.2 amendment to ADR-022, so a bounded 'through ADR-028' range would be incomplete; the V1.1 section's 'onward' form is the established in-file convention and stays true if further v1.2 amendments are recorded.",
+      "impact": "Wording only; no scope, status, or requirement change."
+    },
+    {
+      "question": "Should the stale 'owned by task 14.3' pending wording in README.md and docs/limitations/archive.md be corrected here, and how should the registered V11-G4 accepted item be reconciled?",
+      "chosen": "Corrected the editable current-state wording to 'completed in task 14.3 (`docs/implementation/14.3/live-verification.json`, `PASS`)', and updated the V11-G4 entry and its index row title to state that only immutable archived history retains the old framing; V11-G4 stays Accepted.",
+      "basis": "V11-G4's own disposition says 'Correct in the next documentation-only pass', and task 21.2 is that pass; its title spoke of 'current-state surfaces' and the index/register must not describe corrected surfaces as still stale. The remaining text is in docs/plan/archive/** (immutable history), which the project does not rewrite, so the item is kept (not refiled as Resolved) with its scope and consequence made precise.",
+      "impact": "The README/limitations F1 lines no longer understate the completed task 14.3 verification; the V11-G4 row stays in place with an updated, accurate title and consequence. No code or rebuild effect."
+    },
+    {
+      "question": "Should the planner-owned active-scope note ('decision records ADR-022..ADR-028 are accepted') in docs/plan/state.json/PLANS.md, and the v1.1 artifact reference in README's manual-install section, be changed by this task?",
+      "chosen": "Left both unchanged; the v1.2 artifact identity is task 21.3's by the delegation boundary, and the active-scope note is scope text outside the delegated surfaces and outside the state.json single-writer worker role (done/reports).",
+      "basis": "The task's Important boundary says not to record the v1.2 artifact identity (21.3 owns it), and the ADR-029 amendment record (docs/implementation/planning/v1.2-f4-clause-3-amendment.json) lists docs/plan/state.json under 'not_changed' and the scope-note line was written only by the planner (commit 1f39e53).",
+      "impact": "README continues to name the v1.1 package in the manual-install steps, and the status page's active-scope line does not mention ADR-029 even though it is true as written (all named ADRs are accepted); both are recorded in known_limitations for the owning tasks."
+    }
+  ],
+  "test_sensitivity": [
+    "No production or test behaviour changed, so no behavioral test exists to probe; the applicable validators are the documentation-consistency gates, and each was shown to reject a seeded violation. Probe 1: deleting the V11-G4 row from docs/limitations/00-index.md made scripts/check-docs.sh exit 1 with 'FAIL: limitation V11-G4 missing from index'. Probe 2: retargeting the new '](archive.md)' link in docs/limitations/accepted.md to a missing file made scripts/check-docs.sh exit 1 with 'FAIL: dangling link in ./docs/limitations/accepted.md -> archive-MISSING.md'. Probe 3: reverting the PLANS.md 21.2 checkbox to '- [ ]' while state.json says done=true made render-docs-state --check exit 2 with 'state/plan mismatch: task 21.2: PLANS.md checkbox does not match state.json done=true'. Every mutation was restored byte-identically (cmp -s) and the checks re-ran clean.",
+    "The prose corrections themselves (GOALS pointer, README/F1 and archive/F1 wording, register intro, F3 'formerly open' phrasing, V11-G4) have no automated text assertion: check-docs.sh validates structure, indexes, links, plan-state agreement, and artifact identity, not prose content. Their sensitivity is therefore shown by absence: the old-value sweep (listed in validation) returns no match for every removed phrasing, and each corrected statement is checked against its cited record (docs/implementation/14.3/live-verification.json 'overall_verdict' PASS for the task-14.3 sentences; docs/decisions/00-index.md for the GOALS ADR range; the F3 resolution entries for the 'formerly open' phrasing).",
+    "The evidence path cited in README.md/archive.md is plain text in backticks, not a markdown link, so the link resolver does not cover it; its target was confirmed to exist with test -f and the link resolver guard itself was demonstrated by probe 2 on the real markdown link added by the same change."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "GOALS.md (V1.2 pointer: accepted decision records)",
+      "README.md (F1 known-limitations bullet)",
+      "docs/architecture/12-performance-and-operational-limits.md (formerly-open F3 phrasing)",
+      "docs/limitations/00-index.md (register intro; V11-G4 row title)",
+      "docs/limitations/accepted.md (V11-G4 entry)",
+      "docs/limitations/archive.md (F1 lines x2)",
+      "PLANS.md (task 21.2 checkbox)",
+      "docs/plan/state.json (task 21.2 done/reports/updated_utc)",
+      "docs/status.md (checked via render-docs-state -- --check: up to date, unchanged)",
+      "docs/decisions/00-index.md (verified: no change needed)",
+      "docs/architecture/04,06,08,09,11 (verified: no change needed)",
+      "docs/data-model/03-06,03-08,03-12 (verified: no change needed)"
+    ],
+    "old_values_removed": [
+      "GOALS.md: '(proposed pending acceptance)' removed; 'ADR-022 through ADR-028' -> 'ADR-022 onward ... (accepted; `Accepted (v1.2)`)'.",
+      "README.md: 'The live pinned-host confirmation is owned by task 14.3.' -> 'The live pinned-host confirmation completed in task 14.3 (`docs/implementation/14.3/live-verification.json`, `PASS`).'",
+      "docs/limitations/archive.md: 'confirmation remains owned by task 14.3.' and 'confirmation is owned by task 14.3.' -> completed/PASS wording with the evidence path.",
+      "docs/limitations/00-index.md: 'the v1.2 additions accepted so far are appended as their phase tasks land' -> 'the v1.2 additions implemented by Phases 15-20'; V11-G4 row title '... in a few current-state surfaces ...' -> '... retained in archived history ...'.",
+      "docs/limitations/accepted.md: V11-G4 text rewritten (no longer claims README and the F1 lines 'still present ... as pending'; it records the task 21.2 correction and scopes the residual to immutable archived history; the stale README:201 evidence line was replaced by the live-verification evidence).",
+      "docs/architecture/12-performance-and-operational-limits.md: '(ADR-025; open limitation F3 resolved by Phase 17 task 17.4)' -> '(ADR-025; the formerly open limitation F3, resolved by Phase 17 task 17.4)'.",
+      "PLANS.md: '- [ ] 21.2 Canonical documentation reconciliation' -> '- [x] 21.2 Canonical documentation reconciliation'.",
+      "docs/plan/state.json: task 21.2 done false -> true, reports added ['docs/implementation/21.2/worker-report.json'], updated_utc 2026-09-29T09:43:20Z -> 2026-09-29T09:58:30Z.",
+      "Verified unaffected (not stale): docs/status.md and the PLANS.md milestone table (generated blocks; --check reports up to date and unchanged), the state.json current_release/suite/artifact block (still the 1.1.0.0 release; 21.3/21.6), docs/decisions/00-index.md, and the already-current v1.2 architecture/data-model sections.",
+      "check_docs note: scripts/check-docs.sh reported 'check-docs: PASS' (all nine sections) on the tree before this report existed; with the report on disk only the two contract-mandated agent-pairing lines fail ('task 21.2 has a worker report but no reviewer report' and 'task 21.2 has a reviewer report on disk but docs/plan/state.json does not list it in reports'), the transient state closed when the orchestrator's implementation-reviewer report is committed and listed. Recorded as PASS on that basis."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "README.md's manual-install section still names the v1.1 release artifact (`ArrTags_1.1.0.0.zip`, tag `v1.1.0`). The v1.2 equivalent is the release artifact identity that task 21.3 produces and records; per the delegation boundary this task did not invent or record it. Consequence: until 21.3 updates the release documentation, the README's manual-install steps reference the previous release package.",
+    "docs/plan/state.json's active_scope_note 'decision records ADR-022..ADR-028 are accepted', PLANS.md's active-scope paragraph (line 65), and the plan document docs/planning/v1.2.md (Status line and section 1) still bound the v1.2 decision records at ADR-022..ADR-028 after the ADR-029 amendment. The statements are true (every named ADR is accepted) but not exhaustive; the note is planner/orchestrator scope text under the state.json single-writer table, and the ADR-029 amendment record lists state.json as not_changed. Consequence: a reader of the status page must consult docs/decisions/00-index.md or GOALS.md to see ADR-029; no surface claims ADR-029 is excluded.",
+    "Release-identity and release-status surfaces remain for their owners and were not touched: docs/release/build-and-release.md and manifest.json (task 21.3); the current_release block in docs/plan/state.json and the generated docs/status.md artifact and suite lines; docs/changelog/v1.2.0.md's release section; and the v1.2.0 tag (task 21.6). docs/changelog/v1.2.0.md is immutable history and received no entry for this task.",
+    "P6 ('The v1.1.0 release publication, manifest push, and asset upload are pending') and the v1.1 identity in docs/limitations/accepted.md were left unchanged: the v1.1 tag/manifest are local, the GitHub push is the user's manual step, and the v1.2 release status is task 21.6's.",
+    "The full default/host-guarded test suites and the build were not run: no production or test code changed (documentation-only task, explicitly not required). The v1.2 live pinned-host matrix is task 21.4.",
+    "With docs/implementation/21.2/worker-report.json on disk, scripts/check-docs.sh fails the agent-contract pairing line until the orchestrator's implementation-reviewer report exists (the same transient state prior Phase 19/20/21 tasks recorded); the recorded PASS is for the tree before the report was written, and every other section still passes with the report present."
+  ],
+  "ready_for_next_task": true
+}

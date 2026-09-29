@@ -275,7 +275,7 @@ changelog, `manifest.json`, and the annotated tag after the release-review gate;
 the GitHub publish remains the user's manual step.
 **Tasks:**
 - [x] 21.1 Version bump and release metadata
-- [ ] 21.2 Canonical documentation reconciliation
+- [x] 21.2 Canonical documentation reconciliation
 - [ ] 21.3 Release build, full suite, reproducible artifact, and release documentation
 - [ ] 21.4 Live pinned-host verification
 - [ ] 21.5 Release security review

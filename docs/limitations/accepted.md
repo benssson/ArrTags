@@ -681,23 +681,26 @@ fallback selects the first manifest checksum.
   README caveat note and fail-fast artifact/checksum pre-checks to the publish
   script.
 
-### V11-G4. Stale "owned by task 14.3" pending phrasing in a few current-state surfaces (LOW, accepted)
+### V11-G4. Stale "owned by task 14.3" pending phrasing retained in archived history (LOW, accepted)
 
-`README.md` (known-limitations bullet) and this file's F1 status/consequence
-lines still present the task 14.3 live pinned-host confirmation as pending, and
-some Phase 11/12/13 sentences in `docs/plan/archive/project-status-history.md`,
-`docs/architecture/00-index.md`, and `docs/plan/archive/v1-readiness.md` retain the same
-pre-14.3 framing, while task 14.3 is complete and passed all eight matrix rows.
+At v1.1, `README.md` (known-limitations bullet) and the F1 status/consequence
+lines (now in [`archive.md`](archive.md)) presented the task 14.3 live pinned-host
+confirmation as pending, and some Phase 11/12/13 sentences in
+`docs/plan/archive/project-status-history.md` and
+`docs/plan/archive/v1-readiness.md` retain the same pre-14.3 framing, while task
+14.3 is complete and passed all eight matrix rows.
 
-- Evidence: `README.md:201`; `docs/limitations/00-index.md` F1 (the "owned by task 14.3"
-  lines); `docs/implementation/14.3/live-verification.json`
+- Evidence: `docs/implementation/14.3/live-verification.json`
   (`overall_verdict` `PASS`); the v1.1 release audit's independent live re-run of
   the same pinned host (install/load, publication, readback identity, source
   preservation, provider outage, restart persistence, uninstall drain; all
   PASS).
-- Consequence: those sentences understate completed verification; no claim is
-  overstated. Correct in the next documentation-only pass; no code or rebuild
-  impact.
+- Consequence: task 21.2 corrected the editable current-state surfaces
+  (`README.md` and the F1 lines in `archive.md`); `docs/architecture/00-index.md`
+  no longer carries the framing either. Only the immutable archived history
+  under `docs/plan/archive/` retains the historical phrasing, which the project
+  does not rewrite; accepted as history, not as a current-state claim. No code
+  or rebuild impact.
 
 ## v1.2 phase 16 accepted limitations (G6/G8)
 

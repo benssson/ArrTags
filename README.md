@@ -222,7 +222,8 @@ The canonical record of what ArrTags does not yet do or has not yet verified is
   are recorded in `docs/limitations/00-index.md` F1 (Sonarr per-series episode reads are
   O(series) per window and a sparse invalidation window repopulates the whole
   library); rendering and publication are fingerprint-gated. The live pinned-host
-  confirmation is owned by task 14.3.
+  confirmation completed in task 14.3
+  (`docs/implementation/14.3/live-verification.json`, `PASS`).
 - **Jellyfin Enhanced coexistence is verified at the contract level only**;
   Enhanced is not installed on the pinned host (V3).
 - **Live-verification gaps.** There is no live Sonarr/Radarr instance, the live

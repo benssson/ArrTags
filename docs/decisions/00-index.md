@@ -15,7 +15,7 @@ it; record a divergence or a superseding ADR instead. The former
 | ADR-007 | V1 Episode Numbering Policy for Number Fallback | Accepted | [`ADR-007.md`](ADR-007.md) |
 | ADR-008 | V1 Path Fallback Deferred | Accepted | [`ADR-008.md`](ADR-008.md) |
 | ADR-009 | V1 Badge Rendering Specification | Accepted (the geometry, placement, and scaling-model clauses are superseded by ADR-019 (v1.1); the empty-selection pass-through clause is superseded by ADR-024 (v1.2) for the owned-session case) | [`ADR-009.md`](ADR-009.md) |
-| ADR-010 | V1 Renderer Implementation Contract | Accepted (partially superseded by ADR-015: the SkiaSharp library | [`ADR-010.md`](ADR-010.md) |
+| ADR-010 | V1 Renderer Implementation Contract | Accepted (partially superseded by ADR-015: the decisions that the plugin package must carry the managed `SkiaSharp.dll` and native `libSkiaSharp.so` and must not load a system Skia library are superseded, while the SkiaSharp library choice, bundled font, PNG/color handling, host/source boundary, configuration, and testing strategy remain in force; the renderer-configuration clauses that keep geometry, placement, and scale code-owned are superseded by ADR-019 (v1.1)) | [`ADR-010.md`](ADR-010.md) |
 | ADR-011 | Jellyfin Enhanced Coexistence Policy | Accepted | [`ADR-011.md`](ADR-011.md) |
 | ADR-012 | Inbound Arr Webhook Boundary | Accepted | [`ADR-012.md`](ADR-012.md) |
 | ADR-013 | Supported Sonarr/Radarr Release Ranges and Optional-Field Compatibility Policy | Accepted | [`ADR-013.md`](ADR-013.md) |

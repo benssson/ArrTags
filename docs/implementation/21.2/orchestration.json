@@ -1,0 +1,139 @@
+{
+  "task": "21.2",
+  "title": "Canonical documentation reconciliation",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.2 reconciles canonical current-state documentation with the already-implemented and independently reviewed v1.2 behaviour (Phases 15-20). It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no Sonarr/Radarr API contract or webhook payload, and does not implement an unverified ADR clause; it records existing accepted ADRs and shipped behaviour. No pre-dispatch specialist conformance check is therefore required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 215874,
+        "output_tokens": 22179,
+        "reasoning_tokens": 47977,
+        "cache_read_tokens": 10361600,
+        "cache_write_tokens": 0,
+        "total_tokens": 10647630,
+        "cost_usd": 0.10555949999999996,
+        "duration_seconds": 783,
+        "session_id": "ses_f136c47dcffeVMO8C1CBAbGorB"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 90117,
+        "output_tokens": 17522,
+        "reasoning_tokens": 87475,
+        "cache_read_tokens": 8604139,
+        "cache_write_tokens": 0,
+        "total_tokens": 8799253,
+        "cost_usd": 0,
+        "duration_seconds": 1164,
+        "session_id": "ses_f13602064ffebFJVSTnMUjyj1G"
+      }
+    },
+    {
+      "role": "documentation-maintainer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "documentation-maintainer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 115510,
+        "output_tokens": 21695,
+        "reasoning_tokens": 134824,
+        "cache_read_tokens": 12267502,
+        "cache_write_tokens": 0,
+        "total_tokens": 12539531,
+        "cost_usd": 0,
+        "duration_seconds": 1872,
+        "session_id": "ses_f13602062ffeHm7EXaD8Qg5d59"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 91685,
+        "output_tokens": 13873,
+        "reasoning_tokens": 25005,
+        "cache_read_tokens": 2192512,
+        "cache_write_tokens": 0,
+        "total_tokens": 2323075,
+        "cost_usd": 0.043657086,
+        "duration_seconds": 399,
+        "session_id": "ses_f134315bbffenm3FAit3KL5mml"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 56604,
+        "output_tokens": 11666,
+        "reasoning_tokens": 11033,
+        "cache_read_tokens": 809494,
+        "cache_write_tokens": 0,
+        "total_tokens": 888797,
+        "cost_usd": 0,
+        "duration_seconds": 207,
+        "session_id": "ses_f133cc183ffeHMtLjw0tEYkKcB"
+      }
+    },
+    {
+      "role": "documentation-maintainer",
+      "attempt": 2,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "documentation-maintainer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 69143,
+        "output_tokens": 20584,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 1716864,
+        "cache_write_tokens": 0,
+        "total_tokens": 1806591,
+        "cost_usd": 0,
+        "duration_seconds": 437,
+        "session_id": "ses_f133cc181ffeudjLCfgoZclv5T"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "The task-designated documentation review (documentation-maintainer, attempt 1) returned PASS_WITH_FINDINGS with two open findings on surfaces this task owns: F-21.2-D1 (MEDIUM, truncated ADR-010 status cell in docs/decisions/00-index.md) and F-21.2-D2 (LOW, two dated notes in docs/data-model/03-08-renderresult.md reading as pending). The worker was re-invoked to complete the index cell from ADR-010.md's recorded status without editing ADR text, and to append the file-style supersession markers. Attempt 2 closed both; the implementation reviewer (attempt 2) returned APPROVED and the documentation maintainer (attempt 2) recorded F-21.2-D1/D2 resolved with PASS_WITH_FINDINGS."
+    }
+  ],
+  "notes": [
+    "The implementation review is the required gate and returned APPROVED at both attempts. The documentation-maintainer review is this task's designated documentation gate and returned PASS_WITH_FINDINGS at both attempts (not INCONSISTENT).",
+    "Residual informational findings recorded by the documentation review (carried forward, non-blocking): F-21.2-D3 (the planner-owned active_scope_note/PLANS.md/status.md bound the v1.2 ADR set at ADR-022..ADR-028 while GOALS.md says 'ADR-022 onward'; true but not exhaustive, owner is the planner/orchestrator, candidate for task 21.3/21.6), F-21.2-D4 (SEC-2 index title carries a '(LOW, open)' token while its status column is Accepted), F-21.2-D6 (V11-G4 residual enumeration omits docs/plan/archive/v1.1.md and docs/changelog/v1.1.0.md), and the absence of an automated guard for a truncated decisions-index cell or stale note prose.",
+    "Boundary: the v1.2 artifact identity, docs/release/build-and-release.md, manifest.json, and the test matrix are task 21.3; the release changelog, current_release/status, and the v1.2.0 tag are task 21.6. No production/test code changed; the full suite was not required for this documentation task."
+  ]
+}

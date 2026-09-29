@@ -13,7 +13,8 @@ current-state record stays traceable; the shipped behaviour is authoritative in
 One provider library read per connection serves every work item in a
 reconciliation window, the ArrTags-side invalidation trigger set is wired, and
 the Goal C integration verification is recorded. The live pinned-host
-confirmation remains owned by task 14.3.
+confirmation completed in task 14.3
+(`docs/implementation/14.3/live-verification.json`, `PASS`).
 
 The bounded per-connection provider inventory cache (ADR-018) is defined (task
 11.1), populated and consumed at the provider-client boundary (task 11.2), and
@@ -64,7 +65,8 @@ failure.
   work item, so the `GOALS.md` Reliability/Performance goal "avoid unnecessary API
   requests to Sonarr and Radarr" is met for the provider library read within a
   window and for event-driven refresh. Render and publication remain
-  fingerprint-gated. The live pinned-host confirmation is owned by task 14.3.
+  fingerprint-gated. The live pinned-host confirmation completed in task 14.3
+  (`docs/implementation/14.3/live-verification.json`, `PASS`).
 
 ### F2. A saved configuration change is activated at runtime and re-renders existing posters via the bounded post-save trigger
 

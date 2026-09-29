@@ -1,0 +1,171 @@
+{
+  "task": "21.2",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "summary": "Re-review of task 21.2 after the focused attempt-2 rework that closed the two open findings from the task-designated documentation review (docs/implementation/21.2/documentation-review.json, PASS_WITH_FINDINGS). I inspected the full diff, both changed documents, the state update, and the attempt-2 worker report, and I re-ran both documentation gates myself (dotnet sourced from /config/arrtags-env.sh) rather than accepting the recorded results. F-21.2-D1 (MEDIUM) is closed: the ADR-010 row's status cell in docs/decisions/00-index.md:18 is now a complete, balanced, and accurate summary of the full relation recorded in docs/decisions/ADR-010.md's own Status block -- the ADR-015 partial supersession (the managed `SkiaSharp.dll` / native `libSkiaSharp.so` bundling and no-system-Skia-load decisions superseded; SkiaSharp library choice, bundled font, PNG/color handling, host/source boundary, configuration, and testing strategy remaining in force) plus the ADR-019 (v1.1) supersession of the renderer-configuration clauses that keep geometry, placement, and scale code-owned. I compared the cell clause by clause against ADR-010.md:3-9; nothing is dropped and nothing is added. It is consistent in style and in the ADR-019 citation with the existing ADR-009 and ADR-019 rows, and the ADR-015 row ('supersedes the renderer-bundling parts of ADR-010') agrees. An awk paren-count over all index rows (lines 9-37) now reports zero unbalanced rows (it previously flagged only line 18), and the file still has 29 ADR rows against 29 ADR files. docs/decisions/ADR-010.md is untouched, so ADR text immutability holds. F-21.2-D2 (LOW) is closed: the Phase 4 and v1.1 task 12.1 notes in docs/data-model/03-08-renderresult.md each carry an appended supersession marker in the file's own convention ('The Phase 4 text above remains the historical task 4.9/4.10 record...' and 'The v1.1 task 12.1 text above remains the historical record...'), matching the pre-existing convention sentences at lines 88 and 102. Both claims are accurate: the Jellyfin host adapter (task 5.3, `ArtworkSourceReader` / `IArtworkSourceReader`) shipped with the Phase 5 `ArtworkGenerationCoordinator` work (task 5.8, Phase 5 COMPLETE, and the Phase 5 note is below the marker as the marker says), and the renderer filtering task 12.1 defers to was implemented in task 12.2 (state.json task 12.2 'Allowlist resolution and renderer filtering order' is done; `BadgeDefinitionResolver` applies `AllowedValues` through `BadgeSelectorResolver.IsAllowed`; Phase 12 COMPLETE). Neither marker restates the filter contract, and docs/architecture/09 and docs/data-model/03-06 are unchanged and remain authoritative. Diff scope is clean: the attempt-2 changes are confined to docs/decisions/00-index.md, docs/data-model/03-08-renderresult.md, and docs/plan/state.json, plus the new docs/implementation/21.2/worker-report.attempt-2.json; `git diff --stat` over docs/implementation/, docs/reviews/, docs/changelog/, docs/plan/archive/, docs/decisions/ADR-*.md, and docs/research/ is empty, and no production or test code changed. `scripts/check-docs.sh` PASSes with all nine ok sections and `scripts/check-agents.sh` PASSes (the attempt-1 agent-pairing transient is now closed because reviewer-report.json and documentation-review.json are listed in state.json reports, per docs/agent-contracts.md rule 5), and `dotnet run scripts/render-docs-state.cs -- --check` reports status.md and PLANS.md up to date with 'PLANS.md and state.json agree', exit 0. The attempt-2 worker report has attempt 2 and rework entries for both findings with concrete closure evidence. The original task acceptance criteria remain MET; attempt 2 corrected two documentation-accuracy defects without introducing any new stale claim or overclaim.",
+  "findings": [
+    {
+      "id": "F-21.2-D1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "documentation accuracy (decisions index)",
+      "summary": "The truncated, unbalanced ADR-010 status cell in docs/decisions/00-index.md is now a complete, balanced, and accurate summary of the relation recorded in ADR-010.md.",
+      "detail": "The documentation review recorded the pre-fix cell as 'Accepted (partially superseded by ADR-015: the SkiaSharp library' -- an unterminated parenthesis that reproduced only the first clause of ADR-010.md's Status block, and the only unbalanced row in the file. The new cell reads: 'Accepted (partially superseded by ADR-015: the decisions that the plugin package must carry the managed `SkiaSharp.dll` and native `libSkiaSharp.so` and must not load a system Skia library are superseded, while the SkiaSharp library choice, bundled font, PNG/color handling, host/source boundary, configuration, and testing strategy remain in force; the renderer-configuration clauses that keep geometry, placement, and scale code-owned are superseded by ADR-019 (v1.1))'. I verified this against ADR-010.md:3-9 clause by clause: the six in-force items (SkiaSharp library choice, bundled font, PNG/color handling, host/source boundary, configuration, testing strategy) all appear; the two superseded ADR-015 decisions appear; the ADR-019 renderer-configuration supersession appears. Nothing is dropped and nothing is invented, so it is neither an overclaim nor an underclaim of the recorded relation. I independently confirmed balance with `awk` paren counting over all index rows (lines 9-37): no unbalanced row remains (pre-fix only line 18 was flagged). The row count is 29, matching 29 ADR files, and check-docs' 'decisions index (29 ADRs)' section passes. The '(v1.1)' tag on ADR-019 matches the ADR-019 row's own 'Accepted (v1.1; ...)' and the ADR-009 row's usage; ADR-015 is left untagged, matching its own row. The pre-fix cell was not rewritten from a source outside the record, and docs/decisions/ADR-010.md itself is unedited, so the immutability rule for ADR text holds; the review's own instruction not to rewrite ADR decision text was respected. The 'consider adding a check-docs guard' clause of the finding was advisory and is recorded as informational below.",
+      "evidence": [
+        "docs/decisions/00-index.md:18 (new cell, full text quoted above)",
+        "docs/decisions/ADR-010.md:3-9 (the authoritative Status block the cell summarizes)",
+        "docs/decisions/00-index.md:16 (ADR-009 row) and :27 (ADR-019 row) -- the citation style the new cell follows; :24 (ADR-015 row) agrees with the new cell's scope of the ADR-015 supersession",
+        "awk paren-count over index rows 9-37: no output (all rows balanced); pre-fix this flagged line 18 only",
+        "grep -cE '^\\| ADR-[0-9]+' docs/decisions/00-index.md == 29 == ls docs/decisions/ADR-*.md | wc -l",
+        "git diff --name-only -- docs/decisions/ADR-*.md -> empty (no ADR text modified)"
+      ],
+      "recommended_action": "None. Closed."
+    },
+    {
+      "id": "F-21.2-D2",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "documentation accuracy (data-model implementation notes)",
+      "summary": "The Phase 4 and v1.1 task 12.1 dated notes now carry supersession markers in the file's existing convention, so they no longer read as current-state claims, and the filter contract is not restated.",
+      "detail": "The review flagged two forward references that contradict the current normative text: 'adapter that supplies it remains Phase 5 work' (Phase 4 note) and 'Task 12.1 does not yet apply the filter to rendering; the renderer filtering order is task 12.2' (12.1 note), against docs/architecture/09 and docs/data-model/03-06 which state the allowlist filter is applied by the renderer in the ADR-017 order. The rework appended, rather than rewrote: the Phase 4 note now ends '... The Phase 4 text above remains the historical task 4.9/4.10 record; the Jellyfin host adapter it defers to shipped with the Phase 5 `ArtworkGenerationCoordinator` work (see the Phase 5 note below).' and the 12.1 note now ends '... The v1.1 task 12.1 text above remains the historical record; the renderer filtering it defers to was implemented in task 12.2.' Both sentences use the file's own convention form, identical in shape to the pre-existing markers at line 88 ('The v1.1 text above remains the historical record of the three-preset v1.1 state.') and line 102 ('The Phase 5 text above remains the historical task 5.8 record.'), and no dated note sentence was deleted, matching the Phase 5 and 12.3/18.3 precedents. I verified both claims rather than accepting them: the Jellyfin host adapter exists and is wired into the coordinator (src/ArrTags/Artwork/ArtworkSourceReader.cs, IArtworkSourceReader.cs, consumed by ArtworkGenerationCoordinator.cs:56) and state.json task 5.3 'Implement the Jellyfin host source adapter' is done with Phase 5 COMPLETE; the 'see the Phase 5 note below' cross-reference resolves to the Phase 5 note at line 91 in the same file. The renderer filtering claim is substantiated by state.json task 12.2 'Allowlist resolution and renderer filtering order' (done) with Phase 12 COMPLETE, and by code: BadgeDefinitionResolver.cs:59 and :71 apply `definition.AllowedValues` through `BadgeSelectorResolver.IsAllowed`. Neither marker describes the filter contract, its ordering, or the adapter's internals, so docs/architecture/09 and docs/data-model/03-06 remain the authoritative statements of the contract and neither file was modified. The one residual -- a reader must read to the end of a note to see its marker -- is a direct consequence of the append-not-rewrite pattern the review itself prescribed and of this file's established convention, and is recorded below as informational.",
+      "evidence": [
+        "docs/data-model/03-08-renderresult.md:38-41 (Phase 4 marker), :55-57 (12.1 marker)",
+        "docs/data-model/03-08-renderresult.md:88 and :102 (the pre-existing convention the markers follow)",
+        "docs/data-model/03-08-renderresult.md:91 (the Phase 5 note the Phase 4 marker points to)",
+        "src/ArrTags/Artwork/ArtworkSourceReader.cs, IArtworkSourceReader.cs, ArtworkGenerationCoordinator.cs:56 -- the Jellyfin host adapter shipped and wired in Phase 5",
+        "src/ArrTags/Rendering/BadgeDefinitionResolver.cs:59,:71 -- AllowedValues applied through BadgeSelectorResolver.IsAllowed, i.e. task 12.2's renderer filtering",
+        "docs/plan/state.json tasks 5.3 (done), 5.8 (done), 12.2 (done); phases 5 and 12 COMPLETE",
+        "git diff --name-only -- docs/architecture/09* docs/data-model/03-06* -> empty (authoritative filter contract untouched)"
+      ],
+      "recommended_action": "None. Closed."
+    },
+    {
+      "id": "21.2-A2-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "test coverage (documentation guards)",
+      "summary": "Neither closed finding is covered by an automated guard: check-docs validates only the decisions-index row count, and the data-model note prose has no guard, so the class of defect can recur undetected.",
+      "detail": "F-21.2-D1's fix text said to 'consider adding a check-docs guard that rejects an unbalanced parenthesis or an unterminated status cell in the decisions index so the class cannot recur' -- advisory ('consider'), and the worker explicitly did not add one and recorded the gap honestly in its test_sensitivity field. I confirmed the gap is real: scripts/check-docs.sh's decisions section compares only `adr_rows` to `adr_files`, and no check inspects cell balance or status-cell termination. The 12.1/Phase 4 note prose has no guard at all, so sensitivity can only be shown by inspection against the file's own convention. This is a pre-existing guardrail limitation, not a regression: the attempt-1 reviewer recorded the same gap, and the worker demonstrated sensitivity for the decisions index by seeding a row-count violation and observing check-docs exit 1. Neither finding's closure depends on a guard.",
+      "evidence": [
+        "scripts/check-docs.sh decisions section compares adr_rows to adr_files only",
+        "docs/implementation/21.2/worker-report.attempt-2.json test_sensitivity: 'F-21.2-D1's cell balance is not covered by any automated guard'",
+        "docs/implementation/21.2/reviewer-report.json finding 21.2-R4/validation: attempt 1 recorded the same guardrail gap"
+      ],
+      "recommended_action": "No change required for this task. If the orchestrator wants the class closed, add a decisions-index paren-balance/terminated-cell assertion to scripts/check-docs.sh in a later documentation pass; it is out of scope for a task that must not modify unrelated files beyond its own documentation surfaces."
+    },
+    {
+      "id": "21.2-A2-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation precision (data-model note readability)",
+      "summary": "Because the markers are appended rather than inlined, a reader must read to the end of a dated note to discover that its forward reference has been superseded.",
+      "detail": "The 12.1 note's forward reference ('the renderer filtering order is task 12.2') sits roughly six lines above its marker, and the Phase 4 note's ('remains Phase 5 work') roughly two lines above its marker. This is inherent to the append-only, do-not-rewrite treatment of dated implementation notes, and it is exactly the pattern the review's own fix text prescribed ('append a short supersession marker ... in the file's existing style') and that the file already uses for the Phase 5 and 12.3/18.3 notes. The marker-sentence form and the retention of the original sentence are both correct; only the discoverability is imperfect, and rewriting the dated note body would have been the wrong trade. No acceptance criterion, requirement, or current-state truth is affected.",
+      "evidence": [
+        "docs/data-model/03-08-renderresult.md:35 and :38-41; :51-52 and :55-57",
+        "docs/data-model/03-08-renderresult.md:88 and :102 (same trade-off, pre-existing)"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "21.2-A2-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope boundary (attempt-2 exclusions)",
+      "summary": "The attempt-2 rework correctly left F-21.2-D3, D4, and D6 and the release-identity surfaces untouched; those remain owned by the planner/orchestrator and by tasks 21.3/21.4/21.6.",
+      "detail": "The documentation review raised four additional findings. F-21.2-D3 (planner-owned active-scope note still bounding the v1.2 decision records at ADR-022..ADR-028) and F-21.2-D4/D6 (informational) were outside the delegated rework scope and were left as recorded; I confirmed the state.json single-writer boundary still holds because the attempt-2 state edit touches only task 21.2's done/reports fields plus updated_utc, and Phase 21 remains PLANNED with the gate and tag untouched. The v1.2 live pinned-host matrix, the release artifact identity, and the release changelog/tag remain 21.4, 21.3, and 21.6. I verified the attempt-2 diff introduces no claim about any of these, so no scope creep occurred in either direction.",
+      "evidence": [
+        "docs/implementation/21.2/documentation-review.json findings F-21.2-D3, D4, D6",
+        "docs/plan/state.json phase 21 status PLANNED; task 21.2 diff limited to done/reports",
+        "docs/plan/README.md single-writer table"
+      ],
+      "recommended_action": "No change required. Orchestrator to route D3 to the planner and the release surfaces to their owning tasks."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "F-21.2-D1 closed: the ADR-010 index-cell status is complete, balanced, and accurate against the relation recorded in docs/decisions/ADR-010.md, with ADR-010.md unedited and 29 ADR rows retained.",
+      "verdict": "MET",
+      "evidence": "docs/decisions/00-index.md:18 now carries the full relation; I diffed it clause by clause against docs/decisions/ADR-010.md:3-9 and found nothing dropped and nothing added. awk paren-count over all index rows reports no unbalanced row (pre-fix, only line 18 was flagged). Row count 29 == 29 ADR files, and check-docs reports 'ok: decisions index (29 ADRs)'. The pre-fix truncated fragment 'partially superseded by ADR-015: the SkiaSharp library' no longer matches. `git diff --name-only -- docs/decisions/ADR-*.md` is empty, so ADR text is untouched. The '(v1.1)' tag matches the ADR-009/ADR-019 rows' usage of the same citation."
+    },
+    {
+      "criterion": "F-21.2-D2 closed: the Phase 4 note and the v1.1 task 12.1 note each carry a short supersession marker in the file's existing style, without restating the filter contract or editing docs/architecture/09 or docs/data-model/03-06.",
+      "verdict": "MET",
+      "evidence": "Markers at docs/data-model/03-08-renderresult.md:38-41 and :55-57 follow the file's convention sentences at :88 and :102 exactly in form, appended without deleting any dated-note sentence. Both completion claims are substantiated: the Jellyfin host adapter (ArtworkSourceReader/IArtworkSourceReader, wired into ArtworkGenerationCoordinator.cs:56) shipped with the Phase 5 work, state.json task 5.3 is done, and the 'Phase 5 note below' cross-reference resolves within the same file; task 12.2 is done and BadgeDefinitionResolver.cs:59,:71 apply AllowedValues via BadgeSelectorResolver.IsAllowed. Neither marker states the filter contract, and `git diff --name-only -- docs/architecture/09* docs/data-model/03-06*` is empty."
+    },
+    {
+      "criterion": "The attempt-2 diff is confined to the two fixed documents, the state update, and the new attempt-2 report; no ADR text, immutable history, or code is changed.",
+      "verdict": "MET",
+      "evidence": "`git diff --name-only` over the working tree lists the eight attempt-1 files plus exactly docs/data-model/03-08-renderresult.md, docs/decisions/00-index.md, and docs/plan/state.json; `git status --porcelain` shows the only untracked path is docs/implementation/21.2/ (which contains the preserved worker-report.json, the new worker-report.attempt-2.json, reviewer-report.json, and documentation-review.json). `git diff --stat -- docs/implementation/ docs/reviews/ docs/changelog/ docs/plan/archive/ docs/decisions/ADR-*.md docs/research/` is empty, and no change under src/ or tests/. The Phase 4/12.1 file change is 9 lines (+7/-2) and the decisions-index change is 1 line, matching a focused rework."
+    },
+    {
+      "criterion": "docs/plan/state.json task 21.2 reports lists the attempt-1 and attempt-2 worker reports, the implementation reviewer report, and the documentation review report; updated_utc advanced; no generated block hand-edited.",
+      "verdict": "MET",
+      "evidence": "jq on task 21.2 returns done=true and reports = [worker-report.json, worker-report.attempt-2.json, reviewer-report.json, documentation-review.json], which is the same multi-attempt, multi-report listing shape as tasks 20.3 and 21.1. updated_utc advanced 2026-09-29T09:43:20Z -> 2026-09-29T10:39:06Z. The state edit touches only the worker-owned task fields; phase 21 status (PLANNED), gate, and tag are unchanged. `dotnet run scripts/render-docs-state.cs -- --check` reports 'status.md: up to date', 'PLANS.md: up to date' (x2), 'PLANS.md and state.json agree', exit 0, and the git diff shows no change inside any generated marker."
+    },
+    {
+      "criterion": "Validation: scripts/check-docs.sh PASSes and render-docs-state --check passes, and the agent-pairing transient recorded in attempt 1 is closed.",
+      "verdict": "MET",
+      "evidence": "I re-ran both gates myself with dotnet sourced from /config/arrtags-env.sh. scripts/check-docs.sh -> all nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (29 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform') and 'check-docs: PASS', exit 0 -- including the generated-status section that was skipped when dotnet was not on PATH. I also ran scripts/check-agents.sh, which PASSes end to end, so the attempt-1 pairing transient ('a worker report but no reviewer report' / 'state does not list it in reports', finding 21.2-R4) is closed by the reports listing. render-docs-state --check -> 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree', exit 0."
+    },
+    {
+      "criterion": "The attempt-2 worker report has attempt 2 and rework entries covering F-21.2-D1 and F-21.2-D2 with closure evidence.",
+      "verdict": "MET",
+      "evidence": "docs/implementation/21.2/worker-report.attempt-2.json carries \"attempt\": 2, \"status\": \"COMPLETE\", a rework array with exactly two entries (finding_id F-21.2-D1 and F-21.2-D2), each with a closure description and concrete evidence (quoted cell/marker text, paren counts, row counts, a grep for the removed fragment, and the claim-substantiating code paths). The attempt-1 worker-report.json is preserved unmodified. The report's acceptance_criteria, test_sensitivity, documentation_reconciliation, and interpretations fields are all present and I found no claim in them that the diff and gates contradict; in particular its disclosure that no automated guard covers either finding is accurate."
+    },
+    {
+      "criterion": "The original task acceptance criteria for 21.2 (canonical current-state surfaces accurate; F3/F4/F6/F7/F8 resolved and F5 accepted and excluded; decisions index accepted; architecture/data-model/README reflect v1.2; PLANS.md checkbox and state.json updated per the single-writer rules; docs gates pass and the diff is in scope) remain MET after the rework.",
+      "verdict": "MET",
+      "evidence": "The attempt-2 diff does not touch any of the attempt-1 corrected surfaces except by adding accuracy to two of them: GOALS.md, README.md, docs/architecture/12, and docs/limitations/{00-index,accepted,archive}.md are byte-identical to the attempt-1 state I approved (verified by reading their current diff hunks: the F1 'owned by task 14.3' -> completed-with-evidence correction, the V11-G4 rescope, the 'formerly open limitation F3' label, and the 'ADR-022 onward ... (accepted; Accepted (v1.2))' pointer are all intact). The two new edits are strictly corrective: the ADR-010 cell now matches ADR-010.md instead of truncating it, and the two data-model notes are marked historical rather than left reading as current-state claims. Neither introduces a new claim about a capability, and neither overstates or understates any shipped behaviour. PLANS.md:278 remains '- [x] 21.2' and the milestone table is generated and up to date. The v1.2 doc-checklist surfaces owned by other tasks (docs/changelog/v1.2.0.md, docs/status.md release lines, docs/release/build-and-release.md, manifest.json, build.yaml, Directory.Build.props) remain untouched, consistent with the 21.3/21.6 boundary this task was approved under."
+    }
+  ],
+  "reviewer_blockers": [],
+  "tests_checked": [
+    "scripts/check-docs.sh re-run independently with dotnet on PATH (. /config/arrtags-env.sh): nine ok sections and 'check-docs: PASS', exit 0, on the final tree with all four task-21.2 report files present -- run once without dotnet (generated-status section skipped) and once with it, both PASS.",
+    "scripts/check-agents.sh run independently: all twelve ok sections and 'check-agents: PASS', exit 0 -- confirms the worker/reviewer pairing and 'plan state lists the review evidence' rules now hold for 21.2, closing attempt-1 finding 21.2-R4.",
+    "dotnet run scripts/render-docs-state.cs -- --check: 'status.md: up to date', 'PLANS.md: up to date' (x2), 'PLANS.md and state.json agree', exit 0 -- no generated block hand-edited.",
+    "awk paren-balance scan over docs/decisions/00-index.md rows 9-37: no unbalanced row (the pre-fix defect at line 18 is gone); independent of the worker's own textual check.",
+    "grep -cE '^\\| ADR-[0-9]+' docs/decisions/00-index.md == 29 against ls docs/decisions/ADR-*.md | wc -l == 29; grep for the removed truncated fragment returns no match.",
+    "git diff --name-only / --stat over the whole tree, scoped to docs/implementation/, docs/reviews/, docs/changelog/, docs/plan/archive/, docs/decisions/ADR-*.md, docs/research/, src/, and tests/ (all empty as required), plus git status --porcelain for untracked paths.",
+    "jq on docs/plan/state.json: task 21.2 done/reports; tasks 5.3, 5.8, 12.1, 12.2, 12.3 done flags; phase statuses 4, 5, 12, 21.",
+    "Not rerun (correctly out of scope): ./build.sh build/test/package and the default, host-guarded, and forced-native suites -- no production or test code changed in this documentation-only rework. The v1.2 live pinned-host matrix (21.4), release build and artifact identity (21.3), and release security review (21.5) are not this task's validation."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-010.md Status block (lines 3-9) compared clause by clause against the new index cell: verified directly rather than from the worker's quotation.",
+    "docs/decisions/ADR-015.md Status ('Accepted (supersedes the renderer-bundling parts of ADR-010)') and ADR-019.md Status ('Accepted (v1.1; supersedes the code-owned geometry and placement clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010)'): both confirm the scope the new cell asserts, and both agree with the index rows at 00-index.md:24 and :27.",
+    "docs/agent-contracts.md rule 5 (a task's reports array lists its reviewer report plus every preserved .attempt-<n>.json) and scripts/check-agents.sh:110-155: confirms the state.json listing is the correct closing action for attempt-1 finding 21.2-R4 and that the current listing satisfies the enforced checks.",
+    "docs/plan/README.md single-writer table: confirms the attempt-2 state edit stayed inside the worker-owned surface (task done/reports + updated_utc) and that phase status, gate, and tag remain orchestrator-owned (Phase 21 still PLANNED).",
+    "docs/planning/v1.2.md section 6 outline row V1.2-8 and section 7 documentation checklist: confirms 21.2's delegation scope and that the changelog/release-doc/manifest/build-metadata items belong to 21.3 and 21.6, not this task.",
+    "Code claims behind the two data-model markers, verified against source rather than accepted: src/ArrTags/Artwork/ArtworkSourceReader.cs, IArtworkSourceReader.cs, ArtworkGenerationCoordinator.cs:56 (Phase 5 host adapter shipped and wired) and src/ArrTags/Rendering/BadgeDefinitionResolver.cs:59,:71 with BadgeDefinition.cs AllowedValues (task 12.2 renderer filtering implemented).",
+    "docs/implementation/21.2/documentation-review.json findings F-21.2-D1 and F-21.2-D2 (full text of the fix instructions) -- the rework was checked against the literal requested fix, not a paraphrase."
+  ],
+  "documentation_checked": [
+    "docs/decisions/00-index.md -- the corrected ADR-010 cell (line 18) against ADR-010.md's Status, plus row/ADR-file count and paren balance; ADR-009, ADR-015, ADR-019 rows read for cross-consistency.",
+    "docs/decisions/ADR-010.md -- confirmed unmodified (immutable ADR text).",
+    "docs/data-model/03-08-renderresult.md -- the Phase 4 note (lines 20-41) and 12.1 note (lines 43-57) with their new markers; the convention markers at :88 and :102; the Phase 5 note at :91 that the Phase 4 marker cross-references.",
+    "docs/architecture/09-persisted-artwork-rendering.md and docs/data-model/03-06-badgedefinition.md -- confirmed unmodified and still authoritative for the filter contract the markers deliberately do not restate.",
+    "docs/plan/state.json -- updated_utc, task 21.2 done/reports, phase 21 status/gate; task and phase completion flags for 5, 12, 4 used to verify the markers' claims.",
+    "PLANS.md -- line 278 task 21.2 checkbox and the generated milestone table (regeneration verified via render-docs-state --check, not by hand-editing).",
+    "docs/status.md -- confirmed current via render-docs-state --check.",
+    "Attempt-1 corrected surfaces re-read for regression (GOALS.md V1.2 pointer; README.md F1 bullet; docs/architecture/12 F3 label; docs/limitations/00-index.md intro and V11-G4 row; docs/limitations/accepted.md V11-G4 section; docs/limitations/archive.md F1 lines) -- all intact and unchanged by attempt 2.",
+    "docs/changelog/v1.2.0.md and docs/release/build-and-release.md, manifest.json, build.yaml, Directory.Build.props -- confirmed untouched, consistent with the 21.3/21.6 boundary.",
+    "docs/implementation/21.2/ -- reviewer-report.json (attempt 1, preserved unmodified), worker-report.json (attempt 1, preserved), documentation-review.json (the source of the two findings), worker-report.attempt-2.json (this rework), and this report."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding_id": "F-21.2-D1",
+      "origin": "docs/implementation/21.2/documentation-review.json (PASS_WITH_FINDINGS), MEDIUM, open",
+      "closure": "Closed. docs/decisions/00-index.md:18 now summarizes the full ADR-010 relation recorded in ADR-010.md:3-9 -- the ADR-015 partial supersession of the managed `SkiaSharp.dll` / native `libSkiaSharp.so` bundling and no-system-Skia-load decisions, with the six in-force items named, plus the ADR-019 (v1.1) supersession of the renderer-configuration clauses. The cell's parentheses are balanced and no index row is now unbalanced; the file retains 29 ADR rows against 29 ADR files; ADR-010.md itself is unedited.",
+      "evidence": "docs/decisions/00-index.md:18; docs/decisions/ADR-010.md:3-9; awk paren scan over rows 9-37 clean; row count 29 == 29; check-docs 'ok: decisions index (29 ADRs)'; `git diff --name-only -- docs/decisions/ADR-*.md` empty.",
+      "verified_independently": true
+    },
+    {
+      "finding_id": "F-21.2-D2",
+      "origin": "docs/implementation/21.2/documentation-review.json (PASS_WITH_FINDINGS), LOW, open",
+      "closure": "Closed. The Phase 4 note and the v1.1 task 12.1 note in docs/data-model/03-08-renderresult.md each carry an appended supersession marker in the file's own convention (matching lines 88 and 102), so the dated forward references no longer read as current-state claims. Both completion claims are true and neither restates the filter contract; docs/architecture/09 and docs/data-model/03-06 are unmodified and remain authoritative.",
+      "evidence": "docs/data-model/03-08-renderresult.md:38-41 and :55-57, compared against :88 and :102; state.json tasks 5.3/5.8/12.2 done and phases 5 and 12 COMPLETE; src/ArrTags/Artwork/ArtworkSourceReader.cs + ArtworkGenerationCoordinator.cs:56; src/ArrTags/Rendering/BadgeDefinitionResolver.cs:59,:71; `git diff --name-only -- docs/architecture/09* docs/data-model/03-06*` empty.",
+      "verified_independently": true
+    }
+  ],
+  "ready_for_next_task": true
+}
