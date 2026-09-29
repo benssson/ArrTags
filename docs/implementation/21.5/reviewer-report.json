@@ -1,0 +1,118 @@
+{
+  "task": "21.5",
+  "attempt": 1,
+  "reviewer": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "summary": "Task 21.5 (release security review) is a records/audit task: the deliverable is the security-reviewer report itself. I independently confirmed the report exists at the contract path, is a complete and internally coherent security-review record, that its headline security claims match the source at HEAD e172c4c, and that its acceptance criterion (no open BLOCKER/HIGH) is met with an independently recomputed count of 0. The principal new finding SEC-21.5-01 was spot-checked directly against the provider-client registration, the client factory, SecretLease.ApplyTo, the two outbound request sites, and ADR-005's quoted clauses: all five claims are accurate as written, and the redirect credential-forwarding path is real in the shipped code (it is not yet fixed, which is why corrective tasks 21.7-21.10 exist). I also spot-checked a prior-finding reconciliation (SEC-2 -> SEC-21.5-04, the shared-temp state-root fallback) and two carried LOW findings (SEC-21.5-02/03, LogSubject) against the source and confirmed them. The report does not overclaim: it separates findings reproduced against the shipped assembly or a faithful DI reconstruction from live-host evidence it cites but could not re-execute, and it records four explicit limitations including the no-pinned-host bound and the fact that SEC-21.5-01 was not reproduced inside the Jellyfin host process. Scope discipline holds: the review modified no product code, test, canonical document, or artifact; the uncommitted PLANS.md / docs/plan/state.json / docs/status.md changes post-date the report by 7-13 minutes and are the planner's corrective-scope work, not the reviewer's. APPROVED with two informational, non-blocking notes (an unrelated-prose reflow in PLANS.md attributable to the planner, and a suggested-but-not-enforced addition of this reviewer report to the 21.5 state.json reports array).",
+  "acceptance_criteria": [
+    {
+      "criterion": "The release security review is recorded with no open BLOCKER/HIGH.",
+      "verdict": "MET",
+      "basis": "docs/implementation/21.5/security-review.json exists at the docs/agent-contracts.md path for the security-reviewer and carries reviewer_status=PASS_WITH_FINDINGS (a valid enum value). Independent recomputation over its findings array: 1 MEDIUM/open (SEC-21.5-01), 3 LOW/open (SEC-21.5-02/03/04), 6 INFORMATIONAL/noted -> open BLOCKER or HIGH count = 0, which equals the report's declared open_blocker_high=0. No prior review contributed a dropped HIGH: the four prior security reviews (final-review, 14.4, 15.4, 17.4) contain no HIGH-severity finding at all, and all 35 prior findings/limitations are accounted for in prior_findings_reconciled."
+    }
+  ],
+  "findings": [
+    {
+      "id": "RV-21.5-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "detail": "Independent verification of the report's principal technical claim (SEC-21.5-01: X-Api-Key is re-sent across an HTTP redirect). Every cited code location matches the source at HEAD e172c4c. (1) src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:213-226 RegisterProviderHttpClients registers Sonarr and Radarr with a bare AddHttpClient(name) and attaches ConfigurePrimaryHttpMessageHandler only to the two AllowInsecure names; no AllowAutoRedirect or MaxAutomaticRedirections appears anywhere in src/ArrTags. (2) src/ArrTags/Providers/ArrHttpClientFactory.cs CreateClient sets only BaseAddress, Timeout and Accept, so the .NET default redirect behaviour applies. (3) src/ArrTags/Secrets/SecretLease.cs ApplyTo (lines ~46-58) sets X-Api-Key on the outbound HttpRequestMessage, which the handler carries across a 3xx hop. (4) The only outbound request construction in the whole source is HttpMethod.Get at SonarrClient.cs:287 and RadarrClient.cs:261, both immediately followed by lease.ApplyTo - confirming the read path is the only credential transport and the behaviour is uniform for both providers. (5) docs/decisions/ADR-005.md does say the transport 'may use an API-key lease to add X-Api-Key to the current request only' (spanning the cited line 51) and 'The API key is sent only as X-Api-Key' (spanning the cited line 111), so the report's framing - a gap between the accepted decision and the implementation, not a decision gap - is accurate. The MEDIUM (not HIGH) adjudication is reasoned in the report (not reachable by an unauthenticated third party; the base URL is administrator-supplied) and is a defensible severity call, not a soft-pedalling of a release blocker. The behaviour is not yet remediated, which is exactly what the user's decision and corrective tasks 21.7-21.10 address; task 21.5 itself only had to record the finding."
+      ,
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:213-226",
+        "src/ArrTags/Providers/ArrHttpClientFactory.cs:32-53",
+        "src/ArrTags/Secrets/SecretLease.cs:46-58",
+        "src/ArrTags/Providers/Sonarr/SonarrClient.cs:287 and src/ArrTags/Providers/Radarr/RadarrClient.cs:261",
+        "grep -rn 'AllowAutoRedirect|MaxAutomaticRedirections|ConfigurePrimaryHttpMessageHandler' src/ArrTags -> only ArrTagsServiceRegistrator.cs:221,224",
+        "grep -rn 'HttpMethod\\.|new HttpRequestMessage' src/ArrTags -> only SonarrClient.cs:287, RadarrClient.cs:261",
+        "docs/decisions/ADR-005.md:50-52 and :110-111"
+      ],
+      "recommended_action": "None for 21.5. The fix belongs to corrective task 21.7 as already planned; the review must be re-derived against the corrected build in 21.10."
+    },
+    {
+      "id": "RV-21.5-02",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "detail": "Independent verification of two more of the report's code claims, to test whether it is a genuine source-level review or a restatement of prior reports. (a) Prior-finding reconciliation SEC-2 -> SEC-21.5-04: src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:269-278 CreateStateRepository does root state at Path.Combine(Path.GetTempPath(), \"ArrTags\") when the plugin instance is missing or DataFolderPath is empty, exactly as claimed and cited. (b) Carried LOW findings SEC-21.5-02 and SEC-21.5-03: src/ArrTags/Logging/LogSubject.cs Create (lines 47-68) uses Path.GetFileName(primaryPath) with no host-platform-independent separator handling, and NormalizeFileName (lines 78-102) removes only Rune.IsControl scalars up to MaximumScalarValues=128 - which is precisely the Cc-only predicate and the Windows/UNC whole-path behaviour the report describes, reproduced against the shipped assembly by the reviewer. The report's further claim that a 15.4/14.4/final-review HIGH was not dropped was also checked: those four files contain no HIGH-severity finding."
+      ,
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:269-278",
+        "src/ArrTags/Logging/LogSubject.cs:47-68 and :78-102",
+        "docs/implementation/21.5/security-review.json prior_findings_reconciled entries SEC-2, SR-15.4-01, SR-15.4-02, SEC-21.5-02, SEC-21.5-03",
+        "severity census of docs/implementation/{final-review,14.4,15.4,17.4}/security-review.json: no HIGH entries"
+      ],
+      "recommended_action": "None. The three carried LOWs stay open by prior explicit adjudication; the report correctly declines to close them."
+    },
+    {
+      "id": "RV-21.5-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "detail": "Record coherence and no-overclaim check. The report carries every field the task required: reviewer_status, open_blocker_high, findings (each with id/severity/status/area/summary/evidence/recommended_action), reviewed_head (e172c4c, which is the current HEAD), scope, prior_findings_reconciled (35 entries, every prior review finding and registered limitation accounted for with a status and a note), limitations (5 entries), and ready_for_next_task. Severity and status vocabularies conform to docs/agent-contracts.md (PASS_WITH_FINDINGS; BLOCKER/HIGH/MEDIUM/LOW/INFORMATIONAL; open/resolved/not_required/noted). It does not overclaim: SEC-21.5-01 is labelled 'NEW finding, not a v1.2 regression and not present in any prior review', the three LOWs are labelled as carried and re-verified, live-host rows from the 21.4 matrix are explicitly cited as evidence and not re-executed, and limitations state that no pinned host was available, that the settings page's inline JavaScript was reviewed but never executed, and that SEC-21.5-01 was reproduced against a faithful DI reconstruction rather than inside the Jellyfin host. The summary itself states plainly that open_blocker_high = 0 and that the acceptance criterion is met, without claiming the release is free of security weaknesses. Artifact identity in the report was independently confirmed: sha256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, 619,538 bytes, md5 3100aae94a2b4aedf222eca040675271, 7 entries, matching docs/implementation/21.4/live-verification.json and the reported release documentation."
+      ,
+      "evidence": [
+        "docs/implementation/21.5/security-review.json (keys, enums, reviewed_head, 35 reconciled prior findings, 5 limitations)",
+        "sha256sum / stat -c%s / md5sum / unzip -l artifacts/ArrTags_1.2.0.0.zip",
+        "docs/implementation/21.4/live-verification.json L1",
+        "docs/release/build-and-release.md:80-81 (documented default-suite figures 1,927/66/1,993 that the report's test evidence matches)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "RV-21.5-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "detail": "Scope discipline confirmed for 21.5. Working-tree state is: modified PLANS.md, docs/plan/state.json, docs/status.md; untracked docs/implementation/21.5/ and docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json. No file under src/, tests/, docs/decisions/, docs/architecture/, docs/limitations/, or artifacts/ is modified, and artifacts/ArrTags_1.2.0.0.zip retains its 10:55 build-time mtime and recorded hash. The report itself declares that the only file it wrote is docs/implementation/21.5/security-review.json, and mtimes corroborate this: the review is 13:21 while state.json (13:28), the planner's correction record (13:29), docs/status.md (13:30) and PLANS.md (13:34) were all written afterwards. The PLANS.md / state.json / status.md changes are the planner's corrective scope (tasks 21.7-21.10) reacting to the review, not review-induced edits, and docs/status.md was regenerated consistently from state.json rather than hand-edited."
+      ,
+      "evidence": [
+        "git status --porcelain",
+        "stat -c '%y %n' on PLANS.md, docs/plan/state.json, docs/status.md, docs/implementation/21.5/security-review.json, artifacts/ArrTags_1.2.0.0.zip",
+        "git diff -- docs/plan/state.json (21.5 done=true with reports=['docs/implementation/21.5/security-review.json']; 21.7-21.10 added)"
+      ],
+      "recommended_action": "None for 21.5."
+    },
+    {
+      "id": "RV-21.5-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "detail": "Observation outside task 21.5's scope, recorded so the orchestrator can route it rather than have it absorbed silently. The uncommitted PLANS.md change adds the Phase 21 corrective-work block and the 21.7-21.10 checkboxes (appropriate and accurate), but it also reflows and rewrites several unrelated prose sections - the 'Current State' pointer, 'How To Use This Plan' bullets, the 'Active Phases' scope paragraph, the decision-gate sentence, and the 'Completed Milestones' section - and in doing so drops incidental cross-references (docs/plan/README.md as the generator source, docs/architecture/00-index.md / docs/data-model/00-index.md as ADR indexes, the 'completed phases are archived in docs/plan/archive/' sentence and the 'Planned' column note in the milestone table). This is the planner's task, not 21.5, and it does not affect 21.5's correctness or its acceptance criterion, so it does not block this review. It is worth a look before commit, since a wholesale reflow of unrelated plan prose is a documentation regression risk that no task gate will otherwise surface."
+      ,
+      "evidence": [
+        "git diff -- PLANS.md (148 changed lines, mostly reflow outside the Phase 21 corrective block)"
+      ],
+      "recommended_action": "Route to the orchestrator to have the planner's corrective-scope task (or a documentation-maintainer pass) restore the incidental cross-references and the 'Planned' milestone-table note that the unrelated reflow removed. Not a 21.5 requirement."
+    },
+    {
+      "id": "RV-21.5-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "detail": "docs/agent-contracts.md rule 5 asks that a task's state.json reports array list the evidence reports for the task. Task 21.5's reports array currently lists only docs/implementation/21.5/security-review.json. scripts/check-agents.sh only enforces the pairing for tasks that have a worker-report.json (check-agents.sh:118, :142 both 'continue' when it is absent), and 21.5 is a specialist-deliverable task with no worker-report.json and no entry in docs/implementation/review-exemptions.json, so nothing fails. The records are nevertheless complete and self-consistent, so this is hygiene rather than a defect."
+      ,
+      "evidence": [
+        "docs/agent-contracts.md rule 5 and 'Review exemptions'",
+        "scripts/check-agents.sh:118,142,148-150",
+        "docs/implementation/21.5/ contains security-review.json only"
+      ],
+      "recommended_action": "Optionally add 'docs/implementation/21.5/reviewer-report.json' to the 21.5 reports array in docs/plan/state.json when this task's records are committed, so the state file lists every evidence report the task produced."
+    }
+  ],
+  "reviewer_blockers": [],
+  "tests_checked": [
+    "No test execution was required for this review: the task under review is a review record, not a code change, and the working tree contains no product-code or test diff. The report's test evidence (default suite Failed 0, Passed 1,927, Skipped 66, Total 1,993; focused security filter Passed 316, Skipped 1, Total 317) was compared against the independently recorded figures in docs/release/build-and-release.md:80-81 and is consistent, so it was not rerun.",
+    "Inspected the report's reproduction descriptions for coherence and consistency with source: SEC-21.5-01 (DI reconstruction), SEC-21.5-02 and SEC-21.5-03 (shipped Release assembly), SecretLease/webhook-auth candidate matrix, state-path segment rejection, reconciliation cursor round-trip, and byte-limit validation."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-005.md:50-52 and :110-111 - the two clauses SEC-21.5-01 is measured against are quoted accurately, and the report's reading (a transport-scope gap in the implementation, not a gap in the accepted decision) follows from the text.",
+    "docs/research/jellyfin-12-architecture.md section 2.4 as cited by SEC-21.5-01 (a plugin should configure the behaviour it requires on its own named or typed client) - consistent with the recommended action and with the plugin owning the four named clients.",
+    "docs/agent-contracts.md - report path, status/severity enums, and the reports-array/check-agents rules applied to this record."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json - 21.5 marked done with reports=['docs/implementation/21.5/security-review.json']; the generated docs/status.md active-scope note matches state.json (regenerated, not hand-edited).",
+    "PLANS.md - 21.5 checkbox marked complete; Phase 21 corrective block and 21.7-21.10 added consistently with state.json and with the user's decision to fix SEC-21.5-01 (reviewed for information only; see RV-21.5-05).",
+    "docs/implementation/21.4/live-verification.json L1 - artifact identity cited by the report matches the recorded live matrix.",
+    "docs/release/build-and-release.md - recorded artifact identity and default-suite figures match the report's artifact and test evidence.",
+    "Prior immutable records (docs/implementation/{final-review,14.4,15.4,17.4}/security-review.json) inspected as evidence of what had to be reconciled; not modified."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}
