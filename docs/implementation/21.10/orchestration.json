@@ -3,7 +3,7 @@
   "title": "Release security review of the corrected candidate",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "359ac1b",
   "conformance": {
     "required": false,
     "reason": "Task 21.10 is the adversarial security re-audit of the corrected v1.2 release candidate; it introduces no new Jellyfin or provider assumption and implements nothing. The specialist security review is the task's own verification activity; no pre-dispatch conformance check applies.",
