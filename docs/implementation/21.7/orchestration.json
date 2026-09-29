@@ -3,7 +3,7 @@
   "title": "Provider transport: never follow a redirect (fix SEC-21.5-01) with a non-egress test",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "5f72372",
   "conformance": {
     "required": false,
     "reason": "Task 21.7 fixes SEC-21.5-01 by configuring the plugin's own named HTTP clients not to follow redirects. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption; it changes no provider API contract, version range, or webhook payload; and it implements an already-accepted ADR-005 clause (the key is added to the current request only) with the client-configuration approach already prescribed by docs/research/jellyfin-12-architecture.md section 2.4. No pre-dispatch specialist conformance check is required.",
