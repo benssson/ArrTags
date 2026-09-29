@@ -3,7 +3,7 @@
   "title": "Release build, full suite, reproducible artifact, and release documentation",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "eaeac72",
   "conformance": {
     "required": false,
     "reason": "Task 21.3 builds, packages, and verifies the already-implemented and reviewed v1.2 code (Phases 15-20) on the pinned Jellyfin 12.0.0 host, and records the reproducible artifact identity. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no Sonarr/Radarr contract or webhook payload, and implements no unverified ADR clause; the host-guarded facts and suites it runs are pre-existing verification of established behaviour. No pre-dispatch specialist conformance check is required.",
