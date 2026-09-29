@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated_utc": "2026-09-29T17:40:14Z",
+  "updated_utc": "2026-09-29T17:47:04Z",
   "active_scope": "docs/planning/v1.2.md",
   "active_scope_note": "v1.2 (Phases 15-21) is accepted: goals G6-G9 and limitations F3, F4, F6, F7, F8. Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)). DG-19, DG-20, and DG-21 (the F4, F6, and F7 mechanisms) are resolved by the v1.2 plan and their ADRs, so their dependent tasks are no longer gated. F5 is accepted as a known shipped limitation (reclassified from Open) and is excluded. Phase 21 additionally carries corrective tasks 21.7-21.10: the 21.5 release security review recorded the new open MEDIUM finding SEC-21.5-01 (the provider clients follow HTTP redirects, so X-Api-Key is re-sent to a 3xx Location origin, contrary to ADR-005), and the user decided to fix it now and re-verify rather than accept it. Tasks 21.8, 21.9, and 21.10 re-derive the deliverables of 21.3, 21.4, and 21.5 against the corrected build; 21.6 (changelog, release readiness, manifest commit, annotated v1.2.0 tag) runs last.",
   "releases": [
@@ -1406,7 +1406,12 @@
         {
           "id": "21.6",
           "done": false,
-          "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag"
+          "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag",
+          "reports": [
+            "docs/implementation/21.6/release-readiness.json",
+            "docs/implementation/21.6/reviewer-report.json",
+            "docs/implementation/21.6/worker-report.json"
+          ]
         },
         {
           "id": "21.7",

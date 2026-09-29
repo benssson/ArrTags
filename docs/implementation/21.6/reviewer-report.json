@@ -1,0 +1,226 @@
+{
+  "task": "21.6",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "summary": "Independent review of the documentation/release-readiness portion of task 21.6 (the delegated scope: the appended '## v1.2.0 release' section in docs/changelog/v1.2.0.md, the machine-readable docs/implementation/21.6/release-readiness.json, and the docs/plan/state.json 21.6 reports/updated_utc update). I re-derived every load-bearing value from the repository rather than accepting the worker's record. Version pins: build.yaml is version 1.2.0.0 / targetAbi 12.0.0.0 / framework net10.0 and Directory.Build.props has Version, AssemblyVersion and FileVersion all 1.2.0.0. Artifact identity: artifacts/ArrTags_1.2.0.0.zip is 619,636 bytes, SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277, MD5 f3b50a91c7cb63d9560316d8abe2f9dc, 7 entries / 1,506,803 uncompressed bytes, entry list exactly ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml and the three licenses/ notices (no bundled SkiaSharp). manifest.json is valid, lists 1.2.0.0 / 1.1.0.0 / 1.0.1.0 newest first, targetAbi 12.0.0.0, sourceUrl .../releases/download/v1.2.0/ArrTags_1.2.0.0.zip, timestamp 2026-09-29T14:37:30Z, checksum equal to md5sum of the archive; its guid/name/owner/category/overview/description match build.yaml, the 1.2.0.0 changelog equals 'dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml' byte for byte, and regenerating the whole manifest from build.yaml with the recorded checksum/sourceUrl/timestamp is byte-identical to the committed file; the working-tree manifest is unmodified against HEAD 6922066 and 'git show HEAD:manifest.json' carries the same checksum. I re-hashed the recorded suite matrix against the producing evidence rather than re-running it (default 0/1,937/66/2,003; no-archive 0/1,934/69/2,003; host-guarded 0/1,957/46/2,003; forced-native 0/2,024/21/2,045) and against docs/release/build-and-release.md, which also retains the superseded task 21.3 identity marked as such; the task 21.9 live record is VERIFIED with L1-L8 all PASS against the same archive hash, and the task 21.10 security record is PASS_WITH_FINDINGS with open_blocker_high 0, the only open findings being the three carried LOWs (SEC-21.5-02/03/04) and the two INFORMATIONALs. I independently confirmed the technical claims in the new changelog section against source and ADRs: seven ByteLimitField byte-denominated limits (six MB, the webhook payload KB); seven RestartRequiredSettings entries (four RestartRequiredOnly, three MixedRestartRequired); the diagnostics snapshot is nine top-level fields expanding to exactly 28 leaves (2 scalars + 2 health + 3 matching + 18 render + 1 cache-transition); the reconciliation cursor is the persisted (SortName, itemId) anchor of ReconciliationCursorStore; RenderPassThroughReason.NoFittingBadge exists; the three artwork outcome suffixes match ADR-026 clauses; two Extra Large goldens exist; the four named provider clients all register a primary handler with AllowAutoRedirect = false; the limitations register has no open items and F5 remains Accepted. The appended section is 160 insertions / 0 deletions and the first 1,892 lines of the file are byte-identical to HEAD, so no per-task history was rewritten or removed. Scope is clean: git status shows only docs/changelog/v1.2.0.md, docs/plan/state.json and the new untracked docs/implementation/21.6/ directory; no commit and no tag were created (refs/tags/v1.2.0 absent, HEAD still 6922066), current_release is still 1.1.0.0, releases[] 1.2.0 is still PLANNED, task 21.6 done is still false and PLANS.md '- [ ] 21.6' is unchanged, so the post-gate orchestrator surface was not touched. 'dotnet run scripts/render-docs-state.cs -- --check' exits 0 (status.md and PLANS.md up to date, plan and state agree). scripts/check-docs.sh currently FAILs only on the two contract-defined section-9 lines for task 21.6 (no reviewer report on disk yet, and the fixed-wording state-listing message); I confirmed on an out-of-tree copy that adding a reviewer-report.json and listing it in the 21.6 reports array makes check-docs PASS on all nine sections, so this clears with this report plus the orchestrator's state.json entry. Two precision issues are recorded as noted findings: the changelog's attribution of the manifest commit to the post-gate step, which the task's own readiness record contradicts (manifest.json is already committed at HEAD 6922066 by task 21.8) and which mirrors the pre-existing wording in docs/release/build-and-release.md, and the release-readiness RR-10 'clean working tree' observation string. Neither affects the release artifact, the gate, or the tag, and both should be reconciled when the changelog is next re-derived. The release-reviewer gate and the annotated v1.2.0 tag are NOT done; they remain post-gate orchestrator steps, and this report makes no claim about them.",
+  "findings": [
+    {
+      "id": "21.6-REV-1",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "release-readiness correctness",
+      "summary": "Every recorded version, artifact, and manifest value in release-readiness.json and the changelog release section reproduces exactly from the repository.",
+      "detail": "build.yaml 1.2.0.0 / targetAbi 12.0.0.0; Directory.Build.props Version/AssemblyVersion/FileVersion 1.2.0.0; artifact 619,636 bytes / 3e59cb06... / f3b50a91... / 7 entries / 1,506,803 uncompressed; manifest valid, 1.2.0.0 first with prior 1.1.0.0 and 1.0.1.0 retained, targetAbi 12.0.0.0, v1.2.0 sourceUrl, checksum equal to the archive MD5, guid/name/owner/category/overview/description matching build.yaml, changelog byte-identical to write-manifest.cs --print-changelog, and a full regeneration byte-identical to the committed file. Working tree and HEAD agree on manifest.json.",
+      "evidence": [
+        "grep -nE '^(version|targetAbi|framework):' build.yaml",
+        "stat/sha256sum/md5sum/unzip -l artifacts/ArrTags_1.2.0.0.zip",
+        "jq -r '.[0].versions[0] | {version,targetAbi,checksum,sourceUrl,timestamp}' manifest.json",
+        "dotnet run scripts/write-manifest.cs -- --build-yaml build.yaml --manifest manifest.json --checksum f3b50a91c7cb63d9560316d8abe2f9dc --source-url https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip --timestamp 2026-09-29T14:37:30Z --output /tmp/21.6/regen.json -> cmp byte-identical",
+        "git diff --quiet manifest.json (clean); git show HEAD:manifest.json | jq -r '.[0].versions[0].checksum'"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.6-REV-2",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "documentation accuracy / no overclaim",
+      "summary": "The appended '## v1.2.0 release' section's technical claims are verifiable against source and the accepted ADRs and do not overclaim.",
+      "detail": "Seven byte-denominated limits with fixed per-field units (six MB, WebhookMaxPayloadBytes KB) and off-step rejection in ByteLimitField.TryParse; seven RestartRequiredSettings entries (four RestartRequiredOnly, three MixedRestartRequired, so the 'mixed setting states that some paths apply immediately' wording matches); the diagnostics surface is nine top-level snapshot fields expanding to exactly 28 leaves (QueueDepth, QueueInFlight, two connection health values, 3 matching failures, 2 cache counters, 18 render failures, StaleMetadataTransitions); the F4 cursor is the persisted (SortName, itemId) anchor; NoFittingBadge is a distinct RenderPassThroughReason; the three artwork outcome suffixes match ADR-026 clause 3 verbatim; two Extra Large goldens exist (bottom-left-extra-large.png, full-rail-extra-large.png) and ExtraLargeSizeFactor is 2.0 with the Small/Medium/Large/Extra Large order; all four named provider clients (strict and opt-in .Insecure Sonarr/Radarr) register a primary handler with AllowAutoRedirect = false; the limitations register has no open items and F5 is Accepted. Claims about the suite matrix, the live matrix, and the security outcome are attributed to tasks 21.8, 21.9 and 21.10 and reproduce from those records; the changelog does not present them as re-measured by 21.6.",
+      "evidence": [
+        "src/ArrTags/Configuration/ByteLimitUnits.cs (7 ByteLimitField entries)",
+        "src/ArrTags/Configuration/RestartRequiredSettings.cs (7 restart-required entries)",
+        "src/ArrTags/Diagnostics/DiagnosticsSnapshot.cs (9 top-level) + ArrConnectionHealth/MatchingFailureCounts(3)/RenderFailureCounts(18) = 28 leaves",
+        "src/ArrTags/Reconciliation/ReconciliationCursorStore.cs ((SortName, itemId) anchor)",
+        "src/ArrTags/Rendering/RenderPassThroughReason.cs (NoFittingBadge)",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (4 AddHttpClient registrations; AllowAutoRedirect = false in both handler factories)",
+        "docs/decisions/ADR-026.md:114-115 (outcome suffixes), ADR-027.md:26-27/71 (ExtraLarge 2.0 and order)",
+        "docs/limitations/00-index.md, open.md (F5 Accepted; no open limitations)"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.6-REV-3",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "history preservation",
+      "summary": "The changelog change is append-only; the pre-existing per-task history is byte-identical.",
+      "detail": "git diff --numstat reports 160 insertions and 0 deletions for docs/changelog/v1.2.0.md, the heading count goes from 7 to 8, and the first 1,892 lines (the whole pre-existing file) compare byte-identical against HEAD. The superseded task 21.3 identity appears only inside the sentence that marks it superseded, and the old suite totals 1,927/1,947/2,014/2,035 do not appear in the new section; the single 1,993 reference is explicitly attributed to task 21.3's total.",
+      "evidence": [
+        "git diff --numstat docs/changelog/v1.2.0.md -> 160 0",
+        "cmp of HEAD:docs/changelog/v1.2.0.md lines 1-1892 against the working file lines 1-1892 -> identical",
+        "awk 'NR>1892' docs/changelog/v1.2.0.md | grep -E '1,927|1,947|2,014|2,035' -> no match"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.6-REV-4",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "scope / post-gate boundary",
+      "summary": "The task did not touch any post-gate orchestrator surface: no commit, no tag, current_release and releases[] unchanged, 21.6 not marked done, status.md release state unchanged.",
+      "detail": "git status --porcelain shows only ' M docs/changelog/v1.2.0.md', ' M docs/plan/state.json' and the untracked docs/implementation/21.6/ directory; HEAD is still 6922066 (the 21.10 record commit) and refs/tags/v1.2.0 does not exist (only v1.2.0-phase15..phase20 exist). docs/plan/state.json current_release is still 1.1.0.0 and releases[] 1.2.0 is still PLANNED; the 21.6 task object has done=false and only gained a reports array plus the updated_utc advance. PLANS.md still reads '- [ ] 21.6' and the generated status block still reports 1.1.0.0 as the current shipped release. render-docs-state --check agrees.",
+      "evidence": [
+        "git status --porcelain; git log --oneline -1; git tag -l 'v1.2.0' (empty); git rev-parse -q --verify refs/tags/v1.2.0 (absent)",
+        "jq '.current_release.version, (.releases[] | select(.version==\"1.2.0\") | .status)' docs/plan/state.json -> 1.1.0.0 / PLANNED",
+        "git diff docs/plan/state.json -> only updated_utc and the 21.6 reports array",
+        "grep -n '21.6 Changelog' PLANS.md -> '- [ ] 21.6'",
+        "docs/status.md generated block -> 'Current release: 1.1.0.0'"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.6-REV-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation gate",
+      "summary": "scripts/check-docs.sh FAILs only on the two contract-defined section-9 pairing lines for task 21.6 and passes once this report is listed in state.json; render-docs-state --check is clean.",
+      "detail": "On the current tree check-docs reports all sections ok except 'task 21.6 has a worker report but no reviewer report' and the fixed-wording companion 'task 21.6 has a reviewer report on disk but docs/plan/state.json does not list it in reports' (the second message is emitted by check-agents.sh for any task whose reports array lacks a reviewer-report entry, independently of whether the file exists). I reproduced the intended end state on an out-of-tree copy of the repository with a stub docs/implementation/21.6/reviewer-report.json added and that path listed in the 21.6 reports array: check-docs exits 0 with all nine sections ok, including 'generated status blocks are current' and 'agent report contracts conform'. Separately 'dotnet run scripts/render-docs-state.cs -- --check' exits 0 today: 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree'.",
+      "evidence": [
+        "scripts/check-docs.sh -> exit 1, only the two section-9 lines for 21.6 fail",
+        "out-of-tree copy with reviewer-report.json added and listed -> check-docs.sh exit 0, all nine sections ok",
+        "dotnet run scripts/render-docs-state.cs -- --check -> exit 0"
+      ],
+      "recommended_action": "The orchestrator adds docs/implementation/21.6/reviewer-report.json to the task 21.6 reports array in docs/plan/state.json; the gate then passes."
+    },
+    {
+      "id": "21.6-REV-6",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation precision",
+      "summary": "The changelog release section states twice that the committed manifest.json is created by the orchestrator after the release-reviewer gate, which the task's own readiness record contradicts: manifest.json is already committed at HEAD 6922066 by task 21.8.",
+      "detail": "docs/changelog/v1.2.0.md says 'The committed manifest.json and the annotated release tag v1.2.0 are created by the orchestrator only after the release-reviewer gate' and later 'The committed manifest.json and the annotated tag v1.2.0 are the orchestrator's step after the release-reviewer gate', while the same section also says 'the committed manifest at HEAD is the verified file' and docs/implementation/21.6/release-readiness.json post_gate_owned correctly says 'Git commit of the release-readiness tree (manifest.json is already committed at HEAD 6922066)'. The same attribution already exists in the pre-existing docs/release/build-and-release.md ('Phase 21 task 21.6 creates the manifest commit and the annotated tag'), so the changelog is consistent with the project's existing release framing rather than introducing a new error, and the pending corrective re-derivation will regenerate the manifest identity anyway. A reader could momentarily believe the 1.2.0.0 catalog entry is not yet in the repository. No verification, artifact, gate or tag outcome depends on this sentence.",
+      "evidence": [
+        "docs/changelog/v1.2.0.md release section: 'The committed manifest.json and the annotated release tag v1.2.0 are created by the orchestrator only after the release-reviewer gate'",
+        "docs/changelog/v1.2.0.md release section: 'the committed manifest at HEAD is the verified file'",
+        "docs/implementation/21.6/release-readiness.json post_gate_owned[3]: 'manifest.json is already committed at HEAD 6922066'",
+        "docs/release/build-and-release.md:303 'Phase 21 task 21.6 creates the manifest commit and the annotated tag v1.2.0'",
+        "git log --oneline -1 -- manifest.json -> 35818fb (task 21.8)"
+      ],
+      "recommended_action": "When the changelog is next re-derived (the pending corrective tasks will rewrite this section anyway), state that the 1.2.0.0 manifest entry is already committed and that the orchestrator's post-gate step is the release commit carrying this record plus the annotated tag; reconcile docs/release/build-and-release.md:303 in the same pass so the two documents agree."
+    },
+    {
+      "id": "21.6-REV-7",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "evidence precision",
+      "summary": "release-readiness.json RR-10 records 'clean working tree at 6922066' although the tree already carried this task's own changelog edit when the record was written; the load-bearing half of the check (HEAD manifest == verified manifest) is correct.",
+      "detail": "File mtimes show docs/changelog/v1.2.0.md at 17:47:00 and the readiness record at 17:47:57, so 'git status --porcelain' could not have been empty at verified_utc 2026-09-29T17:47:54Z. The substantive claim of RR-10 is independently confirmed: the working-tree manifest is unmodified against HEAD 6922066 and 'git show HEAD:manifest.json' carries checksum f3b50a91c7cb63d9560316d8abe2f9dc, so the committed manifest is the verified file. The observation string is a leftover from an earlier clean-tree moment and could be read as 'nothing is pending in the tree', which is false for this task's own uncommitted documentation change.",
+      "evidence": [
+        "file mtimes: docs/changelog/v1.2.0.md 17:47:00, docs/implementation/21.6/release-readiness.json 17:47:57, docs/plan/state.json 17:48:28",
+        "docs/implementation/21.6/release-readiness.json RR-10 observed: 'clean working tree at 69220667d...'",
+        "git status --porcelain -> ' M docs/changelog/v1.2.0.md', ' M docs/plan/state.json'",
+        "git diff --quiet manifest.json -> clean; git show HEAD:manifest.json | jq -r '.[0].versions[0].checksum' -> f3b50a91c7cb63d9560316d8abe2f9dc"
+      ],
+      "recommended_action": "Re-word RR-10 to state that the manifest is unmodified against HEAD 6922066 rather than that the working tree was clean; the same applies to the worker's validation entry that quotes the same command."
+    },
+    {
+      "id": "21.6-REV-8",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "post-gate status (honest statement, not a defect)",
+      "summary": "The release-reviewer gate has not run and the annotated v1.2.0 tag does not exist; both remain post-gate orchestrator steps, and this review does not treat them as satisfied.",
+      "detail": "docs/implementation/final-review/ still holds only the 1.1.0.0 release review; there is no v1.2 release review on disk. refs/tags/v1.2.0 is absent and no commit exists for this task. The changelog release section and release-readiness.json both state this boundary explicitly (post_gate_owned lists the gate, the tag, the current_release/releases[]/PLANS.md/done update and the commit; the GitHub release, asset upload and manifest push are recorded as the user's manual step with scripts/publish-release.sh). The worker's own acceptance_criteria list marks the gate and the tag as not satisfied in this delegation, which matches the repository state I observed. The user's subsequent decision to fix the two carried LOW log-subject residuals means the artifact identity and this changelog section will be re-derived by later corrective tasks; that pending re-derivation is not a defect of this task.",
+      "evidence": [
+        "ls docs/implementation/final-review/ (no v1.2 release review)",
+        "git tag -l 'v1.2.0*' -> v1.2.0-phase15..phase20 only",
+        "docs/implementation/21.6/release-readiness.json acceptance_criteria_status and post_gate_owned",
+        "docs/release/build-and-release.md:371 'The GitHub release and asset upload remain the user's manual step'"
+      ],
+      "recommended_action": "Run the release-reviewer gate, then commit, tag v1.2.0, and update current_release/releases[]/PLANS.md/done plus the generated status surfaces."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "docs/changelog/v1.2.0.md and the status surfaces reflect v1.2 (documentation portion, this delegation)",
+      "verdict": "MET",
+      "evidence": "The appended '## v1.2.0 release' section states the v1.2.0.0 identity, the eight v1.2 features with their ADRs, the corrected artifact identity with the superseded task 21.3 identity retained, the corrected four-tier suite matrix, the task 21.9 live matrix with its structural bounds, the task 21.10 security outcome with the carried LOWs, and the manual-publish statement; it is append-only (160/0) and every technical claim reproduces from source and the ADRs (21.6-REV-2). docs/changelog/00-index.md already carried the 1.2.0 row, unchanged. The generated status surfaces still report 1.1.0.0 as the current shipped release with v1.2 as the active scope, which is the correct pre-gate state and is explicitly reserved to the orchestrator."
+    },
+    {
+      "criterion": "docs/changelog/v1.2.0.md and the status surfaces reflect v1.2 (current_release / releases[] / status.md release state portion)",
+      "verdict": "NOT IN THIS DELEGATION (post-gate orchestrator step, correctly left untouched)",
+      "evidence": "current_release is still 1.1.0.0, releases[] 1.2.0 is still PLANNED, docs/status.md reports 1.1.0.0; 21.6-REV-4 confirms nothing in this surface was changed."
+    },
+    {
+      "criterion": "the release-review gate passes",
+      "verdict": "NOT RUN (post-gate orchestrator step; no claim made)",
+      "evidence": "docs/implementation/final-review/ holds no v1.2 release review; the task produced the readiness record the gate consumes (21.6-REV-1, 21.6-REV-8)."
+    },
+    {
+      "criterion": "the annotated tag v1.2.0 exists",
+      "verdict": "NOT CREATED (post-gate orchestrator step; no claim made)",
+      "evidence": "refs/tags/v1.2.0 is absent; only v1.2.0-phase15..phase20 exist; the changelog states the tag is created after the gate."
+    },
+    {
+      "criterion": "the GitHub publish remains the user's manual step",
+      "verdict": "MET",
+      "evidence": "Stated in the changelog release section, in docs/release/build-and-release.md:371, and in release-readiness.json post_gate_owned. No GitHub call, push, commit or tag was performed (21.6-REV-4)."
+    },
+    {
+      "criterion": "Release readiness: build.yaml and Directory.Build.props are 1.2.0.0",
+      "verdict": "MET",
+      "evidence": "RR-01/RR-02; independently reproduced (21.6-REV-1)."
+    },
+    {
+      "criterion": "Release readiness: manifest.json valid, 1.2.0.0 first, checksum equals the archive MD5, correct sourceUrl/targetAbi, prior entries retained, matches build.yaml, and the committed manifest is the verified file",
+      "verdict": "MET",
+      "evidence": "RR-03..RR-08 and RR-10; independently reproduced including a byte-identical regeneration from the canonical generator (21.6-REV-1)."
+    },
+    {
+      "criterion": "Release readiness: docs/release/build-and-release.md records the corrected identity and suite counts and retains the superseded identity",
+      "verdict": "MET",
+      "evidence": "RR-11; verified present at lines 82/88/101/109 (counts), 186-187/239-241 (identity), 194/205/252 (superseded task 21.3 identity), 326 (manifest checksum)."
+    },
+    {
+      "criterion": "Release readiness: no stale v1.2 claim in the canonical/current-state surfaces (README.md, docs/limitations/, docs/status.md, GOALS.md)",
+      "verdict": "MET",
+      "evidence": "RR-13; I re-ran the scan. The only 'pending' hits are P6 (the v1.1.0 publication genuinely is still pending), V11-G4 (an accepted historical register item), the README's UpgradePending selector name, and F6-1 race-window prose; docs/limitations/open.md records no open limitations."
+    },
+    {
+      "criterion": "Release readiness: scripts/check-docs.sh PASS and render-docs-state.cs -- --check up to date",
+      "verdict": "PARTIALLY MET, with the transient explained",
+      "evidence": "render-docs-state --check is clean today. check-docs passes on all nine sections except the two contract-defined section-9 pairing lines that require this reviewer report to exist and be listed in state.json; I confirmed on an out-of-tree copy that the intended end state passes (21.6-REV-5). The worker's RR-15 records the pre-worker-report tree as PASS, which I reproduced by removing the 21.6 report directory from a copy."
+    },
+    {
+      "criterion": "Persist docs/implementation/21.6/worker-report.json and the release-readiness record; keep state.json 21.6 reports/updated_utc current without setting done",
+      "verdict": "MET",
+      "evidence": "Both reports exist; state.json 21.6 reports = [release-readiness.json, worker-report.json] with updated_utc 2026-09-29T17:47:04Z, done=false, PLANS.md '- [ ] 21.6'. This reviewer report still needs to be added to that reports array by the orchestrator (21.6-REV-5)."
+    }
+  ],
+  "reviewer_blockers": [],
+  "tests_checked": [
+    "docs/implementation/21.6/worker-report.json and docs/implementation/21.6/release-readiness.json (RR-01..RR-15, acceptance_criteria_status, post_gate_owned) read in full and each recorded value re-derived independently",
+    "Re-derived version pins: build.yaml 1.2.0.0 / 12.0.0.0 / net10.0; Directory.Build.props Version/AssemblyVersion/FileVersion 1.2.0.0",
+    "Re-hashed artifacts/ArrTags_1.2.0.0.zip: 619,636 bytes, SHA-256 3e59cb06..., MD5 f3b50a91..., 7 entries, 1,506,803 uncompressed, entry list enumerated",
+    "manifest.json: jq validity, version ordering, targetAbi, sourceUrl, timestamp, checksum == archive MD5, build.yaml field match, changelog == write-manifest.cs --print-changelog, full regeneration byte-identical, unmodified against HEAD 6922066",
+    "docs/release/build-and-release.md: corrected identity and the four suite counts present, superseded task 21.3 identity retained and marked",
+    "Cross-read the recorded suite matrix against docs/implementation/21.8/worker-report.json, 21.8/reviewer-report.json, 21.8/test-quality-review.json and 21.10/security-review.json (all four tiers and the 1,993 -> 2,003 delta reproduce); not re-executed, which the reports disclose",
+    "docs/implementation/21.9/live-verification.json: overall_verdict VERIFIED, L1-L8 all PASS, package block identity equals the corrected archive",
+    "docs/implementation/21.10/security-review.json: PASS_WITH_FINDINGS, open_blocker_high 0, open findings are exactly the three carried LOWs plus two INFORMATIONALs, SEC-21.5-01 resolved by the reviewer's own two-origin reproduction",
+    "Source-level verification of the changelog's technical claims (byte-limit fields, restart-required set, diagnostics leaf count, reconciliation cursor, NoFittingBadge, ExtraLarge factor/order/goldens, four provider clients with AllowAutoRedirect=false)",
+    "scripts/check-docs.sh (current tree) and on two out-of-tree copies: with the 21.6 reports removed -> PASS; with a stub reviewer report added and listed -> PASS",
+    "dotnet run scripts/render-docs-state.cs -- --check -> exit 0"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-016, ADR-019, ADR-020, ADR-022, ADR-023, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028, ADR-029, ADR-009, ADR-002, ADR-003, ADR-005, ADR-015 titles and statuses, to confirm the changelog's ADR attributions and amendment/supersession wording",
+    "docs/planning/v1.2.md goal-to-ADR mapping table and DG-15..DG-22 outcomes, to confirm the G6/G7/G8/G9/F3/F4/F6/F7 -> ADR attributions in the release section",
+    "docs/limitations/{00-index,open,accepted,archive,exclusions}.md for the F5 accepted/excluded disposition, the resolved set (F8 Phase 15, F3 Phase 17, F4/F6 Phase 19, F7 Phase 20), the V12-G6-1/V12-G8-1/V12-F3-1 bounds cited in the changelog, and the P6/V11-G4 'pending' matches",
+    "docs/agent-contracts.md for the implementation-reviewer report path, status enum, and the reports-array requirement enforced by scripts/check-agents.sh",
+    "docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json for the corrective task set and that 21.6 remains the last Phase 21 task"
+  ],
+  "documentation_checked": [
+    "docs/changelog/v1.2.0.md (full diff; append-only proof via numstat and a line-range cmp against HEAD)",
+    "docs/changelog/00-index.md (1.2.0 row already present, unchanged)",
+    "docs/plan/state.json (diff is limited to updated_utc and the 21.6 reports array; current_release, releases[], done all unchanged)",
+    "PLANS.md ('- [ ] 21.6' unticked; Phase 21 milestone still PLANNED; phase acceptance criteria still reference the post-gate tag)",
+    "docs/status.md (generated block still reports 1.1.0.0 current with v1.2 active scope; render-docs-state --check reports it up to date)",
+    "docs/release/build-and-release.md (corrected identity, four suite counts, superseded 21.3 identity, manifest field table, manual-publish statement)",
+    "README.md and GOALS.md (no stale v1.2 claim; README's manual-install instructions name the 1.2.0.0 package consistently with the pending publication)",
+    "docs/limitations/ (register, open, accepted, archive, exclusions)",
+    "docs/architecture/07 and 11 and ADR-005's implementation note (they do record the no-redirect-following behavior, supporting the worker's rationale for declining the optional manifest one-liner)",
+    "docs/testing/jellyfin-12-musl-test-host.md (the 21.8-TQ-1 superseded-identity finding is now closed: lines 312-322 and 372 mark the pre-correction build as superseded)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

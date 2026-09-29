@@ -1,0 +1,128 @@
+{
+  "task": "21.6",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation/release-readiness portion of task 21.6 (the orchestrator owns the git commit and the annotated v1.2.0 tag after the release-reviewer gate; the delegation forbids setting the task done flag or changing current_release/releases[]). Appended the '## v1.2.0 release' section to docs/changelog/v1.2.0.md (160 added lines, 0 removed, per-task history preserved) covering: version 1.2.0.0 and tag v1.2.0; the v1.2 features with their ADRs (G6 and G8 via ADR-028, G7 via ADR-027, G9/F8 via ADR-026 amending ADR-020 clause 4, F3 via ADR-025, F4 via ADR-022 as amended by ADR-029, F6 via ADR-023, F7 via ADR-024) and the resolved limitations F8/F3/F4/F6/F7 with F5 still accepted and excluded; the corrected artifact identity artifacts/ArrTags_1.2.0.0.zip 619,636 bytes / SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277 / MD5 f3b50a91c7cb63d9560316d8abe2f9dc / 7 entries with the task 21.3 identity (619,538 / 50580499... / 3100aae9...) retained as superseded by the task 21.7 SEC-21.5-01 fix re-derived by task 21.8; the corrected suite matrix (default with archive 0/1937/66/2003, no-archive 0/1934/69/2003, host-guarded 0/1957/46/2003, forced-native 0/2024/21/2045); the task 21.9 live pinned-host matrix docs/implementation/21.9/live-verification.json (VERIFIED, all eight rows L1-L8 pass) with its --nowebclient structural bounds and the mock-never-redirects bound; and the task 21.10 security review docs/implementation/21.10/security-review.json (PASS_WITH_FINDINGS, 0 open BLOCKER/HIGH and 0 open MEDIUM; SEC-21.5-01 resolved by the task 21.7 provider-transport fix, established by the reviewer's own reproduction against the shipped assembly; carried LOWs SEC-21.5-02/03/04 re-verified unchanged with their accepted-limitation disposition left to the release-reviewer gate; INFORMATIONAL items including SEC-21.10-01 and SEC-21.10-02), and stating that the committed manifest and annotated tag are the orchestrator's post-gate step and the GitHub release/asset upload/manifest push remain the user's manual step. Created the machine-readable release-readiness record docs/implementation/21.6/release-readiness.json (15 PASS checks plus the acceptance-criteria status and post-gate-owned items), and updated docs/plan/state.json task 21.6 reports to list this task's two reports and refreshed updated_utc, leaving done=false, PLANS.md unticked, current_release, releases[] and the generated status surfaces untouched by delegation. Release-readiness verification: build.yaml and Directory.Build.props are 1.2.0.0; manifest.json is valid, lists 1.2.0.0 first with targetAbi 12.0.0.0, the v1.2.0 sourceUrl and the archive-MD5 checksum, retains the 1.1.0.0/1.0.1.0 entries, and matches build.yaml (name/guid/owner/category/overview/description/changelog); the committed manifest at HEAD 6922066 is byte-identical to the verified file; docs/release/build-and-release.md records the corrected identity and counts with the superseded identity retained; the four spot-checked canonical surfaces (README.md, docs/limitations/, docs/status.md, GOALS.md) carry no stale v1.2 claim; scripts/check-docs.sh PASS (nine sections) and dotnet run scripts/render-docs-state.cs -- --check up to date. No product code, tests, build metadata, manifest, artifact, or immutable-history file changed; no commit or tag was created.",
+  "validation": [
+    "Version pins: 'grep -nE \"^(version|targetAbi|framework):\" build.yaml' -> version: \"1.2.0.0\"; targetAbi: \"12.0.0.0\"; framework: \"net10.0\"; 'grep -nE \"<(Version|AssemblyVersion|FileVersion)>\" Directory.Build.props' -> all three 1.2.0.0.",
+    "Artifact identity: 'stat -c \"%s bytes\" artifacts/ArrTags_1.2.0.0.zip' -> 619636 bytes; 'sha256sum' -> 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277; 'md5sum' -> f3b50a91c7cb63d9560316d8abe2f9dc; 'unzip -l' -> 7 files, 1,506,803 uncompressed bytes.",
+    "Manifest validity and content: 'jq empty manifest.json' -> VALID; 'jq -r \".[0].versions[].version\"' -> 1.2.0.0, 1.1.0.0, 1.0.1.0 (newest first, prior entries retained); 'jq -r \".[0].versions[0] | {version, targetAbi, checksum, sourceUrl, timestamp}\"' -> 1.2.0.0 / 12.0.0.0 / f3b50a91c7cb63d9560316d8abe2f9dc / https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip / 2026-09-29T14:37:30Z.",
+    "Manifest checksum equality: manifest checksum f3b50a91c7cb63d9560316d8abe2f9dc == 'md5sum artifacts/ArrTags_1.2.0.0.zip' f3b50a91c7cb63d9560316d8abe2f9dc (equal=yes).",
+    "Manifest matches build.yaml: name ArrTags, guid 40322d52-5680-449f-b33e-e01836ee2f46, owner arrtags, category General, and overview all equal; the folded-YAML description normalizes byte-identically (1,037 bytes); 'dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml' output is byte-identical to 'jq -r \".[0].versions[0].changelog\"' (exit 0, diff clean).",
+    "Committed manifest: 'git status --porcelain' empty at HEAD 69220667d9d2f3d641a24cb22bd6f59951d0c105; 'git show HEAD:manifest.json | jq -r \".[0].versions[0].checksum\"' -> f3b50a91c7cb63d9560316d8abe2f9dc; working-tree manifest identical to HEAD.",
+    "Release doc: docs/release/build-and-release.md contains the corrected identity (619,636 / 3e59cb06... / f3b50a91...) at the 'Release artifact identity' table and the manifest field table, the four corrected counts (1,937/66/2,003; 1,934/69/2,003; 1,957/46/2,003; 2,024/21/2,045) with the archive-present precondition, and retains the superseded task 21.3 identity (619,538 / 50580499... / 3100aae9...) marked superseded.",
+    "Changelog finalisation: 'git diff --numstat docs/changelog/v1.2.0.md' -> 160 insertions, 0 deletions (per-task history preserved); the appended '## v1.2.0 release' section contains the corrected identity, the four suite counts, the 21.9 live-verification path, the 21.10 security-review path with PASS_WITH_FINDINGS, and the manual-publish statement.",
+    "Stale-claim spot-check: a 'not yet implemented|remains open|will be implemented|pending' scan over README.md, docs/status.md and GOALS.md returns no matches; docs/limitations/ matches are only P6 (the v1.1 publication remains pending, accurate), V11-G4 (an accepted historical stale-phrasing item) and the F6-1 race-window wording; docs/limitations/open.md records no open limitations; docs/status.md's generated block reports current release 1.1.0.0 with v1.2 (Phase 21) as the active scope, which is accurate until the orchestrator sets the v1.2 current-release state after the gate.",
+    "Generated surfaces and plan-state agreement: 'dotnet run scripts/render-docs-state.cs -- --check' -> 'status.md: up to date', 'PLANS.md: up to date' (x2), 'PLANS.md and state.json agree', exit 0, run both before and after the state.json 21.6 reports/updated_utc edit.",
+    "Documentation gate before the worker report was persisted: 'scripts/check-docs.sh' -> exit 0, 'check-docs: PASS', all nine ok sections (generated blocks current; stubs; decisions index 29 ADRs; limitations index; architecture/data-model indexes; artifact identity agrees (sha256, md5, bytes); doc budget; current-state links; agent report contracts).",
+    "Sensitivity probe A (artifact/manifest identity comparison): a copy of manifest.json with the checksum's last hex digit changed to ...f9dd ('jq' on /tmp/21.6/manifest.json.orig) is detected by the same comparison used in RR-05 (probe checksum f3b50a91c7cb63d9560316d8abe2f9dd != artifact MD5 f3b50a91c7cb63d9560316d8abe2f9dc); the live manifest.json was confirmed untouched ('cmp' clean against the pre-probe copy).",
+    "Sensitivity probe B (plan-state guard): setting task 21.6 'done' to true in a full-document copy of docs/plan/state.json while PLANS.md stays '- [ ] 21.6' makes 'dotnet run scripts/render-docs-state.cs -- --check' exit 2 with 'state/plan mismatch: task 21.6: PLANS.md checkbox does not match state.json done=true'; the original state.json was restored byte-identically ('cmp' clean) and the guard then reports 'PLANS.md and state.json agree' (exit 0).",
+    "Post-gate scope confirmation: 'git tag -l v1.2.0*' -> only v1.2.0-phase15..v1.2.0-phase20; 'git rev-parse -q --verify refs/tags/v1.2.0' -> absent; docs/implementation/final-review/ holds no v1.2 release review (release-review.json is the 1.1.0.0 review); docs/plan/state.json current_release is unchanged at 1.1.0.0 and releases[] 1.2.0 remains PLANNED.",
+    "Diff scope: 'git diff --stat' before the worker report was persisted -> docs/changelog/v1.2.0.md 160 insertions / 0 deletions and docs/plan/state.json 6 insertions / 2 deletions (166 insertions, 2 deletions total); 'git status --porcelain' -> M docs/changelog/v1.2.0.md, M docs/plan/state.json, and the untracked docs/implementation/21.6/ (release-readiness.json and this report). No source, test, build.yaml, Directory.Build.props, manifest.json, artifacts/, golden, or immutable-history file changed.",
+    "No test suite was rerun: this is a documentation-only change (no source, test, build metadata, manifest, or artifact change), so the validation-rerun rule does not require a suite run. The recorded suite matrix, live matrix, and security outcome are transcribed from the task 21.8, 21.9, and 21.10 evidence, not re-measured here."
+  ],
+  "changed_files": [
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "docs/implementation/21.6/release-readiness.json",
+    "docs/implementation/21.6/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "docs/changelog/v1.2.0.md and the status surfaces reflect v1.2",
+      "evidence": "docs/changelog/v1.2.0.md gained the '## v1.2.0 release' section (160 added lines, 0 removed; per-task history preserved) with the release identity, the eight features and their ADRs, the corrected artifact identity and suite matrix, the 21.9 live result and the 21.10 security outcome; docs/changelog/00-index.md already lists '| `1.2.0` | Phases 15-21 |', and docs/status.md's generated block reports v1.2 (Phases 15-21) as the accepted active scope with Phase 21 active. The current-release portion (docs/plan/state.json current_release/releases[] and the generated release-state lines) is explicitly the orchestrator's post-release-review-gate step and was not changed by this delegated task; see the release-readiness record's acceptance_criteria_status."
+    },
+    {
+      "criterion": "the release-review gate passes",
+      "evidence": "NOT SATISFIABLE IN THIS DELEGATION (post-gate orchestrator step, stated explicitly in the report and changelog). docs/implementation/final-review/ currently holds no v1.2 release review; the latest release-review.json is the 1.1.0.0 review. This task produced the release-readiness record the gate consumes (docs/implementation/21.6/release-readiness.json) and verified the corrected candidate evidence (tasks 21.8-21.10) it examines."
+    },
+    {
+      "criterion": "the annotated tag v1.2.0 exists",
+      "evidence": "NOT CREATED IN THIS DELEGATION (explicitly forbidden; orchestrator's post-gate step). 'git tag -l v1.2.0*' lists only v1.2.0-phase15..phase20 and 'git rev-parse -q --verify refs/tags/v1.2.0' is absent. The changelog release section states the tag is created by the orchestrator only after the release-reviewer gate."
+    },
+    {
+      "criterion": "the GitHub publish remains the user's manual step",
+      "evidence": "Stated in the appended changelog release section ('the GitHub release, the ArrTags_1.2.0.0.zip asset upload, and the manifest push remain the user's manual step with scripts/publish-release.sh'), in docs/release/build-and-release.md ('The GitHub release and asset upload remain the user's manual step; Phase 21 task 21.6 only commits manifest.json and creates the annotated tag'), and in docs/implementation/21.6/release-readiness.json post_gate_owned. No GitHub call, push, commit, or tag was performed."
+    },
+    {
+      "criterion": "Release readiness: build.yaml and Directory.Build.props are 1.2.0.0",
+      "evidence": "Validation entry 1 (RR-01/RR-02 in docs/implementation/21.6/release-readiness.json)."
+    },
+    {
+      "criterion": "Release readiness: manifest.json is valid, lists 1.2.0.0 first, checksum equals md5sum of the corrected archive, correct sourceUrl/targetAbi, prior entries retained, matches build.yaml",
+      "evidence": "Validation entries 3-6 (RR-03..RR-08); the committed manifest at HEAD 6922066 is the verified file (validation entry 6)."
+    },
+    {
+      "criterion": "Release readiness: docs/release/build-and-release.md records the corrected identity and counts",
+      "evidence": "Validation entry 7 (RR-11)."
+    },
+    {
+      "criterion": "Release readiness: the canonical/current-state surfaces have no stale v1.2 claim (README.md, docs/limitations/, docs/status.md, GOALS.md)",
+      "evidence": "Validation entry 9 (RR-13); the remaining 'pending' strings are accurate or accepted-historical, and docs/limitations/open.md records no open limitations."
+    },
+    {
+      "criterion": "Release readiness: scripts/check-docs.sh PASS and render-docs-state.cs -- --check up to date",
+      "evidence": "Validation entries 10-11 (RR-14/RR-15): render-docs-state --check 'PLANS.md and state.json agree' (exit 0); check-docs.sh exit 0 with all nine ok sections on the tree before this worker report was persisted (section 9's worker/reviewer pairing check is the contract-defined transient failure after persistence; see known_limitations)."
+    },
+    {
+      "criterion": "Persist docs/implementation/21.6/worker-report.json and the release-readiness record; keep state.json 21.6 reports/updated_utc current without setting done",
+      "evidence": "This report and docs/implementation/21.6/release-readiness.json are persisted; docs/plan/state.json task 21.6 reports = [docs/implementation/21.6/release-readiness.json, docs/implementation/21.6/worker-report.json] with updated_utc 2026-09-29T17:47:04Z, done=false, PLANS.md '- [ ] 21.6' unchanged."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The task 21.10 security review referred one optional, non-blocking release-note completeness choice to task 21.6: whether the manifest.json 1.2.0.0 changelog one-liner should also state that a provider 3xx is no longer followed (SEC-21.10-02).",
+      "chosen": "Declined the optional change; manifest.json (and build.yaml) were left unchanged.",
+      "basis": "The review itself classes it as 'Optional and non-blocking ... not a security gate item'. Implementing it would modify build.yaml, which is a packaged archive entry, changing the artifact bytes and invalidating the corrected identity and the task 21.8/21.9/21.10 reproductions, live matrix, and security review - a v1.2-candidate-wide re-verification triggered by an optional release-note wording. The behavior change is already recorded in docs/changelog/v1.2.0.md (task 21.7 entry and the release section), docs/architecture/07 and 11, and the ADR-005 implementation note.",
+      "impact": "No persisted state, artifact, or verified evidence is invalidated. The option remains open for the orchestrator/user and is surfaced in the changelog release section, docs/implementation/21.6/release-readiness.json notes, and known_limitations."
+    },
+    {
+      "question": "Whether this documentation-only task must re-run the suite matrix, the live pinned-host matrix, or the security review rather than record the existing task 21.8/21.9/21.10 evidence.",
+      "chosen": "Recorded the existing evidence and did not re-execute it; independently re-verified the artifact identity, manifest consistency, release-doc values, and current-state surfaces by direct inspection.",
+      "basis": "No source, test, build metadata, manifest, or artifact changed in this task, so the validation-rerun rule does not require re-execution, and the corrected candidate evidence is exactly the subject the release-reviewer gate examines.",
+      "impact": "The recorded matrix values are attributed to their producing tasks (21.8, 21.9, 21.10); no claim in the changelog or the readiness record presents them as re-measured by task 21.6."
+    },
+    {
+      "question": "Whether pre-existing 'pending' strings in the canonical surfaces (for example P6: 'The v1.1.0 release publication, manifest push, and asset upload are pending') are stale v1.2 claims to correct.",
+      "chosen": "Left them unchanged; only a genuine stale v1.2 claim would have been corrected.",
+      "basis": "P6 is accurate (the v1.1 publication is still not performed), V11-G4 is an accepted register item about historical phrasing, and the F6-1 wording describes a race-window residual, not release status.",
+      "impact": "None; the release-readiness record documents which matches were inspected and why they are not stale."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A (release-readiness identity comparison, RR-05): a copy of manifest.json under /tmp/21.6 with the checksum's last hex digit changed (f3b50a91c7cb63d9560316d8abe2f9dd) is detected as a mismatch against the artifact MD5 f3b50a91c7cb63d9560316d8abe2f9dc by the exact comparison used in the readiness check; the live manifest.json is byte-identical to the pre-probe copy ('cmp' clean).",
+    "Probe B (plan-state guard consumed by the release-readiness check): a full-document state.json probe with task 21.6 done=true while PLANS.md stays '- [ ] 21.6' makes 'dotnet run scripts/render-docs-state.cs -- --check' exit 2 with 'state/plan mismatch: task 21.6: PLANS.md checkbox does not match state.json done=true'; the original state.json was restored byte-identically ('cmp' clean) and the guard passes again. This is the guard that keeps the delegation's 'do not set done' boundary detectable.",
+    "No new production behaviour or test was added by this task, so there is no new behavioural test whose failure sensitivity could be probed; the corrected v1.2 regression oracle is the task 21.8 suite matrix (recorded, not re-run), and the task 21.9/21.10 evidence was not re-executed."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md (appended '## v1.2.0 release': release identity, the v1.2 features with ADRs, resolved limitations F8/F3/F4/F6/F7 with F5 accepted/excluded, the corrected artifact identity with the superseded 21.3 identity, the corrected four-tier suite matrix, the task 21.9 live matrix with structural bounds, the task 21.10 security outcome with the carried LOWs and INFORMATIONAL items, the optional manifest-changelog clause disposition, and the post-gate/manual-publish statement; the Phase 21 per-task history above it is preserved unchanged)",
+      "docs/plan/state.json (task 21.6 reports array lists docs/implementation/21.6/release-readiness.json and docs/implementation/21.6/worker-report.json; updated_utc 2026-09-29T17:40:14Z -> 2026-09-29T17:47:04Z; done remains false, current_release/releases[] unchanged by delegation)",
+      "docs/implementation/21.6/release-readiness.json (new machine-readable release-readiness record: 15 PASS checks, artifact identity, acceptance-criteria status, post-gate-owned items, not-re-executed notes)",
+      "docs/changelog/00-index.md (verified already current: the 1.2.0 row exists; no change needed)",
+      "docs/release/build-and-release.md (verified current: corrected identity/counts and superseded identity; no change needed)",
+      "README.md, docs/limitations/, docs/status.md, GOALS.md (spot-checked for stale v1.2 claims; no change needed)"
+    ],
+    "old_values_removed": [
+      "No old value was rewritten or removed: this task appends/finalises. The pre-correction identity (619,538 / 50580499... / 3100aae9...) appears in the new release section only inside the sentence that marks it as the superseded task 21.3 identity (grep shows the only occurrences at lines 1966-1968 in that superseded framing); the old suite totals 1,927/1,947/2,014/2,035 do not appear in the release section, and the single 1,993 reference is explicitly 'task 21.3's' total being compared with the corrected 2,003.",
+      "docs/plan/state.json: the 21.6 task object's pre-task value (no reports array) -> reports array added; updated_utc advanced; done stayed false as required."
+    ],
+    "check_docs": "PASS",
+    "check_docs_note": "PASS (exit 0, all nine sections, 'check-docs: PASS') on the release-readiness tree before this worker report was persisted. With this report on disk and no docs/implementation/21.6/reviewer-report.json yet, section 9's contract-mandated pairing check is the expected transient failure ('task 21.6 has a worker report but no reviewer report ...' plus the fixed-wording state-listing message); every other section still passes and it clears when the orchestrator's implementation-reviewer report is added and listed in task 21.6's reports in docs/plan/state.json. This is the same interim state recorded by tasks 21.1, 21.2, 21.3, 21.7, and 21.8."
+  },
+  "rework": [],
+  "known_limitations": [
+    "Transient documentation state: after this worker report is persisted, scripts/check-docs.sh section 9 reports 'task 21.6 has a worker report but no reviewer report (add an exemption only if covered)' and its fixed-wording state-listing message, until the orchestrator adds docs/implementation/21.6/reviewer-report.json and lists it in task 21.6's reports in docs/plan/state.json. The pre-report tree is PASS on all nine sections.",
+    "Post-gate orchestrator steps are not performed and no acceptance criterion here claims otherwise: the release-reviewer gate (docs/implementation/final-review/ has no v1.2 review), the annotated v1.2.0 tag (absent), the docs/plan/state.json current_release/releases[] v1.2 status update with regeneration of docs/status.md and the PLANS.md milestone table, the PLANS.md 21.6 checkbox and done flag, and the git commit. The GitHub release, the ArrTags_1.2.0.0.zip asset upload, and the manifest push remain the user's manual step with scripts/publish-release.sh.",
+    "Optional non-blocking release-note choice left open for the orchestrator/user (SEC-21.10-02): the manifest.json/build.yaml 1.2.0.0 changelog one-liner does not state that a provider 3xx is no longer followed. Precondition: the tree's build.yaml is a packaged archive entry, so adding the clause changes artifacts/ArrTags_1.2.0.0.zip (and therefore the manifest checksum/identity) and would require re-running the task 21.8 clean-build identity derivation and invalidating the task 21.9 live matrix and task 21.10 security review that were verified against the current bytes. Consequence: the release notes omit that one behavior change; the change itself is fully recorded in docs/changelog/v1.2.0.md, docs/architecture/07 and 11, and the ADR-005 implementation note, and no security or verification claim depends on the release-note wording.",
+    "Evidence not re-executed here: the suite matrix (task 21.8), the live pinned-host matrix (task 21.9), and the security review (task 21.10) were read and reconciled, not re-run; the artifact was hashed, not rebuilt. This task changed no code, test, build metadata, manifest, or artifact, so per the validation-rerun rule no suite/live re-run was required. Any subsequent change to the sources or build inputs invalidates the recorded identity and those results.",
+    "artifacts/ArrTags_1.2.0.0.zip is gitignored build output and is not part of the committed tree; the committed manifest.json checksum refers to that locally produced corrected artifact, and no automated test guards archive byte-identity (pre-existing limitation).",
+    "The carried LOWs SEC-21.5-02, SEC-21.5-03, and SEC-21.5-04 have no accepted-limitation disposition recorded by this task: the release-readiness record surfaces them and the changelog release section records them as re-verified unchanged optional hardening; the release-reviewer gate determines whether they are accepted, resolved, or otherwise registered."
+  ],
+  "ready_for_next_task": true
+}
