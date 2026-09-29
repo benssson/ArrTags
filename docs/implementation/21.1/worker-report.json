@@ -1,0 +1,116 @@
+{
+  "task": "21.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Task 21.1 version bump and release metadata (Phase 21, v1.2 release). build.yaml version -> 1.2.0.0 and Directory.Build.props Version/AssemblyVersion/FileVersion -> 1.2.0.0 (including the reproducibility comment that names the declared version, which was stale at 1.1.0.0). build.yaml overview/description/changelog now describe the shipped v1.2 behavior: fixed binary MB/KB display of the byte-denominated limits with the exact byte value persisted and off-step values rejected (ADR-028, G6); restart-required note text plus the best-effort change reminder, with the mixed-setting qualification (ADR-028, G8); the Extra Large badge size with the Small/Medium/Large/Extra Large order (ADR-027, G7); the bounded file-name log subject with the item-id fallback and the bounded render classification (ADR-026, G9/F8); the read-only administrator diagnostics panel backed by a bounded, secret-free status endpoint (ADR-025, F3); successive-run coverage of a scope larger than the work queue through the persisted reconciliation cursor (ADR-022 as amended by ADR-029, F4); the version-aware post-save re-render via the ConfigurationStale re-enqueue (ADR-023, F6); and empty-selection artwork restore/removal (ADR-024, F7). The four hard-coded plugin-version literals in PluginPackagingTests (1), PluginDiscoveryHostTests (2: install folder and meta.json version), and PluginStateLocationTests (1) were updated to 1.2.0.0 (the Phase 14 task 14.1 precedent). PLANS.md task 21.1 checkbox and docs/plan/state.json task done/reports/updated_utc were updated; no generated block changed (Phase 21 remains PLANNED, the milestone row is unchanged). Build 0 warnings / 0 errors; default suite Failed 0, Passed 1927, Skipped 66, Total 1993; ./build.sh package produced artifacts/ArrTags_1.2.0.0.zip (7 entries, 619,561 bytes) whose packaged build.yaml carries version 1.2.0.0 / targetAbi 12.0.0.0 / framework net10.0. No runtime plugin behavior changed; manifest.json and the release documentation were deliberately not touched (later Phase 21 tasks).",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh restore -> locked-mode restore succeeded (exit 0): 'Restored /workspace/ArrTags/src/ArrTags/ArrTags.csproj (in 1.12 sec)', 'Restored /workspace/ArrTags/tests/ArrTags.Tests/ArrTags.Tests.csproj (in 1.12 sec)'.",
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)'; ArrTags.dll and ArrTags.Tests.dll produced.",
+    ". /config/arrtags-env.sh && ./build.sh package -> 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.2.0.0.zip (7 entries)'; final artifact is 619,561 bytes (measured with ls -l after the final metadata wrap).",
+    "unzip -l artifacts/ArrTags_1.2.0.0.zip -> 7 entries: ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt.",
+    "unzip -p artifacts/ArrTags_1.2.0.0.zip build.yaml | grep -E '^(version|targetAbi|framework):' -> version: \"1.2.0.0\"; targetAbi: \"12.0.0.0\"; framework: \"net10.0\".",
+    ". /config/arrtags-env.sh && ./build.sh test (final run, after the final package; the archive was present) -> Failed 0, Passed 1927, Skipped 66, Total 1993 (Duration 16 s). The 66 skips are the environment-guarded native-Skia (ARRTAGS_SKIA_COMPAT unset), pinned-host (ARRTAGS_JELLYFIN_HOST_DIR unset), and non-canonical-golden (ARRTAGS_NONCANONICAL_GOLDENS unset) facts; the 3 [PackagedPluginFact] facts ran because artifacts/ArrTags_1.2.0.0.zip exists (ordinal-last selection).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~PluginPackagingTests\" -> Failed 0, Passed 7, Skipped 0, Total 7 against the packaged archive.",
+    "Sensitivity probe: temporarily reverted build.yaml:4 to version: \"1.1.0.0\" and ran dotnet test --filter \"FullyQualifiedName~PluginPackagingTests.BuildManifestKeepsPinnedIdentityAndAbi\" --no-build -> Failed 1, Passed 0, Skipped 0, Total 1, with 'Not found: \"version: \"1.2.0.0\"\"' at PluginPackagingTests.cs:28; build.yaml was restored and cmp -s confirmed the restored file is byte-identical to the backup in /tmp/21.1.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check -> 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree', exit 0 (no generated block changed).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh (run before docs/implementation/21.1/worker-report.json was written) -> 'check-docs: PASS', exit 0, nine ok sections: generated blocks current/plan state consistent; compatibility stubs; decisions index (29 ADRs); limitations index covers all IDs; architecture and data-model indexes; artifact identity agrees; doc budget; current-state links resolve; agent report contracts conform. Post-report run: every section still passes except the contract-mandated worker/reviewer pairing lines for the not-yet-written implementation-reviewer report (the transient state the orchestrator closes); see documentation_reconciliation.",
+    "git diff --stat -> exactly 7 tracked files: build.yaml, Directory.Build.props, PLANS.md, docs/plan/state.json, tests/ArrTags.Tests/PluginPackagingTests.cs, tests/ArrTags.Tests/PluginDiscoveryHostTests.cs, tests/ArrTags.Tests/PluginStateLocationTests.cs. git status shows no unrelated tracked or untracked changes (the only untracked path is docs/implementation/21.1/).",
+    "Old-value sweep: git grep -n \"1\\.1\\.0\\.0\" -- build.yaml Directory.Build.props tests/ PLANS.md docs/plan/state.json -> only docs/plan/state.json lines 58 and 63 (current_release.version and the v1.1.0.0 artifact path). Both are the correct current-release record until the v1.2 release completes; no scoped file retains a 1.1.0.0 literal.",
+    "not run (not part of task 21.1): the host-guarded suite (ARRTAGS_JELLYFIN_HOST_DIR unset) and the live pinned-host matrix (tasks 21.3/21.4)."
+  ],
+  "changed_files": [
+    "build.yaml",
+    "Directory.Build.props",
+    "tests/ArrTags.Tests/PluginPackagingTests.cs",
+    "tests/ArrTags.Tests/PluginDiscoveryHostTests.cs",
+    "tests/ArrTags.Tests/PluginStateLocationTests.cs",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/implementation/21.1/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The version is 1.2.0.0 in build.yaml and Directory.Build.props.",
+      "evidence": "build.yaml:4 version: \"1.2.0.0\"; Directory.Build.props:4-6 Version/AssemblyVersion/FileVersion all 1.2.0.0 and the reproducibility comment on line 15 names version 1.2.0.0. Independent ./build.sh build succeeded 0 warnings / 0 errors (TreatWarningsAsErrors=true), ./build.sh package produced artifacts/ArrTags_1.2.0.0.zip (the name is derived from build.yaml), and the packaged build.yaml inside the archive carries version: \"1.2.0.0\" with targetAbi: \"12.0.0.0\" and framework: \"net10.0\" (unzip -p | grep)."
+    },
+    {
+      "criterion": "The metadata accurately describes the shipped v1.2 behavior (build.yaml overview/description/changelog), with no overclaim; only behavior that shipped is described.",
+      "evidence": "build.yaml overview/description/changelog as shipped in the packaged archive; each delivered v1.2 item is present and was checked against the canonical architecture documents: G6 byte limits in MB/KB with exact byte persistence and off-step rejection (docs/architecture/06 lines 71-76; 12 lines 64-70); G8 restart-required note text and the best-effort modal/fail-open behavior (06 lines 125-174; 12 lines 55-57, 71-75); G7 Extra Large with the Small/Medium/Large/Extra Large order, 2.0x, no RenderVersion advance (09 lines 504-533; ADR-027); G9/F8 bounded file-name subject with item-id fallback, never a directory/full path, plus the bounded render classification (ADR-026; docs/architecture/12); F3 read-only, administrator-only diagnostics panel backed by a bounded secret-free endpoint (ADR-025; README Diagnostics section); F4 successive scheduled/post-scan coverage of a scope larger than QueueCapacity via the persisted (SortName, itemId) cursor (08 lines 99-121; ADR-022/ADR-029); F6 ConfigurationStale re-enqueue of the post-save re-render after the in-flight slot is released (08 lines 123-146; ADR-023); F7 restore/removal for an owned empty resolved selection with the other pass-through reasons preserved (09 lines 265-283; ADR-024). The changelog uses the project's own 'restart-required' and 'best-effort' qualifiers rather than claiming an unconditional restart need or an unconditional modal."
+    },
+    {
+      "criterion": "Update every hard-coded plugin-version literal in the tests (PluginPackagingTests, PluginDiscoveryHostTests, PluginStateLocationTests) to 1.2.0.0.",
+      "evidence": "tests/ArrTags.Tests/PluginPackagingTests.cs:28 asserts version: \"1.2.0.0\"; PluginDiscoveryHostTests.cs:86 'ArrTags_1.2.0.0' and :102 meta.json version \"1.2.0.0\"; PluginStateLocationTests.cs:56 'ArrTags_1.2.0.0'. git grep for 1.1.0.0 over those files and the other scoped files returns no match."
+    },
+    {
+      "criterion": "Update the Phase 21 task 21.1 checkbox in PLANS.md and the task's done/reports entry in docs/plan/state.json per the single-writer rules; do not hand-edit generated blocks.",
+      "evidence": "PLANS.md line 277 '- [x] 21.1 Version bump and release metadata'; docs/plan/state.json task 21.1 done=true, reports [docs/implementation/21.1/worker-report.json], updated_utc 2026-09-28T20:07:46Z -> 2026-09-29T09:04:24Z. dotnet run scripts/render-docs-state.cs -- --check reports 'PLANS.md and state.json agree' and both generated blocks up to date; no generated block was hand-edited."
+    },
+    {
+      "criterion": "Delegated validation: locked restore, 0-warning/0-error build, package artifacts/ArrTags_1.2.0.0.zip with the expected packaged build.yaml, suite counts reported, scope limited to in-scope files.",
+      "evidence": "See the validation array: restore exit 0; build 0 Warning(s)/0 Error(s); package 7 entries at 619,561 bytes; packaged build.yaml version 1.2.0.0/targetAbi 12.0.0.0/framework net10.0; suite Failed 0/Passed 1927/Skipped 66/Total 1993; git diff --stat lists exactly the 7 in-scope tracked files plus this untracked report."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Should build.yaml's description be rewritten as the v1.2 delta only, or extended cumulatively to cover the current shipped capability?",
+      "chosen": "Extended the description cumulatively (V1 plus v1.1 plus the v1.2 additions) and wrote the v1.2-only delta narrative in the changelog, following the task 14.1 (v1.1) precedent.",
+      "basis": "build.yaml's description is the plugin catalog's current-capability text; the task 14.1 diff shows the v1.1 bump extended the description cumulatively and replaced the changelog with a 'v1.1 adds ...' delta paragraph. Keeping the description cumulative avoids dropping shipped v1/v1.1 capability statements, and the changelog remains the per-release delta the catalog shows for 1.2.0.0.",
+      "impact": "manifest.json (out of scope here; Phase 21 task 21.3 per the delegation) mirrors the build.yaml description/overview/changelog and must be updated to match when it is regenerated; no runtime or persisted-state effect."
+    },
+    {
+      "question": "The task named only Version/AssemblyVersion/FileVersion in Directory.Build.props, but the file's reproducibility comment also names the declared version (it read 1.1.0.0).",
+      "chosen": "Updated the comment's version literal to 1.2.0.0 as well.",
+      "basis": "The task 14.1 precedent updated the same comment in the same way, and leaving it would make the file internally stale about its own declared version.",
+      "impact": "Comment-only; no build or artifact effect beyond the intended version bump."
+    },
+    {
+      "question": "How precisely should the metadata phrase the restart-required classification (ADR-028 classifies a mixed setting as restart-required even though some paths apply immediately)?",
+      "chosen": "Use 'restart-required' in the description and, in the changelog, 'settings that need a host restart (a mixed setting states that some paths apply immediately)'.",
+      "basis": "docs/architecture/06 lines 125-141 and 12 lines 55-57 state that a restart-required setting's note says a Jellyfin server restart is required and a mixed setting's note also states that some paths apply immediately; the phrase 'only take effect after a host restart' would overstate the mixed settings.",
+      "impact": "Wording only; the metadata matches the shipped classification."
+    }
+  ],
+  "test_sensitivity": [
+    "Version literal guard proven: temporarily reverting build.yaml:4 to version: \"1.1.0.0\" made the default-suite fact PluginPackagingTests.BuildManifestKeepsPinnedIdentityAndAbi fail (Failed 1, Passed 0, Skipped 0, Total 1; 'Not found: \"version: \"1.2.0.0\"\"' at PluginPackagingTests.cs:28). The file was restored byte-identically (cmp -s) and the final full-suite run is Failed 0 / Passed 1927 / Skipped 66 / Total 1993.",
+    "Packaged-archive guard exercised: the 3 [PackagedPluginFact] facts ran against the ordinal-last artifacts/ArrTags_1.2.0.0.zip (PluginPackagingTests 7/7 passed); a package missing a root file or a build.yaml-named artifact would fail them.",
+    "The folder-name and meta.json version literals in PluginDiscoveryHostTests and PluginStateLocationTests are test fixture data mirroring the release version; no assertion depends on the literal value (PluginStateLocationTests.DerivePluginName strips the _<version> suffix; the discovery facts require only a valid plugin assembly and same-name grouping), so sensitivity for those two files cannot be shown — they are release-version mirror edits, not behavior guards. The PluginDiscoveryHostTests facts are additionally skipped in this environment (ARRTAGS_JELLYFIN_HOST_DIR unset).",
+    "No production behavior changed, so there is no new production code path to sensitivity-probe."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "build.yaml",
+      "Directory.Build.props",
+      "PLANS.md",
+      "docs/plan/state.json",
+      "tests/ArrTags.Tests/PluginPackagingTests.cs",
+      "tests/ArrTags.Tests/PluginDiscoveryHostTests.cs",
+      "tests/ArrTags.Tests/PluginStateLocationTests.cs",
+      "docs/status.md (checked via render-docs-state --check: up to date, unchanged)"
+    ],
+    "old_values_removed": [
+      "build.yaml: version \"1.1.0.0\" -> \"1.2.0.0\"; the v1.1 overview/description/changelog replaced by the v1.2 text ('v1.1 adds' no longer appears).",
+      "Directory.Build.props: Version/AssemblyVersion/FileVersion 1.1.0.0 -> 1.2.0.0 and the comment's version literal.",
+      "Tests: the four plugin-version literals (PluginPackagingTests.cs:28; PluginDiscoveryHostTests.cs:86 and :102; PluginStateLocationTests.cs:56) 1.1.0.0 -> 1.2.0.0.",
+      "PLANS.md: '- [ ] 21.1 Version bump and release metadata' -> '- [x] 21.1 Version bump and release metadata'.",
+      "docs/plan/state.json: task 21.1 done false -> true, reports added [docs/implementation/21.1/worker-report.json], updated_utc 2026-09-28T20:07:46Z -> 2026-09-29T09:04:24Z.",
+      "Verified unaffected (not stale): docs/status.md, the PLANS.md milestone table, and the state.json current_release/suite/artifact blocks still describe the current 1.1.0.0 release and were left unchanged; scripts/check-docs.sh confirms the generated blocks are current and the artifact identity still agrees with docs/release/build-and-release.md.",
+      "check_docs note: scripts/check-docs.sh reported 'check-docs: PASS' (all nine sections) on the tree before this report existed. With the report on disk, every section still passes except the two contract-mandated agent-report pairing lines: 'FAIL: task 21.1 has a worker report but no reviewer report (add an exemption only if covered)' and 'FAIL: task 21.1 has a reviewer report on disk but docs/plan/state.json does not list it in reports' (the second fires because state.json does not yet list an implementation-reviewer report path; the reviewer report is written later by the orchestrator's reviewer). Those are the same transient state recorded by prior Phase 19/20 worker reports and are closed by the orchestrator. Recorded as PASS on that basis."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "manifest.json still carries the v1.1.0.0 description/overview/changelog/checksum and the v1.1.0 sourceUrl. It is explicitly outside task 21.1's scope (assigned to Phase 21 task 21.3 by the delegation), so the repository's plugin-catalog manifest continues to describe the last published 1.1.0.0 release until then.",
+    "The canonical documentation and release surfaces still present the v1.1.0.0/v1.1.0 identity: docs/release/build-and-release.md (pinned-toolchain version and suite matrix), README.md (manual-install ArrTags_1.1.0.0.zip / v1.1.0), docs/testing/jellyfin-12-musl-test-host.md (reproduction steps and the 1.1.0.0 matrix), docs/limitations/accepted.md (P6), and docs/changelog (the 1.2.0 entry is task 21.6's completion). These remain accurate as the current released version until the v1.2 release completes; per the delegation they are owned by Phase 21 tasks 21.2 (canonical documentation), 21.3 (release documentation), 21.4 (live matrix), and 21.6 (status/changelog/tag).",
+    "docs/plan/state.json current_release and docs/status.md still record 1.1.0.0 as the current release, and the PLANS.md milestone row for Phase 21 is still PLANNED; those are updated by the orchestrator when Gate 21 passes (task 21.6), not by this task.",
+    "The host-guarded suite (ARRTAGS_JELLYFIN_HOST_DIR unset) and the live pinned-host matrix were not run; the delegation assigns them to tasks 21.3/21.4, not 21.1.",
+    "Byte-reproducibility of artifacts/ArrTags_1.2.0.0.zip across repeated clean builds was not re-verified in this task (the package was run after the final edit; the two runs in this task differed only because build.yaml text changed between them). Task 21.3 owns the reproducible-artifact identity claim.",
+    "The gitignored artifacts/ directory still contains ArrTags_1.0.1.0.zip and ArrTags_1.1.0.0.zip. The test helper selects the ordinal-last ArrTags_*.zip, so the 1.2.0.0 archive is selected (verified by the 7/7 PluginPackagingTests run)."
+  ],
+  "ready_for_next_task": true
+}

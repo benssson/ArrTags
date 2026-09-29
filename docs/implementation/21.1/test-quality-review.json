@@ -1,0 +1,111 @@
+{
+  "subject": "Task 21.1 — version bump and release metadata (build.yaml / Directory.Build.props -> 1.2.0.0) and the four plugin-version test literals in PluginPackagingTests.cs, PluginDiscoveryHostTests.cs, PluginStateLocationTests.cs",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "audited_commit_state": "Working tree at 679b694 with the 7 modified tracked files of task 21.1 uncommitted (build.yaml, Directory.Build.props, PLANS.md, docs/plan/state.json, and the three test files). No test or implementation file was modified by this audit.",
+  "findings": [
+    {
+      "id": "TQ-21.1-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "detail": "Only the build.yaml half of the acceptance criterion ('the version is 1.2.0.0 in build.yaml and Directory.Build.props') is covered by an automated guard; the Directory.Build.props half is verified by no test, no MSBuild target, and no docs check.",
+      "description": "The acceptance criterion names two version sources. The suite guards exactly one of them: PluginPackagingTests.BuildManifestKeepsPinnedIdentityAndAbi asserts the literal 'version: \"1.2.0.0\"' in build.yaml. A repository-wide search of tests/ finds no reference to Directory.Build.props, <Version>, AssemblyVersion, or FileVersion for the plugin (the only FileVersion assertion in the suite is SkiaHostCompatibilityTests.cs:72 for SkiaSharp 3.119.4.0), and src/ArrTags/ArrTags.csproj has no target that cross-checks the props against build.yaml. Directory.Build.props sets <Version>, <AssemblyVersion> and <FileVersion> as three independent literals, so nothing but human/agent diff review keeps them equal to build.yaml. Consequence: a half-completed or later botched bump (e.g. props left at 1.1.0.0, or a typo in AssemblyVersion only) would leave the entire default suite green — the build would still succeed, all 1927 tests would pass — while shipping a package whose ArrTags.dll reports a different version than the build.yaml manifest Jellyfin reads. The shipped artifact's version is therefore an inspection-only fact, not a test-established one. Current state is in fact consistent (independently verified below), so this is a forward-looking false-confidence risk rather than a present defect.",
+      "evidence": [
+        "git diff -- tests/ shows the only assertion-level change is PluginPackagingTests.cs:28 (build.yaml literal).",
+        "grep for 'Directory.Build.props|<Version>|AssemblyVersion|FileVersion' over tests/ returns exactly one hit, tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:72, which asserts SkiaSharp's FileVersion, not ArrTags'.",
+        "Directory.Build.props:4-6 sets <Version>, <AssemblyVersion> and <FileVersion> as three separate literals; src/ArrTags/ArrTags.csproj:100 only copies build.yaml into the staging directory and never compares it to $(Version).",
+        "scripts/check-docs.sh contains no version-consistency section (grep for 'version|build.yaml' returns nothing).",
+        "Independent verification of the current state (read-only): `unzip -o -q artifacts/ArrTags_1.2.0.0.zip ArrTags.dll build.yaml -d /tmp/final-review/test-quality/pkg` then `strings .../ArrTags.dll | grep -x '1.2.0.0'` -> 1.2.0.0, and the packaged build.yaml line 4 is `version: \"1.2.0.0\"`. The two sources do agree today."
+      ],
+      "recommended_action": "Add one unguarded fact (no host or archive dependency) beside BuildManifestKeepsPinnedIdentityAndAbi that reads Directory.Build.props and asserts that <Version>, <AssemblyVersion> and <FileVersion> all equal the version literal parsed out of build.yaml — a relative assertion, so it does not need updating on the next bump and does not duplicate a hard-coded constant. Optionally assert the same equality against typeof(Plugin).Assembly.GetName().Version so the compiled identity is checked too. Not a release blocker for v1.2: the three props are literally 1.2.0.0 and the compiled assembly reports 1.2.0.0."
+    },
+    {
+      "id": "TQ-21.1-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "meaningfulness",
+      "detail": "The three [PackagedPluginFact] facts select the archive by ordinal-last filename and never assert the packaged build.yaml's version, so they can pass against a stale package.",
+      "description": "PluginPackagingPaths.TryFindPackageArchive enumerates artifacts/ArrTags_*.zip, orders by StringComparer.Ordinal and takes .Last(). With 1.0.1.0, 1.1.0.0 and 1.2.0.0 present this happens to select 1.2.0.0, but ordinal ordering is not numeric ordering (a future ArrTags_1.10.0.0.zip would sort before ArrTags_1.9.0.0.zip), and artifacts/ is gitignored so stale archives accumulate. None of the three packaged facts inspects the manifest inside the archive: PackageContainsTheRequiredPluginRootFiles only asserts the build.yaml entry exists and is non-empty, PackageHoldsEveryArtifactNamedInTheBuildManifest compares the archive against the repository build.yaml, and PackageDoesNotContainTheDuplicateSkiaSharpRuntime is a negative check. An archive built at 1.1.0.0 therefore satisfies all seven PluginPackagingTests facts today, including after a version bump. The worker's 'packaged build.yaml carries version 1.2.0.0' evidence came from a manual `unzip -p | grep`, not from the suite. This is pre-existing structure, not introduced by 21.1, and the worker disclosed the ordinal-last selection; it is recorded because the release-identity claim leans on these facts.",
+      "evidence": [
+        "tests/ArrTags.Tests/PackagedPluginFactAttribute.cs:57-74 — OrderBy(path => path, StringComparer.Ordinal).LastOrDefault().",
+        "tests/ArrTags.Tests/PluginPackagingTests.cs:78-120 — the three packaged facts assert entry presence, artifact coverage, and SkiaSharp absence; none reads the archive's build.yaml version.",
+        "artifacts/ holds ArrTags_1.0.1.0.zip, ArrTags_1.1.0.0.zip and ArrTags_1.2.0.0.zip (gitignored), so the selector is choosing among accumulated archives.",
+        "docs/implementation/21.1/worker-report.json:16 records the packaged-version check as a manual `unzip -p artifacts/ArrTags_1.2.0.0.zip build.yaml | grep`."
+      ],
+      "recommended_action": "Either make the packaged facts read the archive's build.yaml and assert its version matches the repository manifest, or select the archive by parsing build.yaml's version (ArrTags_<version>.zip) instead of ordinal-last. Track as a Phase 21/22 test-strengthening item; it does not affect the correctness of the 1.2.0.0 bump."
+    },
+    {
+      "id": "TQ-21.1-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "detail": "The three version literals in PluginDiscoveryHostTests.cs and PluginStateLocationTests.cs are inert mirror edits: no assertion depends on their value.",
+      "description": "'ArrTags_1.2.0.0' in PluginStateLocationTests.PersistedStateDoesNotCreateASameNamedPluginFolderUnderThePluginsPath only needs an underscore for DerivePluginName to strip (PluginStateLocationTests.cs:196-201), and the two [JellyfinHostFact] discovery facts require a folder containing a valid plugin assembly plus same-name grouping, not a particular version (PluginDiscoveryHostTests.cs:84-107). Bumping these literals therefore neither strengthens nor weakens the suite; it only keeps the fixture representative of the shipped install layout, which is reasonable. The two discovery facts are host-gated and were skipped in every run recorded for this task, so the changed literal there has not been exercised at all. I reached the same conclusion as the worker (worker-report.json test_sensitivity[2]) and record it as an accurate disclosure, not a finding against the change.",
+      "evidence": [
+        "tests/ArrTags.Tests/PluginStateLocationTests.cs:56 (literal) with :68-79 asserting only the derived name and count.",
+        "tests/ArrTags.Tests/PluginDiscoveryHostTests.cs:86 and :102 (literals) inside SeedVersionedInstall, called only by the two [JellyfinHostFact] facts at :28 and :53.",
+        "Independent run (`. /config/arrtags-env.sh && dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~PluginPackagingTests|FullyQualifiedName~PluginStateLocationTests|FullyQualifiedName~PluginDiscoveryHostTests\"`): Failed 0, Passed 11, Skipped 2, Total 13 — the 2 skips are the two PluginDiscoveryHostTests facts (ARRTAGS_JELLYFIN_HOST_DIR unset)."
+      ],
+      "recommended_action": "No action required. If a future task wants the fixtures to be self-maintaining, derive the folder name from the manifest version instead of hard-coding it."
+    },
+    {
+      "id": "TQ-21.1-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "detail": "The v1.2 default-suite counts (1927 passed / 66 skipped / 1993 total) are configuration-specific because a gitignored package archive is present; the canonical release matrix still records 1.1.0.0.",
+      "description": "Two skip facts in the affected area are environment-dependent: the 2 [JellyfinHostFact] facts (ARRTAGS_JELLYFIN_HOST_DIR) and the 3 [PackagedPluginFact] facts, which run only when artifacts/ArrTags_*.zip exists. The worker's final run had the archive present, so the 66 skips are the native-Skia, pinned-host and non-canonical-golden guards and the 3 packaged facts ran; on a clean clone with no artifacts/ directory the same commit reports 69 skips. Both facts fail loudly rather than silently pass when their guard is misconfigured (JellyfinHostFactAttribute.cs:24-28; PackagedPluginFactAttribute.cs:24-27), so guard honesty is intact. Separately, docs/release/build-and-release.md still records the 1.1.0.0 matrix (default 1494/63/1557 and the host/native counts); that document is owned by task 21.3 and is accurate as the last published release, exactly as the worker recorded. Nothing in 21.1 claims the v1.2 matrix as verified.",
+      "evidence": [
+        "docs/implementation/21.1/worker-report.json:17 (66 skips with the archive present; the 3 packaged facts ran) and :24 (host-guarded suite not run).",
+        "docs/release/build-and-release.md records the 1.1.0.0 matrix; the worker's known_limitations assign that update to task 21.3.",
+        "tests/ArrTags.Tests/JellyfinHostFactAttribute.cs:24-28 and tests/ArrTags.Tests/PackagedPluginFactAttribute.cs:24-27 — set-but-unusable guards fail rather than skip."
+      ],
+      "recommended_action": "No action for 21.1. Task 21.3 must record the v1.2 default/host-guarded/forced-native counts together with whether the package archive was present."
+    },
+    {
+      "id": "TQ-21.1-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "detail": "No test asserts the build.yaml overview/description/changelog prose, so the 'metadata accurately describes the shipped v1.2 behavior' half of the acceptance criterion is a documentation claim; spot checks of representative claims hold against shipped code and existing tests.",
+      "description": "The prose in build.yaml cannot reasonably be test-asserted (a test would only restate the constant), and 21.1 changed no test for it, so this is not a test-quality gap in the changed files. I nonetheless spot-checked that the new metadata does not overclaim: the changelog's 'Extra Large badge size (dropdown order Small, Medium, Large, Extra Large)' is backed by shipped code (src/ArrTags/Rendering/BadgeSize.cs:39 ExtraLarge = 3, BadgeGeometry.cs:90 factor 2.0, config.html:167 the option) and by tests/ArrTags.Tests/BadgeSizePositionTests.cs:58,80,83,277 plus DashboardSettingsPageTests.cs:194-210 which asserts the dropdown order. The build succeeds with TreatWarningsAsErrors, so no dead code path is being described. Full metadata reconciliation is the documentation-maintainer's scope, not this audit's.",
+      "evidence": [
+        "src/ArrTags/Rendering/BadgeSize.cs:39, src/ArrTags/Rendering/BadgeGeometry.cs:87-105, src/ArrTags/Configuration/config.html:167.",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:58,80,83,277; tests/ArrTags.Tests/DashboardSettingsPageTests.cs:194-210 (ADR-027 order assertion).",
+        "build.yaml:15,33-34 (the new overview/description/changelog text).",
+        "No test reads build.yaml's overview/description/changelog fields (grep over tests/ for 'changelog' returns only RenderGoldenFixtures.cs:34, an unrelated golden manifest constant)."
+      ],
+      "recommended_action": "No test action. Leave the prose verification to the documentation reviewer / Gate 21."
+    }
+  ],
+  "matrix_observed": {
+    "default": "not re-run in full by this audit; the worker recorded Failed 0 / Passed 1927 / Skipped 66 / Total 1993 after the final edit with the artifacts/ArrTags_1.2.0.0.zip archive present. Targeted independent re-run of the three affected classes: 11 passed / 2 skipped / 13 total, Failed 0.",
+    "host_guarded": "not run — ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the 2 PluginDiscoveryHostTests facts whose literal changed are skipped. Not claimed by 21.1; recorded as unverified rather than as a pass. Owned by tasks 21.3/21.4.",
+    "forced_native": "not run — ARRTAGS_SKIA_COMPAT unset; no native-gated test is affected by this change. Owned by task 21.3.",
+    "packaged_plugin_facts": "3/3 ran and passed against artifacts/ArrTags_1.2.0.0.zip (the ordinal-last archive) in both the worker's run and this audit's targeted run; see TQ-21.1-02 for the selector caveat.",
+    "documented_release_matrix": "docs/release/build-and-release.md still records the 1.1.0.0 matrix (default 1494/63/1557, host-guarded 1513/44/1557, forced-native 1575/20/1595). Accurate for the last published release; the v1.2 matrix is task 21.3's deliverable."
+  },
+  "substitutes_checked": [
+    "No new doubles or substitutes were introduced. The three changed test files use the same fixtures as before the task; only string literals moved.",
+    "PluginDiscoveryHostTests substitutes the host only through the documented [JellyfinHostFact] gate (real Emby.Server.Implementations.dll PluginManager, real IApplicationPaths DispatchProxy, real built ArrTags.dll copied into the seeded install folder). The gap left in the default configuration is the pre-existing 2 host-gated skips, not a new substitute.",
+    "The 3 [PackagedPluginFact] facts read the real archive produced by ./build.sh package, not a fixture archive; the only in-test model of the manifest is the repository build.yaml file itself."
+  ],
+  "skips_checked": [
+    "JellyfinHostFactAttribute.cs:24-28 — skips only when ARRTAGS_JELLYFIN_HOST_DIR is unset; asserts (fails) when the variable is set but the pinned assembly is missing. Honest guard.",
+    "PackagedPluginFactAttribute.cs:24-27 — skips only when no artifacts/ArrTags_*.zip exists; the worker and this audit both ran with the archive present. Honest guard, with the selector caveat recorded as TQ-21.1-02.",
+    "No new or widened skip was introduced by 21.1: the skip count is unchanged at 66 and the changed files add no Skip paths."
+  ],
+  "determinism_checked": [
+    "PluginPackagingTests reads build.yaml and the .csproj from the repository root located by walking up from AppContext.BaseDirectory (PackagedPluginFactAttribute.cs:40-53) — no CWD or network dependency; assert uses StringComparison.Ordinal, so no culture sensitivity.",
+    "PluginStateLocationTests and PluginDiscoveryHostTests use Guid.NewGuid() temp roots under Path.GetTempPath() and delete them in finally (PluginStateLocationTests.cs:159-179); the assertion at :68-71 sorts with StringComparer.Ordinal before comparing, so filesystem enumeration order cannot affect the result.",
+    "The archive selector uses StringComparer.Ordinal, so it is order-deterministic, though it is not the intended-version selector (TQ-21.1-02).",
+    "No wall-clock, network, process-order or shared-mutable-state dependency in the changed assertions; the version literal is a compile-time constant compared against file content."
+  ],
+  "limitations": [
+    "The full default suite (1927/66/1993) was not re-run by this audit; only the three affected test classes were re-run (11 passed / 2 skipped). The worker's full-run evidence was accepted because it is internally consistent with the targeted re-run, the sensitivity probe recorded at worker-report.json:19, and the packaged-archive identity I verified independently.",
+    "The host-guarded and forced-native configurations were not run (guards unset in this environment). The two changed literals that live in host-gated facts are consequently unexercised, which is acceptable only because no assertion depends on them (TQ-21.1-03).",
+    "The non-vacuity of PluginPackagingTests:28 was not re-probed by reverting build.yaml (that would modify the working tree). It is established by the worker's recorded probe (worker-report.json:19, message 'Not found: \"version: \"1.2.0.0\"\"' at PluginPackagingTests.cs:28) plus static reading: the assertion is an ordinal substring match on file content read at run time, so it fails for any other version literal.",
+    "I did not modify any test or implementation file. The only writes were this report and read-only extraction of artifacts/ArrTags_1.2.0.0.zip into /tmp/final-review/test-quality/ for version verification."
+  ],
+  "summary": "The 21.1 test edits are honest and do not weaken the suite. The one assertion-level change, PluginPackagingTests.cs:28, is a real and non-vacuous guard: the worker proved it non-vacuous by reverting build.yaml to 1.1.0.0 and observing the failure, and the assertion reads build.yaml from disk at run time, so a future un-mirrored version change fails the default suite. The other three literal changes are inert fixture mirrors whose value no assertion depends on; the worker disclosed exactly this, and I confirmed it by reading DerivePluginName and SeedVersionedInstall. Determinism and isolation are unaffected: all three files read repository files or use Guid-named temp roots with ordinal comparisons, and no new or widened skip was introduced (66 unchanged). Guard honesty holds — the 2 host-gated facts whose literal changed were skipped in every recorded run and are not counted as verification, the 3 packaged-archive facts really did run against the produced 1.2.0.0 archive, and both gate attributes fail rather than skip when misconfigured. Two gaps are recorded and neither blocks the release: TQ-21.1-01 (MEDIUM) — the Directory.Build.props half of the acceptance criterion has no automated guard at all, and its three version properties are independent literals, so a partial bump would pass the whole suite while shipping a mismatched assembly version (I verified independently that the current build.yaml and the compiled ArrTags.dll both report 1.2.0.0, so the present state is correct); and TQ-21.1-02 (LOW) — the packaged-archive facts select the archive by ordinal-last filename and never assert the packaged manifest's version, so they would also pass against a stale 1.1.0.0 archive. The remaining three items are informational: inert fixture literals in host-gated facts, configuration-dependent skip counts with the release matrix still owned by 21.3, and metadata prose that no test asserts (spot-checked as non-overclaiming). No BLOCKER or HIGH finding is open and the changed tests remain honest, meaningful within their scope, and deterministic, so the status is PASS_WITH_FINDINGS."
+}
