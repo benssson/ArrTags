@@ -246,7 +246,7 @@ release-review gate; the GitHub publish remains the user's manual step.
 - [x] 21.5 Release security review
 - [ ] 21.6 Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag
 - [x] 21.7 Provider transport: never follow a redirect (fix SEC-21.5-01) with a non-egress test
-- [ ] 21.8 Corrected release build, full suite, reproducible artifact, and release documentation
+- [x] 21.8 Corrected release build, full suite, reproducible artifact, and release documentation
 - [ ] 21.9 Live pinned-host verification of the corrected artifact
 - [ ] 21.10 Release security review of the corrected candidate
 **Authoritative Phase 21 execution order:** 21.1, 21.2, 21.3, 21.4, 21.5, 21.7, 21.8, 21.9, 21.10, 21.6

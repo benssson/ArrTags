@@ -1,0 +1,124 @@
+{
+  "subject": "Task 21.8 — corrected release build, full suite, reproducible artifact, and release documentation",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "summary": "Independent re-verification of every checkable claim in the task 21.8 worker report. A fourth clean build from my own git export (1,102 tracked files, /tmp/final-review/test-quality/repro-c, a path the worker did not use) reproduced the recorded archive identity exactly: 619,636 bytes, SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277, MD5 f3b50a91c7cb63d9560316d8abe2f9dc, 7 entries, all stamped 2000-01-01 00:00, and byte-identical (cmp) to the repository archive and to the worker's export A. The 7 per-entry SHA-256 values in the release doc match my extraction exactly. All four documented suite tiers reproduce exactly: default with the archive present 0/1,937/66/2,003; default without the archive 0/1,934/69/2,003; host-guarded against the verified pinned Jellyfin 12.0.0 host (/tmp/arrtags-14.3/jellyfin, Jellyfin.Api.dll present, console.log records 'Jellyfin version: 12.0.0') 0/1,957/46/2,003; forced-native with the recorded probe sysroot 0/2,024/21/2,045. The skip taxonomy is exactly as documented and matches the source attribute counts (20 JellyfinHostFact + 41 SkiaNativeFact + 4 SkiaNativeTheory + 1 NonCanonicalRuntimeFact = 66; +3 PackagedPluginFact when no archive is present; host-guarded 46 = 45 native + 1; forced-native 21 = 20 host + 1). The +10 delta over task 21.3's 1,993 is independently confirmed: the focused filter FullyQualifiedName~ProviderRedirectTransportTests gives 0/10/0/10. The corrected-artifact claim is confirmed: the preserved superseded archive /tmp/21.8/superseded-21.3.zip re-hashes to 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762 / 619,538 bytes / MD5 3100aae94a2b4aedf222eca040675271, and a per-entry comparison shows only ArrTags.dll changed (1,346,560 / 8d7b25c6… -> 1,347,072 / eae2cbab…); the other six entries are byte-identical. The change set is documentation and manifest only (PLANS.md, docs/plan/state.json, docs/release/build-and-release.md, manifest.json, 4 files, 90 insertions / 47 deletions), so no guard was weakened, no skip was added or widened, and no determinism or isolation property of the suite changed. Guard honesty is good: the release doc states in 'Known environment notes' that no automated test guards byte-identity and that a pack-release.cs or build-property regression would not fail the suite; the P1 limitation and the manifest checksum equality are stated as procedure, not as test coverage; and the release checklist items are intentionally unchecked. I also cross-checked the doc's 1.1.0.0 per-entry comparison against the preserved 1.1.0.0 archive and it is accurate (ArrTags.dll, ArrTags.deps.json, build.yaml differ; the three licenses/ entries and THIRD-PARTY-NOTICES.md unchanged). No BLOCKER or HIGH finding. One open MEDIUM documentation-honesty gap: docs/testing/jellyfin-12-musl-test-host.md still names the superseded 21.3 candidate (619,538 bytes / 5058…) as 'the v1.2 release candidate' without a superseded marker, which the worker disclosed in its known_limitations and which task 21.9 (owner of the corrected live matrix) should close.",
+  "findings": [
+    {
+      "id": "21.8-TQ-1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "description": "docs/testing/jellyfin-12-musl-test-host.md section 'v1.2 live matrix (Phase 21 task 21.4)' still presents the superseded task 21.3 archive (619,538 bytes, SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762) as 'the v1.2 release candidate' with no superseded marker, while the canonical release doc marks that same hash superseded and records the corrected 3e59cb06… identity. A reader following the testing host document to install or re-run the v1.2 candidate would install the pre-SEC-21.5-01 build, whose provider clients re-send X-Api-Key to a 3xx Location origin. The statement is historically accurate as a record of what task 21.4 ran, so it is not a false claim about the past; it is a stale pointer to a superseded artifact from the current-state documentation tree. The 21.8 worker disclosed this in its known_limitations as outside its delegated surface.",
+      "evidence": [
+        "docs/testing/jellyfin-12-musl-test-host.md:310-312 — 'Task 21.4 re-ran the pinned-host end-to-end verification for the v1.2 release candidate (`artifacts/ArrTags_1.2.0.0.zip`, 619,538 bytes, SHA-256 `505804992a50…`)'; no superseded marker in that section",
+        "docs/release/build-and-release.md:194-205 and 252-258 — the same hash is explicitly marked 'superseded by task 21.8' with the corrected identity beside it",
+        "grep -rln 505804992a50 docs/ *.json -> docs/testing/jellyfin-12-musl-test-host.md is the only current-state (non-implementation, non-changelog) document still carrying the superseded hash unmarked",
+        "docs/implementation/21.8/worker-report.json known_limitations final entry (worker-disclosed)"
+      ],
+      "recommended_action": "Task 21.9, which owns the corrected live pinned-host matrix, should update docs/testing/jellyfin-12-musl-test-host.md: mark the task 21.4 candidate (619,538 bytes / 5058…) as superseded by the task 21.8 identity (619,636 bytes / 3e59cb06…) and record the corrected matrix it runs. If 21.9 does not touch this document, a one-line superseded marker should be added there rather than left for a reader to reconcile."
+    },
+    {
+      "id": "21.8-TQ-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "No automated test establishes that the packaged ArrTags.dll (1,347,072 bytes, SHA-256 eae2cbab…) is the same code the 10 ProviderRedirectTransportTests exercised. The equivalence rests on a chain of recorded facts — the reproducible build, the recorded per-entry hash, and the fact that the packaged entry is the compiler output of the same source — not on a test assertion. This is disclosed and pre-existing (limitation P1, and the 'Known environment notes' bullet in the release doc), and it is not introduced or worsened by task 21.8, which changed no code. It is recorded here so that the corrected-dll claim is not read as a test-guaranteed property.",
+      "evidence": [
+        "tests/ArrTags.Tests/PluginPackagingTests.cs:79-124 — the three PackagedPluginFact tests assert entry presence, non-emptiness, build-manifest coverage, and absence of SkiaSharp.dll/libSkiaSharp.so; none compares the packaged assembly to a tested build or to a hash",
+        "docs/release/build-and-release.md:437-443 — 'No automated test guards byte-identity; PluginPackagingTests asserts the package contents … but not the archive bytes'",
+        "focused run: --filter 'FullyQualifiedName~ProviderRedirectTransportTests' -> 0/10/0/10 (exercises the source-built assembly, not the packaged entry)"
+      ],
+      "recommended_action": "No action for task 21.8. Limitation P1 already records the boundary; task 21.10 (release security review of the corrected candidate) should confirm the linkage is stated when it audits the corrected candidate."
+    },
+    {
+      "id": "21.8-TQ-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "description": "All 66 default-suite skips are environment-gated and honest: each guard attribute fails loudly rather than passing when the variable is set but the pinned dependency is missing (JellyfinHostFact, SkiaNativeFact, SkiaNativeTheory, NonCanonicalRuntimeFact, PackagedPluginFact all assign Skip only on the unset condition). The 20 pinned-host facts are the only host-dependent coverage and they are the ones that run in the host-guarded tier against the verified 12.0.0 host. No shipped behavior is claimed verified on the strength of a skipped test: the release doc scopes the host-guarded tier to 'reflects over the pinned host's assemblies; it does not run a live Jellyfin instance' and defers the live matrix to 21.9.",
+      "evidence": [
+        "tests/ArrTags.Tests/JellyfinHostFactAttribute.cs:19-24, PackagedPluginFactAttribute.cs:19-24, SkiaNativeTheoryAttribute.cs:19-24, NonCanonicalRuntimeFactAttribute.cs:19-24 — Skip is set only on the unset/blank condition; a set-but-broken environment fails the test",
+        "attribute counts in tests/ArrTags.Tests: 20 [JellyfinHostFact], 41 [SkiaNativeFact], 4 [SkiaNativeTheory], 1 [NonCanonicalRuntimeFact], 3 [PackagedPluginFact]",
+        "my measured skips: 66 (archive present) / 69 (archive absent) / 46 (host-guarded) / 21 (forced-native) — all match the doc exactly"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.8-TQ-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism",
+      "description": "The reproducibility evidence is sound for what it claims and the documentation does not overstate it. I added a fourth clean-build run from an export the worker did not use, and additionally re-packaged in that export after a full test run, reproducing the identical SHA-256 and MD5 both times — so the artifact is not perturbed by the suite. The release doc states three runs, which is true; my run is additional corroboration, not a discrepancy. The doc explicitly says byte-identity is not test-guarded, is demonstrated only with the pinned SDK, and the release checklist that would consume the identity is left unchecked. The golden path cannot auto-approve: RenderGoldenTests has no writer, auto-update, or auto-approval path and compares decoded pixels, encoded bytes, output hash, and output fingerprint.",
+      "evidence": [
+        "my run: /tmp/final-review/test-quality/repro-c (git ls-files export, 1,102 files, path unused by the worker) -> sha256sum 3e59cb06…, md5sum f3b50a91…, 619636 bytes; cmp against /workspace/ArrTags/artifacts/ArrTags_1.2.0.0.zip clean",
+        "my run: same export after './build.sh test' (0/1,937/66/2,003) and re-package -> 3e59cb06… / f3b50a91… again",
+        "docs/release/build-and-release.md:175-192 (three-run evidence), 244-250 (identity provenance), 437-443 (no automated byte-identity guard; pinned-SDK dependency)",
+        "tests/ArrTags.Tests/RenderGoldenTests.cs:12-16 — 'There is no writer, auto-update, or auto-approval path: a changed golden or a changed render fails the exact pixel comparison'",
+        "my per-entry extraction of the corrected archive matches the doc's 7-row table exactly; my per-entry comparison against the preserved 21.3 and 1.1.0.0 archives confirms only ArrTags.dll changed vs 21.3 and that the doc's 1.1.0.0 delta statement (dll, deps.json, build.yaml differ; licenses/ and THIRD-PARTY-NOTICES.md unchanged) is accurate"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.8-TQ-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "The documented matrix is accurate with no off-by-N. Each tier's skipped count decomposes exactly: default 66 = 20 host + 45 native (41 fact + 4 theory) + 1 non-canonical; the no-archive default adds exactly the 3 PackagedPluginFact tests (69, 1,934 passed); host-guarded 46 = 45 native + 1 non-canonical with the 20 host facts running; forced-native 21 = 20 host + 1, with Total rising 2,003 -> 2,045 as the enabled native theories expand. The +10 over task 21.3's 1,993 is the task 21.7 ProviderRedirectTransportTests class, confirmed by a focused run. scripts/check-docs.sh section 6 (artifact identity agrees) is ok; the only failure is the contract-defined interim section 9 state (21.8 worker report on disk, no reviewer report yet), which the worker documented and which clears when the implementation-reviewer report is added and listed.",
+      "evidence": [
+        "my runs: default 0/1,937/66/2,003; default without archive 0/1,934/69/2,003; ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin 0/1,957/46/2,003; forced-native with /tmp/arrtags-skia-probe/sysroot 0/2,024/21/2,045",
+        "focused: --filter 'FullyQualifiedName~ProviderRedirectTransportTests' -> 0/10/0/10",
+        "pinned host pre-check: /tmp/arrtags-14.3/jellyfin/Jellyfin.Api.dll present (677,376 bytes); /tmp/arrtags-14.3/console.log '[19:33:09.773] [INF] [10] Main: Jellyfin version: 12.0.0'",
+        "git diff --name-only -> PLANS.md, docs/plan/state.json, docs/release/build-and-release.md, manifest.json; git status --porcelain -> only docs/implementation/21.8/ untracked; no source, test, build-metadata, or golden file changed",
+        "scripts/check-docs.sh -> 'ok: artifact identity agrees (sha256, md5, bytes)' and every other section ok; section 9 fails only on the 21.8 worker/reviewer pairing interim"
+      ],
+      "recommended_action": "None for test quality. The orchestrator must add the implementation-reviewer report and list it in state.json 21.8 reports to clear scripts/check-agents.sh."
+    }
+  ],
+  "matrix_observed": {
+    "default (archive present)": "0 failed / 1,937 passed / 66 skipped / 2,003 total",
+    "default (archive absent)": "0 failed / 1,934 passed / 69 skipped / 2,003 total",
+    "host_guarded": "0 failed / 1,957 passed / 46 skipped / 2,003 total (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin, verified Jellyfin 12.0.0)",
+    "forced_native": "0 failed / 2,024 passed / 21 skipped / 2,045 total (ARRTAGS_SKIA_COMPAT=1 with the /tmp/arrtags-skia-probe sysroot)",
+    "focused task 21.7 transport class": "0 failed / 10 passed / 0 skipped / 10 total (--filter FullyQualifiedName~ProviderRedirectTransportTests)",
+    "documented vs observed": "all four documented tiers match the worker's recorded counts exactly; no off-by-N; skip taxonomy decomposes exactly in every tier"
+  },
+  "reproducibility_observed": {
+    "recorded_identity": "artifacts/ArrTags_1.2.0.0.zip — 619,636 bytes, SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277, MD5 f3b50a91c7cb63d9560316d8abe2f9dc, 7 entries",
+    "my_independent_run": "clean git ls-files export to /tmp/final-review/test-quality/repro-c (1,102 files, no .git/bin/obj/artifacts, a path the worker did not use); . /config/arrtags-env.sh && ./build.sh restore && ./build.sh build && ./build.sh package -> exit 0, 0 warnings / 0 errors, 'Created deterministic package … (7 entries)'; SHA-256, MD5, and 619,636 bytes identical; cmp against the repository archive clean",
+    "fourth_run_variant": "same export re-packaged after a full './build.sh test' (0/1,937/66/2,003): identical SHA-256 and MD5, so the suite does not perturb the artifact",
+    "three_way_agreement": "repro-c, /workspace/ArrTags/artifacts, and the worker's /tmp/21.8/release-src-a all 3e59cb06…; the worker's /tmp/21.8/release-src-b is now c289aa81… because the worker's own disclosed sensitivity probe C appended a ReproducibilityProbe type to that disposable export",
+    "per_entry": "my extraction's 7 per-entry SHA-256 values match the release doc's table exactly (ArrTags.deps.json fafb9631…, ArrTags.dll eae2cbab…, THIRD-PARTY-NOTICES.md 3656c9f0…, build.yaml f4362c76…, licenses/DejaVu-Fonts-License.txt 7a083b13…, licenses/SkiaSharp-LICENSE.txt 89101e35…, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 21504c46…)",
+    "superseded_comparison": "/tmp/21.8/superseded-21.3.zip re-hashes to 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762 / 619,538 bytes / MD5 3100aae94a2b4aedf222eca040675271, matching task 21.3's recorded identity; a per-entry comparison shows only ArrTags.dll changed (1,346,560 / 8d7b25c6b5e06c754e1fa3ed1492132a38188ec8e7d865acf279d571cea414f5 -> 1,347,072 / eae2cbabcba9b8ced8f41a55db3d216e020529ce2d567c33f50a2490892b235d); the other six entries are byte-identical",
+    "prior_release_cross_check": "the preserved 1.1.0.0 archive (/tmp/arrtags-docs-rehearsal, 594,931 bytes, 85730fe7… as recorded) confirms the doc's statement that ArrTags.dll, ArrTags.deps.json, and build.yaml differ from 1.1.0.0 while the three licenses/ entries and THIRD-PARTY-NOTICES.md are unchanged"
+  },
+  "substitutes_checked": [
+    "PackagedPluginFact skips the real ./build.sh package when no archive is present — the three package-content tests are only counted as verification in the archive-present tier; the doc states this precondition and records both figures",
+    "The host-guarded tier reflects over the pinned host's assemblies; it is not a live Jellyfin run. The doc and the worker both scope it that way, and the live matrix is deferred to 21.9",
+    "The forced-native tier depends on a probe sysroot outside the repository; the doc records the command including LD_LIBRARY_PATH/FONTCONFIG_PATH/XDG_DATA_DIRS and notes the bare ARRTAGS_SKIA_COMPAT=1 form fails to load libSkiaSharp.so as an environment prerequisite, not a product defect",
+    "No in-process or doubled substitute stands in for the artifact itself: the three PackagedPluginFact tests open the real zip; PluginPackagingTests' unguarded facts read the real build.yaml and ArrTags.csproj; the 10 transport cases use two real loopback origins and the real DI registration rather than a mocked handler"
+  ],
+  "skips_checked": [
+    "66 default skips decompose to 20 [JellyfinHostFact] + 41 [SkiaNativeFact] + 4 [SkiaNativeTheory] + 1 [NonCanonicalRuntimeFact]; the source attribute counts match exactly",
+    "69 no-archive default skips = the same 66 plus exactly 3 [PackagedPluginFact]; the three extra skip names in the suite output are the package-content tests",
+    "46 host-guarded skips = 45 native (41 fact + 4 theory) + 1 non-canonical; the 20 host facts execute against the verified pinned 12.0.0 host",
+    "21 forced-native skips = 20 host facts + 1 non-canonical, with Total rising to 2,045 as the enabled native theories expand",
+    "Every guard attribute sets Skip only when its environment variable is unset/blank; a set-but-unusable environment fails the test rather than passing silently, so no guard masks a broken pinned dependency",
+    "No new or widened skip: the change set is PLANS.md, docs/plan/state.json, docs/release/build-and-release.md, and manifest.json only — no test, source, build-metadata, or golden file was touched"
+  ],
+  "determinism_checked": [
+    "Fourth independent clean-build run reproduced the recorded SHA-256/MD5/size byte-for-byte at a path the worker did not use, and a fifth package after a full test run in that export reproduced it again",
+    "Archive entries are ordinal-ordered and all stamped 2000-01-01 00:00 in my extraction, consistent with the documented packer",
+    "Golden tests have no writer, auto-update, or auto-approval path; a changed golden or render fails exact pixel, byte, hash, and fingerprint comparison",
+    "Suite results are independent of my working directory and produced identical counts from both the repository tree and the clean export",
+    "Isolation unchanged: no test, fixture, or project file was modified by this task, so no order dependence, shared mutable state, or leakage could have been introduced"
+  ],
+  "limitations": [
+    "My checks cover the recorded artifact identity, the four documented suite tiers, the corrected-dll delta, the documentation's counts and guard statements, and the determinism/isolation posture. I did not audit the SEC-21.5-01 transport fix's behavioural coverage itself; that was task 21.7's test-quality review and is task 21.10's release-security-review scope.",
+    "I did not run a live Jellyfin instance. The host-guarded tier reflects over the pinned 12.0.0 assemblies only, and the live pinned-host matrix for the corrected artifact is task 21.9.",
+    "The forced-native tier's counts depend on the recorded probe sysroot at /tmp/arrtags-skia-probe, which is outside the repository and is not itself version-controlled or re-creatable from the tree; I verified the tier reproduces with that sysroot as documented, not that the sysroot is reproducible.",
+    "Byte-reproducibility is demonstrated only with the pinned SDK (global.json 10.0.0 latestMinor, validated with 10.0.401). A different SDK could change compiler or deflate output; limitation P1 records this and task 21.8 does not change it.",
+    "artifacts/ArrTags_1.2.0.0.zip is gitignored build output, not a committed tree member. The committed manifest.json checksum refers to the locally produced corrected artifact, so the identity is not verifiable from a fresh clone without rebuilding.",
+    "scripts/check-docs.sh currently exits non-zero solely on the contract-defined interim state for section 9 (task 21.8 has a worker report but no reviewer report yet). Every other section, including the artifact-identity agreement, is ok. This clears when the orchestrator adds and registers the implementation-reviewer report; it is not a test-quality defect.",
+    "Per docs/agent-contracts.md, this report is not yet listed in docs/plan/state.json 21.8 reports. The orchestrator owns that single-writer update, and the listing must include every preserved .attempt-<n>.json."
+  ]
+}
