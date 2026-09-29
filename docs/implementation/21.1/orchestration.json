@@ -1,5 +1,9 @@
 {
   "task": "21.1",
+  "title": "Version bump and release metadata",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "7eb7b85",
   "conformance": {
     "required": false,
     "reason": "Task 21.1 bumps the plugin version and updates release metadata. It introduces no new Jellyfin 12 API, lifecycle, ordering, or platform assumption, changes no Sonarr/Radarr API contract, version range, or webhook payload, and is the first implementation of no unverified ADR clause. Its acceptance criteria ('1.2.0.0 in build.yaml and Directory.Build.props' and 'metadata accurately describes the shipped v1.2 behavior') depend only on the already-implemented Phases 15-20 behavior and the accepted ADRs, so no pre-dispatch specialist conformance check is required.",
