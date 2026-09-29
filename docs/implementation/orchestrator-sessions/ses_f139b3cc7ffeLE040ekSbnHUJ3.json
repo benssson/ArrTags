@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 209347,
-    "output": 54409,
-    "reasoning": 52717,
+    "input": 224639,
+    "output": 59964,
+    "reasoning": 53696,
     "cache": {
-      "read": 23477248,
+      "read": 26688128,
       "write": 0
     }
   },
-  "total_tokens": 23793721,
-  "cost_usd": 0.166082594,
+  "total_tokens": 27026427,
+  "cost_usd": 0.18192943399999997,
   "duration_seconds": null,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-29T14:28:28Z",
+  "last_updated_at": "2026-09-29T15:06:37Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -60,6 +60,13 @@
       "total_tokens": 23793721,
       "duration_seconds": null,
       "note": "Phase 21 corrective task 21.7 provider transport no-redirect fix (SEC-21.5-01) completed and committed (5f72372); duration_seconds recorded as null: the runtime reported 2s for 23793721 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T15:06:37Z",
+      "cost_usd": 0.18192943399999997,
+      "total_tokens": 27026427,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.8 corrected release build and artifact identity completed and committed (35818fb); duration_seconds recorded as null: the runtime reported 2s for 27026427 tokens, which is not a plausible wall-clock measurement."
     }
   ]
 }
