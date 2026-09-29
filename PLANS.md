@@ -248,7 +248,7 @@ release-review gate; the GitHub publish remains the user's manual step.
 - [x] 21.7 Provider transport: never follow a redirect (fix SEC-21.5-01) with a non-egress test
 - [x] 21.8 Corrected release build, full suite, reproducible artifact, and release documentation
 - [x] 21.9 Live pinned-host verification of the corrected artifact
-- [ ] 21.10 Release security review of the corrected candidate
+- [x] 21.10 Release security review of the corrected candidate
 **Authoritative Phase 21 execution order:** 21.1, 21.2, 21.3, 21.4, 21.5, 21.7, 21.8, 21.9, 21.10, 21.6
 **Phase acceptance criteria:** the version is `1.2.0.0`; the canonical documentation reflects v1.2 with no stale
 claim; no provider request follows an HTTP redirect, so `X-Api-Key` is sent only to the configured connection and

@@ -1,0 +1,124 @@
+{
+  "task": "21.10",
+  "attempt": 1,
+  "reviewer": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "summary": "Independent review of the task 21.10 deliverable docs/implementation/21.10/security-review.json (the release security review of the corrected candidate, produced by the security-reviewer). The gate requirement is met and I confirmed it independently rather than accepting the report's own tally. (1) Coherence/completeness: the report carries every required field - task, attempt, reviewer, reviewer_status (PASS_WITH_FINDINGS, a value in the docs/agent-contracts.md security-reviewer enum), open_blocker_high, artifact, sec_21_5_01_disposition, 12 findings each with id/severity/status/area/summary/evidence/recommended_action, open_blocker_high_detail, secret/auth/state/input path inventories, reproductions, prior_findings_reconciled (16 entries), limitations (6), summary, ready_for_next_task, and user_decision_required. Severity and status tokens conform to the contract enums; scripts/check-agents.sh reports 'status/severity tokens conform' and PASS. (2) Gate: the report has zero findings at severity BLOCKER or HIGH, and its own detail block (blocker 0, high 0, open_medium 0, open_low 3, informational_noted 8, resolved_this_pass 1) matches the 12 findings it actually lists (1 MEDIUM resolved, 3 LOW open, 8 INFORMATIONAL noted), so open_blocker_high = 0 is the true count and not an undercount. SEC-21.5-01 has an explicit, reasoned disposition in a dedicated sec_21_5_01_disposition field and a matching prior_findings_reconciled entry, not merely a status flip. (3) Independent reproduction against the SHIPPED binary, not the source: I extracted artifacts/ArrTags_1.2.0.0.zip to a reviewer-owned temp directory, confirmed its identity (619,636 bytes, SHA-256 3e59cb06..., MD5 f3b50a91..., 7 entries, per-entry SHA-256 equal to the docs/release/build-and-release.md table), and confirmed the packaged ArrTags.dll (eae2cbab...b235d) is byte-identical to a Release build of the audited source. Against that extracted assembly I wrote my own two-origin loopback probe: reflection over the two private handler factories and the resolved HttpClientFactoryOptions of all four named clients shows AllowAutoRedirect=False on every one (strict keeps strict cert validation, both .Insecure keep DangerousAcceptAnyServerCertificateValidator); the shipped registration produces 1 request to the configured origin, 0 requests to the 3xx Location origin, no key egress, and a 93-character InvalidResponse/Never error whose message contains no key, no body sentinel, and no Location value. My pre-fix control (the same shipped SonarrClient + SecretLease code against a bare AddHttpClient registration, i.e. the exact 21.5 shape) does deliver the key to the second origin (1 request, key present), so the harness discriminates and the negative is a real fix. That is a third independent reproduction of the resolution beyond the report's own. I also confirmed ClassifyStatus consults the new '>= 300 and < 400' arm before ReadContentAsync in both clients, and that these are the only two HttpRequestMessage construction sites (GET only, no body). (4) Carried and new findings: SEC-21.5-02/03/04 are carried at the same LOW severity with status open and each is re-verified with a reproduction, not dropped; I independently reproduced 02 and 03 against the shipped assembly (Cf U+202E/U+200B/U+2066/U+2069 and Zl/Zp U+2028/U+2029 pass verbatim while Cc U+0001 is stripped; a Windows path and a UNC path are emitted whole at 32 and 34 scalars; POSIX controls pass; a 300-scalar name truncates to 128; whitespace-only falls back to the item id). The two new INFORMATIONAL findings are both accurate, including SEC-21.10-01's contested claim: I unwrapped a real factory-created client on this runtime and the .NET 10 IHttpClientFactory default primary handler is System.Net.Http.SocketsHttpHandler with AllowAutoRedirect=True, not HttpClientHandler, so the 21.7 worker report's stated basis ('the .NET client factory's default primary handler is HttpClientHandler') is indeed factually wrong while the registrator's code and conclusion are right. SEC-21.10-02 is confirmed too: the manifest.json 1.2.0.0 changelog one-liner contains no mention of the redirect behaviour change, while docs/changelog/v1.2.0.md, docs/architecture/07 and /11, and the ADR-005 implementation note all do. (5) Scope discipline: the only change in the working tree for this task is the untracked docs/implementation/21.10/ directory; git diff e172c4c HEAD -- src/ArrTags touches only the registrator's HTTP client registration, the two ClassifyStatus switches, and the new test file, so the review changed no product code, test, canonical document, PLANS.md, state.json, manifest.json, or artifact, and created no commit or tag. I re-ran the default suite (Failed 0, Passed 1,937, Skipped 66, Total 2,003) and the host-guarded suite against the pinned Jellyfin 12.0.0 host (Failed 0, Passed 1,957, Skipped 46, Total 2,003) and the focused ProviderRedirectTransportTests (Failed 0, Passed 10), all equal to the figures the report and docs/release/build-and-release.md record; scripts/check-docs.sh and scripts/check-agents.sh both PASS. Two observations are recorded as `noted` rather than as required changes: the report's SEC-21.10-01 property-by-property equivalence listing omits two real (non-security) differences between the factory default SocketsHttpHandler and the HttpClientHandler the fix installs - PooledConnectionLifetime (factory default 2 minutes vs the fix's infinite) and ClientCertificateOptions/LocalCertificateSelectionCallback - which are worth recording but change no security-relevant property and do not affect any conclusion; and the mandatory state.json reports entry for task 21.10 is still to be added by the orchestrator at commit time, exactly the contract-defined interim state the 21.7 reviewer recorded.",
+  "acceptance_criteria": [
+    {
+      "criterion": "The release security review is recorded at docs/implementation/21.10/security-review.json",
+      "verdict": "MET",
+      "evidence": "File exists, is valid JSON, and carries the security-reviewer identity and the contract's status enum value PASS_WITH_FINDINGS; scripts/check-agents.sh 'status/severity tokens conform' and 'per-agent default path and status enum agree with the contract' both pass."
+    },
+    {
+      "criterion": "The review records zero open BLOCKER/HIGH findings",
+      "verdict": "MET",
+      "evidence": "The 12 listed findings are 1 MEDIUM (resolved), 3 LOW (open), 8 INFORMATIONAL (noted); no finding carries severity BLOCKER or HIGH, and open_blocker_high = 0 equals open_blocker_high_detail.blocker + .high = 0 + 0."
+    },
+    {
+      "criterion": "SEC-21.5-01 carries an explicit disposition",
+      "verdict": "MET",
+      "evidence": "A dedicated sec_21_5_01_disposition field states RESOLVED with the basis (source inspection, reflection over the shipped assembly, and a discriminating two-origin reproduction with a pre-fix control that still leaks), plus a prior_findings_reconciled entry and a finding with status 'resolved'."
+    },
+    {
+      "criterion": "The report is coherent and complete (reviewer_status, open_blocker_high, all findings with severity/status, reviewed_head, scope, sec_21_5_01_disposition, prior_findings_reconciled, limitations, ready_for_next_task)",
+      "verdict": "MET",
+      "evidence": "All ten named fields present and internally consistent; reviewed_head 2072ec14776b5cb08ead9b467ecffcd32cffa692 equals the repository HEAD; the finding count in open_blocker_high_detail equals the number of findings actually listed."
+    },
+    {
+      "criterion": "The review is independent and spot-checks agree with the artifact (not merely trusted)",
+      "verdict": "MET",
+      "evidence": "My own probe against the extracted artifacts/ArrTags_1.2.0.0.zip assembly reproduced the reported results verbatim (all four names AllowAutoRedirect=False; 0 requests to the Location origin; 93-character InvalidResponse/Never error with no key, body, or Location content; the bare-AddHttpClient control leaks the key)."
+    },
+    {
+      "criterion": "Carried findings are re-verified rather than silently dropped",
+      "verdict": "MET",
+      "evidence": "SEC-21.5-02/03/04 all appear with status open at the same LOW severity, each with a HEAD re-verification note and a reproduction; I independently reproduced 02 and 03 against the shipped assembly. SEC-21.5-05..10 are carried as noted re-verifications, and 16 prior_findings_reconciled entries cover the final-review, 15.4, 17.4, limitations, and live-verification sources including not_required dispositions."
+    },
+    {
+      "criterion": "The two new INFORMATIONAL findings are accurate",
+      "verdict": "MET",
+      "evidence": "SEC-21.10-01 verified: a real factory-created client on the pinned .NET 10.0.12 runtime unwraps to System.Net.Http.SocketsHttpHandler with AllowAutoRedirect=True, so the 21.7 worker report's 'default primary handler is HttpClientHandler' basis is factually wrong while its conclusion holds. SEC-21.10-02 verified: manifest.json's 1.2.0.0 changelog contains no 'redirect' while docs/changelog/v1.2.0.md, docs/architecture/07 and /11, and ADR-005 all record the behaviour change."
+    },
+    {
+      "criterion": "Scope discipline: the security review changed no product code, tests, docs, or artifact",
+      "verdict": "MET",
+      "evidence": "git status --porcelain shows only '?? docs/implementation/21.10/'; git diff e172c4c HEAD -- src/ArrTags touches only ArrTagsServiceRegistrator.cs, SonarrClient.cs, RadarrClient.cs and the new ProviderRedirectTransportTests.cs; no commit or tag was created and docs/plan/state.json, PLANS.md, manifest.json and artifacts/ are unchanged."
+    }
+  ],
+  "findings": [
+    {
+      "id": "21.10-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/workflow",
+      "summary": "The mandatory state.json reports entry for task 21.10 is still absent and is the orchestrator's to add at commit time, not a defect in the review.",
+      "detail": "docs/plan/state.json currently records task 21.10 as {\"id\": \"21.10\", \"done\": false, \"name\": \"Release security review of the corrected candidate\"} with no reports array, while docs/implementation/21.10/security-review.json and this reviewer report now exist on disk. docs/agent-contracts.md ('Enforcement scope', all phases) requires a task to list its reviewer report in state.json reports, and the reviewer is not permitted to edit state.json. scripts/check-agents.sh and scripts/check-docs.sh both currently PASS because 21.10 has no worker-report.json, so the pairing rule does not yet fire - the same contract-defined interim state the 21.7 reviewer recorded as 21.7-F1. This is a workflow observation, not an open defect in the security review.",
+      "evidence": [
+        "docs/plan/state.json phase 21 tasks[21.10]: done=false, no 'reports' key",
+        "docs/implementation/21.10/ contains security-review.json only (before this report)",
+        "bash scripts/check-agents.sh -> 'check-agents: PASS'; bash scripts/check-docs.sh -> 'check-docs: PASS'",
+        "docs/implementation/21.7/reviewer-report.json finding 21.7-F1 records the identical interim state for the same reason"
+      ],
+      "recommended_action": "The orchestrator adds docs/implementation/21.10/security-review.json and docs/implementation/21.10/reviewer-report.json to task 21.10's reports array, sets done=true, and re-runs scripts/check-docs.sh before committing, as it did for 21.5, 21.7, 21.8 and 21.9."
+    },
+    {
+      "id": "21.10-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "evidence precision",
+      "summary": "SEC-21.10-01's property-by-property equivalence list omits two real non-security differences between the factory default SocketsHttpHandler and the installed HttpClientHandler; the finding's conclusion is unaffected.",
+      "detail": "SEC-21.10-01 asserts the effective transport configuration is 'identical to the factory default in every security-relevant property' and enumerates the properties it compared. My independent full property dump of a factory-created client versus the registrator's CreateStrictHandler output (both unwrapped to System.Net.Http.SocketsHttpHandler) shows the enumerated security-relevant properties are indeed identical, and that AllowAutoRedirect is the only security-relevant difference, so the finding's substance is correct. The enumeration is not exhaustive, though: PooledConnectionLifetime is 2 minutes on the factory default and infinite on the installed handler, and ClientCertificateOptions is Automatic on the default while the HttpClientHandler surface reports Manual with a non-null SslOptions.LocalCertificateSelectionCallback. Neither is security-relevant for this integration (no client certificate is ever presented and no connection is deliberately kept alive for a security reason), so the finding's conclusion and the 'noted' status stand, and no gate item depends on the enumeration being complete. Recorded so a future reader does not treat the listing as an exhaustive equivalence proof.",
+      "evidence": [
+        "My property dump (/tmp/21.10/probe4) of the factory default versus CreateStrictHandler, both unwrapped to SocketsHttpHandler: DIFF AllowAutoRedirect True/False, DIFF ClientCertificateOptions Automatic/Manual, DIFF PooledConnectionLifetime 00:02:00/-00:00:00.0010000, DIFF SSL.LocalCertificateSelectionCallback null/<delegate>; no other difference in any enumerated or unenumerated property",
+        "docs/implementation/21.10/security-review.json SEC-21.10-01 evidence: 'SslOptions/connection-property dumps identical line for line apart from the redirect flag'",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:241-247 CreateStrictHandler sets only AllowAutoRedirect = false, so neither property is set by the plugin"
+      ],
+      "recommended_action": "No change required for this task. If a later task amends or supersedes SEC-21.10-01, add PooledConnectionLifetime and the client-certificate surface to the enumerated differences so the record is not read as an exhaustive equivalence."
+    },
+    {
+      "id": "21.10-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation scope",
+      "summary": "I did not independently re-run the forced-native (ARRTAGS_SKIA_COMPAT=1) suite; the pinned native sysroot's libfontconfig chain is not present in this environment, so that one figure rests on the report plus the documented release record.",
+      "detail": "The report claims the forced-native pinned-oracle suite (Failed 0, Passed 2,024, Skipped 21, Total 2,045) equal to docs/release/build-and-release.md. The documented prerequisites (a pinned libSkiaSharp.so dependency chain, notably libfontconfig.so.1, on LD_LIBRARY_PATH) are not available here - the recorded probe sysroot /tmp/arrtags-skia-probe/sysroot contains only etc/fonts. I verified the other two figures independently (default 1,937/66/2,003 and host-guarded 1,957/46/2,003, both equal to the documented record) and the documented figure for the third is unchanged from the 21.8 record that produced this artifact. The 21.7 change touches the HTTP client registration and two status switches, no renderer code, so a renderer regression from it is not a credible residual risk. This is a bound on my independent coverage, not a defect in the review, and it does not bear on the gate.",
+      "evidence": [
+        "docs/release/build-and-release.md:107-112 documents the forced-native figure and its libfontconfig.so.1 prerequisite",
+        "ls /tmp/arrtags-skia-probe/sysroot -> only 'etc/fonts'; no usr/lib/x86_64-linux-gnu native chain",
+        "My runs: default Failed 0 / Passed 1937 / Skipped 66 / Total 2003; ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin Failed 0 / Passed 1957 / Skipped 46 / Total 2003"
+      ],
+      "recommended_action": "None. The 21.8 and 21.9 records already carry the forced-native evidence for this artifact, and the phase gate does not depend on this reviewer re-running it."
+    }
+  ],
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "tests_checked": [
+    "dotnet test ArrTags.slnx -c Release --no-build -> Failed 0, Passed 1937, Skipped 66, Total 2003 (equals docs/release/build-and-release.md)",
+    "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin dotnet test ArrTags.slnx -c Release --no-build -> Failed 0, Passed 1957, Skipped 46, Total 2003 (equals the documented figure)",
+    "dotnet test -c Release --filter FullyQualifiedName~ProviderRedirectTransportTests -> Failed 0, Passed 10, Skipped 0, Total 10",
+    "Reviewer-authored two-origin loopback probe against the SHIPPED ArrTags.dll extracted from artifacts/ArrTags_1.2.0.0.zip: 0 requests to the 3xx Location origin, no X-Api-Key egress, InvalidResponse/Never with a 93-character message free of key, body sentinel, and Location; the bare-AddHttpClient pre-fix control leaks the key to the second origin (1 request, key present)",
+    "Reflection over the shipped assembly: CreateStrictHandler and CreateInsecureHandler both System.Net.Http.HttpClientHandler with AllowAutoRedirect=False, accepting-any-certificate false and true respectively; all four resolved HttpClientFactoryOptions carry 1 handler action with AllowAutoRedirect=False",
+    "Handler-baseline probe: a real factory-created client on .NET 10.0.12 unwraps to System.Net.Http.SocketsHttpHandler with AllowAutoRedirect=True (independently confirming SEC-21.10-01's central claim)",
+    "Reviewer-authored LogSubject probe against the shipped assembly: Cc U+0001 stripped; Cf U+202E/U+200B/U+2066/U+2069 and Zl/Zp U+2028/U+2029 pass verbatim; Windows path 32/32 and UNC path 34/34 scalars emitted whole; POSIX controls pass; 300-scalar name truncates to 128; whitespace-only falls back to the item id (confirms SEC-21.5-02 and SEC-21.5-03)",
+    "Embedded-resource check on the shipped assembly: ArrTags.Configuration.config.html is 59,154 bytes, equal to src/ArrTags/Configuration/config.html",
+    "bash scripts/check-docs.sh -> check-docs: PASS (including 'generated status blocks are current; plan state is consistent' with dotnet on PATH, and 'artifact identity agrees (sha256, md5, bytes)')",
+    "bash scripts/check-agents.sh -> check-agents: PASS"
+  ],
+  "research_checked": [
+    "The .NET 10 IHttpClientFactory default primary handler type (SocketsHttpHandler, AllowAutoRedirect=True), established by reflection over a real factory-created client on the pinned Microsoft.NETCore.App 10.0.12 runtime, which is the technical basis of SEC-21.10-01",
+    "docs/decisions/ADR-005.md:170-208 and the task 21.7 worker report interpretations[1], to confirm which document carries the handler-default rationale SEC-21.10-01 corrects",
+    "docs/implementation/21.9/live-verification.json cited as evidence by this review (8 rows L1-L8, all verdict PASS, artifact SHA-256 3e59cb06... matching the artifact this review verified independently)"
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json (task 21.10 entry, phase 21 execution order, active_scope_note)",
+    "PLANS.md (21.10 checkbox, Phase 21 acceptance criteria and Gate 21 text, the SEC-21.5-01 corrective note)",
+    "docs/status.md (active scope block, consistent with state.json after render-docs-state --check)",
+    "docs/release/build-and-release.md (Release artifact identity, per-entry SHA-256 table, the three recorded suite figures)",
+    "manifest.json (1.2.0.0 checksum, targetAbi, changelog one-liner)",
+    "docs/changelog/v1.2.0.md task 21.7 entry, docs/architecture/07-sonarr-and-radarr-integration.md, docs/architecture/11-failure-consistency-and-security-policy.md, and the ADR-005 implementation note (the surfaces SEC-21.10-02 says carry the redirect behaviour change)",
+    "docs/agent-contracts.md (report path, status/severity enums, state.json reports requirement, immutability of docs/implementation/**)",
+    "docs/limitations/00-index.md and open.md (no SEC-21.5-* entry is claimed as a registered limitation; the carried LOWs are advisory, consistent with the review's disposition)"
+  ],
+  "ready_for_next_task": true
+}
