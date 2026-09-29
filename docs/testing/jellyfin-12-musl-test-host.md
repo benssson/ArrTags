@@ -304,3 +304,45 @@ ArrTags then intentionally does not auto-republish (see `docs/data-model/03-10-a
 section 3.10.4 and `docs/architecture/09-persisted-artwork-rendering.md`); the readback serves the host image
 until an explicit administrative action starts a new session. See findings
 F-14.3-1 through F-14.3-4 in `docs/implementation/14.3/live-verification.json`.
+
+## v1.2 live matrix (Phase 21 task 21.4)
+
+Task 21.4 re-ran the pinned-host end-to-end verification for the v1.2 release
+candidate (`artifacts/ArrTags_1.2.0.0.zip`, 619,538 bytes, SHA-256
+`505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762`) against a
+fresh prefix (`/tmp/arrtags-21.4`, plus `/tmp/arrtags-21.4b` for the Extra Large
+row). The machine-readable matrix is
+`docs/implementation/21.4/live-verification.json` (all eight rows L1-L8 pass;
+`overall_verdict: VERIFIED`); the completion report is
+`docs/implementation/21.4/worker-report.json`. The V1 and v1.1 sections above
+remain the record for Phases 7 and 14.
+
+The v1.2 matrix reuses the task 7.3/7.8 and v1.1 reproduction and adds the
+G6/G8 byte-unit settings surface (exact-byte persistence, the per-field MB/KB
+display mapping, and the restart-required note text), the G7 Extra Large option
+(re-rendered through the scheduled task with the served bytes equal to the new
+`ActiveImageIdentity`), the F3 diagnostics endpoint (elevation-gated and
+fail-closed, fixed-shape, bounded, secret-free) with its static page panel, and
+the G9 bounded log subject and render classification, on top of the
+install/load, source-preservation, provider-outage, restart, and uninstall
+checks.
+
+### v1.2 cautions
+
+- **Complete library/sidecar setup before the first publication.** A full
+  post-publication `POST /Library/Refresh` scan re-adopts a local sidecar poster
+  as a movie's Primary image and drives an owned ArrTags session into the
+  documented fail-closed `OwnershipLost` state, which suppresses further
+  automatic publication for that item (findings F-21.4-2 and F-21.4-5). This is
+  the same class of host-behaviour caveat as the `SaveLocalMetadata=false`
+  requirement in the v1.1 procedure additions above: complete all library and
+  sidecar setup and run the final full refresh **before** the first publication,
+  and use `POST /ScheduledTasks/Running/<ArrTags task id>` as the re-render
+  trigger afterwards. The v1.2 product has no in-product recovery trigger for an
+  item already in `OwnershipLost`.
+- **Uninstall residue (informational, F-21.4-6).** After
+  `DELETE /Plugins/{guid}/<version>` the versioned install folder and the
+  relocated state root are removed and the drain restores the original source
+  artwork, but the host-owned `data/plugins/configurations/ArrTags.xml` and the
+  already-loaded controller instance in the running process survive until the
+  next restart; after that restart `/ArrTags/Status` returns `404`.

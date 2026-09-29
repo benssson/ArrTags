@@ -277,7 +277,7 @@ the GitHub publish remains the user's manual step.
 - [x] 21.1 Version bump and release metadata
 - [x] 21.2 Canonical documentation reconciliation
 - [x] 21.3 Release build, full suite, reproducible artifact, and release documentation
-- [ ] 21.4 Live pinned-host verification
+- [x] 21.4 Live pinned-host verification
 - [ ] 21.5 Release security review
 - [ ] 21.6 Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag
 **Authoritative Phase 21 execution order:** 21.1, 21.2, 21.3, 21.4, 21.5, 21.6

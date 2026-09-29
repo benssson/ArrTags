@@ -1,0 +1,116 @@
+{
+  "task": "21.4",
+  "title": "Live pinned-host verification",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.4 runs the pre-existing documented pinned-host end-to-end matrix against the already-implemented and reviewed v1.2 code, using the specialist live-host-verifier. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause; it is itself the live verification of established behaviour on the pinned 12.0.0 host. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "live-host-verifier",
+      "attempt": 1,
+      "outcome": "PARTIAL",
+      "execution": {
+        "agent": "live-host-verifier",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 94163,
+        "output_tokens": 43605,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 6347392,
+        "cache_write_tokens": 0,
+        "total_tokens": 6485160,
+        "cost_usd": 0,
+        "duration_seconds": 1747,
+        "session_id": "ses_f1317ec56ffeIaj5FhwfjU32lw"
+      }
+    },
+    {
+      "role": "live-host-verifier",
+      "attempt": 2,
+      "outcome": "PARTIAL",
+      "execution": {
+        "agent": "live-host-verifier",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 61396,
+        "output_tokens": 31667,
+        "reasoning_tokens": 12669,
+        "cache_read_tokens": 4377112,
+        "cache_write_tokens": 0,
+        "total_tokens": 4482844,
+        "cost_usd": 0,
+        "duration_seconds": 663,
+        "session_id": "ses_f12fcfd0bffeQ2xpK9y14oMS3k"
+      }
+    },
+    {
+      "role": "live-host-verifier",
+      "attempt": 3,
+      "outcome": "VERIFIED",
+      "execution": {
+        "agent": "live-host-verifier",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 67081,
+        "output_tokens": 23600,
+        "reasoning_tokens": 4563,
+        "cache_read_tokens": 3128594,
+        "cache_write_tokens": 0,
+        "total_tokens": 3223838,
+        "cost_usd": 0,
+        "duration_seconds": 540,
+        "session_id": "ses_f12f29c09ffehpT3F2kCuFttdI"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 111272,
+        "output_tokens": 14529,
+        "reasoning_tokens": 23568,
+        "cache_read_tokens": 1955968,
+        "cache_write_tokens": 0,
+        "total_tokens": 2105337,
+        "cost_usd": 0.04541690400000001,
+        "duration_seconds": 347,
+        "session_id": "ses_f12e9e394ffevdjLrBdsZlJl6T"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 200907,
+        "output_tokens": 18016,
+        "reasoning_tokens": 47571,
+        "cache_read_tokens": 7642997,
+        "cache_write_tokens": 0,
+        "total_tokens": 7909491,
+        "cost_usd": 0,
+        "duration_seconds": 1730,
+        "session_id": "ses_f12e479a8ffe7xN1UgpuZ5xPfh"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "The live-host-verifier required three passes. Attempt 1 (session ses_f1317ec56ffeIaj5FhwfjU32lw, whose cumulative usage includes a first completion resume) ran the matrix and recorded an honest PARTIAL: L1, L2, L5, L6 PASS; L3, L4, L7, L8 PARTIAL. Attempt 2 (fresh session) closed L7 (provider outage), L3 (exact byte persistence + unit mapping + restart note text) and L8 (restart/uninstall), leaving L4 PARTIAL because one movie was stuck in the pre-existing documented fail-closed OwnershipLost state caused by a full post-publication POST /Library/Refresh. Attempt 3 (fresh session, clean host prefix /tmp/arrtags-21.4b, scheduled-task trigger, no post-publication library refresh) re-verified Extra Large on all 3 items, closing L4 to PASS and setting overall_verdict VERIFIED with rows L1-L8 all PASS.",
+    "The implementation review (attempt 1) returned APPROVED and independently judged L4 a genuine clean re-run (the movie that was permanently OwnershipLost on the first prefix rendered normally at Extra Large on the clean prefix), the structural bounds acceptable and correctly qualified, and the record free of secrets.",
+    "Open findings surfaced for the release review, not hidden: F-21.4-2 (LOW, open: no in-product recovery from the OwnershipLost state) and F-21.4-5 (LOW, open: the host procedure must warn that a post-publication full scan can move an owned session to OwnershipLost; the working scheduled-task trigger is now documented in the testing doc). F-21.4-4 (INFORMATIONAL: client-side page JS/modal and the diagnostics panel unauthorized-render behaviour are structurally verified only on the --nowebclient host; the ADR-028 step-multiple rejection is page-side only) corresponds to already-registered accepted limitations V12-G6-1/V12-G8-1/V12-F3-1. F-21.4-6 (INFORMATIONAL: host-owned ArrTags.xml and the resident controller survive uninstall until restart). No BLOCKER/HIGH.",
+    "Boundaries observed: the release security review (21.5), and the changelog/current_release/status/tag (21.6) are untouched; no code, test, artifact, manifest, changelog, or limitations-register change was made by this task."
+  ]
+}
