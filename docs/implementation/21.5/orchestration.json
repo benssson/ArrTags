@@ -3,7 +3,7 @@
   "title": "Release security review",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "84b052e",
   "conformance": {
     "required": false,
     "reason": "Task 21.5 is the adversarial security audit of the already-built v1.2 release candidate; it introduces no new Jellyfin or provider assumption and implements nothing. The specialist security review is the task's own verification activity; no pre-dispatch conformance check applies.",

@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 181104,
-    "output": 40366,
-    "reasoning": 38876,
+    "input": 198380,
+    "output": 47958,
+    "reasoning": 50966,
     "cache": {
-      "read": 14386816,
+      "read": 19572352,
       "write": 0
     }
   },
-  "total_tokens": 14647162,
-  "cost_usd": 0.11784444799999999,
+  "total_tokens": 19869656,
+  "cost_usd": 0.147801656,
   "duration_seconds": null,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-29T12:49:31Z",
+  "last_updated_at": "2026-09-29T13:41:55Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -46,6 +46,13 @@
       "total_tokens": 14647162,
       "duration_seconds": null,
       "note": "Phase 21 task 21.4 live pinned-host verification completed and committed (7ad12dc); matrix VERIFIED across three verifier passes; duration_seconds recorded as null: the runtime reported 2s for 14647162 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T13:41:55Z",
+      "cost_usd": 0.147801656,
+      "total_tokens": 19869656,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.5 release security review completed and committed (84b052e); user decided to fix SEC-21.5-01 and planner added corrective tasks 21.7-21.10; duration_seconds recorded as null: the runtime reported 2s for 19869656 tokens, which is not a plausible wall-clock measurement."
     }
   ]
 }
