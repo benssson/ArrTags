@@ -3,7 +3,7 @@
   "title": "Live pinned-host verification of the corrected artifact",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "6c7b45d",
   "conformance": {
     "required": false,
     "reason": "Task 21.9 re-runs the pre-existing documented pinned-host matrix against the corrected artifact via the specialist live-host-verifier, and records the result. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause. No pre-dispatch specialist conformance check is required.",

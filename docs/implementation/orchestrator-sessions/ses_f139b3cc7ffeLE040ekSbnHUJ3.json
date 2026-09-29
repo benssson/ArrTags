@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 224639,
-    "output": 59964,
-    "reasoning": 53696,
+    "input": 240713,
+    "output": 68809,
+    "reasoning": 55653,
     "cache": {
-      "read": 26688128,
+      "read": 32541184,
       "write": 0
     }
   },
-  "total_tokens": 27026427,
-  "cost_usd": 0.18192943399999997,
+  "total_tokens": 32906359,
+  "cost_usd": 0.20838090199999995,
   "duration_seconds": null,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-29T15:06:37Z",
+  "last_updated_at": "2026-09-29T17:14:15Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -67,6 +67,13 @@
       "total_tokens": 27026427,
       "duration_seconds": null,
       "note": "Phase 21 task 21.8 corrected release build and artifact identity completed and committed (35818fb); duration_seconds recorded as null: the runtime reported 2s for 27026427 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T17:14:15Z",
+      "cost_usd": 0.20838090199999995,
+      "total_tokens": 32906359,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.9 corrected-artifact live pinned-host verification completed and committed (6c7b45d); duration_seconds recorded as null: the runtime reported 2s for 32906359 tokens, which is not a plausible wall-clock measurement."
     }
   ]
 }
