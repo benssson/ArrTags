@@ -276,7 +276,7 @@ the GitHub publish remains the user's manual step.
 **Tasks:**
 - [x] 21.1 Version bump and release metadata
 - [x] 21.2 Canonical documentation reconciliation
-- [ ] 21.3 Release build, full suite, reproducible artifact, and release documentation
+- [x] 21.3 Release build, full suite, reproducible artifact, and release documentation
 - [ ] 21.4 Live pinned-host verification
 - [ ] 21.5 Release security review
 - [ ] 21.6 Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag

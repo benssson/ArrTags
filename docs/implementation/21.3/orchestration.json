@@ -1,0 +1,77 @@
+{
+  "task": "21.3",
+  "title": "Release build, full suite, reproducible artifact, and release documentation",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.3 builds, packages, and verifies the already-implemented and reviewed v1.2 code (Phases 15-20) on the pinned Jellyfin 12.0.0 host, and records the reproducible artifact identity. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no Sonarr/Radarr contract or webhook payload, and implements no unverified ADR clause; the host-guarded facts and suites it runs are pre-existing verification of established behaviour. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 186762,
+        "output_tokens": 33869,
+        "reasoning_tokens": 37783,
+        "cache_read_tokens": 9093888,
+        "cache_write_tokens": 0,
+        "total_tokens": 9352302,
+        "cost_usd": 0.09828716400000001,
+        "duration_seconds": 1106,
+        "session_id": "ses_f1334a515ffeNoMeNtYCLmtv7f"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 57202,
+        "output_tokens": 11169,
+        "reasoning_tokens": 11626,
+        "cache_read_tokens": 1855833,
+        "cache_write_tokens": 0,
+        "total_tokens": 1935830,
+        "cost_usd": 0,
+        "duration_seconds": 669,
+        "session_id": "ses_f132392e7ffeC72pmfZDfWiQhQ"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 53092,
+        "output_tokens": 13329,
+        "reasoning_tokens": 7029,
+        "cache_read_tokens": 1615908,
+        "cache_write_tokens": 0,
+        "total_tokens": 1689358,
+        "cost_usd": 0,
+        "duration_seconds": 420,
+        "session_id": "ses_f132392e5ffeeOfwdVd6DYLIcy"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Required gate: implementation-reviewer APPROVED (attempt 1). The planner-designated test-quality review returned PASS_WITH_FINDINGS with no BLOCKER/HIGH; it independently reproduced a fourth byte-identical clean build and all four suite cells.",
+    "Carried-forward non-blocking findings for task 21.6: (1) the scripts/check-docs.sh artifact-identity validator cross-checks only the FIRST sha256/md5/bytes in state.json (still the superseded 1.1.0.0 current_release block), so the v1.2.0.0 identity strings in docs/release/build-and-release.md are not gate-guarded until 21.6 advances current_release; the test-quality reviewer verifies the 1.2.0.0 identity independently (four clean builds) and recommends re-verification at 21.6. (2) docs/status.md (generated) still reports 1.1.0.0 with v1.1 counts until 21.6. (3) implementation-reviewer informational notes 21.3-R1/R2 about 'previous release' wording for the 1.0.1.0 matrix and a changelog pointer. None block 21.3.",
+    "Boundaries observed: no v1.2 live-matrix results (task 21.4), no release security review (21.5), no changelog/current_release/status-complete/tag change (21.6). artifacts/ArrTags_1.2.0.0.zip is gitignored build output; the committed manifest.json checksum refers to it."
+  ]
+}
