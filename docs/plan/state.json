@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "updated_utc": "2026-09-29T17:47:04Z",
+  "updated_utc": "2026-09-29T18:20:00Z",
   "active_scope": "docs/planning/v1.2.md",
-  "active_scope_note": "v1.2 (Phases 15-21) is accepted: goals G6-G9 and limitations F3, F4, F6, F7, F8. Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)). DG-19, DG-20, and DG-21 (the F4, F6, and F7 mechanisms) are resolved by the v1.2 plan and their ADRs, so their dependent tasks are no longer gated. F5 is accepted as a known shipped limitation (reclassified from Open) and is excluded. Phase 21 additionally carries corrective tasks 21.7-21.10: the 21.5 release security review recorded the new open MEDIUM finding SEC-21.5-01 (the provider clients follow HTTP redirects, so X-Api-Key is re-sent to a 3xx Location origin, contrary to ADR-005), and the user decided to fix it now and re-verify rather than accept it. Tasks 21.8, 21.9, and 21.10 re-derive the deliverables of 21.3, 21.4, and 21.5 against the corrected build; 21.6 (changelog, release readiness, manifest commit, annotated v1.2.0 tag) runs last.",
+  "active_scope_note": "v1.2 (Phases 15-21) is accepted: goals G6-G9 and limitations F3, F4, F6, F7, F8. Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)). DG-19, DG-20, and DG-21 (the F4, F6, and F7 mechanisms) are resolved by the v1.2 plan and their ADRs, so their dependent tasks are no longer gated. F5 is accepted as a known shipped limitation (reclassified from Open) and is excluded. Phase 21 additionally carries corrective tasks 21.7-21.14: the 21.5 release security review recorded the new open MEDIUM finding SEC-21.5-01 (the provider clients follow HTTP redirects, so X-Api-Key is re-sent to a 3xx Location origin, contrary to ADR-005), which the user decided to fix now and re-verify rather than accept, and the 21.10 review re-verified the two carried LOW log-subject residuals SEC-21.5-02 (the subject removes Cc scalars only, so Cf format characters and Zl/Zp separators reach the log verbatim) and SEC-21.5-03 (the file-name component uses host-platform Path.GetFileName semantics, so a Windows-style or UNC path is emitted whole on the pinned Linux host) as still open, which the user also decided to fix rather than accept. Tasks 21.12, 21.13, and 21.14 re-derive the deliverables of 21.8, 21.9, and 21.10 against the fully corrected build; SEC-21.5-04 duplicates the already-accepted SEC-2 and is not part of this fix. 21.6 (changelog, release readiness, manifest commit, annotated v1.2.0 tag) runs last and updates the release record for the new artifact identity.",
   "releases": [
     {
       "version": "0.1.0",
@@ -1346,6 +1346,10 @@
         "21.8",
         "21.9",
         "21.10",
+        "21.11",
+        "21.12",
+        "21.13",
+        "21.14",
         "21.6"
       ],
       "tasks": [
@@ -1453,6 +1457,30 @@
             "docs/implementation/21.10/reviewer-report.json",
             "docs/implementation/21.10/security-review.json"
           ]
+        },
+        {
+          "id": "21.11",
+          "done": false,
+          "name": "Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)",
+          "reports": []
+        },
+        {
+          "id": "21.12",
+          "done": false,
+          "name": "Corrected release build, full suite, reproducible artifact, and release documentation",
+          "reports": []
+        },
+        {
+          "id": "21.13",
+          "done": false,
+          "name": "Live pinned-host verification of the corrected artifact",
+          "reports": []
+        },
+        {
+          "id": "21.14",
+          "done": false,
+          "name": "Release security review of the corrected candidate",
+          "reports": []
         }
       ]
     }

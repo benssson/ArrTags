@@ -65,6 +65,17 @@ security review that the fix invalidates, before 21.6 tags the release; the 21.1
 preserved verbatim and 21.8-21.10 are re-executions, not corrections, of 21.3-21.5. Definitions:
 [`v1.2-phase-21-sec-21-5-01-correction.json`](docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json).
 
+**Phase 21 corrective work (SEC-21.5-02, SEC-21.5-03).** The 21.10 release security review re-verified the two
+carried LOW log-subject residuals as still **open**: the bounded subject removes Unicode `Cc` scalars only, so
+`Cf` format characters and the `Zl`/`Zp` separators a media file name can carry reach the operator log verbatim
+(SEC-21.5-02), and the file-name component is taken with host-platform `Path.GetFileName` semantics, so a
+Windows-style or UNC primary path is emitted whole on the pinned Linux host (SEC-21.5-03). The user chose to fix
+them rather than accept them, so 21.11 hardens `LogSubject` and its tests, then 21.12-21.14 re-derive the artifact
+identity, live matrix, and security review that the fix invalidates, before 21.6 tags the release; the 21.1-21.10
+records are preserved verbatim and 21.12-21.14 are re-executions, not corrections, of 21.8-21.10.
+SEC-21.5-04 duplicates the already-accepted `SEC-2` and is explicitly **not** in this fix. Definitions:
+[`v1.2-phase-21-log-subject-correction.json`](docs/implementation/planning/v1.2-phase-21-log-subject-correction.json).
+
 **Phase set and ordering.** The phases follow the v1.2 dependency order: logging first (cross-cutting; amends
 a security contract), then the settings byte-unit and restart-required work, then the F3 diagnostics surface
 that extends the same page, then the output-affecting Extra Large size, then the F4/F6 reconciliation work,
@@ -74,8 +85,8 @@ then the F7 artwork pass-through change, and the v1.2 release last. A phase is f
 **v1.2 phase map and task-outline mapping.** The flat task outline in
 [`docs/planning/v1.2.md`](docs/planning/v1.2.md) section 6 maps as follows: V1.2-1 (planning) is complete with
 this package; V1.2-2 -> 15.1-15.4; V1.2-3 -> 16.1-16.6; V1.2-4 -> 17.1-17.4; V1.2-5 -> 18.1-18.3; V1.2-6 ->
-19.1-19.5; V1.2-7 -> 20.1-20.3; V1.2-8 -> 21.1-21.6. Tasks 21.7-21.10 are corrective work added after the
-21.5 review; no outlined work is dropped or renumbered.
+19.1-19.5; V1.2-7 -> 20.1-20.3; V1.2-8 -> 21.1-21.6. Tasks 21.7-21.14 are corrective work added after the
+21.5 and 21.10 reviews; no outlined work is dropped or renumbered.
 
 ### 15. Plugin log subject identifier and render classification
 
@@ -232,12 +243,16 @@ reproducibly, run the full suite and the live pinned-host verification, run the 
 complete the changelog, release-readiness verification, manifest commit, and the annotated `v1.2.0` tag. After
 the 21.5 review, correct the provider transport so a redirect cannot carry `X-Api-Key` off the configured
 connection, then re-derive the artifact identity, the live matrix, and the security review against the corrected
-build before the tag.
+build. After the 21.10 review, harden the bounded log subject so no non-printing/format/separator scalar and no
+directory chain can reach the operator log, then re-derive the artifact identity, the live matrix, and the
+security review against that build too, so the tagged candidate is the fully corrected one.
 **Deliverables:** version `1.2.0.0` in `build.yaml` and `Directory.Build.props`; the reconciled canonical
-documentation; the provider transport that cannot carry `X-Api-Key` across a redirect; a reproducible
-`artifacts/ArrTags_1.2.0.0.zip`; the full default and host-guarded suites passing; the recorded live pinned-host
-verification; the release security review; the changelog, `manifest.json`, and the annotated tag after the
-release-review gate; the GitHub publish remains the user's manual step.
+documentation; the provider transport that cannot carry `X-Api-Key` across a redirect; a hardened bounded log
+subject that strips the non-printing scalar categories and takes the final path component independently of host
+separator semantics, with tests that fail on the pre-fix code; a reproducible `artifacts/ArrTags_1.2.0.0.zip`;
+the full default and host-guarded suites passing; the recorded live pinned-host verification; the release
+security review with SEC-21.5-02 and SEC-21.5-03 dispositioned resolved; the changelog, `manifest.json`, and the
+annotated tag after the release-review gate; the GitHub publish remains the user's manual step.
 **Tasks:**
 - [x] 21.1 Version bump and release metadata
 - [x] 21.2 Canonical documentation reconciliation
@@ -249,16 +264,23 @@ release-review gate; the GitHub publish remains the user's manual step.
 - [x] 21.8 Corrected release build, full suite, reproducible artifact, and release documentation
 - [x] 21.9 Live pinned-host verification of the corrected artifact
 - [x] 21.10 Release security review of the corrected candidate
-**Authoritative Phase 21 execution order:** 21.1, 21.2, 21.3, 21.4, 21.5, 21.7, 21.8, 21.9, 21.10, 21.6
+- [ ] 21.11 Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)
+- [ ] 21.12 Corrected release build, full suite, reproducible artifact, and release documentation
+- [ ] 21.13 Live pinned-host verification of the corrected artifact
+- [ ] 21.14 Release security review of the corrected candidate
+**Authoritative Phase 21 execution order:** 21.1, 21.2, 21.3, 21.4, 21.5, 21.7, 21.8, 21.9, 21.10, 21.11, 21.12, 21.13, 21.14, 21.6
 **Phase acceptance criteria:** the version is `1.2.0.0`; the canonical documentation reflects v1.2 with no stale
 claim; no provider request follows an HTTP redirect, so `X-Api-Key` is sent only to the configured connection and
-never to a `3xx Location` target (ADR-005); `./build.sh package` produces a reproducible
-`artifacts/ArrTags_1.2.0.0.zip` whose recorded identity comes from the corrected build; the default and
-host-guarded suites and the live pinned-host matrix pass against that corrected artifact; the security review of
-the corrected candidate has no open BLOCKER/HIGH; the annotated tag `v1.2.0` is created after the release-review
-gate.
-**Gate 21:** Met when tasks 21.1-21.10 meet their acceptance criteria, the full suite and live matrix pass against
-the corrected artifact, the release security review of the corrected candidate has no open BLOCKER/HIGH, the
+never to a `3xx Location` target (ADR-005); the bounded log subject emits no Unicode `Cc`, `Cf`, `Zl`, or `Zp`
+scalar and never a directory, drive, share, or parent chain regardless of host separator semantics, keeping the
+128-scalar bound, the single-pass surrogate-safe normalization, and the empty/whitespace/control-only item-id
+fallback (ADR-026); `./build.sh package` produces a reproducible `artifacts/ArrTags_1.2.0.0.zip` whose recorded
+identity comes from the **fully corrected** build (21.7 and 21.11 both included); the default and host-guarded
+suites and the live pinned-host matrix pass against that artifact; the release security review of the corrected
+candidate has no open BLOCKER/HIGH and dispositions SEC-21.5-01, SEC-21.5-02, and SEC-21.5-03 as resolved; the
+annotated tag `v1.2.0` is created after the release-review gate.
+**Gate 21:** Met when tasks 21.1-21.14 meet their acceptance criteria, the full suite and live matrix pass against
+the fully corrected artifact, the release security review of that artifact has no open BLOCKER/HIGH, the
 phase and release reviews pass, and the annotated tag `v1.2.0` is created.
 
 ## Milestone Status
@@ -330,13 +352,14 @@ These decisions must be resolved and recorded before the dependent work relies o
 | v1.1: logging creates a secret-exposure path. | A secret appears in host logs. | ADR-020's redaction contract, per-level redaction tests, bounded volume, and a dedicated logging security review (tasks 10.2, 10.3). |
 | v1.1: the output-affecting renderer changes are versioned inconsistently. | Stale artwork or a broken fingerprint/golden oracle. | Goals B and E are one phase with a single coordinated schema/`RenderVersion` advance and one golden regeneration (task 12.4), with fail-closed goldens and no auto-approval path. |
 | v1.1: the inventory cache serves stale metadata as current. | Incorrect badges after a provider change. | Bounded TTL and ArrTags-side invalidation from the complete trigger set; the cache stays non-authoritative with bounded last-known-good (ADR-018, tasks 11.1-11.3). |
-| v1.2: the log subject exposes a directory path or a sensitive file name. | A filesystem layout or title leaks into the host log. | ADR-026 emits only the bounded file-name component of a host-native media path, with an item-id fallback, never a directory; redaction tests at every verbosity plus a fresh logging security review (tasks 15.1-15.4). |
+| v1.2: the log subject exposes a directory path or a sensitive file name. | A filesystem layout or title leaks into the host log. | ADR-026 emits only the bounded file-name component, with an item-id fallback, never a directory; the component is taken on both separators so a Windows-style or UNC path cannot emit a directory chain, and the non-printing scalar categories are stripped; redaction tests at every verbosity plus a fresh logging security review (tasks 15.1-15.4, 21.11). |
 | v1.2: the diagnostics endpoint leaks a secret or an unbounded payload. | Credential or item exposure, or a resource-exhaustion vector. | ADR-025: elevation-gated read-only endpoint, fixed bounded shape, no per-item listing, secret-free counters, and a dedicated security review (tasks 17.2 and 17.4). |
 | v1.2: the F4 coverage cursor corrupts or stalls reconciliation. | Some items never reconcile, or a run repeats the same prefix. | ADR-022's bounded `Cache`-authority `(SortName, itemId)` cursor with a scope reset and a start fallback on a missing/torn/out-of-range record, the bounded enqueue-outcome vocabulary that does not stall on coalesce/in-flight and stops at the first overflow; coverage tests (tasks 19.1 and 19.2). |
 | v1.2: the F6 re-enqueue loops, is coalesced away, or duplicates work. | Queue churn, duplicated rendering, or the post-save re-render still being dropped. | ADR-023's `ConfigurationStale` discard classification, the re-enqueue after the in-flight slot is released, the current-version bound, and the unchanged version-blind key and per-surface single-flight; coalescing coverage tests (tasks 19.3 and 19.4). |
 | v1.2: the F7 restore removes correct artwork on a transient failure. | Artwork is lost when it should be preserved. | ADR-024 restores/removes only for an owned empty resolved selection (`NoDisplayableValue`) and preserves the current artwork for every other pass-through reason, including a non-empty layout failure (`NoFittingBadge`); the internal `ArtworkPublisher.RestoreAsync` entry point and the guarded crash-recoverable protocol with coverage tests (tasks 20.1 and 20.2). |
 | v1.2: the Extra Large change unexpectedly alters existing output. | Stale goldens or an unnecessary full-library re-render. | ADR-027 requires existing goldens to remain byte-identical and records the no-`RenderVersion`-advance decision; a changed existing golden reopens the decision (tasks 18.1 and 18.2). |
 | v1.2: a provider `3xx` re-sends `X-Api-Key` to the `Location` origin. | The API key leaves the configured connection, contrary to ADR-005's "current request only". | Reproduced by the 21.5 review (SEC-21.5-01, MEDIUM). The user chose to fix rather than accept it: all four named provider clients stop following redirects, the insecure-TLS opt-in does not re-enable them, and a transport test proves the key never reaches the redirect target (task 21.7); the artifact, live matrix, and release security review are re-derived against the corrected build (tasks 21.8-21.10). |
+| v1.2: the bounded log subject carries a non-printing scalar or a directory chain into the operator log. | A crafted or Windows-style file name reaches the log verbatim, disclosing a user account name and full path, or an invisible/format scalar defeats operator correlation. | Reproduced by the 21.10 review as SEC-21.5-02 and SEC-21.5-03 (both LOW, open). The user chose to fix rather than accept: 21.11 strips the non-printing scalar categories and takes the final component on both `/` and `\` independently of host platform, with tests that fail on the pre-fix code; the artifact, live matrix, and release security review are re-derived against that build (tasks 21.12-21.14). |
 
 ## Post-V1 Backlog
 
