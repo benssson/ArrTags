@@ -1,0 +1,80 @@
+{
+  "task": "21.7",
+  "title": "Provider transport: never follow a redirect (fix SEC-21.5-01) with a non-egress test",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.7 fixes SEC-21.5-01 by configuring the plugin's own named HTTP clients not to follow redirects. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption; it changes no provider API contract, version range, or webhook payload; and it implements an already-accepted ADR-005 clause (the key is added to the current request only) with the client-configuration approach already prescribed by docs/research/jellyfin-12-architecture.md section 2.4. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 231841,
+        "output_tokens": 29392,
+        "reasoning_tokens": 52296,
+        "cache_read_tokens": 15332480,
+        "cache_write_tokens": 0,
+        "total_tokens": 15646009,
+        "cost_usd": 0.12978638999999997,
+        "duration_seconds": 1201,
+        "session_id": "ses_f12993cc1ffeH0V1az2DLMKgNB"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 64327,
+        "output_tokens": 17955,
+        "reasoning_tokens": 40581,
+        "cache_read_tokens": 6095313,
+        "cache_write_tokens": 0,
+        "total_tokens": 6218176,
+        "cost_usd": 0,
+        "duration_seconds": 941,
+        "session_id": "ses_f1286ae39ffeeE08JvPc5Fa0Bh"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 57657,
+        "output_tokens": 17230,
+        "reasoning_tokens": 16324,
+        "cache_read_tokens": 3737022,
+        "cache_write_tokens": 0,
+        "total_tokens": 3828233,
+        "cost_usd": 0,
+        "duration_seconds": 1519,
+        "session_id": "ses_f1286ae36ffe42gRWbQffNi1eK"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "SEC-21.5-01 fix: RegisterProviderHttpClients now sets AllowAutoRedirect=false on all four named clients (strict Sonarr/Radarr via the new CreateStrictHandler, both .Insecure names via the existing insecure handler which retains the relaxed certificate callback); SonarrClient/RadarrClient ClassifyStatus gained an explicit 3xx arm failing closed as InvalidResponse with ArrErrorRetryability.Never and a bounded message; retry count/backoff unchanged. New ProviderRedirectTransportTests (10 cases over two loopback origins and the real registration).",
+    "Both reviewers reproduced the pre-fix discrimination independently. implementation-reviewer reverted the registrator: 5 failed / 5 passed (four redirect cases on the second-origin recorder + the registration-shape case). test-quality-reviewer added a third probe reverting the ClassifyStatus 3xx arm: 4 failed / 6 passed, proving the error-surfacing half is independently covered. All probes reverted; the final file sha256 of src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs is dc9175bfd833b11a28e48861ab5394d0cf1e2b7ea6698ae71ff79945e7e12e1d (verified by the orchestrator at commit time; both AllowAutoRedirect=false occurrences present).",
+    "Finding 21.7-F5 / TQ-21.7-01 (MEDIUM/LOW, noted, not a code defect): the implementation-reviewer observed the registrator briefly reverted mid-review and the test-quality reviewer saw 4/10 focused runs return the pre-fix signature. This is explained by the two reviewers running concurrently and each temporarily reverting the source for its own pre-fix probe against the same working tree, so a --no-build run could pick up the other's probe state. No recorded evidence is invalid (both re-verified after their probes; the orchestrator re-verified the registrator sha256 and the reviewed diff at commit time, and the tree is quiescent with no active writer processes). Process note: specialists performing destructive pre-fix probes on the shared tree should be sequenced, or probe in a separate worktree.",
+    "TQ-21.7-02 (LOW, noted): the 250 ms second-origin observation window is sound because the origin enqueues the request before writing the response and SendAsync cannot return before the second response is read; the invariant is not documented in a comment. Comment-level improvement only; not required.",
+    "TQ-21.7-03 (noted): docs/release/build-and-release.md still carries the 21.3 suite counts (1927/1993 etc.), now 10 higher in the v1.2 code; task 21.8 explicitly re-derives the artifact identity, counts, manifest, and release documentation against the corrected build.",
+    "No renderer golden, RenderVersion, renderer-configuration schema, configuration, or dependency change; the change is transport-only. ADR-005 decision text was not rewritten (implementation note only), so docs/decisions/00-index.md is unchanged."
+  ]
+}

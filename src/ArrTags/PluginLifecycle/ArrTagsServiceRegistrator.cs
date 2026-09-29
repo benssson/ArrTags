@@ -212,10 +212,23 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<LogThrottle>());
     }
 
+    /// <summary>
+    /// Registers the four named provider HTTP clients (ADR-005, SEC-21.5-01).
+    /// Every primary handler disables automatic redirect-following: the
+    /// <c>X-Api-Key</c> header applied by <c>SecretLease.ApplyTo</c> is confined
+    /// to the outbound authenticated request to the configured connection, and
+    /// a redirect hop would re-send it to the <c>Location</c> origin. A
+    /// not-followed <c>3xx</c> therefore surfaces as a bounded provider error
+    /// through the clients' <c>ClassifyStatus</c> path.
+    /// </summary>
     private static void RegisterProviderHttpClients(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddHttpClient(ArrHttpClientNames.Sonarr);
-        serviceCollection.AddHttpClient(ArrHttpClientNames.Radarr);
+        serviceCollection
+            .AddHttpClient(ArrHttpClientNames.Sonarr)
+            .ConfigurePrimaryHttpMessageHandler(CreateStrictHandler);
+        serviceCollection
+            .AddHttpClient(ArrHttpClientNames.Radarr)
+            .ConfigurePrimaryHttpMessageHandler(CreateStrictHandler);
         serviceCollection
             .AddHttpClient(ArrHttpClientNames.For(ArrProviderKind.Sonarr, ArrTlsPolicy.AllowInsecure))
             .ConfigurePrimaryHttpMessageHandler(CreateInsecureHandler);
@@ -225,11 +238,25 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton<IArrHttpClientFactory, ArrHttpClientFactory>();
     }
 
+    private static HttpClientHandler CreateStrictHandler()
+    {
+        return new HttpClientHandler
+        {
+            // ADR-005: the API key is added to the current request only. A
+            // redirect hop is a different request to a different origin, so the
+            // handler must never follow one with the credential attached.
+            AllowAutoRedirect = false,
+        };
+    }
+
     private static HttpClientHandler CreateInsecureHandler()
     {
 #pragma warning disable CA5359 // Relaxed validation is an explicit, validated, connection-scoped opt-in.
         return new HttpClientHandler
         {
+            // The TLS relaxation must not widen credential scope: the insecure
+            // client disables redirect-following exactly like the strict one.
+            AllowAutoRedirect = false,
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
         };
 #pragma warning restore CA5359

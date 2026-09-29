@@ -419,6 +419,13 @@ public sealed class SonarrClient : ISonarrReadClient
 
         return code switch
         {
+            // ADR-005: redirect-following is disabled on every named provider
+            // client, so a 3xx is a terminal provider error, never a hop that
+            // would re-send X-Api-Key to the Location origin.
+            >= 300 and < 400 => new ArrProviderError(
+                ArrProviderErrorCode.InvalidResponse,
+                ArrErrorRetryability.Never,
+                "The provider answered with a redirect, which is not followed; verify the configured base URL."),
             401 or 403 => new ArrProviderError(
                 ArrProviderErrorCode.AuthenticationFailed,
                 ArrErrorRetryability.AfterConfiguration,

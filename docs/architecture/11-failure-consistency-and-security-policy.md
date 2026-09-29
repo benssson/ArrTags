@@ -43,7 +43,13 @@ widens work beyond items ArrTags already tracks.
 API-key and webhook-secret values are available only through the versioned
 private secret boundary described in section 6 and ADR-005. Authentication
 failures expose only bounded safe status codes; request headers, bodies, URLs,
-and secret-bearing exceptions are never retained in diagnostics. ArrTags
+and secret-bearing exceptions are never retained in diagnostics. The API-key
+transport never follows an HTTP redirect: every named provider client (the
+strict and opt-in insecure-TLS Sonarr and Radarr clients) is registered with
+automatic redirect-following disabled, so the key added to "the current request
+only" is never re-sent to a `3xx` `Location` origin, and a not-followed `3xx`
+surfaces as the bounded, secret-free `InvalidResponse` provider error (never
+retried as a transient; section 7). ArrTags
 diagnostics go through the host logging pipeline at the bounded, validated
 `LogVerbosity`, and every log call emits only bounded, already-redacted values
 under the ADR-020 clause 4 contract: authentication failures and secret-bearing

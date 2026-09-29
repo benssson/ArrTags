@@ -1,0 +1,114 @@
+{
+  "task": "21.7",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Fixes SEC-21.5-01 (MEDIUM) from the task 21.5 release security review: the four named provider HTTP clients no longer follow HTTP redirects, so the X-Api-Key header applied by SecretLease.ApplyTo is sent only on the request to the configured connection. ArrTagsServiceRegistrator.RegisterProviderHttpClients now configures a primary handler for all four names (strict Sonarr/Radarr through the new CreateStrictHandler with AllowAutoRedirect=false; both .Insecure names through the existing CreateInsecureHandler, which keeps DangerousAcceptAnyServerCertificateValidator and adds the same AllowAutoRedirect=false), so the opt-in TLS relaxation changes certificate validation only and cannot widen credential scope; pooling and the DI shape are unchanged and no dependency was added. SonarrClient.ClassifyStatus and RadarrClient.ClassifyStatus gained an explicit >=300 and <400 arm that fails closed as the bounded InvalidResponse provider error with ArrErrorRetryability.Never and a fixed message naming the redirect and suggesting base-URL verification; no response body, header value, Location value, or secret can reach it, and the transient retry count/backoff are unchanged (a redirect is not re-sent as a retryable transient). New tests/ArrTags.Tests/ProviderRedirectTransportTests.cs adds 10 cases over two loopback origins and the real registration: a 302 redirect theory for all four named clients asserting the second origin receives nothing while the configured origin receives exactly one key-bearing request; a registration-shape test asserting all four names have redirect-following disabled, the two .Insecure names keep the relaxed certificate callback, and the strict names do not; a positive control that a healthy probe sends the unchanged X-Api-Key header; and a retry-bound control (503 with TransientRetryCount=1 yields exactly 2 requests). Pre-fix probes: all four restored to the old bare AddHttpClient shape -> Failed 5 / Passed 5 / Total 10 (4 redirect cases fail with Assert.Empty on the second origin, registration case fails with an empty action list); only the insecure handler left pre-fix -> Failed 3 / Passed 7 / Total 10 (both .Insecure redirect cases and the registration case, on 'ArrTags.Sonarr.Insecure must not follow redirects'). Both probes were reverted and the focused class passes 10/10. Documentation: the constraint is recorded in docs/architecture/07-sonarr-and-radarr-integration.md and docs/architecture/11-failure-consistency-and-security-policy.md, as an implementation note in docs/decisions/ADR-005.md (no amendment, so docs/decisions/00-index.md is unchanged), and in docs/changelog/v1.2.0.md; PLANS.md ticks 21.7 and docs/plan/state.json records it done with this report. Transport-only: no golden, RenderVersion, renderer-schema, configuration, or dependency change.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' after the implementation, and again after the pre-fix probes were reverted.",
+    "Focused new-test run: 'dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build --filter \"FullyQualifiedName~ProviderRedirectTransportTests\"' on the fixed build -> exit 0, 'Passed! - Failed: 0, Passed: 10, Skipped: 0, Total: 10' (4 redirect theory cases, 4 positive-control theory cases, the registration-shape case, and the retry-bound case).",
+    "Pre-fix probe A (all four registrations temporarily restored to the old shape: bare AddHttpClient for the strict names and the insecure handler without AllowAutoRedirect; no ClassifyStatus change reverted): the same focused command -> 'Failed! - Failed: 5, Passed: 5, Skipped: 0, Total: 10'. Failures: ProviderRedirectIsNotFollowedAndTheKeyNeverReachesTheTarget (all four theory cases) with 'Assert.Empty() Failure: Collection was not empty / Collection: [\"GET /collect HTTP/1.1...' at the second origin, and AllFourNamedProviderClientsForbidRedirectsAndKeepTheirTlsPolicy with 'Assert.NotEmpty() Failure: Collection was empty'. The five passing cases were the two positive-control groups and the retry-bound case. Probe reverted with cp of the saved fixed file.",
+    "Pre-fix probe B (strict clients fixed, the insecure handler temporarily left without AllowAutoRedirect): the same focused command -> 'Failed! - Failed: 3, Passed: 7, Skipped: 0, Total: 10'. Failures: the two .Insecure redirect theory cases and the registration-shape case ('ArrTags.Sonarr.Insecure must not follow redirects'). Probe reverted with cp of the saved fixed file.",
+    "Default suite on the final tree (artifacts/ArrTags_1.2.0.0.zip present: 619,538 bytes, SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, the superseded 21.3 candidate that task 21.8 rebuilds): '. /config/arrtags-env.sh && ./build.sh test' -> exit 0, 'Passed! - Failed: 0, Passed: 1937, Skipped: 66, Total: 2003'; pre-task baseline at the same archive-present precondition (recorded by task 21.3 and re-verified by the 21.5 security review) Failed 0 / Passed 1927 / Skipped 66 / Total 1993; delta +10 passed / +0 skipped / +10 total.",
+    "Host-guarded suite: 'ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin ./build.sh test' -> exit 0, 'Passed! - Failed: 0, Passed: 1957, Skipped: 46, Total: 2003'; pre-task baseline Failed 0 / Passed 1947 / Skipped 46 / Total 1993; delta +10 passed. Host pre-check: /tmp/arrtags-14.3/jellyfin/Jellyfin.Api.dll FileVersion 12.0.0.0, ProductVersion '12+6c073e19ddf604b2369c638716164fdab4c952dc'.",
+    "Forced-native pinned-oracle suite (renders the committed goldens and the cross-runtime fixtures): 'LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib:$LD_LIBRARY_PATH ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=/tmp/arrtags-skia-probe/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/arrtags-skia-probe/sysroot/usr/share ./build.sh test' -> exit 0, 'Passed! - Failed: 0, Passed: 2024, Skipped: 21, Total: 2045'; pre-task baseline Failed 0 / Passed 2014 / Skipped 21 / Total 2035; delta +10 passed.",
+    "'. /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check' -> exit 0, 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree'.",
+    "scripts/check-docs.sh on the final tree before this worker report was persisted -> 'check-docs: PASS' with all nine sections ok (generated blocks current, stubs, 29 ADRs index, limitations index, architecture/data-model indexes, artifact identity, doc budget, links, agent contracts). After this report is persisted the only failures are section 9's contract-mandated worker/reviewer pairing lines ('task 21.7 has a worker report but no reviewer report' and 'task 21.7 has a reviewer report on disk but docs/plan/state.json does not list it in reports' — the second script message's wording), which clear when the orchestrator's implementation-reviewer report exists and is added to the task's reports list.",
+    "Scope: 'git status --short' lists PLANS.md, docs/architecture/07-sonarr-and-radarr-integration.md, docs/architecture/11-failure-consistency-and-security-policy.md, docs/changelog/v1.2.0.md, docs/decisions/ADR-005.md, docs/plan/state.json, src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs, src/ArrTags/Providers/Radarr/RadarrClient.cs, src/ArrTags/Providers/Sonarr/SonarrClient.cs (9 tracked modified) plus two untracked new files: tests/ArrTags.Tests/ProviderRedirectTransportTests.cs (the task's new test) and docs/implementation/21.7/worker-report.json (this report); 'git diff --stat' (tracked files) is 9 files changed, 212 insertions(+), 7 deletions(-); 'git status --short tests/ArrTags.Tests/Goldens/' is empty, so no committed golden changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrClient.cs",
+    "src/ArrTags/Providers/Radarr/RadarrClient.cs",
+    "tests/ArrTags.Tests/ProviderRedirectTransportTests.cs",
+    "docs/architecture/07-sonarr-and-radarr-integration.md",
+    "docs/architecture/11-failure-consistency-and-security-policy.md",
+    "docs/decisions/ADR-005.md",
+    "docs/changelog/v1.2.0.md",
+    "PLANS.md",
+    "docs/plan/state.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Given a provider origin that answers 302 with a Location naming a different origin, the plugin issues no request to that other origin, and the X-Api-Key value is never sent to it.",
+      "evidence": "tests/ArrTags.Tests/ProviderRedirectTransportTests.cs::ProviderRedirectIsNotFollowedAndTheKeyNeverReachesTheTarget runs for strict and insecure-TLS Sonarr and Radarr against two loopback origins, uses the real registrator DI, ArrHttpClientFactory, and client, and asserts Assert.Empty(target.Requests) after the 302 (with the configured origin receiving exactly one request carrying 'X-Api-Key: sec-21-5-01-transport-secret'). Pre-fix probe A is the discriminating counter-case: the second origin recorded 'GET /collect HTTP/1.1' and the assertion failed."
+    },
+    {
+      "criterion": "All four named provider clients (strict Sonarr, strict Radarr, and both opt-in insecure-TLS clients) are registered with redirect-following disabled; a registration that drops the setting fails a test.",
+      "evidence": "tests/ArrTags.Tests/ProviderRedirectTransportTests.cs::AllFourNamedProviderClientsForbidRedirectsAndKeepTheirTlsPolicy resolves the real HttpClientFactoryOptions for ArrTags.Sonarr, ArrTags.Radarr, ArrTags.Sonarr.Insecure, and ArrTags.Radarr.Insecure, runs the registered handler-builder actions, and asserts FollowsRedirects(primary) is false for each; probe A (bare AddHttpClient shape) fails it with 'Assert.NotEmpty() Failure: Collection was empty', and probe B (insecure handler only) fails it on 'ArrTags.Sonarr.Insecure must not follow redirects'. Source: ArrTagsServiceRegistrator.RegisterProviderHttpClients configures all four names and both handlers set AllowAutoRedirect=false."
+    },
+    {
+      "criterion": "The opt-in insecure-TLS relaxation still works for its intended purpose and does not re-enable redirect-following or change the header the plugin sends.",
+      "evidence": "The registration-shape test asserts the two .Insecure handlers still carry ServerCertificateCustomValidationCallback (the dangerous validator retained by CreateInsecureHandler) and that the strict handlers do not, alongside AllowAutoRedirect=false on all four. The redirect theory and ConfiguredProviderOriginReceivesTheApiKeyHeader execute the real .Insecure clients and observe the identical 'X-Api-Key' header (key absent from the request line) that the strict clients send."
+    },
+    {
+      "criterion": "A not-followed 3xx surfaces as a bounded provider error containing no secret, no response body, no header value, and no Location value, and the configured retry bound is unchanged.",
+      "evidence": "The redirect theory asserts ArrProviderErrorCode.InvalidResponse, ArrErrorRetryability.Never, message length <= ArrProviderError.MaxMessageLength, the message mentions the redirect, and the message contains neither the API key, nor the response-body sentinel, nor the response-header sentinel, nor the target Location URL. The same case configures TransientRetryCount=2 and the configured origin receives exactly one request, so the redirect is terminal; TransientServerErrorStillUsesTheConfiguredRetryBound configures TransientRetryCount=1 and a 503 origin receives exactly two key-bearing requests, proving the retry path and bound are intact. Source: the explicit >=300 and <400 arm in both ClassifyStatus methods."
+    },
+    {
+      "criterion": "A test exists that demonstrably fails on the pre-fix registration (the report records the pre-fix failure and the post-fix pass).",
+      "evidence": "Probe A (all four registrations temporarily restored to the pre-fix shape) -> Failed 5 / Passed 5 / Total 10, including all four redirect cases and the registration case; probe B (only the insecure handler pre-fix) -> Failed 3 / Passed 7 / Total 10. Both probes were reverted (cp of the saved fixed file; git diff is the intended change only) and the focused class then passes 10/10."
+    },
+    {
+      "criterion": "No committed renderer golden changes and no RenderVersion or renderer-configuration schema bump is introduced; the change is transport-only.",
+      "evidence": "'git status --short tests/ArrTags.Tests/Goldens/' is empty and 'git diff --stat' touches only the registrator, the two ClassifyStatus switches, the canonical docs/changelog/plan surfaces, and the new test file; no renderer, RendererConfiguration, RenderVersion, fingerprint, or dependency file changed. The forced-native pinned-oracle run (which executes the golden and cross-runtime fixtures) is Failed 0 / Passed 2024 / Skipped 21 / Total 2045, +10 passed over the 0 / 2014 / 21 / 2035 baseline."
+    },
+    {
+      "criterion": "The transport constraint is recorded in the provider-integration architecture documentation and as an implementation note against ADR-005, and the docs/decisions/00-index.md row is updated only if an ADR was actually amended.",
+      "evidence": "docs/architecture/07-sonarr-and-radarr-integration.md gains the redirect-constraint paragraph on the provider client boundary; docs/architecture/11-failure-consistency-and-security-policy.md gains the same constraint in the secret-transport paragraph; docs/decisions/ADR-005.md gains '### Implementation note (v1.2, task 21.7)' stating why the accepted clauses already require the behavior and that no amendment is needed, so docs/decisions/00-index.md is unchanged (check-docs.sh reports 'ok: decisions index (29 ADRs)')."
+    },
+    {
+      "criterion": "scripts/check-docs.sh passes and the default and host-guarded suites pass.",
+      "evidence": "scripts/check-docs.sh -> 'check-docs: PASS' (nine ok sections) on the final tree before the worker report was persisted; after persisting it the only failures are the expected transient worker/reviewer pairing lines until the reviewer report exists (see known_limitations). Default suite Failed 0 / Passed 1937 / Skipped 66 / Total 2003; host-guarded against /tmp/arrtags-14.3/jellyfin (Jellyfin.Api.dll 12.0.0.0) Failed 0 / Passed 1957 / Skipped 46 / Total 2003."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How a not-followed 3xx is surfaced, since the task delegated the decision but fixed its bounds (bounded provider error through the existing ArrProviderError/ClassifyStatus path, no secret/body/header/Location, retry bound unchanged, not re-sent as a retryable transient).",
+      "chosen": "An explicit >=300 and <400 arm in both clients' ClassifyStatus maps the redirect to ArrProviderErrorCode.InvalidResponse with ArrErrorRetryability.Never and the fixed message 'The provider answered with a redirect, which is not followed; verify the configured base URL.'",
+      "basis": "The task's work item explicitly delegates the surfacing decision within those bounds; matching the pre-existing generic arm (unmatched non-success statuses already mapped to InvalidResponse/Never) keeps the code, health mapping, and retry semantics identical while making the redirect diagnosable and the decision code-owned. The message is a code-owned literal, never provider-controlled text.",
+      "impact": "Operator-visible only: a provider that answers 3xx now reports this specific bounded message instead of the generic 'The provider returned an unexpected response status.' (same code, health, and retryability). No persisted state, configuration, or retry bound changes."
+    },
+    {
+      "question": "Which primary-handler type to use for the strict clients (HttpClientHandler with AllowAutoRedirect=false versus SocketsHttpHandler).",
+      "chosen": "HttpClientHandler with AllowAutoRedirect=false.",
+      "basis": "The .NET client factory's default primary handler is HttpClientHandler, so using the same type preserves every other default (proxy, cookies, automatic decompression) and changes only redirect-following; the task permits either mechanism.",
+      "impact": "None observable; transport behaviour differs only in redirect-following."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A: with all four registrations temporarily restored to the pre-fix shape (bare AddHttpClient for strict, insecure handler without AllowAutoRedirect), the focused class is Failed 5 / Passed 5 / Total 10. The four redirect cases fail on Assert.Empty() with the second origin's recorded 'GET /collect' request (the leak SEC-21.5-01 describes), and the registration case fails on an empty handler-action list. The passing five are the positive controls and the retry-bound case, which do not depend on the fix.",
+    "Probe B: with only the two strict clients fixed and the insecure handler temporarily pre-fix, the focused class is Failed 3 / Passed 7 / Total 10: both .Insecure redirect cases fail and the registration case fails on 'ArrTags.Sonarr.Insecure must not follow redirects'. This proves the insecure path cannot regress independently.",
+    "Both probes were reverted (cp of the saved fixed file) and 'git diff' is the intended change only; the post-fix focused run is Failed 0 / Passed 10 / Total 10. The full suites (default, host-guarded, forced-native) were run on the final restored tree.",
+    "Negative-control bound: the redirect theory's second-origin observation uses a 250 ms bounded period; a followed hop completes inside SendAsync before the probe returns, so the period is a scheduler grace rather than a race window, and no request can arrive afterwards because the client has completed the call."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json (task 21.7 done: true, reports: [docs/implementation/21.7/worker-report.json], updated_utc 2026-09-29T13:57:40Z)",
+      "PLANS.md (task 21.7 checkbox ticked; no generated block hand-edited)",
+      "docs/changelog/v1.2.0.md (new Phase 21 section with the Task 21.7 entry)",
+      "docs/architecture/07-sonarr-and-radarr-integration.md (provider client redirect constraint)",
+      "docs/architecture/11-failure-consistency-and-security-policy.md (secret-transport redirect constraint)",
+      "docs/decisions/ADR-005.md (Implementation note (v1.2, task 21.7); decision text untouched)"
+    ],
+    "old_values_removed": [
+      "The pre-fix registration shape is no longer present: 'serviceCollection.AddHttpClient(ArrHttpClientNames.Sonarr);' and 'serviceCollection.AddHttpClient(ArrHttpClientNames.Radarr);' with no handler configuration are gone; searched src/ and the current-state docs for a current-tense claim that the provider clients follow redirects.",
+      "'AllowAutoRedirect' now appears only with the value false (grep src/ArrTags: two occurrences, both false); 'MaxAutomaticRedirections' still does not appear anywhere.",
+      "docs/decisions/00-index.md intentionally keeps the ADR-005 row 'Accepted' because no ADR was amended (implementation note only); the decisions-index guard passes with 29 ADRs.",
+      "docs/release/build-and-release.md and manifest.json still carry the superseded 21.3 artifact identity and suite counts; task 21.8 explicitly owns re-deriving them, so they were not touched by this task."
+    ],
+    "check_docs": "PASS on the final tree before this worker report was persisted ('check-docs: PASS', nine ok sections, including 'ok: generated status blocks are current; plan state is consistent' and the decisions/limitations/architecture indexes). After this report is persisted, section 9 fails only on the contract's expected transient worker/reviewer pairing until the implementation-reviewer report exists and is listed in task 21.7's reports; every other section still passes. dotnet run scripts/render-docs-state.cs -- --check is up to date and reports PLANS.md and state.json agree."
+  },
+  "rework": [],
+  "known_limitations": [
+    "Transient documentation state: with docs/implementation/21.7/worker-report.json on disk and no docs/implementation/21.7/reviewer-report.json yet, scripts/check-docs.sh section 9 reports that the worker report has no reviewer report and that state.json does not list a reviewer report for 21.7. This is the contract-defined interim state (docs/agent-contracts.md + scripts/check-agents.sh); it clears only when the orchestrator's implementation-reviewer report is added and listed in task 21.7's reports in docs/plan/state.json.",
+    "The opt-in insecure-TLS relaxation is verified at the registration level (the dangerous server-certificate validation callback is retained on both .Insecure handlers while AllowAutoRedirect is false) and by executing the .Insecure clients for the redirect, header, and retry cases over plain HTTP. No test stands up a self-signed TLS server, so the relaxed-validation path is not exercised end-to-end against a real certificate; that bound predates this task and is unchanged by it.",
+    "The default and host-guarded runs were measured with the superseded artifacts/ArrTags_1.2.0.0.zip present (619,538 bytes, SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, the 21.3 candidate). The source fix changes ArrTags.dll, so that artifact identity, the manifest checksum, the live matrix, and the release security review are invalidated; tasks 21.8-21.10 re-derive them against the corrected build.",
+    "A provider or reverse proxy that legitimately issues a 3xx (for example an http-to-https or trailing-slash redirect) now fails closed as a bounded provider error instead of being followed. This is the intended behavior of the fix and is documented in the architecture sections and the changelog so an operator can diagnose it; it is not silently swallowed."
+  ],
+  "ready_for_next_task": true
+}

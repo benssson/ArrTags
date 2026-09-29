@@ -14,6 +14,19 @@ logging, and tolerant JSON deserialization.
 The integration is read-only. It must not call write endpoints, access Arr
 databases, or infer success from an HTML login page or redirect.
 
+Automatic redirect-following is disabled on all four named provider clients:
+the strict Sonarr and Radarr clients and both opt-in insecure-TLS clients set
+`AllowAutoRedirect = false` on their primary handler. A `3xx` response therefore
+cannot re-send the `X-Api-Key` header to the origin its `Location` names, which
+is what ADR-005's "the current request only" transport rule requires; the
+opt-in TLS relaxation changes certificate validation only and does not widen
+credential scope. A not-followed `3xx` fails closed as the bounded
+`InvalidResponse` provider error (never retried as a transient), and the error
+carries no response body, header value, or `Location` value. An operator who
+receives it should verify that the configured base URL is the provider's own
+address and not a redirecting reverse proxy. See the task 21.7 implementation
+note in ADR-005.
+
 ### Matching policy
 
 The initial matching order is:
