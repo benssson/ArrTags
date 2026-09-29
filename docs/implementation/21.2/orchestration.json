@@ -3,7 +3,7 @@
   "title": "Canonical documentation reconciliation",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "27e3416",
   "conformance": {
     "required": false,
     "reason": "Task 21.2 reconciles canonical current-state documentation with the already-implemented and independently reviewed v1.2 behaviour (Phases 15-20). It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no Sonarr/Radarr API contract or webhook payload, and does not implement an unverified ADR clause; it records existing accepted ADRs and shipped behaviour. No pre-dispatch specialist conformance check is therefore required.",

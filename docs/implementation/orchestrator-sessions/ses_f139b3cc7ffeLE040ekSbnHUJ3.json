@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 104724,
-    "output": 10870,
-    "reasoning": 8803,
+    "input": 136758,
+    "output": 21289,
+    "reasoning": 17739,
     "cache": {
-      "read": 2356096,
+      "read": 5675264,
       "write": 0
     }
   },
-  "total_tokens": 2480493,
-  "cost_usd": 0.03455388799999999,
+  "total_tokens": 5851050,
+  "cost_usd": 0.06092949199999999,
   "duration_seconds": null,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-29T09:51:08Z",
+  "last_updated_at": "2026-09-29T10:51:27Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -25,6 +25,13 @@
       "total_tokens": 2480493,
       "duration_seconds": null,
       "note": "Started Phase 21 (v1.2 release): completed and committed task 21.1 version bump and release metadata (commit 7eb7b85) after one review-driven rework closing 21.1-R1; duration_seconds recorded as null: the runtime reported 2s for 2480493 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T10:51:27Z",
+      "cost_usd": 0.06092949199999999,
+      "total_tokens": 5851050,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.2 canonical documentation reconciliation completed and committed (27e3416) after a focused rework closing F-21.2-D1/D2; duration_seconds recorded as null: the runtime reported 2s for 5851050 tokens, which is not a plausible wall-clock measurement."
     }
   ]
 }
