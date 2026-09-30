@@ -8,11 +8,11 @@
     "overview": "Adds dashboard-configurable Sonarr and Radarr metadata badges to Jellyfin posters, with a read-only diagnostics panel.",
     "versions": [
       {
-        "checksum": "f3b50a91c7cb63d9560316d8abe2f9dc",
+        "checksum": "631fbfa5a4fb58fac5a877eeef761193",
         "changelog": "v1.2 shows byte-denominated limits in binary units (MB, or KB for the webhook payload) with the exact byte count persisted and off-step values rejected, adds restart-required note text plus a best-effort change reminder for the settings that need a host restart (a mixed setting states that some paths apply immediately), adds the Extra Large badge size (dropdown order Small, Medium, Large, Extra Large), identifies media in log output by a bounded file name (with an item-id fallback, never a directory or full path) together with the bounded render classification, adds a read-only administrator diagnostics panel backed by a bounded, secret-free status endpoint, covers a library larger than the work queue across successive scheduled and post-scan reconciliation runs through a persisted cursor, re-enqueues the post-save re-render of an item whose older-version work was discarded instead of dropping it, and restores the original poster when a saved configuration narrows an owned item's badge selection to empty. ArrTags continues to read metadata from independently configured Sonarr and Radarr instances and publish configurable badges onto Jellyfin Movie and Episode posters through Jellyfin's supported item-image APIs while preserving the original poster.",
         "targetAbi": "12.0.0.0",
         "sourceUrl": "https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip",
-        "timestamp": "2026-09-29T14:37:30Z",
+        "timestamp": "2026-09-30T11:29:27Z",
         "version": "1.2.0.0"
       },
       {
