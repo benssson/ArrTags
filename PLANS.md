@@ -264,7 +264,7 @@ annotated tag after the release-review gate; the GitHub publish remains the user
 - [x] 21.8 Corrected release build, full suite, reproducible artifact, and release documentation
 - [x] 21.9 Live pinned-host verification of the corrected artifact
 - [x] 21.10 Release security review of the corrected candidate
-- [ ] 21.11 Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)
+- [x] 21.11 Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)
 - [ ] 21.12 Corrected release build, full suite, reproducible artifact, and release documentation
 - [ ] 21.13 Live pinned-host verification of the corrected artifact
 - [ ] 21.14 Release security review of the corrected candidate

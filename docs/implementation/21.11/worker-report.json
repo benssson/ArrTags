@@ -1,0 +1,135 @@
+{
+  "task": "21.11",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Hardened the bounded log subject (SEC-21.5-02, SEC-21.5-03) in src/ArrTags/Logging/LogSubject.cs. Create(Guid, string?) now takes the final path component as the substring after the last '/' or the last '\\', whichever is later, on every host (the host-platform Path.GetFileName call and the System.IO using are gone), re-runs the empty/whitespace check on the extracted component, and keeps the post-normalization item-id fallback; Create(Guid) is unchanged. NormalizeFileName's removal predicate is now exactly the documented non-printing set Cc, Cf, Zl, and Zp (a superset of the pre-fix Rune.IsControl/Cc-only predicate) in the unchanged single scalar-wise pass, with MaximumScalarValues = 128 applied after removal, surrogate pairs never split, and whitespace never collapsed or trimmed; the exact category set is stated in the XML doc comments and in a new ADR-026 implementation note (Decision clauses 1-5 untouched). LogSubjectTests grows from 23 to 52 cases. The pre-fix probe against the unmodified source is Failed 25, Passed 27, Total 52; the same focused run after the fix is 52/52. Default suite Failed 0, Passed 1966, Skipped 66, Total 2032 and host-guarded suite Failed 0, Passed 1986, Skipped 46, Total 2032 (both +29 passed / +29 total, exactly the 29 added cases, vs the 21.10 tree); LogRedactionTests 167/167; no committed renderer golden, RenderVersion, or renderer-schema change.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' after the source change, and again on the final tree.",
+    "Focused post-fix run: 'dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build --filter \"FullyQualifiedName~LogSubjectTests\"' -> exit 0, 'Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52' (23 pre-existing cases preserved + 29 new cases).",
+    "Pre-fix probe (the new tests run against the unmodified LogSubject.cs before the fix) -> exit 1, 'Failed!  - Failed:    25, Passed:    27, Skipped:     0, Total:    52, Duration: 126 ms'. Failing for SEC-21.5-02: the 10-case theory UnicodeNonPrintingScalarsAreRemoved (U+202E, U+200B, U+200D, U+00AD, U+202A, U+202C, U+2066, U+2069, U+2028, U+2029 - each 'movie<scalar>.mkv' emitted the scalar verbatim), NonPrintingRemovalStillRemovesOrdinaryControlScalars ('mo<U+202E>vie.mkv'), NonPrintingRemovalPreservesOtherCharactersVerbatim ('お気に入り<U+202E>Cafe<combining acute> 🎬.mkv'), NonPrintingRemovalDoesNotCollapseOrTrimWhitespace, BoundIsAppliedAfterNonPrintingRemoval (leading U+202E/U+200B emitted instead of the 128 a's), WidenedRemovalStillNeverSplitsASurrogatePair, and the 3 NamesThatReduceToNothingAfterNonPrintingRemovalFallBackToTheItemIdentifier cases (Cf-only names emitted instead of the item id). Failing for SEC-21.5-03: FinalComponentIsTakenOnBothSeparators for 'C:\\Users\\admin\\Videos\\secret.mkv', '\\\\fileserver\\media\\secret\\file.mkv', and 'relative\\folder\\Episode.S01E01.mkv' (whole string emitted), WindowsStylePathEmitsNoAccountOrDirectoryComponent, and the separator-only cases 'C:\\', '\\', and '\\\\fileserver\\share\\' (emitted instead of the item-id fallback). The mixed-separator 'C:/Users\\admin/Videos/secret.mkv' and '\\/' cases pass pre-fix (their last '/' is later), so they are positive controls rather than discriminating cases.",
+    "Focused LogRedactionTests run: 'dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\"' -> exit 0, 'Passed!  - Failed:     0, Passed:   167, Skipped:     0, Total:   167'.",
+    "Default suite: '. /config/arrtags-env.sh && ./build.sh test' -> exit 0, 'Passed!  - Failed:     0, Passed:  1966, Skipped:    66, Total:  2032, Duration: 16 s'. Pre-task baseline at the 21.10 review/21.8 tree: Failed 0, Passed 1937, Skipped 66, Total 2003; delta +29 passed / +0 skipped / +29 total, exactly the 29 added LogSubjectTests cases.",
+    "Host-guarded suite: the pinned Jellyfin 12.0.0 host was provisioned fresh with 'scripts/provision-jellyfin-test-host.sh /tmp/arrtags-14.3' (install dir /tmp/arrtags-14.3/jellyfin; Jellyfin.Api.dll product version '12+6c073e19ddf604b2369c638716164fdab4c952dc', matching the documented pinned host); 'ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin ./build.sh test' -> exit 0, 'Passed!  - Failed:     0, Passed:  1986, Skipped:    46, Total:  2032, Duration: 17 s'. Pre-task baseline 0 / 1957 / 46 / 2003; delta +29 passed.",
+    "Golden scope: 'git status --short tests/ArrTags.Tests/Goldens/' is empty, and 'git diff --stat' contains no golden, renderer, or configuration file; no RenderVersion or renderer-configuration schema value was touched ('git diff' of src/ArrTags/Logging/LogSubject.cs is the only production change).",
+    "'. /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check' -> exit 0, 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree' (run after the PLANS.md/state.json updates).",
+    "'scripts/check-docs.sh' with dotnet on PATH, on the final tree before this worker report was persisted -> 'check-docs: PASS' with all nine sections ok (generated status blocks current and plan state consistent, stubs, 29 ADRs index, limitations index, architecture/data-model indexes, artifact identity, doc budget, current-state links, agent report contracts). Contract note: section 9's worker/reviewer pairing rule requires a reviewer report for every worker report, so after this report is persisted that section reports the two expected pairing lines for 21.11 until the orchestrator's implementation-reviewer report exists and is listed in the task's reports - the same transient state task 21.7 recorded.",
+    "Old-wording sweep on the current-state surfaces: grep for 'Path\\.GetFileName|host-platform|host-native|Cc-only' in docs/architecture/06 and docs/architecture/12 returns no match after the edits; docs/architecture/07 and 11 contain no equivalent log-subject statement (grep for the same terms plus 'control scalar' returns no match) and were not modified; README.md's host-native qualifier was replaced with the separator-independent wording.",
+    "ADR-026 additive check: 'git diff -- docs/decisions/ADR-026.md' is 40 insertions / 0 deletions (the new implementation note only; Decision clauses 1-5 are byte-identical).",
+    "Scope: 'git status --short' lists 9 tracked modified files (PLANS.md, README.md, docs/architecture/06, docs/architecture/12, docs/changelog/v1.2.0.md, docs/decisions/ADR-026.md, docs/plan/state.json, src/ArrTags/Logging/LogSubject.cs, tests/ArrTags.Tests/LogSubjectTests.cs) plus this new untracked report; 'git diff --stat' is 9 files changed, 411 insertions(+), 41 deletions(-)."
+  ],
+  "changed_files": [
+    "src/ArrTags/Logging/LogSubject.cs",
+    "tests/ArrTags.Tests/LogSubjectTests.cs",
+    "docs/decisions/ADR-026.md",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/changelog/v1.2.0.md",
+    "README.md",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/implementation/21.11/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Given a media path whose file-name component carries a Unicode Cf format character (for example U+202E or U+200B) or a Zl/Zp separator (U+2028/U+2029), the emitted log subject contains no such scalar; an ordinary Cc control is still stripped, so the removal predicate is a superset of the pre-fix behavior rather than a replacement.",
+      "evidence": "LogSubject.NormalizeFileName routes every scalar through IsNonPrintingScalar, which matches exactly UnicodeCategory.Control, Format, LineSeparator, and ParagraphSeparator (src/ArrTags/Logging/LogSubject.cs, IsNonPrintingScalar). LogSubjectTests.UnicodeNonPrintingScalarsAreRemoved covers U+202E, U+200B, U+200D, U+00AD, U+202A, U+202C, U+2066, U+2069, U+2028, and U+2029; NonPrintingRemovalStillRemovesOrdinaryControlScalars proves Cc (U+0001/U+0000) is still stripped alongside U+202E; all of these fail on the pre-fix code (probe: Failed 25)."
+    },
+    {
+      "criterion": "Given 'C:\\Users\\admin\\Videos\\secret.mkv', the subject is 'secret.mkv' and contains no backslash, no account name, and no directory component; the same holds for a UNC path and a mixed-separator path, on the pinned Linux host and on any host.",
+      "evidence": "LogSubject.ExtractFinalComponent uses only path.LastIndexOf('/') and path.LastIndexOf('\\\\') (no host-platform API); LogSubjectTests.FinalComponentIsTakenOnBothSeparators covers the drive path, the UNC path '\\\\fileserver\\media\\secret\\file.mkv', the mixed 'C:/Users\\admin/Videos/secret.mkv', a relative backslash path, and '/media\\Movies/mixed.mkv'; WindowsStylePathEmitsNoAccountOrDirectoryComponent asserts no backslash, 'admin', 'Users', 'Videos', or 'C:' in the subject. The drive/UNC/relative cases fail on the pre-fix code."
+    },
+    {
+      "criterion": "The 128 Unicode-scalar bound still holds after the widened removal (a 300-scalar name still truncates to exactly 128), the single pass still never splits a surrogate pair, and whitespace is still neither collapsed nor trimmed.",
+      "evidence": "BoundIsAppliedAfterNonPrintingRemoval (150 leading U+202E/U+200B pairs then 300 'a's) asserts exactly 128 'a' scalars; WidenedRemovalStillNeverSplitsASurrogatePair asserts 128 astral U+1F3AC scalars / 256 UTF-16 units after a leading U+202E; NonPrintingRemovalDoesNotCollapseOrTrimWhitespace asserts 'my  movie .mkv' from 'my <U+202E> movie .mkv'; the pre-existing NameAtTheBoundIsEmittedUnchanged, NameBeyondTheBoundIsTruncatedToTheScalarBound, BoundNeverSplitsASurrogatePair, ControlRemovalDoesNotCollapseOrTrimWhitespace, and BoundIsAppliedAfterControlRemoval all still pass unchanged."
+    },
+    {
+      "criterion": "A path that is empty, whitespace, only separators, or whose final component reduces to nothing after removal still falls back to the item id in D format, and the post-normalization fallback check still runs.",
+      "evidence": "LogSubject.Create keeps 'return string.IsNullOrWhiteSpace(bounded) ? fallback : bounded;' after NormalizeFileName. WindowsStyleSeparatorOnlyPathsFallBackToTheItemIdentifier covers 'C:\\', '\\\\fileserver\\share\\', '\\', and '\\/'; NamesThatReduceToNothingAfterNonPrintingRemovalFallBackToTheItemIdentifier covers U+202E+U+200B, U+2066, and ' <U+202E> '; the pre-existing UnusableNamesFallBackToTheItemIdentifier and NamesThatReduceToNothingOrWhitespaceFallBackToTheItemIdentifier still pass. The must-reduce-to-nothing cases fail on the pre-fix code (the Cf-only name was emitted)."
+    },
+    {
+      "criterion": "The exact removal category set is stated in the code documentation and in the ADR-026 implementation note.",
+      "evidence": "XML doc comments on LogSubject.NormalizeFileName and IsNonPrintingScalar state exactly Cc, Cf, Zl, Zp and name the preserved categories (Mn, Zs, Co, Cn, letters, emoji). docs/decisions/ADR-026.md 'Implementation note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)' states the same set, the dual-separator extraction, the preserved bounds and fallback, and the supersession of the two earlier readings."
+    },
+    {
+      "criterion": "At least one test for each finding demonstrably fails on the pre-fix code, and the pre-fix failure output is recorded in the worker report.",
+      "evidence": "Pre-fix probe: Failed 25, Passed 27, Total 52 (see validation and test_sensitivity; the full output was captured at /tmp/21.11/prefix-probe.txt during the run). SEC-21.5-02 fails 18 cases (the 10-scalar theory plus 8 others); SEC-21.5-03 fails 7 cases (3 dual-separator component cases, WindowsStylePathEmitsNoAccountOrDirectoryComponent, and 3 separator-only fallback cases)."
+    },
+    {
+      "criterion": "No committed renderer golden changes; no RenderVersion/renderer-configuration schema bump; the change is confined to the log subject and its tests.",
+      "evidence": "'git status --short tests/ArrTags.Tests/Goldens/' is empty; the only production file in 'git diff --stat' is src/ArrTags/Logging/LogSubject.cs; no renderer, fingerprint, configuration, or version file appears in the diff; the remaining changed files are the task's tests and documentation/state surfaces."
+    },
+    {
+      "criterion": "docs/architecture/06 and 12 no longer describe the subject as host-platform-scoped or Cc-only, and ADR-026's Decision clauses are unedited.",
+      "evidence": "Both sections now state the final component as the substring after the last '/' or '\\' on every host and the non-printing categories Cc/Cf/Zl/Zp; grep for 'Path.GetFileName|host-platform|host-native|Cc-only' in both files returns no match. 'git diff -- docs/decisions/ADR-026.md' is purely additive (40 insertions, 0 deletions), so clauses 1-5 and the other existing text are unchanged."
+    },
+    {
+      "criterion": "The default and host-guarded suites pass, and scripts/check-docs.sh passes.",
+      "evidence": "Default suite Failed 0, Passed 1966, Skipped 66, Total 2032; host-guarded suite against the pinned Jellyfin 12.0.0 host Failed 0, Passed 1986, Skipped 46, Total 2032; 'scripts/check-docs.sh' -> 'check-docs: PASS' (nine sections ok) on the final tree before this report was persisted, with the contract-mandated post-persist worker/reviewer pairing lines noted in known_limitations."
+    }
+  ],
+  "test_sensitivity": [
+    "SEC-21.5-02: with the unmodified LogSubject.cs, UnicodeNonPrintingScalarsAreRemoved fails for all 10 scalars (U+202E, U+200B, U+200D, U+00AD, U+202A, U+202C, U+2066, U+2069, U+2028, U+2029 - observed as 'movie<scalar>.mkv' rather than 'movie.mkv'), NonPrintingRemovalStillRemovesOrdinaryControlScalars fails ('mo<U+202E>vie.mkv'), NonPrintingRemovalPreservesOtherCharactersVerbatim fails ('お気に入り<U+202E>Cafe<combining>🎬.mkv'), NonPrintingRemovalDoesNotCollapseOrTrimWhitespace fails, BoundIsAppliedAfterNonPrintingRemoval fails (leading U+202E/U+200B emitted), WidenedRemovalStillNeverSplitsASurrogatePair fails, and the 3 NamesThatReduceToNothingAfterNonPrintingRemovalFallBackToTheItemIdentifier cases fail (Cf-only name emitted instead of the item id). Each assertion depends on the widened predicate, so removing IsNonPrintingScalar (reverting to Rune.IsControl) makes them fail.",
+    "SEC-21.5-03: with the unmodified LogSubject.cs (host-platform Path.GetFileName on the pinned Linux host), FinalComponentIsTakenOnBothSeparators fails for 'C:\\Users\\admin\\Videos\\secret.mkv', '\\\\fileserver\\media\\secret\\file.mkv', and 'relative\\folder\\Episode.S01E01.mkv' (the whole string is emitted, observed with 32 and 34 scalars for the drive and UNC paths), WindowsStylePathEmitsNoAccountOrDirectoryComponent fails ('admin', 'Users', 'Videos', 'C:' present), and the separator-only 'C:\\', '\\', '\\\\fileserver\\share\\' cases fail. Replacing ExtractFinalComponent's dual-separator max(LastIndexOf) with the pre-fix Path.GetFileName makes them fail again.",
+    "Positive controls that pass both pre- and post-fix and therefore prove the change is a superset rather than a replacement: an ordinary Cc control is still stripped (ControlScalarsAreRemoved, NonPrintingRemovalStillRemovesOrdinaryControlScalars' Cc half), non-ASCII/decomposed-combining/astral text is preserved verbatim (NonAsciiNameIsEmittedVerbatim, NonPrintingRemovalPreservesOtherCharactersVerbatim' preserve half), whitespace is not collapsed or trimmed, the 128-scalar bound cases, the POSIX component/fallback cases, and the URL-shaped SR-15.4-04 case.",
+    "The mixed-separator 'C:/Users\\admin/Videos/secret.mkv' and '/media\\Movies/mixed.mkv' and the separator-only '\\/' theory cases pass on the pre-fix code as well (their last '/' is later than the last '\\'), so they are not claimed as discriminating; they pin the dual-separator rule's later-separator ordering.",
+    "No new production behaviour is left unprobed: the pre-fix probe run is the recorded evidence that every new case is discriminating, and all probes were run against the committed test file with only the production source differing."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/decisions/ADR-026.md - appended 'Implementation note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)'; Decision clauses 1-5 untouched (diff 40 insertions / 0 deletions)",
+      "docs/architecture/12-performance-and-operational-limits.md - log-subject paragraph now states the dual-separator extraction and the Cc/Cf/Zl/Zp removal set",
+      "docs/architecture/06-configuration-and-persisted-state.md - log-subject allowlist sentence now states the dual-separator extraction, the Cc/Cf/Zl/Zp removal set, and the every-host exclusion",
+      "docs/architecture/07 and 11 - checked, contain no log-subject statement; not modified",
+      "README.md - the LogVerbosity row's 'host-native media path' qualifier replaced with separator-independent wording (the path's final component after the last '/' or '\\', non-printing scalars removed)",
+      "docs/changelog/v1.2.0.md - new '### Task 21.11' entry in the Phase 21 section only; the '## v1.2.0 release' identity/suite/live/review text was not touched",
+      "PLANS.md - 21.11 checkbox ticked",
+      "docs/plan/state.json - 21.11 done: true, reports: [docs/implementation/21.11/worker-report.json], updated_utc bumped"
+    ],
+    "old_values_removed": [
+      "'the media file-name component only (`Path.GetFileName`)' in docs/architecture/12 and 06 - grep for 'Path.GetFileName' in both files returns no match",
+      "'The subject uses host-platform path semantics' / 'the exclusion is host-native-path scoped' / 'on the pinned Linux host a Windows-style backslash string is a single file name rather than a path' in docs/architecture/12 and 06 - grep for 'host-platform|host-native' in both files returns no match",
+      "'control scalars removed' as the removal-set description in docs/architecture/12 and 06 - replaced with the explicit Cc/Cf/Zl/Zp set",
+      "'host-native media path' in README.md - grep returns no match after the edit",
+      "Checked and deliberately left unchanged: docs/limitations/accepted.md's SEC-9 entry ('with control scalars removed ... bounded to 128 Unicode scalar values') remains true and is a subset of the widened predicate; the corrective record (docs/implementation/planning/v1.2-phase-21-log-subject-correction.json) states the two findings are not registered limitations and no limitations-register entry is created, changed, or removed by this chain"
+    ],
+    "check_docs": "PASS"
+  },
+  "interpretations": [
+    {
+      "question": "Which exact Unicode categories the widened removal predicate should cover (the task requires at minimum Cc/Cf/Zl/Zp and asks for the exclusion decision to be recorded).",
+      "chosen": "Exactly Cc (Control), Cf (Format), Zl (LineSeparator), and Zp (ParagraphSeparator). All other categories are preserved, notably Zs (space separators), Mn (combining marks), Co (private use), and Cn (unassigned).",
+      "basis": "Acceptance criterion 3 and the required work require whitespace never collapsed/trimmed and combining/non-ASCII/astral text preserved verbatim; acceptance criterion 1 requires Cc still stripped; 'at minimum' plus the plan's instruction to exclude an ambiguous category explicitly rather than implicitly.",
+      "impact": "Log output only; no persisted authoritative state, user-visible configuration, or limit/window/unit semantics change. A private-use or unassigned scalar is still emitted, bounded to 128 scalars."
+    },
+    {
+      "question": "Whether an accepted ADR-026 clause authorizes widening the removal predicate beyond literal Cc-only 'control characters' (clause 2 says 'has control characters removed, and is otherwise emitted verbatim').",
+      "chosen": "Treated as an implementation correction authorized by the recorded user decision, not an amendment: the user chose to fix SEC-21.5-02 and SEC-21.5-03 rather than accept them (PLANS.md Phase 21 corrective paragraph and docs/implementation/planning/v1.2-phase-21-log-subject-correction.json, which states SEC-21.5-02 is a narrowing of what clause 2 permits being emitted and both fixes move toward the accepted decision). ADR-026's Decision clauses were not edited; the new implementation note records the shipped behavior and supersedes the earlier reading-level notes.",
+      "basis": "Task constraint: 'If you conclude an accepted ADR-026 clause does not authorize widening the predicate, STOP and report NEEDS_USER_INPUT.' The corrective record explicitly resolves the point and the user decision is recorded there and in PLANS.md, so the stop condition does not apply.",
+      "impact": "None beyond the subject's own output; the supersession is recorded rather than silently implied."
+    },
+    {
+      "question": "What happens to a POSIX file name that legitimately contains a backslash (legal on Linux), now that both separators are always split.",
+      "chosen": "The subject is truncated to the text after the last backslash (a strictly shorter subject); the full name is not emitted.",
+      "basis": "The required work fixes the extraction as 'the substring after the last / and after the last \\, whichever is later', and the corrective record's risk note records the truncation as the intended fail-toward-safety direction.",
+      "impact": "A rare Linux file name's subject is shortened, never lengthened; no secret or directory chain can be reintroduced."
+    },
+    {
+      "question": "Whether to update README.md and docs/limitations/accepted.md, which were not in the task's documentation list but are canonical current-state surfaces.",
+      "chosen": "README's 'host-native media path' qualifier was corrected to the separator-independent wording (the qualifier existed only because of the pre-fix host semantics). docs/limitations/accepted.md was left unchanged, with the check recorded above.",
+      "basis": "README's qualifier was added by task 15.4 precisely to scope the exclusion to host separator semantics (docs/changelog/v1.2.0.md Phase 15) and became obsolete with this fix; the limitations register explicitly is not changed by this corrective chain per docs/implementation/planning/v1.2-phase-21-log-subject-correction.json ('no limitations register entry is created, changed, or removed by this chain'), and its statement remains true.",
+      "impact": "User-facing guide wording only; no behaviour or status fact changes."
+    }
+  ],
+  "rework": [],
+  "known_limitations": [
+    "scripts/check-docs.sh PASS was captured on the final tree before this worker report was persisted. After persistence, section 9 (via scripts/check-agents.sh) reports the two contract-mandated worker/reviewer pairing lines for task 21.11 ('has a worker report but no reviewer report'; the state-reports check likewise) until the orchestrator's implementation-reviewer report exists and is added to the task's reports array - the same transient state task 21.7 recorded. Every other check-docs section passes.",
+    "The host-guarded suite was run against a freshly provisioned pinned Jellyfin 12.0.0 host at /tmp/arrtags-14.3 (Jellyfin.Api.dll product version 12+6c073e19ddf604b2369c638716164fdab4c952dc), not against the live-verification host state; the live pinned-host matrix against the corrected artifact belongs to task 21.13 and was not run here.",
+    "docs/limitations/accepted.md's SEC-9 entry still describes the removal predicate as 'with control scalars removed' (a true subset of Cc/Cf/Zl/Zp). It was checked and deliberately left unchanged because the corrective record states this chain creates, changes, and removes no limitations-register entry; the authoritative category set lives in the code XML docs, the ADR-026 implementation note, and architecture sections 06/12."
+  ],
+  "ready_for_next_task": true
+}

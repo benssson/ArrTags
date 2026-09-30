@@ -87,14 +87,14 @@ item/record identifiers that are not secret, counts, and the bounded log
 subject), and no API key, webhook secret, `SecretLease` value,
 `X-Api-Key`/`X-ArrTags-Webhook-Secret` header, raw request/response body, full
 provider payload, or mutable `PluginConfiguration` is ever logged. The bounded
-log subject is the media file-name component only (`Path.GetFileName`), with
-control scalars removed and bounded to 128 Unicode scalar values, and the
+log subject is the media path's final component only, taken as the substring
+after the last `/` or the last `\`, whichever is later, on every host; the
+documented non-printing scalar categories (Unicode `Cc`, `Cf`, `Zl`, and `Zp`)
+are removed and the result is bounded to 128 Unicode scalar values, and the
 Jellyfin item identifier in `D` format is the fallback when no usable name is
-available; a directory, drive, share, or full path is never emitted, and that
-exclusion is explicit in the amended clause 4 contract. The subject uses
-host-platform path semantics: on the pinned Linux host a POSIX media path yields
-the file-name component, and a Windows-style backslash string is a single file
-name rather than a path. The emitted data shape is identical at every level, so raising
+available. A directory, drive, share, or full path is never emitted on any
+host, and that exclusion is explicit in the amended clause 4 contract (ADR-026
+implementation note, task 21.11). The emitted data shape is identical at every level, so raising
 verbosity cannot expand a redacted value into a secret-bearing one. The
 artwork-generation boundary emits the specific bounded `PassThroughReason`,
 `FailureReason`, or `SourceFailureReason` on the outcome line when the result

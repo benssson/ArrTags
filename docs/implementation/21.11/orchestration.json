@@ -1,0 +1,160 @@
+{
+  "task": "21.11",
+  "title": "Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.11 corrects the plugin's own log-subject string handling so no non-printing Unicode scalar and no directory/drive/share component can reach the operator-facing log. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements already-accepted ADR-026 clauses 1-2 and the ADR-020 clause 4 redaction contract (the decision gate DG-22 is resolved). No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 0,
+      "outcome": "FAILED",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 98942,
+        "output_tokens": 5091,
+        "reasoning_tokens": 14004,
+        "cache_read_tokens": 1039616,
+        "cache_write_tokens": 0,
+        "total_tokens": 1157653,
+        "cost_usd": 0.029417147999999997,
+        "duration_seconds": 169,
+        "session_id": "ses_f115174ffffe3GlZxDxf0MaKWG"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 189065,
+        "output_tokens": 23674,
+        "reasoning_tokens": 38396,
+        "cache_read_tokens": 6865408,
+        "cache_write_tokens": 0,
+        "total_tokens": 7116543,
+        "cost_usd": 0.08619797399999998,
+        "duration_seconds": 709,
+        "session_id": "ses_f0e18bdd7ffe23sXf6HSGZ9quD"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 0,
+      "outcome": "FAILED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 50556,
+        "output_tokens": 6769,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 869387,
+        "cache_write_tokens": 0,
+        "total_tokens": 926712,
+        "cost_usd": 0,
+        "duration_seconds": 277,
+        "session_id": "ses_f0e0da764ffewPu1TBoGHV3t01"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 102296,
+        "output_tokens": 13283,
+        "reasoning_tokens": 13320,
+        "cache_read_tokens": 2473041,
+        "cache_write_tokens": 0,
+        "total_tokens": 2601940,
+        "cost_usd": 0,
+        "duration_seconds": 651,
+        "session_id": "ses_f0e0da761ffeNbyC7VIu9zBDTs"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 94529,
+        "output_tokens": 15899,
+        "reasoning_tokens": 10115,
+        "cache_read_tokens": 2165528,
+        "cache_write_tokens": 0,
+        "total_tokens": 2286071,
+        "cost_usd": 0,
+        "duration_seconds": 414,
+        "session_id": "ses_f0e037e7effeoOrlvxw1R9MDGf"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 131596,
+        "output_tokens": 10250,
+        "reasoning_tokens": 18152,
+        "cache_read_tokens": 859136,
+        "cache_write_tokens": 0,
+        "total_tokens": 1019134,
+        "cost_usd": 0.03935800799999999,
+        "duration_seconds": 202,
+        "session_id": "ses_f0dfd0219ffeVxwulgY9AKkdXq"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 36195,
+        "output_tokens": 15025,
+        "reasoning_tokens": 5901,
+        "cache_read_tokens": 1383537,
+        "cache_write_tokens": 0,
+        "total_tokens": 1440658,
+        "cost_usd": 0,
+        "duration_seconds": 231,
+        "session_id": "ses_f0df9bbe7ffe21W0WTiIqppTjs"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Implementation review attempt 1 (after an infrastructure-aborted review that produced no report) returned CHANGES_REQUIRED with finding 21.11-F1 (MEDIUM): docs/decisions/ADR-020.md's v1.2 amendment note still stated the pre-fix 'Path.GetFileName'/host-native-path and 'control scalars removed' readings as the shipped contract, so the supersession the new ADR-026 task 21.11 note performs was incomplete on the surface that owns the clause 4 redaction contract. The worker appended a purely additive note to ADR-020.md (24 insertions, 0 deletions; no decision text edited). Implementation review attempt 2 returned APPROVED with 21.11-F1 resolved."
+    }
+  ],
+  "notes": [
+    "The first implementation-worker delegation aborted with an upstream 'Insufficient account funds' error before doing any work (recorded as attempt 0, outcome FAILED); the account was refreshed and the task was re-dispatched. The first implementation-reviewer invocation completed without a text response and produced no report (recorded as attempt 0, outcome FAILED); it was re-dispatched and produced the attempt-1 CHANGES_REQUIRED review. Two sessions in this task therefore carry attempt 0.",
+    "SEC-21.5-02 fixed: LogSubject.NormalizeFileName's removal predicate is now exactly the documented non-printing set Cc/Cf/Zl/Zp (superset of the pre-fix Cc-only Rune.IsControl), single scalar-wise pass, 128-scalar bound after removal, surrogate pairs never split, no whitespace collapse/trim. SEC-21.5-03 fixed: LogSubject.Create extracts the final component after the later of the last '/' and last '\\' independently of host platform, so a Windows/UNC path cannot emit an account name or directory chain.",
+    "Discrimination independently reproduced three times: the pre-fix probe (HEAD LogSubject.cs + the committed tests) is Failed 25 / Passed 27 / Total 52; the post-fix focused run is 52/52. Default suite 0/1966/66/2032; host-guarded 0/1986/46/2032; LogRedactionTests 167/167; no golden or RenderVersion/schema change.",
+    "Carried non-blocking findings: test-quality TQ-21.11-01..04 (LOW test-strengthening: a Windows-host-only regression guard gap; whitespace-trim not directly probed; Co/Cn/Mc not exercised; an in-component backslash truncation case), TQ-21.11-05/06/07 (INFO: the stale docs/release/build-and-release.md matrix is task 21.12's to re-derive; the URL-shaped case; the backslash assertion helper). Implementation-reviewer 21.11-F3 (Cf removal drops U+200D/U+200C from emoji ZWJ sequences — mandated floor, adjudicated at 21.14) and 21.11-F4 (limitations SEC-5 wording). None block; the adjudication of the over-removal boundary belongs to task 21.14.",
+    "This task does not create, change, or remove any docs/limitations register entry; the disposition of SEC-21.5-02/03 belongs to the task 21.14 security review."
+  ]
+}
