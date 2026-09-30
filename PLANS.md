@@ -266,7 +266,7 @@ annotated tag after the release-review gate; the GitHub publish remains the user
 - [x] 21.10 Release security review of the corrected candidate
 - [x] 21.11 Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)
 - [x] 21.12 Corrected release build, full suite, reproducible artifact, and release documentation
-- [ ] 21.13 Live pinned-host verification of the corrected artifact
+- [x] 21.13 Live pinned-host verification of the corrected artifact
 - [ ] 21.14 Release security review of the corrected candidate
 **Authoritative Phase 21 execution order:** 21.1, 21.2, 21.3, 21.4, 21.5, 21.7, 21.8, 21.9, 21.10, 21.11, 21.12, 21.13, 21.14, 21.6
 **Phase acceptance criteria:** the version is `1.2.0.0`; the canonical documentation reflects v1.2 with no stale

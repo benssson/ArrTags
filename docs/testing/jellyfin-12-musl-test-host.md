@@ -359,6 +359,18 @@ checks.
 
 ## Corrected v1.2 live matrix (Phase 21 task 21.9)
 
+> **Superseded candidate (pre-log-subject-fix build).** This section records the
+> task 21.8 build (619,636 bytes, SHA-256
+> `3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277`, MD5
+> `f3b50a91c7cb63d9560316d8abe2f9dc`) that task 21.9 verified, before the task
+> 21.11 SEC-21.5-02/SEC-21.5-03 log-subject fix. It is superseded by the fully
+> corrected task 21.12 build (619,861 bytes, SHA-256
+> `2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268`, MD5
+> `631fbfa5a4fb58fac5a877eeef761193`) verified by the
+> [task 21.13 matrix](#corrected-v12-live-matrix-phase-21-task-2113) below; use
+> that section for any v1.2 release claim. The rest of this section stays as the
+> historical record of the task 21.9 artifact.
+
 Task 21.9 re-ran the pinned-host end-to-end verification for the corrected v1.2
 release candidate (`artifacts/ArrTags_1.2.0.0.zip`, 619,636 bytes, SHA-256
 `3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277`, MD5
@@ -408,3 +420,80 @@ task 21.9 run added two procedure notes (F-21.9-6, LOW):
   `RenderPassThrough (PassThroughReason=NoDisplayableValue)` for the sparse
   movie, and the changed record was published only after the additional save,
   so a verifier could wrongly conclude that changed metadata does not republish.
+
+## Corrected v1.2 live matrix (Phase 21 task 21.13)
+
+Task 21.13 re-ran the pinned-host end-to-end verification for the fully corrected
+v1.2 release candidate (`artifacts/ArrTags_1.2.0.0.zip`, 619,861 bytes, SHA-256
+`2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268`, MD5
+`631fbfa5a4fb58fac5a877eeef761193`, 7 entries) produced by task 21.12 after the
+task 21.11 SEC-21.5-02/SEC-21.5-03 log-subject fix, against a fresh prefix
+(`/tmp/arrtags-21.13b`). The verified identity equals
+`docs/release/build-and-release.md` "Release artifact identity" and the
+`manifest.json` 1.2.0.0 checksum. The machine-readable matrix is
+`docs/implementation/21.13/live-verification.json` (all eight rows L1-L8 pass;
+`overall_verdict: VERIFIED`); the completion report is
+`docs/implementation/21.13/worker-report.json`. This run supersedes the task 21.9
+run (`3e59cb06...` / 619,636) and the task 21.4 run (`50580499...` / 619,538);
+both earlier reports are unmodified and remain the historical record of their own
+artifacts. The task 21.4 and 21.9 sections above remain the record of those
+builds, and the V1 and v1.1 sections remain the record for Phases 7 and 14.
+
+The corrected matrix reuses the task 21.4/21.9 rows unchanged (install/load,
+settings page and elevation gating, the G6/G8 byte-unit settings surface, the G7
+Extra Large size, the F3 diagnostics endpoint and panel, the G9 bounded log
+subject and render classification, provider outage, restart/uninstall) and adds
+no new row. The task 21.13 findings record no behavioural difference from the
+task 21.9 run on this host (F-21.13-1). The task 21.7 redirect-transport
+hardening remains unobservable here because the committed mock fixture answers
+plain HTTP 200 without redirects; that path is covered by the repository's
+`ProviderRedirectTransportTests`, not by the live matrix (F-21.9-4, unchanged).
+
+### Fully corrected v1.2 cautions and procedure notes
+
+The `v1.2 cautions` and the `Corrected v1.2 cautions` above still apply, with the
+three task 21.13 notes below.
+
+- **A targeted item refresh can also re-adopt the sidecar (F-21.13-2, LOW).**
+  The caution above names a full `POST /Library/Refresh` scan as the sidecar
+  re-adoption trigger. The task 21.13 run saw the same class of divergence after
+  a targeted
+  `POST /Items/{id}/Refresh?MetadataRefreshMode=FullRefresh&ImageRefreshMode=FullRefresh&ReplaceAllMetadata=false`
+  issued to repair the verifier's own media setup: the episode's served Primary
+  reverted from the published 13,751-byte badge to the 3,473-byte source sidecar,
+  while the persisted artwork-state record continued to assert the published
+  identity (State 1, `ActiveImageIdentity` `9B084736...38FB4`,
+  `LastOwnershipObservation.Status 0`). No `OwnershipLost` transition was observed
+  and none is claimed, and the ownership-observation counter was not inspected
+  after the revert: the fail-closed no-recovery substance is inherited unchanged
+  from F-21.4-2, and this run adds no new evidence for it. The verifier
+  deliberately abandoned that prefix rather than clear the state out of band
+  (which would simulate an undocumented operator action); the reported matrix is
+  from the clean prefix, where all library, sidecar and `.nfo` setup was complete
+  before the first publication and no refresh was issued afterwards. Complete the
+  setup before the first publication regardless of the refresh form used, and use
+  `POST /ScheduledTasks/Running/<ArrTags task id>` as the re-render trigger.
+- **`POST /Plugins/{guid}/Configuration` replaces the whole configuration; never
+  probe it with an empty or partial body (F-21.13-3, MEDIUM).** The
+  elevation-gated save deserialises the request body into a fresh configuration
+  object and the host assigns and persists it wholesale
+  (`BasePlugin<TConfigurationType>.UpdateConfiguration`): the route replaces, it
+  does not merge, so any field omitted from the body silently reverts to its
+  default (both providers disabled, both API keys cleared, saved byte limits
+  reset) while the endpoint still returns `204` with no warning and no
+  activity-log entry. The task 21.13 run hit this while establishing the L2 `204`
+  save with an empty-body `POST`; reconciliation stopped until the verifier
+  re-supplied the provider `Enabled`/`BaseUrl`/`ApiKey` fields in the same POST.
+  Never use an empty-body POST as a non-destructive 204 probe; always send a
+  complete body. A `GET`→`POST` round-trip that carries the whole body is safe,
+  because the administrator `GET` does return the provider `ApiKey` fields. The
+  settings page avoids the trap because its password inputs leave the stored
+  field untouched when the operator does not retype it.
+- **The L6 log-subject row is a no-regression check only (F-21.13-5, MEDIUM).**
+  The pinned host is POSIX/musl and the committed fixture has no `Cf`-bearing
+  media file name, so row L6 cannot exercise the task 21.11 non-printing-scalar
+  removal or the dual-separator final-component extraction. It confirms only that
+  the fully corrected build still emits bounded bare file names with the bounded
+  render classification and did not regress; the SEC-21.5-02/SEC-21.5-03 fixes
+  are established by the repository's `LogSubject` unit tests and are not proven
+  by this live matrix.

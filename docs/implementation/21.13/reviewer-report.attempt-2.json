@@ -1,0 +1,220 @@
+{
+  "task": "21.13",
+  "attempt": 2,
+  "reviewer": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "summary": "All four findings from attempt 1 (R1 HIGH, R2 HIGH, R3 MEDIUM, R4 MEDIUM) are closed, and I verified each closure against the source, the pinned-source research and the recorded evidence rather than against the worker's summary. R1: F-21.13-3 now states the true mechanism - POST /Plugins/{guid}/Configuration is a whole-object replacement, so a partial or empty body silently reverts every omitted field while still returning 204 - and explicitly withdraws the claim that the administrator GET omits the provider ApiKey fields. I confirmed the corrected claim independently against docs/research/jellyfin-12-architecture.md section 9.3 (GET returns configPlugin.Configuration unfiltered; BasePlugin<TConfigurationType>.UpdateConfiguration assigns and persists the deserialized object) and against the plugin source (no JsonIgnore/XmlIgnore/JsonPropertyName anywhere under src/ArrTags/Configuration/; ArrConnectionConfiguration.ApiKey is a plain auto-property), and against the new post-review live re-confirmation probe recorded in F-21.13-3 evidence[0]/[1] (administrator GET returned sonarrEnabled/radarrEnabled true with 48-character keys; a partial POST {\"Renderer\":{\"Size\":\"Large\"}} returned 204 and reset both providers, both keys and a previously saved 1,572,864-byte limit to its 8,388,608-byte default, which matches OperationalLimits.ProviderResponseLimitBytes = 8 MiB). The L4 observed field no longer repeats the false attribution and now carries the corrected mechanism, and the propagated F-21.13-3 bullet in docs/testing/jellyfin-12-musl-test-host.md was replaced with an instruction to send a complete body and to stop using an empty-body POST as a 204 probe; no occurrence of the withdrawn wording remains in any current-state document. R2: live-verification.json is now status COMPLETE alongside overall_verdict VERIFIED, matching the terminal convention of the 21.9 precedent, and the run window 2026-09-30T11:54:00Z-12:39:00Z contains every timestamp in the file (11:54:00Z, 12:06:05Z, 12:06:06Z, 12:06:25Z, 12:12:28Z, 12:21:45Z, 12:39Z), with a run_window_note that bounds the reported matrix evidence separately to the clean prefix /tmp/arrtags-21.13b (created 12:06:05Z, first host start 12:06:06Z, final post-uninstall restart 'Startup complete' 12:21:45Z, latest in-row timestamp the L4 trigger at 12:12:28Z) and discloses that finished_utc additionally covers the post-review R1 re-confirmation probe. That probe is honestly labelled as post-review, establishes no matrix row, and is corroborated by the file mtime 12:41:16Z. R3: the F-21.13-2 bullet in the testing doc now mirrors the corrected finding - served Primary reverted from the published 13,751-byte badge to the 3,473-byte sidecar while the persisted record still asserted the published identity (State 1, ActiveImageIdentity 9B084736...38FB4, LastOwnershipObservation.Status 0), the request is quoted as issued with MetadataRefreshMode and ReplaceAllMetadata=false, the OwnershipLost transition is explicitly not claimed, the deliberate-abandonment reason is stated, and the no-recovery substance is attributed to F-21.4-2 as inherited. R4: docs/plan/state.json task 21.13 is done:true with the four evidence files listed; `bash scripts/check-docs.sh` exits 0 ('ok: agent report contracts conform', 'check-docs: PASS') and `dotnet run scripts/render-docs-state.cs -- --check` reports status.md, PLANS.md and PLANS.md/state.json all current. Package identity is unchanged and re-derived from disk: SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268, MD5 631fbfa5a4fb58fac5a877eeef761193, 619,861 bytes, 7 entries, and all eight rows L1-L8 remain PASS with the substantive observed evidence and the same installed-DLL identity a077a63d... / 1,347,584 bytes. Scope is unchanged and correct: the working-tree diff is exactly PLANS.md, docs/plan/state.json and docs/testing/jellyfin-12-musl-test-host.md plus the new docs/implementation/21.13/, with docs/implementation/21.4/ and 21.9/ byte-identical to HEAD and no code, test, artifact, manifest or release-state change; the prior 21.4 and 21.9 testing-doc sections were not rewritten, only the 21.9 superseded marker blockquote added, exactly as in attempt 1. Three non-blocking precision items are recorded below (N1, N2, R5). N2 is a single-writer bookkeeping follow-up the orchestrator must perform before committing, because this attempt-2 file is itself new and docs/agent-contracts.md section 'Where reports go' item 5 requires every preserved .attempt-<n>.json of the reviewer report to be listed; scripts/check-agents.sh does not currently fail on it, so the tree is committable as it stands.",
+  "acceptance_criteria": [
+    {
+      "criterion": "The full documented matrix is re-run against an archive whose SHA-256 equals task 21.12's.",
+      "verdict": "MET",
+      "independent_evidence": "Re-derived on disk: `sha256sum artifacts/ArrTags_1.2.0.0.zip` -> 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268; `md5sum` -> 631fbfa5a4fb58fac5a877eeef761193; `stat -c %s` -> 619861; `unzip -l` -> 7 files. live-verification.json matrix carries exactly the eight documented rows L1 install/load, L2 settings page / elevation gating, L3 G6/ADR-028, L4 G7/ADR-027, L5 F3/ADR-025, L6 G9/ADR-026, L7 provider outage, L8 restart/uninstall, all verdict PASS, each with a non-trivial command (343-773 chars) and observed field (1555-3954 chars). The rework changed no row: the only edits in the evidence file were the header metadata and findings F-21.13-2/F-21.13-3, as the file's own note 10 records. Installed-DLL identity a077a63d.../1,347,584 bytes still equals task 21.12's packaged entry."
+    },
+    {
+      "criterion": "Per-row results plus the installed artifact identity are recorded in docs/implementation/21.13/live-verification.json.",
+      "verdict": "MET",
+      "independent_evidence": "package.sha256/md5/bytes/entries/integrity fields, package.installed_dll_sha256 a077a63d... and package.installed_dll_bytes 1347584 unchanged; package.identity_matches true, confirmed by the on-disk re-hash above. Report is now internally consistent on the identity axis and no longer self-contradicting on its header (see R2)."
+    },
+    {
+      "criterion": "The task 21.4 and 21.9 reports are unmodified.",
+      "verdict": "MET",
+      "independent_evidence": "`git status --porcelain docs/implementation/21.4/ docs/implementation/21.9/ docs/implementation/21.12/` returns empty; both directories are byte-identical to HEAD. The live-host-verifier's correction was confined to docs/implementation/21.13/live-verification.json, and the implementation worker's correction was confined to the testing doc and state.json, exactly as worker-report.attempt-2.json states."
+    },
+    {
+      "criterion": "The testing doc marks the 21.9 candidate superseded and adds the corrected 21.13 section with the F-21.13-2/3/5 notes.",
+      "verdict": "MET",
+      "independent_evidence": "The 21.9 H2 at line 360 still carries the superseded blockquote (lines 362-372) naming the 21.8 build (3e59cb06.../619,636) and pointing at the 21.13 anchor, which resolves to the new H2 at line 424 (slug `corrected-v12-live-matrix-phase-21-task-2113`; the 21.9 heading slug differs, so no collision). The new 'Fully corrected v1.2 cautions and procedure notes' subsection carries F-21.13-2, F-21.13-3 and F-21.13-5, and all three now mirror the corrected findings in live-verification.json. grep for 'omits' in the testing doc returns only unrelated historical lines; the only OwnershipLost mentions in the 21.13 bullet (line 466) and in the 21.4 historical cautions (302, 345, 352) are correct in context. Prior history sections were not rewritten: the diff adds only the blockquote and the new trailing section."
+    },
+    {
+      "criterion": "Evidence files: docs/implementation/21.13/live-verification.json and a worker report exist and are coherent.",
+      "verdict": "MET",
+      "independent_evidence": "live-verification.json is terminal (status COMPLETE, overall_verdict VERIFIED), valid JSON, 8 matrix rows, 5 findings, 15 notes, package/host blocks; its run window contains all of its own timestamps. worker-report.json (attempt 1) is preserved unmodified (mtime 12:29:19Z, predating the rework) and worker-report.attempt-2.json records the rework with one entry per finding id R1-R4, each with closure text and evidence. No secret appears in either file: the only >=32-char alphanumerics in live-verification.json are artifact/DLL SHA-256 and MD5 values, three Jellyfin item ids, two Jellyfin image tags, the plugin guid 40322d525680449fb33ee01836ee2f46 and the ArrTags scheduled-task id 0e96fc30... (a public plugin constant that appears throughout the 21.4/21.9/7.3/7.4 records). The new F-21.13-3 evidence deliberately reports key lengths (48) and occurrence counts rather than key values, and note 11 records that the two probe response files were deleted."
+    },
+    {
+      "criterion": "Diff scope: exactly PLANS.md, docs/plan/state.json, docs/testing/jellyfin-12-musl-test-host.md plus the new docs/implementation/21.13/.",
+      "verdict": "MET",
+      "independent_evidence": "`git status --porcelain` lists `M PLANS.md`, `M docs/plan/state.json`, `M docs/testing/jellyfin-12-musl-test-host.md` and the untracked docs/implementation/21.13/ directory (four files: live-verification.json, reviewer-report.json, worker-report.json, worker-report.attempt-2.json). `git diff --stat` = 3 files, 98 insertions, 4 deletions. `git status --porcelain artifacts/ manifest.json src/ tests/` is empty, so no artifact, manifest, code or test change. No changelog entry was added, which is correct: task 21.6 owns the changelog and runs last in the authoritative Phase 21 order, and task 21.9's commit touched the same file set."
+    },
+    {
+      "criterion": "State and checkbox follow the single-writer rules; scripts/check-docs.sh and render-docs-state.cs -- --check pass.",
+      "verdict": "MET",
+      "independent_evidence": "PLANS.md line 269 is now '- [x] 21.13', 21.14 and 21.6 remain unchecked, the authoritative execution order and phase acceptance text are unchanged, and the milestone table is untouched between its generated markers. state.json task 21.13 is done:true with reports [live-verification.json, reviewer-report.json, worker-report.attempt-2.json, worker-report.json] and updated_utc advanced to 2026-09-30T12:44:10Z; the state.json diff is 11 lines confined to updated_utc and the 21.13 block. I ran both validations myself: `bash scripts/check-docs.sh` -> 'ok: generated status blocks are current; plan state is consistent', 'ok: artifact identity agrees (sha256, md5, bytes)', 'ok: agent report contracts conform', 'check-docs: PASS', exit 0; `dotnet run scripts/render-docs-state.cs -- --check` -> 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree'. The two agent-contract FAIL lines reported in attempt 1 are cleared and no exemption was added."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "correctness / evidence integrity (F-21.13-3 and the procedure text derived from it)",
+      "summary": "CLOSED. F-21.13-3 now states the whole-object replacement semantics of POST /Plugins/{guid}/Configuration, explicitly withdraws the administrator-GET-omits-secrets claim, and the derived procedure instruction in the testing doc was replaced to match.",
+      "detail": "The corrected F-21.13-3 opens with an explicit withdrawal ('CORRECTED AFTER REVIEW (R1). An earlier draft ... misattributed the cause to the administrator GET omitting the provider ApiKey fields. That was wrong and is withdrawn') and then states the true cause: POST {pluginId}/Configuration deserializes the body into a fresh configuration object and BasePlugin<TConfigurationType>.UpdateConfiguration assigns and persists it, so it is a whole-object replacement and any omitted field reverts to its default, while a partial or empty body clears both providers, both BaseUrls and both ApiKeys and still returns 204 with no warning and no activity-log entry. I verified every load-bearing part of that statement myself. (1) docs/research/jellyfin-12-architecture.md section 9.3 states GET {pluginId}/Configuration 'returns configPlugin.Configuration when plugin.Instance is IHasPluginConfiguration' with no filtering, and quotes BasePluginOfT.UpdateConfiguration as 'Configuration = (TConfigurationType)configuration; SaveConfiguration(Configuration);' - the decisive source, and it now matches the finding. (2) The plugin adds no serialization-level filtering: grep for JsonIgnore|XmlIgnore|JsonPropertyName across src/ArrTags/Configuration/ returns nothing and ArrConnectionConfiguration.cs:22 is 'public string ApiKey { get; set; } = string.Empty;'. (3) The F-21.13-3 evidence is now a live re-confirmation rather than an assertion: evidence[0] records the administrator GET returning both providers enabled with 48-character keys and a body containing both live mock keys, and evidence[1] records a partial POST {\"Renderer\":{\"Size\":\"Large\"}} returning 204 after which only that one field took effect while both providers, both keys and a previously saved 1,572,864-byte limit reverted - and 8,388,608 is exactly the declared default of OperationalLimits.ProviderResponseLimitBytes (src/ArrTags/Configuration/OperationalLimits.cs:95, 8 MiB), so the 'reset to default' claim is arithmetically consistent. That probe is on the disposable abandoned prefix, is labelled post-review and non-matrix in note 11, and deleted its own response files. (4) The in-run instance remains coherent: the L2 command is the empty-body POST, the post-wipe GET shows providers disabled and keylens [0,0], and the L4 save only produced artwork once the provider fields were re-supplied - a mechanism now explained without any secret-omission theory. (5) The L4 observed field's 'VERIFIER ERROR WORTH RECORDING' paragraph was rewritten to the correct cause and now states that the administrator GET does return the ApiKey fields; the false attribution no longer appears in any row. (6) The testing doc bullet now instructs a complete body, forbids the empty-body 204 probe, and correctly records that a GET-then-POST round-trip carrying the whole body is safe. Nothing derived from the withdrawn claim survives in a current-state document; the only remaining occurrences are inside the immutable audit trail (this file's attempt-1 text and the worker's rework record), which is correct. The severity was re-rated from the original secret-handling framing to MEDIUM for a documented Jellyfin save-contract property with a procedure mitigation, as recommended.",
+      "evidence": [
+        "docs/implementation/21.13/live-verification.json F-21.13-3 - 'CORRECTED AFTER REVIEW (R1)' withdrawal paragraph, 'THE ACTUAL CAUSE ... WHOLE-OBJECT REPLACEMENT, not a patch or a merge', severity MEDIUM, area 'configuration save semantics (whole-object replacement)'.",
+        "docs/research/jellyfin-12-architecture.md:824-831 and the quoted BasePluginOfT.UpdateConfiguration block - GET returns configPlugin.Configuration unfiltered; UpdateConfiguration assigns then SaveConfiguration.",
+        "grep -rn 'JsonIgnore|XmlIgnore|JsonPropertyName' src/ArrTags/Configuration/ -> no matches; src/ArrTags/Configuration/ArrConnectionConfiguration.cs:22 - 'public string ApiKey { get; set; } = string.Empty;'.",
+        "src/ArrTags/Configuration/OperationalLimits.cs:95 - 'public long ProviderResponseLimitBytes { get; set; } = 8L * Mebibyte;' matches the 8,388,608 default quoted in F-21.13-3 evidence[1].",
+        "docs/implementation/21.13/live-verification.json L4 observed, final paragraph - corrected cause, 'The administrator GET does return the provider ApiKey fields (verified live; see F-21.13-3)'.",
+        "docs/testing/jellyfin-12-musl-test-host.md:476-491 - the replaced F-21.13-3 bullet; grep 'omits' over the testing doc returns no instance of the withdrawn claim."
+      ],
+      "recommended_action": "None. Closed as required."
+    },
+    {
+      "id": "R2",
+      "severity": "HIGH",
+      "status": "resolved",
+      "area": "evidence integrity (terminal status and a run window that contains the evidence)",
+      "summary": "CLOSED. live-verification.json is status COMPLETE with overall_verdict VERIFIED, and the run window 11:54:00Z-12:39:00Z contains every timestamp in the file, with a run_window_note that bounds the reported matrix evidence separately and discloses the post-review probe.",
+      "detail": "Both halves of the finding are addressed. (a) Terminal: status is COMPLETE, the value the 21.9 precedent uses alongside overall_verdict VERIFIED, and the file no longer contains IN_PROGRESS anywhere. (b) Window: I extracted every ISO timestamp in the file and they are 11:54:00Z, 12:06:05Z, 12:06:06Z, 12:06:25Z, 12:12:28Z, 12:21:45Z and 12:39Z/12:39:00Z, all inside [11:54:00Z, 12:39:00Z]; the previously offending 12:12:28Z L4 trigger is now comfortably inside. The run_window_note is not a bare claim: it distinguishes the session window (identity verification plus the pinned-server download from 11:54) from the reported matrix evidence window on the clean prefix /tmp/arrtags-21.13b (created 12:06:05Z, first host start 12:06:06Z, first ArrTags log line 12:06:25Z, final post-uninstall restart 'Startup complete' 12:21:45Z) and states that finished_utc additionally covers the post-review R1 re-confirmation probe that ended at 12:39Z. The 15.7-minute matrix window is plausible against precedent - task 21.4's in-row evidence spans 11:54:00Z-12:10:18Z (16 minutes) for the same eight rows - and the note states the times were read back from console logs and prefix mtimes rather than estimated. Independent corroboration: the file mtime is 12:41:16Z, after the claimed 12:39Z finish, and note 10 discloses exactly what the correction changed and states that no matrix verdict, no package identity field and no underlying observation was altered. The disclosure of the post-review probe is the right call: it is a post-review action on a disposable prefix, recorded as non-matrix, and it strengthens rather than weakens F-21.13-3.",
+      "evidence": [
+        "jq -r '.status,.overall_verdict,.started_utc,.finished_utc' docs/implementation/21.13/live-verification.json -> COMPLETE / VERIFIED / 2026-09-30T11:54:00Z / 2026-09-30T12:39:00Z.",
+        "grep -oE '2026-09-30T[0-9]{2}:[0-9]{2}(:[0-9]{2})?Z' -> 11:54:00Z, 12:12:28Z, 12:39:00Z; grep -oE '1[0-9]:[0-9]{2}(:[0-9]{2})?Z' -> 11:54:00Z, 12:06:05Z, 12:06:06Z, 12:06:25Z, 12:12:28Z, 12:21:45Z, 12:39:00Z, 12:39Z. All inside the window.",
+        "docs/implementation/21.13/live-verification.json run_window_note - the bounding text; note 10 (PERSISTENCE DISCIPLINE) - what the correction did and did not change; note 11 (R1 RE-CONFIRMATION PROBE) - 'post-review, not part of the matrix'.",
+        "stat -c '%y' docs/implementation/21.13/live-verification.json -> 2026-09-30 12:41:16, after the claimed finish.",
+        "docs/implementation/21.4/live-verification.json - 48-minute run with 16 minutes of in-row evidence, used as the plausibility comparison."
+      ],
+      "recommended_action": "None. Closed as required."
+    },
+    {
+      "id": "R3",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "documentation accuracy (docs/testing/jellyfin-12-musl-test-host.md, F-21.13-2 note)",
+      "summary": "CLOSED. The F-21.13-2 bullet now matches the recorded evidence: served Primary reverted while the persisted record still asserted Published, the full request is quoted, no OwnershipLost transition is claimed, the deliberate-abandonment reason is stated, and the no-recovery substance is attributed to F-21.4-2 as inherited.",
+      "detail": "Each of the four overstatements in attempt 1 is gone. The bullet no longer says the item 'moved to OwnershipLost'; it now says the served Primary reverted from the published 13,751-byte badge to the 3,473-byte source sidecar while the persisted artwork-state record continued to assert the published identity (State 1, ActiveImageIdentity 9B084736...38FB4, LastOwnershipObservation.Status 0), which is exactly F-21.13-2 evidence[0]. The request is now quoted as issued, including MetadataRefreshMode and ReplaceAllMetadata=false. The doc now states explicitly that no OwnershipLost transition was observed and none is claimed, that the ownership-observation counter was not inspected after the revert, and that the fail-closed no-recovery substance is inherited unchanged from F-21.4-2 with no new evidence from this run. The deliberate-abandonment reason is restored ('rather than clear the state out of band (which would simulate an undocumented operator action)'). The operational instruction - complete the setup before the first publication, and use POST /ScheduledTasks/Running/<ArrTags task id> as the re-render trigger - is preserved verbatim as required. The finding itself in live-verification.json was rewritten to the same standard and the severity is now LOW, which I agree with: the observation is a real and useful extension of the caution (a targeted per-item refresh also re-adopts the sidecar) while the substantive limitation is inherited. The F-21.13-5 note was kept, as required.",
+      "evidence": [
+        "docs/testing/jellyfin-12-musl-test-host.md:457-475 - the corrected F-21.13-2 bullet.",
+        "docs/implementation/21.13/live-verification.json F-21.13-2 - 'CORRECTED AFTER REVIEW (R3)' opening, severity LOW, 'NO OwnershipLost transition was observed or claimed', 'this run adds NO new evidence for it'.",
+        "grep -n 'OwnershipLost' docs/testing/jellyfin-12-musl-test-host.md -> lines 302, 345, 352 (untouched 21.4 historical cautions) and 466 (the corrected 'No OwnershipLost transition was observed and none is claimed'). No claim of an observed transition remains.",
+        "grep -n 'omits' docs/testing/jellyfin-12-musl-test-host.md -> no instance of the withdrawn secret-omission claim (R1 closure corroboration)."
+      ],
+      "recommended_action": "None. Closed as required."
+    },
+    {
+      "id": "R4",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "workflow / generated-state closure (scripts/check-docs.sh)",
+      "summary": "CLOSED. state.json task 21.13 lists the reviewer report, and both check-docs.sh and render-docs-state.cs -- --check are clean.",
+      "detail": "The two agent-contract FAIL lines from attempt 1 are gone. I ran the gate myself with dotnet on PATH: `bash scripts/check-docs.sh` prints 'ok: generated status blocks are current; plan state is consistent', 'ok: artifact identity agrees (sha256, md5, bytes)', 'ok: current-state links resolve', 'ok: agent report contracts conform' and 'check-docs: PASS', exit 0. `dotnet run scripts/render-docs-state.cs -- --check` prints 'status.md: up to date', 'PLANS.md: up to date' and 'PLANS.md and state.json agree'. state.json task 21.13 is done:true with reports listing all four evidence files, updated_utc advanced to 12:44:10Z, and no exemption was added to docs/implementation/review-exemptions.json (correct - the review is not exempt). PLANS.md line 269 is checked and the milestone table was not hand-edited. One residual bookkeeping item arises from this very report and is tracked as N2 rather than as a defect in the rework.",
+      "evidence": [
+        "bash scripts/check-docs.sh (with /config/arrtags-env.sh sourced) -> 'check-docs: PASS', exit 0; the two attempt-1 FAIL lines no longer appear.",
+        "dotnet run scripts/render-docs-state.cs -- --check -> 'status.md: up to date' / 'PLANS.md: up to date' / 'PLANS.md and state.json agree'.",
+        "docs/plan/state.json task 21.13 -> done true, reports [live-verification.json, reviewer-report.json, worker-report.attempt-2.json, worker-report.json]; updated_utc 2026-09-30T12:44:10Z.",
+        "git diff PLANS.md - a single line: '- [ ] 21.13' -> '- [x] 21.13'."
+      ],
+      "recommended_action": "None for the rework. See N2 for the one follow-up that this report's own creation triggers."
+    },
+    {
+      "id": "R5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "precision (finding citation)",
+      "summary": "Carried forward unchanged and still optional: F-21.13-4 cites V12-G8-2 among the non-executable surfaces, but that limitation concerns an inert setting rather than a structurally-only-verified surface.",
+      "detail": "F-21.13-4's residual list still reads 'the residuals already registered in docs/limitations/00-index.md (V12-G6-1, V12-G8-1, V12-G8-2)'. V12-G6-1 (legacy in-range off-step byte limit re-quantized on the next save) and V12-G8-1 (the restart-required modal reminder verified structurally, not executed) are the correct anchors; V12-G8-2 is the inert global RequestTimeoutSeconds, a different subject. The substantive bound is correct and independently anchored, so this is citation imprecision only and was explicitly non-blocking in attempt 1. It was not part of the rework and I do not require it now.",
+      "evidence": [
+        "docs/implementation/21.13/live-verification.json F-21.13-4 detail - the citation list.",
+        "docs/limitations/00-index.md:105-107 - V12-G6-1, V12-G8-1, V12-G8-2 texts."
+      ],
+      "recommended_action": "Optional, at 21.6 release-record time: drop V12-G8-2 from the F-21.13-4 citation list or cite the limitation that actually covers the diagnostics panel's non-executed behaviour."
+    },
+    {
+      "id": "N1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "precision (secondary rationale inside the corrected F-21.13-3 statement)",
+      "summary": "The corrected F-21.13-3 and its testing-doc bullet conclude correctly that the settings page is unaffected, but attribute that safety to the 'dedicated password inputs' rather than to the full-object round-trip that is the actual mechanism.",
+      "detail": "F-21.13-3 says the settings page 'reads the whole configuration through ApiClient.getPluginConfiguration and writes back the whole object, using dedicated password inputs so the secret fields are carried through untouched', and the testing doc bullet says 'its password inputs leave the stored field untouched when the operator does not retype it'. The conclusion is right but the mechanism named is not the operative one. src/ArrTags/Configuration/config.html:670-673 populates '#sonarrApiKey' and '#radarrApiKey' from config.Sonarr.ApiKey / config.Radarr.ApiKey on pageshow, and the save handler at 749-846 re-fetches the whole configuration and writes the whole object back via ApiClient.updatePluginConfiguration, so the value is carried because the field is pre-filled and the entire object is round-tripped - not because password inputs are write-only. This matters only because the same bullet correctly states one line earlier that the GET does return the ApiKey fields, so a reader could still infer a write-only secret surface. It is a rationale imprecision inside an otherwise correct and already-corrected caution; the operative instruction (always POST a complete body, never an empty or partial one) is unaffected. Not blocking, and I did not require it in the rework because the primary claim had to be fixed first.",
+      "evidence": [
+        "docs/implementation/21.13/live-verification.json F-21.13-3, final detail paragraph - 'using dedicated password inputs so the secret fields are carried through untouched'.",
+        "docs/testing/jellyfin-12-musl-test-host.md:488-491 - 'The settings page avoids the trap because its password inputs leave the stored field untouched when the operator does not retype it.'",
+        "src/ArrTags/Configuration/config.html:670-673 (pageshow pre-fills #sonarrApiKey/#radarrApiKey from the fetched config) and 749-846 (re-fetch, mutate, updatePluginConfiguration with the whole object)."
+      ],
+      "recommended_action": "Optional: reword both sentences to attribute the page's safety to the full-object read-modify-write round trip (which the same text already describes correctly), rather than to the password input type."
+    },
+    {
+      "id": "N2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "workflow / single-writer bookkeeping created by this report",
+      "summary": "docs/plan/state.json task 21.13 does not yet list reviewer-report.attempt-2.json, which the contract requires once this file exists; the commit gate does not currently fail on it.",
+      "detail": "docs/agent-contracts.md section 'Where reports go' item 5 requires a task's reports array to list its reviewer-report.json 'with every preserved .attempt-<n>.json of it'. state.json currently lists reviewer-report.json (which satisfies scripts/check-agents.sh, because the check is a regex on 'reviewer-report') but not this attempt-2 file, which did not exist when the worker made the single-writer edit. The state.json write belongs to the orchestrator, not to me, and the tree is committable as it stands because both gates are green. I record it so the orchestrator performs the one-line addition rather than committing a state that under-reports the review evidence.",
+      "evidence": [
+        "docs/agent-contracts.md:20-24 - reports array must list the reviewer report with every preserved .attempt-<n>.json of it.",
+        "docs/plan/state.json task 21.13 reports - four entries, none of them reviewer-report.attempt-2.json.",
+        "scripts/check-agents.sh - the state check is `any(.reports[]; test(\"reviewer-report\"))`, which reviewer-report.json already satisfies; `bash scripts/check-docs.sh` -> exit 0."
+      ],
+      "recommended_action": "Single-writer edit before commit: add 'docs/implementation/21.13/reviewer-report.attempt-2.json' to task 21.13's reports array in docs/plan/state.json, bump updated_utc, and re-run scripts/check-docs.sh and render-docs-state.cs -- --check. This does not gate task 21.14."
+    },
+    {
+      "id": "N3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "reviewer judgement on the three recorded bounds (carried from attempt 1 R6, re-checked on the corrected file)",
+      "summary": "I re-accept the L6 no-regression bound, the structural-only page/panel bound and F-21.13-2's inherited substance on the corrected report; the rework did not weaken any of them, and no named acceptance item is left unverified.",
+      "detail": "L6 remains a genuine PASS as a no-regression check, stated in the row's own goal ('no-regression check for the task 21.11 log-subject hardening') and in F-21.13-5, which still refuses to read it as proof that SEC-21.5-02/SEC-21.5-03 are fixed and points at the repository's LogSubject tests instead. The installed-DLL identity still pins the corrected build, so the no-regression claim is about the right binary. The structural-only page/panel bound is unchanged and remains anchored by the accepted limitations register. F-21.13-2's substance is unchanged and is now correctly framed as inherited from F-21.4-2 rather than newly established, which is the accurate disposition. The one thing the rework did add is the post-review re-confirmation probe, and it is labelled as establishing no matrix row, so it does not inflate what the matrix proves. My prior conclusion stands: task 21.13's acceptance is that the documented matrix is re-run against the task 21.12 identity, and it was.",
+      "evidence": [
+        "docs/implementation/21.13/live-verification.json L6 goal/description and F-21.13-5 - the no-regression qualifier is carried in the row and in the finding.",
+        "docs/implementation/21.13/live-verification.json note 11 - 'post-review, not part of the matrix ... establishes no matrix row'.",
+        "docs/implementation/21.13/live-verification.json F-21.13-2 - 'the substance is unchanged from F-21.4-2 and F-21.9-2 and is carried forward'."
+      ],
+      "recommended_action": "None. Recorded so the orchestrator can see the bounds were re-judged, not inherited from the verifier's verdict."
+    }
+  ],
+  "reviewer_blockers": [],
+  "tests_checked": [
+    "No source or test file is in the task diff, so no build or test run was warranted; absence confirmed by `git status --porcelain artifacts/ manifest.json src/ tests/` (empty) and by the 3-file `git diff --stat`.",
+    "Artifact identity re-derived from disk rather than trusted: sha256sum/md5sum/stat -c %s/unzip -l on artifacts/ArrTags_1.2.0.0.zip -> 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268 / 631fbfa5a4fb58fac5a877eeef761193 / 619861 / 7 files, matching live-verification.json, docs/release/build-and-release.md and manifest.json.",
+    "live-verification.json re-inspected in full after the correction: top-level metadata, host block, run_window_note, all 8 matrix rows (command and observed lengths non-trivial for every row), all 5 findings, all 15 notes, and every ISO timestamp in the file against the corrected run window.",
+    "Timestamp extraction as the R2 verification method: `grep -oE '2026-09-30T[0-9:]+Z'` and `grep -oE '1[0-9]:[0-9]{2}(:[0-9]{2})?Z'` over the corrected file, compared against started_utc/finished_utc.",
+    "Gate re-runs I performed myself rather than relying on the worker's record: `bash scripts/check-docs.sh` with dotnet on PATH (exit 0, 'check-docs: PASS') and `dotnet run scripts/render-docs-state.cs -- --check` ('status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree').",
+    "History-immutability check: `git status --porcelain docs/implementation/21.4/ docs/implementation/21.9/ docs/implementation/21.12/` empty; the 21.4 and 21.9 testing-doc sections unchanged in the diff apart from the added 21.9 superseded blockquote.",
+    "Attempt-preservation check: worker-report.json mtime 12:29:19Z predates the rework and was not modified; reviewer-report.json (attempt 1) is preserved with its CHANGES_REQUIRED outcome intact.",
+    "Secret scan of the corrected files: `grep -oE '[A-Za-z0-9]{32,}'` over live-verification.json returns only artifact/DLL hashes, three item ids, two image tags, the plugin guid and the public ArrTags scheduled-task id; F-21.13-3's new evidence reports key lengths and occurrence counts, never key values."
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-12-architecture.md section 9.3 - the pinned Jellyfin v12.0 PluginsController GetPluginConfiguration/UpdatePluginConfiguration contract and BasePlugin<TConfigurationType>.UpdateConfiguration; re-read in full because it is the decisive source for R1 and now the corrected finding matches it.",
+    "src/ArrTags/Configuration/ArrConnectionConfiguration.cs:22 and a grep for JsonIgnore|XmlIgnore|JsonPropertyName under src/ArrTags/Configuration/ - confirm the plugin adds no secret-masking serialization attribute, so the corrected claim that the GET returns the ApiKey fields is consistent with the source.",
+    "src/ArrTags/Configuration/OperationalLimits.cs:95 - ProviderResponseLimitBytes default 8 MiB, used to check the 8,388,608 default quoted in the new F-21.13-3 evidence[1].",
+    "src/ArrTags/Configuration/config.html:670-673 and 749-846 - the settings page's load and save handlers, used for N1 and to confirm the corrected finding's statement that the page round-trips the whole configuration object.",
+    "No external fetch was required or performed: the R1 question is fully settled from evidence already committed in this repository (pinned-source research section 9.3, the plugin source, and the recorded 21.9 run), plus the verifier's own post-review live re-confirmation on the pinned host."
+  ],
+  "documentation_checked": [
+    "PLANS.md:266-271 - 21.13 now '- [x]', 21.14 and 21.6 still '- [ ]', authoritative Phase 21 order and phase acceptance text unchanged, milestone table untouched between its generated markers.",
+    "docs/plan/state.json - task 21.13 done:true with the four-file reports array; updated_utc 12:44:10Z; the diff is 11 lines confined to updated_utc and the 21.13 block, so no other state field moved.",
+    "docs/status.md - not modified; confirmed current by render-docs-state.cs -- --check.",
+    "docs/testing/jellyfin-12-musl-test-host.md - full diff read; the 21.9 superseded blockquote (362-372), the new 21.13 section (424-489) and the three corrected bullets (457-491) verified against the corrected findings; the 21.4 and 21.9 historical sections left intact; the in-page anchor #corrected-v12-live-matrix-phase-21-task-2113 resolves to the new H2 at line 424 with no slug collision against the 21.9 H2.",
+    "docs/release/build-and-release.md and manifest.json - the release artifact identity the report must match; re-confirmed by the on-disk re-hash and by check-docs.sh's 'ok: artifact identity agrees'.",
+    "docs/limitations/00-index.md - V12-G6-1, V12-G8-1, V12-G8-2 read as the anchors for the structural-only bound (R5 carried, N3).",
+    "docs/agent-contracts.md - report path/attempt rule (items 3 and 5), status/severity vocabularies and the reviewer-report pairing rule, applied to this attempt-2 file and to finding N2.",
+    "docs/changelog/ - confirmed no entry was added, which remains correct: 21.6 owns the changelog and runs last, and task 21.9's commit touched the same file set."
+  ],
+  "required_changes": [],
+  "rework_log": [
+    {
+      "finding_id": "R1",
+      "severity": "HIGH",
+      "status": "resolved",
+      "closure_evidence": "F-21.13-3 rewritten: severity MEDIUM, area 'configuration save semantics (whole-object replacement)', explicit withdrawal of the administrator-GET-omits-secrets claim, the true cause stated as whole-object replacement by BasePlugin<TConfigurationType>.UpdateConfiguration, and two new live re-confirmation probes in evidence[0]/[1] (GET returns both 48-char keys; partial POST {\"Renderer\":{\"Size\":\"Large\"}} -> 204 with providers, keys and a previously saved 1,572,864-byte limit all reverted to defaults). The L4 observed field was rewritten to the same cause. The testing doc F-21.13-3 bullet now instructs a complete body and forbids the empty-body 204 probe. I re-verified against research section 9.3, the plugin source, OperationalLimits.cs:95 and config.html; the withdrawn wording survives only inside the immutable audit trail."
+    },
+    {
+      "finding_id": "R2",
+      "severity": "HIGH",
+      "status": "resolved",
+      "closure_evidence": "live-verification.json top level is now status COMPLETE / overall_verdict VERIFIED / started_utc 2026-09-30T11:54:00Z / finished_utc 2026-09-30T12:39:00Z, with a run_window_note bounding the reported matrix evidence on /tmp/arrtags-21.13b to 12:06:05Z-12:21:45Z and disclosing the post-review probe that ended at 12:39Z. Every ISO timestamp in the file (11:54:00Z, 12:06:05Z, 12:06:06Z, 12:06:25Z, 12:12:28Z, 12:21:45Z, 12:39Z) falls inside the window. No IN_PROGRESS remains; file mtime 12:41:16Z corroborates the finish."
+    },
+    {
+      "finding_id": "R3",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "closure_evidence": "The testing doc F-21.13-2 bullet (lines 457-475) now records the served Primary reverting from the 13,751-byte badge to the 3,473-byte sidecar while the persisted record still asserted the published identity, quotes the request as issued with MetadataRefreshMode and ReplaceAllMetadata=false, states that no OwnershipLost transition was observed or claimed and that the no-recovery substance is inherited from F-21.4-2 with no new evidence, and restores the deliberate-abandonment reason. F-21.13-2 in the report was rewritten to match at severity LOW. The operational instruction was preserved as required."
+    },
+    {
+      "finding_id": "R4",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "closure_evidence": "state.json task 21.13 is done:true with reports [live-verification.json, reviewer-report.json, worker-report.attempt-2.json, worker-report.json] and updated_utc 2026-09-30T12:44:10Z; PLANS.md line 269 is '- [x] 21.13'; no exemption added. I re-ran both gates: scripts/check-docs.sh -> 'check-docs: PASS' (exit 0) with 'ok: agent report contracts conform', and render-docs-state.cs -- --check -> 'status.md: up to date' / 'PLANS.md: up to date' / 'PLANS.md and state.json agree'."
+    }
+  ],
+  "ready_for_next_task": true
+}
