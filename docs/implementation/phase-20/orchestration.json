@@ -1,0 +1,323 @@
+{
+  "phase": 20,
+  "name": "Empty-selection artwork restoration",
+  "release": "1.2.0",
+  "status": "COMPLETE",
+  "tasks": [
+    "20.1",
+    "20.2",
+    "20.3"
+  ],
+  "task_commits": {
+    "20.1": "fd37a73",
+    "20.2": "24b1c47",
+    "20.3": "1bd9a82"
+  },
+  "supporting_commits": {
+    "20.1_orchestrator_record": "457982e",
+    "20.2_orchestrator_record": "261960f",
+    "20.3_orchestrator_record": "d2e9cb6",
+    "20.3_correction_pr20_01": "247c33b"
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 297748,
+        "output_tokens": 38185,
+        "reasoning_tokens": 60609,
+        "cache_read_tokens": 26452736,
+        "cache_write_tokens": 0,
+        "total_tokens": 26849278,
+        "cost_usd": 0.183296808,
+        "duration_seconds": 1301,
+        "session_id": "ses_f16efe1baffeZJO6VF4nRH1ot0"
+      },
+      "task": "20.1"
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 68256,
+        "output_tokens": 9968,
+        "reasoning_tokens": 6950,
+        "cache_read_tokens": 1618986,
+        "cache_write_tokens": 0,
+        "total_tokens": 1704160,
+        "cost_usd": 0,
+        "duration_seconds": 284,
+        "session_id": "ses_f16d7223fffeEVDqbvPuBb0rHt"
+      },
+      "task": "20.1"
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 64687,
+        "output_tokens": 8573,
+        "reasoning_tokens": 10800,
+        "cache_read_tokens": 1813198,
+        "cache_write_tokens": 0,
+        "total_tokens": 1897258,
+        "cost_usd": 0,
+        "duration_seconds": 348,
+        "session_id": "ses_f16d257d9ffecSZ5MClJlYcDsW"
+      },
+      "task": "20.1"
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 243064,
+        "output_tokens": 28409,
+        "reasoning_tokens": 43332,
+        "cache_read_tokens": 17535360,
+        "cache_write_tokens": 0,
+        "total_tokens": 17850165,
+        "cost_usd": 0.13211028,
+        "duration_seconds": 1111,
+        "session_id": "ses_f16cab32affe4lBqo0vTobPh5t"
+      },
+      "task": "20.2"
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 75288,
+        "output_tokens": 11991,
+        "reasoning_tokens": 6828,
+        "cache_read_tokens": 3318347,
+        "cache_write_tokens": 0,
+        "total_tokens": 3412454,
+        "cost_usd": 0,
+        "duration_seconds": 463,
+        "session_id": "ses_f16b940aeffe9IE7Pgmu9Tt6Vr"
+      },
+      "task": "20.2"
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 63972,
+        "output_tokens": 15317,
+        "reasoning_tokens": 11355,
+        "cache_read_tokens": 3807841,
+        "cache_write_tokens": 0,
+        "total_tokens": 3898485,
+        "cost_usd": 0,
+        "duration_seconds": 569,
+        "session_id": "ses_f16b1d95fffeFtQnSCqMMo4kbD"
+      },
+      "task": "20.2"
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 251764,
+        "output_tokens": 34161,
+        "reasoning_tokens": 38163,
+        "cache_read_tokens": 14249600,
+        "cache_write_tokens": 0,
+        "total_tokens": 14573688,
+        "cost_usd": 0.1239078,
+        "duration_seconds": 837,
+        "session_id": "ses_f16a78171ffeNwfV7WtlcjXTug"
+      },
+      "task": "20.3"
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 70267,
+        "output_tokens": 12109,
+        "reasoning_tokens": 8715,
+        "cache_read_tokens": 3445738,
+        "cache_write_tokens": 0,
+        "total_tokens": 3536829,
+        "cost_usd": 0,
+        "duration_seconds": 1006,
+        "session_id": "ses_f169a4d6effeh4aBdhAFz5qo9V"
+      },
+      "task": "20.3"
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 78139,
+        "output_tokens": 16889,
+        "reasoning_tokens": 49956,
+        "cache_read_tokens": 5942208,
+        "cache_write_tokens": 0,
+        "total_tokens": 6087192,
+        "cost_usd": 0,
+        "duration_seconds": 1100,
+        "session_id": "ses_f168aa21cffeEd33sHA6MOasdz"
+      },
+      "task": "20.3"
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 74381,
+        "output_tokens": 12485,
+        "reasoning_tokens": 13330,
+        "cache_read_tokens": 1117056,
+        "cache_write_tokens": 0,
+        "total_tokens": 1217252,
+        "cost_usd": 0.029997318,
+        "duration_seconds": 236,
+        "session_id": "ses_f166e98ddffexyeXkx4nbZPXzA"
+      },
+      "task": "20.3"
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 38862,
+        "output_tokens": 10218,
+        "reasoning_tokens": 24422,
+        "cache_read_tokens": 1212290,
+        "cache_write_tokens": 0,
+        "total_tokens": 1285792,
+        "cost_usd": 0,
+        "duration_seconds": 366,
+        "session_id": "ses_f166ac1d6ffeky3qLblrZr4zMw"
+      },
+      "task": "20.3"
+    },
+    {
+      "role": "phase-reviewer",
+      "attempt": 1,
+      "task": "phase-20",
+      "outcome": "APPROVED_WITH_FINDINGS",
+      "execution": {
+        "agent": "phase-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 226224,
+        "output_tokens": 14087,
+        "reasoning_tokens": 29844,
+        "cache_read_tokens": 6653696,
+        "cache_write_tokens": 0,
+        "total_tokens": 6923851,
+        "cost_usd": 0.080253288,
+        "duration_seconds": 496,
+        "session_id": "ses_f1677dadfffev20iPxF0d6er8G"
+      }
+    },
+    {
+      "role": "phase-reviewer",
+      "attempt": 2,
+      "task": "phase-20",
+      "outcome": "APPROVED_WITH_FINDINGS",
+      "execution": {
+        "agent": "phase-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 90066,
+        "output_tokens": 11697,
+        "reasoning_tokens": 15693,
+        "cache_read_tokens": 772864,
+        "cache_write_tokens": 0,
+        "total_tokens": 890320,
+        "cost_usd": 0.032262492,
+        "duration_seconds": 309,
+        "session_id": "ses_f16647474ffeUmi6DsQofXf07z"
+      }
+    }
+  ],
+  "aggregate": {
+    "task_count": 3,
+    "task_level_invocations_per_task": {
+      "20.1": 3,
+      "20.2": 3,
+      "20.3": 5
+    },
+    "task_level_invocations": 11,
+    "phase_reviewer_invocations": 2,
+    "subagent_invocations_total": 13,
+    "role_mix": {
+      "implementation-worker": 4,
+      "implementation-reviewer": 4,
+      "test-quality-reviewer": 3,
+      "phase-reviewer": 2
+    },
+    "review_rounds": 4,
+    "test_quality_review_rounds": 3,
+    "rework_rounds": 1,
+    "first_pass_approval_rate": "3/3 tasks (100%): every task implementation-reviewer attempt 1 returned APPROVED; the single rework round was driven by the phase review finding PR-20-01 (missing ADR-002 amendment note), not by a task-reviewer rejection.",
+    "task_level_cost_usd": 0.469312206,
+    "task_level_total_tokens": 82312553,
+    "task_level_duration_seconds": 7621,
+    "phase_reviewer_cost_usd": 0.11251578000000001,
+    "phase_reviewer_total_tokens": 7814171,
+    "phase_reviewer_duration_seconds": 805,
+    "cost_usd": 0.581827986,
+    "total_tokens": 90126724,
+    "duration_seconds": 8426,
+    "note": "Per-subagent figures are the authoritative runtime values recorded in docs/implementation/<task>/orchestration.json; this aggregate is the exact sum of those execution values (task-level: 20.1 0.183296808 / 30,450,696 tok / 1933 s over 3; 20.2 0.13211028 / 25,161,104 tok / 2143 s over 3; 20.3 0.153905118 / 26,700,753 tok / 3545 s over 5 including the PR-20-01 correction; phase-reviewer 0.11251578 / 7,814,171 tok / 805 s over 2 attempts). One rework round (20.3 attempt 2) driven by PR-20-01. No BLOCKED/FAILED/NEEDS_RESEARCH invocation. implementation-reviewer and test-quality-reviewer sessions reported cost_usd 0 (the provider runtime value, recorded as-is). The phase-reviewer invocations are included in subagents above."
+  },
+  "gate": "Gate 20",
+  "gate_status": "MET",
+  "phase_review": "docs/implementation/phase-20/phase-review.attempt-2.json",
+  "phase_review_status": "APPROVED_WITH_FINDINGS",
+  "phase_reviews": {
+    "attempt_1": "docs/implementation/phase-20/phase-review.json",
+    "attempt_2": "docs/implementation/phase-20/phase-review.attempt-2.json"
+  }
+}

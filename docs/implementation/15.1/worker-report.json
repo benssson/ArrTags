@@ -1,0 +1,124 @@
+{
+  "task": "15.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Added the shared bounded log-subject policy/helper at src/ArrTags/Logging/LogSubject.cs (ADR-026 clauses 1-2). LogSubject.Create(Guid jellyfinItemId, string? primaryPath) returns the file-name component only via Path.GetFileName (never a directory, drive, share, or parent path) and LogSubject.Create(Guid jellyfinItemId) is the item-id-only overload; both fall back to the Jellyfin item identifier in D format whenever no usable name is available. The file name is bounded to the documented LogSubject.MaximumScalarValues = 128 Unicode scalar values, has control scalars removed, and is otherwise emitted verbatim (whitespace is not collapsed or trimmed), all in one scalar-wise pass so a surrogate pair is never split; an empty, whitespace, control-only, or control-reduced-to-whitespace name falls back to the item id, and the helper never throws for a null, empty, whitespace, or unusable path. tests/ArrTags.Tests/LogSubjectTests.cs adds 23 cases covering file-name-only, the bound (at-bound/over-bound/surrogate-pair safety), control removal, empty/whitespace fallback, non-ASCII/combining verbatim handling, and the D-format item-id fallback. Task 15.1 is the helper and policy only: threading through the call sites is 15.2, the render classification is 15.3, and the ADR-020 amendment/canonical docs/security review are 15.4; limitation F8 remains open.",
+  "validation": [
+    "Pre-task baseline: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s); ./build.sh test -> Failed 0, Passed 1494, Skipped 63, Total 1557.",
+    "Post-task build: . /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Post-task full default suite: . /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1517, Skipped: 63, Total: 1580, Duration: 16 s - ArrTags.Tests.dll (net10.0)' (baseline 0/1494/63/1557; +23 passed / +23 total, 0 new skips).",
+    "Focused suite: dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~LogSubjectTests\" -> 'Passed! - Failed: 0, Passed: 23, Skipped: 0, Total: 23'.",
+    "Test-sensitivity probe 1 (replaced Path.GetFileName(primaryPath) with primaryPath): filter LogSubjectTests -> Failed 20, Passed 3, Total 23; probe reverted and diff against the pre-probe file reported identical.",
+    "Test-sensitivity probe 2 (removed the 'appended == MaximumScalarValues' break): Failed 3, Passed 20, Total 23 (BoundNeverSplitsASurrogatePair, NameBeyondTheBoundIsTruncatedToTheScalarBound, BoundIsAppliedAfterControlRemoval; NameAtTheBoundIsEmittedUnchanged still passes because an exactly-at-bound name has no further rune to append).",
+    "Test-sensitivity probe 3 (removed the Rune.IsControl skip): Failed 6, Passed 17, Total 23 (ControlScalarsAreRemoved, EmittedSubjectContainsNoControlScalars, BoundIsAppliedAfterControlRemoval, and the 3 NamesThatReduceToNothingOrWhitespaceFallBackToTheItemIdentifier cases).",
+    "Test-sensitivity probe 4 (replaced the post-normalization 'string.IsNullOrWhiteSpace(bounded) ? fallback : bounded' with 'return bounded'): Failed 3, Passed 20, Total 23 (the 3 NamesThatReduceToNothingOrWhitespaceFallBackToTheItemIdentifier cases).",
+    "Test-sensitivity probe 5 (changed the fallback format from D to N): Failed 5, Passed 18, Total 23 (UnusableNamesFallBackToTheItemIdentifier, FallbackIsTheItemIdentifierInDFormat, and the 3 NamesThatReduceToNothingOrWhitespaceFallBackToTheItemIdentifier cases).",
+    "After all probes: diff /tmp/15.1/LogSubject.cs.orig src/ArrTags/Logging/LogSubject.cs -> identical; focused filter re-run -> Failed 0, Passed 23, Total 23.",
+    "dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice); no generated block changed.",
+    "scripts/check-docs.sh (run on the final tree before this report file existed) -> all nine 'ok:' sections including 'generated status blocks are current; plan state is consistent', 'agent report contracts conform', and final 'check-docs: PASS'.",
+    "Post-report scripts/check-docs.sh run -> the eight non-agent-contract sections and the agent-contract section's six sub-checks all report ok; the single failure is the required worker/reviewer pairing check, 'FAIL: task 15.1 has a worker report but no reviewer report (add an exemption only if covered)', ending 'check-agents: FAIL' / 'check-docs: FAIL'. This is the expected pre-review pipeline state (the designated test-quality-reviewer and implementation-reviewer write their reports after this worker report); the orchestrator's post-review run is expected to pass.",
+    "git status/diff inspection: only PLANS.md, docs/changelog/00-index.md, docs/plan/state.json, docs/changelog/v1.2.0.md, src/ArrTags/Logging/LogSubject.cs, tests/ArrTags.Tests/LogSubjectTests.cs, and this report; no packages.lock.json, source, or test file changed outside the task."
+  ],
+  "changed_files": [
+    "src/ArrTags/Logging/LogSubject.cs",
+    "tests/ArrTags.Tests/LogSubjectTests.cs",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/changelog/00-index.md",
+    "docs/implementation/15.1/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "A shared bounded log-subject helper returns the file-name component only (no directory).",
+      "evidence": "src/ArrTags/Logging/LogSubject.cs Create(Guid, string?) uses Path.GetFileName and never emits the path; tests FileNameComponentOnlyIsEmitted (5 paths) and DirectorySegmentsNeverAppearInTheSubject assert the exact file-name result and that directory segments do not appear."
+    },
+    {
+      "criterion": "The helper is bounded (at most 128 Unicode scalar values).",
+      "evidence": "LogSubject.MaximumScalarValues = 128 is a public documented constant; NormalizeFileName stops at the bound; tests DocumentedMaximumIsTheAdrBound (== 128), NameAtTheBoundIsEmittedUnchanged, NameBeyondTheBoundIsTruncatedToTheScalarBound, and BoundNeverSplitsASurrogatePair (200 emoji -> exact 128-scalar/256-UTF-16 string)."
+    },
+    {
+      "criterion": "Control characters are stripped.",
+      "evidence": "NormalizeFileName skips Rune.IsControl scalars; tests ControlScalarsAreRemoved (NUL/SOH, CR/LF, tab, NEL U+0085, DEL), EmittedSubjectContainsNoControlScalars, BoundIsAppliedAfterControlRemoval, and ControlRemovalDoesNotCollapseOrTrimWhitespace (otherwise-verbatim emission)."
+    },
+    {
+      "criterion": "Falls back to the item id when no usable name is available.",
+      "evidence": "Create returns the D-format item id for null/empty/whitespace paths, trailing-separator paths, control-only names, and names that reduce to whitespace-only text; FallbackIsTheItemIdentifierInDFormat proves the 36-character D format round-trips via Guid.TryParseExact. The no-throw requirement is met: the helper has no throwing path (test UnusableNamesFallBackToTheItemIdentifier drives null/empty/whitespace/separator inputs)."
+    },
+    {
+      "criterion": "Tests cover name-only, bound, control characters, empty/whitespace, non-ASCII, and fallback.",
+      "evidence": "tests/ArrTags.Tests/LogSubjectTests.cs: 23 cases - name-only (5 theory cases + directory-segment fact), bound (4 facts), control characters (4 facts), empty/whitespace fallback (1 fact + 3-case theory), non-ASCII (4-case theory incl. combining mark and astral emoji), fallback (2 facts). Focused run: Failed 0, Passed 23, Total 23."
+    },
+    {
+      "criterion": "The public surface supports a caller passing either a path or only an item id (ADR-026 clause 3 preparability, task 15.2).",
+      "evidence": "Two overloads: Create(Guid) for item-id-only callers and Create(Guid, string?) for identity-bearing callers; string? primaryPath means an absent path is a legal input and resolves to the item-id fallback."
+    },
+    {
+      "criterion": "Located inside src/ArrTags/Logging/ and consistent with project conventions (XML docs, nullable, sealed, validation).",
+      "evidence": "src/ArrTags/Logging/LogSubject.cs is a static class with XML doc comments on the type and every public member; nullable is enabled and the helper has no throwing path for its nullable argument; build with TreatWarningsAsErrors + AnalysisMode=AllEnabledByDefault + StyleCop -> 0 Warning(s), 0 Error(s)."
+    },
+    {
+      "criterion": "Phase 15 acceptance criteria owned by this task (the bounded/control-stripped/fallback policy itself).",
+      "evidence": "The phase criterion 'The file name is bounded, control characters are stripped, and an empty/whitespace name falls back to the item id' is satisfied by the helper plus the 23 tests above; the remaining Phase 15 criteria (emission at the call sites, no directory in actual log output, classification, ADR-020 amendment, security review) are explicitly owned by tasks 15.2-15.4 and are not claimed here."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Does the 128-scalar bound apply before or after control-character removal?",
+      "chosen": "Control scalars are skipped first and do not count toward the bound; the bound is applied to the control-free text.",
+      "basis": "ADR-026 clause 2 does not fix the order; the clause 'reduces to nothing after normalization' implies normalization includes control removal, and bounding the normalized text preserves the most usable content while still yielding at most 128 control-free scalars.",
+      "impact": "A name with many leading controls followed by text keeps the text instead of truncating to an empty fallback. The emitted subject remains within the ADR bounds; no persisted or user-visible state is affected. Covered by BoundIsAppliedAfterControlRemoval."
+    },
+    {
+      "question": "How is whitespace treated inside and around the file name?",
+      "chosen": "Whitespace is emitted verbatim (not collapsed or trimmed); only a name that is entirely whitespace, or that reduces to entirely whitespace after control removal, falls back to the item id.",
+      "basis": "ADR-026 clause 2 says the file name is 'otherwise emitted verbatim' and only an empty/whitespace/reduced-to-nothing name falls back. ADR-026 does not ask for the BadgeTextNormalizer whitespace-collapsing behavior.",
+      "impact": "Log subjects can contain the file name's exact spacing. No persisted or user-visible state; covered by ControlRemovalDoesNotCollapseOrTrimWhitespace and NamesThatReduceToNothingOrWhitespaceFallBackToTheItemIdentifier."
+    },
+    {
+      "question": "How are Windows-style paths treated when the helper runs on a non-Windows host?",
+      "chosen": "Path.GetFileName's host-platform separator semantics are used unchanged.",
+      "basis": "ADR-026 clause 1 explicitly names Path.GetFileName; Jellyfin reports host-native paths, so on the pinned Linux host a backslash is a valid character of a Linux file name rather than a separator.",
+      "impact": "On the pinned Linux host a literal 'C:\\dir\\file.mkv' string would be emitted as a file name containing backslashes (such a string is not a Linux path); drive/parent components are never emitted on Windows hosts. No directory derived from a host-native path can be emitted."
+    },
+    {
+      "question": "Should Guid.Empty be rejected?",
+      "chosen": "Accepted and formatted; the helper never throws.",
+      "basis": "The task and ADR-026 require the helper to be fallback-safe and never throw into a caller; the item id is a non-null value type and the all-zeros identifier leaks nothing.",
+      "impact": "A caller passing Guid.Empty emits the all-zeros D string rather than failing a log call."
+    }
+  ],
+  "test_sensitivity": [
+    "Path splitting removed (Create used primaryPath instead of Path.GetFileName(primaryPath)): focused LogSubjectTests Failed 20, Passed 3, Total 23; probe reverted, file diff-identical to the pre-probe version.",
+    "Scalar bound removed (deleted the 'appended == MaximumScalarValues' break): Failed 3, Passed 20, Total 23 (BoundNeverSplitsASurrogatePair, NameBeyondTheBoundIsTruncatedToTheScalarBound, BoundIsAppliedAfterControlRemoval).",
+    "Control removal removed (deleted the Rune.IsControl skip): Failed 6, Passed 17, Total 23 (both control facts, BoundIsAppliedAfterControlRemoval, and the three reduce-to-nothing fallback cases).",
+    "Post-normalization whitespace fallback removed ('return bounded'): Failed 3, Passed 20, Total 23 (the three reduce-to-nothing fallback cases).",
+    "Item-id D format changed to N: Failed 5, Passed 18, Total 23 (UnusableNamesFallBackToTheItemIdentifier, FallbackIsTheItemIdentifierInDFormat, and the three reduce-to-nothing fallback cases)."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json (task 15.1 done=true, reports path recorded, updated_utc refreshed)",
+      "PLANS.md (task 15.1 checkbox [x]; generated milestone table verified unchanged via the renderer)",
+      "docs/changelog/v1.2.0.md (new file; task 15.1 entry)",
+      "docs/changelog/00-index.md (1.2.0 row added)",
+      "docs/status.md (verified up to date; generated, unchanged)"
+    ],
+    "old_values_removed": [
+      "docs/plan/state.json had '\"id\": \"15.1\", \"done\": false'; now '\"done\": true' with the report path, and PLANS.md matches (renderer --check reports 'PLANS.md and state.json agree').",
+      "PLANS.md '- [ ] 15.1 Bounded log-subject policy and helper' -> '- [x] 15.1 Bounded log-subject policy and helper'."
+    ],
+    "check_docs": "PASS on the final tree before this report file existed (nine ok sections, 'check-docs: PASS'). After this report was persisted, a repeat run passes the eight non-agent-contract sections and the agent-contract section's six sub-checks, and fails exactly one expected pre-review check - 'task 15.1 has a worker report but no reviewer report (add an exemption only if covered)'; the reviewer reports are written after this worker report. Not claimed as an unconditional post-report PASS."
+  },
+  "rework": [],
+  "known_limitations": [
+    "Task 15.1 adds the helper and policy only. The helper is not yet called by any production site: threading it through the artwork coordinator, the metadata reconciliation processor (including the mixed Discard site), and the Sonarr/Radarr metadata readers plus the explicit item-id fallback sites is task 15.2, the bounded render classification is task 15.3, and the ADR-020 clause 4 amendment, canonical documentation (README/architecture/limitations) and the logging security review are task 15.4. Limitation F8 remains open until Phase 15 completes; this task deliberately did not amend ADR-020 or resolve F8.",
+    "A post-report scripts/check-docs.sh run fails only the required worker/reviewer report pairing check until the independent reviewer writes docs/implementation/15.1/reviewer-report.json; this is the normal pre-review pipeline state, not a stale documentation surface.",
+    "Path.GetFileName uses host-platform separators; tests exercise POSIX paths because the pinned verification host and this environment are Linux. A Windows-style path is not directory-split on Linux (on Linux it is a single file name), per ADR-026 clause 1's explicit choice of Path.GetFileName."
+  ],
+  "ready_for_next_task": true
+}

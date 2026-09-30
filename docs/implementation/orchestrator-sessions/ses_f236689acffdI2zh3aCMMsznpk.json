@@ -1,0 +1,59 @@
+{
+  "session_id": "ses_f236689acffdI2zh3aCMMsznpk",
+  "agent": "build",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "default",
+  "title": "start phase 18",
+  "tokens": {
+    "input": 340054,
+    "output": 30302,
+    "reasoning": 27437,
+    "cache": {
+      "read": 11796096,
+      "write": 0
+    }
+  },
+  "total_tokens": 12193889,
+  "cost_usd": 0.12101308799999998,
+  "duration_seconds": 3107,
+  "first_recorded_at": "2026-09-26T07:36:00Z",
+  "last_updated_at": "2026-09-28T08:48:04Z",
+  "session_note": "This phase is orchestrated from the primary `build` session, not the dedicated `orchestrator` agent. `.opencode/scripts/record-orchestrator-session.sh` refuses a non-orchestrator session, so the figures were collected with the same authoritative mechanism (`.opencode/scripts/collect-session-usage.sh` keyed by this session id) and recorded here verbatim; no value is estimated.",
+  "updates": [
+    {
+      "at": "2026-09-26T07:36:00Z",
+      "cost_usd": 0.02539335,
+      "total_tokens": 1831392,
+      "duration_seconds": 1,
+      "note": "Phase 18 task 18.1 complete: worker + reviewer APPROVED, committed 81ecbb7"
+    },
+    {
+      "at": "2026-09-26T08:09:25Z",
+      "cost_usd": 0.046953852000000004,
+      "total_tokens": 4343983,
+      "duration_seconds": 1,
+      "note": "Phase 18 task 18.2 complete: golden coverage + version-decision verified under pinned native runtime, worker + reviewer APPROVED, committed 41b3a94"
+    },
+    {
+      "at": "2026-09-28T08:30:30Z",
+      "cost_usd": 0.08485061999999999,
+      "total_tokens": 6690162,
+      "duration_seconds": 3107,
+      "note": "Phase 18 task 18.3 complete: G7 docs + integration verification; worker attempt 1 failed on a usage limit and was resumed as attempt 2 (partial edits verified/corrected); reviewer APPROVED, committed 58b1781. All three Phase 18 tasks now have worker+reviewer reports and commits."
+    },
+    {
+      "at": "2026-09-28T08:39:28Z",
+      "cost_usd": 0.11195994599999998,
+      "total_tokens": 10858949,
+      "duration_seconds": 3107,
+      "note": "Phase 18 phase-reviewer APPROVED_WITH_FINDINGS (no BLOCKER/HIGH); Gate 18 applied in state.json + surfaces regenerated, committed d9456b4. STOPPED at the tag step: v1.2.0-phase18 already exists, pointing to f10c030 on the parallel space-bunny-free-test evaluation worktree (which has also completed Phase 19 / v1.2.0-phase19). Tag collision needs a user decision; no tag was created or moved."
+    },
+    {
+      "at": "2026-09-28T08:48:04Z",
+      "cost_usd": 0.12101308799999998,
+      "total_tokens": 12193889,
+      "duration_seconds": 3107,
+      "note": "User approved re-pointing the phase tags to the canonical v1.2 branch. Force-recreated v1.2.0-phase18 at d9456b4 (was f10c030); the old commit remains reachable via the space-bunny-free-test branch, so nothing was lost. v1.2.0-phase19 still points to the evaluation branch (8fdd1ff) because Phase 19 is not yet complete on v1.2; it must be re-pointed when Phase 19 completes here."
+    }
+  ]
+}

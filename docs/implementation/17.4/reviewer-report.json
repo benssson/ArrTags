@@ -1,0 +1,130 @@
+{
+  "task": "17.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Independent review of task 17.4 (F3 documentation reconciliation and F3 resolution; Phase 17, Goal F3, ADR-025). Approved. I inspected the complete diff against base 6a9b798 and re-ran the required validation myself. F3 is recorded as resolved and internally consistent across every surface: removed from docs/limitations/open.md, appended to docs/limitations/archive.md with an accurate resolution entry (behavior, evidence, verification bounds, historical consequence), moved to Resolved/archive.md in docs/limitations/00-index.md after F2, removed from limitations.open and added to limitations.resolved in docs/plan/state.json, reflected in the regenerated docs/status.md (3 open: F4/F6/F7), and recorded in PLANS.md as resolved by Phase 17 (task 17.4) with the 17.4 checkbox ticked. I read the shipped code (DiagnosticsSnapshot, MatchingFailureCounts, RenderFailureCounts, DiagnosticsMetrics, DiagnosticsSnapshotProvider, ArrTagsStatusController, config.html) and confirmed the architecture 11/12, architecture 04, README, and ADR-025 implementation-note prose match the shipped nine-field / 28-leaf counter set, the elevation-gated read-only GET ArrTags/Status route, the process-lifetime never-persisted semantics, the fail-closed panel, and the honest verification bounds (inline JS not executed; host-guarded policy fact skipped because ARRTAGS_JELLYFIN_HOST_DIR is unset). The ADR-025 diff is 49 insertions / 0 deletions with all decision clauses, consequences, and rejected-alternatives text byte-unchanged; the note is placed between Consequences and Rejected alternatives, matching the established ADR-026/ADR-028 convention. No production or test code changed (git status --porcelain -- src tests empty). Build 0 warnings/0 errors; default suite Failed 0 / Passed 1794 / Skipped 64 / Total 1858, identical to the post-17.3 baseline, with DiagnosticsStatusEndpointTests.EndpointUsesThePinnedHostAdministratorGatingPolicy among the 64 skips; render-docs-state -- --check reports everything up to date and agreeing; check-docs prints nine ok sections and the only failure is the expected pre-reviewer worker/reviewer pairing check, which this report satisfies. Phase 17 remains PLANNED with no gate or tag applied. The security review (docs/implementation/17.4/security-review.json) is a separate orchestrator delegation and is not present yet; no verdict is asserted by the worker and none is assessed here. No blocker or required change.",
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/forward-reference",
+      "summary": "Architecture 11/12 state the clause-6 security review is recorded at the 17.4 path before the delegated review exists.",
+      "detail": "docs/architecture/11 line 66 says the required security review 'is recorded at docs/implementation/17.4/security-review.json' and docs/architecture/12 line 196 says the endpoint and panel 'carry the fresh security review ... recorded at' that path. The file does not exist yet: it is the orchestrator's separate security-reviewer delegation. This is a slight forward reference, but the task explicitly directs the worker to document the contract and name the review path (acceptance criterion 7) and to assert no verdict, the phase is still PLANNED, and the security review is a Gate 17 precondition the orchestrator completes before the phase closes. Not a false statement (the path is where the review will live) and no overclaim of an outcome.",
+      "evidence": [
+        "docs/architecture/11-failure-consistency-and-security-policy.md:58-66",
+        "docs/architecture/12-performance-and-operational-limits.md:194-196",
+        "find docs/implementation/17.4 -type f -> orchestration.json, worker-report.json only"
+      ],
+      "recommended_action": "None for 17.4; if the security review lands with findings, the orchestrator/phase-reviewer updates only the outcome wording."
+    },
+    {
+      "id": "R2",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation/stale-claim-sweep",
+      "summary": "docs/planning/v1.2.md still lists F3 among limitations that 'remain Open until their resolving phase lands and records the resolution'.",
+      "detail": "Line 30 of the accepted v1.2 plan is a plan-time policy statement, not a current-state surface (AGENTS.md names PLANS.md and state.json as the status surfaces), and it is conditionally phrased ('remain Open until their resolving phase lands and records the resolution'). The F8 precedent (task 15.4) left the same sentence unedited after F8 resolved; the plan's own section-7 phase-17 documentation checklist does not include docs/planning/v1.2.md. No current-state surface states F3 is open.",
+      "evidence": [
+        "docs/planning/v1.2.md:30",
+        "git log -1 -S 'F3, F4, F6, F7, and F8 are promoted' -- docs/planning/v1.2.md -> 1f39e53 (plan commit; never edited by later tasks)",
+        "docs/planning/v1.2.md:395 (phase-17 checklist omits v1.2.md)"
+      ],
+      "recommended_action": "None; acceptable historical/plan-time frame."
+    },
+    {
+      "id": "R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/phrasing",
+      "summary": "Minor compressed/loose phrasing in two new sentences; not misleading in context.",
+      "detail": "docs/architecture/12 line 173 reads '(ADR-025; open limitation F3 resolved by Phase 17 task 17.4)', which is compressed but explicit that F3 is resolved. README line 140 says counters are 'for the current Jellyfin session' while the following sentence correctly clarifies they are process-lifetime and reset on restart. Neither is a stale or false claim; the underlying statements match the shipped code.",
+      "evidence": [
+        "docs/architecture/12-performance-and-operational-limits.md:172-174",
+        "README.md:139-148"
+      ],
+      "recommended_action": "None required; possible future copy-edit only."
+    },
+    {
+      "id": "R4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "out-of-scope pre-existing defect",
+      "summary": "docs/data-model/03-08-renderresult.md line 51 carries a pre-existing stale 'task 12.2' statement unrelated to F3/diagnostics.",
+      "detail": "The worker disclosed this as an out-of-scope pre-existing observation and did not touch it. It is unrelated to F3/diagnostics/status and material to no acceptance criterion of this task; confirmed not in the diff.",
+      "evidence": [
+        "docs/implementation/17.4/worker-report.json known_limitations (out-of-scope observation)",
+        "git diff 6a9b798 -- docs/data-model (empty)"
+      ],
+      "recommended_action": "None for 17.4; leave to the documentation maintainer."
+    }
+  ],
+  "per_criterion_verification": [
+    {
+      "criterion": "1. F3 recorded as resolved and internally consistent across every surface (open.md, archive.md, 00-index.md, state.json, status.md, PLANS.md).",
+      "verdict": "PASS",
+      "evidence": "docs/limitations/open.md diff removes only the F3 section (file now starts at F4). docs/limitations/archive.md:169 gains the F3 resolution entry with Status Resolved, the shipped route/panel/counter description, an evidence list, verification bounds, and a historical consequence. docs/limitations/00-index.md:71 is '| `F3` | ... | Resolved | [`archive.md`](archive.md) |' in the resolved group after F2. jq .limitations confirms open ['F4','F6','F7'] and resolved ['F1','F2','F3','F8']. docs/status.md:23 reads 'Open limitations: 3 (`F4`, `F6`, `F7`)'. PLANS.md:25 records 'F3 ... is resolved by Phase 17 (task 17.4)' and PLANS.md:159 ticks '- [x] 17.4'. grep for '### F3' matches only docs/limitations/archive.md."
+    },
+    {
+      "criterion": "2. Documentation accurately describes the shipped endpoint/panel/counters/fail-closed behavior with the three honest bounds (inline JS not executed; host-guarded policy fact skipped with ARRTAGS_JELLYFIN_HOST_DIR unset; process-lifetime counters).",
+      "verdict": "PASS",
+      "evidence": "Code: ArrTagsStatusController is class-level [Authorize(Policy = Policies.RequiresElevation)] + [ApiController] + [Route(\"ArrTags/Status\")] with exactly one [HttpGet] returning _snapshotProvider.GetSnapshot (ArrTagsStatusController.cs:27-59). DiagnosticsSnapshot has 9 top-level properties; MatchingFailureCounts has 3; RenderFailureCounts has 18; the endpoint test asserts exactly 28 leaf paths (DiagnosticsStatusEndpointTests.cs:340). config.html declares exactly 28 counter entries, hides #diagnosticsPanel, fetches ApiClient.getUrl('ArrTags/Status') once per pageshow, and fail-closes on rejection/malformed/non-object (config.html:519-663). Instrumentation call sites match the documented boundaries (Radarr/SonarrMetadataReader cache hit/miss, ConcurrencyLimitedArrMetadataReader health, MetadataReconciliationProcessor matching+stale, ArtworkGenerationCoordinator render failure). architecture 11/12, architecture 04, README, the archive entry, the ADR-025 note, and the changelog all state the three bounds explicitly. No 'not yet implemented' remains in current-state surfaces."
+    },
+    {
+      "criterion": "3. ADR-025 historical integrity: clauses/consequences/rejected-alternatives byte-unchanged; only an append-only implementation note added.",
+      "verdict": "PASS",
+      "evidence": "git diff --numstat 6a9b798 -- docs/decisions/ADR-025.md -> '49 0 docs/decisions/ADR-025.md' (49 insertions, 0 deletions). The only added heading is '### Implementation note (v1.2, tasks 17.1-17.4)' placed between Consequences and Rejected alternatives, matching ADR-026/ADR-028. Decision clauses, Consequences, Rejected alternatives, and References are unchanged."
+    },
+    {
+      "criterion": "4. No production or test code change.",
+      "verdict": "PASS",
+      "evidence": "git status --porcelain -- src tests is empty. git diff --stat 6a9b798 lists exactly 12 documentation/state files (266 insertions / 30 deletions) plus the new report directory. The default suite is unchanged from the post-17.3 baseline (Failed 0 / Passed 1794 / Skipped 64 / Total 1858)."
+    },
+    {
+      "criterion": "5. No now-false F3/diagnostics/status claim remains outside immutable history or acceptable frames.",
+      "verdict": "PASS",
+      "evidence": "grep 'not yet implemented' over PLANS.md, README.md, docs/status.md, docs/architecture, docs/limitations, docs/decisions, docs/INDEX.md, GOALS.md -> no matches. A docs-wide F3 sweep leaves only: the v1.2 plan-policy sentence (conditional/plan-time; F8 precedent), status.md's active-scope goal list, immutable changelog entries, immutable ADR-020 history ('F3 remains open' at v1.1 time), the resolved index/archive rows, and the ADR-025 context/note. No current-state surface states F3 is open."
+    },
+    {
+      "criterion": "6. Plan-state integrity: PLANS.md checkbox, state.json task 17.4, F3 moved, phase 17 PLANNED with no gate/tag, generated blocks agree.",
+      "verdict": "PASS",
+      "evidence": "state.json task 17.4 has done=true, reports=['docs/implementation/17.4/worker-report.json'], and updated_utc 2026-09-26T01:06:22Z. Phase 17 object has status 'PLANNED' with gate 'Gate 17' and tag 'v1.2.0-phase17' (static planned names, same shape as COMPLETE phases 15/16; no gate applied). dotnet run scripts/render-docs-state.cs -- --check prints 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree', exit 0."
+    },
+    {
+      "criterion": "7. Phase 17 acceptance criterion owned by 17.4: 'F3 is recorded as resolved'; no overreach (no worker-authored security-review.json, no production edit).",
+      "verdict": "PASS",
+      "evidence": "F3 is Resolved in 00-index.md and archive.md, removed from open.md, moved in state.json (open -> resolved), and reflected in status.md; PLANS.md records resolution by Phase 17 (task 17.4). docs/implementation/17.4 contains only orchestration.json and worker-report.json (no security-review.json authored by the worker). The worker report names the security-review path and asserts no verdict. Gate 17's remaining conditions (security review with no open BLOCKER/HIGH, phase review, tag v1.2.0-phase17) are not claimed."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (re-run by reviewer).",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1794, Skipped: 64, Total: 1858' (re-run by reviewer); the skip list includes ArrTags.Tests.DiagnosticsStatusEndpointTests.EndpointUsesThePinnedHostAdministratorGatingPolicy (ARRTAGS_JELLYFIN_HOST_DIR unset), as reported.",
+    "Inspected Tests/ArrTags.Tests/DiagnosticsStatusEndpointTests.cs: 9 cases including anonymous 401, authenticated non-administrator 403, authenticated administrator 200, and the 28-leaf fixed-shape assertion.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check -> up to date / agree (re-run by reviewer).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections; only failure is 'task 17.4 has a worker report but no reviewer report', the expected pre-reviewer state (re-run by reviewer)."
+  ],
+  "research_checked": [
+    "ADR-025 clauses 1-6 read against the shipped controller/panel/model; the class-level RequiresElevation policy and read-only single-GET shape match clauses 1, 4, and 5.",
+    "docs/planning/v1.2.md Goal F3 acceptance criteria, section 7 phase-17 documentation checklist, and section 9 verification requirements read against the delivered docs.",
+    "docs/research not re-derived: the task makes no new provider or host API assumption; the endpoint uses the already-pinned Jellyfin controller/authorization pattern which the passing 17.2 in-process MVC pipeline tests exercise."
+  ],
+  "documentation_checked": [
+    "docs/limitations/open.md (F3 removed; now starts at F4)",
+    "docs/limitations/archive.md (F3 Resolved entry with evidence, bounds, consequence)",
+    "docs/limitations/00-index.md (F3 row Resolved/archive.md; index coverage check ok)",
+    "docs/plan/state.json (limitations.open/resolved; task 17.4 done/reports; updated_utc; phase 17 PLANNED)",
+    "PLANS.md (checkbox 17.4; v1.2 status paragraph; milestone table Phase 17 PLANNED)",
+    "docs/status.md (generated; Open limitations: 3 F4/F6/F7)",
+    "docs/changelog/v1.2.0.md (Task 17.4 entry; consistency with 17.1-17.3 entries)",
+    "docs/architecture/04-plugin-components-and-boundaries.md (Diagnostics snapshot row; controller row unchanged)",
+    "docs/architecture/11-failure-consistency-and-security-policy.md (read-only surface + fail-closed panel paragraph)",
+    "docs/architecture/12-performance-and-operational-limits.md (F3 paragraph replaced with shipped surface)",
+    "docs/decisions/ADR-025.md (append-only implementation note; clauses unchanged)",
+    "README.md (Diagnostics panel subsection; settings-page coverage sentence; Known limitations has no stale F3 claim)",
+    "docs/INDEX.md / GOALS.md (no F3/diagnostics stale claim)"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

@@ -1,0 +1,122 @@
+{
+  "task": "21.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "summary": "Independent verification reproduced every load-bearing claim. Scope is exactly the six delegated tracked files (PLANS.md, README.md, docs/plan/state.json, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md, manifest.json) plus the new docs/implementation/21.3/ report directory; no source, test, build-metadata, or immutable-history file changed, and no commit or tag was created. Reproducibility: I exported a clean tree myself (git ls-files, 1,085 files, no .git/bin/obj/artifacts) at a new absolute path, ran restore/build/package (0 warnings / 0 errors) and produced artifacts/ArrTags_1.2.0.0.zip byte-identical to the recorded identity - 619,538 bytes, SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, MD5 3100aae94a2b4aedf222eca040675271 - and independently recomputed all 7 per-entry sizes and SHA-256 values, which match the release document exactly. Suites: default with the archive present 0/1927/66/1993 (4 consecutive runs, stable), default without the archive 0/1924/69/1993, host-guarded against the pinned host 0/1947/46/1993, forced-native 0/2014/21/2035 (4 of 5 runs; see 21.3-R4). Skip taxonomy is honest: a TRX run of the default tier shows exactly 66 NotExecuted results partitioned 20 pinned-host + 45 ARRTAGS_SKIA_COMPAT (41 round-trip facts + 4 golden/cross-runtime entries, matching the 4 SkiaNativeTheory attributes in the suite) + 1 ARRTAGS_NONCANONICAL_GOLDENS, and 1947-1927 = 20 host facts genuinely execute under ARRTAGS_JELLYFIN_HOST_DIR. The pinned host is real (Jellyfin.Api.dll present; console.log logs 'Jellyfin version: 12.0.0'). manifest.json is valid JSON, lists 1.2.0.0 first with checksum equal to the artifact MD5, correct targetAbi 12.0.0.0 and v1.2.0 sourceUrl, retains 1.1.0.0 and 1.0.1.0, and regenerates byte-identically (timestamp-normalised) from build.yaml via scripts/write-manifest.cs. scripts/check-docs.sh FAILs only on the contract-mandated 'task 21.3 has a worker report but no reviewer report' pairing line, which this report closes; every other section passes, including 'artifact identity agrees (sha256, md5, bytes)' for the retained 1.1.0.0 identity. render-docs-state --check is clean, so the generated blocks need no regeneration. The worker's state edits (task done/reports, updated_utc, PLANS.md checkbox) are inside the single-writer rule; current_release, releases status, and the tag surface were correctly left to 21.6, and no v1.2 live-matrix results were added (21.4). Three informational notes recorded, none blocking.",
+  "findings": [
+    {
+      "id": "21.3-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation accuracy",
+      "summary": "The historical-matrix paragraph still labels the 1.0.1.0 matrix 'the previous release', which is no longer true now that 1.1.0.0 precedes 1.2.0.0.",
+      "detail": "docs/release/build-and-release.md reads: 'The `1.0.1.0` release matrix (default 1,228/60/1,288 and host-guarded 1,244/44/1,288) is the previous release; the current `1.2.0.0` counts are recorded in \"Build, test, and package commands\" above.' The trailing clause was updated by this task, but the 'previous release' descriptor for 1.0.1.0 was left as it stood when 1.1.0.0 was current. The same document's 'Release artifact identity' section correctly demotes 1.1.0.0 to 'the prior release', so the file is internally inconsistent about which release is the previous one. The 1.1.0.0 matrix itself is not lost: it remains in docs/plan/state.json current_release.suite, docs/changelog/v1.1.0.md, and docs/limitations/accepted.md. This is a wording-precision issue in history prose; it affects no artifact identity, suite count, release step, or acceptance criterion, so it is recorded as noted rather than required.",
+      "evidence": [
+        "docs/release/build-and-release.md:203-205 ('The `1.0.1.0` release matrix ... is the previous release; the current `1.2.0.0` counts are ...')",
+        "docs/release/build-and-release.md:226 ('The previous `1.1.0.0` release identity ... is the prior release')",
+        "git diff docs/release/build-and-release.md (only the trailing clause of that sentence was changed)"
+      ],
+      "recommended_action": "Optional wording fix at the next documentation touch of this file ('is a prior release' or name 1.1.0.0 explicitly). Not required for this task."
+    },
+    {
+      "id": "21.3-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation accuracy",
+      "summary": "The prior-release paragraph points at docs/changelog/00-index.md for the 1.0.1.0 identity, but that file is only an index; the identity lives in docs/changelog/v1.0.1.md.",
+      "detail": "The sentence '... the `1.0.1.0` release identity (568,248 bytes, SHA-256 de4c3484..., MD5 16baa5a7...) is recorded alongside it in `docs/changelog/00-index.md`' names an index that contains only release links. The recorded identity is in docs/changelog/v1.0.1.md, which the index links to, so the reference resolves to the right content one hop away; the sentence is also grammatically ambiguous about whether 'it' refers to the 1.1.0.0 identity. No correctness impact; pointer precision only.",
+      "evidence": [
+        "docs/release/build-and-release.md:228-232",
+        "docs/changelog/00-index.md:1-14 (table of release links only; no artifact identity)",
+        "docs/changelog/v1.0.1.md:18-19 and :99,:126 (the 568,248-byte / de4c3484... / 16baa5a7... identity)"
+      ],
+      "recommended_action": "Optional: cite docs/changelog/v1.0.1.md directly when this paragraph is next edited."
+    },
+    {
+      "id": "21.3-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation consistency (out of delegated scope)",
+      "summary": "docs/limitations/accepted.md still presents the 1.1.0.0 matrix as 'the current release matrix'; consistent with state.json today, but it will need refreshing when 21.6 flips current_release.",
+      "detail": "docs/limitations/accepted.md:119-127 says 'The current `1.1.0.0` release matrix is: default ... 1,494/63/1,557 ... host-guarded ... 1,513/44/1,557 ...'. That statement remains literally true of the *released* version because state.json current_release is still 1.1.0.0 and this task correctly did not touch it (current_release is orchestrator/21.6-owned). Once 21.6 creates the v1.2.0 tag and advances current_release, this limitations-register sentence becomes the stale current-state claim, and docs/release/build-and-release.md meanwhile already calls 1.2.0.0 the current matrix. The file was not in this task's delegated scope, so it is recorded for the task that flips the release, not as a defect here.",
+      "evidence": [
+        "docs/limitations/accepted.md:116-127",
+        "docs/plan/state.json current_release.version == '1.1.0.0' (unchanged in this diff)",
+        "docs/plan/README.md:7-12 (docs/limitations/ written by worker/documentation-maintainer; current_release owned by planner/orchestrator)"
+      ],
+      "recommended_action": "Refresh the accepted.md release-matrix sentence in task 21.6 (or the documentation reconciliation that advances current_release to 1.2.0.0)."
+    },
+    {
+      "id": "21.3-R4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "verification determinism",
+      "summary": "One of five forced-native runs returned 0/2011/24/2035 instead of the documented 0/2014/21/2035; the other four reproduce the documented figure and the default tier is stable across four runs.",
+      "detail": "The forced-native tier is supplementary documentation, not an acceptance criterion (the task requires the default and host-guarded suites). During my verification one invocation of the pinned-native command line returned Passed 2,011 / Skipped 24 / Total 2,035, with the same total as the documented run, indicating three cases flipped from pass to skip. Four subsequent invocations (three via build.sh, three via dotnet test with a TRX logger) all returned exactly 2,014/21/2,035 with an identical 21-name skip list, and the four default-tier runs all returned 1,927/66/1,993. No test or production code was changed by this task, so this is a pre-existing environmental nondeterminism in the native tier rather than a regression introduced here; the documented figure is the overwhelmingly reproducible one.",
+      "evidence": [
+        "forced-native run 1: 'Passed! - Failed: 0, Passed: 2011, Skipped: 24, Total: 2035' (single observation)",
+        "forced-native runs 2-5: 'Passed: 2014, Skipped: 21, Total: 2035' x4; TRX skip lists identical (21 names each)",
+        "default tier x4: 'Passed: 1927, Skipped: 66, Total: 1993'",
+        "git diff --stat: no tests/ or src/ file changed"
+      ],
+      "recommended_action": "No action required for this task. If the native tier's stability matters later, investigate the one-off separately (it is outside 21.3's acceptance criteria and involves no 21.3 change)."
+    },
+    {
+      "id": "21.3-R5",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "documentation gate",
+      "summary": "scripts/check-docs.sh currently FAILs only on the missing-reviewer-report pairing line, which this report closes.",
+      "detail": "Re-running scripts/check-docs.sh on the worker's final tree returns exit 1 with exactly one failure: check-agents.sh's 'FAIL: task 21.3 has a worker report but no reviewer report (add an exemption only if covered)'. All other sections pass, including 'artifact identity agrees (sha256, md5, bytes)' - which is the delegated gate interaction: the first sha256/md5/bytes in state.json are still the 1.1.0.0 current_release identity (594,931 bytes / 85730fe7... / 547beb2f...) and all three strings are still present in docs/release/build-and-release.md. Once this reviewer-report.json exists on disk the pairing line clears, as it did for 21.1 and 21.2.",
+      "evidence": [
+        "scripts/check-docs.sh run: 'ok: artifact identity agrees (sha256, md5, bytes)' and the single agent-pairing FAIL",
+        "docs/plan/state.json:64-66 (first 'bytes'/'sha256'/'md5' are the 1.1.0.0 current_release values)",
+        "docs/release/build-and-release.md:226-229 (1.1.0.0 identity retained as the prior-release record)"
+      ],
+      "recommended_action": "None; resolved by persisting this report."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The v1.2 artifact is reproducible and documented.",
+      "verdict": "MET",
+      "evidence": "Independent fourth clean build: 'git ls-files | tar -T - -cf - | tar -x -C /tmp/21.3/rev' (1,085 files) + './build.sh restore && ./build.sh build && ./build.sh package' at a path used by neither the worker nor the test-quality reviewer produced 0 warnings / 0 errors and the byte-identical archive: sha256sum 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, md5sum 3100aae94a2b4aedf222eca040675271, stat 619538, 7 entries. Independent 'unzip -l' and per-entry 'sha256sum' of the extracted archive match every row of the release document's entry table. v1.2 plan section 9's 'Reproducible build/package at the v1.2 version (1.2.0.0)' is satisfied; manifest.json's 1.2.0.0 checksum equals the artifact MD5 and manifest.json regenerates from build.yaml identically."
+    },
+    {
+      "criterion": "the full default and host-guarded suites pass.",
+      "verdict": "MET",
+      "evidence": "Default with the archive present: 'Passed! - Failed: 0, Passed: 1927, Skipped: 66, Total: 1993' (four consecutive runs). Host-guarded: 'ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin ./build.sh test' -> 'Failed: 0, Passed: 1947, Skipped: 46, Total: 1993'. Supplementary cells also reproduced: default without the archive 0/1924/69/1993 and forced-native 0/2014/21/2035. Host precondition verified independently (Jellyfin.Api.dll present in /tmp/arrtags-14.3/jellyfin; /tmp/arrtags-14.3/console.log logs 'Jellyfin version: 12.0.0'). Skip taxonomy confirmed from a TRX run: 66 = 20 host + 45 native + 1 non-canonical, matching the release document."
+    }
+  ],
+  "tests_checked": [
+    "Default suite, repository tree with the archive present: ./build.sh test x4 -> all 'Failed: 0, Passed: 1927, Skipped: 66, Total: 1993'.",
+    "Default suite with the archive moved out of artifacts/: ./build.sh test -> 'Failed: 0, Passed: 1924, Skipped: 69, Total: 1993'; archive restored and re-hashed to 50580499...0762.",
+    "Host-guarded suite: ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin ./build.sh test -> 'Failed: 0, Passed: 1947, Skipped: 46, Total: 1993'.",
+    "Forced-native suite: LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH/XDG_DATA_DIRS under the probe sysroot -> five runs, four at 'Failed: 0, Passed: 2014, Skipped: 21, Total: 2035' and one at 2,011/24/2,035 (see 21.3-R4).",
+    "Skip-taxonomy TRX audit of the default tier (66 NotExecuted results) and of the forced-native tier (21 NotExecuted), including per-reason message counts and skip-name lists.",
+    "Clean reproducibility build: fresh git export -> restore/build/package -> hash, size and entry comparison (21.3 acceptance criterion 1).",
+    "scripts/check-docs.sh (exit 1 on the single reviewer-pairing line; all other sections ok, including the artifact-identity section).",
+    "scripts/render-docs-state.cs -- --check via check-docs.sh section 1: 'ok: generated status blocks are current; plan state is consistent'."
+  ],
+  "research_checked": [
+    "Pinned-host precondition independently confirmed rather than taken from the report: /tmp/arrtags-14.3/jellyfin/Jellyfin.Api.dll exists (677,376 bytes) and /tmp/arrtags-14.3/console.log records '[INF] Main: Jellyfin version: 12.0.0'.",
+    "Forced-native probe sysroot /tmp/arrtags-skia-probe/sysroot/usr/lib exists and contains the native dependency chain used by the recorded tier.",
+    "scripts/write-manifest.cs re-run against build.yaml (--timestamp normalised) reproduced the committed 1.2.0.0 manifest entry byte-for-byte, confirming the manifest's description/overview/changelog/targetAbi derive from build.yaml and the checksum/sourceUrl were passed correctly.",
+    "docs/planning/v1.2.md section 9 (verification requirements) read to confirm the only 21.3-relevant bullet is 'Reproducible build/package at the v1.2 version (1.2.0.0)'; the live-host and security-review bullets belong to 21.4/21.5.",
+    "docs/plan/README.md single-writer table and docs/agent-contracts.md report-path/attempt rules consulted to confirm the worker's state.json/PLANS.md edits were in scope and that this report is written to the default path as attempt 1."
+  ],
+  "documentation_checked": [
+    "docs/release/build-and-release.md - full diff plus the pinned-version table, build/test/package commands, clean-checkout evidence, release artifact identity, entry table, Jellyfin plugin repository, verification steps, and checklist preamble.",
+    "manifest.json - jq parse, 1.2.0.0-first ordering, checksum vs md5sum of the artifact, targetAbi 12.0.0.0, v1.2.0 sourceUrl, retention of 1.1.0.0 and 1.0.1.0, and equality with build.yaml fields.",
+    "README.md - manual-install package/tag/folder renamed to ArrTags_1.2.0.0.zip / v1.2.0 / <plugins>/ArrTags_1.2.0.0/; no other README change.",
+    "docs/testing/jellyfin-12-musl-test-host.md - only the task 7.3 reproduction step (package name and install folder); the v1.1 live-matrix section at line 289 is untouched and no v1.2 live-matrix results were added (correctly deferred to 21.4).",
+    "PLANS.md - 21.3 checkbox ticked; 21.4-21.6 still unticked; milestone table is generated and consistent.",
+    "docs/plan/state.json - updated_utc refreshed, 21.3 done=true with the three report paths (worker, reviewer, test-quality), current_release and releases[].status untouched (1.1.0.0 / PLANNED); no v1.2.0 tag exists (git tag -l confirms only v1.2.0-phase* tags).",
+    "Cross-document sweep: every remaining '1.1.0.0'/'v1.1.0' mention in the touched current-state docs is historical and correct; the v1.1 matrix survives in state.json, docs/changelog/v1.1.0.md and docs/limitations/accepted.md.",
+    "scripts/check-docs.sh sections 1-9 (generated blocks, stubs, decisions index, limitations index, architecture/data-model indexes, artifact identity, doc budget, link resolution, agent report contracts)."
+  ],
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

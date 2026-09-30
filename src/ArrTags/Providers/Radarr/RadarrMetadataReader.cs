@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Matching;
 using ArrTags.Media;
@@ -28,13 +29,17 @@ namespace ArrTags.Providers.Radarr;
 /// that exceeds the configured record or byte bound, or a bulk file read that
 /// fails, keeps the existing direct read unchanged. The cache is never
 /// authoritative: a missing or expired set is re-read from the provider, and no
-/// provider conditional request or revision token is used.
+/// provider conditional request or revision token is used. When the bounded
+/// diagnostics counters (ADR-025) are supplied, a read served by a retained
+/// cache entry records a cache hit and a read that reaches the provider records
+/// a cache miss.
 /// </remarks>
 public sealed class RadarrMetadataReader : IArrMetadataReader
 {
     private readonly IArrReadClientFactory _clients;
     private readonly IArrTagsLog<RadarrMetadataReader>? _log;
     private readonly ArrInventoryCacheProvider? _inventory;
+    private readonly DiagnosticsMetrics? _metrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RadarrMetadataReader"/> class.
@@ -42,15 +47,18 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
     /// <param name="clients">The connection-scoped read client factory.</param>
     /// <param name="log">The optional bounded, secret-free matching-boundary log.</param>
     /// <param name="inventory">The optional bounded provider inventory cache (ADR-018); when absent the reader keeps the direct provider read.</param>
+    /// <param name="metrics">The optional bounded diagnostics counters (ADR-025); when absent no cache hit/miss counter is recorded.</param>
     /// <exception cref="ArgumentNullException">The factory is <see langword="null"/>.</exception>
     public RadarrMetadataReader(
         IArrReadClientFactory clients,
         IArrTagsLog<RadarrMetadataReader>? log = null,
-        ArrInventoryCacheProvider? inventory = null)
+        ArrInventoryCacheProvider? inventory = null,
+        DiagnosticsMetrics? metrics = null)
     {
         _clients = clients ?? throw new ArgumentNullException(nameof(clients));
         _log = log;
         _inventory = inventory;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -71,6 +79,8 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
 
         if (cache is null)
         {
+            // The cache is unavailable, so the read has to reach the provider.
+            _metrics?.RecordCacheMiss();
             var libraryResult = await client.GetMoviesAsync(cancellationToken).ConfigureAwait(false);
             if (!libraryResult.IsSuccess || libraryResult.Value is null)
             {
@@ -84,6 +94,7 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
         {
             // A fresh or bounded last-known-good observation set serves every
             // work item in the window without a provider library read.
+            _metrics?.RecordCacheHit();
             return ReadFromObservations(identity, connection, cached.Records);
         }
 
@@ -94,9 +105,13 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
         {
             if (cache.TryGet(connection.ConnectionId, DateTimeOffset.UtcNow, out cached) && cached is not null)
             {
+                // The population another work item completed serves this read.
+                _metrics?.RecordCacheHit();
                 return ReadFromObservations(identity, connection, cached.Records);
             }
 
+            // The cache could not serve the read, so it reaches the provider.
+            _metrics?.RecordCacheMiss();
             population = await PopulateAsync(connection, client, cache, cancellationToken).ConfigureAwait(false);
         }
 
@@ -347,10 +362,13 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
     }
 
     /// <summary>
-    /// Writes one bounded, secret-free matching-boundary record. Only the
-    /// Jellyfin item identifier, the provider kind, the bounded match status and
-    /// method, and the bounded ambiguity reason are emitted; the provider DTO,
-    /// the API key, and the request are never available here (ADR-020 clause 4).
+    /// Writes one bounded, secret-free matching-boundary record. Only the bounded
+    /// log subject (the primary media file name when a path is available, and
+    /// otherwise the Jellyfin item identifier; ADR-026), the provider kind, the
+    /// bounded match status and method, and the bounded ambiguity reason are
+    /// emitted; the provider DTO, the API key, the request, and any directory or
+    /// full path are never available here (ADR-020 clause 4 as amended by
+    /// ADR-026).
     /// </summary>
     private void LogMatch(MediaIdentity identity, ArrConnection connection, MediaMatch match)
     {
@@ -359,12 +377,13 @@ public sealed class RadarrMetadataReader : IArrMetadataReader
             return;
         }
 
+        var subject = LogSubject.Create(identity.JellyfinItemId, identity.MediaLocation?.PrimaryPath);
         var reason = match.AmbiguityReason is { } ambiguity ? " Reason: " + ambiguity : string.Empty;
         _log.Write(
             LogLevel.Debug,
             ArrTagsLogEvent.MatchResolved,
             FormattableString.Invariant(
-                $"Match for Jellyfin item {identity.JellyfinItemId:D} via {connection.Provider.Kind.ToApiName()} resolved to {match.Status} ({match.MatchMethod}).{reason}"));
+                $"Match for Jellyfin item {subject} via {connection.Provider.Kind.ToApiName()} resolved to {match.Status} ({match.MatchMethod}).{reason}"));
     }
 
     /// <summary>

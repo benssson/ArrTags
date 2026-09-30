@@ -1,0 +1,230 @@
+{
+  "subject": "ADR-022 clause 3 conformance: the accepted (SortName, itemId) total-order seek key and resume capability for F4 / task 19.1, assessed against the pinned Jellyfin 12.0.0 host order",
+  "reviewer_status": "CHANGES_REQUIRED",
+  "decision_of_record": "ADR-022 as originally written (docs/decisions/ADR-022.md). ADR-029 and the experimental F4 acceptance-criterion amendment were explicitly rejected by the user and are NOT inputs to adopt. Recommendations below are advisory; the amendment is for the user/orchestrator to decide.",
+  "findings": [
+    {
+      "id": "AR-ADR022C3-01",
+      "severity": "HIGH",
+      "status": "open",
+      "area": "ADR-022 clause 3: key composition / ordering / resume mechanism",
+      "description": "ADR-022 clause 3 asserts the candidate enumerator orders by SortName ascending with item id ascending as a unique tie-break (a total order), and gains a resume capability returning the page strictly after a (SortName, itemId) key, via a host query predicate where supported or a bounded linear skip. The pinned host does not provide either the stated order or a strictly-after-key predicate. Its effective order is SortName ASC, Name ASC (raw item Name, not the item id); no ItemSortBy member or OrderBy configuration yields an identifier tie-break; and no property on InternalItemsQuery/IItemRepository expresses an after-key/keyset/seek predicate. Therefore clause 3's total-order-plus-seek mechanism is not implementable as written, and task 19.1 cannot conform to it. This directly contradicts the prior review resolution of AR-V12-02 (docs/reviews/architecture/v1.2-plan.attempt-2.json), which closed the cursor-stability finding on the strength of clause 3's own wording; that resolution rested on the unverified host-order assumption the new evidence refutes. The clause-3 (bounded linear skip at run start) branch, however, is realizable.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json: conclusion ('The pinned Jellyfin 12.0.0 host does NOT order the ArrTags candidate query by (SortName, itemId)'), answers.1_effective_order, answers.2_identifier_stable=false, answers.3_resume_capability, answers.4_clause_3_realizability, findings F1-F10",
+        "docs/decisions/ADR-022.md clause 3 lines 75-88",
+        "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs:52-63 (CreateQuery sets only Recursive, IncludeItemTypes, OrderBy SortName)",
+        "src/ArrTags/Media/IMediaLibraryEnumerator.cs:24-30 (EnumerateCandidates(int startIndex, int maxItems), the integer-offset contract the cursor must replace)",
+        "docs/reviews/architecture/v1.2-plan.attempt-2.json finding AR-V12-02 (status: resolved) - now contradicted",
+        "docs/planning/v1.2.md Goal F4 decision and acceptance criteria; PLANS.md Phase 19 acceptance"
+      ],
+      "document_to_change": "docs/decisions/ADR-022.md (amend clause 3 via a new amending ADR; do not rewrite ADR-022 text) and docs/architecture/08-reconciliation-and-update-flow.md (state the host's actual candidate order and the realizable resume)",
+      "recommended_action": "Amend clause 3 minimally, as drafted in this report's amendment_prose: keep the persisted bounded (SortName, itemId) record and its Cache authority, and change only (a) the stated host order to SortName ASC, Name ASC, (b) the resume mechanism to the clause's own bounded-linear-skip-at-run-start branch (no host predicate exists), and (c) the key semantics to an ArrTags-side identity anchor located by scanning the host order and matching the record's unique itemId (SortName as boundary hint/diagnostic). Do not implement 19.1 against the unamended clause 3."
+    },
+    {
+      "id": "AR-ADR022C3-02",
+      "severity": "HIGH",
+      "status": "open",
+      "area": "F4 acceptance criterion: per-run boundedness",
+      "description": "Goal F4's acceptance criterion 'cover the whole scope over time (round-robin) with one run still bounded' cannot be met without a page-reach/offset bound on this host. No supported resume primitive exists, so every implementable mechanism must either locate the boundary item by scanning host-ordered pages from offset 0 (cost O(offset) ordered rows produced and discarded, translated to SQL LIMIT/OFFSET) or persist a raw offset (rejected by clause 3, and SQLite OFFSET is O(offset) regardless). One run is therefore bounded by (server-wide candidate count N) + QueueCapacity enqueues, not by a constant; a full round-robin cycle performs cumulative skip work that is quadratic in N. 'Bounded' can be stated honestly only as bounded-by-scope-and-queue-capacity. The criterion text itself need not be rewritten; the amendment and the architecture must state the bound explicitly so the criterion is not read as a constant bound.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json: answers.3_resume_capability.bounded_cost ('O(offset) ordered rows produced and discarded per resume ... cumulative skip work over a cycle is O(N^2) in the candidate count N'), finding F10 (StartIndex -> SQL OFFSET, translation observed; row-work cost inference)",
+        "src/ArrTags/Configuration/OperationalLimits.cs:45 (QueueCapacity default 512), :121 (ReconciliationBatchSize default 100)",
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json finding F7 (the enumerator query is server-wide; N is server-wide movie+episode count, not the enabled-library count)",
+        "docs/planning/v1.2.md Goal F4 acceptance criteria lines 211-224; PLANS.md Phase 19 acceptance lines 219-227"
+      ],
+      "document_to_change": "The ADR-022 clause-3 amendment and docs/architecture/08-reconciliation-and-update-flow.md (record the explicit page-reach/offset bound); the v1.2/PLANS.md F4 criterion text is left intact",
+      "recommended_action": "State in the amendment that one run is bounded by N (the server-wide candidate count) plus QueueCapacity, that the resume scan is walked in bounded pages with cancellation and yields per clause 7, and that a full cycle is O(N^2/QueueCapacity) cumulative skip work. Register the bound as an accepted consequence; do not claim a constant per-run bound."
+    },
+    {
+      "id": "AR-ADR022C3-03",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "ADR-022 clause 7 / ADR-004 bounds: cumulative skip cost and server-wide offset domain",
+      "description": "The bounded-linear-skip resume pays O(offset) ordered-row work per run and, because the offset domain is the server-wide movie+episode candidate set (the enumerator query sets no ParentId/TopParentIds and ArrTags applies library scope afterwards), the cost is computed over more items than the enabled-library scope actually being reconciled. For large episode libraries a late-cycle resume scans a large prefix every run. This is a performance/operational risk, not a correctness failure, but it should be registered as a residual limitation rather than silently borne. If the cost proves unacceptable in representative load, scoping the enumerator per enabled library and keeping one cursor per library (cycling libraries) would shrink the offset domain; that is a larger change to clause 4's single fixed record and to the enumerator query and is out of scope for the minimal amendment.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json findings F7, F10 and risks[1] (MEDIUM: linear-skip O(offset)/O(N^2))",
+        "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs:52-63 (no ParentId/TopParentIds)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:126-218 (whole-scope loop; CountCandidates progress denominator)",
+        "docs/decisions/ADR-004.md (foundation operational limits); docs/architecture/12-performance-and-operational-limits.md"
+      ],
+      "document_to_change": "docs/limitations/open.md (new residual entry recorded when F4 is resolved) and docs/architecture/08-reconciliation-and-update-flow.md",
+      "recommended_action": "Register the per-run O(offset) / per-cycle O(N^2/QueueCapacity) skip cost and the server-wide offset domain as residual limitations of the F4 mechanism. Note per-library enumerator scoping with per-library cursors as a possible future mitigation, not part of this amendment."
+    },
+    {
+      "id": "AR-ADR022C3-04",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "ADR-022 clause 3: stability guarantee under a non-total host order",
+      "description": "The host's (SortName, Name) order is not a strict total order: both columns are nullable and have no unique index, and rows that tie on the pair have no host-guaranteed relative order. If a page boundary falls inside such a tie group, the host may return the tied rows in different relative order across separate calls, so an item can be re-covered or (if the host's order is stable for that tie) persistently skipped across a cycle even though the library did not change. A client-side item-id sort within a fetched page cannot repair this because the host selects page membership using (SortName, Name) before ArrTags sees the rows. This narrows clause 3's 'no stable item is skipped across a full cycle' guarantee; exact-pair ties are rare but real.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json finding F8 and risks[2] (MEDIUM: tied rows have no host-guaranteed order)",
+        "docs/decisions/ADR-022.md clause 3 lines 81-88 ('no stable item is skipped across a full cycle')",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/BaseItemEntity.cs (Name, SortName nullable); ModelConfiguration/BaseItemConfiguration.cs (no unique index on SortName/Name)"
+      ],
+      "document_to_change": "The ADR-022 clause-3 amendment and docs/limitations/open.md",
+      "recommended_action": "State in the amendment that coverage is guaranteed for rows strictly ordered by (SortName, Name) and is best-effort for rows that tie on the exact pair; register the tie-boundary case as a residual limitation. Do not claim a strict total order."
+    },
+    {
+      "id": "AR-ADR022C3-05",
+      "severity": "LOW",
+      "status": "open",
+      "area": "ADR-022 clause 3: host-order stability across Jellyfin versions",
+      "description": "The host order is produced by an internal implementation detail (BaseItemRepository.ApplyOrder / OrderMapper) with no documented plugin compatibility promise. A future Jellyfin upgrade could change the effective order (including the tie-break), which would not break a scan-and-locate resume's correctness but would change which items are covered when and could invalidate any assumption about ordering. The amendment should be explicit that the cursor is best-effort and self-healing (reset to start when the anchor cannot be located, per clause 5) rather than relying on cross-version ordering stability.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json api_classification and risks[3] (LOW, noted)",
+        "docs/decisions/ADR-022.md clause 5 (missing/torn/out-of-range resets to start)",
+        "GOALS.md ('Avoid relying on undocumented or version-specific internals where a supported API is available')"
+      ],
+      "document_to_change": "The ADR-022 clause-3 amendment and docs/architecture/08-reconciliation-and-update-flow.md",
+      "recommended_action": "State that the resume uses only the supported ILibraryManager query surface (StartIndex/Limit/OrderBy) and locates the anchor by identity, so a host ordering change degrades to a rescan/restart rather than a wrong result; require reset-on-unlocatable-anchor."
+    },
+    {
+      "id": "AR-ADR022C3-06",
+      "severity": "LOW",
+      "status": "open",
+      "area": "ADR-022 clause 3: 'query predicate where the host query supports one' branch",
+      "description": "Clause 3 offers a host-query-predicate branch as the primary seek and the bounded linear skip as the fallback. The host supports no after-key predicate for the key. The only order-relative query controls are StartIndex/Limit offset paging (a count, not a key), the AdjacentTo window (which materialises the whole ordered id set and is unbounded), and the by-name range filters, which compare the lower-cased SortName column only and are not a keyset cursor on (SortName, itemId) or even (SortName, Name). The predicate branch should be withdrawn in the amendment so 19.1 does not attempt an unsupported host seek.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json findings F5, F6 and answers.3_resume_capability.available_order_relative_controls",
+        "docs/decisions/ADR-022.md clause 3 lines 79-81"
+      ],
+      "document_to_change": "docs/decisions/ADR-022.md (amendment) and docs/architecture/08-reconciliation-and-update-flow.md",
+      "recommended_action": "Withdraw the unsupported predicate branch and state the bounded linear skip as the sole realizable resume; note the SortName range filters as unverified and not adopted."
+    },
+    {
+      "id": "AR-ADR022C3-07",
+      "severity": "HIGH",
+      "status": "open",
+      "area": "Decision ownership: overlap with the rejected ADR-029 (identity-anchored resume)",
+      "description": "Because (SortName, Name) is non-unique and no keyset predicate exists, the only implementable correction locates the boundary item by its unique identifier - i.e. it is functionally an identity-anchored resume. The delegation states the experimental ADR-029 ('identity-anchored resume') was explicitly rejected by the user and is not an input. ADR-029 is not present in this repository (no ADR-029 file and no reference to it is committed on branch v1.2), so its other clauses could not be read or compared. This report therefore recommends an amendment confined to ADR-022 clause 3 that keeps ADR-022's persisted record shape, Cache authority, scope-reset rule, trigger exclusion, and per-run bounds - but the user/orchestrator must explicitly confirm whether that minimal amendment is acceptable or is considered a resubmission of the rejected ADR-029 direction.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json answers.4_clause_3_realizability.cursor_key_mismatch and finding F8 (id is the only unique anchor)",
+        "docs/reviews/architecture/v1.2-plan.attempt-2.json (resolved AR-V12-02 relied on clause 3's now-refuted wording)",
+        "repository search: no docs/decisions/ADR-029.md and no committed 'ADR-029' reference on branch v1.2"
+      ],
+      "document_to_change": "Not a document change; a decision confirmation. The new amending ADR is the mechanism if confirmed.",
+      "recommended_action": "Present this report's amendment_prose to the user/orchestrator for explicit confirmation before task 19.1 proceeds. If the user considers identity anchoring itself rejected, the F4 mechanism cannot be implemented on this host without a further user decision (e.g. accepting a different, larger change such as client-side whole-scope materialisation, which contradicts clause 7 and the performance goals)."
+    },
+    {
+      "id": "AR-ADR022C3-08",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "Possible optimization: SortName range-filter seek",
+      "description": "NameStartsWithOrGreater/NameLessThan filter the lower-cased SortName column and could reduce the resume scan's offset domain to the boundary SortName group. The research note classifies them as not a keyset for (SortName, Name)/(SortName, itemId), their collation relative to the ORDER BY is unresolved, and nullable SortName handling is unverified. This report does not recommend them as the mechanism or as an assumed optimization; if pursued, a jellyfin-expert verification of collation/null behavior and page-boundary correctness is required first.",
+      "evidence": [
+        "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json findings F6 and open_uncertainties (collation not resolved)"
+      ],
+      "document_to_change": "None at this time",
+      "recommended_action": "Do not adopt without a separate jellyfin-expert verification; keep as a possible future mitigation only."
+    }
+  ],
+  "options_analysis": [
+    {
+      "id": "M1",
+      "name": "Identity-anchored resume (locate the boundary item by its unique itemId in the host's own enumeration order)",
+      "description": "Persist the boundary item's id (with SortName retained in the (SortName, itemId) record as a boundary hint/diagnostic). Resume: walk the host-ordered pages from offset 0 until the page containing the boundary id is found, then return the page strictly after it. This is the clause-3 'bounded linear skip at run start' branch, made concrete.",
+      "conformance": "Preserves ADR-022 clauses 1, 2, 4, 5, 6, 7 unchanged, including the persisted (SortName, itemId) record, Cache authority, scope-reset, trigger exclusion, and per-run bounds. Amends clause 3's mechanism/ordering/key-semantics claims only.",
+      "per_run_bound": "Resume scan O(offset) ordered rows, walked in bounded ReconciliationBatchSize pages with cancellation and yields; enqueues <= QueueCapacity; run stops at first Overflow/Stopped. Bounded by N + QueueCapacity, not constant. Cumulative over a cycle O(N^2/QueueCapacity).",
+      "mutation": "Robust to add/remove before the anchor because location is by identity, not offset (satisfies clause 3's stated intent). If the anchor itself is removed/ineligible, it cannot be located -> clause-5 reset to start. Ties on the exact (SortName, Name) pair remain an unresolved host-order risk (finding AR-ADR022C3-04).",
+      "coalescing": "Fully compatible. The run walks host order from the anchor; Accepted/Coalesced/InFlight are covered and continue; Overflow/Stopped stop and the cursor advances only over the covered prefix (clause 2). WorkItemKey and single-flight are untouched (clause 6).",
+      "verdict": "RECOMMENDED as the minimal conformant correction. Functionally the rejected ADR-029's identity-anchored mechanism - requires explicit user confirmation (finding AR-ADR022C3-07)."
+    },
+    {
+      "id": "M2",
+      "name": "Host-order (SortName, Name) cursor with bounded linear skip",
+      "description": "Persist the host's actual (SortName, Name) key and resume by scanning host-ordered pages to the first row strictly after it.",
+      "conformance": "Preserves clauses 1/2/4/5/6/7 but changes the key composition from (SortName, itemId) to (SortName, Name).",
+      "per_run_bound": "Same O(offset) skip as M1.",
+      "mutation": "Weaker than M1: (SortName, Name) is non-unique, so 'strictly after the key' is ill-defined when multiple rows share it; the boundary cannot be disambiguated by a unique value. Add/remove before the boundary still shifts what 'the key' means.",
+      "coalescing": "Compatible, but the indistinct page boundary makes the covered-prefix bookkeeping less sound than M1.",
+      "verdict": "NOT RECOMMENDED: strictly less correct than M1 with no benefit. The pair would in practice need the itemId anyway to disambiguate, which is M1."
+    },
+    {
+      "id": "M3",
+      "name": "Offset paging with key re-seek (persist an integer offset plus the key)",
+      "description": "Store the absolute StartIndex at which the anchor was last found and resume directly there, re-verifying by scanning from 0.",
+      "conformance": "Conflicts with clause 3 ('not an integer offset') and clause 4; the stored offset is precisely the rejected integer-offset mechanism.",
+      "per_run_bound": "No material gain: SQLite OFFSET is O(offset) internally, so the DB cost equals M1's scan; re-verification adds a full scan.",
+      "mutation": "Unsafe unless re-verified every run (which makes the offset redundant).",
+      "coalescing": "Compatible.",
+      "verdict": "REJECTED, consistent with ADR-022's rejected-alternatives ('keep the integer-offset cursor')."
+    },
+    {
+      "id": "M4",
+      "name": "Coarse SortName range-filter seek (NameStartsWithOrGreater/NameLessThan) plus bounded skip within the SortName group",
+      "description": "Use the by-name range filters to skip the prefix by SortName, then offset/locate within the group.",
+      "conformance": "Keeps (SortName, itemId) but relies on a predicate the evidence says is not a keyset; the exact key cannot be sought because the filters compare SortName only.",
+      "per_run_bound": "Could reduce cumulative cost from O(N^2/B) toward O(N * tieGroup), but unverified.",
+      "mutation": "Unverified collation and null-handling could silently skip or re-cover; correctness not established.",
+      "coalescing": "Compatible if it worked.",
+      "verdict": "NOT ADOPTED without a separate jellyfin-expert verification (finding AR-ADR022C3-08)."
+    },
+    {
+      "id": "M5",
+      "name": "Per-library (ParentId/TopParentIds-scoped) enumerator with one cursor per enabled library",
+      "description": "Shrink the offset domain to each enabled library and cycle libraries, keeping one cursor per library.",
+      "conformance": "Changes the enumerator's server-wide query and clause 4's single fixed record into a bounded per-scope set, so it is more than the minimal clause-3 amendment.",
+      "per_run_bound": "Reduces O(offset) to the per-library candidate count and the cumulative cycle cost accordingly.",
+      "mutation": "Same per-library mutation properties as M1.",
+      "coalescing": "Compatible.",
+      "verdict": "Possible future mitigation of the M1/ADR-ADR022C3-03 cost; out of scope for the minimal amendment."
+    },
+    {
+      "id": "M6",
+      "name": "Client-side whole-scope materialisation then keyed paging",
+      "description": "Fetch all candidate ids and sort client-side by (SortName, itemId), then page by key.",
+      "conformance": "Contradicts clause 7's bounded-per-run requirement and the GOALS.md performance goals (unbounded per-run memory and ordering work).",
+      "per_run_bound": "Unbounded.",
+      "mutation": "A snapshot is stale immediately under mutation.",
+      "coalescing": "Irrelevant.",
+      "verdict": "REJECTED (unbounded; not conformant)."
+    }
+  ],
+  "f4_criterion": {
+    "question": "Can Goal F4's acceptance criterion 'cover the whole scope over time (round-robin) with one run still bounded' be met unbounded by any implementable mechanism on this host?",
+    "answer": "No. On the pinned host every implementable mechanism necessarily carries a page-reach/offset bound.",
+    "explanation": "There is no supported keyset/after-key predicate and no identifier-stable host order. The one realizable resume is a bounded linear skip: scan host-ordered pages from offset 0 to the boundary anchor, then page after it. A raw offset (the only way to avoid the scan) is rejected by clause 3 and is O(offset) at the SQLite layer anyway. So one run is bounded by the scope size plus QueueCapacity, not by a constant: the resume reaches up to the anchor's offset (<= N, the server-wide movie+episode candidate count) in bounded pages, and one run enqueues at most QueueCapacity. A full round-robin cycle of N/QueueCapacity runs performs cumulative skip work O(N^2/QueueCapacity). The correct reading of 'one run still bounded' is 'bounded by the scope size and the queue capacity with an O(offset) page-reach resume', and that bound must be stated explicitly; it is not satisfiable with a fixed/constant bound and not satisfiable with no bound at all."
+  },
+  "amendment_prose": "Amendment to ADR-022 clause 3 (to be recorded by a new amending ADR; ADR-022 text is not rewritten).\n\nContext. The pinned Jellyfin 12.0.0 host (Jellyfin.Server.Implementations 12.0.0.0; source revision 6c073e19 = tag v12.0) applies SortName ASC, Name ASC to the ArrTags candidate query, where Name is the raw item name and is neither unique nor an identifier. No supported OrderBy/ItemSortBy configuration yields an identifier tie-break, and no property on the supported query surface expresses a 'strictly after key' / keyset / seek predicate; the only order-relative controls are StartIndex/Limit offset paging (translated to SQL LIMIT/OFFSET) and the AdjacentTo window, which materialises the whole ordered id set and is unbounded. (Evidence: docs/research/jellyfin-expert/reconciliation-cursor-host-order.json, findings F1-F10.) Clause 3's stated total order (SortName, itemId) and its host-query-predicate seek therefore cannot be realized as written.\n\nAmended clause 3 - Stable cursor identity. The cursor remains the opaque, bounded (SortName, itemId) position defined by clauses 3 through 5, with the following corrections, which leave the persisted record shape, its Cache authority, the scope-reset rule, the trigger exclusion, and the per-run bounds of clauses 1, 2, 4, 5, 6, and 7 unchanged:\n\n1. The host does not order the candidate query by (SortName, itemId). Its effective order is SortName ascending with the raw Name ascending as the tie-break. No supported configuration yields an identifier tie-break, and the (SortName, Name) order is not guaranteed to be a strict total order. ArrTags does not claim to impose a total order on the host's pages; it locates a known boundary item within the host's own order.\n\n2. No host query predicate returns the page strictly after a supplied key. The only realizable resume is the bounded linear skip at run start: the enumerator gains a resume capability that walks the host-ordered pages from the start of the order until it locates the record's boundary item, then returns the page strictly after it. The unsupported query-predicate branch is withdrawn (the by-name range filters compare the SortName column only and are not a keyset cursor for (SortName, Name) or (SortName, itemId)).\n\n3. The record's (SortName, itemId) is an ArrTags-side anchor located by scanning the host order and matching the record's unique itemId; the SortName component is a boundary hint and diagnostic, not the ordering authority. Because the locate step matches the unique item id, an item added or removed before the cursor does not shift the resume point: an item added after the cursor is covered in the current cycle, and an item added before it is covered at the next wrap (or sooner after a scope reset). The locate scan walks the host order in bounded pages and checks cancellation between and inside pages, so clause 7's per-run bounds are preserved. The run's resume work is proportional to the boundary item's position in the host order (and the host enumerates server-wide movie and episode candidates), so one run is bounded by the scope size plus QueueCapacity, not by a constant; a full round-robin cycle performs cumulative skip work quadratic in the candidate count. This is accepted as the cost of the only host-supported mechanism.\n\n4. If the boundary item cannot be located (it was removed or became ineligible, or the host order changed), the cursor resets to the start per clause 5 rather than failing the run; the mechanism does not rely on cross-version ordering stability.\n\n5. Coverage is guaranteed for rows strictly ordered by (SortName, Name) and is best-effort for rows that tie on that exact pair, which have no host-guaranteed relative order. A page boundary inside such a tie can re-cover, or in a persistently ordered tie skip, an item across a cycle; this is a registered residual limitation, not a covered case.\n\nUnchanged. Clauses 1 (enqueue-outcome vocabulary), 2 (cursor advance rule), 4 (storage: single bounded, versioned, integrity-checked Cache record of fixed kind and id, carrying only the scope identity and the opaque (SortName, itemId) position), 5 (reset on scope change and missing/torn/out-of-range), 6 (trigger exclusion), and 7 (per-run bounds) stand. The rejected alternatives (stale/unknown-only enqueue, direct pipeline drive, boolean-count advance, integer-offset cursor) remain rejected.",
+  "residual_limitations": [
+    "Per-run resume is O(offset) ordered rows and a full cycle is O(N^2/QueueCapacity) cumulative skip work; N is the server-wide movie+episode candidate count because the enumerator query is not library-scoped (AR-ADR022C3-03).",
+    "Rows tying on the exact (SortName, Name) pair have no host-guaranteed relative order, so a page boundary inside such a tie can re-cover or persistently skip an item across a cycle (AR-ADR022C3-04).",
+    "Removing or making ineligible the boundary anchor resets the cursor to the start, re-covering one cycle's prefix (a bounded but visible cost).",
+    "The host order is an internal implementation detail with no plugin compatibility promise; the mechanism degrades to a rescan/restart, not a wrong result, if it changes (AR-ADR022C3-05).",
+    "The only implementable correction is functionally identity-anchored and overlaps the rejected ADR-029 mechanism; explicit user/orchestrator confirmation is required before 19.1 proceeds (AR-ADR022C3-07)."
+  ],
+  "recommended_mechanism": "M1 - identity-anchored resume realized as ADR-022 clause 3's own bounded-linear-skip-at-run-start branch, with the persisted bounded (SortName, itemId) Cache record, scope-reset rule, trigger exclusion, and per-run bounds unchanged. Recorded via a new amending ADR confined to clause 3 (see amendment_prose). Not to be implemented until the user/orchestrator confirms the amendment and resolves the ADR-029-overlap question (AR-ADR022C3-07).",
+  "documents_checked": [
+    "AGENTS.md",
+    "GOALS.md",
+    "docs/INDEX.md",
+    "docs/status.md",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/agent-contracts.md",
+    "docs/planning/v1.2.md",
+    "docs/architecture/00-index.md",
+    "docs/architecture/08-reconciliation-and-update-flow.md",
+    "docs/decisions/00-index.md",
+    "docs/decisions/ADR-004.md",
+    "docs/decisions/ADR-022.md",
+    "docs/limitations/00-index.md",
+    "docs/limitations/open.md",
+    "docs/reviews/architecture/v1.2-plan.json",
+    "docs/reviews/architecture/v1.2-plan.attempt-2.json"
+  ],
+  "decisions_checked": [
+    "ADR-004 (foundation operational limits: QueueCapacity, ReconciliationBatchSize)",
+    "ADR-018 (library-refresh-driven reconciliation; the enumerator is on this path)",
+    "ADR-020 (logging redaction contract for the bounded reconciliation log)",
+    "ADR-022 (the subject; clause 3)",
+    "ADR-023 (F6, Phase 19 sibling; not re-opened)",
+    "ADR-029 (referenced by the delegation; NOT present in this repository and not read)"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/reconciliation-cursor-host-order.json (the authoritative host-order evidence)",
+    "docs/research/jellyfin-12-architecture.md (referenced via the v1.2 plan research-evidence list; not re-derived here)"
+  ],
+  "recommendation": "An amendment to ADR-022 clause 3 is required before task 19.1 can be implemented. The minimal conformant correction keeps the persisted bounded (SortName, itemId) Cache record, the scope-reset rule, the trigger exclusion, the enqueue-outcome vocabulary/cursor-advance rule, and the per-run bounds, and changes only clause 3's mechanism: state the host's actual order (SortName ASC, Name ASC), withdraw the non-existent host-predicate seek, and define the key as an ArrTags-side identity anchor located by scanning the host order and matching the unique itemId via the clause's own bounded-linear-skip-at-run-start branch. Goal F4's criterion is satisfiable only with an explicit page-reach/offset bound (one run bounded by the server-wide scope size plus QueueCapacity; a cycle is O(N^2/QueueCapacity) cumulative skip work); the criterion text need not change but the bound must be documented. Because the only implementable correction is functionally identity-anchored, and ADR-029 (identity-anchored resume) was rejected by the user, the amendment must be explicitly confirmed by the user/orchestrator, and the residual limitations (skip cost, server-wide offset domain, exact-pair tie ambiguity, host-order internal-detail risk) must be registered. Do not implement 19.1 against the unamended clause 3.",
+  "summary": "ADR-022 clause 3's (SortName, itemId) total-order seek key and strictly-after-key resume are not implementable on the pinned Jellyfin 12.0.0 host (effective order SortName ASC, Name ASC; no identifier tie-break; no keyset predicate). An amendment is required. Recommended mechanism: identity-anchored resume realized as clause 3's own bounded-linear-skip-at-run-start branch, with the persisted (SortName, itemId) Cache record, scope reset, trigger exclusion, and per-run bounds unchanged. The F4 criterion necessarily carries a page-reach/offset bound: one run is bounded by the server-wide candidate count N plus QueueCapacity, and a full cycle costs O(N^2/QueueCapacity) cumulative skip work. Reviewer status: CHANGES_REQUIRED. The amendment is functionally close to the rejected ADR-029 identity-anchored resume, so explicit user/orchestrator confirmation is required before implementation."
+}

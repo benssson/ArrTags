@@ -1,0 +1,136 @@
+{
+  "task": "17.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Task 17.1 (bounded diagnostics metrics model + instrumentation) meets its acceptance criteria. The new src/ArrTags/Diagnostics model exposes exactly the ADR-025 clause 3 counter set (queue depth/in-flight, per-provider connection health, matching failures by bounded classification, cache hits/misses, render failures by bounded classification, stale-metadata transitions) with a fixed shape; every member type is an int/long count, a bounded enum, or one of the two fixed count records, with no string/path/item identity/provider payload/credential/SecretLease/array/collection member (inspected in the model source, not only the tests). Instrumentation is placed at existing bounded boundaries (inventory-cache decision in the Radarr/Sonarr readers; read outcome in ConcurrencyLimitedArrMetadataReader; match status and fresh-to-stale write in MetadataReconciliationProcessor; RenderFailed result in ArtworkGenerationCoordinator) and uses process-lifetime Interlocked/Volatile counters; no queue, coalescing, cache, configuration, save-path, endpoint, route, page, or dependency change was introduced. GetSnapshot() reads only in-memory counters and the existing lock-protected LibraryWorkQueue.Count/InFlightCount, performs no provider/render/library/I-O work, and is DI-resolvable. Build is 0 warnings / 0 errors and the default suite is Failed 0 / Passed 1780 / Skipped 63 / Total 1843, i.e. +24 passed / +24 total versus the 1819 baseline with no new skips (the two new files contain 24 cases and no Skip). Documentation/state (changelog, PLANS.md checkbox, state.json done/reports/updated_utc) is reconciled; phase 17 remains PLANNED and no gate/tag was applied. No blocking issues found.",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "17.1-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/di-wiring-evidence",
+      "summary": "The DI test resolves only DiagnosticsSnapshotProvider, not the readers/decorator/processor, so it does not directly assert that DiagnosticsMetrics is injected into the instrumented production graph.",
+      "detail": "DiagnosticsSnapshotTests.SnapshotProviderIsResolvableFromTheRegistratorWithoutProviderWork builds the real RegisterServices provider and resolves DiagnosticsSnapshotProvider (requires LibraryWorkQueue + DiagnosticsMetrics), which proves the provider is resolvable. It does not resolve RadarrMetadataReader/SonarrMetadataReader/ConcurrencyLimitedArrMetadataReader<T>/MetadataReconciliationProcessor to assert their private _metrics field is the shared singleton. This is covered by established container behavior plus existing project evidence: the same constructors already rely on optional registered parameters (ArrInventoryCacheProvider? inventory, IArrTagsLog<T>? log), and the ADR-018 inventory cache functions in production only because the container injects those optional services. Microsoft.Extensions.DependencyInjection injects a registered service into an optional parameter (and uses the default only when the service is unregistered). No behavioral gap is present; a direct assertion would strengthen regression evidence only. Not required for 17.1.",
+      "evidence": [
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:78-99,399-409 (singletons + optional-parameter registrations)",
+        "tests/ArrTags.Tests/DiagnosticsSnapshotTests.cs:220-246",
+        "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs:50-62 (pre-existing optional ArrInventoryCacheProvider?/log DI pattern)"
+      ],
+      "recommended_action": "Optionally add a DI-resolution assertion for the reader/decorator/processor _metrics field in a future task; not required for 17.1 acceptance."
+    },
+    {
+      "id": "17.1-F2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness/provider-health-semantics",
+      "summary": "Provider health reflects the last observed reconciliation-read outcome, not a scheduled probe; never-observed and unclassifiable both report Unknown.",
+      "detail": "The recorded value is Healthy on a successful read and ArrConnectionHealthMapping.FromErrorCode(error.Code) on a failed read, held in two slots bounded by ArrProviderKind. A provider that has never been read (or is disabled) reports Unknown, the same value an unclassified error maps to. No production code consumes ArrProviderClient.ProbeAsync, and ArrConnectionCatalog always constructs health as Unknown, so this read-outcome source is the only meaningful bounded source available. ADR-025 clause 3 requires bounded provider connection health, which is satisfied; the ambiguity is disclosed in the worker report known_limitations. Not a defect for 17.1.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/ConcurrencyLimitedArrMetadataReader.cs:81-93",
+        "src/ArrTags/Providers/ArrConnectionHealthMapping.cs:18-27",
+        "src/ArrTags/Providers/ArrConnectionCatalog.cs:59-70",
+        "docs/implementation/17.1/worker-report.json known_limitations[1]"
+      ],
+      "recommended_action": "None for 17.1; a scheduled probe or explicit never-observed state would require a new decision and is out of scope."
+    },
+    {
+      "id": "17.1-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "maintainability/shape-pinning",
+      "summary": "RenderFailureCounts uses an 18-argument positional constructor coupled to RenderFailureReason declaration order; the pinning test detects gaps/name drift but not a same-cardinality reorder of enum members.",
+      "detail": "DiagnosticsMetrics.CreateRenderFailureCounts passes ReadRenderFailure(reason) arguments in current enum order and the constructor assigns them positionally. DiagnosticsSnapshotTests.RenderFailureCountsExposeOneCountPerDeclaredReason asserts numeric contiguity and that the property-name set equals the enum-name set, which catches a gap or an added/removed reason but would not catch two members swapping positions while remaining contiguous. This is a latent future-maintenance risk, not a present correctness issue given the frozen enum, and the enum is documented as a bounded whole. The classification exposed is bounded and correct today.",
+      "evidence": [
+        "src/ArrTags/Diagnostics/DiagnosticsMetrics.cs:168-200",
+        "src/ArrTags/Diagnostics/RenderFailureCounts.cs:35-73",
+        "tests/ArrTags.Tests/DiagnosticsSnapshotTests.cs:71-93"
+      ],
+      "recommended_action": "No change required for 17.1; a future value-keyed mapping would be more robust if the enum ever grows/reorders."
+    },
+    {
+      "id": "17.1-F4",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "documentation/check-docs",
+      "summary": "scripts/check-docs.sh reported FAIL on the agent-pairing rule before this reviewer report existed; the failure is the expected worker/reviewer pairing and is resolved by persisting this report.",
+      "detail": "Running check-docs.sh on the worker-only tree produced: 'FAIL: task 17.1 has a worker report but no reviewer report'. All eight non-agent sections were ok. Persisting docs/implementation/17.1/reviewer-report.json satisfies the pairing; the check was re-run after this report was written and passed (see validation). This is the same documented pattern the worker cited for task 16.1.",
+      "evidence": [
+        "scripts/check-docs.sh output: FAIL agent contract check (task 17.1 worker report, no reviewer report)",
+        "docs/agent-contracts.md:23-24 (report pairing)",
+        "docs/implementation/17.1/reviewer-report.json (this file)"
+      ],
+      "recommended_action": "None; resolved by this report."
+    }
+  ],
+  "criterion_verification": [
+    {
+      "criterion": "A bounded, secret-free, fixed-shape snapshot model exists with the fixed counter set and no per-item array/unbounded collection (ADR-025 clauses 3-4).",
+      "result": "PASS",
+      "evidence": "DiagnosticsSnapshot has exactly nine public instance properties (QueueDepth, QueueInFlight, SonarrHealth, RadarrHealth, MatchingFailures, CacheHits, CacheMisses, RenderFailures, StaleMetadataTransitions). MatchingFailureCounts has exactly NotFound/Ambiguous/Unsupported. RenderFailureCounts has one long per declared RenderFailureReason (18, contiguous 0..17). DiagnosticsSnapshotTests.SnapshotExposesExactlyTheFixedCounterSet/MatchingFailureCountsExposeTheBoundedClassificationSet/RenderFailureCountsExposeOneCountPerDeclaredReason pin the exact sets; SnapshotGraphCarriesOnlyCountsAndBoundedEnums and SnapshotGraphExposesNoStringPathArrayOrCollectionCarrier recursively reject any non-count/bounded-enum member, string, array, or collection."
+    },
+    {
+      "criterion": "Every field type is a count or bounded enum; no string/path/item name/item id list/provider payload/credential/SecretLease value can appear.",
+      "result": "PASS",
+      "evidence": "Inspected the model source directly: DiagnosticsSnapshot properties are int, long, ArrConnectionHealth, MatchingFailureCounts, RenderFailureCounts. MatchingFailureCounts and RenderFailureCounts are long-only. DiagnosticsMetrics stores long[] keyed by RenderFailureReason, int[] keyed by ArrProviderKind, and long scalar counters; no Recording method accepts or stores a string/path/identity/payload/credential (RecordCacheHit/Miss, RecordMatchingFailure(MediaMatchStatus), RecordRenderFailure(RenderFailureReason), RecordProviderHealth(ArrProviderKind, ArrConnectionHealth), RecordStaleMetadata). No using of ArrTags.Secrets in the Diagnostics namespace."
+    },
+    {
+      "criterion": "Instrumentation is at existing bounded boundaries and adds bounded process-lifetime counters where none existed; no queue/coalescing/cache semantics changed (ADR-025 clause 5).",
+      "result": "PASS",
+      "evidence": "Cache hit/miss recorded at the existing inventory-cache decision in RadarrMetadataReader.ReadAsync (lines 80-116) and SonarrMetadataReader.ReadAsync; provider health at the existing ConcurrencyLimitedArrMetadataReader read outcome; matching classification and fresh-to-stale transition at MetadataReconciliationProcessor (lines 176-182 and 406-407); render failure at ArtworkGenerationCoordinator.GenerateAsync (lines 121-127). The only non-counter addition is a Volatile two-slot health registry bounded by ArrProviderKind. LibraryWorkQueue.cs, ArrInventoryCache, PluginConfiguration, OperationalLimits, and PluginConfigurationValidator have no diff; no new setting or save-path change."
+    },
+    {
+      "criterion": "GetSnapshot() is thread-safe, performs no provider/render/library/I-O work, and is DI-resolvable (17.2 will consume it).",
+      "result": "PASS",
+      "evidence": "DiagnosticsSnapshotProvider.GetSnapshot() = _metrics.Capture(_queue.Count, _queue.InFlightCount); LibraryWorkQueue.Count/InFlightCount are in-memory lock-protected ints (LibraryWorkQueue.cs:84-107). Capture copies Interlocked.Read counters and Volatile two health slots and allocates only the snapshot. Registration uses TryAddSingleton<DiagnosticsMetrics>() and a factory-backed TryAddSingleton<DiagnosticsSnapshotProvider>; DiagnosticsSnapshotTests.SnapshotProviderIsResolvableFromTheRegistratorWithoutProviderWork resolves it from the real registrator and reads an all-zero snapshot. CountersAreThreadSafeAndReportExactTotals runs 4096 concurrent increments of every path and asserts exact totals."
+    },
+    {
+      "criterion": "Unit tests cover the fixed shape/bounded set, counter increments at each boundary, and secret-freedom; determinism and meaningfulness.",
+      "result": "PASS",
+      "evidence": "24 new cases (8 DiagnosticsSnapshotTests + 16 DiagnosticsInstrumentationTests). The shape/secret guards are reflection-based and genuinely fail on a forbidden member (worker probes H/I/L, consistent with the test code). Increment tests use real boundary objects (RadarrMetadataReader + fake client for cold/warm cache; MetadataReconciliationProcessor for the five match statuses and once-only stale transition; ArtworkGenerationCoordinator for three render reasons plus the pass-through negative; the decorator for success plus four error codes). Assertions are exact counts and reject non-target classifications. No Skip is used in either new file."
+    },
+    {
+      "criterion": "Build passes with 0 warnings; default suite has no new failures/skips.",
+      "result": "PASS",
+      "evidence": "Re-ran '. /config/arrtags-env.sh && ./build.sh build' -> Build succeeded, 0 Warning(s), 0 Error(s). Re-ran '. /config/arrtags-env.sh && ./build.sh test' -> Passed! Failed: 0, Passed: 1780, Skipped: 63, Total: 1843. The delta vs the worker's 1756/1819 baseline is exactly the 24 new cases; no test file was deleted or skipped and the new files declare no Skip. ARRTAGS_JELLYFIN_HOST_DIR is unset, so the host-guarded run was correctly not performed and not claimed."
+    },
+    {
+      "criterion": "Documentation reconciliation: changelog 17.1 entry, PLANS.md checkbox 17.1, state.json done/report/updated_utc, phase 17 still PLANNED, no gate/tag.",
+      "result": "PASS",
+      "evidence": "docs/changelog/v1.2.0.md gains the '## Phase 17' section and '### Task 17.1' entry; PLANS.md line 155 is '- [x] 17.1 ...'; docs/plan/state.json task 17.1 has done=true, reports=[docs/implementation/17.1/worker-report.json], updated_utc=2026-09-25T23:44:32Z. state.json phase 17 status is PLANNED, and 'git tag --list' shows no v1.2.0-phase17 tag. render-docs-state reports status.md and PLANS.md up to date."
+    },
+    {
+      "criterion": "No overreach into 17.2/17.3/17.4: no endpoint/route/page markup/dependency, no persisted configuration change.",
+      "result": "PASS",
+      "evidence": "git status shows no controller/route file, no Configuration/config.html, no csproj/props/targets change; the changed set is exactly the model, one shared mapping helper, four instrumentation sites, two clients (mapping dedup), the registrator, tests, and the three documentation/state files. Configuration/OperationalLimits and the queue/cache have no diff. F3 remains open in docs/limitations and architecture section 12 pending 17.4."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build -> 0 warnings / 0 errors (re-run by reviewer).",
+    "./build.sh test -> Failed 0, Passed 1780, Skipped 63, Total 1843 (re-run by reviewer).",
+    "gs://workspace/ArrTags/tests/ArrTags.Tests/DiagnosticsSnapshotTests.cs (8 cases; shape, secret-freedom, queue capture, concurrency, DI).",
+    "tests/ArrTags.Tests/DiagnosticsInstrumentationTests.cs (16 cases; cache hit/miss, five matching statuses, once-only stale, three render reasons + pass-through negative, five health outcomes).",
+    "Scoped grep for 'TemporaryProbe' in src/ArrTags and tests/ArrTags.Tests: no source residue (only the worker report text).",
+    "Scoped grep for 'Skip' in the two new test files: none."
+  ],
+  "research_checked": [
+    "ADR-025 clauses 3-5 (docs/decisions/ADR-025.md) against the implemented model/instrumentation.",
+    "docs/planning/v1.2.md Goal F3 acceptance criteria and section 9 verification requirements.",
+    "PLANS.md Phase 17 objective/deliverables/acceptance criteria and Gate 17.",
+    "docs/architecture/12-performance-and-operational-limits.md F3 paragraph (still accurate until 17.4).",
+    "docs/architecture/11-failure-consistency-and-security-policy.md (no policy change required by 17.1).",
+    "Enum bounding verified in source: RenderFailureReason (contiguous 0..17), ArrProviderKind (Sonarr, Radarr), ArrConnectionHealth, MediaMatchStatus."
+  ],
+  "documentation_checked": [
+    "docs/changelog/v1.2.0.md Phase 17 / task 17.1 entry.",
+    "PLANS.md task 17.1 checkbox and milestone table (render-docs-state up to date).",
+    "docs/plan/state.json task 17.1 done/reports/updated_utc and phase 17 PLANNED (no gate/tag).",
+    "docs/status.md regenerated/current (render-docs-state: up to date).",
+    "docs/limitations/open.md F3 and architecture section 12 F3 remain accurate (F3 resolves at 17.4).",
+    "scripts/check-docs.sh: eight sections ok; agent contract check failed only on the missing reviewer report, re-run after persisting this report -> PASS."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

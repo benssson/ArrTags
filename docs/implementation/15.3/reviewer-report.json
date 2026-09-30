@@ -1,0 +1,96 @@
+{
+  "task": "15.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "IR-15.3-1",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "correctness/scope",
+      "summary": "The artwork log line now emits the result's bounded classification exactly when one is present, in a shape that distinguishes the three kinds, and omits it otherwise.",
+      "detail": "DescribeClassification(result) (src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs lines 160-178) returns ' (PassThroughReason=<enum>)', ' (FailureReason=<enum>)', or ' (SourceFailureReason=<enum>)' from the nullable properties of ArtworkGenerationResult, and is interpolated once in the single LogOutcome message between {result.Outcome} and {result.Reason} (line 145). It is the only _log.Write in the coordinator. ArtworkGenerationResult's private constructor and factories (Success/NoSource/Blocked/BlockedByPublication/Cancelled/PublicationNotCompleted set none; PassThrough/RenderFailed/SourceUnavailable each set exactly one) mean the at-most-one resolution order (pass-through -> failure -> source-failure) can never drop a present value. All emitted tokens are fixed label text plus enum member names; the subject (15.2) and result.Reason are unchanged pre-existing bounded values. No raw exception message, provider payload, path, directory, or credential enters the new code.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:141-178 (LogOutcome + DescribeClassification)",
+        "src/ArrTags/Artwork/ArtworkGenerationResult.cs:16-34, 103-285 (private ctor; factory classification sets)",
+        "src/ArrTags/Rendering/RenderPassThroughReason.cs, RenderFailureReason.cs, src/ArrTags/Artwork/ArtworkSourceReadResult.cs:26-48 (bounded enums)",
+        "grep: only one _log.Write in ArtworkGenerationCoordinator.cs"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "IR-15.3-2",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "correctness/edge-case",
+      "summary": "SourceUnavailable results always carry a non-null source failure reason; the only path that could emit 'SourceFailureReason=None' is unreachable in production.",
+      "detail": "ArtworkSourceReadResult.FailureReason is a non-nullable enum that defaults to None, so ArtworkGenerationResult.SourceUnavailable(read.FailureReason, ...) always boxes a non-null value. In GenerateCoreAsync the SourceUnavailable return is reached when read.Status == Failed (all production ArtworkSourceReader/Absent/Failed call sites pass a specific non-None reason) or when TryCreateSourceImageInput fails for a Present read (impossible: Present requires non-null ContentType and ContentSha256). Even if reached, the emitted token is a bounded enum name, not unbounded data, so this is not a redaction or security issue.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:192-207",
+        "src/ArrTags/Artwork/ArtworkSourceReadResult.cs:190-202, 246-258",
+        "src/ArrTags/Artwork/ArtworkSourceReader.cs:167-189 (all mappings pass a specific reason)",
+        "grep ArtworkSourceReadResult.Failed( in src: no None reason"
+      ],
+      "recommended_action": "None; bounded enum, unreachable in the shipped configuration."
+    },
+    {
+      "id": "IR-15.3-3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation",
+      "summary": "Architecture section 12 and limitation F8 still state the classification is not emitted; this is explicitly the task-15.4 scope, disclosed by the worker.",
+      "detail": "docs/architecture/12-performance-and-operational-limits.md lines 53-54 and docs/limitations/open.md F8 (lines 98-107) still describe the classification as retained but not emitted. The 15.3 scope boundary assigns the ADR-020 clause 4 amendment, the canonical documentation reconciliation, the security review, and the F8 resolution to task 15.4; the worker records this interval in known_limitations[1]. No current-state surface owned by 15.3 is stale: state.json marks 15.3 done with the report path, PLANS.md's hand-written checkbox matches, the changelog has the task entry, and docs/status.md plus the PLANS.md milestone table regenerate cleanly (dotnet run scripts/render-docs-state.cs -> 'up to date').",
+      "evidence": [
+        "docs/architecture/12-performance-and-operational-limits.md:53-54",
+        "docs/limitations/open.md:98-119 (F8 remains Open)",
+        "docs/planning/v1.2.md (phase 15 checklist; 15.4 owns docs/security/F8)",
+        "dotnet run scripts/render-docs-state.cs -> status.md/PLANS.md up to date"
+      ],
+      "recommended_action": "None for this task; task 15.4 must reconcile architecture section 12/F8 and record the clause 4 amendment."
+    },
+    {
+      "id": "IR-15.3-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "summary": "Tests pin one enum member per classification kind; fixed-member regressions for other members would not be caught.",
+      "detail": "The three classification theories assert exactly NoMetadata (pass-through), DecodeFailed (failure), and Unreadable (source failure). DescribeClassification interpolates the result property directly, so the label-to-field threading is proven, but no second member of any kind is driven through the log path. F8 as written requires the specific bounded classification, not exhaustive member coverage; the optional pinning suggestion is also recorded by the test-quality review (TQ-15.3-1).",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:502-569 (one member per kind)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:162-177 (direct property interpolation)",
+        "docs/implementation/15.3/test-quality-review.json TQ-15.3-1"
+      ],
+      "recommended_action": "None required; optional non-blocking pinning only."
+    }
+  ],
+  "tests_checked": [
+    "Independently ran '. /config/arrtags-env.sh && ./build.sh build' -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Independently ran 'dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\"' -> Failed 0, Passed 167, Skipped 0, Total 167 (matches the worker's report).",
+    "Independently ran '. /config/arrtags-env.sh && ./build.sh test' (full default suite) -> Failed 0, Passed 1619, Skipped 63, Total 1682 (matches the worker's report; post-15.2 baseline 1595/63/1658, +24 passed/+24 total, 0 new skips).",
+    "Inspected the four new theories over six verbosity levels (24 cases): ArtworkLogEmitsTheBoundedPassThroughClassification, ArtworkLogEmitsTheBoundedFailureClassification, ArtworkLogEmitsTheBoundedSourceFailureClassification, ArtworkLogOmitsTheClassificationWhenTheResultCarriesNone - exact-substring/EndsWith assertions of the bounded qualifiers, exact record-count assertions, and AssertNoSentinel over all captured records.",
+    "Verified the tests drive the real ArtworkGenerationCoordinator.GenerateAsync / LogOutcome / LogVerbosityGate / ArrTagsLog<T>; only the renderer, source reader, image writer, and ILogger sink are doubles.",
+    "Verified the source-failure theory injects the reader's raw detail containing SourceDetailSentinel, which is added to AllSentinels, so the sentinel-freedom assertion proves the raw reader text is not propagated.",
+    "Assessed the worker's two sensitivity probes as logically necessary from the exact assertions (Probe A removing the qualifier fails the three classification theories at the three enabled levels = 9; Probe B emitting a default qualifier fails the omission theory at the three enabled levels = 3); no reproduction needed and no inconsistency found.",
+    "Reviewed prior test-quality review at docs/implementation/15.3/test-quality-review.json (PASS_WITH_FINDINGS); its findings agree with this review and none is a blocker."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-020.md clause 4 (redaction contract: bounded reason codes, no key/secret/header/body/payload/PluginConfiguration) - the emitted enum names are bounded reason codes and compatible.",
+    "docs/decisions/ADR-026.md clauses 3-5 (bounded log subject added to the allowed set; directory/full-path exclusion; fresh security review still required for the subject) - unchanged by this task; the security review is task 15.4.",
+    "docs/implementation/planning/v1.2.json phase 15 / task 15.3 acceptance criteria and dependencies (15.1) - satisfied.",
+    "docs/planning/v1.2.md phase 15 objective/deliverables and Goal F8/G9 - the code half of F8 is implemented; the docs/security half is task 15.4.",
+    "No external/upstream research was required for this log-format change."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json - task 15.3 done:true with reports [docs/implementation/15.3/worker-report.json]; phase 15 remains PLANNED (correct, 15.4 open); updated_utc bumped; no generated block hand-edited.",
+    "PLANS.md - task 15.3 checkbox [x] and the milestone table regenerates cleanly.",
+    "docs/status.md - generated; 'dotnet run scripts/render-docs-state.cs' reports status.md and PLANS.md up to date; the 1.1.0.0 test-suite line is release-scoped and correctly unchanged.",
+    "docs/changelog/v1.2.0.md - task 15.3 entry present and consistent with the code, the 24 new cases, the two probes, and the suite counts.",
+    "docs/limitations/open.md - F8 remains Open (15.4 resolves it), as required by the scope boundary.",
+    "scripts/check-docs.sh - all documentation/state/index/artifact/budget/link checks pass; the only FAIL is the expected mid-flow 'task 15.3 has a worker report but no reviewer report', resolved by this report.",
+    "git diff --name-only - only src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs, tests/ArrTags.Tests/LogRedactionTests.cs, docs/plan/state.json, PLANS.md, docs/changelog/v1.2.0.md were modified; no unrelated change."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

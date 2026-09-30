@@ -4,6 +4,7 @@ using System.Net.Http;
 using ArrTags.Artwork;
 using ArrTags.Concurrency;
 using ArrTags.Configuration;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Providers;
@@ -68,8 +69,20 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton(CreateLibraryWorkQueue);
         serviceCollection.TryAddSingleton<IWorkHintSink>(
             static serviceProvider => serviceProvider.GetRequiredService<LibraryWorkQueue>());
+
+        // ADR-025 clauses 3 and 4: the bounded, secret-free, process-lifetime
+        // diagnostics counters and the fixed-shape snapshot provider. The
+        // counters are fed only at existing bounded boundaries, and the future
+        // administrator status endpoint resolves the snapshot provider.
+        // Registration performs no provider, rendering, or library work.
+        serviceCollection.TryAddSingleton<DiagnosticsMetrics>();
+        serviceCollection.TryAddSingleton<DiagnosticsSnapshotProvider>(
+            static serviceProvider => new DiagnosticsSnapshotProvider(
+                serviceProvider.GetRequiredService<DiagnosticsMetrics>(),
+                serviceProvider.GetRequiredService<LibraryWorkQueue>()));
         serviceCollection.TryAddSingleton<IMediaLibraryResolver, JellyfinMediaLibraryResolver>();
         serviceCollection.TryAddSingleton<IMediaLibraryEnumerator, JellyfinMediaLibraryEnumerator>();
+        serviceCollection.TryAddSingleton(CreateReconciliationCursorStore);
         serviceCollection.TryAddSingleton(CreateMetadataStateStore);
         serviceCollection.TryAddSingleton<IArrReadClientFactory, ArrReadClientFactory>();
 
@@ -199,10 +212,23 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<LogThrottle>());
     }
 
+    /// <summary>
+    /// Registers the four named provider HTTP clients (ADR-005, SEC-21.5-01).
+    /// Every primary handler disables automatic redirect-following: the
+    /// <c>X-Api-Key</c> header applied by <c>SecretLease.ApplyTo</c> is confined
+    /// to the outbound authenticated request to the configured connection, and
+    /// a redirect hop would re-send it to the <c>Location</c> origin. A
+    /// not-followed <c>3xx</c> therefore surfaces as a bounded provider error
+    /// through the clients' <c>ClassifyStatus</c> path.
+    /// </summary>
     private static void RegisterProviderHttpClients(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddHttpClient(ArrHttpClientNames.Sonarr);
-        serviceCollection.AddHttpClient(ArrHttpClientNames.Radarr);
+        serviceCollection
+            .AddHttpClient(ArrHttpClientNames.Sonarr)
+            .ConfigurePrimaryHttpMessageHandler(CreateStrictHandler);
+        serviceCollection
+            .AddHttpClient(ArrHttpClientNames.Radarr)
+            .ConfigurePrimaryHttpMessageHandler(CreateStrictHandler);
         serviceCollection
             .AddHttpClient(ArrHttpClientNames.For(ArrProviderKind.Sonarr, ArrTlsPolicy.AllowInsecure))
             .ConfigurePrimaryHttpMessageHandler(CreateInsecureHandler);
@@ -212,11 +238,25 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.TryAddSingleton<IArrHttpClientFactory, ArrHttpClientFactory>();
     }
 
+    private static HttpClientHandler CreateStrictHandler()
+    {
+        return new HttpClientHandler
+        {
+            // ADR-005: the API key is added to the current request only. A
+            // redirect hop is a different request to a different origin, so the
+            // handler must never follow one with the credential attached.
+            AllowAutoRedirect = false,
+        };
+    }
+
     private static HttpClientHandler CreateInsecureHandler()
     {
 #pragma warning disable CA5359 // Relaxed validation is an explicit, validated, connection-scoped opt-in.
         return new HttpClientHandler
         {
+            // The TLS relaxation must not widen credential scope: the insecure
+            // client disables redirect-following exactly like the strict one.
+            AllowAutoRedirect = false,
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
         };
 #pragma warning restore CA5359
@@ -242,6 +282,7 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<IMediaLibraryEnumerator>(),
             serviceProvider.GetRequiredService<IWorkHintSink>(),
             serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>(),
+            serviceProvider.GetRequiredService<ReconciliationCursorStore>(),
             serviceProvider.GetRequiredService<IArrTagsLog<LibraryReconciliationService>>(),
             serviceProvider.GetRequiredService<ArrInventoryCacheProvider>());
     }
@@ -276,6 +317,11 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
     private static MetadataStateStore CreateMetadataStateStore(IServiceProvider serviceProvider)
     {
         return new MetadataStateStore(serviceProvider.GetRequiredService<StateRepository>());
+    }
+
+    private static ReconciliationCursorStore CreateReconciliationCursorStore(IServiceProvider serviceProvider)
+    {
+        return new ReconciliationCursorStore(serviceProvider.GetRequiredService<StateRepository>());
     }
 
     private static JellyfinArtworkImageAccess CreateArtworkImageAccess(IServiceProvider serviceProvider)
@@ -392,7 +438,9 @@ public sealed class ArrTagsServiceRegistrator : IPluginServiceRegistrator
             serviceProvider.GetRequiredService<ArtworkPublisher>(),
             serviceProvider.GetRequiredService<PublishedArtworkStateStore>(),
             serviceProvider.GetRequiredService<SourceArtifactStore>(),
-            serviceProvider.GetRequiredService<IArrTagsLog<ArtworkGenerationCoordinator>>());
+            serviceProvider.GetRequiredService<IArrTagsLog<ArtworkGenerationCoordinator>>(),
+            serviceProvider.GetRequiredService<DiagnosticsMetrics>(),
+            serviceProvider.GetRequiredService<ArtworkLifecycleFenceStore>());
     }
 
     private static ArtifactRetention CreateArtifactRetention(IServiceProvider serviceProvider)

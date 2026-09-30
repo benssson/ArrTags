@@ -283,7 +283,8 @@ public sealed class GoalAIntegrationTests
                 Phase.Library,
                 Enumerator,
                 Phase.Queue,
-                Phase.Fences);
+                Phase.Fences,
+                new ReconciliationCursorStore(Phase.Repository));
             Trigger = new ConfigurationReconciliationTrigger(reconciliation, TimeSpan.FromSeconds(2));
 
             var (activityManager, activityRecorder) = RecordingActivityManager.Create();

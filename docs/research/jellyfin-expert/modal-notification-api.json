@@ -1,0 +1,135 @@
+{
+  "subject": "Jellyfin 12 live-host web-client modal/notification API for a plugin configuration page (ADR-028 clause 4; G8 / DG-17): availability, stability, success hook, conditionality, and fail-open guard for the ArrTags restart-required reminder (task 16.5)",
+  "conclusion": "The pinned Jellyfin 12.0 host bundles a jellyfin-web build whose global `window.Dashboard` compatibility object is present and defines `Dashboard.alert`, `Dashboard.confirm`, `Dashboard.showLoadingMsg`, `Dashboard.hideLoadingMsg`, and `Dashboard.processPluginConfigurationUpdateResult`, plus `window.ApiClient`. There is NO `Dashboard.showMessage` (and no standalone toast/dialog/`require([...])` module exposed to plugin pages). `Dashboard.alert({ title, message })` is the one call that opens a modal (single 'Got it' button) and it is the only sensible restart-reminder call; `Dashboard.alert('string')` is a transient non-modal toast, and `Dashboard.confirm(msg, title, callback)` is a two-button modal. The API is an intentionally retained web-client compatibility shim for legacy plugin pages (source comment: \u201cThis is used in plugins and templates, so keep it defined for now. TODO: Remove once plugins don't need it\u201d), NOT a documented, versioned Jellyfin server plugin contract. It is therefore classified public but potentially unstable; ADR-028 clause 4 requires the always-present note text (task 16.3, shipped) to stay the fail-open behavior. The page is injected into the React client's document by the legacy view loader and its inline script runs in the same window as `Dashboard`/`ApiClient`, so the existing `Dashboard.processPluginConfigurationUpdateResult` pattern works; the reminder must be called from inside the successful `ApiClient.updatePluginConfiguration(...).then(...)` after `processPluginConfigurationUpdateResult`, guarded and conditional on a restart-required field actually changing.",
+  "evidence": {
+    "server_revision": "jellyfin/jellyfin 6c073e19ddf604b2369c638716164fdab4c952dc (tag v12.0), the project-pinned server source in /tmp/jfsrc and /tmp/jf-full",
+    "web_client_revision": "jellyfin/jellyfin-web tag v12.0, sha 0e83c6a724b31f3e9b5a499244331a288c060a4a (matched via https://api.github.com/repos/jellyfin/jellyfin-web/git/matching-refs/tags/v12.0); corroborated against branch release-12.z",
+    "pinned_host_web_assets": [
+      "/tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/main.jellyfin.bundle.js (extracted from jellyfin_12.0-amd64-musl.tar.gz; identical tree also at /tmp/arrtags-host-dl/pinned/jellyfin, /tmp/arrtags-14.3/jellyfin/jellyfin-web)",
+      "/tmp/arrtags-host-dl/jellyfin_12.0.tar.gz (archive listing contains jellyfin/jellyfin-web/, 2363 entries)"
+    ],
+    "server_sources": [
+      "Jellyfin.Api/Controllers/DashboardController.cs (GET web/ConfigurationPage returns File(stream, MimeTypes.GetMimeType(resourcePath)) with no injected scripts)",
+      "MediaBrowser.Providers/Plugins/Tmdb/Configuration/config.html (in-tree reference plugin config page; uses Dashboard.showLoadingMsg / Dashboard.hideLoadingMsg / Dashboard.alert / Dashboard.processPluginConfigurationUpdateResult)"
+    ],
+    "web_client_sources": [
+      "src/utils/dashboard.js at v12.0 (window.Dashboard compat object)",
+      "src/components/alert.js at v12.0 (baseAlert; ButtonGotIt single-button modal)",
+      "src/components/confirm/confirm.ts at v12.0 (Cancel/OK confirm via dialog)",
+      "src/components/dialog/dialog.js at v12.0 (DOMPurify-sanitized formDialog, dialogHelper.open)",
+      "src/components/toast/toast.ts at v12.0 (transient non-modal toast)"
+    ],
+    "excerpts": {
+      "pinned_host_dashboard_object": "main.jellyfin.bundle.js: G={alert:N,capabilities:F,confirm:z,getPluginUrl:_,getConfigurationResourceUrl:M,getCurrentUser:k,getCurrentUserId:T,hideLoadingMsg:V,logout:E,navigate:O,onServerChanged:C,processErrorResponse:R,processPluginConfigurationUpdateResult:L,processServerConfigurationUpdateResult:D,selectServer:U,serverAddress:I,showLoadingMsg:B,datetime:m.Ay,DirectoryBrowser:v.default,dialogHelper:h.default,itemIdentifier:g.A,setBackdropTransparency:y.FB};window.Dashboard=G",
+      "pinned_host_alert_and_loading": "function L(){l.Ay.hide(),(0,s.A)(f.Ay.translate(\"SettingsSaved\"))} ... function V(){l.Ay.hide()}function B(){l.Ay.show()} ... function N(e){\"string\"==typeof e?(0,s.A)({text:e}):(0,c.A)({title:e.title||f.Ay.translate(\"HeaderAlert\"),text:e.message}).then(e.callback||function(){})} ... function z(e,t,n){(0,d.A)(e,t).then(function(){n(!0)}).catch(function(){n(!1)})}",
+      "pinned_host_apiclient_global": "main.jellyfin.bundle.js: {key:\"setLocalApiClient\",value:function(e){e&&(this.localApiClient=e,window.ApiClient=e,this.getApi(e.serverId()))}}",
+      "pinned_host_page_injection": "main.jellyfin.bundle.js: loadView:function(e){...var o=e.url.includes(\"configurationpage\"),a=function(e,t){var n=e.view;if(-1===n.indexOf('data-role=\"page\"'))return n;var r=-1!==n.indexOf(\"<script\"),...",
+      "v12_dashboard_source": "src/utils/dashboard.js: export function alert(options){ if(typeof options=='string'){toast({text:options});} else {baseAlert({title:options.title||globalize.translate('HeaderAlert'),text:options.message}).then(options.callback||function(){});} } ... export function confirm(message,title,callback){baseConfirm(message,title).then(function(){callback(true);}).catch(function(){callback(false);});} ... export function processPluginConfigurationUpdateResult(){loading.hide();toast(globalize.translate('SettingsSaved'));} ... const Dashboard={alert,capabilities,confirm,...,processPluginConfigurationUpdateResult,...,dialogHelper,...}; // This is used in plugins and templates, so keep it defined for now. // TODO: Remove once plugins don't need it window.Dashboard = Dashboard;",
+      "v12_alert_modal": "src/components/alert.js: export default async function (text, title){ const options=typeof text==='string'?{title,text}:text; await appRouter.ready(); options.buttons=[{name:globalize.translate('ButtonGotIt'),id:'ok',type:'submit'}]; return dialog.show(options); }",
+      "v12_confirm_modal": "src/components/confirm/confirm.ts: buttons Cancel + OK; return dialog.show(options).then(result=>result==='ok'?Promise.resolve():Promise.reject(new Error('Confirm dialog rejected')));",
+      "v12_toast": "src/components/toast/toast.ts: appends a .toast div and removes it after ~3.3s; no buttons, non-modal.",
+      "server_serves_raw_resource": "DashboardController.cs: [HttpGet(\"web/ConfigurationPage\")] public ActionResult GetDashboardConfigurationPage([FromQuery] string? name){ ... Stream? stream = plugin.GetType().Assembly.GetManifestResourceStream(resourcePath); ... return File(stream, MimeTypes.GetMimeType(resourcePath)); }"
+    }
+  },
+  "findings": [
+    {
+      "claim": "The pinned host's bundled web client defines a global window.Dashboard compatibility object. Its complete method set is alert, capabilities, confirm, getPluginUrl, getConfigurationResourceUrl, getCurrentUser, getCurrentUserId, hideLoadingMsg, logout, navigate, onServerChanged, processErrorResponse, processPluginConfigurationUpdateResult, processServerConfigurationUpdateResult, selectServer, serverAddress, showLoadingMsg, datetime, DirectoryBrowser, dialogHelper, itemIdentifier, setBackdropTransparency.",
+      "source": "Pinned host asset /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/main.jellyfin.bundle.js (assignment window.Dashboard=G); identical default-object shape in jellyfin-web v12.0 src/utils/dashboard.js lines 240-267.",
+      "classification": "Pinned-artifact confirmed (bundled asset) and v12.0-source confirmed. Public but potentially unstable (web-client compatibility surface)."
+    },
+    {
+      "claim": "Dashboard.showMessage does not exist on the pinned host's web client, and no AMD require([...]) / define.amd loader or standalone toast/dialog module is exposed to plugin pages. The only exposed notification primitives are Dashboard.alert, Dashboard.confirm, Dashboard.dialogHelper, and the toast side effect of processPluginConfigurationUpdateResult.",
+      "source": "grep across 974 .js files in the pinned web assets: zero files contain showMessage; zero contain requirejs / define.amd; the Dashboard object listing above is exhaustive.",
+      "classification": "Pinned-artifact confirmed (absence). Internal implementation detail."
+    },
+    {
+      "claim": "Dashboard.alert({title, message}) opens a modal (single 'Got it'/ButtonGotIt button) and returns/swallows a promise; Dashboard.alert('text') shows a transient non-modal toast; Dashboard.confirm(message, title, callback) opens a two-button (Cancel/OK) modal and calls callback(true) on OK and callback(false) on cancel/dismiss.",
+      "source": "Pinned host main.jellyfin.bundle.js N/L/z function bodies; jellyfin-web v12.0 src/utils/dashboard.js alert/confirm; src/components/alert.js (ButtonGotIt); src/components/confirm/confirm.ts (Cancel/OK, resolves 'ok', rejects otherwise); src/components/dialog/dialog.js (DOMPurify-sanitized formDialog rendered through dialogHelper.open); src/components/toast/toast.ts (non-modal, auto-dismissed ~3.3s).",
+      "classification": "Pinned-artifact confirmed and v12.0-source confirmed. Public but potentially unstable (web-client compatibility surface)."
+    },
+    {
+      "claim": "Dashboard.processPluginConfigurationUpdateResult() hides the loading indicator and shows the localized 'SettingsSaved' toast; it is only a toast, not a modal. The existing ArrTags page already calls it as the .then handler of ApiClient.updatePluginConfiguration.",
+      "source": "jellyfin-web v12.0 src/utils/dashboard.js lines 149-152; pinned host main.jellyfin.bundle.js function L; tests/ArrTags.Tests/DashboardSettingsPageTests.cs line 74; src/ArrTags/Configuration/config.html line 621.",
+      "classification": "Pinned-artifact confirmed and v12.0-source confirmed. Public but potentially unstable."
+    },
+    {
+      "claim": "window.ApiClient is set by the client (ServerConnections.setLocalApiClient -> window.ApiClient = apiClient), so the plugin page's ApiClient.getPluginConfiguration / ApiClient.updatePluginConfiguration / ApiClient.getVirtualFolders calls target the same legacy apiclient object the page already uses.",
+      "source": "Pinned host main.jellyfin.bundle.js setLocalApiClient; jellyfin-web v12.0 src/utils/dashboard.js getCurrentUser/getCurrentUserId read window.ApiClient; src/lib/jellyfin-apiclient. Existing config.html usage.",
+      "classification": "Pinned-artifact confirmed and v12.0-source confirmed. Public but potentially unstable."
+    },
+    {
+      "claim": "The plugin configuration page HTML is served raw by the server (no injected scripts) and is then fetched and injected into the React client's own document by the legacy view loader (e.url.includes('configurationpage')), which re-executes inline <script> through the bundled jQuery path; the plugin's inline script therefore runs in the same window that has window.Dashboard and window.ApiClient. This is the same mechanism the in-tree TMDb reference page relies on.",
+      "source": "Jellyfin.Api/Controllers/DashboardController.cs GetDashboardConfigurationPage (File(stream, MimeTypes.GetMimeType(resourcePath))); pinned host main.jellyfin.bundle.js loadView function and the data-controller/legacy view-container code; jellyfin-web v12.0 src/components/viewContainer.js and src/apps/dashboard routes; MediaBrowser.Providers/Plugins/Tmdb/Configuration/config.html.",
+      "classification": "Internal implementation detail (client page-loading mechanism), pinned-artifact confirmed and server/client-source confirmed. Not live-browser confirmed."
+    },
+    {
+      "claim": "The Dashboard compatibility object is explicitly retained for plugins with an in-source TODO to remove it, and is not part of the Jellyfin server plugin ABI; it can change or disappear with the bundled web client. It is not a documented, versioned Jellyfin 12 server API.",
+      "source": "jellyfin-web v12.0 src/utils/dashboard.js lines 265-267: '// This is used in plugins and templates, so keep it defined for now. // TODO: Remove once plugins don't need it window.Dashboard = Dashboard;'.",
+      "classification": "Public but potentially unstable (explicitly deprecated-in-source web-client compatibility shim)."
+    },
+    {
+      "claim": "The irony in the project docs that the pinned musl archive 'does not ship the web client' is inaccurate: the archive contains jellyfin/jellyfin-web/ (2363 entries) and the extracted host has a working React/MUI web client. The `--nowebclient` launcher flag only means the live test host does not serve or exercise it; the static assets exist on disk and were inspected here.",
+      "source": "tar tzf /tmp/arrtags-host-dl/jellyfin_12.0.tar.gz | grep jellyfin-web; ls /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web (2292 files); docs/testing/jellyfin-12-musl-test-host.md lines 98-101.",
+      "classification": "Confirmed repository/documentation discrepancy. Not a Jellyfin API claim."
+    }
+  ],
+  "api_classification": {
+    "public_but_unstable": [
+      "window.Dashboard (web-client compatibility object; TODO removal comment)",
+      "Dashboard.alert({title, message})",
+      "Dashboard.confirm(message, title, callback)",
+      "Dashboard.showLoadingMsg / Dashboard.hideLoadingMsg",
+      "Dashboard.processPluginConfigurationUpdateResult",
+      "Dashboard.dialogHelper (raw; not recommended)",
+      "window.ApiClient (legacy apiclient)"
+    ],
+    "internal": [
+      "viewContainer.loadView 'configurationpage' injection path",
+      "the exact jQuery-based inline-script re-execution behavior",
+      "the minified Dashboard object wiring in main.jellyfin.bundle.js",
+      "dialog/dialogHelper DOM/CSS mechanics"
+    ],
+    "unsupported_or_absent": [
+      "Dashboard.showMessage (does not exist)",
+      "AMD require([...]) / define.amd for plugin pages",
+      "a documented, server-versioned notification API for plugin pages"
+    ]
+  },
+  "jellyfin_version": "12.0.0 (targetAbi 12.0.0.0); server tag v12.0 sha 6c073e19ddf604b2369c638716164fdab4c952dc; jellyfin-web tag v12.0 sha 0e83c6a724b31f3e9b5a499244331a288c060a4a",
+  "recommendation_for_task_16_5": {
+    "exact_call": "window.Dashboard.alert({ title: 'Jellyfin restart required', message: '<plain-text explanation>' }) \u2014 this is the only exposed call that produces a modal. Do NOT use Dashboard.alert('string') (non-modal toast), Dashboard.confirm (two-button Cancel/OK), Dashboard.dialogHelper (raw internals), or Dashboard.showMessage (does not exist). Pass the body under the key `message` (not `text`); the shim maps message -> dialog text and DOMPurify-sanitizes it, so the string must be plain text.",
+    "placement": "In src/ArrTags/Configuration/config.html, replace the submit handler's final line `ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);` with `ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(function (result) { Dashboard.processPluginConfigurationUpdateResult(result); showRestartRequiredReminder(); });`. Call processPluginConfigurationUpdateResult first so loading is hidden and the existing 'SettingsSaved' toast is unchanged, then call the reminder. Do not move the reminder outside the success .then (a rejected POST \u2014 e.g. the ADR-021 rejection \u2014 must not show a restart reminder).",
+    "conditional_logic": "Preferred (no pageshow dependency): inside the existing submit handler's `ApiClient.getPluginConfiguration(PluginConfig.pluginId).then(function (config) { ... })`, the freshly-fetched `config` holds the persisted old values until the handler mutates it. At the top of that callback, before any assignment, snapshot `var previousLimits = {}; for (var i = 0; i < restartRequiredFields.length; i++) { previousLimits[restartRequiredFields[i].setting] = config.Limits[restartRequiredFields[i].setting]; }`. After the handler has written all submitted values into `config` (just before ApiClient.updatePluginConfiguration), set changed = true if any restartRequiredFields entry has config.Limits[entry.setting] !== previousLimits[entry.setting]. Only call the modal when changed is true. Numeric strict comparison is safe because both sides are numbers (JSON deserialization on the old side; parseInt / byteLimitToBytes on the new side). Alternative: capture the same map on pageshow and compare against it, but the in-handler snapshot is more robust because it does not depend on pageshow having completed.",
+    "fail_open_guard": "Reference Dashboard lazily inside the reminder function (a top-level `Dashboard` reference would throw if the page is opened standalone at /web/ConfigurationPage?name=ArrTags). Guard with `if (!window.Dashboard || typeof window.Dashboard.alert !== 'function') { return; }` and wrap the call in try/catch that swallows the error. If the baseline is null (pageshow fetch never completed) or any state is missing, return without showing anything. The always-present note text from task 16.3 remains the reliable, fail-open behavior for every client and every API-absence case.",
+    "do_not": [
+      "Do not remove or reorder the existing Dashboard.processPluginConfigurationUpdateResult call \u2014 DashboardSettingsPageTests asserts it is present.",
+      "Do not introduce innerHTML \u2014 DashboardSettingsPageTests asserts it is absent; the alert text is rendered by the shim.",
+      "Do not introduce a new `config.<Unknown>` expression \u2014 DashboardSettingsPageTests.PageOnlyReferencesKnownConfigurationProperties reflects over the config model; reference the restart-required values via config.Limits[...].",
+      "Do not rely on the modal for any client other than jellyfin-web; native clients never render this page."
+    ]
+  },
+  "risks": [
+    "Stability: window.Dashboard is an intentionally temporary web-client compatibility shim (in-source TODO removal). It is not covered by the server ABI and can change without a server version bump. The ADR-028 clause 4 fail-open condition therefore applies: keep the note text authoritative and treat the modal as best-effort.",
+    "No JavaScript runtime in this repository: task 16.5 can only add structural C# assertions over the embedded HTML (presence of the guard, presence of Dashboard.alert, reminder inside the update .then, no Dashboard.showMessage). The actual modal behavior cannot be unit-tested here; live-browser verification would require serving the bundled web client and logging in.",
+    "Unhandled promise rejection on dismissal: the shim's alert(object) calls baseAlert(...).then(callback || no-op) with no .catch (jellyfin-web v12.0 src/utils/dashboard.js lines 174-185; pinned N function). If the user dismisses the modal via Escape/backdrop instead of pressing 'Got it', dialog.show rejects and the rejection is unhandled (a benign console error). It does not affect the save or the page; it cannot be caught because alert() does not return the promise. Accept and document, or use Dashboard.confirm(msg, title, function(){}) if a two-button modal is acceptable and no unhandled rejection is desired.",
+    "Pitfall: the object form reads options.message (not options.text). Passing {title, text} to Dashboard.alert would render an empty dialog body. processErrorResponse internally uses {title, text} with the lower-level baseAlert, which is why the two look similar.",
+    "Load order: Dashboard/ApiClient are defined in main.jellyfin.bundle.js before the plugin page is injected, so in the normal dashboard flow they exist; but a direct standalone request to /web/ConfigurationPage?name=ArrTags would run the inline script without them, so an unguarded call would throw and could break the pageshow/submit handlers. The fail-open guard is required.",
+    "Double-submit: the existing submit handler does not disable the Save button; the loading overlay is the only guard. Adding a modal does not worsen this, but a rapid double-submit can issue two POSTs and two reminders. Optional low-priority guard; not required by G8.",
+    "Localization: the shim passes title/message through as-is for the object form (no translation of caller-supplied text). The page is hardcoded English today, so the reminder stays English unless the project adds localization plumbing; calling globalize directly from plugin JS is not exposed on the pinned asset.",
+    "Live-host gap: the documented pinned test host runs with --nowebclient, so the shipped live matrix (task 14.3) exercised the settings API over HTTP, not the browser modal. A live-browser confirmation of window.Dashboard/Dashboard.alert on the pinned web build was not performed in this spike (asset- and source-confirmed only).",
+    "Documentation discrepancy: docs/testing/jellyfin-12-musl-test-host.md states the archive does not ship the web client; the pinned musl archive does ship jellyfin-web/. That note should be corrected, but it does not affect the API conclusion."
+  ],
+  "recommended_action": "Task 16.5 should implement the reminder as a guarded, conditional Dashboard.alert({title, message}) call placed after Dashboard.processPluginConfigurationUpdateResult inside the successful ApiClient.updatePluginConfiguration(...).then(...) callback, comparing the submitted restart-required values against a baseline captured on pageshow. Use window.Dashboard && typeof window.Dashboard.alert === 'function' plus try/catch as the fail-open guard, and leave the task 16.3 note text untouched as the authoritative fallback. Do not use Dashboard.showMessage (it does not exist on the pinned host) and do not rely on the modal being stable across Jellyfin web-client versions. Record in ADR-028/research docs that the modal API is a public-but-unstable web-client compatibility surface, confirmed on the pinned bundled asset and in jellyfin-web v12.0 source, and not live-browser confirmed.",
+  "unresolved": [
+    "No live-browser probe was performed: window.Dashboard/Dashboard.alert presence and modal rendering were confirmed by inspecting the pinned host's bundled web assets and the matching jellyfin-web v12.0 source, not by loading the page in a browser against a running host.",
+    "The bundled web build's exact source commit was not byte-matched to jellyfin-web; the default Dashboard object shape and the alert/confirm/process* function bodies are identical between the pinned minified asset and the v12.0 source, which is strong but not a build-hash match.",
+    "Whether the React client keeps the same-document legacy view-injection path (and thus the window.Dashboard global) for all future 12.x web builds is unknown; the source TODO implies it may be removed.",
+    "If task 16.5 wants to avoid the benign unhandled rejection on modal dismissal, a project decision is needed between accepting it (Dashboard.alert) and using a two-button Dashboard.confirm with a no-op callback."
+  ],
+  "documentation_impact": [
+    "docs/research/jellyfin-12-architecture.md (section 9 plugin configuration pages: add the pinned-host/12.0 web-client Dashboard compatibility-surface finding, Dashboard.alert/confirm semantics, the absence of Dashboard.showMessage, and the same-document page-injection mechanism)",
+    "docs/architecture/06-configuration-and-persisted-state.md (note the restart reminder is best-effort web-only; the note text is authoritative)",
+    "docs/testing/jellyfin-12-musl-test-host.md (correct the claim that the archive does not ship the web client; it ships jellyfin-web/ but the launcher runs --nowebclient so the live matrix does not exercise it)",
+    "ADR-028 (consumer: clause 4 researched; no text change required beyond referencing this note)"
+  ]
+}

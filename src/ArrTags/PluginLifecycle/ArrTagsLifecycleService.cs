@@ -148,11 +148,15 @@ public sealed class ArrTagsLifecycleService : IHostedService, IDisposable
         {
             if (_log is not null && _log.IsEnabled(LogLevel.Debug))
             {
+                // The removal event carries no media identity or path, so the
+                // bounded subject is the documented item-identifier fallback
+                // (ADR-026 clause 3).
+                var subject = LogSubject.Create(e.ItemId);
                 _log.Write(
                     LogLevel.Debug,
                     ArrTagsLogEvent.LifecycleItemRemoved,
                     FormattableString.Invariant(
-                        $"Library item {e.ItemId:D} was removed; a bounded artwork removal was requested."));
+                        $"Library item {subject} was removed; a bounded artwork removal was requested."));
             }
 
             TrackRemoval(e.ItemId);

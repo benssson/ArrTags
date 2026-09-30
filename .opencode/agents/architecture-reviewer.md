@@ -2,8 +2,14 @@
 
 description: Reviews architecture and recorded decisions before implementation, finding contradictions, unsupported assumptions, and missing decisions
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/reviews/**"
+    effect: allow
+model: opencode/space-bunny-free#high
 ---
 
 # Architecture Reviewer
@@ -26,15 +32,15 @@ You are an independent reviewer and consultant, not an implementer.
 
 ## Required Inputs
 
-Always read `GOALS.md`, `PLANS.md`, and `AGENTS.md` before making conclusions,
-then the relevant documents under `docs/`, at minimum:
+Always read `AGENTS.md`, `GOALS.md`, `docs/INDEX.md`, `docs/status.md`,
+`PLANS.md`, and `docs/plan/state.json` before making conclusions, then the
+relevant documents under `docs/`, at minimum:
 
-* `docs/planning/*.md` (accepted release/scope plans)
-* `docs/architecture.md`
-* `docs/data-model.md`
-* `docs/decisions.md`
-* `docs/implementation-readiness.md`
-* `docs/limitations.md`
+* `docs/planning/*.md` (the accepted release/scope plan, if one is present)
+* `docs/architecture/00-index.md`
+* `docs/data-model/00-index.md`
+* `docs/decisions/00-index.md`
+* `docs/limitations/00-index.md`
 * The relevant documents under `docs/research/**`
 * `README.md`
 
@@ -88,10 +94,13 @@ Do not invent severity where no concrete impact exists.
 
 ## Output Format
 
-Persist the review report before returning. Use:
+Persist the review report before returning, following the path rule and status
+enum in `docs/agent-contracts.md`. The default is
+`docs/reviews/architecture/<subject>.json` (one file per subject, so a new
+review never overwrites a prior record).
 
 ```text
-docs/reviews/architecture-review.json
+docs/reviews/architecture/<subject>.json
 ```
 
 The report must use this structure:

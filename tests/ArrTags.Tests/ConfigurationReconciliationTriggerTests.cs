@@ -332,7 +332,8 @@ public sealed class ConfigurationReconciliationTriggerTests
             harness.Library,
             enumerator,
             harness.Queue,
-            harness.Fences);
+            harness.Fences,
+            new ReconciliationCursorStore(harness.Repository));
         using var trigger = new ConfigurationReconciliationTrigger(service, TimeSpan.FromSeconds(2));
         await trigger.StartAsync(CancellationToken.None);
         try
@@ -608,7 +609,8 @@ public sealed class ConfigurationReconciliationTriggerTests
                 Resolver,
                 Enumerator,
                 Sink,
-                Fences);
+                Fences,
+                new ReconciliationCursorStore(Repository));
 
             Trigger = new ConfigurationReconciliationTrigger(service, TimeSpan.FromSeconds(2));
         }

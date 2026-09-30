@@ -1,0 +1,52 @@
+{
+  "phase": 18,
+  "name": "Extra Large badge size",
+  "release": "1.2.0",
+  "status": "COMPLETE",
+  "tasks": ["18.1", "18.2", "18.3"],
+  "task_commits": {
+    "18.1": "81ecbb7",
+    "18.2": "41b3a94",
+    "18.3": "58b1781"
+  },
+  "subagents": [
+    {"role": "implementation-worker", "task": "18.1", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.07219267200000001, "total_tokens": 7198476, "duration_seconds": 918},
+    {"role": "implementation-reviewer", "task": "18.1", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.020944697999999998, "total_tokens": 1271687, "duration_seconds": 165},
+    {"role": "implementation-worker", "task": "18.2", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.07750833000000001, "total_tokens": 7264764, "duration_seconds": 793},
+    {"role": "implementation-reviewer", "task": "18.2", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.021820301999999996, "total_tokens": 1050438, "duration_seconds": 422},
+    {"role": "implementation-worker", "task": "18.3", "attempt": 1, "outcome": "FAILED", "cost_usd": 0.05446006800000001, "total_tokens": 4696850, "duration_seconds": 337},
+    {"role": "implementation-worker", "task": "18.3", "attempt": 2, "outcome": "COMPLETE", "cost_usd": 0.059915051999999996, "total_tokens": 5115753, "duration_seconds": 509},
+    {"role": "implementation-reviewer", "task": "18.3", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.024981144000000004, "total_tokens": 1629703, "duration_seconds": 350}
+  ],
+  "aggregate": {
+    "task_count": 3,
+    "review_rounds": 3,
+    "rework_rounds": 1,
+    "subagent_invocations": 7,
+    "cost_usd": 0.33182226600000003,
+    "total_tokens": 28227671,
+    "note": "Per-subagent figures are the authoritative runtime values recorded in docs/implementation/<task>/orchestration.json; this aggregate is the exact jq sum of the seven per-subagent execution.cost_usd values (18.1 0.07219267200000001 + 0.020944697999999998; 18.2 0.07750833000000001 + 0.021820301999999996; 18.3 0.05446006800000001 + 0.059915051999999996 + 0.024981144000000004 = 0.33182226600000003). The rework round is the 18.3 worker attempt 2 that resumed the attempt-1 usage-limit failure; the review_rounds count is the three implementation-reviewer invocations. The phase-reviewer invocation is recorded separately below and is not part of this per-task aggregate."
+  },
+  "phase_reviewer": {
+    "role": "phase-reviewer",
+    "attempt": 1,
+    "outcome": "APPROVED_WITH_FINDINGS",
+    "execution": {
+      "agent": "phase-reviewer",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "variant": "high",
+      "input_tokens": 136286,
+      "output_tokens": 10270,
+      "reasoning_tokens": 16114,
+      "cache_read_tokens": 2861056,
+      "cache_write_tokens": 0,
+      "total_tokens": 3023726,
+      "cost_usd": 0.044856468,
+      "duration_seconds": 311,
+      "session_id": "ses_f18db9d4fffeazDyprdeTZtCe6"
+    }
+  },
+  "gate": "Gate 18",
+  "tag": "v1.2.0-phase18",
+  "gate_status": "MET"
+}

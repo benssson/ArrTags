@@ -139,6 +139,22 @@ outdir="$repo_root/docs/implementation/orchestrator-sessions"
 report="$outdir/$sid.json"
 now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+# A duration that is implausible for the recorded token volume is a runtime
+# reporting artifact, not a measurement: a session that has done real work
+# cannot have a one-second wall clock. Record null rather than a wrong figure,
+# by the same rule that governs an unresolvable server or session.
+duration_note=""
+d=$(printf '%s' "$usage" | jq -r '.duration_seconds // "null"' 2>/dev/null)
+t=$(printf '%s' "$usage" | jq -r '.total_tokens // 0' 2>/dev/null)
+if [ "$d" != "null" ] && [ "$t" -gt 1000000 ] 2>/dev/null && [ "$d" -lt 60 ] 2>/dev/null; then
+    usage=$(printf '%s' "$usage" | jq '.duration_seconds = null')
+    duration_note="duration_seconds recorded as null: the runtime reported ${d}s for ${t} tokens, which is not a plausible wall-clock measurement."
+    if [ -n "$note" ]; then
+        duration_note="$note; $duration_note"
+    fi
+    note="$duration_note"
+fi
+
 first="$now"
 prev="[]"
 if [ -f "$report" ]; then

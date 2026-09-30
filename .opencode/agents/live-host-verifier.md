@@ -2,8 +2,20 @@
 
 description: Runs the documented pinned-host end-to-end verification matrix and records reproducible, machine-readable results
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/implementation/**"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
+model: opencode/space-bunny-free#high
 ---
 
 # Live Host Verifier
@@ -26,7 +38,7 @@ You are a verifier, not an implementer. You never fix defects you find.
   procedure
 * `docs/release/build-and-release.md` — the artifact identity and verification
   steps
-* `docs/architecture.md` and `docs/decisions.md` — the expected behavior
+* `docs/architecture/00-index.md` and `docs/decisions/00-index.md` — the expected behavior
 * The release artifact under `artifacts/`
 * `scripts/provision-jellyfin-test-host.sh` and `scripts/mock-arr-fixtures/`
 * The recorded task reports for earlier live runs (for example tasks 7.3, 7.7,
@@ -126,10 +138,13 @@ Classify findings as:
 
 ## Report
 
-Persist the verification report before returning:
+Persist the verification report before returning, following the path rule in
+`docs/agent-contracts.md`. The default is
+`docs/implementation/<task-id>/live-verification.json`; a release-scope
+verification goes to `docs/implementation/final-review/live-verification.json`.
 
 ```text
-docs/testing/live-host-verification.json
+docs/implementation/<task-id>/live-verification.json
 ```
 
 Use this structure:

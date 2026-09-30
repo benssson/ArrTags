@@ -1,0 +1,110 @@
+{
+  "task": "17.4",
+  "title": "F3 documentation and security review",
+  "phase": 17,
+  "status": "COMPLETE",
+  "commit": "a6f7777",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 324595,
+        "output_tokens": 29106,
+        "reasoning_tokens": 44554,
+        "cache_read_tokens": 9850752,
+        "cache_write_tokens": 0,
+        "total_tokens": 10249007,
+        "cost_usd": 0.12243750599999997,
+        "duration_seconds": 859,
+        "session_id": "ses_f24c763edffe03LwiFbcF9JZJN"
+      }
+    },
+    {
+      "role": "security-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 596721,
+        "output_tokens": 20559,
+        "reasoning_tokens": 49249,
+        "cache_read_tokens": 12199296,
+        "cache_write_tokens": 0,
+        "total_tokens": 12865825,
+        "cost_usd": 0.167990838,
+        "duration_seconds": 598,
+        "session_id": "ses_f24b9cf2cffeZeo3O6xHIQlCED"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 90213,
+        "output_tokens": 10990,
+        "reasoning_tokens": 12562,
+        "cache_read_tokens": 2927744,
+        "cache_write_tokens": 0,
+        "total_tokens": 3041509,
+        "cost_usd": 0.036446381999999986,
+        "duration_seconds": 353,
+        "session_id": "ses_f24b9cf29ffe75cQYLsViYUKxt"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 98533,
+        "output_tokens": 18840,
+        "reasoning_tokens": 24017,
+        "cache_read_tokens": 3251456,
+        "cache_write_tokens": 0,
+        "total_tokens": 3392846,
+        "cost_usd": 0.050248518,
+        "duration_seconds": 410,
+        "session_id": "ses_f24b0580effecEWF97DrbYJCog"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 84287,
+        "output_tokens": 10552,
+        "reasoning_tokens": 13853,
+        "cache_read_tokens": 1574912,
+        "cache_write_tokens": 0,
+        "total_tokens": 1683604,
+        "cost_usd": 0.032010786,
+        "duration_seconds": 354,
+        "session_id": "ses_f24a9da18ffe8GPMi7C775U72y"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Security review returned PASS_WITH_FINDINGS with two open LOW findings: SR-17.4-01 (unconditional 'malformed response leaves no data' documentation wording not guaranteed for a well-formed wrong/partial-shape object; recommended option (a) documentation-precision fix) and SR-17.4-02 (register accepted limitation V12-F3-1 for the structurally-only-verified panel). The worker applied the documentation-precision fix across README/architecture 11/12/archive F3/ADR-025 note and registered V12-F3-1 in the accepted-limitations register."
+    }
+  ]
+}

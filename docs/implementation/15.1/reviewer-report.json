@@ -1,0 +1,60 @@
+{
+  "task": "15.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "15.1-F1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness/host-platform path semantics",
+      "summary": "A Windows-style path string is emitted verbatim as a file name when the helper runs on the Linux host.",
+      "detail": "Create(Guid, string?) delegates splitting to Path.GetFileName, whose separator semantics are host-platform. On the pinned Linux verification host a backslash is a valid file-name character, so a string such as \"C:\\\\dir\\\\file.mkv\" would be emitted whole rather than split. ADR-026 clause 1 explicitly names Path.GetFileName and Jellyfin reports host-native paths; on the pinned Linux host a real media path is POSIX, so no directory component can be emitted from a genuine input. The worker recorded this as an interpretation; it does not change persisted or user-visible state and is not a task defect.",
+      "evidence": [
+        "src/ArrTags/Logging/LogSubject.cs:56",
+        "docs/decisions/ADR-026.md (clause 1)",
+        "docs/implementation/15.1/worker-report.json (interpretations[2])"
+      ],
+      "recommended_action": "No action for 15.1; the behavior follows ADR-026's explicit Path.GetFileName choice."
+    },
+    {
+      "id": "15.1-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/state consistency",
+      "summary": "state.json, PLANS.md checkbox, changelog file and index row are consistent and match the documented single-writer conventions; status.md and the milestone table were not hand-edited.",
+      "detail": "docs/plan/README.md documents the worker's responsibility to set task done/reports in state.json, tick the PLANS.md checkbox, and add the changelog. The diff does exactly that: state.json task 15.1 done=true with reports=[worker-report.json], PLANS.md '- [x] 15.1', a new docs/changelog/v1.2.0.md task entry, and a 00-index.md row. docs/status.md is unchanged and `dotnet run scripts/render-docs-state.cs --check` reports 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree'. The only check-docs failure is the expected worker/reviewer report pairing check until this reviewer report exists.",
+      "evidence": [
+        "git diff -- PLANS.md docs/plan/state.json docs/changelog/00-index.md",
+        "dotnet run scripts/render-docs-state.cs --check output",
+        "scripts/check-docs.sh output",
+        "docs/plan/README.md:11,13,81-84"
+      ],
+      "recommended_action": "None; the current-state surfaces are correct."
+    }
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/LogSubjectTests.cs (all 23 cases inspected: 5 path/file-name theory cases, DirectorySegmentsNeverAppearInTheSubject, DocumentedMaximumIsTheAdrBound, NameAtTheBoundIsEmittedUnchanged, NameBeyondTheBoundIsTruncatedToTheScalarBound, BoundNeverSplitsASurrogatePair, ControlScalarsAreRemoved, EmittedSubjectContainsNoControlScalars, ControlRemovalDoesNotCollapseOrTrimWhitespace, BoundIsAppliedAfterControlRemoval, 4 non-ASCII/combining/astral cases, UnusableNamesFallBackToTheItemIdentifier, 3 reduce-to-nothing/whitespace fallback cases, FallbackIsTheItemIdentifierInDFormat).",
+    "Focused run: dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~LogSubjectTests\" -> Failed 0, Passed 23, Skipped 0, Total 23.",
+    "Full default suite: ./build.sh test -> Failed 0, Passed 1517, Skipped 63, Total 1580 (matches the worker's post-task count; +23 over the 1494/1557 baseline, consistent with the 23 new cases).",
+    "Build: ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (warning-free, TreatWarningsAsErrors/analyzers/StyleCop).",
+    "Test sensitivity reasoned from exact-equality assertions: path-splitting, bound, control-removal, normalized-fallback, and D-format removal each make one or more exact-value or Guid.TryParseExact('D') assertions fail; the worker's probe failure counts are consistent with the assertion coverage."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-026.md (clauses 1-2 govern this task; clauses 3-5 correctly deferred to 15.2/15.4).",
+    "docs/decisions/ADR-020.md clause 4 (redaction contract; not amended by 15.1, correctly untouched).",
+    "docs/planning/v1.2.md Goal G9 and docs/implementation/planning/v1.2.json phase 15 / task 15.1 acceptance criteria and review assignment.",
+    "docs/plan/README.md state.json shape and lifecycle (reports field is a documented convention, not an ad-hoc addition)."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json (task 15.1 done=true, reports path, updated_utc).",
+    "PLANS.md (task checkbox [x]; generated active-scope/milestone blocks untouched; renderer agrees).",
+    "docs/status.md (generated, unchanged, renderer --check 'up to date').",
+    "docs/changelog/v1.2.0.md (new task 15.1 entry) and docs/changelog/00-index.md (1.2.0 row).",
+    "docs/limitations/open.md F8 (remains open as required; no limitations change for 15.1)."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

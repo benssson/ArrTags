@@ -49,6 +49,8 @@ internal static class RenderGoldenFixtures
         "top-right-large",
         "bottom-right-small",
         "center",
+        "bottom-left-extra-large",
+        "full-rail-extra-large",
     };
 
     /// <summary>
@@ -136,6 +138,14 @@ internal static class RenderGoldenFixtures
                 RenderImageFixtures.CreateRgbPng(Width, Height),
                 metadata: FullRailMetadata(),
                 policy: PositionPolicy(BadgePosition.Center, BadgeSize.Medium)),
+            "bottom-left-extra-large" => RenderTestFixtures.BuildRequest(
+                RenderImageFixtures.CreateRgbPng(Width, Height),
+                metadata: TechnicalMetadata(),
+                policy: PositionPolicy(BadgePosition.BottomLeft, BadgeSize.ExtraLarge)),
+            "full-rail-extra-large" => RenderTestFixtures.BuildRequest(
+                RenderImageFixtures.CreateRgbPng(Width, Height),
+                metadata: FullRailMetadata(),
+                policy: PositionPolicy(BadgePosition.BottomLeft, BadgeSize.ExtraLarge)),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown golden fixture."),
         };
     }

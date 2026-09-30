@@ -128,5 +128,25 @@
     "PngColorType": 2,
     "OutputHash": "095A51910B320D32C2C060B5C205426A2903D4E62236EA6FB9EC80C6EB0864F7",
     "OutputFingerprint": "5DD089D827F8717A6175FB23BCD6D722F2B25B55F02977131AC5B6939AE07F64"
+  },
+  {
+    "Name": "bottom-left-extra-large",
+    "PngFile": "bottom-left-extra-large.png",
+    "Width": 500,
+    "Height": 750,
+    "Channels": 3,
+    "PngColorType": 2,
+    "OutputHash": "3AFFB2E6CB345F5834D07ED1DFB13A3E1A2B52CA52203448A5FEE685CBE7E7F9",
+    "OutputFingerprint": "A21E1D031E6C6F48C27A69EAE69CB19DB130EC4141608BE6748BB534382CD3E1"
+  },
+  {
+    "Name": "full-rail-extra-large",
+    "PngFile": "full-rail-extra-large.png",
+    "Width": 500,
+    "Height": 750,
+    "Channels": 3,
+    "PngColorType": 2,
+    "OutputHash": "26B96CD18E1BA3838A458E63D784FC77DE97A53ADBDB8D3A9E50593DEAF9FBDA",
+    "OutputFingerprint": "6E30E536B83D5285462E7E9753B68776AB8CF56035EF5D7F4BDFA8D61D18CF11"
   }
 ]

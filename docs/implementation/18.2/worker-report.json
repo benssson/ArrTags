@@ -1,0 +1,106 @@
+{
+  "task": "18.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Golden coverage and ADR-027 clause 4 version-decision verification. First ran the pinned native oracle on the pre-task tree (RenderGoldenTests Failed 0, Passed 15, Skipped 0, Total 15) and confirmed git status shows the 13 committed PNGs unmodified and the manifest diff a pure append, so every Small/Medium/Large golden byte, hash, and fingerprint still reproduces under the pinned renderer. Added two Extra Large golden fixtures (Extended RenderGoldenFixtures.Names and BuildRequest using the existing PositionPolicy helper at the default BottomLeft anchor): bottom-left-extra-large (TechnicalMetadata, the rgb-png inputs, 13,040 bytes, hash 3AFFB2E6CB345F5834D07ED1DFB13A3E1A2B52CA52203448A5FEE685CBE7E7F9, fingerprint A21E1D031E6C6F48C27A69EAE69CB19DB130EC4141608BE6748BB534382CD3E1) and full-rail-extra-large (FullRailMetadata, the full-rail inputs, 12,447 bytes, hash 26B96CD18E1BA3838A458E63D784FC77DE97A53ADBDB8D3A9E50593DEAF9FBDA, fingerprint 6E30E536B83D5285462E7E9753B68776AB8CF56035EF5D7F4BDFA8D61D18CF11). The PNGs and manifest entries were produced by a one-off throwaway generator kept outside the repo (/tmp/18.2/generator, deleted after use; no File.Write* path in the shipped golden test code), following the task 12.4 precedent. Extended RenderDeterminismTests.RepeatedRendersAreByteIdentical with bottom-left-extra-large; two separate generator processes produced byte-identical PNGs (cmp clean). The new manifest fingerprints differ from their Medium counterparts with all other inputs identical, and no version constant advanced (RenderVersion.CurrentRendererVersion stays 3, RendererConfiguration.CurrentSchemaVersion stays 2; no source file is in the diff). Validation: build 0 warnings/0 errors; default suite Failed 0/Passed 1799/Skipped 64/Total 1863 (unchanged vs 18.1); forced-native full suite Failed 0/Passed 1884/Skipped 21/Total 1905; focused native golden oracle 0/17/0/17 (pre-task 0/15/0/15); focused native determinism 0/5/0/5; focused fingerprint/configuration 0/61/0/61. Three sensitivity probes (wrong manifest hash, mutated golden byte, removed golden PNG) each failed the new fixture case and the manifest-completeness fact (Failed 2, Passed 15, Total 17) and were reverted. Documentation: state.json 18.2 done + report path, PLANS.md checkbox, changelog entry; README/architecture/data-model were verified not stale (18.1 updated their Extra Large text; the normative G7 documentation is 18.3). render-docs-state reports up to date and check-docs.sh passed all nine sections on the tree before this report was persisted (after persistence only the agent-contract worker/reviewer pairing check is pending the orchestrator's implementation-reviewer report).",
+  "validation": [
+    "Pre-task baseline, pinned native oracle: `LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=/tmp/arrtags-skia-probe/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/arrtags-skia-probe/sysroot/usr/share dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~RenderGoldenTests\"` -> Failed 0, Passed 15, Skipped 0, Total 15 (the 13 committed goldens plus the manifest-completeness and changed-pixel facts).",
+    "`git status --short tests/ArrTags.Tests/Goldens/` before and after: before empty; after only `M manifest.json` plus the two new untracked PNGs; `git diff tests/ArrTags.Tests/Goldens/manifest.json` is a pure append of the two entries after `center`, so no existing PNG or manifest entry changed.",
+    "Generator (outside the repo, deleted after use): `/tmp/18.2/generator` console project invoking `ArrTags.Tests.RenderGoldenFixtures.BuildRequest` and `SkiaBadgeRenderer` under the pinned native runtime; two separate `dotnet run` invocations produced byte-identical PNGs (`cmp` clean for both new files) and the same hashes/fingerprints: bottom-left-extra-large 500x750/3 channels/color type 2/13,040 bytes hash 3AFFB2E6CB345F5834D07ED1DFB13A3E1A2B52CA52203448A5FEE685CBE7E7F9 fingerprint A21E1D031E6C6F48C27A69EAE69CB19DB130EC4141608BE6748BB534382CD3E1; full-rail-extra-large 500x750/3/2/12,447 bytes hash 26B96CD18E1BA3838A458E63D784FC77DE97A53ADBDB8D3A9E50593DEAF9FBDA fingerprint 6E30E536B83D5285462E7E9753B68776AB8CF56035EF5D7F4BDFA8D61D18CF11.",
+    "`source /config/arrtags-env.sh && ./build.sh build` -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Post-task pinned native oracle: same command as the baseline -> Failed 0, Passed 17, Skipped 0, Total 17 (13 existing + 2 new golden theory cases + 2 facts; both new fixtures match bytes, hash, fingerprint, dimensions, channels, color type, and exact decoded pixels).",
+    "Pinned native determinism: `... dotnet test ... --filter \"FullyQualifiedName~RenderDeterminismTests\"` -> Failed 0, Passed 5, Skipped 0, Total 5; `RepeatedRendersAreByteIdentical` now also asserts four renders of bottom-left-extra-large are byte-identical with the same hash/fingerprint.",
+    "Focused fingerprint/configuration: `dotnet test ... --filter \"FullyQualifiedName~RenderFingerprintTests|FullyQualifiedName~RendererConfigurationTests\"` -> Failed 0, Passed 61, Skipped 0, Total 61 (includes the 18.1 cases pinning that ExtraLarge differs in the renderer-configuration and output fingerprints).",
+    "Default suite: `source /config/arrtags-env.sh && ./build.sh test` -> Failed 0, Passed 1799, Skipped 64, Total 1863, unchanged from the 18.1 baseline (native theories remain one environment skip each).",
+    "Forced-native full suite: `LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=/tmp/arrtags-skia-probe/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/arrtags-skia-probe/sysroot/usr/share dotnet test ArrTags.slnx --configuration Release --no-build` -> Failed 0, Passed 1884, Skipped 21, Total 1905; the 21 skips are the ARRTAGS_JELLYFIN_HOST_DIR host-guarded tests and the absent non-canonical golden set.",
+    "Sensitivity probe 1: set the bottom-left-extra-large OutputHash in the committed-owned oracle copy to zeros -> RenderGoldenTests Failed 2, Passed 15, Skipped 0, Total 17 (the fixture case and CommittedGoldenManifestIsCompleteAndSelfConsistent); reverted.",
+    "Sensitivity probe 2: flipped one byte (offset 500) of the bottom-left-extra-large oracle copy -> RenderGoldenTests Failed 2, Passed 15, Skipped 0, Total 17; reverted.",
+    "Sensitivity probe 3: removed (renamed) the bottom-left-extra-large oracle copy -> RenderGoldenTests Failed 2, Passed 15, Skipped 0, Total 17; reverted, oracle copy byte-identical to the committed PNG, final focused run Failed 0, Passed 17, Skipped 0, Total 17.",
+    "Version decision: `RenderVersion.CurrentRendererVersion` is 3 and `RendererConfiguration.CurrentSchemaVersion` is 2 in src; `git diff --stat src/` is empty, so no production or fingerprint code changed and neither constant advanced.",
+    "`dotnet run scripts/render-docs-state.cs` -> docs/status.md: up to date, PLANS.md: up to date (both blocks).",
+    "`scripts/check-docs.sh` -> check-docs: PASS (all nine sections) on the tree with state.json/PLANS.md/changelog updated and before this worker report was persisted; after persisting this report the only failing section is the agent-contract worker/reviewer pairing (\"task 18.2 has a worker report but no reviewer report\"), which is satisfied when the orchestrator's implementation-reviewer report is added (the same pattern as tasks 15.4 and 16.1-16.6).",
+    "Stale-value searches: `grep -rn \"thirteen|13 committed|13 golden\" README.md PLANS.md docs/status.md docs/architecture docs/data-model docs/limitations` -> no matches; no current-state surface records a pre-task forced-native total, so none is stale."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/RenderGoldenFixtures.cs",
+    "tests/ArrTags.Tests/RenderDeterminismTests.cs",
+    "tests/ArrTags.Tests/Goldens/manifest.json",
+    "tests/ArrTags.Tests/Goldens/bottom-left-extra-large.png",
+    "tests/ArrTags.Tests/Goldens/full-rail-extra-large.png",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/implementation/18.2/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Existing goldens byte-identical: the 13 committed golden PNGs and their manifest entries are unchanged and the pinned renderer reproduces their bytes/hashes/fingerprints for Small/Medium/Large.",
+      "evidence": "Pre-task pinned native run of `RenderGoldenTests` -> Failed 0, Passed 15, Skipped 0, Total 15 (13 fixtures + 2 facts). `git status --short tests/ArrTags.Tests/Goldens/` lists only `M manifest.json` and the two new untracked PNGs; `git diff` of manifest.json is a pure append of the two new entries after `center`; no existing PNG modified."
+    },
+    {
+      "criterion": "New Extra Large golden coverage: deterministic committed golden artifact(s) for BadgeSize.ExtraLarge in the established pattern, with fixture names in Names, Expected handling, BuildRequest arms using PositionPolicy(position, size), PNG(s) produced by a throwaway generator outside the repo, and manifest entries with the exact OutputHash and OutputFingerprint.",
+      "evidence": "RenderGoldenFixtures.Names gains bottom-left-extra-large and full-rail-extra-large; both BuildRequest arms use PositionPolicy(BadgePosition.BottomLeft, BadgeSize.ExtraLarge) (Expected returns the default 500x750/3/color type 2 and the manifest-completeness fact cross-checks Expected against the committed manifest); the two PNGs and manifest entries were produced by /tmp/18.2/generator (outside the repo, deleted after use) and match the renderer output exactly in the 17-case oracle run. No File.Write* match in RenderGoldenFixtures.cs/RenderGoldenTests.cs/RendererCrossRuntimeTests.cs."
+    },
+    {
+      "criterion": "Determinism: the new goldens render byte-identically again with the same fingerprint/hash.",
+      "evidence": "Two separate generator processes produced byte-identical PNGs (`cmp` clean) and the same hash/fingerprint; the extended RenderDeterminismTests.RepeatedRendersAreByteIdentical (four renders of bottom-left-extra-large plus the separate-process test) passes in the pinned native run (Failed 0, Passed 5, Skipped 0, Total 5)."
+    },
+    {
+      "criterion": "Fingerprint includes the non-default size: the new manifest OutputFingerprint is the Extra Large fingerprint and differs from the Medium default for the same other inputs (ADR-027 clause 4).",
+      "evidence": "bottom-left-extra-large fingerprint A21E1D031E6C6F48C27A69EAE69CB19DB130EC4141608BE6748BB534382CD3E1 vs the same-inputs Medium rgb-png 34C828D8A8D11B440782E6F9D478BCBE3905CE4906BE5307BE826EDADE641D53; full-rail-extra-large 6E30E536B83D5285462E7E9753B68776AB8CF56035EF5D7F4BDFA8D61D18CF11 vs full-rail 40FC8147807037A2E9245DB976FECB0BC7D87BBDEFA8D5FDCD77B97FF33DBAE6 (PNG hashes differ too). The renderer-configuration and output paths append badgeSize only for a non-default size (RendererConfigurationFingerprint.AppendBadgePlacement, RenderFingerprint.AppendBadgePlacement); the focused fingerprint/configuration run (Failed 0, Passed 61, Skipped 0, Total 61) includes the 18.1 cases pinning the ExtraLarge difference."
+    },
+    {
+      "criterion": "Version decision verification: RenderVersion.CurrentRendererVersion and RendererConfiguration.CurrentSchemaVersion did not advance, and no existing Small/Medium/Large golden changed (otherwise STOP and reconsider per ADR-027 clause 4).",
+      "evidence": "src/ArrTags/Rendering/RenderVersion.cs declares CurrentRendererVersion = 3 and src/ArrTags/Configuration/RendererConfiguration.cs declares CurrentSchemaVersion = 2; `git diff --stat src/` is empty; no existing golden PNG or manifest entry changed (pure-append manifest diff, no modified PNG); the extended oracle still reproduces all 13 existing fixtures (17/17 passed). Verdict: the clause 4 decision stands."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Which new Extra Large fixture set to add (the task allowed a minimal-but-meaningful set and left the exact cases open).",
+      "chosen": "Two goldens at the default BottomLeft anchor: bottom-left-extra-large (TechnicalMetadata, identical to the Medium rgb-png inputs) and full-rail-extra-large (FullRailMetadata, identical to the Medium full-rail inputs). Each differs from an already-committed Medium golden only by the size, so the pair directly pins the 2.0 factor and provides the same-other-inputs fingerprint comparison; position and safe-area interactions are already covered by the 18.1 geometry tests and the 12.4 anchor/size goldens.",
+      "basis": "The task's suggested minimal set (one technical-metadata and one full-rail Extra Large golden), the existing PositionPolicy fixture pattern, and the requirement not to add redundant cases.",
+      "impact": "Two new committed PNGs and two manifest entries; the native golden and canonical cross-runtime theories gain two cases each, while the default suite totals are unchanged because the native theories remain one environment skip each."
+    },
+    {
+      "question": "How to produce the committed PNGs and manifest entries with the generator kept outside the repository.",
+      "chosen": "A temporary console project under /tmp/18.2/generator that references the test project and invokes the internal fixture builder via reflection under the pinned native runtime, printing the exact hash/fingerprint values copied into the manifest; the project was deleted after use.",
+      "basis": "The task's explicit constraint that the generator stay outside the repo and the task 12.4 precedent that the shipped test code must gain no writer or auto-approval path.",
+      "impact": "The committed goldens were produced by a one-off process rather than a reproducible in-repo command (recorded as a limitation); the shipped golden tests remain read-only over the artifacts and fail closed."
+    }
+  ],
+  "test_sensitivity": [
+    "Wrong new-fixture manifest hash (OutputHash set to zeros in the oracle copy): RenderGoldenTests Failed 2, Passed 15, Skipped 0, Total 17 (the bottom-left-extra-large golden case and the manifest-completeness fact); probe reverted.",
+    "Mutated new-fixture golden pixel byte (one byte at offset 500 of bottom-left-extra-large.png flipped): RenderGoldenTests Failed 2, Passed 15, Skipped 0, Total 17; probe reverted.",
+    "Removed new-fixture golden artifact (bottom-left-extra-large.png missing while the manifest entry exists): RenderGoldenTests Failed 2, Passed 15, Skipped 0, Total 17; probe reverted and the restored oracle copy is byte-identical to the committed PNG (cmp clean), final focused run Failed 0, Passed 17, Skipped 0, Total 17.",
+    "The pre-existing AChangedGoldenPixelFailsTheExactGoldenComparison fact passed in every focused native golden run and remains the comparator-level probe that a changed decoded pixel fails the exact comparison.",
+    "The version-decision property (no constant advance) is verified by inspection of the final tree and the empty src diff; it is a value pin, not a branch, so no runtime probe applies."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/changelog/v1.2.0.md"
+    ],
+    "old_values_removed": [
+      "Searched README.md, PLANS.md, docs/status.md, docs/architecture/, docs/data-model/, and docs/limitations/ for stale golden-count wording (thirteen / 13 committed / 13 golden) -> no matches; no current-state surface enumerates the committed golden count.",
+      "No current-state surface records a pre-task forced-native suite total, so the new forced-native counts (Failed 0, Passed 1884, Skipped 21, Total 1905) supersede nothing; the v1.1 forced-native figures in docs/limitations/accepted.md P12R-F1 are historical release evidence.",
+      "README.md, docs/architecture/09-persisted-artwork-rendering.md, docs/data-model/03-06-badgedefinition.md, and docs/data-model/03-12-configuration.md were verified not stale: 18.1 already updated their current-state size/factor text, and the normative G7 golden/version-decision narrative (including the ADR-019 supersession note) is task 18.3.",
+      "docs/status.md and the PLANS.md milestone table were regenerated with `dotnet run scripts/render-docs-state.cs` and report up to date (no generated block changed)."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The committed Extra Large goldens were produced by a one-off throwaway generator kept outside the repository and deleted after use (the task 12.4 precedent), so they are not reproducible by an in-repo command; the shipped golden test code has no writer, auto-update, or auto-approval path (verified by a File.Write* scan of the golden test files).",
+    "The two new golden fixtures execute only in the ARRTAGS_SKIA_COMPAT=1 forced-native run (and in the canonical cross-runtime theory there); the default `./build.sh test` reports the native theories as one environment skip each, so the default 0/1799/64/1863 totals are unchanged and the absolute fingerprint pin remains in the forced-native path (pre-existing accepted limitation P12R-F1).",
+    "The non-canonical cross-runtime golden set is still absent, so RendererCrossRuntimeTests.SuppliedNonCanonicalGoldenSetMatchesWithinTheAdr010Tolerance remains an honest skip (pre-existing accepted V6 limitation).",
+    "The normative G7 documentation, the ADR-019 supersession note, and the v1.2 implementation notes remain task 18.3; this task changed only the changelog/current-state status it owns.",
+    "Phase 18 is not complete: task 18.3, the phase review, and the v1.2.0-phase18 tag are not part of this task."
+  ],
+  "ready_for_next_task": true
+}

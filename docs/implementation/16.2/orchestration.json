@@ -1,0 +1,93 @@
+{
+  "task": "16.2",
+  "title": "Authoritative restart-required set with code evidence",
+  "phase": 16,
+  "status": "COMPLETE",
+  "commit": "04de6df",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 1750886,
+        "output_tokens": 49135,
+        "reasoning_tokens": 79326,
+        "cache_read_tokens": 26103424,
+        "cache_write_tokens": 0,
+        "total_tokens": 27982771,
+        "cost_usd": 0.41801977199999985,
+        "duration_seconds": 2077,
+        "session_id": "ses_f25b0767effeZbE3dU74Wv0ArQ"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 155910,
+        "output_tokens": 9943,
+        "reasoning_tokens": 18217,
+        "cache_read_tokens": 3641728,
+        "cache_write_tokens": 0,
+        "total_tokens": 3825798,
+        "cost_usd": 0.05120768399999999,
+        "duration_seconds": 401,
+        "session_id": "ses_f259058a3ffe1T33nHHmO5Br2O"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 974328,
+        "output_tokens": 9881,
+        "reasoning_tokens": 7386,
+        "cache_read_tokens": 7409920,
+        "cache_write_tokens": 0,
+        "total_tokens": 8401515,
+        "cost_usd": 0.17873915999999988,
+        "duration_seconds": 904,
+        "session_id": "ses_f25b0767effeZbE3dU74Wv0ArQ",
+        "note": "Continued the attempt-1 session for the F1 correction; figures are the exact delta of the authoritative cumulative session totals at invocation end minus the attempt-1 snapshot."
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 17111,
+        "output_tokens": 5470,
+        "reasoning_tokens": 2245,
+        "cache_read_tokens": 1725184,
+        "cache_write_tokens": 0,
+        "total_tokens": 1750010,
+        "cost_usd": 0.012371202,
+        "duration_seconds": 645,
+        "session_id": "ses_f259058a3ffe1T33nHHmO5Br2O",
+        "note": "Continued the attempt-1 review session for the F1 re-review; figures are the exact delta of the authoritative cumulative session totals at invocation end minus the attempt-1 snapshot."
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Review finding 16.2-F1 (MEDIUM): the no-silent-member classification guard hardcoded PluginConfiguration's five settings instead of reflecting over them, so a future writable PluginConfiguration leaf property could be left silently unclassified, and the worker report/changelog overstated the guard. The worker changed ExpectedClassifiedNames() to derive PluginConfiguration's domain with the same WritableLeafProperties filter as the other four model types, corrected the report/changelog/consumer-evidence wording, and re-ran the focused and default suites. Reviewer attempt 2 independently reproduced the reflection (43 == 43) and returned APPROVED with F1 resolved."
+    }
+  ]
+}

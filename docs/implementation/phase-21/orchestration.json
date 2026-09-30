@@ -1,0 +1,66 @@
+{
+  "phase": 21,
+  "title": "v1.2 release",
+  "name": "v1.2 release",
+  "release": "v1.2.0",
+  "status": "COMPLETE",
+  "gate": "Gate 21",
+  "gate_status": "MET",
+  "phase_review": "docs/implementation/final-review/release-review-v1.2.json",
+  "phase_review_status": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
+  "phase_tag": "v1.2.0",
+  "release_tag": "v1.2.0",
+  "authoritative_execution_order": [
+    "21.1",
+    "21.2",
+    "21.3",
+    "21.4",
+    "21.5",
+    "21.7",
+    "21.8",
+    "21.9",
+    "21.10",
+    "21.11",
+    "21.12",
+    "21.13",
+    "21.14",
+    "21.6"
+  ],
+  "release_artifact": {
+    "path": "artifacts/ArrTags_1.2.0.0.zip",
+    "bytes": 619861,
+    "sha256": "2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268",
+    "md5": "631fbfa5a4fb58fac5a877eeef761193",
+    "entries": 7
+  },
+  "release_review": "docs/implementation/final-review/release-review-v1.2.json",
+  "tasks": [
+    { "task": "21.1", "status": "COMPLETE", "commit": "7eb7b85", "orchestration": "docs/implementation/21.1/orchestration.json", "rework_rounds": 1, "final_gate": "APPROVED" },
+    { "task": "21.2", "status": "COMPLETE", "commit": "27e3416", "orchestration": "docs/implementation/21.2/orchestration.json", "rework_rounds": 1, "final_gate": "APPROVED" },
+    { "task": "21.3", "status": "COMPLETE", "commit": "eaeac72", "orchestration": "docs/implementation/21.3/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
+    { "task": "21.4", "status": "COMPLETE", "commit": "7ad12dc", "orchestration": "docs/implementation/21.4/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
+    { "task": "21.5", "status": "COMPLETE", "commit": "84b052e", "orchestration": "docs/implementation/21.5/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED", "note": "Review PASS_WITH_FINDINGS with the new MEDIUM SEC-21.5-01; the user chose to fix rather than accept, so corrective tasks 21.7-21.10 were added and 21.5 remained the original complete review." },
+    { "task": "21.7", "status": "COMPLETE", "commit": "5f72372", "orchestration": "docs/implementation/21.7/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
+    { "task": "21.8", "status": "COMPLETE", "commit": "35818fb", "orchestration": "docs/implementation/21.8/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
+    { "task": "21.9", "status": "COMPLETE", "commit": "6c7b45d", "orchestration": "docs/implementation/21.9/orchestration.json", "rework_rounds": 1, "final_gate": "APPROVED" },
+    { "task": "21.10", "status": "COMPLETE", "commit": "359ac1b", "orchestration": "docs/implementation/21.10/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
+    { "task": "21.11", "status": "COMPLETE", "commit": "a079358", "orchestration": "docs/implementation/21.11/orchestration.json", "rework_rounds": 1, "final_gate": "APPROVED" },
+    { "task": "21.12", "status": "COMPLETE", "commit": "c78a7d6", "orchestration": "docs/implementation/21.12/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
+    { "task": "21.13", "status": "COMPLETE", "commit": "f54dc85", "orchestration": "docs/implementation/21.13/orchestration.json", "rework_rounds": 1, "final_gate": "APPROVED" },
+    { "task": "21.14", "status": "COMPLETE", "commit": "79be5ba", "orchestration": "docs/implementation/21.14/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
+    { "task": "21.6", "status": "COMPLETE", "commit": "7f11afa", "orchestration": "docs/implementation/21.6/orchestration.json", "rework_rounds": 0, "final_gate": "release-reviewer" }
+  ],
+  "aggregate": {
+    "task_count": 14,
+    "note": "Per-task subagent invocation records and per-invocation token/cost figures are in each task's docs/implementation/<task-id>/orchestration.json. This phase-level record carries the gate determination; the invocation detail is not duplicated here.",
+    "rework_rounds_total": 5,
+    "release_review_status": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
+    "release_decision": "SHIP_WITH_ACCEPTED_LIMITATIONS"
+  },
+  "notes": [
+    "Gate 21 is met by the release review (docs/implementation/final-review/release-review-v1.2.json): reviewer_status APPROVED_WITH_ACCEPTED_LIMITATIONS, release_decision SHIP_WITH_ACCEPTED_LIMITATIONS, open_blocker_high 0. Following the v1.1 Phase 14 precedent, the release review is the release-phase gate; no separate phase-reviewer record was produced.",
+    "The v1.2 release required corrective cycles beyond the original task outline: task 21.7 fixed SEC-21.5-01 (provider redirect) and tasks 21.11 fixed SEC-21.5-02/03 (log subject), with tasks 21.8/21.9/21.10 and 21.12/21.13/21.14 re-deriving the artifact, live matrix, and security review against each corrected build. The final artifact is the task 21.12 build (619,861 bytes).",
+    "Release-review required changes RR-V12-1 (register F-21.13-2 as accepted limitation V12-F7-1) and RR-V12-2 (advance current_release/releases[], mark 21.6 done, re-render, refresh the P1/V6 identity wording) were folded into the release commit before the tag.",
+    "The release was archived per the plan lifecycle: phases 15-21 moved verbatim to docs/plan/archive/v1.2.md, the scope plan to docs/plan/archive/v1.2-plan.md, and active_scope set to null. The GitHub release, asset upload, and manifest push remain the user's manual step."
+  ]
+}

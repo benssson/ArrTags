@@ -1,0 +1,79 @@
+{
+  "task": "21.8",
+  "title": "Corrected release build, full suite, reproducible artifact, and release documentation",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "35818fb",
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.8 re-derives the release build, artifact identity, suites, manifest, and release documentation against the corrected code from task 21.7. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause; it re-executes established build/verification on the pinned host. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 235934,
+        "output_tokens": 41796,
+        "reasoning_tokens": 44169,
+        "cache_read_tokens": 13731328,
+        "cache_write_tokens": 0,
+        "total_tokens": 14053227,
+        "cost_usd": 0.12816308399999995,
+        "duration_seconds": 1275,
+        "session_id": "ses_f126e8a15ffeLf53F6HTzw6q0q"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 64487,
+        "output_tokens": 24102,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 1854592,
+        "cache_write_tokens": 0,
+        "total_tokens": 1943181,
+        "cost_usd": 0,
+        "duration_seconds": 945,
+        "session_id": "ses_f125ae41effeg5AqOmQSpcl1Qs"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 65422,
+        "output_tokens": 11176,
+        "reasoning_tokens": 8623,
+        "cache_read_tokens": 1561393,
+        "cache_write_tokens": 0,
+        "total_tokens": 1646614,
+        "cost_usd": 0,
+        "duration_seconds": 643,
+        "session_id": "ses_f125ae41bffeo23b0XD83uGem5"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Corrected artifact: artifacts/ArrTags_1.2.0.0.zip, 619,636 bytes, SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277, MD5 f3b50a91c7cb63d9560316d8abe2f9dc, 7 entries; byte-identical across two independent clean exports plus the wiped repository tree (worker) and independently reproduced by both reviewers at further unused paths. Only the packaged ArrTags.dll changed versus the superseded 21.3 archive (1,346,560 / 8d7b25c6... -> 1,347,072 / eae2cbab...); the other six entries are byte-identical.",
+    "Suites (corrected): default with archive 0/1937/66/2003; no-archive default 0/1934/69/2003; host-guarded 0/1957/46/2003; forced-native 0/2024/21/2045; the +10 over 21.3 is the task 21.7 ProviderRedirectTransportTests. manifest.json 1.2.0.0 checksum = f3b50a91... = md5sum of the corrected archive.",
+    "Open follow-up for task 21.9 (finding 21.8-TQ-1 / 21.8-REV-1, MEDIUM): docs/testing/jellyfin-12-musl-test-host.md still names the superseded 21.4 candidate (619,538 bytes, SHA-256 50580499...) without a superseded marker. It is accurate history for 21.4 and outside 21.8's diff scope; task 21.9's corrected live matrix must mark it superseded and record the corrected matrix, or a reader would install the pre-fix build.",
+    "Release state boundaries observed: docs/plan/state.json current_release (1.1.0.0), releases[].status for 1.2.0, docs/status.md release-complete state, docs/changelog/v1.2.0.md finalisation, and the v1.2.0 tag remain task 21.6; the check-docs artifact-identity guard still matches the retained 1.1.0.0 identity strings.",
+    "No source, test, build-metadata, golden, or immutable-history file changed in this task; the task 21.7 code fix is already committed."
+  ]
+}

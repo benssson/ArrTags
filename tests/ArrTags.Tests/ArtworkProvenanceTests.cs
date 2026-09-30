@@ -7,7 +7,7 @@ namespace ArrTags.Tests;
 /// <summary>
 /// Focused checks for the guarded artwork ownership model: the fail-closed
 /// identity comparison, the persisted-state invariants, and every documented
-/// logical transition in <c>docs/data-model.md</c> section 3.10.2. These tests
+/// logical transition in <c>docs/data-model/03-10-artworkcacheentry.md</c> section 3.10.2. These tests
 /// require no live Jellyfin or Arr instance and perform no image mutation.
 /// </summary>
 public sealed class ArtworkProvenanceTests

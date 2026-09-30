@@ -1,0 +1,138 @@
+{
+  "subject": "Fresh independent security review (ADR-026 clause 5 / ADR-020 clause 8) of the amended ArrTags plugin log path: the bounded log subject (task 15.1, src/ArrTags/Logging/LogSubject.cs), its threading through the ADR-026 clause 3 call sites (task 15.2), the bounded render classification (task 15.3), the IArrTagsLog<T>/ILogVerbosityGate/LogThrottle facade, the LogSubjectTests (23 cases) and LogRedactionTests (167 cases), and the canonical documentation changed for the amendment (ADR-020, ADR-026, architecture 06/12, README, docs/limitations). Attempt 2: the attempt-1 report at docs/implementation/15.4/security-review.json (written 2026-09-25 19:44 UTC by the previously launched security-reviewer CLI run) is preserved and was not overwritten; the delegation brief predated its completion and stated no prior report existed, so the contract attempt rule was followed.",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "SR2-15.4-01",
+      "severity": "LOW",
+      "status": "not_required",
+      "area": "boundedness/log-integrity (required adjudication 1, Unicode Cf; TQ-15.1-2; corresponds to attempt-1 SR-15.4-01)",
+      "description": "ADJUDICATED ACCEPTABLE - no change required. LogSubject.NormalizeFileName removes only Unicode Cc scalars (Rune.IsControl). Cf format scalars and the Zl/Zp separators pass through verbatim: I reproduced U+202E RIGHT-TO-LEFT OVERRIDE, U+200B ZERO WIDTH SPACE, U+200E LRM, U+061C ALM, U+2028 LINE SEPARATOR, and U+2029 PARAGRAPH SEPARATOR in the subject, and I reproduced a hostile subject emitted unchanged through the shipped ArrTagsLog<T> facade at Information and Trace (0 records at Warning). This matches clause 2's literal wording: 'control characters' names the Unicode Control category (Cc), Rune.IsControl matches exactly that category, and clause 2 says the name is 'otherwise emitted verbatim', so stripping Cf/Zl/Zp would exceed the clause rather than satisfy it. The residual is a log-display integrity weakness (bidi reordering, apparent line breaks in some viewers) available only to an actor who can name media files on the host; it is not a secret exposure (the value is still a file-name component or a D-format Guid), remains bounded at 128 scalars, and cannot evade the volume bound because LogThrottle admission keys on category|event only (reproduced: 1 tracked key). The current tree records the Cc-only decision in ADR-026's implementation note; no test pins the behavior in either direction.",
+      "evidence": [
+        "src/ArrTags/Logging/LogSubject.cs:84-99 (Rune.IsControl skip at :86; 128-scalar bound at :91-94)",
+        "/tmp/final-review/security/probe-output-a2.txt: probe 1 shows Cf/Zl/Zp pass-through (cats=Format/LineSeparator/ParagraphSeparator) while C0/C1 (U+0000, U+0001, CR, LF, tab, U+0085, U+007F) are removed; probe 2 shows Warning=0 records, Information=Trace=1 identical record with U+202E and U+2028 preserved",
+        "docs/decisions/ADR-026.md 'Implementation note' paragraph 'Control removal is Cc-only...' records the decision",
+        "tests/ArrTags.Tests/LogSubjectTests.cs ControlScalarsAreRemoved / EmittedSubjectContainsNoControlScalars cover C0/C1 only; no Cf/Zl/Zp case exists"
+      ],
+      "recommended_action": "No change required for this release; the Cc-only decision is now recorded. Optional future hardening (non-blocking): strip Cc+Cf+Zl+Zp (or at least U+2028, U+2029, U+202E) in NormalizeFileName and pin it with tests."
+    },
+    {
+      "id": "SR2-15.4-02",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "redaction/host-path semantics (required adjudication 2; TQ-15.1-1 / 15.1-F1; corresponds to attempt-1 SR-15.4-02)",
+      "description": "For host-native paths, clause 1 holds. On the pinned Linux host every POSIX path shape I probed yields only the final component (absolute, nested with spaces, relative, '//server/share/file.mkv'), and trailing-separator/separator-only/root values fall back to the D-format item id; no separator can survive inside a POSIX component, so no directory, drive, share, or parent path is emitted. A Windows-style backslash string on Linux is one file name and is emitted whole (reproduced: C:\\dir\\share\\file.mkv and \\\\server\\share\\file.mkv); that value is not a host-native path and cannot come from a real Linux media path (provenance: PrimaryPath is copied only by MediaIdentityFactory from MediaSourceInfo.Path/item.Path). The current tree scopes the documented claim correctly: ADR-020 amendment note, ADR-026 implementation note, architecture 06 (now host-native-path scoped), architecture 12 ('on the pinned Linux host ... a Windows-style backslash string is a single file name rather than a path'), the README LogVerbosity row (updated after attempt 1 to say 'of a host-native media path ... for a host-native media path it never writes a directory, share, or full path'), and the PLANS v1.2 risk row. Attempt-1's documentation recommendation is therefore applied in the tree; the code needs no change. Residual (non-actionable): a misconfigured non-host-native path value would be emitted as a filename-shaped string; it contains no credential, is bounded to 128 scalars, and is the host's own metadata.",
+      "evidence": [
+        "/tmp/final-review/security/probe-output-a2.txt '== Path semantics (host = Linux) ==': POSIX shapes -> file-name component; windows drive/UNC backslash strings -> whole string; trailing separator/root -> D-format fallback",
+        "src/ArrTags/Logging/LogSubject.cs:56 (Path.GetFileName); src/ArrTags/Media/MediaIdentityFactory.cs:136-164 (PrimaryPath from the first MediaSourceInfo.Path, else item.Path)",
+        "README.md:90; docs/architecture/06-configuration-and-persisted-state.md:150-156; docs/architecture/12-performance-and-operational-limits.md:50-58; docs/decisions/ADR-020.md amendment note; docs/decisions/ADR-026.md implementation note; PLANS.md v1.2 risk row",
+        "grep 'new MediaLocationSummary(' over src returns only src/ArrTags/Media/MediaIdentityFactory.cs (no other producer)"
+      ],
+      "recommended_action": "None required. Optional (test-quality scope, non-blocking): pin the Linux backslash-is-literal behavior in LogSubjectTests so a future refactor away from Path.GetFileName cannot silently change the platform semantics."
+    },
+    {
+      "id": "SR2-15.4-03",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "architecture/conformance (required adjudication 3; IR-15.2-04)",
+      "description": "Documentation-wording issue, not a security issue. ADR-026 clause 3's mixed-site parenthetical lists the ineligible and connection-unavailable pre-publish discards as no-identity sites, but in the code both are reached after MediaIdentityFactory.TryCreate succeeded, where identity.MediaLocation.PrimaryPath can be available; the implementation follows the clause-3 enumeration and calls the 2-argument Discard, so those records take the item-identifier fallback. The fallback discloses strictly less than the file name (an opaque Guid, never a path), and no redaction, boundedness, or secret-freedom property depends on which subject is chosen; the changed-basis discards (configuration changed, item removed, item changed, no longer eligible, connection changed) do thread identity.MediaLocation?.PrimaryPath. The ADR-026 implementation note records the discrepancy without rewriting the clause, which is the correct handling for a decided ADR. No code change required.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:107,114,119,124,130,136 (2-argument Discard before/through identity creation) versus :208-237 (3-argument Discard with identity.MediaLocation?.PrimaryPath)",
+        "docs/decisions/ADR-026.md implementation note ('Clause 3's mixed-site parenthetical ... this note records the wording discrepancy rather than rewriting the clause')",
+        "docs/implementation/15.2/reviewer-report.attempt-2.json IR-15.2-04"
+      ],
+      "recommended_action": "None. If clause 3 is ever amended, prefer threading the path at those two post-identity discard sites for operator correlation; do not treat the current state as a defect."
+    },
+    {
+      "id": "SR2-15.4-04",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "secret/boundedness (required adjudication 4; classification secret-freedom; IR-15.3-1)",
+      "description": "Confirmed secret-free and bounded. ArtworkGenerationResult.PassThroughReason, FailureReason, and SourceFailureReason are nullable members of the code-owned enums RenderPassThroughReason, RenderFailureReason, and ArtworkSourceReadFailureReason; the private constructor and the factories set at most one per result, and DescribeClassification interpolates it once by enum name. No exception message, reader/renderer detail, provider payload, path, or credential is reachable: the source-unavailable path substitutes a bounded reason string and never propagates the reader's text. The single artwork Information record measured 166 Unicode scalars in my facade probe with the hostile subject; the fixed text plus at most one bounded enum name cannot carry unbounded data. LogRedactionTests injects a raw reader-detail sentinel and asserts it never reaches a captured record.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:137-145 (subject and single emission) and :160-178 (DescribeClassification)",
+        "src/ArrTags/Artwork/ArtworkGenerationResult.cs:16-34, 103-285 (private constructor; factories set one classification or none)",
+        "src/ArrTags/Rendering/RenderPassThroughReason.cs; src/ArrTags/Rendering/RenderFailureReason.cs; src/ArrTags/Artwork/ArtworkSourceReadResult.cs:26-48 (enums)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:502-595 (three classification theories and the omission theory) and FailedSourceArtworkReader / AssertNoSentinel"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "SR2-15.4-05",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation/limitations register",
+      "description": "The canonical limitations register was not reconciled with the amendment. docs/limitations/accepted.md SEC-5 still presents the pre-ADR-026 allowlist as exhaustive ('Every log call emits only bounded, already-redacted values per the ADR-020 clause 4 allowlist (ArrProviderError code/retryability/message, the non-secret connection identity, configuration version, bounded reason codes and enums, item/record identifiers, and counts)'), and docs/data-model/03-12-configuration.md points readers at SEC-5 for the logging contract. The ADR-026 bounded log subject and the explicit directory/drive/share/full-path exclusion are missing from that enumeration. This does not overstate the security conclusion (the 'cannot leak a secret' sentence remains true, and no path/secret is incorrectly claimed absent), but a current-state register that enumerates the allowed log values is now incomplete for the amended contract; the task-15.4 documentation reconciliation covered only open.md, archive.md, and 00-index.md. The fix is one paragraph and is non-blocking for the review outcome.",
+      "evidence": [
+        "docs/limitations/accepted.md:383-399 (SEC-5 paragraph; git diff -- docs/limitations/accepted.md is empty and its mtime predates the 15.4 edits)",
+        "docs/data-model/03-12-configuration.md:70-77 ('see docs/limitations/00-index.md SEC-5')",
+        "docs/decisions/ADR-020.md amendment note and docs/architecture/12-performance-and-operational-limits.md:44-47 (the amended allowlist that SEC-5 does not reflect)",
+        "docs/implementation/15.4/worker-report.attempt-2.json changed_files (accepted.md absent from the reconciliation)"
+      ],
+      "recommended_action": "Add the bounded log subject (file-name component only, 128 Unicode scalar bound, control scalars removed, D-format item-id fallback) and the explicit directory/drive/share/full-path exclusion to SEC-5's allowlist paragraph, with an ADR-026 pointer; keep the SEC-5 conclusion unchanged."
+    },
+    {
+      "id": "SR2-15.4-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "input/path-shape",
+      "description": "Path.GetFileName is a component splitter, not a file-type or URI parser, and two reproduced shapes are worth recording. (a) When MediaLocationSummary.PrimaryPath falls back to item.Path for an item with no media-source path and that value names a directory, the emitted subject is the item's final path component, i.e. a directory name (probe: '/media/movies/Some Movie Folder' -> 'Some Movie Folder'; '/mnt/nfs-share' -> 'nfs-share'). (b) A URL-shaped value is reduced to its last segment including any query string (probe: 'http://host/api/v3/movie?apikey=X' -> 'movie?apikey=X'), and authority userinfo is dropped as a side effect. Neither reaches the log in the shipped configuration: the sole producer of PrimaryPath is MediaIdentityFactory, which copies the Jellyfin host's MediaSourceInfo.Path/item.Path, and no provider payload, request URL, or PluginConfiguration field can reach the subject. Both shapes are bounded and credential-free, and shape (a) is a title-class value inside ADR-026's accepted disclosure trade-off (a media file/folder name may reveal a title), not directory structure.",
+      "evidence": [
+        "/tmp/final-review/security/probe-output-a2.txt rows 'dir-only path' and 'share root only' (directory-valued input -> basename)",
+        "grep 'new MediaLocationSummary(' over src returns only src/ArrTags/Media/MediaIdentityFactory.cs; 'new MediaIdentity(' matches only MediaIdentityFactory/MediaIdentity",
+        "src/ArrTags/Media/MediaIdentityFactory.cs:136-164 (source.Path preferred, item.Path fallback)"
+      ],
+      "recommended_action": "No action required. If a defensive posture is wanted later, reject a value that parses as an absolute URI in LogSubject and/or require the primary path's final component to be file-shaped before using it as the subject."
+    },
+    {
+      "id": "SR2-15.4-07",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage/redaction-tests",
+      "description": "The redaction suite genuinely covers the amended sites. All eight boundaries and all ADR-026/classification theories run through the shipped facade (ArrTagsLog<T> + LogVerbosityGate + LogThrottle + host ILogger) with the seven sentinel values planted in the secret-bearing inputs; AssertNoSentinel scans every captured record at all six verbosity levels; and exact record counts prove level gating (0 records at Off/Error/Warning for the Information line). Each clause-3 site has a dedicated driver: the artwork coordinator (source-present, source-failure, and classification cases), both metadata-read-failure paths (a throwing Handler drives the catch, a failed Result drives the failed-read line), the mixed discard with and without a path, the pre-identity discard, both readers, worker processed and retry-scheduled, and lifecycle removal. The subject assertions pin the exact basename and forbid '/' in the record, so a directory or full-path leak fails. One optional strengthening: no call-site driver embeds a sentinel in a directory component of the path, so directory exclusion at the call sites rests on the '/' assertion plus the helper-level DirectorySegmentsNeverAppearInTheSubject; a directory-embedded sentinel would make the call-site claim direct.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:104-203 (eight boundary sentinel theories over six levels), :209-498 (subject/fallback drives), :502-595 (classification), :1385-1399 (BuildLog over the shipped facade), :1519-1587 (FileName/ItemId/Queue/Sentinel assertions)",
+        "tests/ArrTags.Tests/ReconciliationFixtures.cs:75-96 (Result ?? Handler; a null Result with a throwing Handler drives the processor catch)",
+        "Ran: LogRedactionTests 167/167 and LogSubjectTests 23/23; full default suite 0 failed / 1619 passed / 63 skipped / 1682 total"
+      ],
+      "recommended_action": "No change required; optional non-blocking strengthening: plant a directory-embedded sentinel in one call-site driver per identity-bearing boundary."
+    }
+  ],
+  "secret_paths_checked": [
+    "src/ArrTags/Logging/LogSubject.cs (only new production helper; every emitted scalar is a file-name scalar, a control-free bounded projection, or a D-format Guid)",
+    "src/ArrTags/Logging/ArrTagsLog.cs, IArrTagsLog.cs, LogThrottle.cs, ArrTagsLogEvent.cs: one bounded message argument per write, no exception object attached, no level-dependent field expansion, no Trace-level site anywhere in src/",
+    "All 21 _log.Write call sites in src/ plus the facade's 2 _logger.Log invocations: ArtworkGenerationCoordinator (1), MetadataReconciliationProcessor (4), ConcurrencyLimitedArrMetadataReader (2), LibraryReconciliationService (1), SonarrMetadataReader (1), RadarrMetadataReader (1), LibraryWorkWorker (3), WebhookIntakeService (3), WebhookAuthenticationFilter (2), ArrTagsLifecycleService (3)",
+    "src/ArrTags/Secrets/SecretLease.cs (ToString omits the value; no log call site receives a lease) and src/ArrTags/Providers/ArrConnectionId.cs (userinfo and API key excluded; the URL-credential sentinel is asserted absent by the provider/matching theories)",
+    "src/ArrTags/Providers/ArrProviderError.cs (Message bounded to 512 chars and only ever set from code-owned literals in SonarrClient/RadarrClient and the two readers); WorkProcessingResult.Reason (512-char bound); ArtworkOperationErrors.Sanitize (512-char bound, control-stripped)",
+    "src/ArrTags/Configuration/PluginConfiguration*.cs (the mutable configuration object is never interpolated; LogVerbosity is validated and an undefined value fails closed to Warning)",
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs, WebhookAuthentication.cs, ArrTagsWebhookController.cs (fixed rejection sentence, uniform 401, candidate/header/body never logged)",
+    "tests/ArrTags.Tests/LogRedactionTests.cs (167 cases) and tests/ArrTags.Tests/LogSubjectTests.cs (23 cases): sentinel-freedom, subject/fallback, classification, gating, and throttle bounds all pass"
+  ],
+  "auth_paths_checked": [
+    "src/ArrTags/Webhooks/WebhookAuthenticationFilter.cs and ArrTagsWebhookController.cs: authenticate before any body read, byte bound applied after authentication, fixed rejection reason, no route/secret existence disclosure; unchanged by 15.1-15.3",
+    "src/ArrTags/Plugin.cs UpdateConfiguration and GetPages: validate-before-persist under a lock, fail closed on an invalid candidate, host elevation-gated PluginsController save path with no plugin route; src/ArrTags/Configuration/config.html carries only field names and descriptions (no secret, no item data)",
+    "The amended log path adds no endpoint, route, or caller-controlled input surface; emission is gated by the plugin verbosity snapshot and the shared LogThrottle, so raising verbosity only enables fixed-shape records"
+  ],
+  "state_paths_checked": [
+    "git diff e9e102a..HEAD --stat -- src tests lists only ArtworkGenerationCoordinator.cs, Logging/LogSubject.cs, ArrTagsLifecycleService.cs, RadarrMetadataReader.cs, SonarrMetadataReader.cs, MetadataReconciliationProcessor.cs, LibraryWorkWorker.cs, LogRedactionTests.cs, LogSubjectTests.cs; no state, fingerprint, or publication path is touched",
+    "The log subject is not an input to MetadataStateStore, PublishedArtworkStateStore, SourceArtifactStore, ArtworkOperationStore, the configuration/renderer output fingerprints, or RenderVersion (ADR-020 clause 5 unaffected)",
+    "No new in-memory collection grows from the subject; LogThrottle's tracking set is capped at 256 category|event keys (reproduced: 40 distinct hostile names under one category/event yield 1 tracked key)"
+  ],
+  "input_paths_checked": [
+    "LogSubject.Create: null, empty, whitespace, control-only, control-reduced-to-whitespace, trailing-separator, and root inputs all fall back to the D-format item id; the helper never throws (only Path.GetFileName and scalar-wise normalization are used)",
+    "Boundedness: at most 128 Unicode scalar values (256 UTF-16 units worst case), applied after control removal in one pass that never splits a surrogate pair (200-emoji -> exactly 128 scalars; 300 ASCII -> 128; 100 controls + 200 letters -> 128 letters)",
+    "Encoding: lone high/low UTF-16 surrogates become U+FFFD deterministically; combining marks and astral characters pass through verbatim; whitespace is not collapsed or trimmed",
+    "PrimaryPath provenance: copied only by MediaIdentityFactory from the first MediaSourceInfo.Path, else item.Path; no provider payload, request URL, configuration value, or webhook payload can reach the subject",
+    "Path shapes probed: POSIX absolute/relative/nested/double-slash/trailing-separator/root, directory-valued, dot/dot-dot tails, Windows drive, Windows UNC, URL-shaped",
+    "The 15.3 classification inputs are the three code-owned enums interpolated by name, at most one per result; the webhook payload path is unchanged by this amendment and remains byte-bounded before parsing"
+  ],
+  "reproductions": [
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! Failed: 0, Passed: 1619, Skipped: 63, Total: 1682 (baseline confirmed)",
+    "dotnet test ArrTags.slnx -c Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\" -> Failed 0, Passed 167, Total 167; --filter \"FullyQualifiedName~LogSubjectTests\" -> Failed 0, Passed 23, Total 23",
+    "Independent probe harnesses under /tmp/final-review/security/ (probe: LogSubject path/control/bound/fallback matrix; facade: shipped ArrTagsLog<T> + LogThrottle through a capturing ILogger): output captured at /tmp/final-review/security/probe-output-a2.txt",
+    "Facade reproduction: hostile subject 'Movie\\u202Egpj.exe.mkv line\\u2028[INF] injected line.mkv' -> Warning records=0; Information records=1 and Trace records=1, byte-identical, U+202E and U+2028 preserved, 166 Unicode scalars; throttleTrackedKeys=1",
+    "Reviewed revision digests (sha256): LogSubject.cs 7c2973360d1948f9b3fcbf0188771cc3bdfa2bb8a10286c2a41eccc57d1053a7, ArtworkGenerationCoordinator.cs 5db13a8e72afe00256feeaf7d6f4412c3ecce8ae179b939c9786b6561f214952, MetadataReconciliationProcessor.cs 0a0c32632af96074f855bf51eb50d9fb204041ffc016200b92397a21445995e6, RadarrMetadataReader.cs 366acee11e036e7bc8c7ef5d3e692d8a531aedd7a7920867cf8a19ec0a3a98b6, SonarrMetadataReader.cs 3c504d81aff6632d38882a3bc8f5df4bfd6d3b613d16a256ce9e8586598d845c, LibraryWorkWorker.cs eff22e3ece85e32edb2ceadc5e27c067731379cef2045b2909de964bef96bb61, ArrTagsLifecycleService.cs 3c09737716cb5c46b84da7396a8f7744e3a33204e67f9213ff71db498b07107c, LogSubjectTests.cs 923e92cfc5ea708d4d707f2feefc9167bd91bcbfded380496861f3ff45d1e817, LogRedactionTests.cs 79c479a9b9223a6d3241d32650e3f7e8d610f27c15b61c18a0222efb2f0e372e",
+    "git status --short -- src tests -> empty (no production or test file modified during this review); no commit created"
+  ],
+  "summary": "PASS_WITH_FINDINGS; no open BLOCKER or HIGH remains. The amended log path is secret-free, bounded, and redaction-enforced by shipped code rather than convention. Secret-freedom: I enumerated all 21 _log.Write call sites plus the facade's two writes; every interpolated value is a bounded enum, a Guid, a count, a code-owned literal, a 512-character-bounded ArrProviderError/WorkProcessingResult/ArtworkOperationErrors value, an exception type name, or the new bounded subject. No API key, webhook secret, SecretLease value, X-Api-Key/X-ArrTags-Webhook-Secret header, raw request/response body, full provider payload, or mutable PluginConfiguration can reach a record at any verbosity; the 167-case sentinel suite drives all eight boundaries at all six verbosity levels and passes (plus 23 LogSubject cases; full suite 0/1619/63/1682). Boundedness: the subject is at most 128 Unicode scalar values after control removal in a single scalar-wise pass that never splits a surrogate pair, the classification is a bounded enum name appended once (at most one), and 512-character bounds protect the pre-existing reason fields; the subject is deliberately not part of the LogThrottle key (reproduced: 1 tracked key for 40 hostile names), so a hostile file name cannot amplify or evade the clause 6 volume bound. Redaction: for host-native paths no directory, drive, share, or parent component is emitted, enforced by Path.GetFileName plus the bound and pinned by the helper tests and the per-site basename/no-slash assertions; the tree now states the host-native scope in ADR-020, ADR-026, architecture 06/12, README, and the PLANS risk row. Required adjudications: (1) Cf/Zl/Zp pass-through is acceptable under clause 2 as written (Cc is the Unicode Control category and the clause says otherwise-verbatim), recorded in ADR-026's implementation note, with optional non-blocking hardening (SR2-15.4-01); (2) clause 1 is satisfied for host-native paths and the documentation now scopes the claim (SR2-15.4-02, resolved); (3) IR-15.2-04 is a documentation-wording matter only, conservative fallback, recorded (SR2-15.4-03); (4) the classification qualifiers are bounded enums with no free text (SR2-15.4-04). One open LOW documentation finding remains: SEC-5 in docs/limitations/accepted.md still enumerates the pre-ADR-026 allowlist and points at the amended clause 4 (SR2-15.4-05); it does not overstate the security conclusion and does not block, but it should be reconciled in the same register. Attempt-1 (docs/implementation/15.4/security-review.json) is preserved; this attempt-2 report is the fresh independent review, and its one open LOW changes no BLOCKER/HIGH status."
+}

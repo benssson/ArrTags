@@ -1,0 +1,117 @@
+{
+  "task": "15.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Threaded the bounded ADR-026 log subject through every ADR-026 clause 3 site. The identity-bearing sites now build the subject with LogSubject.Create(itemId, identity.MediaLocation?.PrimaryPath): ArtworkGenerationCoordinator.LogOutcome (request.JellyfinItemId plus request.MediaIdentity), both MetadataReconciliationProcessor provider-error metadata-read-failure paths (the identity created by MediaIdentityFactory.TryCreate), and RadarrMetadataReader.LogMatch / SonarrMetadataReader.LogMatch. The mixed MetadataReconciliationProcessor.Discard site gained a Discard(Guid itemId, string? primaryPath, string reason) overload: the two-argument overload used by the pre-identity discards passes no path, and the six changed-basis discards after identity creation pass identity.MediaLocation?.PrimaryPath. LibraryWorkWorker (processed and retry-scheduled) and ArrTagsLifecycleService (item removed) use the item-id-only LogSubject.Create overload. The four sites ADR-026 clause 3 marks unchanged were not modified. tests/ArrTags.Tests/LogRedactionTests.cs adds 10 per-site theories over the six verbosity levels (60 cases) covering the file-name-only subject, the mixed-site path/fallback behavior, the item-id fallbacks, and sentinel-freedom at every level.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (final run after the last test edit).",
+    "./build.sh test -> Failed 0, Passed 1577, Skipped 63, Total 1640 (pre-task baseline after 15.1: Failed 0, Passed 1517, Skipped 63, Total 1580; +60 passed / +60 total, 0 new skips).",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\" -> Failed 0, Passed 125, Skipped 0, Total 125 (final reconciliation run after all sensitivity probes were reverted).",
+    "Test-sensitivity probe 1 (reverted the artwork, metadata-read-failure, Radarr, and Sonarr subjects to the item-id-only subject; ignored primaryPath in the three-argument Discard helper; reverted the worker subject to item.Key.ToString()) -> Failed 16, Passed 109, Total 125, with the four file-name theories, the mixed path theory, and the worker theory failing and the fallback theories passing.",
+    "Test-sensitivity probe 2 (replaced the metadata-read-failure and mixed-discard fallbacks with a non-item-id subject; emitted an N-format identifier at the lifecycle-removal site) -> Failed 12, Passed 113, Total 125, with the read-failure fallback (4), discard identity-without-path (3), discard no-identity (3), and lifecycle (2) theories failing.",
+    "Restore verification: the six probe-modified production files were restored from byte-identical copies; diff reported no differences, the project rebuilt with 0 warnings / 0 errors, and LogRedactionTests passed 125/125.",
+    "dotnet run scripts/render-docs-state.cs -> status.md and PLANS.md up to date.",
+    "scripts/check-docs.sh -> PASS on the full run before the worker report was added (generated status blocks current, plan state consistent, decisions/limitations/architecture indexes, artifact identity, doc budget, current-state links, and agent report contracts all ok). The final run after persisting docs/implementation/15.2/worker-report.json passes every documentation/state/index/artifact/budget/link check and fails only the expected mid-flow agent-contract pairing check: 'task 15.2 has a worker report but no reviewer report'. That pairing requires the reviewer reports produced by the orchestrator's review stage (implementation-reviewer and test-quality-reviewer), which the worker does not create; the check passes once they are present.",
+    "git status --short and git diff inspection -> 10 modified tracked files plus the new docs/implementation/15.2/ report directory; production edits are confined to the six ADR-026 clause 3 site files, and no site ADR-026 marks unchanged (ConcurrencyLimitedArrMetadataReader, WebhookIntakeService, WebhookAuthenticationFilter, LibraryReconciliationService) changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsLifecycleService.cs",
+    "src/ArrTags/Providers/Radarr/RadarrMetadataReader.cs",
+    "src/ArrTags/Providers/Sonarr/SonarrMetadataReader.cs",
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs",
+    "src/ArrTags/Updates/LibraryWorkWorker.cs",
+    "tests/ArrTags.Tests/LogRedactionTests.cs",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/implementation/15.2/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The artwork coordinator emits the file name when the identity/path is available.",
+      "evidence": "LogOutcome builds LogSubject.Create(request.JellyfinItemId, request.MediaIdentity.MediaLocation?.PrimaryPath) and interpolates the subject (src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs); LogRedactionTests.ArtworkSubjectIsTheFileNameOnlyAtEveryVerbosity asserts the message contains 'item example.mkv', no '/', and no item identifier at the levels where the Information line is enabled."
+    },
+    {
+      "criterion": "The metadata reconciliation processor's metadata-read-failure line emits the file name when the identity/path is available.",
+      "evidence": "Both MetadataReadFailed paths (the reader-threw catch and the failed-read result) build the subject from the identity created by MediaIdentityFactory.TryCreate (src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs); LogRedactionTests.MetadataReadFailureSubjectIsTheFileNameOnlyAtEveryVerbosity asserts 'item example.mkv', no '/', no item identifier, and pins the failed-read reason line; MetadataReadFailureSubjectFallsBackToTheItemIdWhenNoPathIsAvailable proves the same identity-bearing line falls back when the identity has no primary path."
+    },
+    {
+      "criterion": "The Sonarr/Radarr metadata readers emit the file name when the identity/path is available.",
+      "evidence": "RadarrMetadataReader.LogMatch and SonarrMetadataReader.LogMatch build LogSubject.Create(identity.JellyfinItemId, identity.MediaLocation?.PrimaryPath); LogRedactionTests.RadarrMatchSubjectIsTheFileNameOnlyAtEveryVerbosity asserts 'item example.mkv' and SonarrMatchSubjectIsTheFileNameOnlyAtEveryVerbosity asserts 'item s02e05.mkv', each with no '/', no item identifier, and no sentinel."
+    },
+    {
+      "criterion": "The mixed MetadataReconciliationProcessor.Discard site uses the file name when available and falls back to the item id otherwise; it does not thread a path where none exists.",
+      "evidence": "Discard(Guid, string?, string) builds LogSubject.Create(itemId, primaryPath); the six changed-basis discards after identity creation pass identity.MediaLocation?.PrimaryPath, and the two-argument overload used by the version-mismatch, item-missing, identity-creation-failure, ineligibility, and connection-unavailable discards delegates with null (src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs). LogRedactionTests covers the path case (MetadataDiscardSubjectIsTheFileNameWhenAPathIsAvailableAtEveryVerbosity), the identity-without-path case (MetadataDiscardSubjectFallsBackToTheItemIdWhenTheIdentityHasNoPath), and the no-identity case (MetadataDiscardSubjectFallsBackToTheItemIdWhenNoIdentityExists); each pins the exact discard branch reason."
+    },
+    {
+      "criterion": "The work worker and lifecycle removal event use the documented item-id fallback.",
+      "evidence": "LibraryWorkWorker.LogProcessed/LogRetryScheduled build LogSubject.Create(item.Key.ItemId); ArrTagsLifecycleService builds LogSubject.Create(e.ItemId) for the item-removed record. LogRedactionTests.WorkWorkerSubjectIsTheItemIdAtEveryVerbosity and LifecycleRemovalSubjectIsTheItemIdAtEveryVerbosity assert the D-format item identifier, no '/', no file name, and no sentinel at every verbosity."
+    },
+    {
+      "criterion": "Per-site tests prove no directory appears and that the mixed site falls back correctly.",
+      "evidence": "AssertFileNameSubject asserts the message names 'item <file name>', contains no '/', and no longer contains the replaced item identifier; AssertItemIdSubject asserts 'item <D-format id>', no '/', and neither file name. The 10 theories run over all six verbosity levels; AssertNoSentinel(run) is asserted on every case, including the levels where the line is gated off (record count 0)."
+    },
+    {
+      "criterion": "Phase 15 threading portion: the file-name-only subject is emitted where a path is available and the item id where it is not, including the mixed discard site.",
+      "evidence": "The code changes and the 60 new LogRedactionTests cases above; the remaining phase-15 criteria (bounded render classification, ADR-020 clause 4 amendment, canonical documentation, security review, F8 resolution) are owned by tasks 15.3 and 15.4 and are untouched."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Which available identity's path the mixed discard threads when both the basis identity and the publish-time re-resolved identity exist.",
+      "chosen": "The basis identity created at the metadata-read stage (identity.MediaLocation?.PrimaryPath) at all six post-identity discards.",
+      "basis": "ADR-026 clause 3 describes the mixed site as called 'where an identity exists (changed-basis discards after identity creation)'; the basis identity is the identity the queued work was based on and the only one present at every such branch (the publish-time TryCreate can fail).",
+      "impact": "At a changed-basis discard the log names the file observed when the work's identity was captured; if the item's primary path changes within that processing window, the earlier file name is emitted. Log output only; no persisted state or user-visible behavior."
+    },
+    {
+      "question": "Which code paths constitute 'the metadata-read-failure line' in the processor.",
+      "chosen": "Both provider-error paths that emit ArrTagsLogEvent.MetadataReadFailed: the reader-threw catch and the failed-read result.",
+      "basis": "ADR-026 clause 3 names the identity-bearing metadata-read-failure line by its event/shape; both paths emit the identical message shape after identity creation and before the same fallback semantics apply.",
+      "impact": "Consistent subjects on both failure paths; no behavior change beyond the subject."
+    },
+    {
+      "question": "What the worker fallback replaces: only the item-id component or the whole WorkItemKey text.",
+      "chosen": "The whole WorkItemKey text is replaced by the item-id-only subject, LogSubject.Create(item.Key.ItemId).",
+      "basis": "ADR-026 clause 1 replaces the emitted Jellyfin item identifier with the bounded subject, and clause 3 lists LibraryWorkWorker as a fallback site '(item id only)' reached via WorkItemKey.",
+      "impact": "The Debug records change from 'WorkItemKey(<N-format id>, <connection>, <surface>)' to the D-format item identifier. No persisted state or non-log behavior changes."
+    }
+  ],
+  "test_sensitivity": [
+    "Reverting the artwork subject to the raw item id failed ArtworkSubjectIsTheFileNameOnlyAtEveryVerbosity in 3 cases (Information, Debug, Trace); probe reverted.",
+    "Reverting both metadata-read-failure subjects to LogSubject.Create(item.Key.ItemId) failed MetadataReadFailureSubjectIsTheFileNameOnlyAtEveryVerbosity in 4 cases (Warning, Information, Debug, Trace); probe reverted.",
+    "Reverting the Radarr and Sonarr LogMatch subjects to the item id failed their file-name theories in 2 cases each (Debug, Trace); probe reverted.",
+    "Ignoring primaryPath in the three-argument Discard helper failed MetadataDiscardSubjectIsTheFileNameWhenAPathIsAvailableAtEveryVerbosity in 3 cases (Information, Debug, Trace); probe reverted.",
+    "Replacing the fallback with a non-item-id subject failed MetadataReadFailureSubjectFallsBackToTheItemIdWhenNoPathIsAvailable (4 cases), MetadataDiscardSubjectFallsBackToTheItemIdWhenTheIdentityHasNoPath (3 cases), and MetadataDiscardSubjectFallsBackToTheItemIdWhenNoIdentityExists (3 cases); probe reverted.",
+    "Reverting the worker subject to item.Key.ToString() failed WorkWorkerSubjectIsTheItemIdAtEveryVerbosity in 2 cases (Debug, Trace); probe reverted.",
+    "Emitting an N-format identifier at the lifecycle-removal site failed LifecycleRemovalSubjectIsTheItemIdAtEveryVerbosity in 2 cases (Debug, Trace); probe reverted. The lifecycle site's item-id fallback is byte-identical to its pre-task D-format output, so reverting that site to its pre-task code cannot fail the test by construction; the probe used a different subject format to show the assertion is sensitive.",
+    "All probes were applied as direct source edits and reverted by restoring byte-identical copies (diff clean); the final LogRedactionTests run passed 125/125 and the final full suite passed 1577/1640."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/changelog/v1.2.0.md",
+      "docs/status.md (generated; verified current, no change)",
+      "PLANS.md milestone table (generated; verified current, no change)"
+    ],
+    "old_values_removed": [
+      "docs/plan/state.json task 15.2 \"done\": false and its missing reports path (now \"done\": true with reports [docs/implementation/15.2/worker-report.json])",
+      "PLANS.md \"- [ ] 15.2 Thread the bounded log subject through the identity-bearing and fallback sites\" (now \"[x]\")",
+      "The changelog's task 15.2 status was unrecorded; the new v1.2.0.md task entry records the implementation, the 60 new cases, the sensitivity probes, and the actual suite counts (1577/63/1640 against the 1517/63/1580 post-15.1 baseline)"
+    ],
+    "check_docs": "PASS for the documentation and plan-state surfaces; the final invocation reports only the expected mid-flow agent-contract FAIL 'task 15.2 has a worker report but no reviewer report', which the orchestrator's reviewer reports resolve."
+  },
+  "rework": [],
+  "known_limitations": [
+    "The explicit fallback boundaries (LibraryWorkWorker, ArrTagsLifecycleService) and the pre-identity metadata discards emit the item identifier and never a file name; this is the ADR-026 clause 3 documented behavior for boundaries with no media identity or path. The lifecycle-removal output is byte-identical to its pre-task D-format item id; the worker record changed from the WorkItemKey text to the item-id-only subject.",
+    "At a changed-basis discard the emitted name is the file name from the identity captured at the metadata-read stage, not a re-read path: if the item's primary path changes within the same processing window after identity creation, the discard line carries the earlier file name. Log output only; no persisted state or user-visible behavior.",
+    "F8 remains open. Task 15.3 owns emitting the bounded render classification on the artwork log line, and task 15.4 owns the ADR-020 clause 4 amendment, the README/architecture/limitations reconciliation, the logging security review, and the F8 resolution; until 15.4 those current-state documents continue to describe the shipped v1.1 logging behavior."
+  ],
+  "ready_for_next_task": true
+}

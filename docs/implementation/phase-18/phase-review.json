@@ -1,0 +1,142 @@
+{
+  "phase": "18",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "findings": [
+    {
+      "severity": "LOW",
+      "area": "test-coverage / renderer geometry",
+      "description": "The dedicated shorten/omit fallback assertion does not cover Extra Large. `LargeSizeOmitsRatherThanOverflowsOnAShortPoster` still exercises only `BadgeSize.Large`; Extra Large is covered across the safe-area sweep `NoPillPaintsOutsideTheSafeAreaOnNarrowAndShortPosters` (which tolerates a fully-empty layout) and the clamp theory `SafeAreaClampReducesTheEffectiveScaleOnAShortPoster`. The phase acceptance criterion ('never paints outside the safe area') is satisfied, so this is coverage depth, not a defect: there is no explicit assertion that an Extra Large layout on a short poster actually omits/shortens while the clamp binds rather than producing an empty or out-of-bounds layout.",
+      "evidence": [
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:277-297 (five-anchor x six-dimension x four-size sweep)",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:299-311 (omit test uses BadgeSize.Large only)",
+        "tests/ArrTags.Tests/BadgeSizePositionTests.cs:313-336 (ExtraLarge clamp cases 1000x44 and 2000x150)"
+      ],
+      "recommended_action": "Optional: add an Extra Large case to the omit/shorten fallback test (or assert a non-empty in-bounds rail at the clamped scale) in a later task; not required for Gate 18."
+    },
+    {
+      "severity": "LOW",
+      "area": "agent-report-contract / rework persistence",
+      "description": "Task 18.3 attempt 2 persisted its worker report at the default path `docs/implementation/18.3/worker-report.json` with `\"attempt\": 2` rather than at the literal contract path `worker-report.attempt-2.json` used by the earlier rework tasks 16.2 and 17.4. Attempt 1 persisted no report (it failed with a runtime usage-limit before writing anything), so no earlier attempt was overwritten and the rework is fully visible (attempt-1 FAILED and attempt-2 COMPLETE in the orchestration subagents plus the `rework[]` entry). The divergence is a naming/contract-precision matter only.",
+      "evidence": [
+        "docs/implementation/18.3/worker-report.json:3 (attempt 2 at the base path)",
+        "docs/implementation/18.3/orchestration.json:10-45 (attempt 1 FAILED, attempt 2 COMPLETE) and :66-71 (rework entry)",
+        "docs/implementation/16.2/worker-report.attempt-2.json and docs/implementation/17.4/worker-report.attempt-2.json (precedent)",
+        "docs/agent-contracts.md:15-17 (never overwrite; `.attempt-<n>.json`)"
+      ],
+      "recommended_action": "No change required while no prior report existed; the orchestrator may record the naming exception if it wants strict contract conformance."
+    },
+    {
+      "severity": "INFORMATIONAL",
+      "area": "orchestration aggregate",
+      "description": "The phase aggregate note says the phase-reviewer invocation 'is recorded separately below', but no phase-reviewer record follows in the file; the aggregate was produced before this review and its `gate_status` is `PENDING_PHASE_REVIEW`. The seven per-task invocations, the aggregate sums (cost 0.331822266, tokens 28227671), `task_count` 3, `review_rounds` 3 and `rework_rounds` 1 all recompute exactly and match the three task records.",
+      "evidence": [
+        "docs/implementation/phase-18/orchestration.json:21-33",
+        "docs/implementation/18.1/orchestration.json, 18.2/orchestration.json, 18.3/orchestration.json"
+      ],
+      "recommended_action": "The orchestrator should append the phase-reviewer invocation and update `gate_status`/gate/tag after the Gate 18 decision."
+    },
+    {
+      "severity": "INFORMATIONAL",
+      "area": "planning document snapshot",
+      "description": "`docs/planning/v1.2.md` G7 'Current state' still describes the pre-G7 state (`BadgeSize` Medium/Small/Large; dropdown Medium/Small/Large). That section is the accepted plan's planning-time context for the goal, not one of the canonical current-state surfaces, and the plan lifecycle archives it at release completion; no phase-18 action is required.",
+      "evidence": [
+        "docs/planning/v1.2.md:87-89",
+        "docs/INDEX.md:11-20 (single editable source per fact) and docs/plan/README.md:90-92 (archive at release completion)"
+      ],
+      "recommended_action": "None; leave the accepted plan intact."
+    },
+    {
+      "severity": "INFORMATIONAL",
+      "area": "settings-page verification",
+      "description": "The `rendererSize` dropdown order, option value and label are verified structurally against the embedded page resource; the page's inline JavaScript (which populates the select from `config.Renderer.Size`) is not executed because the repository has no JavaScript runtime and the pinned host runs without a web client. The round-trip wiring is otherwise unchanged (`config.html:692` populate, `:799` submit). The reordering means a browser that never runs the populate script would show `Small` before configuration data loads; ADR-027 clause 3 mandates this exact order and the saved value is read from the select, so there is no persisted behavior change. This was already noted by the task reviewers.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html:163-168, 692, 799",
+        "tests/ArrTags.Tests/DashboardSettingsPageTests.cs:190-214",
+        "docs/implementation/18.1/worker-report.json:79-84",
+        "docs/implementation/18.1/reviewer-report.json:21-32"
+      ],
+      "recommended_action": "None for Gate 18; a live-host settings-page check is part of Phase 21 verification."
+    },
+    {
+      "severity": "INFORMATIONAL",
+      "area": "forced-native golden execution",
+      "description": "The two new Extra Large goldens, and the byte-identity check of the thirteen existing goldens, execute only under the `ARRTAGS_SKIA_COMPAT=1` forced-native runtime; the default `./build.sh test` reports the native theories as environment skips, so its 0/1799/64/1863 totals are unchanged. This is the pre-existing accepted limitation (P12R-F1, host-supplied SkiaSharp) rather than something introduced by Phase 18, and the task 18.2/18.3 evidence and my independent reruns exercised the forced-native oracle.",
+      "evidence": [
+        "tests/ArrTags.Tests/RenderGoldenFixtures.cs:16-18 (goldens are read-only committed artifacts; native work only in guarded tests)",
+        "docs/implementation/18.2/worker-report.json:98-103 (known_limitations)",
+        "independent forced-native `RenderGoldenTests` run: Failed 0, Passed 17, Skipped 0, Total 17"
+      ],
+      "recommended_action": "None; already tracked as an accepted limitation and covered by the Phase 21 forced-native/live verification."
+    }
+  ],
+  "tasks_checked": [
+    "18.1 Extra Large enum, geometry factor, and settings dropdown ordering",
+    "18.2 Golden coverage and version-decision verification",
+    "18.3 G7 documentation and integration verification"
+  ],
+  "commits_checked": [
+    "81ecbb7 Implement 18.1 Extra Large enum, geometry factor, and settings dropdown ordering",
+    "91efed7 Record 18.1 commit hash and orchestrator session",
+    "41b3a94 Implement 18.2 golden coverage and version-decision verification",
+    "e47de32 Record 18.2 commit hash and orchestrator session",
+    "58b1781 Implement 18.3 G7 documentation and integration verification",
+    "727f6b7 Record 18.3 commit hash and orchestrator session"
+  ],
+  "requirements_checked": [
+    "PLANS.md Phase 18 acceptance criteria: Extra Large renders at 2.0x Medium and never paints outside the safe area; dropdown order Small, Medium, Large, Extra Large; existing goldens byte-identical; version decision recorded; new Extra Large goldens deterministic with the non-default size in the fingerprint.",
+    "docs/planning/v1.2.md Goal G7 acceptance criteria and section 9 verification requirements (Extra Large geometry, safe-area clamp, SizeFactor/validation coverage, fingerprint coverage, golden byte-determinism).",
+    "docs/planning/v1.2.md section 7 Phase 18 documentation change checklist.",
+    "docs/planning/v1.2.md task-outline mapping V1.2-5 -> 18.1-18.3.",
+    "Gate 18: tasks 18.1-18.3 acceptance criteria; golden oracle verifies the version decision; phase review; tag v1.2.0-phase18 (tag intentionally not yet created)."
+  ],
+  "architecture_checked": [
+    "docs/decisions/ADR-027.md clauses 1-6 and the Implementation note (v1.2, tasks 18.1-18.3).",
+    "docs/decisions/ADR-019.md clauses 1-7 (clause 2 safe-area, clause 3 size, clause 4 version decision, clause 5 safe area, clause 6 output-affecting identity) and the new Extension note (v1.2, ADR-027; task 18.3).",
+    "docs/architecture/09-persisted-artwork-rendering.md V1 rendering contract and configuration/size/version-decision sections.",
+    "docs/data-model/03-06-badgedefinition.md (placement row), 03-08-renderresult.md (v1.2 implementation note), 03-12-configuration.md (renderingPolicy row and v1.2 note).",
+    "src/ArrTags/Rendering/BadgeSize.cs (ExtraLarge = 3), BadgeGeometry.cs (ExtraLargeSizeFactor = 2.0, SizeFactor switch, ComputeEffectiveScale clamp), RenderVersion.cs (CurrentRendererVersion = 3), Configuration/RendererConfiguration.cs (CurrentSchemaVersion = 2; Enum.IsDefined validation), RendererConfigurationResolver.cs, RendererConfigurationFingerprint.cs and Rendering/RenderFingerprint.cs (AppendBadgePlacement only for non-default size).",
+    "docs/decisions/00-index.md ADR-019/ADR-027 rows; docs/plan/state.json Phase 18 entry."
+  ],
+  "research_checked": [
+    "docs/planning/v1.2.md G7 decision and DG-16 resolution (no version advance, new goldens required).",
+    "Task-level reviewer reports for 18.1, 18.2, 18.3 (all APPROVED; only INFORMATIONAL/LOW findings, no open BLOCKER/HIGH).",
+    "No new Jellyfin API or platform assumption is introduced: Phase 18 changes only renderer geometry, the existing settings page's option list, and tests/goldens; it makes no host-image or controller change."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: tasks 18.1-18.3 done=true with report paths; Phase 18 status PLANNED, gate Gate 18, tag v1.2.0-phase18, no gate_record (correct pre-gate state); updated_utc bumped.",
+    "PLANS.md: 18.1-18.3 checkboxes [x]; milestone table generated block shows Phase 18 PLANNED; `dotnet run scripts/render-docs-state.cs -- --check` reports status.md and PLANS.md up to date and in agreement with state.json.",
+    "docs/status.md: generated; current release 1.1.0.0 and active phases Phase 18-21 remain correct.",
+    "docs/changelog/v1.2.0.md: Phase 18 banner and Task 18.1/18.2/18.3 entries present, accurate, and count-consistent with the task reports.",
+    "docs/decisions/ADR-019.md and ADR-027.md: extension/implementation notes appended (additions only); no clause text rewritten; the v1.1 history notes in docs/data-model/03-08 and 03-12 are retained verbatim.",
+    "docs/decisions/00-index.md: ADR-019 row now records clause 3 extension by ADR-027; ADR-027 listed Accepted (v1.2).",
+    "README.md Renderer.Size row documents `ExtraLarge` (ADR-027).",
+    "docs/limitations/: no G7/Extra Large limitation is introduced or left stale.",
+    "scripts/check-docs.sh: PASS (all nine sections, including generated blocks, limitations index, and agent report contracts)."
+  ],
+  "orchestration_checked": [
+    "docs/implementation/18.1/orchestration.json: worker attempt 1 COMPLETE + reviewer attempt 1 APPROVED, rework []; commit 81ecbb7.",
+    "docs/implementation/18.2/orchestration.json: worker attempt 1 COMPLETE + reviewer attempt 1 APPROVED, rework []; commit 41b3a94.",
+    "docs/implementation/18.3/orchestration.json: worker attempt 1 FAILED + worker attempt 2 COMPLETE + reviewer attempt 1 APPROVED, with a rework[] entry describing the attempt-1 usage-limit resume; commit 58b1781.",
+    "docs/implementation/phase-18/orchestration.json: task_commits 81ecbb7/41b3a94/58b1781; seven per-invocation records with model/variant/tokens/cost/duration/session_id; aggregate recomputes exactly (task_count 3, review_rounds 3, rework_rounds 1, cost_usd 0.331822266, total_tokens 28227671); gate_status PENDING_PHASE_REVIEW.",
+    "Working tree: clean except the untracked docs/implementation/phase-18/ directory (the pre-gate phase aggregate and this review); HEAD is 727f6b7."
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 7,
+    "total_attempts": 7,
+    "correction_rounds": 1
+  },
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 18 (Extra Large badge size, Goal G7 / ADR-027, release 1.2.0) is complete and independently verified. All three tasks in the authoritative order 18.1 -> 18.2 -> 18.3 are done with worker + implementation-reviewer evidence and a commit each (81ecbb7/41b3a94/58b1781 plus record commits 91efed7/e47de32/727f6b7). The task orchestration records carry per-invocation execution metadata; the 18.3 rework is visible as worker attempt 1 FAILED + attempt 2 COMPLETE with a rework entry, and the phase aggregate's sums recompute exactly against the seven invocations. Independent verification: the pinned native golden oracle reproduces all 15 committed fixtures byte-exactly (Failed 0, Passed 17, Skipped 0, Total 17); the focused G7 integration filter is Failed 0, Passed 115, Skipped 2 (host-guarded), Total 117; the manifest diff is a pure append (20/0) and the thirteen pre-existing PNGs are untouched, so existing goldens are byte-identical; the two new Extra Large goldens hash-match the manifest and their OutputFingerprints differ from the identical-other-input Medium counterparts; `RenderVersion.CurrentRendererVersion` is still 3 and `RendererConfiguration.CurrentSchemaVersion` still 2, with an empty `src/` diff across 18.2/18.3. The dropdown order and value are pinned structurally, and the geometry/factor (ExtraLarge = 3, factor 2.0, 2.0x Medium) and the safe-area clamp/shorten-omit fallback are covered and match ADR-027 clauses 1-6 without contradicting ADR-019 clauses 2/4. Documentation is consistent: `render-docs-state --check` agrees with `state.json`, `check-docs.sh` passes all nine sections, the ADR-019 extension note and ADR-027 implementation note are accurate and additive, and the version-labelled v1.1 notes were not rewritten. Phase 18 remains PLANNED with no gate/tag, as expected before the orchestrator applies Gate 18; the tag `v1.2.0-phase18` is the only remaining gate action. No BLOCKER or HIGH is open; the recorded findings are LOW/INFORMATIONAL coverage and contract-precision observations.",
+  "phase_gate": {
+    "gate": "Gate 18",
+    "status": "MET_PENDING_TAG",
+    "criteria": {
+      "tasks_meet_acceptance": true,
+      "golden_oracle_verifies_version_decision": true,
+      "phase_review_approved": true,
+      "tag_created": false
+    },
+    "note": "Tasks 18.1-18.3 meet their acceptance criteria and the phase acceptance criteria; the golden oracle independently verifies the no-RenderVersion/no-schema-advance decision. This review approves the phase (APPROVED_WITH_FINDINGS, no BLOCKER/HIGH). The orchestrator still owns applying `status: COMPLETE`/`gate_record` to Phase 18 in docs/plan/state.json, regenerating the status surfaces, updating the phase aggregate's gate_status and appending the phase-reviewer invocation, and creating the annotated tag `v1.2.0-phase18`."
+  }
+}

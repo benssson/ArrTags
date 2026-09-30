@@ -1,0 +1,96 @@
+{
+  "task": "16.2",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [],
+  "summary": "Independently verified the ADR-028 clause 2 authoritative restart-required set against the working tree (base 8b29dfa). The classification is complete and correct for all 43 current user-adjustable settings: I checked every restart-required entry and its named construction-capture site against the actual code, checked all 36 per-operation entries for missed construction captures, and confirmed no singleton captures a currently per-operation setting. The seven-setting set (mixed: SourceArtifactLimitBytes, DerivedArtifactLimitBytes, MaxImageDimensionPixels; restart-only: RenderCacheTtlMinutes, RenderCacheQuotaBytes, ArtifactStorageQuotaBytes, TerminalProvenanceRetentionDays) is accurate; the inert global OperationalLimits.RequestTimeoutSeconds finding is confirmed and its per-operation-with-note classification is defensible under the binary ADR rule and correctly disclosed. The scope is clean and the docs/state/changelog are accurate except for one claim about test coverage. The single required change: the 'no-silent-member' guard does not actually cover PluginConfiguration (its five properties are hardcoded rather than reflected), so a future PluginConfiguration leaf property can be silently left unclassified, contrary to the worker report and changelog claim of 'reflection over the five configuration model types with container recursion'. Build (0 warnings/0 errors) and the full default suite (Failed 0 / Passed 1744 / Skipped 63 / Total 1807) reproduce; focused RestartRequired run is 17/17.",
+  "findings": [
+    {
+      "id": "16.2-F1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "testing / worker evidence",
+      "summary": "The no-silent-member classification guard does not cover PluginConfiguration, and the worker report/changelog overstate it as reflection over all five configuration model types.",
+      "detail": "RestartRequiredSettingsTests.EveryUserAdjustableConfigurationPropertyIsClassified builds its expected domain via ExpectedClassifiedNames(). That helper adds PluginConfiguration's five properties by hand (RestartRequiredSettingsTests.cs 287-291: LogVerbosity, WebhookSecret, EnabledLibraries, BadgeMoviePosters, BadgeEpisodePosters) and only reflects over ArrConnectionConfiguration, OperationalLimits, RendererConfiguration, and BadgeSelectorConfiguration (lines 293-318). There is no container recursion anywhere. Consequence: if a new writable leaf property is added to PluginConfiguration and not classified, it is absent from both RestartRequiredSettings.All and the hardcoded expected set, so neither 'missing' nor 'unknown' is non-empty and the test still passes. The worker report (summary line 10; acceptance_criteria line 57; test_sensitivity line 109), the changelog entry ('no-silent-member reflection over the five configuration model types'), and the consumer-evidence doc all claim the opposite. I verified the omission is not necessary: BasePluginConfiguration (the pinned Jellyfin 12.0.0 base type) exposes no public properties or fields, so reflecting over PluginConfiguration with the existing WritableLeafProperties/IsClassifiedLeaf filter yields exactly the same five properties that are currently hardcoded. The other four types are genuinely guarded.",
+      "evidence": [
+        "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs 185-197 (test body), 283-321 (ExpectedClassifiedNames; manual PluginConfiguration adds at 287-291, reflection only for the other four at 293-318)",
+        "Reflection probe against /config/.nuget/packages/jellyfin.model/12.0.0/lib/net10.0/MediaBrowser.Model.dll: typeof(BasePluginConfiguration).GetProperties(Public|Instance) and GetFields(Public|Instance) are empty (build succeeded, 0 properties/fields printed)",
+        "docs/implementation/16.2/worker-report.json summary ('no-silent-member reflection over the five configuration model types with container recursion, so a new writable property fails it') and test_sensitivity item 3",
+        "docs/changelog/v1.2.0.md new Task 16.2 entry ('no-silent-member reflection over the five configuration model types')"
+      ],
+      "recommended_action": "Derive the PluginConfiguration part of the expected domain by reflection (WritableLeafProperties(typeof(PluginConfiguration))) exactly as for the other four types, or assert that the classified set equals the union of writable leaf properties across all five model types. Then correct the worker report and changelog wording so it matches what the test actually does; re-run the focused test and the default suite."
+    },
+    {
+      "id": "16.2-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness / ADR-028 interpretation",
+      "summary": "Classifying the inert global OperationalLimits.RequestTimeoutSeconds as per-operation-with-note is defensible under the binary rule and is disclosed, not silently omitted.",
+      "detail": "Exhaustive grep of src/ArrTags confirms OperationalLimits.RequestTimeoutSeconds is read only by Validate (range check), Clone, the XML serializer, and the settings page; no runtime consumer exists. The effective timeout is ArrConnectionConfiguration.RequestTimeoutSeconds, applied per client creation by ArrHttpClientFactory (50). ADR-028 clause 2 defines restart-required as 'any consumer resolves the value at singleton construction' and per-operation as 'every consumer resolves it from the current snapshot per operation'; with zero consumers the universal is vacuously satisfied, so per-operation is the rule-consistent classification, and marking it restart-required would be a false page claim (a restart would not apply it either). The worker records this in SettingClassification.Note, in consumer-evidence.md section 5, and in known_limitations, and a test pins it as the only classified setting without a runtime consumer. No functional defect. Recommended (non-blocking) follow-up: record the inert field explicitly in the canonical limitations register or orchestrator state so a future task can remove/repurpose it; it is currently tracked only in this task's report/evidence.",
+      "evidence": [
+        "grep of src/ArrTags for RequestTimeoutSeconds: only OperationalLimits.cs 70/180/219, RestartRequiredSettings.cs 100-102, and per-connection ArrConnectionConfiguration paths (PluginConfigurationSnapshot 200/205, ArrConnectionCatalog 32/40, ArrHttpClientFactory 50)",
+        "src/ArrTags/Configuration/RestartRequiredSettings.cs 99-102 (PerOperationNoConsumer with audit note)",
+        "docs/implementation/16.2/consumer-evidence.md section 5",
+        "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs 171-182 (OnlyTheAuditedInertSettingHasNoRuntimeConsumer)"
+      ],
+      "recommended_action": "No change required for task 16.2. Optionally add the inert global timeout to the canonical limitations register as an accepted follow-up so it is not lost after this task's report is archived."
+    },
+    {
+      "id": "16.2-F3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "requirements / task boundary",
+      "summary": "Mixed-setting note text is deferred to task 16.3 as the plan's task boundary requires; 16.2 correctly exposes the mixed flag instead.",
+      "detail": "The planning acceptance criterion says a mixed setting's 'note text states that some paths apply immediately', but PLANS.md assigns 'Restart-required note text on the settings page' to 16.3, and the task's explicit boundary forbids implementing note text or the modal here. 16.2 provides the classification's IsMixed flag and the config.html restartRequiredFields (setting, elementId, mixed) data mirror for 16.3 to render from, mirroring the 16.1 ByteLimitUnits precedent. config.html contains no note text or modal behavior (grep for 'restart' in config.html finds only a comment and the inert array; the array is declared once and not otherwise referenced).",
+      "evidence": [
+        "PLANS.md 127-131 (16.3 owns note text; 16.4/16.5 own the modal)",
+        "src/ArrTags/Configuration/config.html 318-334 (data-only mirror, unused)",
+        "src/ArrTags/Configuration/SettingClassification.cs 100 (IsMixed)",
+        "grep 'restart' src/ArrTags/Configuration/config.html"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "16.2-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation / host guard",
+      "summary": "Host-guarded run not executed because ARRTAGS_JELLYFIN_HOST_DIR is unset; correctly disclosed and no host-guarded fact changed.",
+      "detail": "The environment does not set ARRTAGS_JELLYFIN_HOST_DIR, so the pinned-host matrix cannot run; the default suite reports the same 63 host-guarded skips as the pre-task baseline, and this task changes no host-guarded production file (only three new Configuration types and a static resource array). This matches the task's fallback instruction to say so when the host directory is unset.",
+      "evidence": [
+        "environment check: ARRTAGS_JELLYFIN_HOST_DIR unset",
+        "worker-report.json validation items 1-4 and known_limitations",
+        "observed default suite: Failed 0 / Passed 1744 / Skipped 63 / Total 1807"
+      ],
+      "recommended_action": "None for this task; the phase/release verification tasks retain the host-guarded matrix."
+    }
+  ],
+  "tests_checked": [
+    "Ran `./build.sh build`: ArrTags + ArrTags.Tests built, Build succeeded, 0 Warning(s) 0 Error(s).",
+    "Ran `./build.sh test`: Failed: 0, Passed: 1744, Skipped: 63, Total: 1807 (18 s), matching the worker report; 16.1 baseline 1727/63/1790 => +17 passed / +17 total.",
+    "Ran focused `dotnet test ... -c Release --no-build --filter FullyQualifiedName~RestartRequired`: Failed 0, Passed 17, Skipped 0, Total 17.",
+    "Inspected RestartRequiredSettingsTests.cs (10 cases) and RestartRequiredConsumerEvidenceTests.cs (7 cases) against the changed behaviour; the capture probes drive the real StateRepository, SourceArtifactStore, ArtworkSourceReader, and ArtworkPublisher types and the per-operation probes drive LibraryWorkQueue and LogVerbosityGate.",
+    "Ran `scripts/check-docs.sh`: eight sections ok; the only failure is 'task 16.2 has a worker report but no reviewer report', which this report resolves."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-028.md clause 2 (lines 94-108) and clause 3 (109-112): binary rule and mixed semantics confirmed; ADR names ArtifactStorageQuotaBytes, ProviderResponseLimitBytes, WebhookMaxPayloadBytes, InventoryCacheMaxBytes, and the three mixed limits, all matching the implementation.",
+    "docs/planning/v1.2.md 120-137 and PLANS.md 111-142: phase goal G8 and the 16.2/16.3 task split confirmed (note text is 16.3).",
+    "Code-evidence audit: StateRepository.cs 34-38/188-203; SourceArtifactStore.cs 41-48/81-125; JellyfinArtworkImageAccess.cs 45-54/165-190; ArtworkSourceReader.cs 31-37/97-149; ArtworkPublisher.cs 52-68/1030; ArtifactRetention.cs 104-106; RenderLimitGuard.cs 41/46/78/84; SkiaBadgeRenderer.cs 94-108/278; ArtworkPublishingWorkItemProcessor.cs 79/105-114; ArrTagsServiceRegistrator.cs 225-235/255-264/281-295/304-307/319-330/398-405; ArrReadClientFactory.cs 40-51; SonarrClient.cs 64; RadarrClient.cs 63; ArrInventoryCacheProvider.cs 52-68; LogVerbosityGate.cs 31; ProviderConcurrencyLimiter.cs 36-37/90-94; LibraryWorkQueue/WorkRetryPolicy per-operation sites.",
+    "Reflection probe against the pinned MediaBrowser.Model 12.0.0 assembly confirming BasePluginConfiguration exposes no writable members."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: 16.2 done=true with reports ['docs/implementation/16.2/worker-report.json']; phase 16 status remains PLANNED (no phase-complete/tag claim); updated_utc advanced.",
+    "PLANS.md: '- [x] 16.2 ...' ticked; milestone table generated from state.json.",
+    "docs/status.md: not modified and confirmed current by check-docs ('generated status blocks are current'); status.md tracks phases, not individual tasks, so no per-task line needed regeneration.",
+    "docs/changelog/v1.2.0.md: Task 16.2 entry accurate on the seven-setting set, scope, tests, and suite counts, except the over-stated no-silent-member phrase in finding 16.2-F1.",
+    "docs/architecture/06-configuration-and-persisted-state.md, docs/architecture/12-performance-and-operational-limits.md, docs/data-model/03-12-configuration.md: classification, seven-setting set, mixed semantics, and the inert global timeout clarification all match the code.",
+    "src/ArrTags/Configuration/config.html: restartRequiredFields is data-only (declared once, no note text/modal), matches the C# classification exactly (order, setting, elementId, mixed), and every restart-required element id exists in the page.",
+    "README.md left unchanged as the worker stated; its generic construction-captured statement matches the seven-setting set and the full G6/G8 sweep is task 16.6.",
+    "Scope: git status/diff shows only the seven task-relevant tracked files plus the three new Configuration types, two test files, and docs/implementation/16.2/{consumer-evidence.md,worker-report.json}; no unrelated changes or probe residue."
+  ],
+  "required_changes": [
+    "F1: Make the no-silent-member test actually cover PluginConfiguration by reflecting over its writable leaf properties (same WritableLeafProperties filter used for the other four model types) instead of hardcoding its five settings. Then correct the worker report and docs/changelog/v1.2.0.md wording ('reflection over the five configuration model types with container recursion') to match the real guard, and re-run the focused RestartRequired tests and the default suite."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

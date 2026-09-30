@@ -1,0 +1,74 @@
+{
+  "task": "19.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R-19.2-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / requirement 11",
+      "summary": "The cancellation fact does not independently distinguish the inside-page cancellation check from the between-page check.",
+      "detail": "ResumeCancellationInsideTheRealLocateWalkLeavesTheCursorUntouched cancels via OnRequest at start==2 and asserts Requests == [(0,2),(2,2)] and Cancelled. If only the between-page check at the top of the enumerator loop remained (the inside-page ThrowIfCancellationRequested removed), the next loop-top check would still throw before reading (4,2), so the assertions would still pass. This does not weaken the required evidence: requirement 11's asserted obligation (the page-reach/offset bound is N-dependent, not constant) is carried by OneRunPageReachTracksTheServerWideCandidateCountPlusQueueCapacity, and both cancellation checks are present in JellyfinMediaLibraryEnumerator.ResumeCandidatesAsync (lines 80 and 87). Recorded only for honesty; no change required.",
+      "evidence": [
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:618-651",
+        "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs:78-115"
+      ],
+      "recommended_action": "None; optional future strengthening could probe the inner check in isolation."
+    },
+    {
+      "id": "R-19.2-02",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / fixture fidelity",
+      "summary": "The library double models the host (SortName, Name) order with an ordinal comparer, not the host SQL collation.",
+      "detail": "HostOrderedLibraryManager orders with StringComparer.Ordinal on SortName then Name, which reproduces the documented pinned-host order and paging surface but not the host's actual SQL collation. This is inherent to a Jellyfin-free unit matrix and is explicitly disclosed in the worker report's known_limitations; no live host run is claimed. Not a defect for this task.",
+      "evidence": [
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:1062-1069",
+        "docs/implementation/19.2/worker-report.json:167-169"
+      ],
+      "recommended_action": "None; task 21.4 (live pinned-host verification) covers the real host."
+    },
+    {
+      "id": "R-19.2-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope / overlap",
+      "summary": "Several 19.2 facts overlap 19.1's ReconciliationCursorResumeTests, but 19.2 is genuinely additive.",
+      "detail": "19.1's CursorHarness drives a test enumerator double (ResumeRequests/Requests). 19.2 drives the real JellyfinMediaLibraryEnumerator over an InternalItemsQuery-aware ILibraryManager double, the real ReconciliationCursorStore under a real temporary StateRepository, and the real LibraryWorkQueue, and adds the host-order tie-break, round-robin-over-capacity, page-reach growth, exact-tie residual, and real-queue Coalesced/InFlight outcome facts. This matches the task deliverable ('against the real enumerator, reconciliation service, cursor store, and bounded queue').",
+      "evidence": [
+        "tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:28-51",
+        "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs:757-800"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "scripts/check-docs.sh on the current tree -> all sections pass except the expected transient 'task 19.2 has a worker report but no reviewer report' agent-contract pairing line, which this report closes.",
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently reproduced).",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1873, Skipped 64, Total 1937 (independently reproduced; matches the reported +19 over the 19.1 reviewer-verified baseline 0/1854/64/1918).",
+    "dotnet test --filter FullyQualifiedName~SuccessiveRunCoverageMatrixTests -> Failed 0, Passed 19, Skipped 0, Total 19 (17 methods: 15 [Fact] + 2 [Theory] with 4 [InlineData]; independently reproduced).",
+    "dotnet test --filter 'SuccessiveRunCoverageMatrixTests|ReconciliationCursorResumeTests' -> Failed 0, Passed 40, Skipped 0, Total 40.",
+    "Reasoned through each of the 10 mutation probes (A-J) against the test bodies; each maps to a load-bearing assertion (A strict-after resume; B Coalesced-as-stop; C covered-prefix count; D scope-check bypass; E PostSave cursor-governed; F Stopped stop clause; G ignored resume offset; H unlocatable-anchor Located; I InFlight-as-stop; J non-advancing cursor).",
+    "Independently reasoned through the tie fact: cycle 1 accepts [before, first] and overflows on second; after SwapItems the anchor first is located and the run resumes strictly after it, covering only `after` and asserting no outcome for the tied sibling (residual, not coverage)."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-029.md clauses 1-5 (host order SortName/Name, identity-anchored bounded linear skip, reset on unlocatable anchor, tie caveat, registered residuals).",
+    "docs/decisions/ADR-022.md clauses 1-7 (unchanged clauses) to confirm 19.2 only exercises the amended clause 3 behavior.",
+    "docs/implementation/planning/v1.2-f4-clause-3-amendment.json verification_requirements_for_19_2 (the 12 required cases) and residual_limitations F4-R1..R4.",
+    "docs/planning/v1.2.md Goal F4 acceptance criteria (round-robin over QueueCapacity; coalesce/in-flight/overflow-stop/library-mutation coverage).",
+    "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs and src/ArrTags/Reconciliation/LibraryReconciliationService.cs inspected: the bounded linear skip, strict-after startIndex, cancellation between/inside pages, wrap, covered-prefix advance, and the scheduled/post-scan-only cursor gate match the ADR.",
+    "src/ArrTags/Updates/LibraryWorkQueue.cs, ReconciliationCursorStore.cs, and ReconciliationScopeIdentity.cs inspected to confirm the Coalesced/InFlight/Overflow/Stopped outcomes, scope reset, and byte-identical record assertions are produced by real production code."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json task 19.2 done=true with reports [docs/implementation/19.2/worker-report.json]; Phase 19 remains PLANNED; limitations F4/F6/F7 remain open (19.5 owns resolution) - consistent with the implementation.",
+    "PLANS.md - only the '- [ ] 19.2' -> '- [x] 19.2' checkbox changed; the generated milestone table was not hand-edited; git diff confirms a single-line change.",
+    "docs/status.md - check-docs reports generated status blocks current and plan state consistent; no stale 19.2 claim.",
+    "docs/implementation/19.2/worker-report.json - present with acceptance_criteria, test_sensitivity, documentation_reconciliation, and interpretations populated and consistent with the diff.",
+    "No ADR, docs/reviews/**, docs/changelog/**, docs/limitations/**, docs/architecture/**, or docs/research/** file was modified (git status/porcelain), matching the '19.5 owns those' constraint."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

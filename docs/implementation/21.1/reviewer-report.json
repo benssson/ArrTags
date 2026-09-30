@@ -1,0 +1,162 @@
+{
+  "task": "21.1",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "reviewer_blockers": [
+    "21.1-R1: the build.yaml changelog's F7 clause overclaims. It states that ArrTags 'restores the original poster (or removes the ArrTags image when no baseline was retained) when a saved configuration narrows an owned item's badge selection to empty'. The shipped behavior on that exact trigger does not remove anything when no baseline was retained: `ArtworkGenerationCoordinator.ReadRetainedSource` returns `ArtworkSourceReadResult.Absent` for a session whose `SourcePresence` is `Absent`, so `GenerateCoreAsync` returns `NoSource` before the render and never reaches the ADR-024 empty-selection restore branch. The removal leg of `ArtworkPublisher.RestoreAsync` is reachable only from the removal/lifecycle-drain trigger and from the recovery-gate resume, which is precisely the qualification `docs/architecture/09-persisted-artwork-rendering.md:276-282` records and that task 20.3 added after the task 20.1 test-quality finding TQR-20.1-04. `build.yaml` reintroduces the uncorrected phrasing into user-facing release metadata (the catalog description and, per `scripts/publish-release.sh`, the GitHub release notes). One-clause wording fix required; no code change."
+  ],
+  "summary": "Task 21.1 is correctly implemented except for one clause of the release metadata. Independently verified: `build.yaml:4` is `version: \"1.2.0.0\"` with `targetAbi`/`framework` unchanged; `Directory.Build.props` sets Version/AssemblyVersion/FileVersion to `1.2.0.0` and its reproducibility comment now names the same version; the four plugin-version test literals in PluginPackagingTests.cs:28, PluginDiscoveryHostTests.cs:86 and :102, and PluginStateLocationTests.cs:56 are `1.2.0.0` and no `1.1.0.0` literal remains anywhere in `tests/` or `build.yaml`/`Directory.Build.props`; the diff is exactly the 7 in-scope tracked files plus the untracked `docs/implementation/21.1/` report directory, with no unrelated change and no generated block hand-edited (`dotnet run scripts/render-docs-state.cs -- --check` reports both blocks up to date and PLANS.md/state.json in agreement). I re-ran the validation rather than trusting the worker's numbers: `./build.sh build` -> 0 warnings / 0 errors; `./build.sh package` -> `artifacts/ArrTags_1.2.0.0.zip`, 7 entries, 619,561 bytes, packaged `build.yaml` byte-identical to the source (`cmp` clean) and carrying `version: \"1.2.0.0\"` / `targetAbi: \"12.0.0.0\"` / `framework: \"net10.0\"`, and the packaged `ArrTags.dll` reports `1.2.0.0`; `./build.sh test` -> Failed 0, Passed 1927, Skipped 66, Total 1993, matching the worker exactly; the focused packaging/state-location filter -> 11 passed, 0 failed. Six of the eight shipped v1.2 items in the new metadata (G6/G8 units and restart-required surfacing, G7 Extra Large and dropdown order, G9/F8 bounded log subject and render classification, F3 read-only administrator diagnostics, F4 successive-run cursor coverage correctly scoped to scheduled and post-scan triggers, F6 stale-basis re-enqueue) are each supported by the accepted ADR and its implementation note with no overclaim and with the project's own qualifiers ('best-effort', 'a mixed setting states that some paths apply immediately') preserved. The F7 clause is the exception: it attributes the absent-baseline removal to the config-narrowing trigger, which the shipped code path cannot reach, so the metadata asserts a user-visible outcome the plugin does not produce. That is a single open MEDIUM finding tied directly to the task's second acceptance criterion, and it is correctable by rewording one clause. Everything else in the task, including the state/report persistence and the scope discipline, is sound.",
+  "findings": [
+    {
+      "id": "21.1-R1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "correctness",
+      "summary": "The build.yaml changelog claims ArrTags removes the ArrTags image when no baseline was retained on the config-narrowing trigger, but the shipped coordinator path returns NoSource before reaching the restore branch, so no removal occurs there.",
+      "detail": "build.yaml:41-43 reads: 'restores the original poster (or removes the ArrTags image when no baseline was retained) when a saved configuration narrows an owned item's badge selection to empty'. The parenthetical attaches the removal leg to the configuration-narrowing trigger. In the shipped code that trigger cannot produce the removal: (1) `ArtworkGenerationCoordinator.ReadRetainedSource` (src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:346) returns `RetainedSourceResolution.Failed(ArtworkSourceReadResult.Absent(surface))` whenever an owned session records `SourcePresence == ArtworkImagePresence.Absent`; (2) `ReadSourceAsync` therefore returns that Absent result and `GenerateCoreAsync` (line 216-219) returns `ArtworkGenerationResult.NoSource` before calling the renderer, so the `RenderPassThroughReason.NoDisplayableValue` branch that drives `RestoreEmptySelectionAsync` (line 240-249) is never entered; (3) the absent-baseline removal inside `ArtworkPublisher.RestoreAsync` (src/ArrTags/Artwork/ArtworkPublisher.cs:615, 643) is therefore driven only by `ArtworkLifecycleCoordinator.RestoreAsync` (the item-removal / uninstall-drain trigger) and by the recovery-gate resume, not by an empty selection. This is not a new interpretation: the project's own canonical architecture document states it verbatim ('The absent-baseline leg is not reachable through the coordinator's normal generation path: ReadRetainedSource reports the absent retained baseline (Absent), so the coordinator returns NoSource before rendering and never creates that restoration', docs/architecture/09-persisted-artwork-rendering.md:276-282), the task 20.1 test-quality review raised the identical defect as TQR-20.1-04 against that document's wording, task 20.3 corrected it to the publisher-attributed form, and docs/limitations/archive.md:382-387 records the same verification bound. `build.yaml` now carries the pre-correction phrasing into the plugin-catalog description and, per scripts/publish-release.sh, into the GitHub release notes, so an operator reading it would expect the ArrTags image to be removed after narrowing a selection on an item whose baseline was not retained, and would instead observe the badge preserved. Impact is confined to release metadata accuracy (no runtime behavior, no data-integrity or security effect), but it is exactly what acceptance criterion 2 exists to prevent, and the fix is a one-clause reword.",
+      "evidence": [
+        "build.yaml:41-43 (the overclaiming clause)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:216-219 (Absent -> NoSource before render)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:346-348 (SourcePresence Absent -> Failed(Absent))",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:240-249 (empty-selection restore branch, unreachable in that state)",
+        "src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs:200 (the trigger that does reach RestoreAsync)",
+        "docs/architecture/09-persisted-artwork-rendering.md:276-282 ('The absent-baseline leg is not reachable through the coordinator's normal generation path')",
+        "docs/limitations/archive.md:382-387 (same verification bound recorded for the F7 resolution)",
+        "docs/implementation/20.1/test-quality-review.json finding TQR-20.1-04 item 5 (the identical wording defect, raised against architecture-09 and corrected in task 20.3)"
+      ],
+      "recommended_action": "Reword the build.yaml changelog clause so the removal is not attributed to the configuration-narrowing trigger. Simplest correct form: '...and restores the original poster when a saved configuration narrows an owned item's badge selection to empty'. If the removal leg is worth keeping in the catalog text, attribute it to the trigger that reaches it, e.g. '...restores the original poster on narrowing, and the removal and uninstall drains remove the ArrTags image when no baseline was retained'. Then re-run `dotnet run scripts/render-docs-state.cs -- --check` is unnecessary (build.yaml is not a generated surface) but `./build.sh package` must be re-run so the packaged build.yaml matches, and the packaged byte size will change."
+    },
+    {
+      "id": "21.1-N1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirement",
+      "summary": "The changelog's 'off-step values rejected' is a simplification of accepted limitation V12-G6-1 (a legacy off-step whole-unit value is re-quantized on the next save, not rejected).",
+      "detail": "build.yaml:29-30 says v1.2 'shows byte-denominated limits in binary units (MB, or KB for the webhook payload) with the exact byte count persisted and off-step values rejected'. For values the operator enters, this is exactly right: `byteLimitToBytes` in src/ArrTags/Configuration/config.html:397-414 returns null when `bytes % definition.stepBytes !== 0`, so an entered off-step value is rejected for every field. The simplification concerns only a persisted legacy off-step value: for the whole-KiB and whole-MiB fields the display rounds to a whole unit and the next save writes the nearest whole unit rather than rejecting, which is registered as accepted limitation V12-G6-1 (docs/limitations/accepted.md:704-733) and is disclosed in the shipped documentation. A catalog changelog is not the place for that caveat, and the acceptance criterion is about describing the shipped v1.2 behavior rather than restating every accepted limitation, so this is recorded rather than required.",
+      "evidence": [
+        "build.yaml:29-30",
+        "src/ArrTags/Configuration/config.html:412-414 (entered off-step values rejected)",
+        "docs/limitations/accepted.md:704-733 (V12-G6-1: legacy off-step whole-unit values are re-quantized on the next save)",
+        "docs/decisions/ADR-028.md implementation note (the same reject-versus-legacy-reload boundary)"
+      ],
+      "recommended_action": "None for this task. If task 21.2 or 21.3 wants the byte-limit clause to be exhaustive, V12-G6-1 can be folded in; otherwise leave as is."
+    },
+    {
+      "id": "21.1-N2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope",
+      "summary": "check-agents.sh reports the contract-mandated worker/reviewer pairing failure until the reviewer report path is appended; this is the documented orchestrator closure step, not a worker defect.",
+      "detail": "`scripts/check-docs.sh` currently reports 'FAIL: task 21.1 has a worker report but no reviewer report' and 'FAIL: task 21.1 has a reviewer report on disk but docs/plan/state.json does not list it in reports'. docs/agent-contracts.md rule 5 requires a task with a worker-report.json to list its reviewer-report.json (with every preserved attempt) plus any test-quality-review.json. The worker's reports array currently lists only the worker report, which was correct at the time it was written; the reviewer report (this file) and docs/implementation/21.1/test-quality-review.json now exist on disk. The task 20.3 review recorded the identical transient state and directed the orchestrator to append the reviewer report path at commit time, so 21.1 follows the established precedent and the worker is not at fault.",
+      "evidence": [
+        "scripts/check-agents.sh:105-155 (the pairing and state-listing checks)",
+        "docs/agent-contracts.md rule 5 ('A task's reports array ... lists the evidence reports committed for that task')",
+        "docs/plan/state.json:1350-1354 (task 21.1 reports currently lists only worker-report.json)",
+        "docs/implementation/20.3/reviewer-report.attempt-2.json:95 ('The orchestrator should append reviewer-report.attempt-2.json to the task 20.3 reports array when committing')",
+        "scripts/check-docs.sh run output at review time: only the two agent-contract pairing lines fail; all other eight sections pass"
+      ],
+      "recommended_action": "Orchestrator, at commit: add docs/implementation/21.1/reviewer-report.json and docs/implementation/21.1/test-quality-review.json to the task 21.1 reports array in docs/plan/state.json, then re-run scripts/check-docs.sh (expect PASS)."
+    },
+    {
+      "id": "21.1-N3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing",
+      "summary": "Directory.Build.props version is verified by inspection only; the sibling test-quality audit (TQ-21.1-01) already records the missing guard, and the current values are correct.",
+      "detail": "I confirmed independently that no test, MSBuild target, or docs check compares Directory.Build.props against build.yaml: only PluginPackagingTests.BuildManifestKeepsPinnedIdentityAndAbi guards the manifest literal. The three props are three independent literals, so a future half-bump could ship a package whose assembly version disagrees with build.yaml with a green suite. This is a forward-looking false-confidence risk, not a present defect: I verified the packaged ArrTags.dll reports 1.2.0.0 and the packaged build.yaml reads 1.2.0.0, so the two sources agree today. It is already an open MEDIUM finding in docs/implementation/21.1/test-quality-review.json (TQ-21.1-01) and is not a 21.1 acceptance-criterion failure.",
+      "evidence": [
+        "Directory.Build.props:4-6 (three independent literals)",
+        "grep over tests/ for 'Directory.Build.props|<Version>|AssemblyVersion|FileVersion' returns only tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:72 (SkiaSharp, not ArrTags)",
+        "unzip -p artifacts/ArrTags_1.2.0.0.zip ArrTags.dll + strings -> '1.2.0.0'; packaged build.yaml line 4 -> version: \"1.2.0.0\"",
+        "docs/implementation/21.1/test-quality-review.json TQ-21.1-01"
+      ],
+      "recommended_action": "Track TQ-21.1-01 as the test-quality reviewer proposes (a relative assertion that the three props equal the build.yaml literal). Not required for 21.1."
+    },
+    {
+      "id": "21.1-N4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope",
+      "summary": "The release-identity surfaces that still say 1.1.0.0 (README, docs/status.md, state.json current_release, docs/release/build-and-release.md, manifest.json) are correct as current state and are owned by tasks 21.2/21.3/21.6.",
+      "detail": "docs/status.md, the state.json current_release block, the PLANS.md milestone row (Phase 21 PLANNED), README.md's manual-install instructions, and manifest.json still describe 1.1.0.0 as the current shipped release. That is the accurate current state until the v1.2 release completes, and the delegation assigns those surfaces to 21.2/21.3/21.6. The worker's known_limitations record this correctly. Note for 21.3: manifest.json's changelog/overview/description must be regenerated to match the corrected build.yaml, since 14.5 verified the two are kept textually identical.",
+      "evidence": [
+        "docs/status.md:8-16 (current release 1.1.0.0, generated block up to date per render-docs-state --check)",
+        "docs/plan/state.json:58,63 (current_release.version and artifact path)",
+        "README.md:35,38 and docs/release/build-and-release.md (1.1.0.0 release identity)",
+        "PLANS.md:277-282 (tasks 21.2-21.6 unchecked, milestone row Phase 21 PLANNED)",
+        "docs/implementation/21.1/worker-report.json known_limitations[0..2]"
+      ],
+      "recommended_action": "No change for 21.1. Task 21.3 must regenerate manifest.json from the final build.yaml (including the 21.1-R1 wording fix)."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The version is 1.2.0.0 in build.yaml.",
+      "verdict": "MET",
+      "evidence": "build.yaml:4 is `version: \"1.2.0.0\"`; targetAbi \"12.0.0.0\" and framework \"net10.0\" unchanged. Independently re-packaged: `unzip -p artifacts/ArrTags_1.2.0.0.zip build.yaml` -> version: \"1.2.0.0\", and `cmp build.yaml /tmp/21.1/pkg-build.yaml` is clean, so the packaged manifest is byte-identical to the source. PluginPackagingTests.BuildManifestKeepsPinnedIdentityAndAbi asserts the literal and passed in my focused run (11 passed / 0 failed across the packaging + state-location filter)."
+    },
+    {
+      "criterion": "The version is 1.2.0.0 in Directory.Build.props.",
+      "verdict": "MET",
+      "evidence": "Directory.Build.props:4-6 sets <Version>, <AssemblyVersion> and <FileVersion> to 1.2.0.0, and the Phase 7 reproducibility comment at line 15 now names version 1.2.0.0 (comment-only, consistent with the task 14.1 precedent). Verified in the compiled artifact rather than by inspection alone: the packaged ArrTags.dll contains the exact string 1.2.0.0 (`strings` on the unzipped binary), and src/ArrTags/obj/Release/net10.0/ArrTags.AssemblyInfo.cs carries AssemblyVersion/AssemblyFileVersion/AssemblyInformationalVersion 1.2.0.0. Build is clean: ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)'. No automated guard ties the props to build.yaml (see finding 21.1-N3), but the values are correct."
+    },
+    {
+      "criterion": "The metadata accurately describes the shipped v1.2 behavior (build.yaml overview/description/changelog), with no overclaim.",
+      "verdict": "NOT MET (one overclaiming clause; the remaining text is accurate)",
+      "evidence": "Supported claims, each checked against the accepted ADR and its implementation note: G6 byte limits in fixed binary MB (KB for the webhook payload) with byte persistence (ADR-028 clause 1 + task 16.1 note; config.html:322-330, 397-414); G8 restart-required note text plus the best-effort modal reminder, with the mixed-setting qualification stated (ADR-028 clauses 2-4 + task 16.2/16.3/16.5 note; config.html:332-349, 350-374; V12-G8-1); G7 Extra Large with the Small/Medium/Large/Extra Large dropdown order (ADR-027 clauses 1 and 3 + task 18.1 note); G9/F8 bounded file-name log subject with the item-id fallback and the bounded render classification (ADR-026 clauses 1-4 + task 15.2/15.3 note); F3 read-only administrator diagnostics panel backed by a bounded secret-free endpoint (ADR-025 clauses 1-3 + task 17.1/17.2/17.3 note; src/ArrTags/Diagnostics/ArrTagsStatusController.cs); F4 successive-run coverage correctly scoped to the scheduled and post-scan whole-scope triggers with a persisted cursor (ADR-022 clause 6 and ADR-029 amendment; docs/architecture/08-reconciliation-and-update-flow.md:101-110); F6 stale-basis re-enqueue instead of dropping the post-save re-render (ADR-023 clauses 1-3). Unsupported claim: build.yaml:41-43 attributes the absent-baseline removal to the configuration-narrowing trigger, which the shipped coordinator cannot reach (ReadRetainedSource -> Absent -> NoSource; docs/architecture/09:276-282). See finding 21.1-R1. One further simplification ('off-step values rejected' vs accepted limitation V12-G6-1) is recorded as informational in 21.1-N1 and is not treated as an overclaim."
+    },
+    {
+      "criterion": "Every hard-coded plugin-version literal in the tests (PluginPackagingTests, PluginDiscoveryHostTests, PluginStateLocationTests) is updated to 1.2.0.0, and no scoped file retains 1.1.0.0.",
+      "verdict": "MET",
+      "evidence": "PluginPackagingTests.cs:28 asserts version: \"1.2.0.0\"; PluginDiscoveryHostTests.cs:86 builds ArrTags_1.2.0.0 and :102 writes meta.json version 1.2.0.0; PluginStateLocationTests.cs:56 builds ArrTags_1.2.0.0. `grep -rn '1\\.1\\.0\\.0' tests/ArrTags.Tests/*.cs` returns no match. A repository-wide sweep finds 1.1.0.0 only in README.md:35,38, docs/testing/jellyfin-12-musl-test-host.md, docs/status.md, docs/plan/state.json:58,63 (current_release.version and the 1.1.0.0 artifact path), docs/plan/README.md:31 (schema example), and historical docs (docs/plan/archive/**, docs/implementation/**, docs/changelog/**) — none of which is owned by this task, and the two state.json lines are the correct current-release record until the v1.2 release completes. Stale 1.1.0.0 strings under src/ArrTags/obj/Debug and src/ArrTags/bin/Debug are gitignored build output (.gitignore:2-4) from a previous Debug configuration build; ./build.sh uses Release (build.sh:12), and the Release outputs and the packaged dll all read 1.2.0.0."
+    },
+    {
+      "criterion": "The Phase 21 task 21.1 checkbox in PLANS.md and the task's done/reports entry in docs/plan/state.json are updated per the single-writer rules, and no generated block is hand-edited.",
+      "verdict": "MET (with the documented orchestrator closure step noted in 21.1-N2)",
+      "evidence": "PLANS.md:277 is '- [x] 21.1 Version bump and release metadata'; docs/plan/state.json:1349-1354 sets done true and adds reports [docs/implementation/21.1/worker-report.json], with updated_utc advanced to 2026-09-29T09:04:24Z. Phase 21 status and the tag stay absent/PLANNED (gate and tag are orchestrator-owned at Gate 21). `dotnet run scripts/render-docs-state.cs -- --check` (run independently) reports 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree', exit 0, so no generated block was hand-edited. The git diff confirms the only PLANS.md hunk is the single checkbox line. The reports array must additionally list this reviewer report and the test-quality review when the orchestrator commits; see 21.1-N2."
+    },
+    {
+      "criterion": "Validation: locked restore, 0-warning/0-error build, package artifacts/ArrTags_1.2.0.0.zip with the expected packaged build.yaml, suite counts, and a scope limited to in-scope files.",
+      "verdict": "MET",
+      "evidence": "Independently re-run after source /config/arrtags-env.sh: ./build.sh build -> exit 0, 'Build succeeded. 0 Warning(s) 0 Error(s)'; ./build.sh package -> exit 0, 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.2.0.0.zip (7 entries)', 619,561 bytes; unzip -l lists exactly the 7 expected entries (ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml, licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt); ./build.sh test -> 'Failed: 0, Passed: 1927, Skipped: 66, Total: 1993', matching the worker's reported numbers exactly, with the skips accounted for by ARRTAGS_SKIA_COMPAT / ARRTAGS_JELLYFIN_HOST_DIR / ARRTAGS_NONCANONICAL_GOLDENS being unset; focused run 'FullyQualifiedName~PluginPackagingTests|FullyQualifiedName~PluginStateLocationTests' -> 11 passed / 0 failed / 0 skipped. Scope: git status --porcelain shows exactly the 7 modified tracked files (build.yaml, Directory.Build.props, PLANS.md, docs/plan/state.json, and the three test files) plus the untracked docs/implementation/21.1/ report directory; no unrelated or stray tracked/untracked change. The host-guarded suite and the live pinned-host matrix are explicitly later tasks (21.3/21.4) and their absence here is in scope."
+    }
+  ],
+  "tests_checked": [
+    "./build.sh build (independent run): Build succeeded, 0 Warning(s), 0 Error(s).",
+    "./build.sh package (independent run): artifacts/ArrTags_1.2.0.0.zip, 7 entries, 619,561 bytes.",
+    "unzip -l artifacts/ArrTags_1.2.0.0.zip: exactly the 7 expected entries.",
+    "unzip -p artifacts/ArrTags_1.2.0.0.zip build.yaml: version 1.2.0.0 / targetAbi 12.0.0.0 / framework net10.0; cmp against repository build.yaml: byte-identical.",
+    "strings on the packaged ArrTags.dll: exact assembly identity string 1.2.0.0.",
+    "./build.sh test (independent run): Failed 0, Passed 1927, Skipped 66, Total 1993.",
+    "dotnet test --filter 'FullyQualifiedName~PluginPackagingTests|FullyQualifiedName~PluginStateLocationTests' --no-build: 11 passed, 0 failed, 0 skipped.",
+    "grep -rn '1\\.1\\.0\\.0' over tests/ArrTags.Tests/*.cs: no match; repository-wide sweep reviewed for stale scoped literals."
+  ],
+  "research_checked": [
+    "docs/planning/v1.2.md goals G6, G7, G8, G9 and limitations F3, F4, F6, F7, F8 (lines 46-310) and decision gates DG-15..DG-22 / ADR list (lines 322-348) for the release-identity scope.",
+    "docs/decisions/ADR-022.md (successive-run coverage, clause 6 trigger scoping) and ADR-029.md (clause 3 amendment; clause 3 of ADR-022 as amended).",
+    "docs/decisions/ADR-023.md (version-aware post-save re-render, clauses 1-3).",
+    "docs/decisions/ADR-024.md (empty-selection restoration, clauses 1-8 and the tasks 20.1-20.3 implementation note).",
+    "docs/decisions/ADR-025.md (read-only diagnostics surface, clauses 1-4 and the tasks 17.1-17.4 implementation note).",
+    "docs/decisions/ADR-026.md (bounded log subject, clauses 1-4) and ADR-027.md (Extra Large, clauses 1 and 3).",
+    "docs/decisions/ADR-028.md (limit display units and restart-required surfacing, clauses 1-4 and the tasks 16.1-16.6 implementation note).",
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs (ReadRetainedSource, GenerateCoreAsync, RestoreEmptySelectionAsync) and src/ArrTags/Artwork/ArtworkPublisher.cs (RestoreAsync absent-baseline leg) plus ArtworkLifecycleCoordinator.cs:200 to establish the actual reachability of the removal leg.",
+    "docs/architecture/09-persisted-artwork-rendering.md:265-285 and docs/architecture/08-reconciliation-and-update-flow.md:99-121 as the canonical shipped-behavior statements for F7 and F4.",
+    "docs/limitations/accepted.md V12-G6-1, V12-G8-1 and V12-F4-1..6 / F6-1..2; docs/limitations/00-index.md rows, to confirm the metadata does not contradict a registered accepted limitation.",
+    "docs/implementation/20.1/test-quality-review.json TQR-20.1-04 and the task 20.3 architecture-09 wording correction, which establish the project's own position on the F7 parenthetical."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 21.1 done=true with reports; updated_utc advanced; current_release/current artifact block correctly still 1.1.0.0; limitations lists unchanged; phase 21 status/tag untouched.",
+    "PLANS.md: line 277 checkbox flipped to [x]; the generated milestone-status block unchanged and still Phase 21 PLANNED.",
+    "docs/status.md: generated block verified current and unmodified (`render-docs-state.cs -- --check` -> up to date).",
+    "docs/agent-contracts.md: report paths, status enums, and the reports-array rule 5 applied to task 21.1.",
+    "docs/plan/README.md single-writer table and state.json shape: the worker wrote only task done/reports/updated_utc; no generated surface was hand-edited.",
+    "docs/changelog/v1.2.0.md: v1.2 entries for tasks 15.x-20.x confirmed present (the 1.2.0 release entry and manifest are task 21.6/21.3 and out of scope here).",
+    "docs/limitations/00-index.md and accepted.md: F3/F4/F6/F7/F8 resolved plus the accepted residuals; no v1.2 capability claimed by the new metadata is missing from the register.",
+    "scripts/check-docs.sh output: eight of nine sections pass; only the two contract-mandated worker/reviewer pairing lines fail (21.1-N2)."
+  ],
+  "required_changes": [
+    "21.1-R1: Reword the F7 clause in the build.yaml changelog so the absent-baseline removal is not attributed to the configuration-narrowing trigger (either drop the parenthetical, or attribute it to the removal/uninstall-drain trigger that actually reaches ArtworkPublisher.RestoreAsync with an absent baseline). Then re-run ./build.sh package so the packaged build.yaml matches and record the new artifact size."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

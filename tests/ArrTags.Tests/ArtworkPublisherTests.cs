@@ -295,6 +295,93 @@ public sealed class ArtworkPublisherTests : IDisposable
         Assert.DoesNotContain("host detail", result.Reason, StringComparison.Ordinal);
     }
 
+    // ---- Guarded restoration and the restoration fence --------------------------
+
+    [Fact]
+    public async Task AbsentBaselineRestorationRemovesTheArrtagsImageWithoutSaveOrUpdate()
+    {
+        // Phase 20 acceptance: the coordinator cannot reach this branch because
+        // ReadRetainedSource reports the absent baseline before rendering, so a
+        // synthetic persisted Published state with no retained baseline is driven
+        // through the internal RestoreAsync entry point directly.
+        var active = Png(2);
+        _host.CurrentBytes = active;
+        _states.Write(PublishedState(active, sourceBytes: null));
+
+        var result = await RestoreAsync(_publisher, ArtworkLifecycleFence.Normal);
+
+        Assert.Equal(ArtworkReconciliationOutcome.Completed, result.Outcome);
+        Assert.True(result.IsCommitted);
+
+        // The removal boundary is the only image mutation; the save and item
+        // update APIs are never called for an absent baseline.
+        Assert.Equal(1, _host.RemoveCalls);
+        Assert.Equal(0, _host.SaveCalls);
+        Assert.Equal(0, _host.UpdateCalls);
+        Assert.Null(_host.SavedBytes);
+        Assert.Null(_host.SavedContentType);
+        Assert.Null(_host.CurrentBytes);
+
+        // The journal recorded the mutation lower bound before the removal call.
+        Assert.Equal(ArtworkOperationPhase.MutationStarted, _host.PhaseAtRemove);
+
+        var operation = _operations.Read(_item, Surface).Value!;
+        Assert.Equal(ArtworkOperationKind.Restoration, operation.Kind);
+        Assert.Equal(ArtworkOperationPhase.Committed, operation.Phase);
+        Assert.Equal(ArtworkImagePresence.Absent, operation.CandidateAfterPresence);
+        Assert.Null(operation.CandidateAfterContentSha256);
+        Assert.Null(operation.SourceArtifactId);
+        Assert.Equal(ArtworkLifecycleFence.Normal, operation.LifecycleFence);
+        Assert.Equal(result.OperationId, operation.OperationId);
+
+        var state = _states.Read(_item, Surface).Value!;
+        Assert.Equal(ArtworkPublicationState.Restored, state.State);
+        Assert.Equal(ArtworkImagePresence.Absent, state.SourcePresence);
+        Assert.Null(state.ActiveImageIdentity);
+        Assert.Null(state.SourceArtifactId);
+    }
+
+    [Theory]
+    [InlineData(ArtworkLifecycleFence.Disable)]
+    [InlineData(ArtworkLifecycleFence.Uninstall)]
+    public async Task RestorationIsPermittedUnderDisableAndUninstallFences(ArtworkLifecycleFence fence)
+    {
+        var source = Png(1);
+        var active = Png(2);
+        _host.CurrentBytes = active;
+        _states.Write(PublishedState(active, source));
+
+        var result = await RestoreAsync(_publisher, fence);
+
+        Assert.Equal(ArtworkReconciliationOutcome.Completed, result.Outcome);
+        Assert.Equal(1, _host.SaveCalls);
+        Assert.Equal(source, _host.SavedBytes);
+        Assert.Equal(1, _host.UpdateCalls);
+        Assert.Equal(0, _host.RemoveCalls);
+        Assert.Equal(ArtworkPublicationState.Restored, _states.Read(_item, Surface).Value!.State);
+        Assert.Equal(fence, _operations.Read(_item, Surface).Value!.LifecycleFence);
+    }
+
+    [Fact]
+    public async Task RestorationIsRefusedUnderTheItemRemovedFenceWithoutMutation()
+    {
+        // The publisher's own second-layer refusal: a caller that bypasses the
+        // coordinator's guard still never mutates under a confirmed item removal.
+        var active = Png(2);
+        _host.CurrentBytes = active;
+        _states.Write(PublishedState(active, Png(1)));
+
+        var result = await RestoreAsync(_publisher, ArtworkLifecycleFence.ItemRemoved);
+
+        Assert.Equal(ArtworkReconciliationOutcome.NothingToReconcile, result.Outcome);
+        Assert.Equal(0, _host.SaveCalls);
+        Assert.Equal(0, _host.UpdateCalls);
+        Assert.Equal(0, _host.RemoveCalls);
+        Assert.Equal(active, _host.CurrentBytes);
+        Assert.Equal(ArtworkPublicationState.Published, _states.Read(_item, Surface).Value!.State);
+        Assert.Equal(StateReadStatus.Missing, _operations.Read(_item, Surface).Status);
+    }
+
     // ---- Bounds and cancellation -------------------------------------------------
 
     [Fact]
@@ -427,6 +514,71 @@ public sealed class ArtworkPublisherTests : IDisposable
             150,
             ArtworkHashes.ComputeSha256(derived),
             Fingerprint(derived)));
+    }
+
+    /// <summary>
+    /// Invokes the internal ADR-024 restore entry point directly. The production
+    /// visibility boundary keeps <c>ArtworkPublisher.RestoreAsync</c> internal
+    /// and the test assembly has no internals access, so the direct
+    /// absent-baseline test (which the coordinator cannot reach) invokes the
+    /// same method through reflection without changing that boundary.
+    /// </summary>
+    /// <param name="publisher">The publisher under test.</param>
+    /// <param name="fence">The lifecycle fence passed to the restoration.</param>
+    /// <returns>The bounded reconciliation result.</returns>
+    private Task<ArtworkReconciliationResult> RestoreAsync(ArtworkPublisher publisher, ArtworkLifecycleFence fence)
+    {
+        var method = typeof(ArtworkPublisher).GetMethod("RestoreAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        return (Task<ArtworkReconciliationResult>)method!.Invoke(
+            publisher,
+            [_item, Surface, fence, CancellationToken.None])!;
+    }
+
+    private PublishedArtworkState PublishedState(byte[] activeBytes, byte[]? sourceBytes)
+    {
+        var at = DateTimeOffset.UnixEpoch.AddDays(1);
+        ActiveImageIdentity capture;
+        SourceArtifactInfo? artifact;
+        if (sourceBytes is null)
+        {
+            capture = new ActiveImageIdentity(Surface, ArtworkImagePresence.Absent);
+            artifact = null;
+        }
+        else
+        {
+            var promoted = _artifacts.Promote(sourceBytes, "image/png", ArtworkHashes.ComputeSha256(sourceBytes));
+            Assert.True(promoted.Succeeded);
+            artifact = promoted.Info!;
+            capture = new ActiveImageIdentity(
+                Surface,
+                ArtworkImagePresence.Present,
+                artifact.Sha256,
+                artifact.ByteLength,
+                100,
+                150,
+                at,
+                "source-tag");
+        }
+
+        var session = PublishedArtworkStateTransitions
+            .CaptureSession(null, _item, Surface, capture, artifact, at)
+            .State;
+        // The active identity must match what the fake host reports for the
+        // current bytes (modification time and image tag participate in the
+        // ownership comparison).
+        var active = new ActiveImageIdentity(
+            Surface,
+            ArtworkImagePresence.Present,
+            ArtworkHashes.ComputeSha256(activeBytes),
+            activeBytes.Length,
+            100,
+            150,
+            DateTimeOffset.UnixEpoch,
+            "tag-1");
+        return PublishedArtworkStateTransitions
+            .CommitPublication(session, active, Fingerprint(activeBytes), 2, at)
+            .State;
     }
 
     private static ArtworkSourceReadResult Current(byte[] bytes)

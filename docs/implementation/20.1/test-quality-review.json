@@ -1,0 +1,110 @@
+{
+  "subject": "Task 20.1 — Empty-selection restore/removal behavior (Phase 20, Goal F7, ADR-024) test suite",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "TQR-20.1-01",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "coverage",
+      "description": "The documented 'a missing fence store means Normal' behavior (worker report deliverable 3) is not exercised on the restore path. ArtworkGenerationCoordinatorTests always constructs the class-level _coordinator with fences: _fences, and the only two coordinators built without a fence store (tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:153 NullMetadataPassesThroughByTheRendererConvention and :177 IneligibleMatchPassesThroughByTheRendererConvention) pass through with NoMetadata / MatchNotEligible, so RestoreEmptySelectionAsync is never reached with a null store. A regression that made the null default refuse (or read as anything other than Normal) would not fail any test. Impact is bounded because the production composition (ArrTagsServiceRegistrator.cs:412-416) always injects the registered durable store, so the branch is exercised only by other in-process embedders.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:52 (class-level coordinator always passes fences)",
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:153,177 (only fence-less coordinators; non-restoring reasons)",
+        "grep: the only other test constructions of ArtworkGenerationCoordinator (Phase6Harness.cs:316, ArtworkPublicationPipelineTests.cs:255, RendererConfigurationIntegrationTests.cs:48, DiagnosticsInstrumentationTests.cs:286, LogRedactionTests.cs:1017) omit fences and none of them drives a NoDisplayableValue pass-through on a Published session",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:490 (fenceState = _fences is null ? ArtworkLifecycleFenceState.Normal : _fences.Read())",
+        "docs/implementation/20.1/worker-report.json acceptance_criteria[2] ('a missing store means Normal')"
+      ],
+      "recommended_action": "Either add a coordinator case that publishes, then drives an empty-selection pass-through through a coordinator built without a fence store and asserts Restored/Completed; or explicitly defer the null-store restore default to the 20.2 coverage matrix and record that deferral in the 20.2 plan entry."
+    },
+    {
+      "id": "TQR-20.1-02",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "The owned-restore test proves the retained baseline was written back correctly, but two of its assertions are weaker than they read. (a) It does not assert RemoveCalls == 0; the no-removal proof is indirect, resting on Assert.Equal(original, _host.CurrentBytes) while FakeArtworkHost.RemoveImageAsync nulls CurrentBytes. That is sufficient (and the reviewer report AR-20.1-05 already classified the explicit assertion as redundant), so no change is required, but restore-vs-remove is distinguished only by the committed SourcePresence and not by any host-call assertion. (b) Assert.NotNull(result.OperationId) does not establish the ADR-024 clause 3/4 crash-recoverability claim: ExecuteRestorationAsync advances the durable ArtworkOperation to the terminal Committed phase on a completed restoration, so a green restore necessarily leaves a terminal record and no resumable one. No 20.1 test asserts the durable operation's Kind=Restoration or that a coordinator-driven restoration is resumable by the ordinary recovery gate; the worker report assigns that to 20.2.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:410-437 (no RemoveCalls assertion; OperationId asserted only for non-null)",
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:738-747 (RemoveImageAsync sets CurrentBytes = null, so the current-bytes assertion does cover removal)",
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:643-662 (durable ArtworkOperation, Kind=Restoration, Phase=Prepared, written before mutation) and :836-837 (Advance to ArtworkOperationPhase.Committed on success)",
+        "docs/decisions/ADR-024.md clauses 3-4",
+        "docs/implementation/20.1/worker-report.json known_limitations[1] (restart recovery of a driven restoration is 20.2)"
+      ],
+      "recommended_action": "In 20.2, add a coordinator-driven case that reads the durable operation and asserts Kind=Restoration, plus a resume case through ArtworkReconciler for the coordinator-driven restoration. Optionally add the explicit RemoveCalls == 0 assertion to the owned-restore test for symmetry with the preserve tests."
+    },
+    {
+      "id": "TQR-20.1-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "description": "Guard honesty confirmed for the new native renderer case. NonFittingSelectionPassesThroughAsNoFittingBadge is [SkiaNativeFact]-guarded, and the guard is a real environment requirement rather than a way to hide a failure: the fixture RendererBehaviorFixtures.CreateOpaquePng encodes an SKBitmap, so the test cannot run without the pinned SkiaSharp native runtime, and it is guarded identically to the class's pre-existing decode-dependent siblings. Its assertion is reachable only through the new branch — NoFittingBadge is a value the pre-change renderer could not emit, so under the old layout.IsEmpty -> NoDisplayableValue behavior the assertion necessarily fails. The default suite reports the case as a skip (Skipped 65 vs the measured 64 pre-change baseline), so no skip is hidden. The two halves of the ADR-024 clause 5 NoFittingBadge guarantee (the renderer emitting the reason, and the coordinator mutating nothing for it) are established by two substitute-linked tests that never execute in the same configuration: the native-guarded renderer test and the FakeRenderer-injected coordinator theory. That composition is acceptable because the two tests' inputs agree exactly, but it is recorded here so the guarantee is not later described as an end-to-end proof.",
+      "evidence": [
+        "tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:141-153 (SkiaNativeFactAttribute skips unless ARRTAGS_SKIA_COMPAT=1)",
+        "tests/ArrTags.Tests/RendererBehaviorFixtures.cs:84-98 (CreateOpaquePng requires the native runtime)",
+        "default run: 'ArrTags.Tests.RendererBehaviorFailureTests.NonFittingSelectionPassesThroughAsNoFittingBadge [SKIP]' and RendererBehaviorFailureTests -> Failed 0, Passed 11, Skipped 3, Total 14",
+        "forced-native run: RendererBehaviorFailureTests -> Failed 0, Passed 14, Skipped 0, Total 14",
+        "src/ArrTags/Rendering/RenderPassThroughReason.cs:29 (NoFittingBadge did not exist before this change)",
+        "tests/ArrTags.Tests/SkiaBadgeRendererDecisionTests.cs:67-78 (the companion unguarded fact: the real renderer emits NoDisplayableValue for an empty selection, pre-decode)"
+      ],
+      "recommended_action": "None for 20.1. In 20.2, consider one integration case that drives the real SkiaBadgeRenderer through the coordinator on an owned session for a non-fitting non-empty selection, so the guarantee is proven in a single configuration."
+    },
+    {
+      "id": "TQR-20.1-04",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "coverage",
+      "description": "20.1 exercises one branch of each new decision and correctly does not claim the rest, so this is not a 20.1 defect; it is recorded so Gate 20 is not passed on 20.1's evidence alone. Unproven by any 20.1 test: the non-Completed branches of ArtworkGenerationResult.FromRestoration (Cancelled, Blocked for RecoveryBlocked/OwnershipLost/OwnershipUnknown, and the NothingToReconcile -> RenderPassThrough mapping, which the coordinator's local fence refusal makes unreachable in the covered configuration); the fence-read failure catch and the null-reconciliation guard in RestoreEmptySelectionAsync; the Disable and Uninstall fence variants; the StateReadStatus.InvalidQuarantined/InvalidDiscarded branch of HasOwnedPublishedSession (a defensive hardening with no documented requirement); the absent-baseline removal; and the restart resume. PLANS.md assigns '20.2 F7 coverage tests' and assigns the absent-baseline direct-publisher test to the Phase 20 acceptance criteria, so these belong to 20.2. One wording consequence is flagged: docs/architecture/09-persisted-artwork-rendering.md as amended states that the coordinator drives restoration 'or remov[es] the ArrTags image when the baseline was absent', but that branch is not reachable through the coordinator (ReadRetainedSource returns Absent, so GenerateCoreAsync returns NoSource before rendering) and is unproven.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationResult.cs:201-244 (FromRestoration mapping; only Completed exercised)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:451-462,489-506 (uncovered invalid-state branch and fence-read catch)",
+        "PLANS.md:246-258 (20.2 owns the F7 coverage tests and the absent-baseline direct publisher test)",
+        "docs/implementation/20.1/worker-report.json known_limitations[0] and [1] (both stated as 20.2)",
+        "docs/architecture/09-persisted-artwork-rendering.md:269-275 (amended claim of coordinator-driven removal when the baseline was absent)"
+      ],
+      "recommended_action": "20.2 must close the FromRestoration branch matrix, the fence-variant matrix, and the absent-baseline removal; 20.3 (or 20.2's doc pass) should reconcile the architecture wording so the removal is attributed to the publisher path rather than presented as coordinator-reachable."
+    },
+    {
+      "id": "TQR-20.1-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "Recorded so NonRestorableFencePreservesAnOwnedSessionWithoutMutation is not later read as proving more than it does. Its zero save/update/remove assertions and the retained Published state are satisfied by the publisher's own second-layer refusal (ArtworkPublisher.RestoreAsync returns NothingToReconcile for a fence that is not Normal/Disable/Uninstall) even if the coordinator's local !AllowsNewRestoration guard were removed. The assertion that isolates the coordinator's own guard is Assert.Null(result.ReconciliationOutcome). The test does seed a real, durable, non-restorable fence (ArtworkLifecycleFenceStore.Set writes an integrity-tagged authoritative record that Read() returns as a valid ItemRemoved state), and the end-to-end no-mutation guarantee is genuinely established. The worker report discloses this in probe P5.",
+      "evidence": [
+        "tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:466-490 (assertions; ReconciliationOutcome null is the isolating one)",
+        "src/ArrTags/Artwork/ArtworkPublisher.cs:518-523 (publisher refuses a non-restorable fence with NothingToReconcile)",
+        "src/ArrTags/Artwork/ArtworkLifecycleFenceStore.cs:72-87 (Set writes the durable record; Read returns a valid fence state)",
+        "docs/implementation/20.1/worker-report.json test_sensitivity[4] (probe P5, disclosed)"
+      ],
+      "recommended_action": "None. Optionally add a one-line comment in the test naming ReconciliationOutcome as the assertion that distinguishes the coordinator's local refusal from the publisher's."
+    }
+  ],
+  "matrix_observed": {
+    "default": "1908 passed / 65 skipped / 1973 total (independently reproduced: ./build.sh test -> Failed 0, Passed 1908, Skipped 65, Total 1973)",
+    "host_guarded": "not run — the pinned Jellyfin 12.0.0 host is not extracted in this environment (no ARRTAGS_JELLYFIN_HOST_DIR, /tmp/jf and /tmp/opencode/jf absent). Not claimed by 20.1; recorded as unverified here rather than reported as a pass.",
+    "forced_native": "1994 passed / 21 skipped / 2015 total (ARRTAGS_SKIA_COMPAT=1 with the recorded /tmp/arrtags-skia-probe/sysroot; the 21 skips are the 20 ARRTAGS_JELLYFIN_HOST_DIR host facts plus the 1 ARRTAGS_NONCANONICAL_GOLDENS comparison)",
+    "coordinator_focus": "32 passed / 0 skipped / 32 total (FullyQualifiedName~ArtworkGenerationCoordinatorTests; 25 pre-existing plus the 7 new ADR-024 cases)",
+    "pinned_native_oracle_renderer_filter": "14 passed / 0 skipped / 14 total (FullyQualifiedName~RendererBehaviorFailureTests under ARRTAGS_SKIA_COMPAT=1; the new NonFittingSelectionPassesThroughAsNoFittingBadge genuinely executes)",
+    "default_renderer_filter": "11 passed / 3 skipped / 14 total (the three skips are the ARRTAGS_SKIA_COMPAT-gated decode-dependent cases including the new one)"
+  },
+  "substitutes_checked": [
+    "FakeRenderer (tests/ArrTags.Tests/ArtworkGenerationCoordinatorTests.cs:624-646) injects the pass-through reason directly, so the coordinator tests do not use the real renderer. The seam is closed by RendererBehaviorFailureTests.MetadataWithoutADisplayableValuePassesThrough and SkiaBadgeRendererDecisionTests.NoDisplayableValuePassesThrough, both unguarded [Fact]s that prove the real SkiaBadgeRenderer emits NoDisplayableValue for an empty resolved selection before decoding, and by the native-guarded NonFittingSelectionPassesThroughAsNoFittingBadge for the non-empty layout-empty case. No substitute stands in for behavior the suite claims is verified on the real path.",
+    "FakeArtworkHost (same file, :648-747) stands in for the Jellyfin image writer. The restore/preserve assertions are written against observable host effects (SavedBytes, CurrentBytes, Save/Update/Remove call counts), and RemoveImageAsync nulls CurrentBytes so a removal cannot pass unnoticed. The real host image-mutation contract itself is covered by the pre-existing pinned-host image route/ABI tests, which are host-guarded and were not run here.",
+    "ArtworkPipelineFixtures' stub renderer (tests/ArrTags.Tests/ArtworkPipelineFixtures.cs:139-170) mirrors the real renderer's decision order and returns NoDisplayableValue for an empty selection; it never models the layout-empty case. It is pre-existing and is not used by any 20.1 test, and the full default and forced-native suites are green, so no existing test relied on the old ambiguous behavior.",
+    "The absent-baseline removal is provably unreachable through the coordinator (ReadRetainedSource returns Absent, so GenerateCoreAsync returns NoSource before rendering), which the worker report discloses and PLANS.md assigns to the 20.2 direct publisher test. Recorded rather than treated as a 20.1 gap."
+  ],
+  "skips_checked": [
+    "The one new skip is NonFittingSelectionPassesThroughAsNoFittingBadge, guarded by ARRTAGS_SKIA_COMPAT=1 through SkiaNativeFactAttribute (tests/ArrTags.Tests/SkiaHostCompatibilityTests.cs:141-153). The guard is honest: the test encodes and decodes an SKBitmap, so it genuinely requires the pinned native runtime, and it is guarded exactly like the class's pre-existing decode-dependent cases.",
+    "The default suite reports the new case as an explicit [SKIP] line and the count rose from the worker's measured 64 baseline to the observed 65. The skip is not being counted as verification of the shipped default behavior, and no ADR-024 deliverable that the default suite claims to verify depends on it.",
+    "The forced-native oracle command the worker recorded is the repository's established probe sysroot (/tmp/arrtags-skia-probe/sysroot, also used in docs/implementation/12.4, 18.2 and final-review/release-review.json) and I reproduced it: 14/14 on the renderer filter and 1994/21/2015 for the whole suite. The claim that the pinned-native oracle genuinely executes the new test is verified, not merely reported.",
+    "The host-guarded leg was not run in this environment and is reported as unverified rather than passed."
+  ],
+  "determinism_checked": [
+    "Per-test isolation: each ArtworkGenerationCoordinatorTests instance creates its own GUID-suffixed temp root and its own StateRepository, stores, publisher, coordinator, FakeArtworkHost and FakeRenderer, and deletes the root in Dispose. No order dependence, no shared mutable state, and the static Item/Surface are read-only.",
+    "The native NoFittingBadge case is deterministic by construction, not incidentally passing: at 10x10 the effective scale is clamped to min(10,10)/(2*OuterInset) so the outer inset is 5, safeWidth and safeHeight are non-positive, ComputeAvailableRows returns 0, and PackTechnicalValues is skipped (BadgeLayoutEngine.cs:53-116). The empty layout is therefore reached with no text measurement at all, so the outcome does not depend on fontconfig, the bundled DejaVu metrics, or the probe sysroot's font set. The bundled-font path and the empty-selection early return (SkiaBadgeRenderer.cs:83-86) are unaffected.",
+    "SkiaBadgeRenderer is stateless (all render state is local; the typeface is created per call), so the static shared Renderer instance in RendererBehaviorFailureTests remains safe under xUnit parallelization with the added concurrent user.",
+    "No wall-clock, network, or process-state dependency was introduced. ArtworkLifecycleFenceStore.Set stamps DateTimeOffset.UtcNow into the record, but no assertion reads it.",
+    "Fence seeding is a real durable write (ArtworkLifecycleFenceStore.Set -> authoritative, integrity-tagged record) and Read() returns a valid ItemRemoved state, so the fence test is not a no-op that passes for the wrong reason.",
+    "Assertions are specific enough to fail on regression: the restore test compares exact byte arrays for the written baseline, exact save/update call counts, the committed state, SourcePresence, and the released ActiveImageIdentity; the preserve tests compare the reason, the null reconciliation outcome, the unchanged call counts, and the retained Published state."
+  ],
+  "summary": "The 20.1 tests establish the claimed ADR-024 behavior on the real paths rather than on restated constants, and I reproduced every number the worker reported: the default suite at 1908/65/1973, the coordinator filter at 32/32, the pinned-native renderer oracle at 14/14, and the full forced-native suite at 1994/21/2015. The owned-restore test proves the retained baseline bytes were actually written back to the surface (SavedBytes and CurrentBytes both equal the original, with a removal made impossible by the fake's CurrentBytes nulling), that the committed state is Restored with the ActiveImageIdentity released, and that exactly one extra save and update occurred; the five-reason theory runs against a session proven Published by the final state assertion and proves no mutation; the fence test seeds a genuine durable ItemRemoved record and proves zero mutation; the non-owned test's discriminating assertion (ReconciliationOutcome null) is the one added by this task and is exactly what fails if ownership is misjudged; and the NoFittingBadge assertion is reachable only through the new branch, because the pre-change renderer could not emit that value, so it cannot pass under the old behavior. The new native case is honestly guarded on a real environment requirement and is accurately reported as a skip in the default suite, with the skip count rising by exactly one. The only open items are LOW: the unexercised null-fence-store default on the restore path, the indirect (but sufficient) no-removal proof and the unproven crash-recoverability of a coordinator-driven restoration, and the unexercised non-Completed result mappings, fence variants, and absent-baseline removal — all of which PLANS.md assigns to 20.2 and which the worker report discloses. No BLOCKER or HIGH finding: the suite can be trusted not to pass while the shipped ADR-024 behavior is broken, and nothing is claimed verified in the default configuration that only the forced-native configuration establishes. PASS_WITH_FINDINGS; the four noted items should be carried into 20.2/20.3, and the reviewed task's reports array in docs/plan/state.json must additionally list this report (docs/agent-contracts.md clause 5) when the orchestrator accepts the review. No test or implementation file was modified by this audit; this report is the only file written."
+}

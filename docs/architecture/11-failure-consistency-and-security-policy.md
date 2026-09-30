@@ -1,0 +1,78 @@
+# 11. Failure, consistency, and security policy
+
+Failures are isolated by layer:
+
+- Arr connection failures preserve last-known-good metadata for a bounded
+  period, then leave the current usable artwork unchanged when no usable state
+  remains.
+- Authentication, malformed JSON, unsupported fields, and version drift are
+  reported as connection/item status, not Jellyfin failures.
+- No match or ambiguous match produces no badge.
+- Renderer failures leave the current usable artwork unchanged and record a
+  rate-limited error.
+- A provenance mismatch or unverifiable active-image identity leaves the current
+  artwork unchanged and disables automatic publication/restoration for that
+  item.
+- A missing or corrupt retained source artifact blocks restoration rather than
+  permitting a guessed source or an unsafe replacement.
+- Queue overflow coalesces or drops redundant work; it never blocks a library
+  event indefinitely.
+- Cancellation prevents publication of partial state or partial image output.
+- Non-publication state is versioned and persisted for normal restart
+  re-evaluation; non-terminal artwork operations are recovered before new work
+  is accepted.
+- Corrupt, torn, or ambiguous operation records fail closed and never trigger a
+  blind image replay or cleanup.
+
+Inbound webhook endpoints require a configured shared secret, validate content
+size and payload shape, and rate-limit or coalesce requests. They must not
+accept arbitrary item IDs as permission to perform unbounded work. ADR-012 fixes
+the V1 contract: an anonymous plugin route authenticated by the
+`X-ArrTags-Webhook-Secret` header through the versioned webhook lease and a
+constant-time comparison before MVC model binding can read the request body (so
+no body is read before the secret is verified for any content type, and a
+non-JSON content type is rejected with a bounded `400`); a bounded request
+payload rejected with a safe status before allocation; a bounded tolerant parser
+that rejects malformed, wrong-shaped, or oversized payloads; a bounded intake
+that coalesces duplicate, out-of-order, and replayed deliveries and drops
+overflow without blocking; and a bounded provider-record-to-Jellyfin resolution
+that enqueues only the same deduplicated work hints as every other trigger. A
+webhook never publishes metadata, mutates artwork, calls an Arr endpoint, or
+widens work beyond items ArrTags already tracks.
+
+API-key and webhook-secret values are available only through the versioned
+private secret boundary described in section 6 and ADR-005. Authentication
+failures expose only bounded safe status codes; request headers, bodies, URLs,
+and secret-bearing exceptions are never retained in diagnostics. The API-key
+transport never follows an HTTP redirect: every named provider client (the
+strict and opt-in insecure-TLS Sonarr and Radarr clients) is registered with
+automatic redirect-following disabled, so the key added to "the current request
+only" is never re-sent to a `3xx` `Location` origin, and a not-followed `3xx`
+surfaces as the bounded, secret-free `InvalidResponse` provider error (never
+retried as a transient; section 7). ArrTags
+diagnostics go through the host logging pipeline at the bounded, validated
+`LogVerbosity`, and every log call emits only bounded, already-redacted values
+under the ADR-020 clause 4 contract: authentication failures and secret-bearing
+values (API keys, the webhook secret, `SecretLease` values,
+`X-Api-Key`/`X-ArrTags-Webhook-Secret` headers, raw request/response bodies,
+full provider payloads, and the mutable `PluginConfiguration`) are never logged,
+the emitted data shape is identical at every verbosity level, and log output is
+bounded by the code-owned `LogThrottle` (section 12). ADR-012
+resolves the route exposure, authentication transport, payload policy, replay
+handling, rate policy, and administration flow that ADR-005 left open.
+
+ArrTags also exposes a read-only diagnostics status surface (ADR-025). The
+class-level elevation-gated `GET ArrTags/Status` route returns a fixed-shape,
+bounded, secret-free snapshot of process-lifetime counters and never mutates
+configuration, work, or artwork; it adds no write route and no configuration
+setting. The settings-page panel that renders it is served from the anonymous
+static page resource, obtains its data solely from that route, and renders no
+data when the route is unauthorized or unavailable or the response is
+unparseable or not a JSON object (fail-closed). A well-formed but unexpected or
+partial-shape object instead renders the fixed counter table with the bounded
+fallback values (a missing or non-numeric count as `0`, an unrecognized health
+value as `Unknown`), so no free-form response text is ever written; the response
+carries no path, item name, item identifier list, provider payload, credential,
+`SecretLease` value, or unbounded collection. The fresh security
+review of the endpoint and panel required by ADR-025 clause 6 is recorded at
+`docs/implementation/17.4/security-review.json`.

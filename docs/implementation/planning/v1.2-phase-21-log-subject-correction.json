@@ -1,0 +1,445 @@
+{
+  "name": "v1.2-phase-21-log-subject-correction",
+  "milestone": "v1.2",
+  "release": {
+    "version": "1.2.0.0",
+    "release_tag": "v1.2.0",
+    "phase": 21
+  },
+  "status": "PLANNED (corrective tasks 21.11-21.14 derived and recorded; none started; no product behavior implemented; no existing task reopened or renumbered; 21.6 left not done)",
+  "change": "Add the corrective work the user decided on after the task 21.10 release security review re-verified the two carried LOW log-subject residuals as still open: harden the bounded log subject so no non-printing/format/separator scalar and no directory chain can reach the operator log (task 21.11, fixing SEC-21.5-02 and SEC-21.5-03), then re-derive the release artifact identity (21.12), the live pinned-host matrix (21.13), and the release security review (21.14) against the fully corrected build, before task 21.6 finalises the changelog for the new identity, passes the release-reviewer gate, and tags the release. Task IDs continue the existing numbering (21.11-21.14) for the same reason 21.7-21.10 did. SEC-21.5-04 duplicates the already-accepted SEC-2 (the shared-temp state-root fallback) and is explicitly out of scope for this chain; it is carried forward by 21.14 as an accepted item, not fixed here.",
+  "canonical_form": {
+    "choice": "new task IDs continuing the Phase 21 numbering: 21.11, 21.12, 21.13, 21.14, with task 21.6 remaining the final task",
+    "rationale": "Identical to the SEC-21.5-01 corrective chain recorded in v1.2-phase-21-sec-21-5-01-correction.json: the repo's report convention keys evidence by task-id directory (docs/implementation/<task-id>/), the plan/state guard's task-id grammar is a single dotted number, and docs/implementation/** is immutable history, so a re-execution needs its own task id and its own report directory while the superseded record stays verbatim.",
+    "rejected_alternatives": [
+      "Re-execution suffix on an existing id (21.8-r2, 21.10-r2): rejected. The task-id grammar the plan/state guard matches is a single dotted number, a suffix would not parse as a task id, the per-task report directory and the agent-contract report paths are keyed by task id, and it would imply a prior task was not complete.",
+      "Reopening 21.3-21.5 or 21.8-21.10 and re-running them in place: rejected. They are done, their reports are immutable history under docs/implementation/**, and re-running in place would destroy the evidence that each superseded candidate was built, live-verified, and reviewed.",
+      "Reusing 21.7-21.10 for the log-subject work: rejected. 21.7-21.10 are complete with their own evidence; overwriting or extending their scope would silently retitle a completed task and mix two different findings' evidence in one report directory.",
+      "Inserting a new Phase 22 between 21.10 and 21.6: rejected. This is the remediation of findings raised inside Phase 21's own exit gate, not a new accepted scope; a new phase would need its own accepted scope document and would leave the v1.2 release split across two phases with the release tag on neither cleanly.",
+      "Accepting SEC-21.5-02/03 as shipped limitations and letting 21.6 proceed: rejected by explicit user decision. The user chose to fix the two log-subject LOW residuals now and re-verify, rather than accept them as limitations."
+    ],
+    "supersession": "Tasks 21.12, 21.13, and 21.14 are re-executions, not corrections: each replaces the deliverable of 21.8, 21.9, and 21.10 respectively for the fully corrected candidate. The 21.8/21.9/21.10 reports remain the record of the first corrected candidate and are cited as such by the new reports. Task 21.11 is a new corrective implementation task (like 21.7), not a re-execution."
+  },
+  "trigger": {
+    "findings": ["SEC-21.5-02", "SEC-21.5-03"],
+    "severity": "LOW",
+    "status_at_trigger": "open (both)",
+    "report": "docs/implementation/21.10/security-review.json",
+    "reviewer_status": "PASS_WITH_FINDINGS",
+    "open_blocker_high": 0,
+    "origin": "Carried from docs/implementation/15.4/security-review.json as SR-15.4-01 and SR-15.4-02 (with SR-15.4-04 folded into SEC-21.5-03); re-verified and reproduced against the shipped assembly by the 21.10 review, which explicitly declined to close them.",
+    "sec_21_5_02": {
+      "summary": "LogSubject.NormalizeFileName removes Unicode Cc scalars only (Rune.IsControl), so Cf format characters (reproduced with U+202E RIGHT-TO-LEFT OVERRIDE, U+200B ZERO WIDTH SPACE, U+2066/U+2069 isolates) and the Zl/Zp separators U+2028/U+2029 pass verbatim into the operator-facing log. Bounded (128 scalars), no secret, no volume amplification (the throttle keys on category plus the code-owned event, never on the message).",
+      "required_fix": "Extend the removal predicate to the non-printing/invisible categories, at minimum Cf and Zl/Zp, and record the exact category set in the ADR-026 implementation note and the architecture documentation."
+    },
+    "sec_21_5_03": {
+      "summary": "LogSubject.Create uses Path.GetFileName, so on the pinned Linux host a backslash is a legal file-name character and 'C:\\Users\\admin\\Videos\\secret.mkv' and '\\\\fileserver\\media\\secret\\file.mkv' are emitted whole (32/32 and 34/34 scalars), disclosing a user account name and a full directory chain contrary to ADR-026 clause 1's directory/full-path exclusion. Bounded, no secret.",
+      "required_fix": "Take the final path component by splitting on both '/' and '\\\\' regardless of host platform, then re-run the empty/whitespace/control-reduced fallback check on the extracted component."
+    },
+    "not_in_scope": "SEC-21.5-04 duplicates the already-accepted SEC-2 (the shared-temp state-root fallback in ArrTagsServiceRegistrator), which the 21.10 review confirmed unchanged and unreachable on the pinned host. It is not fixed, re-decided, or re-registered by this chain; 21.14 carries it forward explicitly.",
+    "user_decision": "Fix SEC-21.5-02 and SEC-21.5-03 now and re-verify, rather than accept them as shipped limitations. The user decision is the authority for this corrective chain; no new decision gate was opened, because the required behavior is already stated by accepted ADR-026 clause 1 (the file-name component only, never a directory, drive, share, or parent path) and clause 2 (a bounded, control-free, otherwise-verbatim subject): SEC-21.5-03 is a conformance gap against clause 1 and SEC-21.5-02 is a narrowing of what clause 2 permits being emitted. Both fixes move the implementation toward the accepted decision, not away from it.",
+    "consequence": "The fix changes ArrTags.dll, so it invalidates the task 21.8 artifact identity (artifacts/ArrTags_1.2.0.0.zip, 619,636 bytes, SHA-256 3e59cb06dfd09da4df71e4e4a1c608b66461326b0184c63cf846fcc502d277, MD5 f3b50a91c7cb63d9560316d8abe2f9dc, 7 entries) and manifest.json's 1.2.0.0 checksum, the live pinned-host matrix recorded by 21.9, and the release security review recorded by 21.10. The task 21.6 release record in docs/changelog/v1.2.0.md (committed in db9656b) states that identity and must be updated for the new one. The release security review must be re-run against the fully corrected candidate before 21.6 tags v1.2.0."
+  },
+  "active_scope": "docs/planning/v1.2.md",
+  "phases": [
+    {
+      "id": 21,
+      "name": "v1.2 release",
+      "objective": "Bump ArrTags to 1.2.0.0, reconcile the canonical documentation, build and package reproducibly, run the full suite and the live pinned-host verification, run the release security review, and complete the changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag. Extended by the first user decision on SEC-21.5-01 (correct the provider transport, then re-derive the identity, matrix, and review) and by the second user decision on SEC-21.5-02/03 (harden the bounded log subject, then re-derive the identity, matrix, and review again), so the tagged candidate contains both corrections and every release claim rests on that build.",
+      "deliverables_added_by_this_change": [
+        "A hardened bounded log subject: the final path component taken on both '/' and '\\\\' independently of host separator semantics, and the non-printing/format/separator scalar categories removed in addition to Cc, preserving the 128-scalar bound, the single-pass surrogate-safe normalization, and the empty/whitespace/control-only item-id fallback.",
+        "Tests that demonstrably fail on the pre-fix code for both findings (Cf/Zl/Zp pass-through; a Windows-style and a UNC path emitted whole), plus the existing LogSubject policy and LogRedaction per-verbosity coverage kept green.",
+        "An ADR-026 implementation note recording the shipped removal-predicate category set and the dual-separator component extraction, and matching wording in the architecture documents (06 and 12) that currently describe the subject as host-platform-scoped and Cc-only.",
+        "A corrected, reproducible artifacts/ArrTags_1.2.0.0.zip with its new identity recorded in docs/release/build-and-release.md and a regenerated manifest.json 1.2.0.0 entry.",
+        "A live pinned-host matrix re-run against the fully corrected artifact.",
+        "A release security review of the fully corrected candidate that dispositions SEC-21.5-02 and SEC-21.5-03 as resolved, carries SEC-21.5-04 forward explicitly, and shows no open BLOCKER/HIGH."
+      ],
+      "tasks": [
+        {
+          "id": "21.11",
+          "name": "Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)",
+          "objective": "Close SEC-21.5-02 and SEC-21.5-03 in src/ArrTags/Logging/LogSubject.cs: no Unicode non-printing/format/separator scalar and no directory, drive, share, or parent chain can reach the operator-facing log, on any host platform, while every property ADR-026 clause 2 guarantees is preserved.",
+          "traceability": {
+            "findings": "SEC-21.5-02 and SEC-21.5-03 (docs/implementation/21.10/security-review.json; origin SR-15.4-01 and SR-15.4-02 in docs/implementation/15.4/security-review.json)",
+            "goals": "G9 (docs/planning/v1.2.md), which the corrective work serves rather than extends",
+            "adrs": ["ADR-026 clause 1 (file-name component only, never a directory, drive, share, or parent path)", "ADR-026 clause 2 (bounded to at most 128 Unicode scalar values, control characters removed, otherwise verbatim, item-id fallback)", "ADR-020 clause 4 as amended by ADR-026 (redaction contract)"],
+            "documentation_to_correct": "docs/architecture/12-performance-and-operational-limits.md and docs/architecture/06-configuration-and-persisted-state.md both currently state that the subject uses host-platform path semantics and is control-free only for Cc; those statements become stale the moment the fix lands.",
+            "not_a_new_goal": "No GOALS.md goal is added and no limitation is promoted or demoted; this closes a release-gate finding against an already-accepted decision."
+          },
+          "dependencies": [
+            "21.10 (the finding, its reproduction against the shipped assembly, and the recorded pre-fix behavior)",
+            "Nothing else: 15.1-15.4 shipped the helper and its tests, and 21.7-21.9 did not touch src/ArrTags/Logging, so the starting point is the 21.10-reviewed code."
+          ],
+          "work": [
+            "In LogSubject.Create, replace the host-platform Path.GetFileName call with a platform-independent extraction of the final path component: take the substring after the last '/' and after the last '\\\\' (whichever is later), so a POSIX path, a Windows path, a UNC path, and a mixed-separator path all yield the same final component on every host. Re-run the empty/whitespace check on the extracted component before normalization, and keep the existing post-normalization fallback check, so a path that is only separators, or whose component reduces to nothing, still falls back to the item identifier in D format. Do not change the single-argument Create(Guid) overload's behavior.",
+            "In LogSubject.NormalizeFileName, extend the removal predicate from 'Rune.IsControl(rune)' (Unicode Cc) to the documented set of non-printing categories: at minimum Cc, Cf (format: U+200B/U+200D, U+202A-U+202E, U+2066-U+2069, U+00AD, and the bidi controls), Zl (U+2028), and Zp (U+2029). Keep the existing single scalar-wise pass, the MaximumScalarValues=128 bound applied after removal, the never-split-surrogate-pair guarantee, and the never-collapse-or-trim whitespace behavior. State the exact category set in the XML doc comments on the helper so the policy is code-documented, and decide explicitly (and record the decision and its reason) whether any other category is in scope; if a category is judged ambiguous, exclude it and say why rather than leaving it implicit.",
+            "Preserve every existing LogSubjectTests invariant, including the 23 existing cases: the positive POSIX controls, the non-ASCII verbatim cases (/media/日本語/お気に入りの映画.mkv, Amélie, the decomposed 'Cafe\\u0301', and the astral-plane 'Movie 🎬.mkv'), the 128-scalar bound applied after removal, the surrogate-pair integrity case, the no-whitespace-collapse case, and the three empty/whitespace/control-only fallback cases. A change that strips a combining mark, a letter, or an emoji is a regression, not a hardening.",
+            "Add failing-on-pre-fix tests in tests/ArrTags.Tests/LogSubjectTests.cs for SEC-21.5-02: a Theory over the reproduced scalars (U+202E, U+200B, U+2066/U+2069, U+2028, U+2029) asserting none survives into the subject, plus a positive control proving an ordinary Cc control IS still stripped, plus a non-ASCII/astral positive control proving nothing else is stripped.",
+            "Add failing-on-pre-fix tests for SEC-21.5-03: 'C:\\\\Users\\\\admin\\\\Videos\\\\secret.mkv' and '\\\\\\\\fileserver\\\\media\\\\secret\\\\file.mkv' must each yield only the final component with no account name and no directory separator anywhere in the subject; a mixed-separator path must behave the same; the existing POSIX cases must be unchanged; and the URL-shaped SR-15.4-04 observation (a query string on a file-name-shaped path is retained, and Path.GetFileName is a path splitter, not a URL parser) must be covered by an explicit test that documents the retained behavior as unchanged, so it is neither silently altered nor silently dropped.",
+            "Record the pre-fix probe: run the new tests against the unmodified LogSubject.cs (git stash the change or build the parent revision) and capture the failing output in the worker report, so the test is demonstrably discriminating rather than vacuously green. The 21.10 review's reproduction against the shipped assembly is the pre-fix evidence to cite, but the task must run its own test-level probe too.",
+            "Update the documentation wording that the fix makes stale, without rewriting ADR decision text: append an implementation note to docs/decisions/ADR-026.md recording the shipped removal-predicate category set, the dual-separator component extraction, the preserved bounds and fallback, and the fact that the previously recorded 'Cc-only' and 'host-native-path' readings were implementation notes rather than decisions, now superseded. ADR-026's Decision clauses 1-5 are not edited; they already require this behavior. If the worker concludes an accepted clause does not authorize the change, that is a decision boundary and the task stops there rather than editing the clause.",
+            "Update docs/architecture/12-performance-and-operational-limits.md (the log-subject paragraph, which currently says the subject 'uses host-platform path semantics' and that a Windows-style backslash string is a single file name rather than a path) and docs/architecture/06-configuration-and-persisted-state.md (the 'host-native-path scoped' sentence) to state the platform-independent component extraction and the widened removal predicate. Check docs/architecture/07 and 11 for any equivalent statement.",
+            "Update docs/changelog/v1.2.0.md with the log-subject behavior change in the Phase 21 section. Do not edit the '## v1.2.0 release' section's artifact identity, suite counts, live matrix, or review references: those belong to 21.12-21.14 and 21.6, and rewriting them here would misstate a candidate that no longer exists."
+          ],
+          "tests": {
+            "level": "unit (the helper's policy) plus the existing redaction integration coverage at every verbosity",
+            "required": [
+              "New tests that fail on the pre-fix code: the Cf/Zl/Zp theory and the Windows/UNC component tests, with the pre-fix failure captured in the report.",
+              "Positive controls alongside every negative: an ordinary control is stripped, ordinary letters (including non-ASCII, decomposed combining marks, and astral-plane emoji) are preserved verbatim, and whitespace is not collapsed or trimmed.",
+              "The 23 pre-existing LogSubjectTests cases still pass unchanged, and the new cases are added to the same file rather than replacing any.",
+              "LogRedactionTests still pass: the per-site, per-verbosity assertions that the bounded subject is what reaches the log are unaffected, and the mixed MetadataReconciliationProcessor discard site still falls back to the item id when no path is threaded."
+            ],
+            "verification_surfaces": [
+              "The default suite and the host-guarded suite pass with no new failures and the skip count accounted for as 21.12 does.",
+              "Renderer goldens and byte-determinism are unaffected: the change is log-path-only and touches no rendering, fingerprint, or RenderVersion input. Every committed golden must be byte-identical; a changed golden is a defect, not an expected consequence.",
+              "scripts/check-docs.sh passes on the tree after the documentation updates."
+            ]
+          },
+          "acceptance_criteria": [
+            "Given a media path whose file-name component carries a Unicode Cf format character (for example U+202E or U+200B) or a Zl/Zp separator (U+2028/U+2029), the emitted log subject contains no such scalar; an ordinary Cc control is still stripped, so the removal predicate is a superset of the pre-fix behavior rather than a replacement.",
+            "Given 'C:\\\\Users\\\\admin\\\\Videos\\\\secret.mkv', the subject is 'secret.mkv' and contains no backslash, no account name, and no directory component; the same holds for a UNC path and for a mixed-separator path, on the pinned Linux host and on any host.",
+            "The 128 Unicode-scalar bound still holds after the widened removal (a 300-scalar name still truncates to exactly 128), the single pass still never splits a surrogate pair, and whitespace is still neither collapsed nor trimmed.",
+            "A path that is empty, whitespace, only separators, or whose final component reduces to nothing after removal still falls back to the Jellyfin item identifier in D format, and the post-normalization fallback check still runs.",
+            "The exact removal category set is stated in the code documentation and in the ADR-026 implementation note, so the policy is auditable from the code rather than inferred.",
+            "At least one test for each finding demonstrably fails on the pre-fix code, and the pre-fix failure output is recorded in the worker report.",
+            "No committed renderer golden changes; no RenderVersion or renderer-configuration schema bump; the change is confined to the log subject and its tests.",
+            "docs/architecture/06 and 12 no longer describe the subject as host-platform-scoped or Cc-only, and ADR-026's Decision clauses are unedited.",
+            "The default and host-guarded suites pass, and scripts/check-docs.sh passes."
+          ],
+          "decision_gates": [
+            {
+              "gate": "DG-22 (v1.2 G9: log subject identifier policy and the ADR-020 clause 4 amendment)",
+              "status": "resolved",
+              "note": "DG-22 is resolved by the user decision recorded by ADR-026 (Accepted (v1.2)). Both fixes move the implementation toward the accepted clauses rather than changing them: clause 1 already forbids emitting a directory, drive, share, or parent path, and clause 2 already requires a bounded subject with control characters removed. Neither fix needs a new gate or a new ADR."
+            },
+            {
+              "gate": "new gate required?",
+              "status": "no",
+              "note": "If the worker or a reviewer judges that an accepted ADR-026 clause does not authorize widening the removal predicate beyond 'control characters', that is a decision boundary, not an implementation detail: the task stops, and the smallest explicit decision (an ADR-026 clause amendment or a new ADR) is recorded before the behavior is relied on. Editing accepted decision text inside this task is not permitted."
+            },
+            {
+              "gate": "limitation status change?",
+              "status": "no",
+              "note": "SEC-21.5-02 and SEC-21.5-03 are security-review findings, not registered entries in docs/limitations, and neither is in state.json limitations. The task does not add, remove, or reclassify any limitation; their disposition belongs to the 21.14 review."
+            }
+          ],
+          "review": {
+            "implementation-reviewer": "required",
+            "test-quality-reviewer": "required (the new tests are the evidence that both findings are closed; their discriminating power, the theory data, and the positive controls must be established, not assumed, and a test that would also pass on the pre-fix code is a finding)",
+            "security-reviewer": "not required as a separate task here; the security adjudication of SEC-21.5-02/03 belongs to task 21.14 against the fully corrected candidate. The 21.11 reviewer must still confirm no new secret, path, or unbounded value can reach the log through the change, and that the removal predicate cannot be used to force the item-id fallback in a way that leaks a raw path.",
+            "jellyfin-expert": "not required (no Jellyfin platform API behavior is assumed; the fix is in the plugin's own string handling)"
+          },
+          "documentation": [
+            "docs/decisions/ADR-026.md (appended implementation note only; the Decision clauses are not edited)",
+            "docs/architecture/12-performance-and-operational-limits.md (the log-subject paragraph)",
+            "docs/architecture/06-configuration-and-persisted-state.md (the host-native-path-scoped sentence)",
+            "docs/architecture/07-sonarr-and-radarr-integration.md and 11-failure-consistency-and-security-policy.md only if they restate the log-subject policy",
+            "docs/decisions/00-index.md only if a new ADR is created",
+            "docs/changelog/v1.2.0.md (Phase 21 section only)",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "Over-removal: a category added to the predicate that a legitimate media file name uses (a combining mark in Mn, a private-use glyph, a regional-indicator pair) silently corrupts the operator's correlation key. The non-ASCII verbatim tests and the 128-scalar bound tests are the guard; the predicate's category set must be stated explicitly, not accumulated ad hoc.",
+            "Under-removal: leaving a category out (for example a deprecated bidi control, a Hangul filler, or a non-Cc, non-Cf, non-Zl/Zp whitespace-like separator) leaves the same class of finding open and the 21.14 review will report it. The task's own acceptance criterion is that no reproduced non-printing scalar survives, so the set is validated by the reviewer's reproductions, not by the worker's list alone.",
+            "The dual-separator split could change a currently-correct subject: a POSIX file name that legitimately contains a backslash is legal on Linux, and splitting on '\\\\' truncates it. That is the intended fail-toward-safety direction (a shorter subject, never a longer one) and is called out in the ADR note so the behavior is documented rather than surprising.",
+            "A file name that consists only of non-printing scalars must still fall back to the item id, not to an empty subject; the post-normalization fallback check is the only thing that guarantees this, so it must not be 'simplified away' while the predicate grows.",
+            "Widening the predicate changes golden-independent log output, so LogRedactionTests or a bounded-output assertion in another suite may need updating; a change there is only acceptable if the new expectation is strictly more restrictive."
+          ],
+          "estimate": "60-120 minutes of focused implementation plus the tests and the documentation wording."
+        },
+        {
+          "id": "21.12",
+          "name": "Corrected release build, full suite, reproducible artifact, and release documentation",
+          "objective": "Re-derive the v1.2.0.0 release candidate from the fully corrected source (the 21.7 transport fix plus the 21.11 log-subject hardening): rebuild and repackage reproducibly, re-run the default and host-guarded suites, and record the new artifact identity in docs/release/build-and-release.md with a regenerated manifest.json entry, updating the identity the 21.6 release record states.",
+          "traceability": {
+            "supersedes": "21.8 (re-execution, not correction: the 21.8 report and identity record stay verbatim as the first corrected candidate)",
+            "adrs": ["ADR-015 (package contents unchanged by a log-path-only fix)", "ADR-027 (no RenderVersion advance: the fix touches no rendering input)"],
+            "release": "v1.2 exit gate (reproducible artifacts/ArrTags_1.2.0.0.zip with recorded identity; full default and host-guarded suites pass)"
+          },
+          "dependencies": [
+            "21.11 (the log-subject fix must be in the source before the candidate is built)"
+          ],
+          "work": [
+            "Repeat the task 21.8 procedure against the fully corrected tree: two independent clean exports at different absolute paths plus the repository working tree after wiping bin/obj/artifacts, each running ./build.sh restore && ./build.sh build && ./build.sh test && ./build.sh package, and confirm all three archives are byte-identical.",
+            "Re-run the default suite with the archive present and the host-guarded suite against the pinned host from docs/testing/jellyfin-12-musl-test-host.md, and account for the skip taxonomy as 21.8 did (host facts, ARRTAGS_SKIA_COMPAT native cases, non-canonical goldens, package facts). The 21.11 test additions account for the total moving from 21.8's 2,003; record the exact delta and its cause.",
+            "Record the new identity in docs/release/build-and-release.md: byte size, SHA-256, MD5, entry count, the entry names, and the per-entry SHA-256 values. Replace the current 1.2.0.0 identity with the corrected one and retain the superseded 21.8 identity as an explicitly superseded record (and the 21.3 identity as already retained), the way the 1.1.0.0 and 1.0.1.0 identities are retained, so the history is not rewritten.",
+            "Regenerate the manifest.json 1.2.0.0 entry with the corrected MD5 checksum via scripts/write-manifest.cs, keeping the 1.1.0.0 and 1.0.1.0 entries, and update the release document's manifest field description and version-pinned counts. Do not change the manifest changelog one-liner: SEC-21.10-02's optional 3xx note was left unchanged by 21.6 for the documented reason (it would change the packaged build.yaml and therefore the verified identity), and reopening it here would restart the identity cycle again; if the user asks for it, it is a separate decision with its own rebuild.",
+            "Update the identity, suite, and artifact paragraphs of the '## v1.2.0 release' section in docs/changelog/v1.2.0.md that 21.6 committed in db9656b, so the release record names the fully corrected identity and states that both the 21.7 transport fix and the 21.11 log-subject fix are in the tagged build. Update the security-review and live-matrix references only to point at the paths 21.13 and 21.14 will write; if those tasks have not run yet, say so explicitly rather than asserting a result. This is the identity update the orchestrator's task requires; 21.6 still owns the final release-readiness verification, the release-reviewer gate, current_release/releases[], and the tag.",
+            "Do not change docs/plan/state.json current_release: the orchestrator owns that field and sets it at the release step, after 21.6. The build-and-release.md document must keep the 1.1.0.0 identity present, because the documentation guard compares state.json current_release against it."
+          ],
+          "tests": {
+            "level": "build and suite verification (no new product tests; the fix's own tests land in 21.11)",
+            "required": [
+              "Three-run byte-identical archive equality for the fully corrected candidate.",
+              "Default suite passing with the archive present, and host-guarded suite passing against the pinned host.",
+              "manifest.json 1.2.0.0 checksum equals md5sum of the corrected artifacts/ArrTags_1.2.0.0.zip."
+            ]
+          },
+          "acceptance_criteria": [
+            "./build.sh package on the fully corrected source produces artifacts/ArrTags_1.2.0.0.zip that is byte-identical across two independent clean exports and the repository working tree.",
+            "The new byte size, SHA-256, MD5, entry count, entry names, and per-entry SHA-256 values are recorded in docs/release/build-and-release.md, and the superseded 21.8 and 21.3 identities are retained there as superseded records rather than deleted.",
+            "The new identity differs from the 21.8 identity (3e59cb06..., 619,636 bytes), and the worker report states both the old and new ArrTags.dll hashes so the invalidation of the previous identity is on the record.",
+            "The default suite and the host-guarded suite both pass on the fully corrected tree, with the skip count accounted for and the test-total delta from 21.8 explained by the 21.11 additions.",
+            "manifest.json's 1.2.0.0 checksum equals the MD5 of the corrected archive and the prior version entries are retained.",
+            "The '## v1.2.0 release' section in docs/changelog/v1.2.0.md names the new identity and states that both corrections are in the build; where 21.13/21.14 have not yet produced reports, the section says so rather than claiming their results.",
+            "docs/release/build-and-release.md still contains the 1.1.0.0 identity that state.json current_release records, so the documentation guard passes.",
+            "scripts/check-docs.sh passes and render-docs-state --check reports the plan state consistent."
+          ],
+          "decision_gates": [
+            {
+              "gate": "pinned-host availability for the host-guarded suite",
+              "status": "external validation, not a decision gate",
+              "note": "The host-guarded suite needs the pinned Jellyfin 12 host described in docs/testing/jellyfin-12-musl-test-host.md (ARRTAGS_JELLYFIN_HOST_DIR). If the host is unavailable, the task reports what it could and could not run rather than claiming the host-guarded result; the release gate cannot be met without it."
+            }
+          ],
+          "review": {
+            "implementation-reviewer": "required",
+            "test-quality-reviewer": "not required (no new product tests; the suite result is evidence, not a test-quality claim)",
+            "security-reviewer": "not required here; task 21.14 covers it"
+          },
+          "documentation": [
+            "docs/release/build-and-release.md (identity, entry table, suite counts, manifest fields, verification steps)",
+            "manifest.json (regenerated 1.2.0.0 entry)",
+            "docs/changelog/v1.2.0.md (the v1.2.0 release section's identity and suite paragraphs)",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "Documentation guard coupling: state.json current_release still names the 1.1.0.0 artifact, so the 1.1.0.0 identity must stay in the release document. Deleting it as 'stale' fails check-docs.sh.",
+            "Two writers on the v1.2.0 release section: 21.12 owns the identity and suite facts, 21.6 owns the final release-readiness, gate, and tag facts, and 21.13/21.14 own their own report paths. Each must state which paragraphs it owns, or the section will end up asserting an unverified result.",
+            "A stale artifacts/ or bin/ tree from the 21.8 build can silently produce a mix; the clean-export procedure is the mitigation and must actually be run, not described."
+          ],
+          "estimate": "30-60 minutes of build and verification time, dominated by the three clean builds and two suites."
+        },
+        {
+          "id": "21.13",
+          "name": "Live pinned-host verification of the corrected artifact",
+          "objective": "Re-run the documented live pinned-host matrix against the fully corrected 1.2.0.0 artifact so every live claim in the release rests on the build that actually ships, with explicit attention to the row that exercises the log subject.",
+          "traceability": {
+            "supersedes": "21.9 (re-execution: docs/implementation/21.9/live-verification.json stays verbatim as the first corrected candidate's matrix and is cited as such)",
+            "release": "v1.2 exit gate (the live pinned-host matrix passes against the fully corrected artifact)"
+          },
+          "dependencies": [
+            "21.12 (the corrected artifact and its recorded identity)"
+          ],
+          "work": [
+            "Provision or reuse the pinned Jellyfin 12.0.0 host per docs/testing/jellyfin-12-musl-test-host.md and re-run the same matrix rows 21.9 ran, against the corrected artifacts/ArrTags_1.2.0.0.zip (verifying the archive's SHA-256 before install, so the run is provably against the fully corrected candidate).",
+            "Include the rows that bear on this correction: the log-subject row (L6) must show the real Jellyfin-supplied media path still yielding the bounded file-name subject with no directory, and the provider-outage row plus the restart/uninstall row are re-run unchanged because the release rests on them.",
+            "The live host cannot manufacture a Windows-style primary path or a Cf-bearing file name through normal Jellyfin library behavior, so the live matrix is a no-regression check for this fix, not a reproduction of SEC-21.5-02/03. State that explicitly in the report and point to 21.11's tests and 21.14's review as the discriminating evidence, so a PASS on the log-subject row is not read as proof the findings are fixed.",
+            "Record the new results in a fresh docs/implementation/21.13/live-verification.json and leave the 21.9 report untouched."
+          ],
+          "tests": {
+            "level": "live end-to-end on the pinned host",
+            "required": [
+              "Every matrix row from the 21.9 run is re-executed, with PASS/FAIL per row and the artifact SHA-256 recorded.",
+              "The corrected artifact's hash is recorded so a later reader can tell this matrix from the 21.4 and 21.9 matrices."
+            ]
+          },
+          "acceptance_criteria": [
+            "The full documented matrix is re-run against artifacts/ArrTags_1.2.0.0.zip whose SHA-256 equals the value task 21.12 recorded.",
+            "docs/implementation/21.13/live-verification.json records the verifier status, the artifact identity, and a per-row result; every row the 21.9 matrix covered is covered again.",
+            "The log-subject row confirms the shipped build still emits a bounded file-name subject with no directory component for a real host-supplied media path, and the report states that the live host cannot exercise the Windows-style and Cf cases the fix targets.",
+            "The plugin loads once, all three elevation-gated surfaces reject anonymous access, and the diagnostics endpoint keeps its fixed shape and 405/404 behavior on the fully corrected build.",
+            "The provider-outage row shows the host stays up and served images are byte-identical, and the restart/uninstall row confirms the relocated state root is created and removed.",
+            "The 21.9 report is unmodified.",
+            "If the pinned host cannot be provisioned, the task reports the blocked rows honestly rather than claiming a pass, and the release gate stays unmet."
+          ],
+          "decision_gates": [
+            {
+              "gate": "pinned host availability and reproducibility",
+              "status": "external validation",
+              "note": "This is the project verification surface defined in docs/testing/jellyfin-12-musl-test-host.md. Its absence is a blocker for the release gate, not a decision to be taken."
+            }
+          ],
+          "review": {
+            "live-host-verifier": "owner of the report",
+            "implementation-reviewer": "required (the 21.9 task carried a reviewer report; the re-run carries one too)",
+            "security-reviewer": "not required here; task 21.14 consumes this matrix"
+          },
+          "documentation": [
+            "docs/implementation/21.13/live-verification.json",
+            "docs/changelog/v1.2.0.md only if the corrected run changes any user-visible statement, and then only in the paragraphs 21.12/21.6 own",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "A live matrix that quietly reuses 21.9 rows would leave the release resting on the superseded artifact; recording the installed archive's SHA-256 per run is the mitigation.",
+            "Over-claiming the log-subject row as evidence that SEC-21.5-02/03 are fixed would misstate what a normal Jellyfin path can exercise; the report must say what the row does and does not prove.",
+            "Host-provisioning drift can change rows that are not about this correction; any difference from 21.9 must be explained rather than dropped."
+          ],
+          "estimate": "30-120 minutes of host provisioning and matrix execution."
+        },
+        {
+          "id": "21.14",
+          "name": "Release security review of the corrected candidate",
+          "objective": "Re-run the independent adversarial release security review against the fully corrected candidate so the release is gated on the build that ships, and so SEC-21.5-02 and SEC-21.5-03 are formally dispositioned as resolved.",
+          "traceability": {
+            "supersedes": "21.10 (re-execution: docs/implementation/21.10/security-review.json stays verbatim as the record of the first corrected candidate and of the findings' origin)",
+            "release": "v1.2 exit gate (the release security review has no open BLOCKER/HIGH)"
+          },
+          "dependencies": [
+            "21.11 (the fix)",
+            "21.12 (the corrected artifact identity)",
+            "21.13 (the corrected live matrix, as evidence)"
+          ],
+          "work": [
+            "Run the security-reviewer against the fully corrected candidate at the corrected HEAD and the corrected artifact: the same release-breadth scope as 21.10 (secrets, authentication, state integrity, bounded-input boundaries, the packaged artifact) plus the surfaces v1.2 added or changed, with specific attention to the log path that 21.11 changed.",
+            "Require an explicit disposition of SEC-21.5-02 and SEC-21.5-03: each is either resolved (with the 21.11 evidence and a reviewer's own reproduction attempt against the shipped assembly that no longer observes the pass-through or the whole-path emission) or still open with a stated reason. Neither may be silently dropped or silently closed on the strength of the task report; the 21.10 review's method (reproduce against the shipped assembly, not against the source or the worker's report) is the precedent.",
+            "Independently probe for a category the 21.11 predicate missed, and for any way the widened predicate could itself cause a leak (for example forcing the item-id fallback in a way that reintroduces a raw path, or a name that becomes empty where the pre-fix code emitted a usable component). The reviewer must also confirm the removal predicate cannot be used to collapse a legitimate non-ASCII name into the fallback for a large class of real file names.",
+            "Re-verify the already-resolved SEC-21.5-01 against the fully corrected build rather than assuming the 21.7 fix survived, and carry SEC-21.5-04 forward explicitly as the already-accepted SEC-2 with its status unchanged (this chain does not fix it).",
+            "Verify the packaged ArrTags.dll matches a fresh Release build of the corrected source, so the audited source is the shipped code, and confirm the artifact identity matches what 21.12 recorded.",
+            "Record the result in docs/implementation/21.14/security-review.json. If 21.10's report is re-run rather than a new file, the attempt rule in docs/agent-contracts.md applies: a prior attempt is preserved as .attempt-<n>.json, never overwritten."
+          ],
+          "tests": {
+            "level": "independent adversarial review with reproductions against the corrected candidate",
+            "required": [
+              "An explicit attempt to reproduce SEC-21.5-02 and SEC-21.5-03 against the corrected build, reported whether or not it succeeds.",
+              "Confirmation that the artifact identity and the audited source match, and that the shipped assembly carries the 21.11 predicate."
+            ]
+          },
+          "acceptance_criteria": [
+            "The review is recorded with reviewer_status and an explicit open_blocker_high count; the release gate requires zero open BLOCKER and zero open HIGH.",
+            "SEC-21.5-02 and SEC-21.5-03 each carry an explicit disposition (resolved, with the 21.11 evidence and the reviewer's own reproduction result, or open with a reason) and neither is silently omitted or closed on the worker's word alone.",
+            "SEC-21.5-01 is re-verified against the fully corrected build, and SEC-21.5-04 is carried forward explicitly with its already-accepted status rather than dropped or silently fixed.",
+            "The reviewed HEAD and artifact are the fully corrected ones, and the artifact's SHA-256 equals the value task 21.12 recorded.",
+            "The carried LOW and INFORMATIONAL findings from 21.5 and 21.10 are re-verified against the corrected candidate or explicitly carried forward with a status.",
+            "Any new BLOCKER or HIGH finding reopens the release gate and stops task 21.6 until it is resolved and re-reviewed."
+          ],
+          "decision_gates": [
+            {
+              "gate": "new gate required?",
+              "status": "no",
+              "note": "The review adjudicates against the accepted decisions (ADR-005 for the secret boundary, ADR-012 for the webhook boundary, ADR-025 for the diagnostics surface, ADR-026 for the log subject, ADR-022/ADR-029 for the cursor). It opens no new decision; a new finding that would require a policy decision is reported as a finding, and the release stops at that boundary."
+            }
+          ],
+          "review": {
+            "security-reviewer": "owner of the report and of the SEC-21.5-02/03 dispositions",
+            "implementation-reviewer": "not required (this is a review task, as 21.5 and 21.10 were)",
+            "test-quality-reviewer": "not required"
+          },
+          "documentation": [
+            "docs/implementation/21.14/security-review.json",
+            "docs/limitations/00-index.md and the underlying limitation file only if a new finding is registered as open or accepted",
+            "docs/changelog/v1.2.0.md release section only for the review-disposition paragraph that 21.6 finalises",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "A re-run that treats 21.10 as sufficient would leave the release gated on a review of a build that no longer ships; the reviewed HEAD and artifact must be stated.",
+            "A disposition that closes SEC-21.5-02/03 from the 21.11 report alone, without the reviewer's own reproduction against the shipped assembly, would be exactly the acceptance pattern the user rejected.",
+            "Silently dropping SEC-21.5-04 (because this chain does not fix it) would be dishonest history; it must be carried forward with a status."
+          ],
+          "estimate": "30-120 minutes of review time."
+        }
+      ],
+      "task_21_6_scope_change": {
+        "id": "21.6",
+        "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag",
+        "status": "not done; its name, reports, and checkbox are preserved verbatim",
+        "note": "21.6 already recorded its changelog and release-readiness portion in commit db9656b against the 21.8 candidate. Because the 21.11 fix invalidates that candidate, 21.6 is re-entered after 21.14 to: re-verify the v1.2.0 release record against the fully corrected identity and the three new reports; complete the release-reviewer gate (docs/implementation/final-review/release-review.json); have the orchestrator set current_release and mark releases[] 1.2.0 COMPLETE; and create the annotated v1.2.0 tag. It is not marked done by this planning pass, and its previously committed release section is updated by 21.12 and finalized by 21.6 rather than rewritten from scratch."
+      },
+      "authoritative_execution_order": ["21.1", "21.2", "21.3", "21.4", "21.5", "21.7", "21.8", "21.9", "21.10", "21.11", "21.12", "21.13", "21.14", "21.6"],
+      "phase_acceptance_criteria": [
+        "the version is 1.2.0.0",
+        "the canonical documentation reflects v1.2 with no stale claim",
+        "no provider request follows an HTTP redirect, so X-Api-Key is sent only to the configured connection and never to a 3xx Location target (ADR-005)",
+        "the bounded log subject emits no Unicode Cc, Cf, Zl, or Zp scalar and never a directory, drive, share, or parent chain regardless of host separator semantics, keeping the 128-scalar bound, the single-pass surrogate-safe normalization, and the empty/whitespace/control-only item-id fallback (ADR-026)",
+        "./build.sh package produces a reproducible artifacts/ArrTags_1.2.0.0.zip whose recorded identity comes from the fully corrected build (both the 21.7 and 21.11 corrections included)",
+        "the full default and host-guarded suites and the live pinned-host matrix pass against that fully corrected artifact",
+        "the release security review of the fully corrected candidate has no open BLOCKER/HIGH and dispositions SEC-21.5-01, SEC-21.5-02, and SEC-21.5-03 as resolved",
+        "the annotated tag v1.2.0 is created after the release-review gate"
+      ],
+      "exit_gate": "Gate 21: met when tasks 21.1-21.14 meet their acceptance criteria, the full suite and live matrix pass against the fully corrected artifact, the release security review of that artifact has no open BLOCKER/HIGH, the phase and release reviews pass, and the annotated tag v1.2.0 is created."
+    }
+  ],
+  "outline_mapping": {
+    "note": "The accepted plan's flat task outline (docs/planning/v1.2.md section 6) maps V1.2-8 to 21.1-21.6. No outlined task is dropped, merged, or renumbered. The corrective chains are additional work the user decided on after the 21.5 and 21.10 reviews; they are recorded here and in PLANS.md/state.json as tasks 21.7-21.14, and the v1.2-8 outline row is left unmodified because the accepted plan document is not rewritten. This record covers only the second chain (21.11-21.14); the first is recorded in v1.2-phase-21-sec-21-5-01-correction.json.",
+    "V1.2-8": {
+      "21.1": "version bump and release metadata (complete)",
+      "21.2": "canonical documentation reconciliation (complete)",
+      "21.3": "release build, full suite, reproducible artifact, and release documentation (complete; deliverable re-derived by 21.8, then by 21.12)",
+      "21.4": "live pinned-host verification (complete; deliverable re-derived by 21.9, then by 21.13)",
+      "21.5": "release security review (complete; deliverable re-run by 21.10, then by 21.14)",
+      "21.6": "changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag (open; re-entered after 21.14 for the fully corrected identity, then the release-reviewer gate, current_release/releases[], and the tag)"
+    }
+  },
+  "decision_gates": [
+    {
+      "id": "DG-22",
+      "status": "resolved; no new gate",
+      "note": "DG-22 is resolved by the accepted ADR-026. SEC-21.5-03 is a conformance gap against clause 1 (the file-name component only, never a directory, drive, share, or parent path) and SEC-21.5-02 is a narrowing of what clause 2 permits being emitted (a bounded subject with control characters removed). Both fixes move the implementation toward the accepted decision, so no new gate is opened and no ADR is created. The stop rule stands: if a worker or reviewer judges that an accepted clause does not authorize the change, the task stops at that boundary and the smallest explicit decision is recorded first."
+    },
+    {
+      "id": "ADR-026 amendment",
+      "status": "implementation note only, unless the boundary is hit",
+      "note": "ADR-026 already carries an 'Implementation note (v1.2, tasks 15.1-15.4)' section that records the Cc-only predicate and the host-native-path reading as implementation notes rather than decisions. Task 21.11 appends a new implementation note recording the shipped predicate set and the dual-separator extraction, superseding those statements. The Decision clauses are not edited. If the appended note cannot honestly supersede them without a clause change, that is an ADR amendment and it is escalated rather than assumed."
+    },
+    {
+      "id": "limitation disposition",
+      "status": "not a gate",
+      "note": "Neither finding is a registered limitation, so no limitations register entry is created, changed, or removed by this chain. The user's decision to fix rather than accept is recorded here and in PLANS.md; the formal disposition belongs to the 21.14 review, and the release-reviewer gate is where any remaining advisory item is dispositioned."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "The 21.11 fix changes ArrTags.dll, invalidating the recorded 1.2.0.0 artifact identity, the manifest.json checksum, the live matrix, and the security review.",
+      "mitigation": "Tasks 21.12, 21.13, and 21.14 re-derive each of those against the fully corrected build, and task 21.6 (the tag) is ordered last so nothing is tagged from a superseded candidate."
+    },
+    {
+      "risk": "A release is tagged from a superseded candidate because an earlier completed task (21.8-21.10) looks finished.",
+      "mitigation": "The authoritative execution order places 21.11-21.14 between 21.10 and 21.6, Gate 21 names tasks 21.1-21.14, and the phase acceptance criteria state that the recorded identity, the live matrix, and the review must all come from the build containing both corrections."
+    },
+    {
+      "risk": "The log-subject fix is over-broad and corrupts legitimate media names, or under-broad and leaves a non-printing category in the log.",
+      "mitigation": "21.11 requires the predicate's category set to be stated explicitly in code and in the ADR note, keeps the non-ASCII/astral/whitespace positive controls, and requires tests that fail on the pre-fix code; 21.14 independently probes the shipped assembly for a missed category in both directions."
+    },
+    {
+      "risk": "The finding is closed on the worker's report rather than on an independent reproduction, repeating the pattern the user rejected for 21.5/21.10.",
+      "mitigation": "21.14's acceptance criteria require the reviewer's own reproduction against the shipped assembly for each of SEC-21.5-02 and SEC-21.5-03, reported whether or not it succeeds."
+    },
+    {
+      "risk": "Two writers (21.12 and 21.6) on the same changelog release section produce a record that asserts an unverified result.",
+      "mitigation": "21.12 owns the identity and suite facts and must state where 21.13/21.14 have not yet reported; 21.6 owns the final release-readiness verification, the gate, the state fields, and the tag."
+    },
+    {
+      "risk": "SEC-21.5-04 is dropped because this chain does not fix it, or is quietly re-fixed and re-opened as new work.",
+      "mitigation": "21.14's acceptance criteria require it to be carried forward explicitly with its already-accepted SEC-2 status, and the PLANS.md corrective-work note states it is out of scope for this fix."
+    },
+    {
+      "risk": "The pinned Jellyfin host is unavailable, so the host-guarded suite and the live matrix cannot be re-run and the release gate cannot honestly be met.",
+      "mitigation": "21.12 and 21.13 report the blocked rows honestly rather than claiming a pass, and Gate 21 stays unmet until they run. This is a verification-scope limit, not a decision to be waived."
+    }
+  ],
+  "open_questions": [
+    "USER DECISION APPLIED (not open): fix SEC-21.5-02 and SEC-21.5-03 now and re-verify, rather than accept them as shipped limitations. That decision is the authority for tasks 21.11-21.14 and for re-ordering 21.6 last.",
+    "CONFIRM (not a blocker): the exact removal category set. The task's floor is Cc + Cf + Zl + Zp; the worker may add a category with a stated reason (for example a deprecated format control or a Hangul filler) and must document the set, but must not remove a category that a legitimate media name can use (letters, marks, emoji, and whitespace are preserved). The 21.14 review is the check on this, not a prior decision.",
+    "CONFIRM (not a blocker): whether SEC-21.5-02/03 need entries in docs/limitations. They are security-review findings rather than registered limitations, and the current register is empty of them; this chain adds none. If the user prefers them registered as resolved limitations for traceability, that is a documentation-maintainer update in 21.11, not a decision gate.",
+    "CARRIED FORWARD (not a blocker): SEC-21.5-04, the shared-temp state-root fallback, duplicates the already-accepted SEC-2 and is explicitly not fixed by this chain; 21.14 carries it with its status unchanged."
+  ],
+  "planning_gaps": [
+    "None. Every deliverable added by this change maps to exactly one task: the hardened subject, its category set, its dual-separator extraction, and its failing-on-pre-fix tests (21.11), the corrected artifact identity, manifest entry, and changelog identity update (21.12), the corrected live matrix (21.13), and the corrected security review with both dispositions (21.14), plus the release close-out (21.6, re-entered and unchanged in scope). Every phase acceptance criterion added by this change has a single owning task, and no decision gate is left unowned: the only candidate gate (whether an ADR-026 amendment is needed) is resolved as 'implementation note unless the boundary is hit', with the stop-at-the-boundary rule recorded in 21.11 and re-checked in 21.14.",
+    "The fully corrected candidates' evidence lives in the 21.12/21.13/21.14 report directories rather than in the 21.8/21.9/21.10 ones, because docs/implementation/** is immutable history and check-agents.sh keys the per-task report pairing by task id. The superseded reports remain the record of the earlier candidates and are cited by the new reports."
+  ],
+  "execution_order_invariants": {
+    "every_phase_task_appears_exactly_once": true,
+    "task_appears_in_plans_checkbox": true,
+    "task_appears_in_state_json": true,
+    "dependency_references_consistent": true,
+    "completed_tasks_preserved_verbatim": true,
+    "prior_tasks_not_reopened_or_renumbered": true,
+    "no_task_marked_done_by_this_planning_pass": true,
+    "task_21_6_still_not_done": true
+  },
+  "files_changed": [
+    "PLANS.md (second Phase 21 corrective-work note, tasks 21.11-21.14, authoritative execution order, phase objective and deliverables, phase acceptance criteria, Gate 21, v1.2-8 outline mapping note, updated log-subject risk row, new v1.2 risk row)",
+    "docs/plan/state.json (updated_utc, active_scope_note, Phase 21 execution_order, tasks 21.11-21.14; tasks 21.1-21.10 records otherwise verbatim)",
+    "docs/status.md (regenerated active-scope block only)",
+    "docs/implementation/planning/v1.2-phase-21-log-subject-correction.json (this record)"
+  ],
+  "not_changed": [
+    "docs/planning/v1.2.md (the accepted plan document is not rewritten)",
+    "docs/implementation/21.3/**, 21.4/**, 21.5/**, 21.8/**, 21.9/**, 21.10/**, 21.6/** (immutable history)",
+    "src/**, tests/** (owned by task 21.11)",
+    "docs/decisions/ADR-026.md and docs/decisions/00-index.md (owned by task 21.11; ADR-026 decision text is not amended)",
+    "docs/architecture/06, 07, 11, 12 (owned by task 21.11)",
+    "docs/release/build-and-release.md, manifest.json, docs/changelog/v1.2.0.md (owned by tasks 21.11, 21.12, and 21.6)",
+    "docs/limitations/** (unchanged; neither finding is a registered limitation)"
+  ]
+}

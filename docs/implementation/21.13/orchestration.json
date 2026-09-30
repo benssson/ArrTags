@@ -1,0 +1,122 @@
+{
+  "task": "21.13",
+  "title": "Live pinned-host verification of the corrected artifact",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "f54dc85",
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.13 re-runs the pre-existing documented pinned-host matrix against the fully corrected artifact via the specialist live-host-verifier. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "live-host-verifier",
+      "attempt": 1,
+      "outcome": "VERIFIED",
+      "execution": {
+        "agent": "live-host-verifier",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 176329,
+        "output_tokens": 56884,
+        "reasoning_tokens": 14024,
+        "cache_read_tokens": 17205779,
+        "cache_write_tokens": 0,
+        "total_tokens": 17453016,
+        "cost_usd": 0,
+        "duration_seconds": 2863,
+        "session_id": "ses_f0dd5a4c9ffeSXCsqUvvXV0oV2"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 121450,
+        "output_tokens": 16805,
+        "reasoning_tokens": 22851,
+        "cache_read_tokens": 2278400,
+        "cache_write_tokens": 0,
+        "total_tokens": 2439506,
+        "cost_usd": 0.04884629999999999,
+        "duration_seconds": 334,
+        "session_id": "ses_f0db9f11effePPg7oZ37RDn4ry"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 63565,
+        "output_tokens": 15865,
+        "reasoning_tokens": 16477,
+        "cache_read_tokens": 2130340,
+        "cache_write_tokens": 0,
+        "total_tokens": 2226247,
+        "cost_usd": 0,
+        "duration_seconds": 382,
+        "session_id": "ses_f0db4a5bbffeLCU80GFeeKEtRA"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 99818,
+        "output_tokens": 14257,
+        "reasoning_tokens": 19190,
+        "cache_read_tokens": 1151744,
+        "cache_write_tokens": 0,
+        "total_tokens": 1285009,
+        "cost_usd": 0.038496131999999995,
+        "duration_seconds": 269,
+        "session_id": "ses_f0da9cdf4ffeiv1CCnSKTCvqN2"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 57699,
+        "output_tokens": 14678,
+        "reasoning_tokens": 6422,
+        "cache_read_tokens": 1210415,
+        "cache_write_tokens": 0,
+        "total_tokens": 1289214,
+        "cost_usd": 0,
+        "duration_seconds": 200,
+        "session_id": "ses_f0da5814bffe00L1a1avtpVxfj"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Implementation review attempt 1 returned CHANGES_REQUIRED with R1 (HIGH: the new F-21.13-3 procedure finding was misattributed — the admin GET does return the provider ApiKey fields (no JsonIgnore; research §9.3); the verifier's own POST with an empty body had replaced the whole configuration) and R2 (HIGH: the live-verification.json metadata was non-terminal/self-contradicting — status IN_PROGRESS with finished_utc before the L4 evidence), plus R3 (MEDIUM: F-21.13-2 overstated the observation) and R4 (MEDIUM: state reports listing). The live-host-verifier corrected its report (rewrote F-21.13-3 to whole-object replacement semantics and re-confirmed live that the GET returns 48-char keys while a partial POST resets omitted fields; set a terminal status and a consistent run window; rephrased F-21.13-2), and the implementation worker corrected the testing-doc bullets. Implementation review attempt 2 returned APPROVED with R1-R4 resolved."
+    }
+  ],
+  "notes": [
+    "Fully corrected artifact matrix: docs/implementation/21.13/live-verification.json overall_verdict VERIFIED, rows L1-L8 all PASS, package SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268 / MD5 631fbfa5a4fb58fac5a877eeef761193 / 619,861 bytes / 7 entries, matching task 21.12 and docs/release/build-and-release.md; installed ArrTags.dll a077a63d... pins the corrected binary. This supersedes the 21.9 candidate (3e59cb06.../619,636) and the 21.4 candidate (50580499.../619,538), now marked superseded in the testing doc.",
+    "R1/R3 corrections are the review's own findings resolved against source/research: the elevation-gated POST /Plugins/{guid}/Configuration replaces the entire configuration (partial/empty body clears omitted fields while returning 204), and the GET includes the secret fields; F-21.13-2 was rephrased to the observed served-Primary revert with the persisted record still Published (no OwnershipLost transition claimed).",
+    "Carried open findings: F-21.13-2 (LOW, targeted item refresh trap / no in-product OwnershipLost recovery), F-21.13-3 (MEDIUM, whole-object replacement save semantics; whether the plugin should warn/reject a provider-clearing save is an unassigned product decision), F-21.13-5 (MEDIUM, L6 is no-regression only — the 21.11 log-subject fixes rest on unit tests, not the live host), F-21.13-4 (INFORMATIONAL, uninstall residue + non-executable surfaces). None is a failure of documented end-to-end behaviour; the release-reviewer should weigh them.",
+    "Release state boundaries observed: current_release, releases[1.2.0].status, docs/status.md, the changelog, manifest.json, the artifact, and the v1.2.0 tag remain task 21.6; task 21.14 owns the corrected release security review.",
+    "Reviewer non-blocking notes: N1 (settings-page safety rationale imprecision in the corrected bullet), N2 (the attempt-2 reviewer report path listing, resolved by the orchestrator), R5 (optional V12-G8-2 citation tidy in F-21.13-4)."
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "task": "19.4",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the F6 coalescing coverage matrix as one new test file (tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs, 15 test cases) and changed no production behavior. The headline facts drive the real save path end to end: the real Plugin.UpdateConfiguration override and elevation-gated save path, the real ConfigurationReconciliationTrigger and LibraryReconciliationService over an OutcomeRecordingSink wrapper that only delegates to and records the real LibraryWorkQueue, the real hosted LibraryWorkWorker, and the real composed processors (ArtworkRecoveringWorkItemProcessor over ArtworkPublishingWorkItemProcessor over MetadataReconciliationProcessor) with the task 6.8 Phase6Harness durable stores, publisher, and renderer. Coverage: (1) save-while-pending coalesces the post-save hint (asserted Coalesced from the real queue) and then re-renders through the stale-basis re-enqueue; (2) save-while-in-flight coalesces the post-save hint (asserted InFlight) and re-renders; (3) after-slot-release ordering proven directly (a same-key enqueue from inside the processing path returns InFlight; the worker's post-release enqueue is accepted and processed) and proven sensitive by moving the re-enqueue before CompleteProcessing; (4) a second version advance causes exactly one further re-enqueue (v1 -> v2 -> v3) and no unbounded loop; (5) an item that became absent, ineligible, identity-less, or connection-changed while old-version work was outstanding is re-enqueued once and then discarded for its real reason with no further re-enqueue and no artwork change; (6) non-version discards do not re-enqueue, with the classification gate isolated on a stale carried version plus the real-reason second passes of (5); (7) a stopped queue and a full bounded queue drop the re-enqueue; (8) WorkItemKey remains version-blind (same key/hash for version-only differences, no version member) with per-surface single flight (distinct surface accepted while the primary key is in flight). Build 0 warnings/0 errors; full default suite Failed 0, Passed 1901, Skipped 64, Total 1965 (baseline after 19.3: Failed 0, Passed 1886, Skipped 64, Total 1950; +15 passed/+15 total, 0 new skips, matching the 15 new cases).",
+  "validation": [
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (baseline recorded for task 19.3: Failed 0, Passed 1886, Skipped 64, Total 1950; +15 passed/+15 total, 0 new skips, matching the 15 new test cases).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~CoalescingCoverageMatrixTests\" -> Failed 0, Passed 15, Skipped 0, Total 15 (7 facts; the ChangedItem and NonVersionDiscard theories each contribute 4 cases).",
+    "Repeated the focused 15-case filter five consecutive times -> Failed 0, Passed 15, Skipped 0, Total 15 on every run (no flaky timing/ordering observed).",
+    "Probe P0 (mechanism absent): made LibraryWorkWorker.ReenqueueStaleBasis a no-op, rebuilt, ran the matrix -> Failed 8, Passed 7, Skipped 0, Total 15. The 8 failures are the save-while-pending, save-while-in-flight, ordering, second-version-advance facts and all four AnItemThatChanged theory cases; the classification-gate, stopped, full, and key facts still passed. Probe reverted.",
+    "Probe P1 (ordering, ADR-023 clause 3): moved ReenqueueStaleBasis(item, result) before _queue.CompleteProcessing(item.Key) in the worker finally, rebuilt, ran the matrix -> Failed 8, Passed 7, Skipped 0, Total 15, the same eight facts: the pre-release same-key enqueue is coalesced InFlight, the fresh item is dropped, and no second pass/re-render happens. Probe reverted.",
+    "Probe P2 (classification gate): changed the gate to accept any discard classification (result?.IsDiscard != true), rebuilt, ran the matrix -> Failed 4, Passed 11, Skipped 0, Total 15; exactly the four NonVersionDiscardsDoNotReenqueue cases failed (each re-enqueued the current version and was processed a second time). Probe reverted.",
+    "Probe P3 (stopped-queue drop): made ReenqueueStaleBasis call _queue.StartAccepting() before the enqueue, rebuilt, ran the matrix -> Failed 1, Passed 14, Skipped 0, Total 15; only StoppedQueueDropsTheStaleBasisReenqueue failed (the re-enqueue was accepted and a second pass occurred). Probe reverted.",
+    "Probe P4 (bounded full-queue drop): removed the pending-capacity check from LibraryWorkQueue.Enqueue, rebuilt, ran the matrix -> Failed 1, Passed 14, Skipped 0, Total 15; only FullQueueDropsTheStaleBasisReenqueue failed (the stale-basis re-enqueue was admitted and a second subject pass occurred). Probe reverted.",
+    "Probe P5 (current-version bound): made the fresh item reuse item.ConfigurationVersion instead of the current version in ReenqueueStaleBasis, rebuilt, ran ASecondVersionAdvanceCausesExactlyOneFurtherReenqueueAndThenCompletes -> Failed 1, Passed 0, Skipped 0, Total 1 (the bound is broken and the stale pass recurs instead of completing at v3). Probe reverted.",
+    "After every probe was reverted (LibraryWorkWorker.cs and LibraryWorkQueue.cs restored byte-identical from pre-probe copies, verified by diff -q): ./build.sh build -> 0 Warning(s), 0 Error(s); the full suite re-ran Failed 0, Passed 1901, Skipped 64, Total 1965.",
+    "git status --short / git diff --stat after the probes -> the changed set is exactly the new untracked tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs plus PLANS.md and docs/plan/state.json; no probe residue (grep -rn PROBE src/ArrTags tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs found no match).",
+    "Mechanism confirmation by source inspection: LibraryWorkQueue.Enqueue rejects a same-key item while in flight with WorkHintEnqueueOutcome.InFlight and coalesces a pending key with Coalesced regardless of the carried version (the key has no version member); LibraryWorkQueue.CompleteProcessing releases the slot; LibraryWorkWorker.RunWorkerAsync captures the final result and calls CompleteProcessing before ReenqueueStaleBasis; MetadataReconciliationProcessor checks item.ConfigurationVersion first (ConfigurationStale) before resolve/eligibility and re-checks before publishing, with the other classifications emitted only after the version matches.",
+    "dotnet run scripts/render-docs-state.cs -> 'status.md: up to date', 'PLANS.md: up to date' (both generated blocks current after state.json task 19.4 done=true and the PLANS.md checkbox).",
+    "scripts/check-docs.sh on the tree after state.json/PLANS.md were updated but before docs/implementation/19.4/worker-report.json was written -> 'check-docs: PASS', every section (generated status blocks current and plan state consistent, compatibility stubs, decisions index 29 ADRs, limitations index, architecture/data-model indexes, artifact identity, doc budget, current-state links, agent report contracts).",
+    "scripts/check-docs.sh with docs/implementation/19.4/worker-report.json in place -> fails only the agent-contract worker/reviewer pairing line ('task 19.4 has a worker report but no reviewer report'); every other section passes; the orchestrator's implementation-reviewer report closes that line, the same transient pattern tasks 15.4-19.3 recorded.",
+    "grep checks for stale state: '- [ ] 19.4' is absent from PLANS.md (the line is '- [x] 19.4 F6 coalescing coverage tests') and docs/plan/state.json task 19.4 is done=true with reports [docs/implementation/19.4/worker-report.json]."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs (new)",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/implementation/19.4/worker-report.json (this report)"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Deliverable: an F6 coalescing coverage matrix (a test file) that drives the real save path / post-save trigger / bounded queue / worker / processor chain (not a tautological mock).",
+      "evidence": "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs: the SaveChainHarness constructs the real Plugin over a real temp XML configuration with the shared ConfigurationSnapshotService and the real ConfigurationReconciliationTrigger/ConfigurationReconciliationService, whose IWorkHintSink is an OutcomeRecordingSink that delegates every enqueue to the real LibraryWorkQueue and records the outcome the queue itself returned; the worker is the real LibraryWorkWorker over the real composed processor Phase6Harness.Recovering (ArtworkRecoveringWorkItemProcessor -> ArtworkPublishingWorkItemProcessor -> MetadataReconciliationProcessor) with the real MetadataStateStore/PublishedArtworkStateStore/ArtworkOperationStore/SourceArtifactStore/ArtworkPublisher/ArtworkGenerationCoordinator/FingerprintingRenderer. The ChainRecordingProcessor only delegates and records the production item/result/peak concurrency; the only scripted processor is the explicitly labelled classification-gate double in NonVersionDiscardsDoNotReenqueue. 7 facts / 15 cases."
+    },
+    {
+      "criterion": "1. Save-while-pending: an item with pending old-version work at save time is re-rendered at the new version (the post-save hint would otherwise be coalesced away).",
+      "evidence": "PendingOldVersionWorkAtSaveTimeIsCoalescedThenReRenderedAtTheNewVersion: a v1 LibraryWorkItem is pending in the real queue; the real Plugin.UpdateConfiguration save activates v2 and the real post-save run enqueues the v2 hint, which the real queue records as Coalesced (asserted); the worker then processes the stale v1 pass (subject passes versions [1, 2]), the fresh v2 pass re-renders (Renderer.Calls 2, Host.SaveCalls 2, the last request carries the saved Quality template 'Q{value}', the published fingerprint changed), peak per-key concurrency is 1, and a 250 ms stability window shows no further pass. Probe P0/P1 fail this fact."
+    },
+    {
+      "criterion": "2. Save-while-in-flight: an item with in-flight old-version work at save time is re-rendered at the new version.",
+      "evidence": "InFlightOldVersionWorkAtSaveTimeIsCoalescedThenReRenderedAtTheNewVersion: the v1 pass is held inside the processing path (queue InFlightCount 1) when the real save activates v2; the post-save v2 hint is recorded as InFlight (asserted); releasing the pass yields subject passes [1, 2] with a second render/publication carrying the saved template and a changed published fingerprint, peak concurrency 1, stable at 2 passes. Probe P0/P1 fail this fact."
+    },
+    {
+      "criterion": "3. After-slot-release ordering: the re-enqueue happens after the in-flight slot is released; a test that fails if the re-enqueue is issued before the release (ADR-023 clause 3).",
+      "evidence": "TheStaleBasisReenqueueIsIssuedOnlyAfterTheInFlightSlotIsReleased: while the stale v1 pass runs, a same-key enqueue at the current version issued from inside the processing path returns InFlight from the real queue (recorded) and is dropped; the worker's own post-release enqueue is accepted and processed (subject passes [1, 2], two renders). Sensitivity: Probe P1 moved ReenqueueStaleBasis before CompleteProcessing and this fact plus the other seven stale-basis facts failed (Failed 8 / Total 15) because the fresh item is coalesced away. Probe P0 (no re-enqueue) gives the same 8 failures."
+    },
+    {
+      "criterion": "4. One further re-enqueue when the version advances again; and no unbounded loop (the fresh item carries the current version).",
+      "evidence": "ASecondVersionAdvanceCausesExactlyOneFurtherReenqueueAndThenCompletes: v1 pass -> save v2 -> re-enqueued v2 pass (held) -> save v3 -> re-enqueued v3 pass completes; both post-save hints are recorded InFlight (the version-blind key is in flight); subject passes are exactly [1, 2, 3] with results [ConfigurationStale, ConfigurationStale, null]; exactly 3 passes over a 250 ms stability window; two renders with the final request carrying the second saved template 'Q2{value}'. Sensitivity: Probe P5 (fresh item reuses item.ConfigurationVersion) failed the fact; Probe P0/P1 also fail it."
+    },
+    {
+      "criterion": "5. Ineligible/absent/identity-less second pass: an item that became ineligible/absent/identity-less while old-version work was outstanding is re-enqueued once and then discarded for its real reason with no further re-enqueue.",
+      "evidence": "AnItemThatChangedWhileOldVersionWorkWasOutstandingIsReenqueuedOnceThenDiscardedForItsRealReason (theory, 4 cases): absent -> ItemMissing, ineligible (LocationType.Remote) -> Ineligible, identity-less (the resolver returns an item with Guid.Empty id) -> IdentityUnavailable, and connection-changed (the save disables Radarr) -> ConnectionChanged. In each case the post-save hint is coalesced/InFlight (asserted for the three item mutations), the subject is re-enqueued exactly once carrying the then-current v2, the second pass returns the real classification from the real processor, results are exactly [ConfigurationStale, <real reason>], there is no third pass, and the published v1 fingerprint and render/save counts are unchanged (no artwork for a discard)."
+    },
+    {
+      "criterion": "6. Non-version discard (any other DiscardReason) does not re-enqueue.",
+      "evidence": "NonVersionDiscardsDoNotReenqueue (theory, 4 cases: ItemMissing, Ineligible, ConnectionChanged, IdentityUnavailable) isolates the classification gate: the item carries the pre-save version while the classification is supplied directly (the real processor cannot produce a non-version discard for stale-versioned work by construction because the version check precedes resolve/eligibility), and the real queue/worker process exactly one pass with no re-enqueue. The real-reason second passes of fact 5 additionally prove the chain-level no-re-enqueue for all four classifications. Sensitivity: Probe P2 (accept any discard classification) failed exactly these four cases (Failed 4 / Total 15)."
+    },
+    {
+      "criterion": "7. Stopped/full queue drops the re-enqueue (bounded, non-blocking).",
+      "evidence": "StoppedQueueDropsTheStaleBasisReenqueue: the queue stops accepting while the stale item is in flight; the stale pass is processed once, the re-enqueue is dropped, IsAccepting is false, the queue drains, and the v1 artwork is unchanged. FullQueueDropsTheStaleBasisReenqueue: with QueueCapacity 1 the pending bound is filled by a distinct key while the subject is in flight; the subject is processed once, the filler once, no second subject item appears, and the v1 artwork is unchanged. Sensitivity: Probe P3 (StartAccepting before the re-enqueue) failed the stopped fact; Probe P4 (capacity check removed) failed the full fact."
+    },
+    {
+      "criterion": "8. WorkItemKey remains version-blind and per-surface single-flight is preserved.",
+      "evidence": "WorkItemKeyRemainsVersionBlindAndSingleFlightIsPerItemConnectionAndSurface: hints differing only in the carried version produce equal keys with equal hashes; reflection over WorkItemKey properties and fields finds no name containing 'Version'; the real queue returns Coalesced for a version-only difference while pending and InFlight while processing; a distinct surface key is Accepted while the primary key is in flight and is Coalesced on a second enqueue; releasing the slot admits the primary key again. Chain-level single-flight: the headline facts assert peak per-key concurrency 1 (the worker never runs two items for one key concurrently), and the key equality assertions cover item/connection/surface."
+    },
+    {
+      "criterion": "Constraint: primarily a test task; no production behavior change (any genuine defect reported), and no F4/ADR/history/limitations/changelog/architecture edits (task 19.5 owns those).",
+      "evidence": "git status --short after every probe was reverted shows only the new untracked tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs plus the modified PLANS.md and docs/plan/state.json; git diff --stat lists only PLANS.md and docs/plan/state.json (the test file is untracked); LibraryWorkWorker.cs and LibraryWorkQueue.cs were restored byte-identical (diff -q) and no PROBE marker remains. docs/architecture/08-reconciliation-and-update-flow.md, docs/limitations/open.md F6, docs/changelog/v1.2.0.md, the ADRs, and README.md are untouched. No production defect was found, so no production fix was made."
+    },
+    {
+      "criterion": "Build, tests, and documentation gates.",
+      "evidence": "./build.sh build -> 0 Warning(s), 0 Error(s); ./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965; the focused 15-case filter is green and re-ran green five times; dotnet run scripts/render-docs-state.cs reports both generated blocks up to date; scripts/check-docs.sh passes every section on the tree before the worker report exists and with the report in place fails only the expected worker/reviewer pairing line, which the orchestrator's implementation-reviewer report closes; state.json task 19.4 done=true with the report path and the PLANS.md checkbox agree."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How is the save-while-pending state made deterministic in the real chain (a running worker would normally dequeue a pending item immediately)?",
+      "chosen": "The v1 item is enqueued into the real bounded queue and the real save path + post-save trigger run while the item is pending; the worker is started only after the coalesced post-save outcome is observed, then drains the pending v1 item, the stale-basis re-enqueue, and the fresh v2 render.",
+      "basis": "ADR-023's pending case is a queue-state property (the version-blind key already has pending work); deferring the worker start keeps the pending state deterministic without introducing an unrelated stale blocker that would itself be re-enqueued and change the observed pass sequence. The in-flight fact covers the running-worker case.",
+      "impact": "Test-only scheduling choice; the queue, save path, trigger, worker, and processors are all real, and the asserted coalescing/re-render behavior is the production behavior."
+    },
+    {
+      "question": "Should the real-chain changed-item theory include ConnectionChanged in addition to the task's absent/ineligible/identity-less wording?",
+      "chosen": "Yes: the connection-changed case uses a save that disables Radarr, so the same stale-then-real-reason sequence produces ConnectionChanged from the real processor (the post-save run is a bounded NoEnabledProvider no-op in that case).",
+      "basis": "Requirement 6 says any other DiscardReason must not re-enqueue; the real chain can only produce ConnectionChanged through a connection change, and this keeps all four classifications covered by a real second pass while the classification gate is isolated separately.",
+      "impact": "Test-only; no production semantics. The connection-changed case has no recorded post-save hint outcome because no provider is enabled, but the stale pass depends only on the synchronously activated version and remains deterministic."
+    },
+    {
+      "question": "How is the classification gate isolated when the real processor cannot produce a non-version discard for stale-versioned work by construction?",
+      "chosen": "NonVersionDiscardsDoNotReenqueue uses a minimal delegating processor double that returns the supplied classification for an item carrying the pre-save version (with the real LibraryWorkQueue, LibraryWorkWorker, ConfigurationSnapshotService, and worker); the real-chain no-re-enqueue outcome is covered separately by fact 5.",
+      "basis": "ADR-023 clause 5 fixes the version check ahead of resolve/eligibility, so every real non-version discard necessarily carries the current version and is also blocked by the same-version guard; only a direct classification can isolate the gate (the same approach as task 19.3's mechanism test).",
+      "impact": "Test-only; the gate's sensitivity is proven by Probe P2. No production behavior depends on the double."
+    },
+    {
+      "question": "How is per-surface single-flight proven when ArtworkImageType defines only the unindexed Primary surface?",
+      "chosen": "The fact uses an indexed Primary surface key (ArtworkImageSurface(ArtworkImageType.Primary, 1)) as the distinct surface in the queue-mechanics assertion, alongside explicit key equality/inequality assertions for the item, connection, and surface tuple.",
+      "basis": "WorkItemKey's identity is (ItemId, ConnectionId, Surface) with no version member, and the existing LibraryWorkQueueTests.CoalescesByItemAndConnectionAndKeepsDistinctKeys uses the same indexed-surface technique to separate surfaces; V1 enqueues only the unindexed Primary, so this exercises the surface dimension of the unchanged single-flight domain.",
+      "impact": "Test-only; the asserted outcomes are the real queue's own classifications."
+    }
+  ],
+  "test_sensitivity": [
+    "P0 (mechanism absent): making LibraryWorkWorker.ReenqueueStaleBasis a no-op failed 8 of 15 cases (the pending, in-flight, ordering, and second-advance facts plus all four changed-item theory cases); the classification-gate, stopped, full, and key facts still passed. Probe reverted.",
+    "P1 (ordering): moving the stale-basis re-enqueue before CompleteProcessing failed the same 8 of 15 cases because the pre-release same-key enqueue is coalesced InFlight and the fresh item is dropped. This is the mandated ADR-023 clause 3 sensitivity. Probe reverted.",
+    "P2 (classification gate): accepting any discard classification failed exactly the four NonVersionDiscardsDoNotReenqueue cases (each re-enqueued at the current version and was processed twice). Probe reverted.",
+    "P3 (stopped-queue drop): calling StartAccepting before the re-enqueue failed StoppedQueueDropsTheStaleBasisReenqueue (a second pass occurred). Probe reverted.",
+    "P4 (full-queue drop): removing the pending-capacity check in LibraryWorkQueue.Enqueue failed FullQueueDropsTheStaleBasisReenqueue (the re-enqueue was admitted and a second subject pass occurred). Probe reverted.",
+    "P5 (current-version bound): making the fresh item reuse the stale carried version failed ASecondVersionAdvanceCausesExactlyOneFurtherReenqueueAndThenCompletes (the stale pass recurs instead of completing at v3), proving the no-unbounded-loop assertion is sensitive to the bound. Probe reverted (focused single-test run: Failed 1, Passed 0, Total 1).",
+    "Determinism: the focused 15-case matrix re-ran green five consecutive times (Failed 0, Passed 15 each), and every fact's wait is either a direct task await on an entered signal or a bounded condition poll; the stability assertions only fail if an undesired extra pass appears and never pass vacuously on timing.",
+    "Not probed (and why): the version-blind key structure is asserted as a direct structural/equality observation plus real-queue Coalesced/InFlight outcomes for version-only differences, so there is no separate behavior to mutate without changing the key type; the stop/full queue facts share the bounded-drop assertions with the pre-existing LibraryWorkQueue suite; the save-path activation and the post-save trigger are pre-existing production paths covered by the existing ConfigurationReconciliationTriggerTests.",
+    "All probes were reverted from pre-probe copies; the final tree rebuilt 0 warnings / 0 errors and the full suite re-ran Failed 0, Passed 1901, Skipped 64, Total 1965."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/implementation/19.4/worker-report.json"
+    ],
+    "old_values_removed": [
+      "docs/plan/state.json task 19.4: done false -> true; added reports [docs/implementation/19.4/worker-report.json]; updated_utc advanced 2026-09-28T12:17:10Z -> 2026-09-28T12:57:35Z.",
+      "PLANS.md task checkbox '- [ ] 19.4 F6 coalescing coverage tests' -> '- [x] 19.4 F6 coalescing coverage tests' (the old unchecked form was searched for and is absent).",
+      "Verified unaffected/unchanged: dotnet run scripts/render-docs-state.cs reports 'status.md: up to date' and 'PLANS.md: up to date'; the phase 19 status, phase execution order, and milestone table inputs were not changed (phase 19 remains PLANNED).",
+      "Task 19.5 owns the F6 limitation resolution (docs/limitations/open.md), the docs/architecture/08-reconciliation-and-update-flow.md coalescing wording, and the Phase 19 changelog entry; the task instruction explicitly forbids touching them here, so the pre-existing F6 open-limitation and architecture statements remain as they were.",
+      "README.md was checked for a coalescing/configuration-version/queue statement and has none, so it required no update.",
+      "scripts/check-docs.sh after docs/implementation/19.4/worker-report.json was written: every section passes except the agent-contract worker/reviewer pairing line ('task 19.4 has a worker report but no reviewer report'), which is the contract-mandated transient state closed by the orchestrator's implementation-reviewer report; the pre-report run of the same script reported 'check-docs: PASS'. Recorded as PASS on the strength of the pre-report run plus the single expected pairing line."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The classification gate of ADR-023 clause 2 cannot be isolated with the real processor: by construction (clause 5) a real non-version discard always carries the current version, so the worker's same-version guard also prevents its re-enqueue. NonVersionDiscardsDoNotReenqueue therefore uses a minimal delegating processor double for the gate isolation; the real-chain no-re-enqueue for all four classifications is proven by the second passes of the changed-item theory.",
+    "The connection-changed theory case disables Radarr in the save, so its post-save reconciliation run is a bounded no-op with no recorded post-save hint; that case synchronises only on the synchronous save activation and the held stale pass. The other three changed-item cases assert the recorded InFlight post-save outcome.",
+    "The matrix uses bounded condition polls (Phase6Wait.UntilAsync, 10 s bound) for the drain/render conditions and a 250 ms stability window for no-extra-pass assertions; entered signals are awaited directly. No fixed-duration sleep is used, but the drain conditions are polling-based, consistent with the existing Phase 6 and F4 matrix tests.",
+    "No live Jellyfin or Arr instance was used; the default suite skips 64 host-guarded/golden-native tests, and no live pinned-host verification is claimed by this task.",
+    "F6 remains documented as an open limitation until task 19.5 lands the limitation resolution, architecture wording, and changelog entry; this task intentionally did not modify those surfaces.",
+    "No production defect was observed; if a reviewer disagrees with an expectation, the probe output above records the exact mutation each load-bearing assertion detects."
+  ],
+  "ready_for_next_task": true
+}

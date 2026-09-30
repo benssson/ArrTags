@@ -1,0 +1,87 @@
+{
+  "subject": "ArrTags task 15.3 - Emit the bounded render classification in the artwork log (F8 code half; ADR-020 clause 4 as amended by ADR-026)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "TQ-15.3-1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "coverage",
+      "description": "Each of the three classification theories pins exactly one enum member (PassThroughReason=NoMetadata, FailureReason=DecodeFailed, SourceFailureReason=Unreadable). This proves the label text and that the field value is threaded for those members, but no test drives a second member of any kind, so a regression that emitted a fixed member for a kind (for example always NoMetadata for any RenderPassThrough) would still pass all four new theories. F8 requires the specific bounded classification to be emitted, not exhaustive member coverage, and DescribeClassification interpolates the nullable property directly, so this is optional pinning rather than a defect.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs lines 502-569 (one member per kind: NoMetadata / DecodeFailed / Unreadable)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs lines 160-178 (DescribeClassification reads result.PassThroughReason/FailureReason/SourceFailureReason directly)",
+        "src/ArrTags/Rendering/RenderPassThroughReason.cs (5 members) and src/ArrTags/Rendering/RenderFailureReason.cs (19 members) - only one member of each is exercised on the log path"
+      ],
+      "recommended_action": "Optional, non-blocking: drive one additional pass-through and/or failure member through the same coordinator path (for example RenderPassThroughReason.NoDisplayableValue or RenderFailureReason.EncodeFailed) to pin that the emitted value follows the result field across members. Not required by F8 as written."
+    },
+    {
+      "id": "TQ-15.3-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "At Off, Error, and Warning the four new theories assert only that the captured record count is 0 (plus no sentinel) and return before any classification assertion; the classification or omission assertion runs only at Information, Debug, and Trace. This is honest and inherited gating from ADR-020 (the artwork line is Information-level), and the worker describes the enabled levels explicitly, but the reported '24 cases' correspond to 12 count-only cases and 12 classification assertions. No false confidence results: the behavior cannot be observed at a level where the line is not emitted.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs lines 511-516, 536-541, 558-563, 580-585 (Expected(...) == 0 early return)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs lines 1572-1576 (Expected returns 0 unless the requested level >= the gate minimum)",
+        "docs/implementation/15.3/worker-report.json validation/probe entries name the three enabled levels explicitly"
+      ],
+      "recommended_action": "None required; the early return matches the existing suite pattern and the gate is the shipped behavior."
+    },
+    {
+      "id": "TQ-15.3-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "The at-most-one resolution order in DescribeClassification (pass-through, then failure, then source failure) is not exercised with two classification fields set. It is unreachable through the public API: ArtworkGenerationResult has a private constructor and every factory sets at most one of the three nullable classifications, so a two-field result cannot be built without reflection. The worker records this interpretation explicitly. Testing it would require reflection and would not correspond to any reachable behavior.",
+      "evidence": [
+        "src/ArrTags/Artwork/ArtworkGenerationResult.cs lines 16-34 (private constructor) and 103-285 (factories set at most one classification)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs lines 162-177 (defensive ordering)",
+        "docs/implementation/15.3/worker-report.json interpretations[1]"
+      ],
+      "recommended_action": "None required; ordering is defensive dead code for an unreachable state."
+    },
+    {
+      "id": "TQ-15.3-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "The canonical description of the allowed emitted values still contradicts the shipped code: docs/architecture/12-performance-and-operational-limits.md states the artwork boundary logs only the outcome and generic reason, and docs/limitations/open.md F8 states the classification is not emitted. Task 15.3's scope boundary explicitly assigns this reconciliation to task 15.4, and the worker discloses the interval in known_limitations. This is a documentation-lag observation, not a test-quality gap, and it does not affect the observed test matrix.",
+      "evidence": [
+        "docs/architecture/12-performance-and-operational-limits.md lines 50-53",
+        "docs/limitations/open.md lines 98-107",
+        "docs/implementation/15.3/worker-report.json known_limitations[1]",
+        "docs/planning/v1.2.md section 7 (phase 15 documentation checklist) and section 6 (15.4 owns the docs/security half)"
+      ],
+      "recommended_action": "None for this task; task 15.4 must reconcile architecture section 12 and F8 and record the ADR-020 clause 4 amendment note."
+    }
+  ],
+  "matrix_observed": {
+    "default": "0 failed / 1619 passed / 63 skipped / 1682 total (independently reproduced: dotnet test ArrTags.slnx -c Release --no-build; post-15.2 baseline 0 failed / 1595 passed / 63 skipped / 1658 total; +24 passed, +24 total, 0 new skips)",
+    "focused_LogRedactionTests": "0 failed / 167 passed / 0 skipped / 167 total (FullyQualifiedName~LogRedactionTests; class had 143 cases after 15.2; +24)",
+    "host_guarded": "not run - no pinned Jellyfin host available in this environment (ARRTAGS_JELLYFIN_HOST_DIR unset; /tmp/jf/jellyfin absent). The four new theories declare no host guard and are fully included in the default run.",
+    "forced_native": "not run - no native SkiaSharp runtime available (ARRTAGS_SKIA_COMPAT unset; libSkiaSharp.so absent). The four new theories declare no native/decode guard and are fully included in the default run."
+  },
+  "substitutes_checked": [
+    "All four new theories drive the real ArtworkGenerationCoordinator.GenerateAsync path, the real ArtworkGenerationResult factories, the real LogVerbosityGate, and the real ArrTagsLog<T> facade; only the ILogger sink is a capturing test provider.",
+    "The renderer is a test double: FingerprintingRenderer (returns RenderResult.PassThrough(NoMetadata) for a null metadata input, mirroring SkiaBadgeRenderer's production branch) and FixedResultRenderer (returns RenderResult.Failed(DecodeFailed)). The renderer is the boundary being substituted, not the behavior under test.",
+    "The source reader is a test double for the failure case: FailedSourceArtworkReader returns ArtworkSourceReadResult.Failed(Unreadable, raw text containing SourceDetailSentinel). The coordinator's mapping of read.FailureReason to ArtworkGenerationResult.SourceUnavailable and the LogOutcome emission are production code.",
+    "The no-classification case uses the real coordinator with an absent source (PipelineArtworkHost.CurrentBytes = null) so it reaches ArtworkGenerationResult.NoSource without a hand-built result.",
+    "Verifying classification emission does not depend on the host-supplied SkiaSharp or a live Jellyfin host; the classification is produced by the coordinator from bounded enums, and the real renderer/host suites remain out of scope for this task."
+  ],
+  "skips_checked": [
+    "Focused LogRedactionTests run: 0 skipped out of 167; the four new [Theory] methods use MemberData(AllVerbosityLevels) and declare no Skip= or guard attribute, so all 24 cases executed.",
+    "Full default suite: 63 skipped, unchanged from the post-15.2 baseline of 63; the +24 total equals the +24 passed, so no skip was added or removed by this task.",
+    "The 63 default-suite skips are the pre-existing environment guards (pinned-host facts, ARRTAGS_SKIA_COMPAT native-render/decode facts, and the ARRTAGS_NONCANONICAL_GOLDENS cross-runtime comparison); none is a new F8 case.",
+    "The F8 classification is verified entirely in the default (shipping) configuration; no skipped or environment-guarded test is counted as verification of the shipped classification emission."
+  ],
+  "determinism_checked": [
+    "Each new theory creates a fresh StateRepository under a unique temp root plus a fresh PipelineArtworkHost and renderer per invocation; no shared mutable state, no order dependence, and the theories are parallel-safe.",
+    "No wall-clock, network, process, or filesystem-order input affects the classification path; the injected renderer/reader results are constant, and CreateRoot uses a GUID-suffixed directory.",
+    "All message assertions use StringComparison.Ordinal and exact substrings/EndsWith, so they are culture- and environment-independent.",
+    "Two independent focused runs (worker and this audit) both report 0 failed / 167 passed / 0 skipped / 167 total; two independent full default runs both report 0 failed / 1619 passed / 63 skipped / 1682 total.",
+    "The worker's two sensitivity probes are credible and correctly described: removing the classification emission necessarily fails exactly the three classification theories at Information, Debug, and Trace (3 x 3 = 9 cases, matching the recorded Failed 9) while the omission theory still passes; emitting a default qualifier when none is present necessarily fails exactly the omission theory at the three enabled levels (3 cases, matching the recorded Failed 3). Both probe results follow from the test bodies and the code.",
+    "No golden or fixture file is auto-approving output for this task; the assertions are hard-coded expected bounded values."
+  ],
+  "summary": "Independent audit of task 15.3 (F8 code half). The worker added four theories over six verbosity levels (24 cases) and I reproduced both the focused run (0 failed / 167 passed / 0 skipped) and the full default suite (0 failed / 1619 passed / 63 skipped / 1682), matching the worker report exactly; the delta against the post-15.2 baseline is +24 passed / +24 total with 0 new skips. The new tests genuinely establish the emitted classification on the production path: they drive the real ArtworkGenerationCoordinator.GenerateAsync, whose LogOutcome interpolates DescribeClassification(result) between the bounded outcome and the generic reason, and assert the exact bounded qualifiers 'completed with RenderPassThrough (PassThroughReason=NoMetadata): ...', 'completed with RenderFailed (FailureReason=DecodeFailed): ...', and 'completed with SourceUnavailable (SourceFailureReason=Unreadable): ...' at the enabled levels, plus the exact tail and the absence of all three labels for a NoSource result that carries no classification. The source-failure case proves redaction at the real boundary: the reader's raw reason carries the new SourceDetailSentinel, which is added to AllSentinels, and no sentinel appears. Only the boundary renderer/reader and the log sink are test doubles; the gating, facade, coordinator mapping, and emission are production code. The documented matrix is accurately reported for the default configuration, and the two sensitivity probes are credible and internally consistent (9 and 3 failures respectively). No BLOCKER or HIGH finding: no shipped behavior is claimed verified but untested, no test passes for the wrong reason, and no guard hides the shipped behavior. The residual items are a LOW optional pinning gap (only one enum member per classification kind is exercised, so fixed-member regressions for other members would not be caught) and INFORMATIONAL notes (the self-announcing count-only cases at the three disabled levels, the unreachable at-most-one ordering, and the architecture/F8 documentation lag explicitly owned by task 15.4). Verdict: PASS_WITH_FINDINGS."
+}

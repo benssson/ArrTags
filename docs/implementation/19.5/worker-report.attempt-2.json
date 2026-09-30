@@ -1,0 +1,112 @@
+{
+  "task": "19.5",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Rework attempt 2 closes reviewer finding R-19.5-01 (MEDIUM) with a documentation-only, minimal correction: V12-F4-5 (the resume relies on the pinned host's internal candidate order) is re-labelled from INFORMATIONAL to LOW in both current-state register surfaces, matching its documented source severities - the amendment record v1.2-f4-clause-3-amendment.json F4-R4 is LOW (lines 79-84) and its source finding AR-ADR022C3-05 in the architecture review adr-022-clause-3-conformance.json is LOW (lines 68-80); the corrected basis is recorded in this report's interpretations, while the attempt-1 worker report is preserved unchanged per the docs/agent-contracts.md no-overwrite rule. docs/plan/state.json task 19.5 keeps done:true and now lists both docs/implementation/19.5/worker-report.json and docs/implementation/19.5/worker-report.attempt-2.json (the 16.2 pattern), with updated_utc advanced from 2026-09-28T13:25:24Z to 2026-09-28T13:37:41Z. No other residual, severity, register entry, ADR, production, or test change was made. Reruns after the edits: scripts/render-docs-state.cs reports both generated blocks up to date; build 0 Warning(s)/0 Error(s); default suite Failed 0, Passed 1901, Skipped 64, Total 1965 (unchanged); scripts/check-docs.sh 'check-docs: PASS' (all nine sections, with the reviewer report present so the attempt-1 pairing line is closed). A severity-guard probe showed the limitations-index check enforces ID coverage only, not severity tokens (a reverted INFORMATIONAL row still passed check-docs; restored byte-identically), so this correction is evidenced by the source-severity trace and the corrected text rather than by a gate failure. All attempt-1 deliverables (F4/F6 resolved, eight residuals registered, architecture section 8 and the Phase 19 changelog entry) remain otherwise identical.",
+  "validation": [
+    "source /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date' and 'PLANS.md: up to date' (exit 0; the state.json reports/updated_utc edits do not alter the generated blocks).",
+    "source /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)'.",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (unchanged from the attempt-1/post-19.4 baseline; this rework changes no production or test code).",
+    "source /config/arrtags-env.sh && scripts/check-docs.sh -> 'check-docs: PASS' (ok lines: generated status blocks current and plan state consistent; compatibility stubs; decisions index 29 ADRs; limitations index covers all IDs; architecture and data-model indexes; artifact identity sha256/md5/bytes; doc budget; current-state links; agent report contracts conform). Run after the reviewer report was written, so the attempt-1 worker/reviewer pairing line no longer fails.",
+    "Severity-guard probe (seed a violation, observe the gate, revert): temporarily reverted the docs/limitations/00-index.md V12-F4-5 row to '(INFORMATIONAL, accepted)' -> scripts/check-docs.sh still printed 'check-docs: PASS' (exit 0), showing the limitations-index guard checks ID coverage only and does not validate severity tokens; the row was restored byte-identically from /tmp/19.5/00-index.attempt2.bak (cmp clean).",
+    "Old-wording sweep: grep over docs for 'V12-F4-5.*INFORMATIONAL|INFORMATIONAL.*V12-F4-5' matches only docs/implementation/19.5/worker-report.json (the preserved attempt-1 record) and docs/implementation/19.5/reviewer-report.json (the finding text); no current-state surface (docs/limitations/**, docs/status.md, README.md, docs/architecture/**) contains the string.",
+    "Source-severity trace for the corrected label: docs/implementation/planning/v1.2-f4-clause-3-amendment.json lines 79-84 -> F4-R4 '\"severity\": \"LOW\"' (source_finding AR-ADR022C3-05); docs/reviews/architecture/adr-022-clause-3-conformance.json lines 68-80 -> AR-ADR022C3-05 '\"severity\": \"LOW\"'.",
+    "git status --short -> the same nine modified documentation files as attempt 1 (PLANS.md, docs/architecture/08-reconciliation-and-update-flow.md, docs/changelog/v1.2.0.md, docs/limitations/00-index.md, docs/limitations/accepted.md, docs/limitations/archive.md, docs/limitations/open.md, docs/plan/state.json, docs/status.md) plus the untracked docs/implementation/19.5/ report directory; git diff --stat shows no src/ or tests/ entries.",
+    "Final state checks: docs/limitations/00-index.md:113 reads '| `V12-F4-5` | The resume relies on the pinned host's internal candidate order (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |'; docs/limitations/accepted.md:947 reads '### V12-F4-5. The resume relies on the pinned host's internal candidate order (LOW, accepted)'; docs/plan/state.json:1007-1015 task 19.5 done:true with both report paths; docs/plan/state.json:3 updated_utc '2026-09-28T13:37:41Z'.",
+    "scripts/check-docs.sh after this attempt-2 report was persisted -> 'check-docs: PASS' (the attempt-2 file does not affect the worker/reviewer pairing rule; all sections pass)."
+  ],
+  "changed_files": [
+    "docs/limitations/00-index.md",
+    "docs/limitations/accepted.md",
+    "docs/plan/state.json",
+    "docs/implementation/19.5/worker-report.attempt-2.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Re-label V12-F4-5 as LOW in docs/limitations/00-index.md (row at line 113) and docs/limitations/accepted.md (heading at line 947), consistent with the other LOW entries; do not change any other residual.",
+      "evidence": "docs/limitations/00-index.md:113 -> '(LOW, accepted)'; docs/limitations/accepted.md:947 -> '(LOW, accepted)'; the seven other current-state residual rows/headings were read in place and still carry their attempt-1 severities - 00-index.md:109-112 (V12-F4-1 MEDIUM, V12-F4-2 MEDIUM, V12-F4-3 LOW, V12-F4-4 LOW) and 00-index.md:114-116 (V12-F4-6 INFORMATIONAL, V12-F6-1 LOW, V12-F6-2 INFORMATIONAL), with the corresponding accepted.md headings V12-F4-1..V12-F4-4, V12-F4-6, V12-F6-1, V12-F6-2 unchanged - so no other residual changed."
+    },
+    {
+      "criterion": "Do not modify docs/implementation/19.5/worker-report.json (attempt 1); state the corrected basis in attempt 2.",
+      "evidence": "The attempt-1 file was not edited (it still contains its attempt-1 'INFORMATIONAL' interpretations text by design, preserved as the attempt record per docs/agent-contracts.md); this report's interpretations[0] states the corrected basis with the F4-R4 LOW / AR-ADR022C3-05 LOW sources."
+    },
+    {
+      "criterion": "Confirm nothing else in the register/state.json needs changing; if any other surface restates the V12-F4-5 severity, correct it too.",
+      "evidence": "docs/plan/state.json limitations carries IDs only (limitations.accepted lists 'V12-F4-5' with no severity field), so no limitations change was needed there; docs/limitations/archive.md:284 and docs/changelog/v1.2.0.md:1541 name V12-F4-5 without a severity and are historical/resolved-entry text, so they were not rewritten; README.md, docs/status.md, and docs/architecture/** contain no V12-F4-5 severity statement."
+    },
+    {
+      "criterion": "Run dotnet run scripts/render-docs-state.cs (if needed), build, run the tests (counts unchanged), and run scripts/check-docs.sh (expect PASS after the reviewer report closes the pairing line).",
+      "evidence": "render-docs-state: 'status.md: up to date', 'PLANS.md: up to date'; build: 0 Warning(s) 0 Error(s); suite: Failed 0, Passed 1901, Skipped 64, Total 1965; check-docs: PASS (nine ok sections), including the post-report run."
+    },
+    {
+      "criterion": "Write docs/implementation/19.5/worker-report.attempt-2.json with attempt: 2, status: COMPLETE, ready_for_next_task: true, and a rework entry covering R-19.5-01 with closure evidence (exact new wording in both files and the check-docs result).",
+      "evidence": "This file: attempt=2, status=COMPLETE, ready_for_next_task=true, and rework[0] (R-19.5-01) carries the exact corrected lines and the 'check-docs: PASS' result."
+    },
+    {
+      "criterion": "Confirm docs/plan/state.json task 19.5 keeps done: true and lists both docs/implementation/19.5/worker-report.json and docs/implementation/19.5/worker-report.attempt-2.json (matching the 16.2 pattern).",
+      "evidence": "docs/plan/state.json:1007-1015: task 19.5 done:true with reports ['docs/implementation/19.5/worker-report.json', 'docs/implementation/19.5/worker-report.attempt-2.json']; the same two-report pattern as 16.2 at docs/plan/state.json:825-831; updated_utc advanced to '2026-09-28T13:37:41Z' as in the 16.2 rework commit 04de6df."
+    },
+    {
+      "criterion": "The attempt-1 task deliverables remain satisfied and unchanged apart from the R-19.5-01 correction (F4/F6 resolved; eight residuals registered; architecture section 8 and the Phase 19 changelog entry; no production/test/ADR/history edit).",
+      "evidence": "scripts/check-docs.sh PASS (generated blocks current, limitations index covers all eight residual IDs); grep shows the V12-F4-5 current-state text now LOW; git status shows the same nine documentation files plus the report directory and no src/, tests/, docs/decisions, docs/reviews, docs/research, or docs/planning change; attempt-1 report's criteria evidence otherwise still holds."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "What severity labels should the new residual items carry when the sources use different vocabularies? (corrected by R-19.5-01)",
+      "chosen": "V12-F4-1 MEDIUM and V12-F4-2 MEDIUM (ADR-029 residual severities F4-R1/F4-R2); V12-F4-3 and V12-F4-4 LOW (R-19.1-02 and ADR-029 F4-R3 LOW); V12-F4-5 LOW (ADR-029 F4-R4 LOW; its source architecture-review finding AR-ADR022C3-05 LOW) - corrected in attempt 2 from the attempt-1 INFORMATIONAL label; V12-F4-6 and V12-F6-2 INFORMATIONAL (R-19.1-04 informational; no review severity existed for the logging item); V12-F6-1 LOW (reviewer finding 19.3-F1).",
+      "basis": "Severity is copied from the source finding (the amendment record residual_limitations F4-R1/F4-R2 MEDIUM and F4-R3/F4-R4 LOW, docs/implementation/planning/v1.2-f4-clause-3-amendment.json:56-84; AR-ADR022C3-05 LOW, docs/reviews/architecture/adr-022-clause-3-conformance.json:68-80; reviewer/test-quality findings), not invented. The attempt-1 register label for V12-F4-5 contradicted that stated rule and is corrected here per R-19.5-01.",
+      "impact": "Register labels only; no behaviour, state, or test change. The two current-state surfaces now agree with the source severities; the attempt-1 report text retains its historical label."
+    },
+    {
+      "question": "How should the rework be recorded without rewriting attempt-1 or other history?",
+      "chosen": "Preserve docs/implementation/19.5/worker-report.json unchanged, write this attempt-2 report with the corrected basis, edit only the two current-state register surfaces (00-index.md, accepted.md) plus the state.json record (reports list gains the attempt-2 path; updated_utc advanced), matching the 16.2 rework pattern (commit 04de6df).",
+      "basis": "docs/agent-contracts.md rules 3 ('Never overwrite an earlier attempt ... preserve the prior file') and the AGENTS.md history-immutability rule; the reviewer's recommended action named exactly the two register surfaces and no production, test, ADR, or state.json limitation change; docs/changelog/** and docs/limitations/archive.md mention V12-F4-5 without a severity, so no historical text needed a correction.",
+      "impact": "Record-keeping only; the register's current severity is LOW and the attempt-1 record remains readable as the reviewed state."
+    }
+  ],
+  "test_sensitivity": [
+    "No new production behaviour or test was added in this rework (documentation change only), so no new behaviour mutation probe applies; the Phase 19 behaviour sensitivity remains as carried by tasks 19.1-19.4 and reproduced by their reviewers (the F4 cursor/coverage probes A-J and the F6 re-enqueue/classification probes P1-P5 recorded in the attempt-1 report's test_sensitivity[0] still hold, as nothing in this task changes production or tests).",
+    "Register-row guard sensitivity is carried by the attempt-1 seed probe: removing the '| `V12-F4-1` |' row from docs/limitations/00-index.md made scripts/check-docs.sh fail its limitations-index section ('FAIL: limitation V12-F4-1 missing from index'); the row was restored and check-docs re-passed. The attempt-2 run of check-docs passes with all eight residual rows present.",
+    "Severity-token correctness has no automated guard, and this was verified rather than assumed: with the V12-F4-5 row temporarily reverted to '(INFORMATIONAL, accepted)' - the exact R-19.5-01 state - scripts/check-docs.sh still printed 'check-docs: PASS' (exit 0), because section 4 of scripts/check-docs.sh checks only that each limitation ID has an index row. Closure of R-19.5-01 therefore rests on the source-severity trace (F4-R4 LOW; AR-ADR022C3-05 LOW) and the byte-verified corrected text (00-index.md:113, accepted.md:947), not on a gate failure; a future severity mislabel would likewise be caught by review, not by the gate."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/limitations/00-index.md (V12-F4-5 row severity token)",
+      "docs/limitations/accepted.md (V12-F4-5 heading severity token)",
+      "docs/plan/state.json (task 19.5 reports list; updated_utc)",
+      "docs/status.md and PLANS.md (generated; re-rendered/verified up to date, content unchanged)",
+      "docs/implementation/19.5/worker-report.attempt-2.json (new report)"
+    ],
+    "old_values_removed": [
+      "docs/limitations/00-index.md: '| `V12-F4-5` | The resume relies on the pinned host's internal candidate order (INFORMATIONAL, accepted) | ...' -> '(LOW, accepted)'; grep for 'V12-F4-5.*INFORMATIONAL' finds no current-state match.",
+      "docs/limitations/accepted.md: '### V12-F4-5. The resume relies on the pinned host's internal candidate order (INFORMATIONAL, accepted)' -> '(LOW, accepted)'.",
+      "docs/plan/state.json: task 19.5 reports ['docs/implementation/19.5/worker-report.json'] -> ['docs/implementation/19.5/worker-report.json', 'docs/implementation/19.5/worker-report.attempt-2.json']; updated_utc '2026-09-28T13:25:24Z' -> '2026-09-28T13:37:41Z'.",
+      "Deliberately preserved (not removed): the attempt-1 worker report's 'V12-F4-5 ... INFORMATIONAL' interpretations text (history, docs/agent-contracts.md no-overwrite rule) and the reviewer report's finding text; both are docs/implementation/** records, not current-state surfaces."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    {
+      "finding_id": "R-19.5-01",
+      "closure": "V12-F4-5 re-labelled from INFORMATIONAL to LOW in both current-state register surfaces so its severity matches its documented source (amendment record F4-R4 LOW; architecture review AR-ADR022C3-05 LOW), and the corrected basis is stated in this attempt-2 report; no other residual, severity, production, test, ADR, or state.json limitations change was made.",
+      "evidence": "docs/limitations/00-index.md:113 now '| `V12-F4-5` | The resume relies on the pinned host's internal candidate order (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |'; docs/limitations/accepted.md:947 now '### V12-F4-5. The resume relies on the pinned host's internal candidate order (LOW, accepted)'; grep for 'V12-F4-5.*INFORMATIONAL' matches only the preserved attempt-1 worker report and the reviewer finding text; scripts/check-docs.sh -> 'check-docs: PASS' (including the run after this report was persisted)."
+    }
+  ],
+  "known_limitations": [
+    "No live pinned-host verification of F4/F6 is performed or claimed: the F4 coverage matrix drives the real enumerator over an `ILibraryManager` double that reproduces the pinned host's documented (SortName, Name) order and StartIndex/Limit paging (not the host SQL or its collation), the F6 matrix drives the composed in-process save/queue/worker/processor chain without a live Jellyfin or Arr instance, and the default suite keeps its 64 pre-existing host-guarded/native/golden skips. Those bounds are registered in the archive entries and accepted items.",
+    "V12-F4-1 records no runtime cost measurement: the O(offset)/O(N^2/QueueCapacity) bound is structural (asserted by the matrix) and is stated as such; a cost benchmark is not part of Phase 19.",
+    "V12-F6-2 (the unlogged bounded drop of the re-enqueue) is derived from source inspection of LibraryWorkWorker.ReenqueueStaleBasis plus ADR-023 clause 3 and the ADR-025 counter-set contract; it was not a review finding, and its severity (INFORMATIONAL) reflects an observability bound over an already-accepted drop.",
+    "The preserved attempt-1 worker report still contains the reviewed 'V12-F4-5 ... INFORMATIONAL' basis text; per docs/agent-contracts.md it is not overwritten, so readers of the attempt-1 record see the pre-rework label; the corrected basis exists in this attempt-2 report and in the two register surfaces.",
+    "Severity-token correctness is not machine-enforced: the severity-guard probe showed a wrong V12-F4-5 severity still passes scripts/check-docs.sh (the guard checks limitation ID coverage only), so accepted-item severity classification relies on review tracing to the source finding.",
+    "README.md retains the stale 'live pinned-host confirmation is owned by task 14.3' wording in its known-limitations section (task 14.3 is long complete); that is the separately registered V11-G4 and the task constrained README updates to F4/F6 open statements, which it does not make.",
+    "The Phase 19 changelog is a single Task 19.5 entry covering the shipped 19.1-19.4 mechanisms (tasks 19.1-19.4 deliberately reserved the changelog to 19.5); it is not five per-task entries like Phases 15-18, and the 19.1-19.4 details rest on their worker/reviewer reports. It mentions V12-F4-5 without a severity, so it required no correction.",
+    "The phase gate/status/tag (Gate 19, v1.2.0-phase19) remain the orchestrator's: state.json still records phase 19 as PLANNED and no gate_record was created by this task."
+  ],
+  "ready_for_next_task": true
+}

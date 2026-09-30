@@ -1,0 +1,172 @@
+{
+  "phase": "15",
+  "phase_title": "Plugin log subject identifier and render classification",
+  "reviewer_role": "phase-reviewer",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "PR15-01",
+      "severity": "LOW",
+      "status": "open",
+      "area": "security/log-integrity residual (SR-15.4-01, SR2-15.4-01, TQ-15.1-2)",
+      "summary": "Control-scalar removal is Unicode Cc only (LogSubject.NormalizeFileName uses Rune.IsControl), so Cf format scalars (for example U+202E RIGHT-TO-LEFT OVERRIDE, U+200B ZERO WIDTH SPACE) and the Zl/Zp separators U+2028/U+2029 pass into the operator-facing log verbatim. Both security reviews reproduced this (SR-15.4-01 / SR2-15.4-01) and adjudicate it as NOT an ADR-026 clause 2 violation (Cc is the literal 'Control' category) and NOT a secret exposure (bounded to 128 scalars, never a credential; the LogThrottle key is category|event so a hostile file name cannot amplify or evade the volume bound). It is a real log-spoofing / apparent-line-break weakness: a crafted media file name can reorder or forge what an operator reads. The decision is recorded in ADR-026's implementation note and the security-review artifacts, but there is no pinning test (a future silent change to Cf/Zl/Zp handling would not be caught) and no owner/limitations-register entry tracks the optional hardening.",
+      "evidence": [
+        "src/ArrTags/Logging/LogSubject.cs:86 (Rune.IsControl is Cc-only) and :91-94 (128-scalar bound)",
+        "docs/implementation/15.4/security-review.json finding SR-15.4-01 (LOW, open)",
+        "docs/implementation/15.4/security-review.attempt-2.json finding SR2-15.4-01 (LOW, not_required) and its reproductions",
+        "docs/decisions/ADR-026.md 'Control removal is Cc-only ...' implementation-note paragraph",
+        "tests/ArrTags.Tests/LogSubjectTests.cs ControlScalarsAreRemoved / EmittedSubjectContainsNoControlScalars (C0/C1 only; no Cf/Zl/Zp case)",
+        "docs/limitations/00-index.md and docs/limitations/accepted.md (no register entry for this residual)"
+      ],
+      "recommended_action": "Non-blocking for Gate 15. Give the residual an owner: either promote it to a tracked limitations/accepted-register entry or a named follow-up task, and (optionally) add one LogSubjectTests case pinning the current Cf/Zl/Zp pass-through so the behavior cannot drift silently."
+    },
+    {
+      "id": "PR15-02",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "architecture / ADR consistency (IR-15.2-04, SR-15.4-03, SR2-15.4-03)",
+      "summary": "ADR-026 clause 1 states the general rule that a site with an available primary path emits the file-name subject. Clause 3's mixed-site parenthetical groups the 'ineligible' and 'connection unavailable' discards with the sites 'where it does not [have an identity]'. In code, MediaIdentityFactory.TryCreate runs before those two pre-publish discards, so a path is available there, yet the implementation follows clause 3's enumeration and calls the two-argument Discard (item-id fallback). The implementation is internally consistent with the ADR as written and discloses strictly less; the wording discrepancy is recorded in ADR-026's implementation note ('this note records the wording discrepancy rather than rewriting the clause') and adjudicated acceptable by both security reviews. The only effect is a minor Goal G9 usability shortfall on those two discard lines.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:117 (identity created), :124 and :136 (ineligible/connection discards use the 2-arg Discard), :340-343 (2-arg overload delegates null), :208-229 (post-identity discards pass PrimaryPath)",
+        "docs/decisions/ADR-026.md:121-129 (implementation note records the discrepancy)",
+        "docs/implementation/15.2/reviewer-report.attempt-2.json IR-15.2-04 (LOW, noted, deferred to 15.4)",
+        "docs/implementation/15.4/security-review.json SR-15.4-03 and security-review.attempt-2.json SR2-15.4-03 (INFORMATIONAL, not_required)"
+      ],
+      "recommended_action": "No action this phase. A future ADR-026 clarification (or clause-3 edit) should reconcile clause 1 and clause 3 for the pre-publish discards; the phase-15 acceptance criterion is satisfied as written because the mixed discard site uses the file name when a path is threaded and falls back otherwise."
+    },
+    {
+      "id": "PR15-03",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation / security-review provenance (IR-15.4-01)",
+      "summary": "ADR-020's amendment note, the archived F8 entry, and the task-15.4 changelog entry all cite docs/implementation/15.4/security-review.json (the attempt-1 artifact). The independent, orchestrator-run attempt-2 review (docs/implementation/15.4/security-review.attempt-2.json) and the closure of its LOW finding SR2-15.4-05 (the SEC-5 allowlist, fixed by the orchestrator's edit to docs/limitations/accepted.md) are not referenced by any current-state surface. Both reviews report no open BLOCKER/HIGH, so no claim is false; this is documentation precision and audit-trail completeness rather than an overclaim. Attempt 1 remains an immutable point-in-time record whose two LOWs are closed in the tree by the attempt-2 adjudication (SR2-15.4-01 not_required; SR2-15.4-02 resolved) and the accepted.md edit.",
+      "evidence": [
+        "docs/decisions/ADR-020.md:124-127; docs/limitations/archive.md F8 'Evidence'; docs/changelog/v1.2.0.md:235-248 (all cite security-review.json only)",
+        "docs/implementation/15.4/security-review.attempt-2.json (PASS_WITH_FINDINGS, 1 open LOW SR2-15.4-05) and docs/implementation/15.4/orchestration.json rework[attempt 2]",
+        "git show a10497c -- docs/limitations/accepted.md (SEC-5 now enumerates the bounded subject and the explicit directory/drive/share/full-path exclusion)",
+        "docs/implementation/15.4/reviewer-report.json IR-15.4-01 (INFORMATIONAL, noted)"
+      ],
+      "recommended_action": "Optional, non-blocking: add a one-line pointer to the independent attempt-2 review and the SR2-15.4-05 closure in the task-15.4 changelog entry (do not edit the immutable review artifacts)."
+    },
+    {
+      "id": "PR15-04",
+      "severity": "LOW",
+      "status": "open",
+      "area": "documentation / evidence pointer (IR-15.4-02)",
+      "summary": "docs/limitations/archive.md F8 lists docs/implementation/15.4/worker-report.json in its evidence, but that base file is attempt 1 (status BLOCKED, which itself states the security-review half was unmet); the final report is docs/implementation/15.4/worker-report.attempt-2.json (COMPLETE). The F8 resolution text itself was independently verified correct against the shipped code, so this is pointer precision only.",
+      "evidence": [
+        "docs/limitations/archive.md F8 'Evidence' bullet cites docs/implementation/15.4/worker-report.json",
+        "docs/implementation/15.4/worker-report.json status=BLOCKED versus worker-report.attempt-2.json status=COMPLETE",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:160-178 (DescribeClassification confirms the F8 claim)",
+        "docs/implementation/15.4/reviewer-report.json IR-15.4-02 (INFORMATIONAL, noted)"
+      ],
+      "recommended_action": "Optional: cite worker-report.attempt-2.json (or both) in the F8 evidence list. No correctness impact."
+    },
+    {
+      "id": "PR15-05",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "planning / report contract (IR-15.4-03)",
+      "summary": "docs/implementation/planning/v1.2.json task 15.4 lists the review as 'security-reviewer, documentation-maintainer'; the security reviews exist (attempts 1 and 2) but no docs/implementation/15.4/documentation-review.json was produced. No task acceptance criterion, section 7 checklist item, or scripts/check-docs.sh check requires it, and every phase-15 documentation surface was reconciled and independently verified here.",
+      "evidence": [
+        "docs/implementation/planning/v1.2.json task 15.4 'review' field",
+        "ls docs/implementation/15.4 (no documentation-review.json)",
+        "docs/implementation/15.4/reviewer-report.json IR-15.4-03 (INFORMATIONAL, not_required)",
+        "scripts/check-docs.sh: 'ok: agent report contracts conform'"
+      ],
+      "recommended_action": "None required. If the planning record is to be honored literally, a documentation-maintainer pass could be recorded."
+    },
+    {
+      "id": "PR15-06",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "orchestration / lifecycle",
+      "summary": "docs/implementation/phase-15/ contains no phase-level orchestration.json aggregate yet. Under docs/plan/README.md the orchestrator creates the phase aggregate and sets the phase status/gate/tag only after the phase review passes (the phase-13 aggregate was committed with its phase-review closure in c8544bc), so the absence is the expected pre-gate state. The four per-task orchestration records exist, each with per-invocation execution metadata and a visible rework entry where a correction round occurred, and they are consistent with the task commits.",
+      "evidence": [
+        "docs/implementation/phase-15 (no aggregate before this report)",
+        "docs/plan/README.md lifecycle step 3 (orchestrator sets phase status/gate/tag after the review passes); git log c8544bc (phase-13 aggregate committed with its phase-review closure)",
+        "docs/implementation/15.1/orchestration.json; 15.2/orchestration.json (rework attempt 2); 15.3/orchestration.json; 15.4/orchestration.json (rework attempt 2)"
+      ],
+      "recommended_action": "None for the phase tasks; the orchestrator should create docs/implementation/phase-15/orchestration.json when it applies Gate 15."
+    },
+    {
+      "id": "PR15-07",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "verification coverage / platform assumption",
+      "summary": "The logging platform assumptions rest on static/assembly research (docs/research/jellyfin-12-architecture.md section 10, 'Confirmed supported API', static evidence only; no live-host probe). The v1.2 plan section 9 lists live verification of the logging subject on the pinned Jellyfin 12.0.0 host, owned by the release phase (task 21.4), so its absence in Phase 15 is expected and not a phase-15 gap. Phase 15 adds no new Jellyfin API surface, only string formatting inside existing plugin-owned log calls, so no new live-host assumption is introduced.",
+      "evidence": [
+        "docs/research/jellyfin-12-architecture.md:961-999 (section 10; confirmed supported API; static evidence only)",
+        "docs/planning/v1.2.md section 9 (live verification owned by the release phase)",
+        "docs/plan/state.json phase 21 task 21.4 'Live pinned-host verification'"
+      ],
+      "recommended_action": "None for Gate 15; task 21.4 must include the logging-subject live check."
+    }
+  ],
+  "tasks_checked": [
+    "15.1 Bounded log-subject policy and helper",
+    "15.2 Thread the bounded log subject through the identity-bearing and fallback sites",
+    "15.3 Emit the bounded render classification in the artwork log",
+    "15.4 Logging documentation, ADR-020 amendment, and security review"
+  ],
+  "commits_checked": [
+    "ba159c6 Implement 15.1 bounded log-subject policy and helper",
+    "6ee738f Record 15.1 commit hash in orchestration state",
+    "674ddbf Implement 15.2 bounded log subject threading",
+    "9a36124 Record 15.2 commit hash in orchestration state",
+    "07181f6 Implement 15.3 bounded render classification in artwork log",
+    "e9ee1d7 Record 15.3 commit hash in orchestration state",
+    "a10497c Implement 15.4 logging docs, ADR-020 amendment, and security review",
+    "a7b799a Record 15.4 commit hash in orchestration state"
+  ],
+  "requirements_checked": [
+    "G9 (log file name instead of item id): identity-bearing sites emit the file name when a path is available; the mixed MetadataReconciliationProcessor.Discard site falls back to the item id when no path exists; the file name is bounded (128 scalars), control characters are stripped, and empty/whitespace falls back to the item id; no directory/secret in output; ADR-020 clause 4 amended and security-reviewed.",
+    "F8 (render classification in the artwork log): the artwork log line emits the specific bounded PassThroughReason/FailureReason/SourceFailureReason when present; classifications remain bounded and secret-free; redaction tests cover them; compatible with ADR-020 clause 4 as amended by ADR-026.",
+    "Phase 15 deliverables from docs/implementation/planning/v1.2.json: helper, threading, classification, ADR-020 amendment + canonical documentation + logging security review.",
+    "Gate 15: tasks 15.1-15.4 acceptance criteria met; security review recorded with no open BLOCKER/HIGH; phase review approved; tag v1.2.0-phase15 created (tag is the orchestrator's post-review step)."
+  ],
+  "architecture_checked": [
+    "docs/decisions/ADR-026.md clauses 1-5 vs src/ArrTags/Logging/LogSubject.cs and the nine threaded call sites",
+    "docs/decisions/ADR-020.md clause 4 and clause 8; amendment note is purely additive (git show a10497c -- docs/decisions/ADR-020.md); no clause text rewritten",
+    "docs/decisions/ADR-024.md (NoFittingBadge owned by Phase 20): RenderPassThroughReason contains no NoFittingBadge and grep finds the reason only in ADR-024, so no Phase 20 behavior was implemented early",
+    "docs/architecture/06-configuration-and-persisted-state.md and docs/architecture/12-performance-and-operational-limits.md: reconciled allowed-emitted-values contract, host-native path scope, F8 resolved",
+    "docs/decisions/00-index.md: ADR-020 'Accepted (v1.1; clause 4 amended by ADR-026 (v1.2))'; ADR-026 'Accepted (v1.2)'",
+    "README.md LogVerbosity row: bounded subject, bounded classification, host-native-scoped exclusion"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-12-architecture.md section 10 (plugin logging via ILogger<T>/ILoggerFactory through the host Serilog pipeline; confirmed supported API; static/assembly evidence only)",
+    "docs/research/jellyfin-expert/jellyfin-12-config-pages-and-logging.json (referenced by ADR-020)",
+    "docs/planning/v1.2.md Goals G9/F8, decision gate DG-22, section 7 phase-15 checklist, section 9 verification requirements",
+    "docs/implementation/planning/v1.2.json phase 15 objectives/deliverables/acceptance/exit gate"
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: tasks 15.1-15.4 done=true; phase 15 status PLANNED; tag v1.2.0-phase15 recorded but not created; limitations open F3/F4/F6/F7, resolved F1/F2/F8",
+    "PLANS.md: task 15.1-15.4 checkboxes [x]; generated milestone table agrees; active-scope preamble records F8 resolved by Phase 15",
+    "docs/status.md: regenerated, 'Open limitations: 4 (F3, F4, F6, F7)'",
+    "docs/changelog/v1.2.0.md: task 15.1-15.4 entries present and consistent with the code and reproduced counts",
+    "docs/limitations/open.md (no F8), docs/limitations/archive.md (F8 Resolved), docs/limitations/00-index.md (F8 Resolved -> archive.md), docs/limitations/accepted.md SEC-5 (amended allowlist)",
+    "docs/decisions/ADR-020.md and ADR-026.md implementation/amendment notes; docs/architecture/06 and 12; README.md",
+    "scripts/check-docs.sh: PASS (nine ok sections); dotnet run scripts/render-docs-state.cs -- --check: up to date"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/15.1/orchestration.json (3 invocations, 1 attempt each, no rework; commit ba159c6)",
+    "docs/implementation/15.2/orchestration.json (6 invocations; attempt 1 CHANGES_REQUIRED preserved, attempt 2 APPROVED; rework entry present; commit 674ddbf)",
+    "docs/implementation/15.3/orchestration.json (3 invocations, no rework; commit 07181f6)",
+    "docs/implementation/15.4/orchestration.json (5 invocations: worker 1 BLOCKED, security-reviewer 1, worker 2 COMPLETE, security-reviewer 2, implementation-reviewer 1 APPROVED; rework entry present; commit a10497c)"
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 17,
+    "total_attempts": 22,
+    "correction_rounds": 2
+  },
+  "integration_assessment": "Cross-task boundaries are consistent. Tasks 15.2 and 15.3 both edit the single ArtworkGenerationCoordinator.LogOutcome record and compose correctly (subject then classification then generic reason). All sites share the one LogSubject helper, so no duplicated subject logic exists; the helper is a pure static function with no state or lifecycle concerns. The worker's DescribeWorkItem centralizes the queue-record format. The classification reads the result's existing properties, so Phase 20's NoFittingBadge will flow automatically without a further change to the log line. No interface, ownership, concurrency, persistence, or configuration inconsistency was found; the subject and classification are not inputs to any fingerprint or persisted state.",
+  "acceptance_criteria_assessment": "Met. Per-task: 15.1 helper (bounded, control-stripped, file-name-only, D-format item-id fallback) with 23 tests; 15.2 threading of all nine ADR-026 clause 3 sites with the mixed discard fallback and correct explicit fallbacks at the work worker and lifecycle removal, covered by 78 LogRedactionTests cases; 15.3 bounded classification emission when present and omission when absent, covered by 24 cases; 15.4 additive ADR-020 clause 4 amendment, canonical documentation reconciliation (architecture 06/12, README, decisions index), F8 recorded resolved, and a fresh security review with no open BLOCKER/HIGH. Verified in the repository, not merely asserted.",
+  "phase_deliverables_assessment": "All four planned deliverables exist and are wired: the helper (src/ArrTags/Logging/LogSubject.cs), the threading at the clause 3 sites, the bounded render classification on the artwork line, and the ADR-020 amendment plus canonical logging documentation and the logging security review.",
+  "overclaim_check": "No material overclaim. Reported suite counts are reproduced exactly (0/1619/63/1682; focused 190). The changelog/ADR notes cite the attempt-1 security review and describe it accurately; the attempt-2 independent review and the SR2-15.4-05 closure are not cited in a current-state surface (PR15-03, LOW, precision only). The F8 archive entry cites the attempt-1 BLOCKED worker report (PR15-04, LOW). The 15.2 attempt-1 reviewer/test-quality reports overstated coverage; those were corrected in attempt 2 with independent probes and are superseded by the preserved attempt-2 reports.",
+  "jellyfin_platform_assumptions": "The only platform assumptions are the logging pipeline (ILogger<T>/ILoggerFactory through the host Serilog pipeline, confirmed supported API in docs/research/jellyfin-12-architecture.md section 10 with static/assembly evidence) and host-platform Path.GetFileName semantics (ADR-026 clause 1; on the pinned Linux host a POSIX path yields the component and a Windows-style backslash string is a single file name). Both are documented and consistent; the host-native path scope is stated across ADR-020, ADR-026, architecture 06/12, README, and the PLANS risk row. No live-host probe was performed for this phase; live verification of the logging subject is owned by task 21.4 (PR15-07). No new Jellyfin API surface is added by Phase 15.",
+  "gate_15_status": "Met. Tasks 15.1-15.4 meet their acceptance criteria; the logging security review is recorded with no open BLOCKER/HIGH (two reviews, attempt 1 and the independent attempt 2, both PASS_WITH_FINDINGS); this phase review is APPROVED_WITH_FINDINGS; the orchestrator creates v1.2.0-phase15. Phase 15 remains PLANNED in state.json and no v1.2.0-phase15 tag exists, as expected pre-gate.",
+  "test_suite_note": "./build.sh build: Build succeeded, 0 Warning(s), 0 Error(s). ./build.sh test (default): Failed 0, Passed 1619, Skipped 63, Total 1682 (matches the recorded post-15.3 baseline; 15.4 changed no src/ or tests/ file). Focused LogSubjectTests+LogRedactionTests: Failed 0, Passed 190, Skipped 0, Total 190 (23 + 167). scripts/check-docs.sh: PASS. dotnet run scripts/render-docs-state.cs -- --check: status.md up to date, PLANS.md up to date, PLANS.md and state.json agree.",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 15 is complete and its Gate is met. Independently verified: (1) the bounded log-subject helper (src/ArrTags/Logging/LogSubject.cs) implements ADR-026 clauses 1-2 exactly (Path.GetFileName file-name-only, 128-scalar bound applied after control removal in one surrogate-safe pass, D-format item-id fallback for null/empty/whitespace/control-reduced/separator-only inputs); (2) the helper is threaded through all nine ADR-026 clause 3 sites and the four clause 3 no-change sites are untouched; the mixed MetadataReconciliationProcessor.Discard site uses the file name when a path is given and the item id otherwise; the work worker and lifecycle removal use the explicit item-id fallback and the worker retains its bounded connection/surface context; (3) ArtworkGenerationCoordinator.LogOutcome emits the bounded PassThroughReason/FailureReason/SourceFailureReason when present and nothing when absent, and NoFittingBadge (ADR-024, Phase 20) is deliberately not implemented; (4) no directory, drive, share, full path, credential, or secret is emitted for host-native paths, proven by 190 focused logging tests (167 LogRedactionTests including the reader-threw and scheduled-retry corrections, 23 LogSubjectTests) that I reran green; (5) ADR-020 clause 4 is amended additively (no clause text rewritten), the log path is security-reviewed by two reviews with no open BLOCKER/HIGH, and the attempt-1 LOWs and attempt-2 LOW are genuinely closed in the tree (SR-15.4-01/SR2-15.4-01 -> Cc-only decision recorded; SR-15.4-02/SR2-15.4-02 -> README/architecture host-native qualifier applied; SR2-15.4-05 -> docs/limitations/accepted.md SEC-5 allowlist amended), with the Cc-only and host-native scope recorded consistently across the ADRs, architecture 06/12, README, and the PLANS risk row; (6) the diagnostic state is consistent: tasks 15.1-15.4 done in state.json and PLANS.md, F8 recorded resolved with no stale open entry, phase 15 still PLANNED, no v1.2.0-phase15 tag, and scripts/check-docs.sh plus render-docs-state --check pass; (7) the build is clean and the default suite reproduces exactly 0 failed / 1619 passed / 63 skipped / 1682 total. No task was skipped and every task has worker, reviewer, and test-quality evidence with preserved attempt-1 reports and visible rework entries. Remaining findings are LOW/INFORMATIONAL and non-blocking: the Cf/Zl/Zp log-integrity residual is recorded but unowned/unpinned (PR15-01); the documented ADR-026 clause 1 vs clause 3 discrepancy at the pre-publish discards (PR15-02); the canonical docs cite only the attempt-1 security review, not the independent attempt-2 review or the SR2-15.4-05 closure (PR15-03); the archived F8 evidence cites the attempt-1 BLOCKED worker report (PR15-04); the planning record names an unproduced documentation-maintainer review (PR15-05); the phase aggregate orchestration is the orchestrator's post-gate artifact (PR15-06); and live pinned-host verification of the logging change is owned by task 21.4 (PR15-07). No BLOCKER or HIGH is open; the phase is approved and the next phase may proceed once the orchestrator applies Gate 15 and creates v1.2.0-phase15."
+}

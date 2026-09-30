@@ -1,0 +1,143 @@
+{
+  "task": "19.1",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Rework attempt 2 closes the implementation-reviewer finding R-19.1-01, the only required change. No production code was changed: the rework added one test fact to tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs that scripts the enqueue sink (RecordingWorkHintSink.OutcomeOverride) to return WorkHintEnqueueOutcome.Stopped for a mid-scope item on a Scheduled cursor-governed run and asserts the run stops with LibraryReconciliationOutcome.Fenced, the stopped item is not counted as Covered, the persisted cursor is the last covered item (not the stopped item), and the next run resumes at the stopped item. Two probes proved the fact fails under the named mutations (deleting the 'or WorkHintEnqueueOutcome.Stopped' stop clause; counting the stopped item as covered); both were reverted, and the restored tree rebuilt 0 warnings/0 errors with the default suite Failed 0, Passed 1854, Skipped 64, Total 1918 (the attempt-1 tree was Failed 0, Passed 1853, Skipped 64, Total 1917; +1 passed/total, 0 new skips). docs/plan/state.json task 19.1 now lists both reports; docs/implementation/19.1/worker-report.json is preserved unchanged. The attempt-1 implementation, its changed-file set, and its other evidence remain as recorded in worker-report.json.",
+  "validation": [
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1854, Skipped 64, Total 1918 (attempt-1 tree after the new fact: Failed 0, Passed 1853, Skipped 64, Total 1917; +1 passed / +1 total, 0 new skips).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~ReconciliationCursorResumeTests\" -> Failed 0, Passed 21, Skipped 0, Total 21 (attempt 1: 20).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~ReconciliationCursorResumeTests|FullyQualifiedName~ReconciliationCursorStoreTests|FullyQualifiedName~MediaLibraryResumeTests|FullyQualifiedName~LibraryWorkQueueTests|FullyQualifiedName~ReconciliationTriggerTests|FullyQualifiedName~ConfigurationReconciliationTriggerTests|FullyQualifiedName~LogRedactionTests|FullyQualifiedName~GoalAIntegrationTests|FullyQualifiedName~StateBoundaryTests\" -> Failed 0, Passed 291, Skipped 0, Total 291 (attempt 1: 290; re-run on the final restored tree).",
+    "Probe A for R-19.1-01: removed the 'or WorkHintEnqueueOutcome.Stopped' clause from the LibraryReconciliationService.cs:253-254 stop condition (so a Stopped enqueue falls through to covered/conitune), rebuilt, ran the new fact -> Failed 1, Passed 0, Skipped 0, Total 1; failure 'Assert.Equal() Failure: Values differ / Expected: Fenced / Actual: Completed' at ReconciliationCursorResumeTests.cs:243; probe reverted.",
+    "Probe B for R-19.1-01: kept the Fenced stop but counted the stopped item as covered (covered++ before the stop break), rebuilt, ran the new fact -> Failed 1, Passed 0, Skipped 0, Total 1; failure 'Expected: 2 / Actual: 3' at ReconciliationCursorResumeTests.cs:245 (first.Covered); probe reverted.",
+    "After both probes were reverted: ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s); ./build.sh test -> Failed 0, Passed 1854, Skipped 64, Total 1918; the 291-test focused filter re-ran Failed 0, Passed 291, Skipped 0, Total 291.",
+    "dotnet run scripts/render-docs-state.cs -> status.md: up to date, PLANS.md: up to date (both blocks).",
+    "scripts/check-docs.sh -> check-docs: PASS (all sections: generated status blocks current and plan state consistent, compatibility stubs, decisions index 29 ADRs, limitations index, architecture/data-model indexes, artifact identity, doc budget, current-state links, agent report contracts). The attempt-1 report recorded a transient pairing failure ('task 19.1 has a worker report but no reviewer report'); that line is closed by the implementation-reviewer report at docs/implementation/19.1/reviewer-report.json, and the attempt-2 report file adds no new pairing obligation (scripts/check-agents.sh pairs worker-report.json with reviewer-report.json only).",
+    "git status --short inspected: the changed set is the attempt-1 set unchanged; the only attempt-2 delta is the new test fact inside the already-untracked tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs, the docs/plan/state.json report list/updated_utc, and the new docs/implementation/19.1/worker-report.attempt-2.json. Both probes were reverted exactly: src/ArrTags/Reconciliation/LibraryReconciliationService.cs lines 245-261 show the restored stop branch ('stopOutcome = outcome; break;' and the Overflow-or-Stopped clause) with no probe residue."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs",
+    "docs/plan/state.json",
+    "docs/implementation/19.1/worker-report.attempt-2.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Persisted reconciliation cursor: a single bounded, versioned, integrity-checked plugin-state record with StateAuthority=Cache, fixed record kind and id, carrying only the scope identity (sorted enabled-library id set + supported item-type scope) and the opaque (SortName, itemId) position; never a path, provider payload, or credential.",
+      "evidence": "src/ArrTags/Reconciliation/ReconciliationCursor.cs (version const, per-field bounds MaxEnabledLibraryIds=4096 / MaxEnabledLibraryIdLength=256 / MaxSortNameHintLength=512, Validate) and ReconciliationCursorStore.cs (RecordKind='reconciliation-cursor', RecordId='current', read/write through StateRepository with StateAuthority.Cache and the envelope's SHA-256 integrity check). Tests: ReconciliationCursorStoreTests.CursorRecordUsesTheFixedCacheKindAndIdentifier (cache path exists, authoritative path absent), ScopeAndPositionRoundTripThroughTheCacheBoundary, WrappedRecordRoundTripsWithoutAPosition, SortNameHintIsTruncatedToTheBoundAndTheItemIdRemainsTheAnchor, PersistedRecordCarriesOnlyTheScopeIdentityAndThePosition (payload property set is exactly CursorVersion/EnabledLibraryIds/EpisodePosters/ItemId/MoviePosters/SortName and the file text carries no path/credential sentinel)."
+    },
+    {
+      "criterion": "Scope-reset rule: reset to the start when the recorded scope tuple differs from the current scope (enabled-library set or supported item-type scope).",
+      "evidence": "src/ArrTags/Reconciliation/ReconciliationScopeIdentity.cs (normalized sorted set + badge-surface flags; Matches) and ReconciliationCursorStore.Read returning ScopeChanged. Tests: ReconciliationCursorStoreTests.ScopeChangeResetsToTheStart (4 cases: library added/removed, movie scope, episode scope) and EquivalentButDifferentlyOrderedScopeIsNotAScopeChange; service-level ReconciliationCursorResumeTests.ScopeChangeResetsToTheStart (same 4 cases, asserting the run resumes from the start and rewrites the record for the current scope)."
+    },
+    {
+      "criterion": "Missing/torn/out-of-range reset: a missing, torn (integrity/deserialization), or out-of-bounds payload resets to the start and is observed as a miss rather than quarantined, and an unlocatable anchor resets to the start instead of failing the run.",
+      "evidence": "ReconciliationCursorStore.Read (Missing, Discarded, ScopeChanged, Wrapped, Position statuses; a semantically invalid payload is discarded as Cache state) and ReconciliationCursor.Validate. Tests: ReconciliationCursorStoreTests.MissingRecordIsReportedAsMissingAndResetsToTheStart, TornRecordIsDiscardedAsACacheMissAndResetsToTheStart (file deleted, then Missing), TamperedIntegrityHashIsDiscarded, IncompatibleCursorVersionIsDiscarded, OutOfBoundsPayloadIsDiscardedAsARebuildableMiss (7 payload violations); ReconciliationCursorResumeTests.UnlocatableAnchorResetsToTheStartAndRewritesTheCursor, TornCursorRecordResetsToTheStartAndIsRebuilt."
+    },
+    {
+      "criterion": "Identity-anchored resume enumerator (ADR-029): walk the host-ordered pages from the start until the record's unique itemId is located, return the page strictly after it, reset to start when the anchor cannot be located; no host after-key predicate; bounded ReconciliationBatchSize pages with cancellation between and inside pages and a yield between pages.",
+      "evidence": "src/ArrTags/Media/IMediaLibraryEnumerator.ResumeCandidatesAsync and JellyfinMediaLibraryEnumerator.ResumeCandidatesAsync (only StartIndex/Limit paging via EnumerateCandidates; per-page and per-item cancellation checks; Task.Yield between pages; AnchorNotFound at the end of the order or for an empty anchor). Tests: MediaLibraryResumeTests.ResumeLocatesTheAnchorAndReturnsThePageStrictlyAfterIt (bounded page requests (0,3),(3,3),(5,3), StartIndex 5), ResumeReturnsAnEmptyPageWhenTheAnchorIsTheLastItem, ResumeReportsAnUnlocatableAnchorAfterWalkingTheWholeOrder, ResumeReportsAnEmptyAnchorAsUnlocatableWithoutQueryingTheLibrary, ResumeHonorsAnAlreadyCancelledToken, ResumeCancelsInsideAPageAndDoesNotReadTheNextPage; service-level ReconciliationCursorResumeTests.ResumeWalksFromTheStartAndReturnsThePageStrictlyAfterTheAnchor, ResumeLocatesTheAnchorByIdentityAndNotByTheSortNameHint (a stale SortName hint does not affect the locate step), ResumeCancellationIsReportedAsACancelledRun."
+    },
+    {
+      "criterion": "Cursor advance rule: Accepted/Coalesced/InFlight are covered and the run continues; an inspected item that correctly needs no work is covered and does not stall; Overflow/Stopped stop the run and the cursor advances only over the covered prefix; wrap at the end; cancellation advances only over the covered prefix.",
+      "evidence": "src/ArrTags/Reconciliation/LibraryReconciliationService.cs (covered/lastCovered bookkeeping, stopOutcome, AdvanceCursor, wrapped record) and ReconciliationCursorStore.Write. Tests: ReconciliationCursorResumeTests.CoalescedAndInFlightOutcomesAreCoveredAndDoNotStallTheRun, AnItemThatNeedsNoWorkIsCoveredAndDoesNotStallTheCursor, OverflowStopsAtTheFirstUncoveredItemAndAdvancesTheCursorOnlyOverTheCoveredPrefix (cursor = last covered item; next run resumes at the overflowed item), StoppedStopsAtTheFirstUncoveredItemAndAdvancesTheCursorOnlyOverTheCoveredPrefix (added in attempt 2; the sink returns WorkHintEnqueueOutcome.Stopped for the mid-scope item items[2]: outcome Fenced, Covered 2 of Inspected 3, the stopped item not covered and not enqueued, cursor Position at the last covered item items[1] with the 'example movie' SortName hint, and the next run resumes at items[2] via ResumeRequests (0,2) and covers items[2..4] to Completed), CancellationAdvancesTheCursorOnlyOverTheCoveredPrefix, FenceStopAdvancesTheCursorOnlyOverTheCoveredPrefix, MissingAndWrappedCursorsStartAtTheBeginningOfTheOrder, SuccessiveRunsAdvanceThroughTheOrderAndWrapWithTheRealQueue (three successive runs over six items with the real LibraryWorkQueue capacity 2: positions items[1] -> items[3] -> wrapped -> restart). The Stopped sub-behavior named by acceptance criterion 5 is exercised by the new fact; the enqueue-returned Stopped stop path was the R-19.1-01 evidence gap. The separate lifecycle-fence stop path (AllowsNewWork) remains covered by FenceStopAdvancesTheCursorOnlyOverTheCoveredPrefix."
+    },
+    {
+      "criterion": "Triggers: only scheduled (periodic/manual) and post-scan read or write the cursor; Jellyfin ItemAdded/ItemUpdated/ItemRemoved, webhooks, per-item, and the bounded post-save trigger are unchanged and must not read or write it.",
+      "evidence": "src/ArrTags/Reconciliation/LibraryReconciliationService.cs computes the cursor scope only for LibraryReconciliationSource.Scheduled/PostScan and never touches the store for PostSave. Tests: ReconciliationCursorResumeTests.PostSaveEnumeratesFromTheStartAndLeavesTheCursorUntouched (record bytes byte-identical before/after, first request (0,2) with a valid position record present), PostSaveDoesNotStopAtOverflowWhileTheCursorRunDoes (PostSave keeps its pre-F4 enumerate-and-enqueue behavior and Completed outcome; the scheduled run stops at the first overflow), PerItemTriggersAndThePostSaveTriggerDoNotReferenceTheCursorStore (constructor parameters and instance fields of the lifecycle/event source, post-save trigger, scheduled/post-scan tasks, webhook intake/resolver, and work queue contain no ReconciliationCursor type). Event/webhook behavior regression evidence: LibraryUpdateBoundaryTests, WebhookResolutionTests, and ReconciliationTriggerTests remain green in the 291-test focused run."
+    },
+    {
+      "criterion": "Enqueue-outcome vocabulary at the enqueue boundary: a bounded enum (Accepted, Coalesced, InFlight, Overflow, Stopped) at IWorkHintSink; the existing boolean TryEnqueue retained for callers that only need enqueued-or-not (library events, webhooks, post-save).",
+      "evidence": "src/ArrTags/Updates/WorkHintEnqueueOutcome.cs; IWorkHintSink.Enqueue with TryEnqueue retained; LibraryWorkQueue.Enqueue(in LibraryWorkHint)/Enqueue(in LibraryWorkItem) classify stopped/stopped-malformed -> Stopped, in-flight duplicate -> InFlight, pending duplicate -> Coalesced, capacity -> Overflow, else Accepted; the bool overloads delegate. Tests: LibraryWorkQueueTests.EnqueueReportsTheBoundedOutcomeVocabulary, EnqueueReportsStoppedWhenTheQueueStopsAccepting, EnqueueRejectsMalformedHintsAsStopped, BooleanTryEnqueueMatchesTheBoundedOutcome; the unchanged callers ArrTagsLifecycleService (library events, still TryEnqueue) and WebhookIntakeService (webhooks, still TryEnqueue) are untouched."
+    },
+    {
+      "criterion": "Phase 19 acceptance contribution: successive scheduled/post-scan runs over a scope larger than QueueCapacity cover the whole scope round-robin with one run bounded; a coalesced or in-flight item does not stall and the run stops at the first overflow. (The full successive-run coverage matrix, including the library-mutation cases and a scope larger than QueueCapacity, is task 19.2.)",
+      "evidence": "The mechanism is implemented and unit-covered here (resume, advance, stop-including-enqueue-returned-Stopped, wrap, scope reset). ReconciliationCursorResumeTests.SuccessiveRunsAdvanceThroughTheOrderAndWrapWithTheRealQueue exercises three successive runs against the real LibraryWorkQueue with capacity 2 over six candidates and asserts the advance items[1] -> items[3] -> wrapped -> restart without re-covering the prefix. The scope-larger-than-QueueCapacity matrix, the coalesce/in-flight/overflow matrix, and library-mutation coverage are task 19.2 (not claimed here)."
+    },
+    {
+      "criterion": "Build, tests, and documentation gates.",
+      "evidence": "./build.sh build succeeded with 0 warnings / 0 errors; ./build.sh test Failed 0, Passed 1854, Skipped 64, Total 1918; the focused 291-test filter is green; dotnet run scripts/render-docs-state.cs reports both generated blocks up to date; scripts/check-docs.sh passes every section including agent report contracts (the attempt-1 pairing line is closed by docs/implementation/19.1/reviewer-report.json); state.json task 19.1 done=true with the two report paths and the PLANS.md checkbox [x] agree (verified by render-docs-state --check inside check-docs)."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "What exactly is the 'supported item-type scope' component of the ADR-022 clause 4 scope identity?",
+      "chosen": "The movie/episode badge-surface enablement (BadgeMoviePosters/BadgeEpisodePosters) of the snapshot that drives eligibility.",
+      "basis": "The candidate query is always Movie+Episode (fixed), so the only configurable item-type scope whose change can alter which candidates are reconciled is the two surface flags; ADR-022 clause 5 requires a reset when the item-type scope differs so a changed scope cannot leave the cursor past unenumerated items.",
+      "impact": "Enabling/disabling movie or episode posters resets the cursor to the start (a bounded re-cover). Persisted behaviour only; no user-visible configuration change."
+    },
+    {
+      "question": "Does the identity-anchored resume return the page after the anchor's page (page-aligned) or the page beginning at the anchor's absolute index + 1 (strictly after the located item)?",
+      "chosen": "The page begins at the located anchor item's absolute index + 1 (items strictly after the anchor), implemented through the supported StartIndex/Limit offset paging.",
+      "basis": "ADR-022 clause 3 requires the resume to return the page strictly after a supplied key and clause 2 requires the next run to resume at the first uncovered (overflowed) item; ADR-029 clause 2's 'returns the page strictly after it' refers to the located boundary item. A page-aligned return would skip the anchor page's tail for a cycle.",
+      "impact": "No strictly ordered item is deferred a cycle by the resume granularity; the locate walk remains O(offset) rows in bounded pages."
+    },
+    {
+      "question": "How does the bounded outcome vocabulary classify a malformed hint (an empty item id or a default LibraryWorkItem), which the ADR does not define?",
+      "chosen": "Stopped.",
+      "basis": "The vocabulary is fixed at five values; a malformed hint can never be queued, and the stop classification makes a whole-scope run stop at it rather than silently skip unqueueable work. The reconciliation service never emits such a hint (it skips Guid.Empty and non-eligible items before the enqueue boundary), so this only guards a programming error.",
+      "impact": "Unreachable from the documented whole-scope path; boolean TryEnqueue still returns false for the same input as before."
+    },
+    {
+      "question": "How are the new bounded enqueue outcomes mapped onto the run result, which previously had no overflow vocabulary?",
+      "chosen": "Overflow maps to a new bounded LibraryReconciliationOutcome.QueueSaturated (the run stopped at the bounded queue capacity); Stopped maps to the existing Fenced outcome (the ADR defines Stopped as the lifecycle fence being raised or the plugin shutting down). Both stop the run and advance the cursor only over the covered prefix.",
+      "basis": "ADR-022 clause 2 describes Overflow and Stopped identically for cursor advancement but does not name a run result; the existing Fenced value already means 'the lifecycle fence refused new work'.",
+      "impact": "A bounded diagnostic value is added to the run outcome; the log event selection for it remains ReconciliationSkipped and carries the bounded reason text."
+    },
+    {
+      "question": "Does the post-save prefix re-cover stop at the first Overflow like the cursor-governed runs?",
+      "chosen": "No: PostSave keeps the pre-F4 behavior (enumerate the whole scope, enqueue what fits, Completed outcome) and never reads or writes the cursor.",
+      "basis": "ADR-022 clause 6 states the bounded post-save trigger is deliberately excluded, always enumerates from the start, and leaves the cursor untouched; the per-run stop rule is the cursor advance rule of clause 2.",
+      "impact": "Post-save Inspected/Eligible/Enqueued counts and its Completed outcome are unchanged from before this task; only the scheduled/post-scan runs stop at the first overflow."
+    },
+    {
+      "question": "What happens when the cursor record or the host SortName hint cannot be read at runtime?",
+      "chosen": "The cursor read/write is best-effort (a read failure is a miss and resets to the start; a write failure leaves the previous record and never fails the run), and a SortName hint that cannot be read is stored as an empty hint while the unique itemId remains the anchor.",
+      "basis": "The cursor is rebuildable Cache state (ADR-022 clause 4) and ADR-029 clause 3 makes the SortName component a boundary hint/diagnostic, not the ordering authority.",
+      "impact": "A state or hint failure degrades the mechanism to a bounded re-cover or a lossless identity anchor; no run result changes."
+    }
+  ],
+  "test_sensitivity": [
+    "New in attempt 2, R-19.1-01 probe A: removing the 'or WorkHintEnqueueOutcome.Stopped' clause from the LibraryReconciliationService.cs:253-254 stop condition made ReconciliationCursorResumeTests.StoppedStopsAtTheFirstUncoveredItemAndAdvancesTheCursorOnlyOverTheCoveredPrefix fail (Failed 1, Passed 0, Skipped 0, Total 1; 'Expected: Fenced / Actual: Completed' at the first assertion). This mutation is the same code shape as 'cover the stopped item and keep going / wrap past it', so it is the exact class of defect the reviewer named; probe reverted.",
+    "New in attempt 2, R-19.1-01 probe B: counting the stopped item as covered (covered++ before the stop break, outcome still Fenced) made the same fact fail (Failed 1, Passed 0, Skipped 0, Total 1; 'Expected: 2 / Actual: 3' at Assert.Equal(2, first.Covered)), proving the 'stopped item is not counted as Covered' assertion is independently sensitive; probe reverted.",
+    "Attempt-1 probes P1-P13 (recorded in docs/implementation/19.1/worker-report.json) remain valid: nothing they cover was modified in attempt 2 (the two attempt-2 probes were reverted exactly, and the new fact only adds coverage). Their strongest relevant probe, P11, showed that counting the overflowed item as covered fails 4 stop/advance facts.",
+    "The attempt-2 probes were not repeated beyond the two named; after both reverts the tree was rebuilt (0 warnings / 0 errors) and the full suite plus the 291-test focused filter re-ran green (Failed 0)."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/status.md"
+    ],
+    "old_values_removed": [
+      "docs/plan/state.json task 19.1 reports: the single-entry list [docs/implementation/19.1/worker-report.json] -> [docs/implementation/19.1/worker-report.json, docs/implementation/19.1/worker-report.attempt-2.json]; done stays true; updated_utc advanced 2026-09-28T10:07:26Z -> 2026-09-28T10:35:09Z. docs/implementation/19.1/worker-report.json is preserved byte-unchanged.",
+      "PLANS.md line 213 already reads '- [x] 19.1 F4 mechanism confirmation and persisted-cursor implementation' from attempt 1; not hand-edited in attempt 2, and dotnet run scripts/render-docs-state.cs --check (inside scripts/check-docs.sh) confirms the checkbox and the state.json done flag agree and both generated blocks (docs/status.md and the PLANS.md milestone table) are current.",
+      "docs/status.md: the renderer reports up to date; its generated block carries only the v1.1.0 release suite counts (0/1494/63/1557 etc., historical release record), so the v1.2 in-progress suite count change (1917 -> 1918 total) does not appear on this surface.",
+      "docs/changelog/v1.2.0.md: the 18.3 entries cite the 1863-count pre-19.1 baseline as historical release-record text; immutable history, not rewritten. The Phase 19 changelog entry remains reserved for task 19.5.",
+      "Deliberately deferred to task 19.5 (unchanged from attempt 1 and from reviewer R-19.1-03): docs/architecture/08-reconciliation-and-update-flow.md still says the whole-scope mechanism is not implemented yet, and the F4 entry in docs/limitations/open.md remains Open.",
+      "README.md checked again for a F4/cursor/coverage/suite-count statement and has none relevant to this rework, so no update."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    {
+      "finding_id": "R-19.1-01",
+      "closure": "Added the fact ReconciliationCursorResumeTests.StoppedStopsAtTheFirstUncoveredItemAndAdvancesTheCursorOnlyOverTheCoveredPrefix (tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:226-265, no production change). It scripts RecordingWorkHintSink.OutcomeOverride to return WorkHintEnqueueOutcome.Stopped for items[2] mid-scope on a Scheduled run and asserts: (1) outcome Fenced; (2) Inspected 3, Covered 2, Enqueued 2; (3) only items[0] and items[1] were accepted (the stopped item produced no hint); (4) the persisted cursor is a Position record at the last covered item items[1] (not items[2]) with the 'example movie' SortName hint; (5) the next run resumes at the stopped item (ResumeRequests (0,2)) and covers items[2], items[3], items[4] to Completed. The reviewer's 'No production change' expectation held; no production defect was found. Probes proved the fact fails under both named mutations.",
+      "evidence": "New fact: tests/ArrTags.Tests/ReconciliationCursorResumeTests.cs:226-265. Test results: ReconciliationCursorResumeTests Failed 0, Passed 21, Skipped 0, Total 21; focused 291-test filter Failed 0, Passed 291, Skipped 0, Total 291; full suite Failed 0, Passed 1854, Skipped 64, Total 1918. Probe A (Stopped clause deleted): Failed 1, Total 1, 'Expected: Fenced / Actual: Completed'. Probe B (stopped item counted covered): Failed 1, Total 1, 'Expected: 2 / Actual: 3' at first.Covered. Both probes reverted; restored stop branch at LibraryReconciliationService.cs:245-261 verified by inspection."
+    }
+  ],
+  "known_limitations": [
+    "The F4 successive-run coverage matrix remains task 19.2: this task covers the mechanism's unit behavior (resume, scope reset, missing/torn/out-of-range reset, advance/stop/wrap, including the enqueue-returned Stopped stop added in attempt 2) and one three-successive-run advance with the real queue over six candidates; it does not test a scope larger than QueueCapacity, repeated coalesce/in-flight saturation, or library mutation between runs.",
+    "F6 (the ConfigurationStale re-enqueue) is task 19.3 and was not implemented or touched; task 19.5 owns the F4 limitation resolution, the Phase 19 changelog entry, and the docs/architecture/08 wording update, so those surfaces remain as they were before this task.",
+    "Reviewer R-19.1-02 (LOW, noted, no action for 19.1) records that ReconciliationCursorStore writes the cursor as a Cache record (ReconciliationCursorStore.cs:132 writes StateAuthority.Cache) while StateRetentionService.RunRetentionPass exempts only MetadataStateStore.RecordKind from cache retention (StateRetentionService.cs:147), so the cursor record is subject to render-cache age pruning (RenderCacheTtlMinutes default 1440 minutes, floor 1 minute). Precondition: a whole-scope run does not rewrite the cursor within the TTL (a configured whole-scope interval longer than the TTL). Consequence: the record is pruned and the next run resets to the start, i.e. a bounded re-cover, consistent with ADR-022's Cache 'missing resets to the start' semantics; under the default 12h interval (ArrTagsReconciliationTask.DefaultInterval) the cursor is rewritten before expiry. The reviewer deferred a fix or a registered limitation to task 19.5.",
+    "Reviewer R-19.1-04 (INFORMATIONAL) records that overlapping whole-scope runs are not cross-run locked: each run reads the cursor once and persists only its own covered position, so the last writer can move the cursor back to an earlier covered position (bounded re-cover) but cannot skip an uncovered item. No change was required or made.",
+    "The ADR-029 registered residuals stand unchanged: the resume is O(offset) ordered rows per run and O(N^2/QueueCapacity) cumulative skip work over a full cycle, where N is the server-wide movie+episode candidate count (the enumerator query is not library-scoped); rows tying on the exact (SortName, Name) pair have no host-guaranteed order; removing the anchor resets the cursor to the start; and the host order is an internal implementation detail. No runtime cost measurement was performed in this task.",
+    "A host item whose SortName getter throws stores an empty SortName hint; the item identifier still anchors the cursor. Production host items compute SortName normally, and the test fixtures set it explicitly.",
+    "The default suite skips 64 host-guarded/golden-native tests (no pinned host part was needed for this task); no live pinned-host verification was run and none is claimed."
+  ],
+  "ready_for_next_task": true
+}

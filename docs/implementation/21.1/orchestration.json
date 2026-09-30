@@ -1,0 +1,120 @@
+{
+  "task": "21.1",
+  "title": "Version bump and release metadata",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "7eb7b85",
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.1 bumps the plugin version and updates release metadata. It introduces no new Jellyfin 12 API, lifecycle, ordering, or platform assumption, changes no Sonarr/Radarr API contract, version range, or webhook payload, and is the first implementation of no unverified ADR clause. Its acceptance criteria ('1.2.0.0 in build.yaml and Directory.Build.props' and 'metadata accurately describes the shipped v1.2 behavior') depend only on the already-implemented Phases 15-20 behavior and the accepted ADRs, so no pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 193093,
+        "output_tokens": 16532,
+        "reasoning_tokens": 24302,
+        "cache_read_tokens": 6433664,
+        "cache_write_tokens": 0,
+        "total_tokens": 6667591,
+        "cost_usd": 0.07276534200000001,
+        "duration_seconds": 719,
+        "session_id": "ses_f139aa3e2ffehT4fLukHxINbnO"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 81581,
+        "output_tokens": 93308,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 5453440,
+        "cache_write_tokens": 0,
+        "total_tokens": 5628329,
+        "cost_usd": 0,
+        "duration_seconds": 1632,
+        "session_id": "ses_f138f5a7affeoob4VMEtyTtdxj"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 41387,
+        "output_tokens": 7816,
+        "reasoning_tokens": 6146,
+        "cache_read_tokens": 884237,
+        "cache_write_tokens": 0,
+        "total_tokens": 939586,
+        "cost_usd": 0,
+        "duration_seconds": 150,
+        "session_id": "ses_f138f5a78ffe4nHIuo2rLJi8SB"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 67079,
+        "output_tokens": 12208,
+        "reasoning_tokens": 20854,
+        "cache_read_tokens": 1256064,
+        "cache_write_tokens": 0,
+        "total_tokens": 1356205,
+        "cost_usd": 0.03366724200000001,
+        "duration_seconds": 351,
+        "session_id": "ses_f137606d5ffe1bTGnw9IxeMmnw"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 28614,
+        "output_tokens": 11027,
+        "reasoning_tokens": 3142,
+        "cache_read_tokens": 755160,
+        "cache_write_tokens": 0,
+        "total_tokens": 797943,
+        "cost_usd": 0,
+        "duration_seconds": 200,
+        "session_id": "ses_f13708777ffeN6ZhdJlwLq0EXB"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Implementation review attempt 1 returned CHANGES_REQUIRED with finding 21.1-R1 (MEDIUM): the build.yaml changelog attributed the absent-baseline ArrTags-image removal to the configuration-narrowing trigger, which the shipped coordinator path cannot reach (ReadRetainedSource reports Absent -> NoSource before the restore branch; docs/architecture/09-persisted-artwork-rendering.md:276-282). The worker was re-invoked to reword the clause, repackage, and record closure. Implementation review attempt 2 returned APPROVED with 21.1-R1 resolved."
+    }
+  ],
+  "notes": [
+    "Specialist trigger: the task changed test version literals, so test-quality-reviewer was delegated. It returned PASS_WITH_FINDINGS with TQ-21.1-01 (MEDIUM, open) and TQ-21.1-02 (LOW, open): the Directory.Build.props half of the acceptance criterion has no automated guard (three independent literals), and the packaged-archive facts select by ordinal-last filename without asserting the packaged manifest version. Both are pre-existing/forward-looking false-confidence risks, not present defects (the build.yaml and compiled assembly both report 1.2.0.0). Recorded for the phase/release review and for possible test-strengthening in task 21.3; they do not block 21.1, whose acceptance criteria are met.",
+    "test-quality-reviewer was delegated as a specialist evidence report, not a completion gate; the required gate is implementation-reviewer attempt 2 = APPROVED.",
+    "The host-guarded suite and the live pinned-host matrix are explicitly later tasks (21.3/21.4) and were not required for this metadata task."
+  ]
+}

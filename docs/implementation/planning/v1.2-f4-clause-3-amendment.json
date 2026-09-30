@@ -1,0 +1,148 @@
+{
+  "name": "v1.2-f4-clause-3-amendment",
+  "milestone": "v1.2",
+  "status": "RECORDED (user approved amending ADR-022 clause 3; ADR-029 accepted; Phase 19 task set and authoritative execution order unchanged and not started; no product behavior implemented)",
+  "change": "Amend ADR-022 clause 3 to the identity-anchored reconciliation resume recommended by the read-only architecture review (docs/reviews/architecture/adr-022-clause-3-conformance.json), recorded by the new ADR-029, and reconcile the decisions index, architecture section 8, and the v1.2 plan to reference ADR-022 as amended by ADR-029. Phase 19 tasks 19.1/19.2 now implement and test the amended clause 3; task 19.5 finalizes the F4 open-limitation resolution. No phase structure, task ID, checkbox, execution order, or milestone table changed.",
+  "decision": {
+    "approved_by": "user",
+    "approved_utc": "2026-09-28",
+    "adr": "docs/decisions/ADR-029.md",
+    "title": "Identity-Anchored Reconciliation Cursor (Amendment to ADR-022 Clause 3)",
+    "status": "Accepted (v1.2)",
+    "amends": "ADR-022 clause 3 only",
+    "mechanism": "Identity-anchored resume: the persisted, bounded (SortName, itemId) Cache record stays; the resume locates the record's boundary item by its unique itemId in the host's own candidate order via clause 3's own bounded-linear-skip-at-run-start branch (no host keyset predicate exists); the unsupported host-predicate seek branch is withdrawn; an unlocatable anchor resets to the start (clause 5).",
+    "host_order": "SortName ASC, Name ASC (raw item Name, not the item id); no supported OrderBy/ItemSortBy identifier tie-break; the (SortName, Name) order is not a guaranteed strict total order.",
+    "resume_bound": "One run is bounded by the server-wide candidate count N plus QueueCapacity, with an O(offset) page-reach resume (bounded ReconciliationBatchSize pages, cancellation between and inside pages, yields per clause 7); a full round-robin cycle is O(N^2/QueueCapacity) cumulative skip work. 'Bounded' is not a constant bound.",
+    "caveats": [
+      "Rows tying on the exact (SortName, Name) pair have no host-guaranteed relative order.",
+      "The enumerator query is server-wide (N is the server-wide movie+episode candidate count), so a late-cycle resume scans a large prefix every run.",
+      "The host order is an internal implementation detail with no plugin compatibility promise."
+    ],
+    "unchanged_clauses": [
+      "ADR-022 clause 1 (enqueue-outcome vocabulary)",
+      "ADR-022 clause 2 (cursor advance rule)",
+      "ADR-022 clause 4 (storage: single bounded, versioned, integrity-checked Cache record of fixed kind and id)",
+      "ADR-022 clause 5 (reset on scope change and missing/torn/out-of-range)",
+      "ADR-022 clause 6 (trigger exclusion)",
+      "ADR-022 clause 7 (per-run bounds)",
+      "ADR-022 persisted record shape, Cache authority, scope-reset rule, trigger exclusion, and per-run bounds"
+    ],
+    "adr_022_text_rewritten": false,
+    "overlap_resolution": "The review's AR-ADR022C3-07 flagged that the only implementable correction is functionally identity-anchored and overlaps the previously rejected, non-canonical ADR-029 direction. The user explicitly approved this amendment; the discarded, non-canonical ADR-029 on the space-bunny-free-test branch is void and was not imported. No open decision remains for task 19.1 to proceed.",
+    "decision_gate": "DG-19 remains resolved; its reference now reads ADR-022 as amended by ADR-029 (v1.2). No gate is reopened."
+  },
+  "affected_documents": [
+    {
+      "path": "docs/decisions/ADR-029.md",
+      "change": "New ADR (Accepted (v1.2), 2026-09-28): the amendment to ADR-022 clause 3, based on the approved amendment_prose; states it amends only clause 3 and that clauses 1, 2, 4, 5, 6, 7 and the persisted record shape/Cache authority/scope reset/trigger exclusion/per-run bounds are unchanged; registers the residual limitations; lists the rejected alternatives."
+    },
+    {
+      "path": "docs/decisions/00-index.md",
+      "change": "ADR-022 row Status updated to 'Accepted (v1.2; clause 3 amended by ADR-029 (v1.2))' in the existing ADR-016/019/020 amendment-note style; ADR-029 row added."
+    },
+    {
+      "path": "docs/architecture/08-reconciliation-and-update-flow.md",
+      "change": "The F4 paragraph now states the accepted mechanism (host order (SortName, Name); identity-anchored resume via bounded linear skip; the explicit page-reach/offset bound; the registered tie/cost caveats), references ADR-022 as amended by ADR-029, and states the mechanism is not implemented yet (tasks 19.1-19.2) with the F4 open-limitation status finalized by task 19.5. No overclaim."
+    },
+    {
+      "path": "docs/planning/v1.2.md",
+      "change": "Goal F4 Decision references 'ADR-022 as amended by ADR-029'; the DG-19 gate row notes the amendment; the section-4 decision-records table gains an ADR-029 row. The F4 acceptance-criterion text is unchanged (the review concluded the criterion text need not change; the bound is documented in the ADR and architecture)."
+    },
+    {
+      "path": "PLANS.md",
+      "change": "Phase 19 Goal and Deliverables now reference ADR-022 as amended by ADR-029. Task IDs, checkboxes, authoritative execution order (19.1, 19.2, 19.3, 19.4, 19.5), and the generated milestone table are unchanged."
+    }
+  ],
+  "residual_limitations": [
+    {
+      "id": "F4-R1",
+      "description": "Per-run resume is O(offset) ordered rows and a full cycle is O(N^2/QueueCapacity) cumulative skip work; N is the server-wide movie+episode candidate count because the enumerator query is not library-scoped.",
+      "source_finding": "AR-ADR022C3-03",
+      "severity": "MEDIUM",
+      "register_when": "docs/limitations/open.md / architecture when F4 is resolved by task 19.5; recorded in ADR-029 Consequences now."
+    },
+    {
+      "id": "F4-R2",
+      "description": "Rows tying on the exact (SortName, Name) pair have no host-guaranteed relative order, so a page boundary inside such a tie can re-cover or persistently skip an item across a cycle.",
+      "source_finding": "AR-ADR022C3-04",
+      "severity": "MEDIUM",
+      "register_when": "docs/limitations/open.md / architecture when F4 is resolved by task 19.5; recorded in ADR-029 Consequences now."
+    },
+    {
+      "id": "F4-R3",
+      "description": "Removing or making ineligible the boundary anchor resets the cursor to the start, re-covering one cycle's prefix (a bounded but visible cost).",
+      "source_finding": "AR-ADR022C3-05",
+      "severity": "LOW",
+      "register_when": "recorded in ADR-029 Consequences now."
+    },
+    {
+      "id": "F4-R4",
+      "description": "The host order is an internal implementation detail with no plugin compatibility promise; the mechanism degrades to a rescan/restart, not a wrong result, if it changes.",
+      "source_finding": "AR-ADR022C3-05",
+      "severity": "LOW",
+      "register_when": "recorded in ADR-029 Consequences now."
+    }
+  ],
+  "task_impacts": [
+    {
+      "id": "19.1",
+      "impact": "Now implements the amended clause 3: the persisted bounded (SortName, itemId) Cache cursor whose resume locates the boundary item by its unique itemId in the host's (SortName, Name) order via a bounded linear skip (no host-predicate seek), with reset-to-start when the anchor cannot be located. The bounded enqueue-outcome vocabulary, cursor-advance rule, scope reset, post-save exclusion, and per-run bounds are unchanged."
+    },
+    {
+      "id": "19.2",
+      "impact": "Now covers the amended resume: successive-run coverage tests must include the identity-anchor resume case (locate-by-itemId, add/remove before the anchor does not shift the resume point, wrap), in addition to the existing coalesce/in-flight/overflow-stop and library-mutation cases (see verification_requirements_for_19_2)."
+    },
+    {
+      "id": "19.5",
+      "impact": "Finalizes the F4 open-limitation resolution and records the registered residual limitations in the canonical limitation/architecture surfaces when the phase lands."
+    }
+  ],
+  "verification_requirements_for_19_2": [
+    "Identity-anchor resume: with a persisted (SortName, itemId) cursor, a run resumes at the page strictly after the boundary item located by its unique itemId in the host's (SortName, Name) order; the SortName component is a hint/diagnostic, not the ordering authority.",
+    "Unlocatable anchor: when the boundary item was removed or became ineligible, the cursor resets to the start and the run does not fail.",
+    "Library mutation before the anchor: adding/removing an item before the cursor does not shift the resume point (items after the cursor are covered in the current cycle; items before are covered at the next wrap or after a scope reset).",
+    "Successive-run coverage: runs over a scope larger than QueueCapacity cover the whole scope over time (round-robin) and the cursor wraps at the end.",
+    "Coalesce case: a Coalesced enqueue is covered and does not stall the run.",
+    "In-flight case: an InFlight enqueue is covered and does not stall the run.",
+    "Overflow-stop: the run stops at the first Overflow and advances the cursor only over the covered prefix; the next run resumes at the first uncovered item.",
+    "Stopped case: a Stopped outcome stops the run the same way.",
+    "Scope reset: a changed enabled-library/item-type scope tuple resets the cursor to the start.",
+    "Trigger exclusion: event, webhook, per-item, and post-save triggers do not read or write the cursor.",
+    "Per-run boundedness honesty: the resume scan is walked in bounded ReconciliationBatchSize pages with cancellation between and inside pages and yields per clause 7; the test asserts the page-reach/offset bound (server-wide candidate count plus QueueCapacity), not a constant bound.",
+    "Tie caveat: a test documents (or exercises) that coverage is guaranteed for rows strictly ordered by (SortName, Name) and is best-effort for rows tying on the exact pair; the tie case is a registered residual, not asserted as covered."
+  ],
+  "phase_structure": {
+    "changed": false,
+    "note": "Phase 19 tasks, IDs, checkboxes, authoritative execution order (19.1, 19.2, 19.3, 19.4, 19.5), phases 15-21, and the generated milestone table are unchanged. No phase was added, split, reordered, or reopened. docs/plan/state.json is not modified by this amendment."
+  },
+  "history_safe": {
+    "adr_022_text_rewritten": false,
+    "old_v1_2_plan_review_rewritten": false,
+    "reviews_modified": false,
+    "implementation_history_modified": false,
+    "non_canonical_adr_029_imported": false
+  },
+  "files_changed": [
+    "docs/decisions/ADR-029.md (new)",
+    "docs/decisions/00-index.md (ADR-022 status note; ADR-029 row)",
+    "docs/architecture/08-reconciliation-and-update-flow.md (F4 paragraph)",
+    "docs/planning/v1.2.md (Goal F4 Decision; DG-19 row; section-4 ADR-029 row)",
+    "PLANS.md (Phase 19 Goal and Deliverables ADR-029 reference)",
+    "docs/implementation/planning/v1.2-f4-clause-3-amendment.json (this record)"
+  ],
+  "not_changed": [
+    "docs/decisions/ADR-022.md (text not rewritten)",
+    "docs/reviews/** (the architecture review and the v1.2 plan review are history)",
+    "docs/implementation/** history (only this new planning record is added)",
+    "docs/plan/state.json (no phase/task status change)",
+    "PLANS.md task IDs, checkboxes, authoritative execution order, and the generated milestone table",
+    "docs/planning/v1.2.md F4 acceptance-criterion text"
+  ],
+  "verification": {
+    "manual_gate": "scripts/check-docs.sh",
+    "result": "PASS"
+  },
+  "open_questions": [
+    "None. The ADR-029-overlap question (review finding AR-ADR022C3-07) is resolved by explicit user approval of the amendment; task 19.1 is unblocked."
+  ]
+}

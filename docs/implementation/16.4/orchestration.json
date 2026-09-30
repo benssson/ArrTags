@@ -1,0 +1,68 @@
+{
+  "task": "16.4",
+  "title": "Modal-on-change research spike (jellyfin-expert)",
+  "phase": 16,
+  "status": "COMPLETE",
+  "commit": "6a76327",
+  "subagents": [
+    {
+      "role": "jellyfin-expert",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "jellyfin-expert",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 805542,
+        "output_tokens": 25017,
+        "reasoning_tokens": 53892,
+        "cache_read_tokens": 10920960,
+        "cache_write_tokens": 0,
+        "total_tokens": 11851411,
+        "cost_usd": 0.16106724000000002,
+        "duration_seconds": 885,
+        "session_id": "ses_f2573ecebffeJUylsuEq0qe13k",
+        "note": "Orchestrator-delegated spike required by ADR-028 clause 4; the implementation-worker cannot spawn the jellyfin-expert. Produced docs/research/jellyfin-expert/modal-notification-api.json, which the worker then consolidated as the task evidence."
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 109087,
+        "output_tokens": 11312,
+        "reasoning_tokens": 15346,
+        "cache_read_tokens": 2686976,
+        "cache_write_tokens": 0,
+        "total_tokens": 2822721,
+        "cost_usd": 0.040418778,
+        "duration_seconds": 320,
+        "session_id": "ses_f2569a28effeMmMEtBmdgLoC56"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 54114,
+        "output_tokens": 7099,
+        "reasoning_tokens": 7227,
+        "cache_read_tokens": 797952,
+        "cache_write_tokens": 0,
+        "total_tokens": 866392,
+        "cost_usd": 0.019106556000000004,
+        "duration_seconds": 162,
+        "session_id": "ses_f25649067ffey062iYrg7iPuVz"
+      }
+    }
+  ],
+  "rework": []
+}

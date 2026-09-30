@@ -1,0 +1,177 @@
+{
+  "task": "19.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the F4 successive-run coverage matrix as one new test file (tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs, 17 facts / 19 test cases) and changed no production code. Every fact drives the real JellyfinMediaLibraryEnumerator (over an ILibraryManager double that serves the pinned host's effective (SortName, Name) candidate order and records every page read), the real LibraryReconciliationService, a real ReconciliationCursorStore under a temporary StateRepository, and the real LibraryWorkQueue (wrapped only to record the bounded outcome the queue itself returned). Coverage: identity-anchor resume strictly after the located itemId with a stale SortName hint ignored and the persisted hint asserted as diagnostic; the host (SortName, Name) tie-break; an unlocatable anchor (removed, and left the Movie/Episode candidate enumeration) resetting to the start without failing; library mutation (remove + add before the cursor, add after) not shifting the resume point and the added-before item covered at the next wrap; round-robin coverage of 14 items with QueueCapacity 3 (per-run covered 3,3,3,3,2, exact host-order coverage, wrap, restart); the real-queue Coalesced and InFlight cases covered without stalling; Overflow and Stopped stopping at the first uncovered item with the cursor advanced only over the covered prefix and the next run resuming there; the enabled-library-set and item-type scope resets; trigger exclusion for post-save (byte-identical cursor record, no locate walk), the library event/per-item path and the webhook path (both enqueue their own hint, no library reads, byte-identical record) plus a structural check with a positive control; the page-reach bound asserted as server-wide candidate count plus QueueCapacity (10 rows for N=8 and 18 rows for N=16, both above QueueCapacity, both within N+capacity, all pages bounded by ReconciliationBatchSize) and real-enumerator cancellation inside the locate walk leaving the cursor untouched; and the registered exact-tie residual exercised as a deferral, never asserted as covered. Ten mutation probes (A-J) proved each load-bearing fact fails under the behavior it claims; all probes were reverted. Build 0 warnings/0 errors; default suite Failed 0, Passed 1873, Skipped 64, Total 1937 (task 19.1 baseline 0/1854/64/1918: +19 passed/+19 total, 0 new skips).",
+  "validation": [
+    "source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (run on the final tree; also after every probe revert).",
+    "source /config/arrtags-env.sh && ./build.sh test -> Failed 0, Passed 1873, Skipped 64, Total 1937 (baseline recorded for task 19.1: Failed 0, Passed 1854, Skipped 64, Total 1918; +19 passed/+19 total, 0 new skips, matching the 19 new test cases).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~SuccessiveRunCoverageMatrixTests\" -> Failed 0, Passed 19, Skipped 0, Total 19 (17 facts; the UnlocatableAnchor and ChangedScopeTuple theories each contribute 2 cases).",
+    "dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~SuccessiveRunCoverageMatrixTests|FullyQualifiedName~ReconciliationCursorResumeTests|FullyQualifiedName~ReconciliationCursorStoreTests|FullyQualifiedName~MediaLibraryResumeTests|FullyQualifiedName~LibraryWorkQueueTests|FullyQualifiedName~ReconciliationTriggerTests|FullyQualifiedName~ConfigurationReconciliationTriggerTests|FullyQualifiedName~LibraryUpdateBoundaryTests|FullyQualifiedName~WebhookResolutionTests|FullyQualifiedName~StateBoundaryTests\" -> Failed 0, Passed 167, Skipped 0, Total 167.",
+    "Probe A (identity-anchor strict-after): replaced 'var startIndex = offset + index + 1' with the page-aligned 'var startIndex = offset + page.Count' in JellyfinMediaLibraryEnumerator.ResumeCandidatesAsync, rebuilt, ran IdentityAnchorResumeReturnsThePageStrictlyAfterTheAnchorAndTreatsSortNameAsAHint -> Failed 1, Passed 0, Skipped 0, Total 1 (accepted [m05,m06] instead of [m04,m05]); probe reverted.",
+    "Probe B (coalesce covered): added Coalesced to the service's Overflow-or-Stopped stop condition, rebuilt, ran CoalescedEnqueueIsCoveredAndDoesNotStallTheRun -> Failed 1, Passed 0, Skipped 0, Total 1 ('Expected: Completed / Actual: Fenced'); probe reverted.",
+    "Probe C (covered-prefix honesty): counted the stopped/overflowed item as covered before the stop break (covered++ + lastCovered before stopOutcome), rebuilt, ran OverflowStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere and StoppedQueueStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere -> Failed 2, Passed 0, Skipped 0, Total 2 ('Expected: 2 / Actual: 3' at first.Covered in both); probe reverted.",
+    "Probe D (scope reset): bypassed the scope check in ReconciliationCursorStore.Read, rebuilt, ran ChangedScopeTupleResetsTheCursorToTheStart -> Failed 2, Passed 0, Skipped 0, Total 2 (both theory cases covered only the tail [m04,m05] instead of all 5); probe reverted.",
+    "Probe E (post-save exclusion): added PostSave to usesCursor in LibraryReconciliationService, rebuilt, ran PostSaveTriggerEnumeratesFromTheStartAndLeavesTheCursorUntouched -> Failed 1, Passed 0, Skipped 0, Total 1 (covered [m02,m03] instead of [m01,m02,m03], so the cursor was read); probe reverted.",
+    "Probe F (Stopped stop): removed the 'or WorkHintEnqueueOutcome.Stopped' clause from the stop condition, rebuilt, ran StoppedQueueStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere -> Failed 1, Passed 0, Skipped 0, Total 1 ('Expected: Fenced / Actual: Completed'); probe reverted.",
+    "Probe G (page-reach bound): ignored the located resume offset (startIndex = 0; prefetched = null) in the service, rebuilt, ran OneRunPageReachTracksTheServerWideCandidateCountPlusQueueCapacity -> Failed 1, Passed 0, Skipped 0, Total 1 ('The 8-candidate run read 14 rows, above 8 + 3.'); probe reverted.",
+    "Probe H (unlocatable anchor): returned Located(offset, Array.Empty<BaseItem>()) instead of AnchorNotFound at the end of the locate walk, rebuilt, ran UnlocatableAnchorResetsToTheStartAndTheRunDoesNotFail -> Failed 2, Passed 0, Skipped 0, Total 2 (both scenarios 'Expected: 5 / Actual: 0' at result.Covered); probe reverted.",
+    "Probe I (in-flight covered): added InFlight to the stop condition, rebuilt, ran InFlightEnqueueIsCoveredAndDoesNotStallTheRun -> Failed 1, Passed 0, Skipped 0, Total 1 ('Expected: Completed / Actual: Fenced'); probe reverted.",
+    "Probe J (round-robin advance): made AdvanceCursor always write the wrapped start (_cursorStore.Write(scope, null)), rebuilt, ran SuccessiveRunsCoverAScopeLargerThanQueueCapacityRoundRobinAndWrap -> Failed 1, Passed 0, Skipped 0, Total 1 (covered-order collection differ: the prefix was re-covered); probe reverted.",
+    "After all ten probes were reverted: ./build.sh build -> 0 Warning(s), 0 Error(s); SuccessiveRunCoverageMatrixTests -> Failed 0, Passed 19, Skipped 0, Total 19; ./build.sh test -> Failed 0, Passed 1873, Skipped 64, Total 1937 (final tree, after the last test-assertion tightening in the tie fact).",
+    "git status --short after the probes -> only '?? tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs'; git diff --stat -> empty; grep -rn PROBE src/ArrTags tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs -> no probe residue. No production file was changed by this task.",
+    "dotnet run scripts/render-docs-state.cs -> 'status.md: up to date', 'PLANS.md: up to date' (both generated blocks current after state.json task 19.2 done=true and the PLANS.md checkbox).",
+    "scripts/check-docs.sh on the tree before docs/implementation/19.2/worker-report.json was written -> check-docs: PASS, every section (generated status blocks current and plan state consistent, compatibility stubs, decisions index 29 ADRs, limitations index, architecture/data-model indexes, artifact identity, doc budget, current-state links, agent report contracts).",
+    "scripts/check-docs.sh with docs/implementation/19.2/worker-report.json in place -> fails only the agent-contract worker/reviewer pairing line ('task 19.2 has a worker report but no reviewer report'); every other section passes; the orchestrator's implementation-reviewer report closes that line, the same transient pattern tasks 15.4-19.1 recorded.",
+    "Read (not modified) the pinned-host source type used by the enumerator query: /tmp/jfsrc jellyfin 6c073e19 MediaBrowser.Controller/Entities/InternalItemsQuery.cs declares 'public BaseItemKind[] IncludeItemTypes', which the library double filters on."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs (new)",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/implementation/19.2/worker-report.json (this report)"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Deliverable: a successive-run coverage matrix that proves the F4 behavior against the real enumerator, reconciliation service, cursor store, and bounded queue (not a tautological mock), using and extending the existing test infrastructure.",
+      "evidence": "tests/ArrTags.Tests/SuccessiveRunCoverageMatrixTests.cs: CoverageHarness wires JellyfinMediaLibraryEnumerator over a DispatchProxy ILibraryManager (HostOrderedLibraryManager) that serves the pinned host's (SortName, Name) order, applies the Movie/Episode candidate filter and StartIndex/Limit paging, and records every page; the real LibraryReconciliationService; the real ReconciliationCursorStore over a real temp StateRepository; and the real LibraryWorkQueue (QueueRecordingSink delegates enqueue and only records the queue's own outcome). Reused existing fixtures (ReconciliationFixtures, ReconciliationLibraryResolver, FakeLibraryEventSource, LibraryEventFixtures); 17 facts / 19 cases."
+    },
+    {
+      "criterion": "Verification requirement 1: identity-anchor resume: with a persisted (SortName, itemId) cursor, a run resumes at the page strictly after the boundary item located by its unique itemId in the host's (SortName, Name) order; the SortName component is a hint/diagnostic, not the ordering authority.",
+      "evidence": "IdentityAnchorResumeReturnsThePageStrictlyAfterTheAnchorAndTreatsSortNameAsAHint: cursor at the third item with a stale 'zzz-stale-hint'; the run's accepted hints are exactly [m04,m05] (strictly after m03; a page-aligned resume would accept [m05,m06]) and the host request trail is (0,2),(2,2),(3,2),(5,2); the persisted position is m05 with its own SortName 'm05' as the diagnostic hint. ResumeUsesTheHostSortNameThenNameOrderAndNotTheInsertionOrder: two items share SortName 'beta' and are distinguished by Name ('Beta A' before 'Beta B' although Beta B was added first); the cursor on Beta A resumes at Beta B and gamma. Probe A proved the strict-after assertion fails under a page-aligned mutation."
+    },
+    {
+      "criterion": "Verification requirement 2: unlocatable anchor: when the boundary item was removed or became ineligible, the cursor resets to the start and the run does not fail.",
+      "evidence": "UnlocatableAnchorResetsToTheStartAndTheRunDoesNotFail (theory, 2 cases): the anchor is a random Guid absent from the library, or an item that left the Movie/Episode candidate enumeration (its kind changed). Both runs complete (Completed), cover all 5 items from the start, walk the whole order during the locate step and then enumerate from index 0 ((0,2),(2,2),(4,2),(0,2),(2,2),(4,2)), and rewrite the cursor as wrapped. Probe H proved the fact fails when an unlocatable anchor is reported as located."
+    },
+    {
+      "criterion": "Verification requirement 3: library mutation before the anchor: adding/removing an item before the cursor does not shift the resume point (items after the cursor are covered in the current cycle; items before are covered at the next wrap or after a scope reset).",
+      "evidence": "LibraryMutationBeforeTheAnchorDoesNotShiftTheResumePoint: with the cursor on m04, m02 is removed, m03a is added before m04 and m05a after it; run 1 covers exactly [m05, m05a, m06, m07] (the added-before item is not covered) and wraps; run 2 covers the full current scope including m03a in host order (8 items). The locate trail (0,2),(2,2),(4,2),(6,2),(8,2) shows m04 was still located by identity after its absolute index shifted."
+    },
+    {
+      "criterion": "Verification requirement 4: successive-run coverage: runs over a scope larger than QueueCapacity cover the whole scope over time (round-robin) and the cursor wraps at the end.",
+      "evidence": "SuccessiveRunsCoverAScopeLargerThanQueueCapacityRoundRobinAndWrap: 14 candidates, ReconciliationBatchSize 2, QueueCapacity 3; five runs cover 3,3,3,3,2 (each run bounded by the capacity and by N+capacity rows); the concatenated enqueue order equals the 14-id host order exactly (no re-covered prefix, no duplicate); the cursor wraps; a further run restarts at the first three candidates (QueueSaturated). Probe J proved the fact fails when the cursor never advances past a run."
+    },
+    {
+      "criterion": "Verification requirement 5: coalesce case: a Coalesced enqueue is covered and does not stall the run.",
+      "evidence": "CoalescedEnqueueIsCoveredAndDoesNotStallTheRun: a pending item with the same version-blind key is seeded into the real LibraryWorkQueue, so the real queue returns Coalesced for that item (recorded from the queue, not scripted); the run completes, covers all 6 items, enqueues the other 5, and wraps the cursor. Probe B proved the fact fails when Coalesced is treated as a stop."
+    },
+    {
+      "criterion": "Verification requirement 6: in-flight case: an InFlight enqueue is covered and does not stall the run.",
+      "evidence": "InFlightEnqueueIsCoveredAndDoesNotStallTheRun: an item is seeded and dequeued so the real queue holds its single-flight slot, and returns InFlight for that item; the run completes, covers all 6 items, enqueues the other 5, and wraps the cursor. Probe I proved the fact fails when InFlight is treated as a stop."
+    },
+    {
+      "criterion": "Verification requirement 7: overflow-stop: the run stops at the first Overflow, advances the cursor only over the covered prefix, and the next run resumes at the first uncovered item.",
+      "evidence": "OverflowStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere: QueueCapacity 2; the real queue accepts m01,m02 and returns Overflow for m03; the run reports QueueSaturated with Inspected 3 / Covered 2 / Enqueued 2 and persists Position m02 ('m02'); after draining, the next run resumes at m03 (request trail (0,2),(2,2),(4,2)), covers [m03,m04], and wraps. Probe C proved the fact fails when the overflowed item is counted as covered."
+    },
+    {
+      "criterion": "Verification requirement 8: stopped case: a Stopped outcome stops the run the same way.",
+      "evidence": "StoppedQueueStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere: the real queue is stopped between pages (StopAccepting via the host-request hook) so it returns Stopped for m03; the run reports Fenced with Inspected 3 / Covered 2 / Enqueued 2, persists Position m02, and after StartAccepting the next run resumes at m03 and covers the rest to a wrap. Probes C and F proved the covered-prefix and stop assertions are independently sensitive."
+    },
+    {
+      "criterion": "Verification requirement 9: scope reset: a changed enabled-library/item-type scope tuple resets the cursor to the start.",
+      "evidence": "ChangedScopeTupleResetsTheCursorToTheStart (theory, 2 cases): a cursor recorded under a different enabled-library set or under a different movie-poster surface scope; each run performs no locate walk, accepts all 5 items from index 0 ((0,2),(2,2),(4,2)), and rewrites the cursor as wrapped. Probe D proved the fact fails when the scope check is bypassed."
+    },
+    {
+      "criterion": "Verification requirement 10: trigger exclusion: event, webhook, per-item, and post-save triggers do not read or write the cursor.",
+      "evidence": "PostSaveTriggerEnumeratesFromTheStartAndLeavesTheCursorUntouched (the PostSave run enumerates from the start with no locate walk and the cursor record is byte-identical). LibraryEventAndPerItemPathsEnqueueTheirHintAndLeaveTheCursorUntouched (the real ArrTagsLifecycleService over the real queue enqueues the Added and Updated per-item hints, performs no library read, and the record is byte-identical). WebhookPathEnqueuesItsResolvedHintAndLeavesTheCursorUntouched (the real resolver + hosted intake over the real queue enqueues the resolved hint for the associated item, performs no library read, and the record is byte-identical). OnlyWholeScopeTriggersReferenceTheCursorStore (positive control that the whole-scope service does take the store, then no cursor type in the constructor parameters or instance fields of ArrTagsLifecycleService, JellyfinLibraryEventSource, ConfigurationReconciliationTrigger, the scheduled/post-scan tasks, WebhookIntakeService, WebhookReconciliationResolver, or LibraryWorkQueue). Probe E proved the PostSave byte-identity assertion fails if PostSave is made cursor-governed."
+    },
+    {
+      "criterion": "Verification requirement 11: per-run boundedness honesty: the resume scan is walked in bounded ReconciliationBatchSize pages with cancellation between and inside pages and yields per clause 7; the test asserts the page-reach/offset bound (server-wide candidate count plus QueueCapacity), not a constant bound.",
+      "evidence": "OneRunPageReachTracksTheServerWideCandidateCountPlusQueueCapacity: with the anchor near the end of the order, one run reads 10 rows for an 8-candidate scope and 18 rows for a 16-candidate scope, both within N+QueueCapacity (11 and 19), both above QueueCapacity, and strictly increasing with N; every host page request uses ReconciliationBatchSize (4); Covered stays within QueueCapacity. ResumeCancellationInsideTheRealLocateWalkLeavesTheCursorUntouched: cancelling inside the real locate walk reports Cancelled with no coverage and leaves the recorded position untouched (the real enumerator checks cancellation inside each page). Probe G proved the bound assertion fails when the located resume offset is ignored (14 rows read for the 8-candidate scope)."
+    },
+    {
+      "criterion": "Verification requirement 12: tie caveat: coverage is guaranteed for rows strictly ordered by (SortName, Name) and is best-effort for rows tying on the exact pair; document/exercise the residual; do not assert the tie as covered.",
+      "evidence": "ExactSortNameNameTiesAreBestEffortAndNotCoveredWithinTheCycle: two rows are asserted to share the exact (SortName 'tie', Name 'Same') pair; the first cycle's overflow leaves the second tied row uncovered; the host then returns the tied pair in the other relative order, the identity anchor locates the first and resumes strictly after it, and the run completes covering only the row after the pair while the tied sibling has no enqueue outcome in that cycle. The fact's comment names this as the ADR-029 clause 5 registered residual and asserts no coverage for the tie. Guaranteed coverage for strictly ordered rows is established by the round-robin and mutation facts."
+    },
+    {
+      "criterion": "Constraint: primarily a test task; no production behavior change, and any genuine production defect must be reported (none found).",
+      "evidence": "git status --short on the final tree lists only the new untracked test file (plus the state/plan/report documentation edits); git diff --stat is empty, so no tracked production file changed. All ten mutation probes were applied only to prove test sensitivity and were reverted; a grep for PROBE markers in src/ArrTags and the new test file finds none. No production defect was observed: every probe-driven failure was an intentionally mutated expectation."
+    },
+    {
+      "criterion": "Constraints: do not implement F6 (19.3), do not modify unrelated files, do not rewrite ADR/history text, do not change F4 limitations/changelog/architecture wording (19.5 owns those).",
+      "evidence": "No F6 file, ADR, research note, review, changelog, limitations, or architecture file is changed (git status). docs/architecture/08-reconciliation-and-update-flow.md, docs/limitations/open.md F4, and docs/changelog/v1.2.0.md are untouched; the F4 limitation resolution and any TTL/retention registration (reviewer R-19.1-02) remain for 19.5."
+    },
+    {
+      "criterion": "Build, tests, and documentation gates: build and run the tests; run scripts/check-docs.sh and make it pass.",
+      "evidence": "./build.sh build -> 0 Warning(s), 0 Error(s); ./build.sh test -> Failed 0, Passed 1873, Skipped 64, Total 1937; ./build.sh build was also green after every probe revert; dotnet run scripts/render-docs-state.cs reports both generated blocks up to date; scripts/check-docs.sh passes every section on the tree before the worker report was written and with the report in place fails only the expected worker/reviewer pairing line, which the implementation-reviewer report closes (the transient pattern tasks 15.4-19.1 recorded)."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How is the verification requirement's 'unlocatable anchor (removed/ineligible)' exercised, given that service-level ineligibility (for example a remote location) does not remove a Movie/Episode from the host candidate enumeration?",
+      "chosen": "The removed case (the item id is absent from the library) and the left-the-candidate-enumeration case (the item's kind changed so the Movie/Episode candidate query no longer returns it) are exercised. An item that merely becomes service-ineligible while remaining a Movie/Episode candidate is still located by identity, so the cursor does not reset for that reason.",
+      "basis": "ADR-029 clause 4 conditions the reset on the boundary item being unlocatable; the enumerator's query is the fixed Movie+Episode candidate set and service eligibility is applied after enumeration, so only removal or leaving the candidate enumeration makes the anchor unlocatable.",
+      "impact": "The test asserts the actual reset condition (locatability), not a broader interpretation that a service-ineligible but still-enumerated anchor resets the cursor. No production behavior changes."
+    },
+    {
+      "question": "What relative order does the host-ordered library double use for rows tying on the exact (SortName, Name) pair?",
+      "chosen": "The double's insertion order, exposed deterministically and flipped explicitly by the tie fact via SwapItems; the host itself guarantees no order there.",
+      "basis": "ADR-029 clause 1 states the host order is SortName ASC then raw Name ASC and is not guaranteed to be a strict total order; the tie fact exercises exactly the unspecified-tie-break boundary.",
+      "impact": "Test-double detail only; no production semantics. The tie fact therefore asserts the residual (deferral/skip), not coverage."
+    },
+    {
+      "question": "How are the real queue's bounded outcomes observed without replacing the queue with a mock?",
+      "chosen": "A thin QueueRecordingSink wrapper delegates every enqueue to the real LibraryWorkQueue and records the outcome the queue returned; tests assert Coalesced/InFlight/Overflow/Stopped only where the real queue produced them.",
+      "basis": "The task requires proving the behavior against the real bounded queue rather than a tautological mock; the wrapper classifies nothing itself.",
+      "impact": "None on production; the asserted outcomes are the real queue's own classifications."
+    },
+    {
+      "question": "How is the one asynchronous trigger-exclusion fact kept deterministic without weakening the trigger-exclusion evidence?",
+      "chosen": "The webhook trigger-exclusion fact waits for the hosted WebhookIntakeService with a bounded condition poll (10 ms steps, 500 attempts, the existing WebhookResolutionTests pattern) and asserts the condition was observed, so it cannot pass vacuously; no fixed-duration sleep and no assertion depends on elapsed time.",
+      "basis": "The hosted intake loop exposes no synchronous pump; the existing suite uses the same bounded wait for this boundary.",
+      "impact": "Only the one webhook fact has a bounded wait; the other 18 cases are fully synchronous/deterministic. A worker would be notified by a failure if the condition is not observed within the bound."
+    },
+    {
+      "question": "What exactly does the page-reach bound assertion cover?",
+      "chosen": "The rows served by the host pages the real enumerator reads during one run (locate walk plus cover pages), asserted to be at most the candidate count plus QueueCapacity and to grow with the candidate count, with every page request bounded by ReconciliationBatchSize. No wall-clock or CPU cost measurement is attempted.",
+      "basis": "ADR-029 clause 3 defines the per-run bound as scope size plus QueueCapacity and the registered residual as O(offset) ordered rows per run; the matrix asserts the structural bound, not a measured latency.",
+      "impact": "The bound is asserted honestly as N-dependent rather than as a constant; the O(N^2/QueueCapacity) cumulative-cycle cost remains a registered residual (not measured)."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A: page-aligned resume (startIndex = offset + page.Count) in the real enumerator -> IdentityAnchorResumeReturnsThePageStrictlyAfterTheAnchorAndTreatsSortNameAsAHint Failed 1, Passed 0, Total 1; accepted [m05,m06] instead of [m04,m05].",
+    "Probe B: Coalesced added to the whole-scope stop condition -> CoalescedEnqueueIsCoveredAndDoesNotStallTheRun Failed 1, Passed 0, Total 1; Expected Completed / Actual Fenced.",
+    "Probe C: stopped/overflowed item counted as covered before the break -> OverflowStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere and StoppedQueueStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere Failed 2, Passed 0, Total 2; Expected 2 / Actual 3 at first.Covered.",
+    "Probe D: scope check bypassed in ReconciliationCursorStore.Read -> ChangedScopeTupleResetsTheCursorToTheStart Failed 2, Passed 0, Total 2; both scopes covered only the tail (2 items) instead of 5.",
+    "Probe E: PostSave added to the cursor-governed source set -> PostSaveTriggerEnumeratesFromTheStartAndLeavesTheCursorUntouched Failed 1, Passed 0, Total 1; covered [m02,m03] instead of [m01,m02,m03].",
+    "Probe F: 'or Stopped' removed from the stop condition -> StoppedQueueStopsAtTheFirstUncoveredItemAndTheNextRunResumesThere Failed 1, Passed 0, Total 1; Expected Fenced / Actual Completed.",
+    "Probe G: located resume offset ignored (startIndex = 0) -> OneRunPageReachTracksTheServerWideCandidateCountPlusQueueCapacity Failed 1, Passed 0, Total 1; 'The 8-candidate run read 14 rows, above 8 + 3.'",
+    "Probe H: end-of-order locate walk returned Located instead of AnchorNotFound -> UnlocatableAnchorResetsToTheStartAndTheRunDoesNotFail Failed 2, Passed 0, Total 2; Expected 5 / Actual 0 at result.Covered.",
+    "Probe I: InFlight added to the stop condition -> InFlightEnqueueIsCoveredAndDoesNotStallTheRun Failed 1, Passed 0, Total 1; Expected Completed / Actual Fenced.",
+    "Probe J: AdvanceCursor always recorded the wrapped start -> SuccessiveRunsCoverAScopeLargerThanQueueCapacityRoundRobinAndWrap Failed 1, Passed 0, Total 1; covered-order collection differ (the prefix was re-covered instead of round-robin advance).",
+    "All ten probes were reverted; the restored tree rebuilt 0 warnings/0 errors and the full suite, the matrix class, and the focused filter re-ran green. Not probed (and why): the byte-identical cursor assertions for the event and webhook paths are read-only observations of files those paths cannot reach without a production reference change, which the structural fact covers; the host-order (SortName, Name) assertion is a property of the library double itself (its sensitivity is inherent in the fixture names); the tie fact intentionally asserts the residual rather than a guarantee that could be mutated."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/status.md (generated)",
+      "docs/implementation/19.2/worker-report.json"
+    ],
+    "old_values_removed": [
+      "docs/plan/state.json task 19.2: done false -> true; added reports [docs/implementation/19.2/worker-report.json]; updated_utc advanced 2026-09-28T10:35:09Z -> 2026-09-28T11:11:49Z. Phase 19 status, execution order, other tasks, and the milestone table inputs were not changed (phase 19 remains PLANNED).",
+      "PLANS.md: '- [ ] 19.2 F4 successive-run coverage tests' -> '- [x] 19.2 F4 successive-run coverage tests'; no other PLANS.md line was hand-edited (the milestone table stays generated).",
+      "dotnet run scripts/render-docs-state.cs -> 'status.md: up to date', 'PLANS.md: up to date'; the generated blocks carry only current-state facts rendered from state.json, which now include the ticked 19.2.",
+      "docs/architecture/08-reconciliation-and-update-flow.md, docs/limitations/open.md F4, docs/changelog/v1.2.0.md, and README.md: deliberately unchanged. The F4 open-limitation resolution, the architecture section 8 wording, the Phase 19 changelog entry, and the reviewer R-19.1-02 retention/TTL interaction are owned by task 19.5; the README has no F4/cursor/coverage statement and no suite-count statement to update.",
+      "Historical files (docs/implementation/19.1/**, docs/reviews/**, docs/research/**, ADR text) were not rewritten; task 19.1's report files are byte-unchanged."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The full default suite skips 64 host-guarded/golden-native tests; no live pinned-host verification was run and none is claimed. The matrix uses an ILibraryManager double that reproduces the pinned host's documented (SortName, Name) order and StartIndex/Limit paging; it does not run the host's SQL query.",
+    "The webhook trigger-exclusion fact observes the hosted WebhookIntakeService through a bounded condition wait (10 ms steps, 500 attempts) and fails if the condition is not observed; the other 18 cases are fully synchronous. No fixed-duration sleep is used, but this one case is not strictly synchronous.",
+    "The exact-(SortName, Name)-tie residual (ADR-029 clause 5) is exercised as one deterministic tie-order flip showing the tied sibling is not covered in that cycle; it is not asserted as covered, and no statistical or persistent-skip scenario is tested.",
+    "The ADR-029 registered residuals remain: per-run resume is O(offset) ordered rows and a full cycle is O(N^2/QueueCapacity) cumulative skip work for server-wide N; the host order is an internal implementation detail. The matrix asserts the structural N+QueueCapacity bound; it does not measure runtime cost.",
+    "Reviewer R-19.1-02 (LOW, deferred to 19.5): the cursor is a Cache record subject to render-cache TTL pruning (only MetadataStateStore.RecordKind is exempt), so under a whole-scope interval longer than the TTL the record can be pruned and the next run resets to the start (a bounded re-cover). This task neither changed nor tested that interaction; task 19.5 owns resolving or registering it.",
+    "F6 (task 19.3) and the F6 coalescing tests (19.4) were not implemented or touched; task 19.5 owns the F4 limitation resolution, the Phase 19 changelog entry, and the docs/architecture/08 wording update.",
+    "No production defect was found, so no production fix was made; if a reviewer disagrees with an expectation in the matrix, the failure output above records the exact mutation that each load-bearing assertion detects."
+  ],
+  "ready_for_next_task": true
+}

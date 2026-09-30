@@ -1,0 +1,67 @@
+{
+  "task": "19.2",
+  "title": "F4 successive-run coverage tests",
+  "phase": 19,
+  "status": "COMPLETE",
+  "commit": "2db423f",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 270361,
+        "output_tokens": 45527,
+        "reasoning_tokens": 81004,
+        "cache_read_tokens": 21133696,
+        "cache_write_tokens": 0,
+        "total_tokens": 21530588,
+        "cost_usd": 0.179873838,
+        "duration_seconds": 1986,
+        "session_id": "ses_f1860f231ffe25BDwuzbniUQ70"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 109421,
+        "output_tokens": 6908,
+        "reasoning_tokens": 15130,
+        "cache_read_tokens": 1886848,
+        "cache_write_tokens": 0,
+        "total_tokens": 2018307,
+        "cost_usd": 0.035296494,
+        "duration_seconds": 360,
+        "session_id": "ses_f184216e8ffenBLPRkGKN7s9PL"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 123833,
+        "output_tokens": 10640,
+        "reasoning_tokens": 22171,
+        "cache_read_tokens": 3686400,
+        "cache_write_tokens": 0,
+        "total_tokens": 3843044,
+        "cost_usd": 0.04932075,
+        "duration_seconds": 919,
+        "session_id": "ses_f184216e6ffeCOgxyiPwUzk5hI"
+      }
+    }
+  ],
+  "rework": []
+}

@@ -1,0 +1,91 @@
+{
+  "task": "19.5",
+  "title": "F4/F6 documentation and integration verification",
+  "phase": 19,
+  "status": "COMPLETE",
+  "commit": "478de28",
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 228601,
+        "output_tokens": 32998,
+        "reasoning_tokens": 35725,
+        "cache_read_tokens": 10376064,
+        "cache_write_tokens": 0,
+        "total_tokens": 10673388,
+        "cost_usd": 0.106652142,
+        "duration_seconds": 769,
+        "session_id": "ses_f17d525ecffepIAm2tFnd15OYW"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 182396,
+        "output_tokens": 10800,
+        "reasoning_tokens": 17259,
+        "cache_read_tokens": 1802752,
+        "cache_write_tokens": 0,
+        "total_tokens": 2013207,
+        "cost_usd": 0.049603056,
+        "duration_seconds": 240,
+        "session_id": "ses_f17c913b5ffedEIFuALagI0rUx"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 50367,
+        "output_tokens": 12633,
+        "reasoning_tokens": 17847,
+        "cache_read_tokens": 1410560,
+        "cache_write_tokens": 0,
+        "total_tokens": 1491407,
+        "cost_usd": 0.03007473,
+        "duration_seconds": 242,
+        "session_id": "ses_f17c516b6ffej3ReByPhzNbliT"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 57560,
+        "output_tokens": 8772,
+        "reasoning_tokens": 5973,
+        "cache_read_tokens": 678656,
+        "cache_write_tokens": 0,
+        "total_tokens": 750961,
+        "cost_usd": 0.019516968,
+        "duration_seconds": 221,
+        "session_id": "ses_f17c11a2effe0esQrW6clRwGsV"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "implementation-reviewer attempt 1 (R-19.5-01, MEDIUM): V12-F4-5 was registered INFORMATIONAL but its documented source (F4-R4 / AR-ADR022C3-05) is LOW. The worker re-labelled V12-F4-5 to LOW in docs/limitations/00-index.md and docs/limitations/accepted.md, leaving every other residual unchanged; review attempt 2 confirmed the finding closed and nothing regressed."
+    }
+  ]
+}

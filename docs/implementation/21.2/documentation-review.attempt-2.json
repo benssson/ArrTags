@@ -1,0 +1,222 @@
+{
+  "task": "21.2",
+  "attempt": 2,
+  "title": "Canonical documentation reconciliation (documentation review, attempt 2)",
+  "reviewer": "documentation-maintainer",
+  "scope": "Independent reviewer-mode verification of the attempt-2 rework for task 21.2, on branch v1.2 at HEAD 37a637a ('Record 21.1 commit hash and orchestrator session') with an uncommitted working tree. Tree state inspected: 10 modified tracked files (GOALS.md, PLANS.md, README.md, docs/architecture/12-performance-and-operational-limits.md, docs/data-model/03-08-renderresult.md, docs/decisions/00-index.md, docs/limitations/00-index.md, docs/limitations/accepted.md, docs/limitations/archive.md, docs/plan/state.json) and the untracked docs/implementation/21.2/ report directory (worker-report.json, worker-report.attempt-2.json, reviewer-report.json, reviewer-report.attempt-2.json, documentation-review.json). Attempt-2 edits were isolated by file mtime: only docs/data-model/03-08-renderresult.md (10:39:02), docs/decisions/00-index.md (10:40:50), and docs/plan/state.json (10:39:13) were written after the attempt-1 pass; every other attempt-1 surface retains its 09:58-10:00 mtime. Reviewed the two fixed documents against their authoritative sources (docs/decisions/ADR-010.md, ADR-015.md, ADR-019.md; docs/plan/state.json task and phase records; src/ArrTags/Artwork and src/ArrTags/Rendering), re-ran both documentation gates myself, and re-checked the task's acceptance criteria. In reviewer mode this agent edits no canonical document; the only file written is this report.",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "surfaces_checked": [
+    "git diff / git diff --stat / git status --short (working tree vs HEAD 37a637a) and per-file mtimes to separate the attempt-2 edits from the attempt-1 edits",
+    "docs/decisions/00-index.md (all 29 ADR rows; the corrected ADR-010 cell at line 18 read clause by clause against ADR-010.md:3-9)",
+    "docs/decisions/ADR-010.md (Status block lines 3-9; byte-identical to HEAD, confirmed by md5sum of git show HEAD:... against the working copy)",
+    "docs/decisions/ADR-015.md and ADR-019.md (Status lines; cross-consistency with index rows 24 and 27 and with the new ADR-010 cell)",
+    "docs/data-model/03-08-renderresult.md (whole file; the Phase 4 note lines 18-41, the v1.1 task 12.1 note lines 43-57, the convention markers at lines 88 and 102, the Phase 5 note at line 90)",
+    "docs/architecture/09-persisted-artwork-rendering.md (lines 250-300 and the allowlist section 477-497) and docs/data-model/03-06-badgedefinition.md (allowlist field row and definition note) -- confirmed unedited and still authoritative for the filter contract",
+    "docs/plan/state.json (updated_utc; task 21.2 done/reports; task 5.3, 5.8, 12.1, 12.2 done flags; phase 5, 12 statuses; phase 21 status/gate; limitations open/resolved/accepted arrays)",
+    "PLANS.md (line 278 task 21.2 checkbox; Phase 21 task list and gate text) and docs/status.md (generated block currency)",
+    "docs/limitations/00-index.md (F1-F8 rows, V11-G4 row at line 104) and docs/limitations/accepted.md (F5 section, V11-G4 heading at line 684) for regression against the attempt-1 corrections",
+    "docs/planning/v1.2.md section 10 (F5 exclusion)",
+    "src/ArrTags/Artwork/{ArtworkSourceReader.cs,IArtworkSourceReader.cs,ArtworkGenerationCoordinator.cs} and src/ArrTags/Rendering/{BadgeDefinitionResolver.cs,BadgeDefinition.cs} (source for the two new completion claims)",
+    "scripts/check-docs.sh (re-run) and scripts/render-docs-state.cs --check (re-run with dotnet sourced from /config/arrtags-env.sh)",
+    "scripts/check-agents.sh (read; agent-pairing and plan-state evidence rules) and docs/agent-contracts.md (rules 3 and 5, the report path and status enum contract)",
+    "docs/implementation/21.2/documentation-review.json (attempt 1, the source of F-21.2-D1 and F-21.2-D2), worker-report.attempt-2.json, reviewer-report.attempt-2.json"
+  ],
+  "verified_reconciliations": [
+    {
+      "claim": "F-21.2-D1 is closed: the ADR-010 status cell in the decisions index is now complete, balanced, and an accurate summary of the full relation recorded in ADR-010.md.",
+      "evidence": [
+        "docs/decisions/00-index.md:18 now reads 'Accepted (partially superseded by ADR-015: the decisions that the plugin package must carry the managed `SkiaSharp.dll` and native `libSkiaSharp.so` and must not load a system Skia library are superseded, while the SkiaSharp library choice, bundled font, PNG/color handling, host/source boundary, configuration, and testing strategy remain in force; the renderer-configuration clauses that keep geometry, placement, and scale code-owned are superseded by ADR-019 (v1.1))'.",
+        "Clause-by-clause comparison against docs/decisions/ADR-010.md:3-9: both superseded ADR-015 decisions (managed SkiaSharp.dll bundling, native libSkiaSharp.so bundling, and the no-system-Skia-load rule) present; all six in-force items present and in ADR-010.md's order (SkiaSharp library choice, bundled font, PNG/color handling, host/source boundary, configuration, testing strategy); the ADR-019 renderer-configuration supersession present. Nothing dropped, nothing invented.",
+        "Independent paren scan: awk -F'|' over every '^| ADR-' row counting '(' and ')' in the status field reports no unbalanced row (pre-fix, line 18 alone was flagged).",
+        "Row integrity: awk -F'|' shows every ADR row at lines 9-37 still splits into exactly 4 cells, so the cell contains no unescaped pipe; row count 29 == 29 ADR files, and scripts/check-docs.sh section 3 reports 'ok: decisions index (29 ADRs)'.",
+        "The removed fragment no longer matches: grep for 'partially superseded by ADR-015: the SkiaSharp library' across docs/ returns only ADR-010.md's own (line-wrapped) status text and history records, never the index cell.",
+        "Cross-consistency: index row 24 (ADR-015, 'supersedes the renderer-bundling parts of ADR-010') and row 27 (ADR-019, 'supersedes ... the corresponding renderer-configuration clauses of ADR-010') both agree with the scope the new cell asserts; the '(v1.1)' tag on ADR-019 matches the ADR-009 row (line 17) and ADR-019's own row, and ADR-015 is left untagged as its own row is.",
+        "ADR text immutability: git diff --name-only -- docs/decisions/ADR-010.md is empty, and md5sum of the working copy equals md5sum of `git show HEAD:docs/decisions/ADR-010.md' (7b9eae2f77394ac2d0b3a2421a3c830a)."
+      ],
+      "result": "VERIFIED - the finding's stated fix is fully satisfied and the fix introduced no new stale, overclaiming, or malformed text."
+    },
+    {
+      "claim": "ADR-010.md itself remains unedited, and (correcting a detail in the attempt-1 finding text) its own Status block is complete and balanced, so no ADR-versus-index divergence exists.",
+      "evidence": [
+        "git status --short docs/decisions/ lists only 'M docs/decisions/00-index.md'; git diff HEAD -- docs/decisions/ADR-010.md is empty.",
+        "md5sum docs/decisions/ADR-010.md == md5sum of the HEAD blob (7b9eae2f77394ac2d0b3a2421a3c830a).",
+        "docs/decisions/ADR-010.md:3-9 reads as one complete, parenthetically balanced sentence: '**Status:** Accepted (partially superseded by ADR-015: ... the renderer-configuration clauses that keep geometry, placement, and scale code-owned are superseded by ADR-019)' -- one opening parenthesis at 'Accepted (' and one closing at the end of line 9, with no unterminated clause.",
+        "ADR-010.md:56-63 additionally carries the ADR-015 inline supersession marker in the Decision body, which the index cell summarises consistently."
+      ],
+      "result": "VERIFIED - with one clarification of the attempt-1 record: documentation-review.json stated that 'the same truncation exists in ADR-010.md's own Status block'. That is not accurate; the ADR's Status block is complete and balanced. The attempt-1 report is immutable history and was not edited; the correction is recorded as finding F-21.2-D2a below."
+    },
+    {
+      "claim": "F-21.2-D2 is closed: both dated notes in docs/data-model/03-08-renderresult.md now carry supersession markers in the file's own convention, and both markers' completion claims are supported by the repository.",
+      "evidence": [
+        "docs/data-model/03-08-renderresult.md:38-41 (Phase 4 note) now ends 'The Phase 4 text above remains the historical task 4.9/4.10 record; the Jellyfin host adapter it defers to shipped with the Phase 5 `ArtworkGenerationCoordinator` work (see the Phase 5 note below).'; :55-57 (v1.1 task 12.1 note) now ends 'The v1.1 task 12.1 text above remains the historical record; the renderer filtering it defers to was implemented in task 12.2.'",
+        "Convention match: the pre-existing markers at :88 ('The v1.1 text above remains the historical record of the three-preset v1.1 state.') and :102 ('The Phase 5 text above remains the historical task 5.8 record.') use the identical sentence form; the new markers are appended inside the note body, so no dated sentence was deleted, which is the append-not-rewrite pattern the Phase 5 and 12.3/18.3 notes already use.",
+        "Phase 4 marker claim verified: src/ArrTags/Artwork/ArtworkSourceReader.cs:19 'public sealed class ArtworkSourceReader : IArtworkSourceReader' is the Jellyfin host source adapter (added by commit efb65f8, 'Execute task 5.3: Jellyfin host source adapter with content-type confinement'); it is consumed by src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:56 ('private readonly IArtworkSourceReader _reader'). docs/plan/state.json task 5.3 is done=true and task 5.8 is done=true, and phase 5 status is COMPLETE. The cross-reference '(see the Phase 5 note below)' resolves to the Phase 5 implementation note at :90 of the same file.",
+        "v1.1 task 12.1 marker claim verified: docs/plan/state.json task 12.2 is done=true with name 'Allowlist resolution and renderer filtering order.' and phase 12 status is COMPLETE; the filtering is implemented in src/ArrTags/Rendering/BadgeDefinitionResolver.cs:59 and :71, which apply 'definition.AllowedValues' through 'BadgeSelectorResolver.IsAllowed', introduced by commit b404448 ('Implement v1.1 task 12.2 allowlist resolution and renderer filtering order').",
+        "No contract restatement and no authoritative-source edit: git diff --name-only -- docs/architecture/09-persisted-artwork-rendering.md docs/data-model/03-06-badgedefinition.md is empty; the new sentences describe only completion, not the filter order or the adapter's internals, so docs/architecture/09 (allowlist section, lines 477-497) and docs/data-model/03-06 remain the authoritative statements.",
+        "Formatting: added lines are 74-79 characters (file norm ~80); no trailing whitespace introduced (grep ' $' returns nothing in either changed file).",
+        "Residual sweep: the two forward-reference sentences are still present inside the now-marked note bodies (:35 and :54-55) and nowhere else in docs/data-model/ or docs/architecture/, so no other copy of the stale phrasing was missed."
+      ],
+      "result": "VERIFIED - the finding's stated fix is satisfied, the markers are accurate, and no new claim was introduced."
+    },
+    {
+      "claim": "The attempt-2 change set is confined to the two fixed documents, the task's own state entry, and the new attempt-2 report; no ADR text, immutable history, or code changed, and no generated block was hand-edited.",
+      "evidence": [
+        "git diff --stat -> 10 files, 49 insertions(+), 32 deletions(-); git status --short shows the only untracked path is docs/implementation/21.2/.",
+        "File mtimes isolate attempt 2 to docs/data-model/03-08-renderresult.md (10:39:02), docs/decisions/00-index.md (10:40:50), and docs/plan/state.json (10:39:13); GOALS.md (09:58:03), README.md (10:00:03), PLANS.md (10:00:21), docs/architecture/12 (09:58:14), docs/limitations/00-index.md (09:59:50), docs/limitations/accepted.md (10:00:15), and docs/limitations/archive.md (09:58:09) are untouched by this pass.",
+        "git diff --name-only -- docs/status.md docs/architecture/09-persisted-artwork-rendering.md docs/data-model/03-06-badgedefinition.md docs/changelog/ src/ tests/ docs/decisions/ADR-010.md returns nothing.",
+        "docs/plan/state.json diff touches only updated_utc and task 21.2's done/reports fields; phase 21 remains status PLANNED with its gate and tag unchanged, consistent with the docs/plan/README.md single-writer table.",
+        "The 03-08 diff is +7/-2 (two appended marker sentences, no deletion of dated text) and the 00-index diff is a single changed line."
+      ],
+      "result": "VERIFIED - scope discipline and the immutability rule for ADR text and history both hold."
+    },
+    {
+      "claim": "The task's state entry in docs/plan/state.json was updated by the owner and follows the multi-attempt listing convention; the generated surfaces are current.",
+      "evidence": [
+        "docs/plan/state.json task 21.2: done=true; reports = [docs/implementation/21.2/worker-report.json, docs/implementation/21.2/worker-report.attempt-2.json, docs/implementation/21.2/reviewer-report.json, docs/implementation/21.2/documentation-review.json]; updated_utc 2026-09-29T10:39:06Z.",
+        "Convention match with task 20.3 (docs/plan/state.json:1319-1328): worker attempts first, then reviewer reports, then other review kinds.",
+        "PLANS.md:278 '- [x] 21.2 Canonical documentation reconciliation'.",
+        "Executed by this reviewer: dotnet run scripts/render-docs-state.cs -- --check -> 'status.md: up to date', 'PLANS.md: up to date' (x2), 'PLANS.md and state.json agree', exit 0; and no generated marker region appears in the git diff."
+      ],
+      "result": "VERIFIED for the listing as written; one completeness residual is recorded as finding F-21.2-D3 below (two attempt-2 report files now on disk are not yet listed)."
+    },
+    {
+      "claim": "Both documentation gates pass on the final tree.",
+      "evidence": [
+        "Executed by this reviewer: ./scripts/check-docs.sh -> 'skip: dotnet not on PATH' for the generated-block section (dotnet is not on the default PATH in this shell), then 'ok: compatibility stubs checked', 'ok: decisions index (29 ADRs)', 'ok: limitations index covers all IDs', 'ok: architecture and data-model indexes checked', 'ok: artifact identity agrees (sha256, md5, bytes)', 'ok: doc budget checked', 'ok: current-state links resolve', 'ok: agent report contracts conform', 'check-docs: PASS', exit 0.",
+        "Executed by this reviewer with the environment sourced (source /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check) -> exit 0 with 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree' -- this covers the generated-block section that check-docs.sh skipped, so the equivalent of 'ok: generated status blocks are current; plan state is consistent' also holds.",
+        "'ok: agent report contracts conform' means scripts/check-agents.sh exited 0, which closes the attempt-1 pairing transient (F-21.2-D5): task 21.2 has reviewer-report.json on disk and state.json lists a reviewer-report path."
+      ],
+      "result": "VERIFIED - check-docs PASS and generated blocks up to date."
+    },
+    {
+      "claim": "The task's original acceptance criteria still hold after the rework, and no new inconsistency was introduced.",
+      "evidence": [
+        "F3/F4/F6/F7/F8 Resolved: docs/limitations/00-index.md rows 68-72 all read 'Resolved' with a link to archive.md; docs/plan/state.json limitations.resolved = [F1,F2,F3,F4,F6,F7,F8] and limitations.open = []. None of these rows, nor state.json's limitations block, appears in the attempt-2 diff.",
+        "F5 Accepted and excluded: docs/limitations/00-index.md:65 '`F5` | The renderer depends on a host-supplied SkiaSharp with no bundled fallback | Accepted |'; state.json limitations.accepted begins with F5; docs/planning/v1.2.md:441-447 records the explicit user decision, non-implementation by v1.2, and exclusion. Unchanged by attempt 2.",
+        "Canonical surfaces describe v1.2 with no stale claim: attempt-1 corrections are intact (GOALS.md 'ADR-022 onward ... (accepted; `Accepted (v1.2)`)', README.md F1 bullet now citing docs/implementation/14.3/live-verification.json PASS, docs/architecture/12 'the formerly open limitation F3, resolved by Phase 17 task 17.4', docs/limitations/archive.md F1 lines, V11-G4 rescoped consistently across docs/limitations/00-index.md:104 and docs/limitations/accepted.md:684), and the two new edits are strictly corrective additions that assert completion of already-recorded work rather than new capability.",
+        "Limitations register self-consistency: check-docs section 4 passes, and the V11-G4 index row title and section heading still match exactly ('Stale \"owned by task 14.3\" pending phrasing retained in archived history (LOW, accepted)').",
+        "Decisions index integrity: 29 rows == 29 ADR files, no unbalanced cell, ADR text untouched.",
+        "docs/planning/v1.2.md section 7's documentation checklist and the release-identity surfaces (docs/release/build-and-release.md, manifest.json, build.yaml, docs/changelog/v1.2.0.md, the v1.2.0 tag) remain tasks 21.3/21.4/21.6 and are untouched."
+      ],
+      "result": "VERIFIED - no acceptance criterion regressed and no new inconsistency was created."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-21.2-D1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "docs/decisions/00-index.md (decisions index, ADR-010 status cell)",
+      "description": "The truncated, unbalanced status cell 'Accepted (partially superseded by ADR-015: the SkiaSharp library' is replaced by a complete, balanced, clause-accurate summary of the full relation recorded in ADR-010.md: the ADR-015 partial supersession (with all six in-force items named) plus the ADR-019 (v1.1) supersession of the renderer-configuration clauses. The finding's advisory request to consider a check-docs guard for cell termination was not taken up; that is recorded separately below as a carried-forward guardrail gap, not as part of this closure.",
+      "evidence": [
+        "docs/decisions/00-index.md:18 (corrected cell); docs/decisions/ADR-010.md:3-9 (authoritative Status block); docs/decisions/00-index.md:24 and :27 (ADR-015 and ADR-019 rows agree)",
+        "awk paren scan over all index rows: no unbalanced row; pre-fix only line 18 was flagged",
+        "awk -F'|' cell count: every ADR row 9-37 has 4 cells; row count 29 == 29 ADR files",
+        "git diff --name-only -- docs/decisions/ADR-*.md -> empty; md5sum of ADR-010.md matches the HEAD blob"
+      ],
+      "recommended_action": "None. Closed."
+    },
+    {
+      "id": "F-21.2-D2",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "docs/data-model/03-08-renderresult.md (dated task implementation notes)",
+      "description": "The Phase 4 note's 'the Jellyfin host adapter that supplies it remains Phase 5 work' and the v1.1 task 12.1 note's 'Task 12.1 does not yet apply the filter to rendering; the renderer filtering order is task 12.2' now sit inside notes that carry the file's own supersession markers, so they no longer read as current-state claims. Both completion claims are true (task 5.3 adapter wired into the task 5.8 coordinator; task 12.2 renderer filtering implemented in BadgeDefinitionResolver) and neither restates the filter contract; docs/architecture/09 and docs/data-model/03-06 are unedited and remain authoritative.",
+      "evidence": [
+        "docs/data-model/03-08-renderresult.md:38-41 and :55-57 (new markers); :88 and :102 (the convention followed)",
+        "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:56 and src/ArrTags/Artwork/ArtworkSourceReader.cs:19; docs/plan/state.json tasks 5.3/5.8 done, phase 5 COMPLETE",
+        "src/ArrTags/Rendering/BadgeDefinitionResolver.cs:59,:71; commit b404448 ('Implement v1.1 task 12.2 ...'); docs/plan/state.json task 12.2 done, phase 12 COMPLETE",
+        "git diff --name-only -- docs/architecture/09-persisted-artwork-rendering.md docs/data-model/03-06-badgedefinition.md -> empty"
+      ],
+      "recommended_action": "None. Closed."
+    },
+    {
+      "id": "F-21.2-D2a",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "docs/implementation/21.2/documentation-review.json (attempt-1 finding text, F-21.2-D1 description)",
+      "description": "The attempt-1 finding stated that 'the same truncation exists in ADR-010.md's own Status block, which is immutable decision text and must not be rewritten'. That is not accurate: ADR-010.md's Status block is a complete, balanced sentence carrying both supersessions, and it matches the corrected index cell. The practical consequence is favourable -- there is no ADR-versus-index divergence to record -- but the attempt-1 report is immutable history under AGENTS.md and was deliberately not edited; the correction is recorded here so the orchestrator does not act on the stale premise (for example by queueing an ADR text change).",
+      "evidence": [
+        "docs/implementation/21.2/documentation-review.json finding F-21.2-D1, description sentence 'Note the same truncation exists in ADR-010.md's own Status block'",
+        "docs/decisions/ADR-010.md:3-9, read directly: '**Status:** Accepted (partially superseded by ADR-015: ... the renderer-configuration clauses that keep geometry, placement, and scale code-owned are superseded by ADR-019)' -- balanced, complete",
+        "AGENTS.md: 'History is immutable: docs/implementation/** ... Do not rewrite it'"
+      ],
+      "recommended_action": "None for the documentation. Orchestrator: do not schedule any ADR-010 text edit on the basis of the attempt-1 wording; no ADR divergence exists."
+    },
+    {
+      "id": "F-21.2-D3",
+      "severity": "INFORMATIONAL",
+      "status": "open",
+      "area": "docs/plan/state.json task 21.2 reports array vs docs/agent-contracts.md rule 5",
+      "description": "Two attempt-2 report files exist on disk that the task's reports array does not list: docs/implementation/21.2/reviewer-report.attempt-2.json (written 10:46, after state.json's 10:39 update) and this reviewer-mode file, docs/implementation/21.2/documentation-review.attempt-2.json. docs/agent-contracts.md rule 5 says a task's reports array 'lists at minimum its reviewer-report.json (with every preserved .attempt-<n>.json of it)'. scripts/check-agents.sh only matches the pattern 'reviewer-report' and therefore still passes, so this is a contract-completeness gap in the canonical machine state rather than a failed check and not a wrong current-state claim. It belongs to the orchestrator's commit step; state.json is not a surface this reviewer edits.",
+      "evidence": [
+        "docs/plan/state.json task 21.2 reports = [worker-report.json, worker-report.attempt-2.json, reviewer-report.json, documentation-review.json] -- neither attempt-2 review file is present",
+        "ls -l docs/implementation/21.2/ shows reviewer-report.attempt-2.json (10:46:45) and documentation-review.attempt-2.json, both newer than state.json (10:39:13)",
+        "docs/agent-contracts.md item 5 ('with every preserved `.attempt-<n>.json` of it'); scripts/check-agents.sh:146-152 matches only test('reviewer-report')",
+        "./scripts/check-docs.sh -> 'ok: agent report contracts conform', 'check-docs: PASS' -- confirming the gap is not gate-visible"
+      ],
+      "recommended_action": "Orchestrator, at commit: add 'docs/implementation/21.2/reviewer-report.attempt-2.json' and 'docs/implementation/21.2/documentation-review.attempt-2.json' to the task 21.2 reports array, then re-run scripts/check-docs.sh and dotnet run scripts/render-docs-state.cs -- --check to confirm both still pass."
+    },
+    {
+      "id": "F-21.2-D4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "docs/data-model/03-08-renderresult.md Phase 4 marker (wording precision)",
+      "description": "The new Phase 4 marker reads that the deferred Jellyfin host adapter 'shipped with the Phase 5 `ArtworkGenerationCoordinator` work'. The adapter is task 5.3 (ArtworkSourceReader) and the coordinator is task 5.8; both are Phase 5, and the marker points at the Phase 5 note which documents the composition, so the statement is true at the phase granularity the file uses. A reader who needs the task-level attribution must consult the repository. This is a precision observation, not an inaccuracy or an overclaim, and it does not affect the finding's closure.",
+      "evidence": [
+        "docs/data-model/03-08-renderresult.md:38-41 (marker text)",
+        "git log --follow src/ArrTags/Artwork/ArtworkSourceReader.cs -> efb65f8 'Execute task 5.3: Jellyfin host source adapter with content-type confinement'",
+        "docs/plan/state.json tasks 5.3 and 5.8, both done; phase 5 COMPLETE"
+      ],
+      "recommended_action": "Optional and not required: naming the adapter as task 5.3 ('shipped in Phase 5 (task 5.3) and composed by the task 5.8 `ArtworkGenerationCoordinator`') would be marginally more precise. Leave as is unless a future pass edits the sentence anyway."
+    },
+    {
+      "id": "F-21.2-D5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "docs/data-model/03-08-renderresult.md marker placement (convention variant)",
+      "description": "The file's two pre-existing markers (lines 88 and 102) sit at the head of a later note and refer to an earlier note. The two new markers sit at the tail of their own note and refer to the sentences above them inside that same note. Both usages use the same sentence form and are unambiguous in context ('the Phase 4 text above' inside the Phase 4 note, 'the v1.1 task 12.1 text above' inside the 12.1 note). Recorded so the variant is auditable; it changes no claim.",
+      "evidence": [
+        "docs/data-model/03-08-renderresult.md:38-41 and :55-57 (intra-note markers) versus :88 and :102 (cross-note markers)",
+        "AGENTS.md's preserve-history rule: dated implementation notes are appended to, not rewritten"
+      ],
+      "recommended_action": "None required. If a future pass normalises the convention, keep the append-only treatment of the dated notes."
+    },
+    {
+      "id": "F-21.2-D6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation guardrail (carried forward from F-21.2-D1 and 21.2-A2-R1)",
+      "description": "Neither closed defect class is covered by an automated guard. scripts/check-docs.sh section 3 compares only the decisions-index row count with the ADR file count, so a truncated or unbalanced status cell would pass again, and the dated data-model note prose has no guard at all. This is a pre-existing guardrail limitation, not a regression introduced by the rework, and it does not affect any current-state claim. It is out of scope for task 21.2, which must not modify scripts unrelated to its documentation surfaces.",
+      "evidence": [
+        "scripts/check-docs.sh:44-46 (row count only)",
+        "docs/implementation/21.2/worker-report.attempt-2.json test_sensitivity: 'F-21.2-D1's cell balance is not covered by any automated guard'",
+        "docs/implementation/21.2/reviewer-report.attempt-2.json finding 21.2-A2-R1 records the same gap"
+      ],
+      "recommended_action": "Optional, for a later documentation pass or a tooling task: add a decisions-index assertion that every row splits into four cells and that each status cell's parentheses balance, and note in the task record that note-prose staleness has no mechanical guard. No change required for v1.2."
+    },
+    {
+      "id": "F-21.2-D7",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "Carried forward from the attempt-1 review: F-21.2-D3, F-21.2-D4, F-21.2-D6",
+      "description": "Three attempt-1 items remain unaddressed by design and were re-verified as unchanged: (a) the planner-owned active-scope note in docs/plan/state.json, the PLANS.md active-scope paragraph, and docs/planning/v1.2.md still bound the v1.2 decision records at ADR-022..ADR-028 while GOALS.md says 'ADR-022 onward'; every ADR in the narrower range is Accepted (v1.2), so no statement is false -- it is an exhaustiveness difference on a planner-owned surface (F-21.2-D3). (b) The SEC-2 index row title still carries the source finding's '(LOW, open)' token while its Status column reads Accepted (F-21.2-D4). (c) The V11-G4 entry still enumerates two archived files that retain the pre-14.3 phrasing while docs/plan/archive/v1.1.md and docs/changelog/v1.1.0.md also retain it; the entry's scope sentence remains true and non-exhaustive (F-21.2-D6). None is in this task's delegation, none is a v1.2 claim, and none blocks the release.",
+      "evidence": [
+        "docs/plan/state.json active_scope_note 'decision records ADR-022..ADR-028 are accepted'; GOALS.md:104-106 'ADR-022 onward'; docs/decisions/00-index.md rows 30-37 (ADR-022..ADR-029 all Accepted (v1.2))",
+        "docs/limitations/00-index.md:89 SEC-2 row '(LOW, open) | Accepted'; docs/limitations/open.md records no open limitations",
+        "docs/limitations/accepted.md:686-691 and :698-703 (V11-G4 scope and consequence); grep 'owned by task 14.3' residual locations: docs/plan/archive/v1.1.md and docs/changelog/v1.1.0.md",
+        "None of these files appears in the attempt-2 diff except docs/limitations/00-index.md and accepted.md, which the attempt-1 pass changed and attempt 2 did not touch (mtimes 09:59:50 and 10:00:15)"
+      ],
+      "recommended_action": "Route (a) to the planner together with the release-status surfaces in tasks 21.3/21.6; treat (b) and (c) as optional cleanups in a future documentation-only pass. No change is required for v1.2 release accuracy."
+    }
+  ],
+  "limitations": [
+    "Scope was limited to verifying the attempt-2 rework against my attempt-1 findings and re-confirming the task's acceptance criteria. The surfaces owned by other tasks were confirmed untouched but not evaluated: docs/release/build-and-release.md, manifest.json, build.yaml, Directory.Build.props and the v1.2 artifact identity (21.3); the v1.2 live pinned-host matrix (21.4); the v1.2.0 changelog entry, current_release block, and tag (21.6).",
+    "No build or test run was performed and none is required: attempt 2 changed no production or test code (git diff --name-only over src/ and tests/ is empty). I verified the two new completion claims by reading source and git history rather than by executing the suite.",
+    "I did not re-derive every claim from the attempt-1 review's evidence base; I re-verified the claims the rework touches (the two findings), the surfaces the attempt-2 diff could have regressed (state.json limitations arrays, the limitations index, the decisions index, PLANS.md, docs/status.md), and the two documentation gates. Attempt-1 evidence items unrelated to the rework were accepted as previously verified.",
+    "ADR text was treated as immutable throughout. I confirmed ADR-010.md is byte-identical to HEAD and did not modify any ADR; where the attempt-1 finding's description misstated ADR-010.md's content, I recorded the correction (F-21.2-D2a) rather than editing either the ADR or the immutable attempt-1 report.",
+    "This review is reviewer-mode: no canonical document was edited. The only file written is this report, which itself creates the second half of finding F-21.2-D3 and requires the orchestrator to add both attempt-2 review files to the task's reports array.",
+    "I evaluated only whether each current-state claim is supported by the repository and the recorded evidence, not whether the reconciled wording is the wording a product owner would prefer."
+  ],
+  "summary": "Both open findings from my attempt-1 documentation review are genuinely closed, and the rework introduces no new stale, overclaiming, or malformed text. F-21.2-D1 (MEDIUM): docs/decisions/00-index.md line 18 now carries a complete, parenthetically balanced, clause-accurate summary of ADR-010's recorded relation -- the ADR-015 partial supersession with all six in-force items named, plus the ADR-019 (v1.1) supersession of the renderer-configuration clauses -- matching docs/decisions/ADR-010.md:3-9 item for item with nothing dropped and nothing invented; the row still parses as four table cells, the index still has 29 rows against 29 ADR files, the '(v1.1)' citation style matches the ADR-009 and ADR-019 rows, and ADR-010.md is byte-identical to HEAD (md5 7b9eae2f77394ac2d0b3a2421a3c830a), so ADR text immutability holds. One correction to my own attempt-1 record: that review stated the same truncation existed in ADR-010.md's Status block, which is not the case -- the ADR text is complete and balanced, so no ADR-versus-index divergence exists and no ADR edit should ever be scheduled from that premise (recorded as F-21.2-D2a, INFORMATIONAL). F-21.2-D2 (LOW): the Phase 4 and v1.1 task 12.1 notes in docs/data-model/03-08-renderresult.md now end with supersession markers in the file's own convention form (matching the markers at lines 88 and 102), appended without deleting any dated sentence; both completion claims are independently true (the Jellyfin host adapter is ArtworkSourceReader from task 5.3, consumed by ArtworkGenerationCoordinator at line 56, phase 5 COMPLETE; task 12.2's renderer filtering is implemented in BadgeDefinitionResolver lines 59 and 71 via BadgeSelectorResolver.IsAllowed, phase 12 COMPLETE), neither marker restates the filter contract, and docs/architecture/09 and docs/data-model/03-06 are unedited and remain authoritative. Both gates pass: ./scripts/check-docs.sh reports 'check-docs: PASS' exit 0 with all eight content sections ok plus 'ok: agent report contracts conform' (the generated-block section self-skips because dotnet is not on the default PATH in this shell, so I ran it separately with the environment sourced: 'status.md: up to date', 'PLANS.md: up to date' x2, 'PLANS.md and state.json agree', exit 0). Attempt-2 edits are confined to docs/decisions/00-index.md, docs/data-model/03-08-renderresult.md, and task 21.2's own fields in docs/plan/state.json (confirmed by mtime isolation), with no ADR text, no immutable history, no generated marker region, and no code touched. The task's acceptance criteria still hold: F3, F4, F6, F7, and F8 remain Resolved in the register, the index, and state.json with open.md empty; F5 remains Accepted, reclassified from Open, and explicitly excluded per docs/planning/v1.2.md section 10; the attempt-1 corrections (GOALS.md's accepted 'ADR-022 onward' pointer, README's F1 bullet citing task 14.3's PASS evidence, the 'formerly open limitation F3' label, and the V11-G4 rescope) are intact. Five findings are recorded, none of which makes a v1.2 claim wrong: two informational wording observations about the new marker text, the guardrail gap that no check catches a truncated decisions-index cell or stale note prose (carried forward, pre-existing), the three attempt-1 items that remain owner-routed and unchanged, and one new INFORMATIONAL item for the orchestrator -- the task's reports array does not yet list reviewer-report.attempt-2.json or this file, which docs/agent-contracts.md rule 5 requires and which scripts/check-agents.sh cannot detect. Status is PASS_WITH_FINDINGS: the rework is complete, accurate, and evidence-backed, and every remaining item is informational, owner-routed, or a commit-step bookkeeping action that blocks nothing."
+}

@@ -32,4 +32,16 @@ public interface IWorkHintSink
     /// <param name="hint">The bounded, provider-neutral work hint.</param>
     /// <returns><see langword="true"/> when the hint was accepted; otherwise <see langword="false"/>.</returns>
     bool TryEnqueue(in LibraryWorkHint hint);
+
+    /// <summary>
+    /// Attempts to enqueue a bounded work hint without blocking and reports the
+    /// bounded <see cref="WorkHintEnqueueOutcome"/> (ADR-022 clause 1). The
+    /// whole-scope reconciliation cursor needs to distinguish a newly accepted
+    /// hint from a coalesced or in-flight duplicate that is already covered and
+    /// from an overflow or stopped sink that ends the run. Callers that only need
+    /// enqueued-or-not keep using <see cref="TryEnqueue(in LibraryWorkHint)"/>.
+    /// </summary>
+    /// <param name="hint">The bounded, provider-neutral work hint.</param>
+    /// <returns>The bounded enqueue outcome.</returns>
+    WorkHintEnqueueOutcome Enqueue(in LibraryWorkHint hint);
 }

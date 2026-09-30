@@ -5,7 +5,7 @@ namespace ArrTags.Configuration;
 
 /// <summary>
 /// The operational limits accepted by ADR-004 and recorded in
-/// <c>docs/architecture.md</c> section 12. The defaults are applied on
+/// <c>docs/architecture/12-performance-and-operational-limits.md</c> section 12. The defaults are applied on
 /// construction and validated at configuration load time.
 /// </summary>
 public sealed class OperationalLimits

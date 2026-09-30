@@ -1,0 +1,104 @@
+{
+  "task": "20.3",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Attempt 2 is a correction round that closes phase-review finding PR-20-01 (MEDIUM): the Goal F7 acceptance criterion (docs/planning/v1.2.md sections 2, line 290-292) requires 'ADR-009 and ADR-002/ADR-003 amendment notes are recorded', and attempt 1 recorded only the ADR-009 and ADR-003 notes. This attempt (1) adds an addition-only 'Amendment note (v1.2, ADR-024; task 20.3)' to docs/decisions/ADR-002.md stating that ADR-024 extends ADR-002's restoration trigger set with the owned empty-selection obligation through the same crash-recoverable ArtworkOperation protocol and the ordinary recovery gate, with a present baseline restored and an absent baseline removed; no accepted clause text is rewritten (git diff: 17 insertions, 0 deletions). (2) Updates the ADR-002 row in docs/decisions/00-index.md to 'Accepted (restoration trigger set extended by ADR-024 (v1.2))', the same wording as the ADR-003 row. (3) Reconciles the PLANS.md Phase 20 deliverable line to 'ADR-024 plus ADR-009, ADR-002, and ADR-003 amendment notes', matching the F7 criterion; the Gate 20 text, the Phase 20 acceptance criteria, and the docs/planning/v1.2.md goal text are untouched. (4) Adds the matching ADR-002 bullet to the Phase 20 changelog entry and widens its 00-index bullet to name the ADR-002 row. (5) Adds this report path to docs/plan/state.json task 20.3 reports (the existing three paths are kept) and advances updated_utc. No source or test file changes; dotnet run scripts/render-docs-state.cs -- --check reports the generated blocks current and PLANS.md/state.json in agreement, and scripts/check-docs.sh passes all nine sections.",
+  "validation": [
+    "Structural check after the state.json edit: jq -e '.phases[].tasks[] | select(.id==\"20.3\") | .reports' docs/plan/state.json -> the four paths in order: docs/implementation/20.3/worker-report.json, docs/implementation/20.3/worker-report.attempt-2.json, docs/implementation/20.3/reviewer-report.json, docs/implementation/20.3/test-quality-review.json (jq exit 0; state.json parses).",
+    "git diff --numstat after the edits and before this report was added -> PLANS.md 2/2, docs/changelog/v1.2.0.md 8/3, docs/decisions/00-index.md 1/1, docs/decisions/ADR-002.md 17/0, docs/plan/state.json 2/1. No src/ or tests/ path appears (the report was verified later, and git status shows no production/test modification).",
+    "git diff -- docs/decisions/ADR-002.md -> a single hunk inserting the amendment note between 'Deferred from this ADR' and 'References'; 17 added lines and no removed line, so the note is addition-only and no accepted decision text is rewritten.",
+    "source /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check -> 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree', exit 0.",
+    "source /config/arrtags-env.sh && scripts/check-docs.sh (run after the five file edits and with the orchestrator-owned docs/implementation/phase-20/phase-review.json and orchestration.json present on disk) -> 'check-docs: PASS', exit 0, all nine sections ok: generated blocks current/plan state consistent; compatibility stubs; decisions index (29 ADRs); limitations index covers all IDs; architecture and data-model indexes; artifact identity; doc budget; current-state links resolve; agent report contracts conform.",
+    "Guard-sensitivity probe for the decisions-index edit: copied docs/decisions/00-index.md to /tmp/20.3, removed the ADR-002 row, and ran scripts/check-docs.sh -> 'FAIL: decisions index rows (28) != ADR files (29)' and 'check-docs: FAIL', exit 1; the row was restored and cmp -s confirms the restored file is byte-identical to the backup. (The probe also exposed a pre-existing cosmetic quirk: check-docs.sh line 47 prints 'ok: decisions index (29 ADRs)' unconditionally after the count comparison, so that section emits both a FAIL line and an ok line; the script's exit code is correct.)",
+    "Final source /config/arrtags-env.sh && scripts/check-docs.sh after this attempt report was persisted -> 'check-docs: PASS', exit 0, all nine sections ok (including 'agent report contracts conform').",
+    "No build or implementation-test rerun: this correction changes no source or test file (git diff lists only documentation/state files), so per the validation-rerun rule the attempt-1 suite results remain the last code-bearing run (default Failed 0, Passed 1927, Skipped 66, Total 1993; forced-native oracle Failed 0, Passed 2014, Skipped 21, Total 2035)."
+  ],
+  "changed_files": [
+    "docs/decisions/ADR-002.md",
+    "docs/decisions/00-index.md",
+    "PLANS.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "docs/implementation/20.3/worker-report.attempt-2.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "PR-20-01 correction 1: docs/decisions/ADR-002.md gains a dated amendment note (addition-only, no accepted clause rewritten) matching the ADR-009/ADR-003 note style, stating that ADR-024 (v1.2) extends ADR-002's restoration trigger set with the owned empty-selection obligation through the same crash-recoverable ArtworkOperation protocol and the ordinary recovery gate, with a present baseline restored and an absent baseline removed.",
+      "evidence": "docs/decisions/ADR-002.md 'Amendment note (v1.2, ADR-024; task 20.3)' sits between 'Deferred from this ADR' and 'References' (the ADR-003 note's position relative to References) and names the owned empty-selection obligation, the durable Kind=Restoration write-ahead record before any mutation, the mutation/readback/postcondition phases, the ordinary recovery gate chain (ArtworkRecoveryDecisions -> ArtworkReconciler -> the publisher's ResumeRestorationAsync), and the present-baseline restore / absent-baseline removal through the supported item-image APIs. git diff -- docs/decisions/ADR-002.md is one insertion-only hunk (17 additions, 0 deletions), so no decision, state-transition, consequence, or deferred clause is rewritten."
+    },
+    {
+      "criterion": "PR-20-01 correction 2: the ADR-002 row in docs/decisions/00-index.md records the ADR-024 extension, matching the ADR-003 row's 'restoration trigger set extended by ADR-024 (v1.2)' treatment.",
+      "evidence": "docs/decisions/00-index.md line 10 now reads '| ADR-002 | Guarded Artwork Ownership and Restoration | Accepted (restoration trigger set extended by ADR-024 (v1.2)) | ... |', and line 11 (ADR-003) carries the identical status wording; the row's link target docs/decisions/ADR-002.md still resolves. scripts/check-docs.sh section 3 reports 'ok: decisions index (29 ADRs)' (29 rows = 29 files)."
+    },
+    {
+      "criterion": "PR-20-01 correction 3: the PLANS.md Phase 20 deliverable line names ADR-002 alongside ADR-009 and ADR-003 ('ADR-024 plus ADR-009, ADR-002, and ADR-003 amendment notes'); the Gate 20 text, the Phase 20 acceptance criteria, and the docs/planning/v1.2.md goal text are not altered.",
+      "evidence": "PLANS.md Phase 20 'Deliverables' now reads 'ADR-024 plus ADR-009, ADR-002, and ADR-003 amendment notes; coverage tests.'; git diff PLANS.md is a 2-line rewrap at lines 243-244 with no other hunk, so the 'Phase acceptance criteria' and 'Gate 20' paragraphs are byte-identical. docs/planning/v1.2.md is absent from git diff (not modified)."
+    },
+    {
+      "criterion": "PR-20-01 correction 4: a new attempt report (attempt: 2) is persisted with a rework entry for PR-20-01, and docs/plan/state.json task 20.3 reports lists it while keeping the existing three paths; worker-report.json is not overwritten.",
+      "evidence": "docs/implementation/20.3/worker-report.attempt-2.json exists with \"attempt\": 2 and a rework array naming PR-20-01; docs/plan/state.json task 20.3 reports is [worker-report.json, worker-report.attempt-2.json, reviewer-report.json, test-quality-review.json], verified with jq; docs/implementation/20.3/worker-report.json is unchanged on disk (attempt 1, still listed first)."
+    },
+    {
+      "criterion": "PR-20-01 correction 5 (conditional): the Phase 20 changelog needs a matching ADR-002 line, added as the minimal correction.",
+      "evidence": "docs/changelog/v1.2.0.md Task 20.3 'ADR documentation' list gains an ADR-002 bullet (the ADR-024 extension through the same crash-recoverable protocol and recovery gate, present/absent baseline semantics), and the 00-index bullet now reads 'updates the ADR-002, ADR-003, and ADR-009 status rows'; both are additions within the existing Phase 20 entry, no historical text is rewritten."
+    },
+    {
+      "criterion": "Delegated validation: scripts/check-docs.sh must PASS (all sections, including the 29-ADR decisions index and the agent report contracts), and the scope must be limited to ADR-002, the decisions index, PLANS.md, the changelog, state.json, and the attempt-2 report.",
+      "evidence": "scripts/check-docs.sh -> 'check-docs: PASS', exit 0, nine ok sections (final run after this report was persisted). changed_files lists exactly those six files; git status shows the only other tree change is the pre-existing untracked orchestrator-owned docs/implementation/phase-20/ directory, which was not edited."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The finding's recommended action offered 'either extend the Phase 20 documentation checklist / PLANS.md deliverable to name ADR-002, or ... record the user's decision narrowing the F7 criterion'. Which surface should carry the reconciled wording?",
+      "chosen": "Extended the PLANS.md Phase 20 deliverable line only; docs/planning/v1.2.md (including its section 7 checklist row) was left unmodified.",
+      "basis": "The delegated correction scoped the plan-of-record reconciliation to the PLANS.md deliverable line and its validation scope named exactly which files may change; docs/planning/v1.2.md was excluded, and the delegation expressly forbade altering the v1.2 goal text. PLANS.md is the active plan of record, so the deliverable line now matches the accepted F7 criterion.",
+      "impact": "A reader of the v1.2 section 7 documentation checklist alone still sees only ADR-009 and ADR-003 named; the ADR-002 note and index row are nevertheless recorded, so the F7 criterion is satisfied. If the phase-reviewer wants the v1.2 checklist row widened too, that is an orchestrator/user decision outside this correction's delegated file scope."
+    },
+    {
+      "question": "docs/changelog/** is documented as immutable history, but correction item 5 conditionally permits a matching ADR-002 line. Add or leave it?",
+      "chosen": "Added the minimal ADR-002 bullet and widened the existing 00-index bullet, both as additions inside the Phase 20 task 20.3 entry; no prior text was rewritten.",
+      "basis": "The rework is part of task 20.3's own documented work, and the Phase 20 changelog entry is the record of that task; leaving it silent about the ADR-002 note would make the entry inaccurate. The correction instruction explicitly authorized the minimal change.",
+      "impact": "The v1.2.0 changelog entry now accurately lists all three amendment notes and the three index rows it changed."
+    }
+  ],
+  "test_sensitivity": [
+    "Decisions-index guard probed: temporarily removing the ADR-002 row from docs/decisions/00-index.md made scripts/check-docs.sh fail ('FAIL: decisions index rows (28) != ADR files (29)', 'check-docs: FAIL', exit 1); the row was restored byte-identical (cmp -s) and the full check returns PASS. Side observation: check-docs.sh line 47 unconditionally prints an 'ok: decisions index' line even when the comparison failed (a pre-existing cosmetic quirk; the exit code is correct).",
+    "The ADR-002 amendment-note prose itself has no mechanical validator: no script parses amendment notes or index-row status text, so deleting only the note would not be caught by check-docs.sh. Sensitivity for that specific prose therefore cannot be shown mechanically; it was verified by diff inspection (one insertion-only hunk, 17/0) and is subject to the phase-reviewer's re-check.",
+    "No production behaviour changed in this correction (docs/state only), so there is no new production test to sensitivity-probe; the attempt-1 production behavior and its probes are unchanged."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/decisions/ADR-002.md",
+      "docs/decisions/00-index.md",
+      "PLANS.md",
+      "docs/changelog/v1.2.0.md",
+      "docs/plan/state.json",
+      "docs/status.md (checked via render-docs-state --check: up to date, unchanged)"
+    ],
+    "old_values_removed": [
+      "docs/decisions/00-index.md: the bare '| ADR-002 | Guarded Artwork Ownership and Restoration | Accepted |' row -> the ADR-024 extension status, matching ADR-003.",
+      "PLANS.md: 'ADR-024 plus ADR-009 and ADR-003 amendment notes' -> 'ADR-024 plus ADR-009, ADR-002, and ADR-003 amendment notes'.",
+      "docs/changelog/v1.2.0.md: 'updates the ADR-003 and ADR-009 status rows' -> 'updates the ADR-002, ADR-003, and ADR-009 status rows'; plus the new ADR-002 bullet.",
+      "docs/plan/state.json: task 20.3 reports had three paths; now four (the attempt-2 report added, the original three kept); updated_utc 2026-09-28T18:54:19Z -> 2026-09-28T19:51:12Z."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    {
+      "finding_id": "PR-20-01",
+      "closure": "Recorded the missing ADR-002 amendment note (addition-only, 17/0), updated the ADR-002 decisions-index row to the ADR-003 treatment, reconciled the PLANS.md Phase 20 deliverable line to name ADR-002 alongside ADR-009 and ADR-003, added the matching ADR-002 bullet to the Phase 20 changelog entry, and listed this attempt report in docs/plan/state.json task 20.3 reports. No accepted decision text, Gate 20 text, phase acceptance criterion, or v1.2 goal text was changed. docs/planning/v1.2.md section 7 was left unmodified per the delegated file scope (see interpretations).",
+      "evidence": "git diff -- docs/decisions/ADR-002.md (one insertion-only hunk); docs/decisions/00-index.md line 10 vs line 11 (identical status wording); git diff PLANS.md (2-line rewrap only, Gate 20 untouched); docs/changelog/v1.2.0.md additions; jq check of task 20.3 reports; scripts/check-docs.sh PASS (nine sections) with the phase-20 review/aggregate on disk; guard probe showing the index-row removal is detected (FAIL, 28 != 29)."
+    }
+  ],
+  "known_limitations": [
+    "docs/planning/v1.2.md section 7 still lists only ADR-009 and ADR-003 for Phase 20 (the v1.2 goal text and checklist were outside this correction's delegated file scope; the plan-of-record reconciliation was made in the PLANS.md deliverable line instead). If the phase-reviewer requires the v1.2 checklist row widened as well, that is an orchestrator/user-owned follow-up.",
+    "PR-20-02 (LOW, phase oracle aggregate note referencing an absent phase-reviewer section) is orchestrator-owned and was deliberately not touched by this task.",
+    "Phase 20 remains PLANNED in docs/plan/state.json and PLANS.md; the phase gate, tag, and any re-review are orchestrator-owned. This attempt changed no phase status, gate, or tag."
+  ],
+  "ready_for_next_task": true
+}

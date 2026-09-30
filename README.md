@@ -18,7 +18,7 @@ restored.
   SkiaSharp version but bundles no renderer runtime and shares the host's copy.
   Jellyfin 12 supplies a compatible SkiaSharp. If the host does not,
   badge rendering fails closed and the current artwork is left unchanged rather
-  than falling back to a bundled copy (`docs/limitations.md` F5).
+  than falling back to a bundled copy (`docs/limitations/00-index.md` F5).
 - ArrTags is verified on the pinned `linux-musl-x64` Jellyfin `12.0.0` host and
   makes no RID-specific claim; it does not distinguish musl from glibc.
 
@@ -32,10 +32,10 @@ restored.
 
 ## Manual install (fallback)
 
-1. Download the release package `ArrTags_1.1.0.0.zip` from the GitHub Releases
-   page for `v1.1.0` at <https://github.com/benssson/ArrTags/releases>.
+1. Download the release package `ArrTags_1.2.0.0.zip` from the GitHub Releases
+   page for `v1.2.0` at <https://github.com/benssson/ArrTags/releases>.
 2. Extract it so the plugin files sit in a versioned folder under Jellyfin's
-   plugins directory: `<plugins>/ArrTags_1.1.0.0/`. The plugins directory is the
+   plugins directory: `<plugins>/ArrTags_1.2.0.0/`. The plugins directory is the
    `plugins` folder under Jellyfin's data directory.
 3. Restart Jellyfin.
 
@@ -47,8 +47,8 @@ configuration API, so the plugin no longer has to be configured by editing XML b
 hand. The page covers the provider connections and their API keys, the webhook
 secret, the Movie/Episode poster flags, the enabled-library scope, the renderer
 selectors/templates and their value allowlists, the badge position and size, the
-palette overrides, the operational limits, and the
-bounded log verbosity.
+palette overrides, the operational limits, the bounded log verbosity, and the
+read-only diagnostics panel.
 
 The page itself embeds no secret and only shows a secret value that Jellyfin's
 existing administrator configuration API already returns. A saved change is
@@ -58,13 +58,20 @@ freshness, badge definitions, the renderer output policy, and the log
 verbosity); a few
 construction-captured limits (the artifact-size/decode limits and the render
 work-cache TTL/quota and retention values) still take effect only after a host
-restart. An invalid change is rejected, the last valid configuration stays
+restart. The page marks each restart-required setting with note text saying so,
+and shows a best-effort modal reminder when such a setting changes on save (the
+modal depends on the bundled web client; the always-present note text is the
+reliable indication). Byte-denominated limits are entered and displayed in a
+fixed binary unit per field (MB, or KB for the webhook payload), while the saved
+value stays the exact byte count; a value that does not land on the field's
+fixed step is rejected rather than rounded. An invalid change is rejected, the
+last valid configuration stays
 active, and the
 rejection is recorded as a bounded, secret-free entry in the Jellyfin Activity
 log. A successful save also requests a bounded post-save reconciliation, so
 existing posters re-render with the new settings promptly instead of waiting for
 the next library event, webhook, post-scan, or scheduled run
-(`docs/limitations.md` F2, resolved in v1.1, with the construction-captured
+(`docs/limitations/00-index.md` F2, resolved in v1.1, with the construction-captured
 residual recorded there). The XML below
 remains the persisted shape and can still be edited directly at
 `plugins/configurations/ArrTags.xml` (that is,
@@ -87,15 +94,15 @@ Other fields:
 | Field | Meaning |
 | --- | --- |
 | `WebhookSecret` | The shared secret required by the inbound webhook endpoints. |
-| `LogVerbosity` | How much ArrTags writes to the Jellyfin server log: `Off`, `Error`, `Warning` (default), `Information`, `Debug`, or `Trace`. It bounds ArrTags only, applies without a restart, never changes the Jellyfin host log level, and never changes rendered posters. ArrTags logs only bounded, secret-free diagnostics (provider error codes, connection identity, and counts); it never writes an API key or the webhook secret to the log. |
+| `LogVerbosity` | How much ArrTags writes to the Jellyfin server log: `Off`, `Error`, `Warning` (default), `Information`, `Debug`, or `Trace`. It bounds ArrTags only, applies without a restart, never changes the Jellyfin host log level, and never changes rendered posters. ArrTags logs only bounded, secret-free diagnostics (provider error codes, connection identity, counts, the bounded media file-name component of a media path — taken after the last `/` or `\`, with non-printing scalars removed — in place of the opaque Jellyfin item id, and bounded render-classification enums); it never writes an API key or the webhook secret to the log, and it never writes a directory, share, or full path. |
 | `BadgeMoviePosters` | Whether Movie posters are eligible for badges (default `true`). |
 | `BadgeEpisodePosters` | Whether Episode posters are eligible for badges (default `true`). |
 | `EnabledLibraries` | The Jellyfin library identifiers eligible for badges. An empty set means no library restriction. |
 | `Renderer.Selectors` | The configured badge selectors (see below). |
 | `Renderer` palette overrides | Optional `TechnicalBackground`, `TechnicalText`, `StatusBackground`, and `StatusText` colors (see below). |
 | `Renderer.Position` | Where the technical badge rail is anchored: `BottomLeft` (default), `TopLeft`, `TopRight`, `BottomRight`, or `Center`. The `UPGRADE` status pill stays top-right except for a `TopRight` rail, where it moves top-left. |
-| `Renderer.Size` | The preset badge size: `Medium` (default), `Small`, or `Large`. The size multiplies the width-based badge scale. |
-| `Limits` | The operational bounds (queue capacity, concurrency, timeouts, payload and artifact sizes, cache and retention windows). Defaults are validated when the configuration loads. |
+| `Renderer.Size` | The preset badge size: `Medium` (default), `Small`, `Large`, or `ExtraLarge` (ADR-027). The size multiplies the width-based badge scale. |
+| `Limits` | The operational bounds (queue capacity, concurrency, timeouts, payload and artifact sizes, cache and retention windows). Defaults are validated when the configuration loads. Byte-denominated limits are displayed in a fixed binary unit (MB, or KB for the webhook payload) with their exact byte value persisted; a value off the field's fixed step is rejected. |
 
 `Renderer.Selectors` holds one entry per badge selector:
 
@@ -127,6 +134,23 @@ The four defaults are the code-owned ADR-009/ADR-010 output policy
 (`src/ArrTags/Rendering/RenderOutputPolicy.cs`). A changed palette is
 output-affecting because it participates in the render fingerprint, so the next
 reconciliation re-renders the affected posters with the new colors.
+
+### Diagnostics panel
+
+The settings page also shows a read-only **Diagnostics** panel with bounded,
+process-lifetime counters for the current Jellyfin session: update-queue depth
+and in-flight work; the last observed Sonarr and Radarr connection health;
+matching failures (not found, ambiguous, unsupported); provider-inventory cache
+hits and misses; render failures by bounded classification; and stale-metadata
+transitions. The panel adds no setting and changes no saved value. Its data
+comes from an administrator-only plugin endpoint (`GET /ArrTags/Status`), so it
+is visible only to an authenticated administrator. A non-administrator, an
+unavailable endpoint, or an unparseable or non-object response leaves the panel
+showing no data. A well-formed response of an unexpected or partial shape
+instead renders the fixed counter table with its fallback values: a missing or
+non-numeric count shows as `0` and an unrecognized health value as `Unknown`.
+The counters are process-lifetime: they reset when Jellyfin restarts and are
+never persisted.
 
 ### Minimal `ArrTags.xml` example
 
@@ -181,12 +205,12 @@ plugin restores the original poster for every item it changed and removes its
 state root, `ProgramDataPath/ArrTags` (outside the plugins directory). If the
 uninstall drain cannot complete — for example because an item's image was
 changed externally — the current artwork and its recovery records are retained
-instead (`docs/limitations.md`).
+instead (`docs/limitations/00-index.md`).
 
 ## Known limitations
 
 The canonical record of what ArrTags does not yet do or has not yet verified is
-`docs/limitations.md`. In short:
+`docs/limitations/00-index.md`. In short:
 
 - **Provider inventory cache is implemented and F1 is resolved (at the
   integration-test level).** The bounded, in-memory inventory cache serves one
@@ -195,10 +219,11 @@ The canonical record of what ArrTags does not yet do or has not yet verified is
   are wired: a provider webhook invalidates its connection, and a reconciliation
   (library refresh/post-scan, scheduled, manual, or post-save) invalidates the
   retained sets, with the bounded inventory TTL as the fallback. Remaining bounds
-  are recorded in `docs/limitations.md` F1 (Sonarr per-series episode reads are
+  are recorded in `docs/limitations/00-index.md` F1 (Sonarr per-series episode reads are
   O(series) per window and a sparse invalidation window repopulates the whole
   library); rendering and publication are fingerprint-gated. The live pinned-host
-  confirmation is owned by task 14.3.
+  confirmation completed in task 14.3
+  (`docs/implementation/14.3/live-verification.json`, `PASS`).
 - **Jellyfin Enhanced coexistence is verified at the contract level only**;
   Enhanced is not installed on the pinned host (V3).
 - **Live-verification gaps.** There is no live Sonarr/Radarr instance, the live
@@ -209,5 +234,6 @@ The canonical record of what ArrTags does not yet do or has not yet verified is
 
 ## More information
 
-- `docs/project-status.md` — project status and contributor information.
+- `docs/status.md` — project status and contributor information.
+- `docs/INDEX.md` — documentation map (what to read for what task).
 - `docs/release/build-and-release.md` — build and release process.

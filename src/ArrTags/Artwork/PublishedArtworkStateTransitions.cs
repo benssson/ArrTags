@@ -4,7 +4,7 @@ namespace ArrTags.Artwork;
 
 /// <summary>
 /// The pure, testable guarded logical transitions from
-/// <c>docs/data-model.md</c> section 3.10.2. The component never calls a
+/// <c>docs/data-model/03-10-artworkcacheentry.md</c> section 3.10.2. The component never calls a
 /// Jellyfin image API and never mutates an artifact; it evaluates ownership and
 /// returns the resulting state plus the action later Phase 5 tasks may drive.
 /// Crash-consistent ordering is the separate <c>ArtworkOperation</c> journal

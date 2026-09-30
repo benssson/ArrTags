@@ -27,11 +27,12 @@ public class RenderDeterminismTests
     [SkiaNativeFact]
     public async Task RepeatedRendersAreByteIdentical()
     {
-        // The V1 default and a non-default anchor/size case must both be
-        // byte-deterministic, so the committed anchor/size goldens are
-        // reproducible.
+        // The V1 default, a non-default anchor/size case, and the Extra Large
+        // preset must all be byte-deterministic, so every committed golden,
+        // including the Extra Large ones, is reproducible.
         await AssertRepeatedRendersAreByteIdentical("all-fields");
         await AssertRepeatedRendersAreByteIdentical("top-right-large");
+        await AssertRepeatedRendersAreByteIdentical("bottom-left-extra-large");
     }
 
     private static async Task AssertRepeatedRendersAreByteIdentical(string name)

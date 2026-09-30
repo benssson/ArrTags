@@ -187,6 +187,31 @@ public class DashboardSettingsPageTests
     }
 
     [Fact]
+    public void PageOrdersTheBadgeSizeOptionsSmallMediumLargeExtraLarge()
+    {
+        var page = ReadEmbeddedPage();
+
+        // ADR-027 clause 3: the settings dropdown order is Small, Medium, Large,
+        // Extra Large. The order is pinned structurally because the repository
+        // has no JavaScript runtime to execute the page.
+        var selectStart = page.IndexOf("id=\"rendererSize\"", StringComparison.Ordinal);
+        Assert.True(selectStart >= 0, "The badge size select is missing.");
+        var selectEnd = page.IndexOf("</select>", selectStart, StringComparison.Ordinal);
+        Assert.True(selectEnd > selectStart, "The badge size select is not closed.");
+        var badgeSizeSelect = page[selectStart..selectEnd];
+
+        var small = badgeSizeSelect.IndexOf("value=\"Small\"", StringComparison.Ordinal);
+        var medium = badgeSizeSelect.IndexOf("value=\"Medium\"", StringComparison.Ordinal);
+        var large = badgeSizeSelect.IndexOf("value=\"Large\"", StringComparison.Ordinal);
+        var extraLarge = badgeSizeSelect.IndexOf("value=\"ExtraLarge\"", StringComparison.Ordinal);
+
+        Assert.True(
+            small >= 0 && medium > small && large > medium && extraLarge > large,
+            "The badge size options must be ordered Small, Medium, Large, Extra Large.");
+        Assert.Contains(">Extra Large</option>", badgeSizeSelect, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PageSourceContainsNoSecretOrCredentialLiteral()
     {
         var page = ReadEmbeddedPage();

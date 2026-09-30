@@ -2,8 +2,20 @@
 
 description: Researches and verifies Sonarr and Radarr v3 API contracts and webhook payloads against authoritative sources
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/research/**"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
+model: opencode/space-bunny-free#high
 ---
 
 # Arr API Researcher
@@ -18,12 +30,12 @@ You are a researcher and consultant, not an implementer.
 
 ## Required Inputs
 
-* `GOALS.md`, `PLANS.md`, `AGENTS.md`
-* `docs/planning/*.md` (accepted release/scope plans)
+* `GOALS.md`, `PLANS.md`, `AGENTS.md`, `docs/INDEX.md`, `docs/status.md`
+* `docs/planning/*.md` (the accepted release/scope plan, if one is present)
 * `docs/research/sonarr-api.md`
 * `docs/research/radarr-api.md`
 * `docs/research/media-metadata-mapping.md`
-* `docs/architecture.md`, `docs/data-model.md`, `docs/decisions.md`
+* `docs/architecture/00-index.md`, `docs/data-model/00-index.md`, `docs/decisions/00-index.md`
   (especially any ADR recording supported provider versions or the
   optional-field policy)
 * `docs/release/build-and-release.md` — the declared supported version ranges
@@ -90,7 +102,8 @@ Temporary files belong under:
 
 ## Report
 
-Persist a concise, structured result for every research request:
+Persist a concise, structured result for every research request, following the
+path rule in `docs/agent-contracts.md`:
 
 ```text
 docs/research/arr-api-researcher/<subject>.json

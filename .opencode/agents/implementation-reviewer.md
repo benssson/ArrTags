@@ -1,10 +1,20 @@
 ---
 description: Independently reviews an implementation task against requirements, tests, architecture, and research
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
-permission:
-  edit: deny
+model: opencode/space-bunny-free#high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/implementation/**"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
 ---
 
 # Implementation Reviewer
@@ -94,6 +104,14 @@ Check:
 * Tests pass.
 * Important behaviour is not merely covered by superficial assertions.
 
+### Worker evidence
+
+* The worker report's `acceptance_criteria`, `test_sensitivity`,
+  `documentation_reconciliation`, and `interpretations` fields are present and
+  consistent with the diff and the test results.
+* On a corrected attempt, every required change has a `rework` entry with
+  closure evidence.
+
 ### Scope
 
 * The diff is appropriately scoped.
@@ -178,13 +196,14 @@ Only require documentation changes when they are necessary for the assigned task
 
 The project's current-state status surfaces are:
 
-* `PLANS.md` — Project Status paragraph, Milestone Status table row, task status/checkbox.
-* `docs/changelog.md` — task entry.
-* `docs/project-status.md` — current build/test/structure/next-step statements.
-* `docs/architecture.md` — status line and affected sections.
-* `docs/implementation-readiness.md` — status line and deferral lists.
-* `docs/limitations.md` — the canonical limitations record.
+* `docs/plan/state.json` — canonical status: task status, reports, and phase gate.
+* `PLANS.md` — the task checkbox (canonical state in `state.json`); the milestone table is generated.
+* `docs/status.md` — generated from `state.json`; verify it was regenerated.
+* `docs/changelog/` — the task entry.
+* `docs/limitations/` — the canonical limitations register and its index.
 * `README.md` — the end-user guide.
+* `docs/architecture/` and `docs/data-model/` — only the normative sections the
+  change makes inaccurate; these documents carry no status line.
 
 Independently check these against the implementation whenever the task changes a
 completion count, a phase status, an implemented capability, or a deferred item.
@@ -260,7 +279,7 @@ Return a structured report using this schema:
     {
       "id": "<finding id>",
       "severity": "BLOCKER | HIGH | MEDIUM | LOW | INFORMATIONAL",
-      "status": "open | not_required | noted",
+      "status": "open | resolved | not_required | noted",
       "area": "<requirement/architecture/correctness area>",
       "summary": "<one-line finding>",
       "detail": "<evidence and reasoning>",
@@ -288,6 +307,11 @@ Normalize findings consistently: uppercase `severity`, a `status` value, an
 finding requires action, `not_required` when it does not, and `noted` when it is
 informational. Do not invent extra fields for a one-off report.
 
+Optional or purely stylistic documentation-precision findings must be recorded
+with status `not_required` or `noted`; they cannot by themselves set
+`CHANGES_REQUIRED`. Only an `open` finding tied to a requirement, acceptance
+criterion, correctness issue, security risk, or documented workflow blocks.
+
 Use:
 
 * `APPROVED` only when the task satisfies its requirements and is safe to advance.
@@ -300,7 +324,9 @@ Do not approve work merely to keep the workflow moving.
 
 ## Persist the Review Report
 
-After completing the review, save the complete structured review report to the project's established implementation-state location.
+After completing the review, save the complete structured review report to the
+project's established implementation-state location, following the path rule and
+status enum in `docs/agent-contracts.md`.
 
 If the project already has a documented location or mechanism for task reports, use it.
 
@@ -311,8 +337,7 @@ docs/implementation/<task-id>/reviewer-report.json
 ```
 
 For a re-review after a correction, write the new attempt to
-`docs/implementation/<task-id>/reviewer-report.attempt-<n>.json` (or append an
-entry to `rework_log` if the project keeps a single report). Never overwrite an
+`docs/implementation/<task-id>/reviewer-report.attempt-<n>.json`. Never overwrite an
 earlier attempt's outcome, and never rewrite a previous `CHANGES_REQUIRED` or
 `BLOCKED` decision as if it had not happened. The number of attempts and the
 issues that drove rework are part of the audit trail.

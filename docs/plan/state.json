@@ -1,0 +1,1570 @@
+{
+  "schema": 1,
+  "updated_utc": "2026-09-30T13:55:45Z",
+  "active_scope": null,
+  "active_scope_note": "v1.2 (Phases 15-21, version 1.2.0.0, tag v1.2.0) is COMPLETE: Gates 15-21 are met and its phases were archived verbatim from PLANS.md to docs/plan/archive/v1.2.md, with the accepted v1.2 scope plan preserved at docs/plan/archive/v1.2-plan.md. All phases 1-21 are complete, so PLANS.md holds no active phase sections and docs/planning/ is empty. No release scope is currently accepted for planning: active_scope stays null until the user accepts a new plan, which is placed under docs/planning/, named by this pointer, and whose phases continue the global numbering from Phase 22 without renumbering or reopening prior phases. The v1.2 goals G6-G9 remain in force, decision records ADR-022..ADR-029 are Accepted (v1.2), decision gates DG-15..DG-22 are resolved, and limitations F3, F4, F6, F7, and F8 are resolved by their phases (F5 remains an accepted known shipped limitation).",
+  "releases": [
+    {
+      "version": "0.1.0",
+      "tag": "v0.1.0",
+      "status": "COMPLETE",
+      "phases": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ]
+    },
+    {
+      "version": "1.0.1",
+      "tag": "v1.0.1",
+      "status": "COMPLETE",
+      "phases": [
+        "8"
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "tag": "v1.1.0",
+      "status": "COMPLETE",
+      "phases": [
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14"
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "tag": "v1.2.0",
+      "status": "COMPLETE",
+      "phases": [
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21"
+      ]
+    }
+  ],
+  "current_release": {
+    "version": "1.2.0.0",
+    "tag": "v1.2.0",
+    "status": "COMPLETE",
+    "published": false,
+    "artifact": {
+      "path": "artifacts/ArrTags_1.2.0.0.zip",
+      "bytes": 619861,
+      "sha256": "2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268",
+      "md5": "631fbfa5a4fb58fac5a877eeef761193",
+      "entries": 7
+    },
+    "suite": {
+      "default": {
+        "failed": 0,
+        "passed": 1966,
+        "skipped": 66,
+        "total": 2032
+      },
+      "host_guarded": {
+        "failed": 0,
+        "passed": 1986,
+        "skipped": 46,
+        "total": 2032
+      },
+      "forced_native": {
+        "failed": 0,
+        "passed": 2053,
+        "skipped": 21,
+        "total": 2074
+      }
+    },
+    "live_verification": "docs/implementation/21.13/live-verification.json",
+    "security_review": "docs/implementation/21.14/security-review.json",
+    "release_review": "docs/implementation/final-review/release-review-v1.2.json",
+    "publish_note": "GitHub release, asset upload, and manifest push remain the user's manual step with scripts/publish-release.sh."
+  },
+  "phases": [
+    {
+      "id": 1,
+      "name": "Plugin foundation",
+      "release": "0.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 1",
+      "tag": "v0.1.0-phase1",
+      "execution_order": [],
+      "tasks": []
+    },
+    {
+      "id": 2,
+      "name": "Sonarr & Radarr integration",
+      "release": "0.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 2",
+      "tag": "v0.1.0-phase2",
+      "execution_order": [],
+      "tasks": [
+        {
+          "id": "2.1",
+          "done": true,
+          "name": "Define the shared provider-client boundary and connection identity rules."
+        },
+        {
+          "id": "2.2",
+          "done": true,
+          "name": "Register dedicated named or typed clients through Jellyfin's standard"
+        },
+        {
+          "id": "2.3",
+          "done": true,
+          "name": "Implement Radarr v3 reads for local movies and current movie-file data,"
+        },
+        {
+          "id": "2.4",
+          "done": true,
+          "name": "Implement Sonarr v3 reads for series, episodes, and episode files,"
+        },
+        {
+          "id": "2.5",
+          "done": true,
+          "name": "Map provider data into `ArrProvider`, `ArrConnection`, and"
+        },
+        {
+          "id": "2.6",
+          "done": true,
+          "name": "Preserve unknown technical values as unknown rather than false or empty"
+        },
+        {
+          "id": "2.7",
+          "done": true,
+          "name": "Add tests for authentication failures, unavailable services, malformed"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Media matching",
+      "release": "0.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 3",
+      "tag": "v0.1.0-phase3",
+      "execution_order": [],
+      "tasks": [
+        {
+          "id": "3.1",
+          "done": true,
+          "name": "Build Jellyfin `MediaIdentity` snapshots from the supported canonical"
+        },
+        {
+          "id": "3.2",
+          "done": true,
+          "name": "Implement candidate selection, evidence recording, and deterministic"
+        },
+        {
+          "id": "3.3",
+          "done": true,
+          "name": "Reject zero-candidate and multiple-candidate matches rather than"
+        },
+        {
+          "id": "3.4",
+          "done": true,
+          "name": "Implement the documented movie, series, and episode matching order."
+        },
+        {
+          "id": "3.5",
+          "done": true,
+          "name": "Define and test the numbering policy for specials, anime, and"
+        },
+        {
+          "id": "3.6",
+          "done": true,
+          "name": "Resolve DG-5. Configured path normalization and path fallback are"
+        },
+        {
+          "id": "3.7",
+          "done": true,
+          "name": "Verify that local Arr record and file IDs are always scoped by"
+        },
+        {
+          "id": "3.8",
+          "done": true,
+          "name": "Reject ineligible item locations (remote, virtual, offline, `.strm`,"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Badge rendering",
+      "release": "0.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 4",
+      "tag": "v0.1.0-phase4",
+      "execution_order": [
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "4.5",
+        "4.7",
+        "4.8",
+        "4.9",
+        "4.6",
+        "4.10",
+        "4.11"
+      ],
+      "tasks": [
+        {
+          "id": "4.1",
+          "done": true,
+          "name": "Implement metadata selectors against `BadgeMetadata`, not provider DTO"
+        },
+        {
+          "id": "4.2",
+          "done": true,
+          "name": "Define the initial badge field set, text rules, contrast behavior,"
+        },
+        {
+          "id": "4.3",
+          "done": true,
+          "name": "Keep unknown technical values distinct from confirmed negative values."
+        },
+        {
+          "id": "4.4",
+          "done": true,
+          "name": "Implement render request and result fingerprints containing every"
+        },
+        {
+          "id": "4.5",
+          "done": true,
+          "name": "Enforce image and text limits before decode, draw, and encode work."
+        },
+        {
+          "id": "4.7",
+          "done": true,
+          "name": "Pin the SkiaSharp managed and Linux native asset packages to exact",
+          "reports": [
+            "docs/implementation/4.7/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "4.8",
+          "done": true,
+          "name": "Spike SkiaSharp compatibility with the Jellyfin 12 host: confirm the",
+          "reports": [
+            "docs/implementation/4.8/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "4.9",
+          "done": true,
+          "name": "Implement the provider-neutral renderer service and drawing engine: the",
+          "reports": [
+            "docs/implementation/4.9/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "4.6",
+          "done": true,
+          "name": "Test dimensions, format behavior, truncation, layout, cancellation, and",
+          "reports": [
+            "docs/implementation/4.6/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "4.10",
+          "done": true,
+          "name": "Extend the immutable configuration model, snapshot, and validator with",
+          "reports": [
+            "docs/implementation/4.10/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "4.11",
+          "done": true,
+          "name": "Add golden-image, byte-determinism, PNG-contract, and cross-runtime",
+          "reports": [
+            "docs/implementation/4.11/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Jellyfin artwork integration",
+      "release": "0.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 5",
+      "tag": "v0.1.0-phase5",
+      "execution_order": [
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "5.6",
+        "5.5",
+        "5.7",
+        "5.8",
+        "5.9",
+        "5.10",
+        "5.11"
+      ],
+      "tasks": [
+        {
+          "id": "5.1",
+          "done": true,
+          "name": "Confirm the exact supported Jellyfin item-image publication ABI and",
+          "reports": [
+            "docs/implementation/5.1/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.2",
+          "done": true,
+          "name": "Implement source-artwork provenance and guarded restoration state",
+          "reports": [
+            "docs/implementation/5.2/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.3",
+          "done": true,
+          "name": "Implement the Jellyfin host source adapter that reads the unindexed",
+          "reports": [
+            "docs/implementation/5.3/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.4",
+          "done": true,
+          "name": "Extend plugin packaging so the renderer's managed dependencies, Linux",
+          "reports": [
+            "docs/implementation/5.4/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.5",
+          "done": true,
+          "name": "Publish completed artwork through Jellyfin's supported item-image APIs;",
+          "reports": [
+            "docs/implementation/5.5/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.6",
+          "done": true,
+          "name": "Persist a durable `ArtworkOperation` before `SaveImage`, including",
+          "reports": [
+            "docs/implementation/5.6/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.7",
+          "done": true,
+          "name": "Reconcile uncertain `SaveImage`, item update, and provenance",
+          "reports": [
+            "docs/implementation/5.7/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.8",
+          "done": true,
+          "name": "Preserve the current usable artwork when source capture or rendering",
+          "reports": [
+            "docs/implementation/5.8/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.9",
+          "done": true,
+          "name": "Fence and drain publication operations during disable/uninstall, and",
+          "reports": [
+            "docs/implementation/5.9/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.10",
+          "done": true,
+          "name": "Add the configured disable/limit policy for duplicate or overlapping",
+          "reports": [
+            "docs/implementation/5.10/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "5.11",
+          "done": true,
+          "name": "Test Web and image-consuming clients through the supported server",
+          "reports": [
+            "docs/implementation/5.11/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Caching, updates & performance",
+      "release": "0.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 6",
+      "tag": "v0.1.0-phase6",
+      "execution_order": [
+        "6.1",
+        "6.2",
+        "6.3",
+        "6.4",
+        "6.5",
+        "6.6",
+        "6.7",
+        "6.8",
+        "6.9"
+      ],
+      "tasks": [
+        {
+          "id": "6.1",
+          "done": true,
+          "name": "Keep library event handlers short: validate relevance, enqueue a",
+          "reports": [
+            "docs/implementation/6.1/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.2",
+          "done": true,
+          "name": "Implement coalescing by item and connection, single-flight work, worker",
+          "reports": [
+            "docs/implementation/6.2/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.3",
+          "done": true,
+          "name": "Publish metadata state atomically only after current item/configuration",
+          "reports": [
+            "docs/implementation/6.3/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.4",
+          "done": true,
+          "name": "Recover non-terminal artwork operations before accepting new work for",
+          "reports": [
+            "docs/implementation/6.4/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.5",
+          "done": true,
+          "name": "Separate metadata freshness and bounded stale-last-known-good behavior",
+          "reports": [
+            "docs/implementation/6.5/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.6",
+          "done": true,
+          "name": "Regenerate and republish only affected artwork when a metadata",
+          "reports": [
+            "docs/implementation/6.6/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.7",
+          "done": true,
+          "name": "Validate and bound webhook authentication, content, rate, and work",
+          "reports": [
+            "docs/implementation/6.7/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.8",
+          "done": true,
+          "name": "Test restart, shutdown, corruption, outage, recovery, duplicate events,",
+          "reports": [
+            "docs/implementation/6.8/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "6.9",
+          "done": true,
+          "name": "Add scheduled (periodic and manual) and post-scan reconciliation that",
+          "reports": [
+            "docs/implementation/6.9/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Testing & release",
+      "release": "0.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 7",
+      "tag": "v0.1.0-phase7",
+      "execution_order": [
+        "7.1",
+        "7.2",
+        "7.7",
+        "7.3",
+        "7.8",
+        "7.4",
+        "7.5",
+        "7.6"
+      ],
+      "tasks": [
+        {
+          "id": "7.1",
+          "done": true,
+          "name": "Run all unit and integration tests against the exact declared versions.",
+          "reports": [
+            "docs/implementation/7.1/reviewer-report.attempt-2.json",
+            "docs/implementation/7.1/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "7.2",
+          "done": true,
+          "name": "Verify the plugin installs, upgrades, reloads, and uninstalls safely.",
+          "reports": [
+            "docs/implementation/7.2/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "7.3",
+          "done": true,
+          "name": "Verify all success criteria in `GOALS.md`, including independent",
+          "reports": [
+            "docs/implementation/7.3/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "7.4",
+          "done": true,
+          "name": "Review logs, diagnostics, HTTP behavior, and persisted state for secret",
+          "reports": [
+            "docs/implementation/7.4/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "7.5",
+          "done": true,
+          "name": "Build the release package from a clean checkout and record the",
+          "reports": [
+            "docs/implementation/7.5/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "7.6",
+          "done": true,
+          "name": "Document known limitations and any deferred decision without presenting",
+          "reports": [
+            "docs/implementation/7.6/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "7.7",
+          "done": true,
+          "name": "Relocate the persisted plugin state root outside Jellyfin's",
+          "reports": [
+            "docs/implementation/7.7/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "7.8",
+          "done": true,
+          "name": "Stop shipping the duplicate managed `SkiaSharp.dll` and native",
+          "reports": [
+            "docs/implementation/7.8/reviewer-report.attempt-2.json",
+            "docs/implementation/7.8/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Release distribution",
+      "release": "1.0.1",
+      "status": "COMPLETE",
+      "gate": "Gate 8",
+      "tag": "",
+      "execution_order": [
+        "8.1",
+        "8.2",
+        "8.3",
+        "8.4",
+        "8.5",
+        "8.6",
+        "1.0",
+        "0.1"
+      ],
+      "tasks": [
+        {
+          "id": "8.1",
+          "done": true,
+          "name": "Split `README.md` into an end-user guide and a preserved",
+          "reports": [
+            "docs/implementation/8.1/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "8.2",
+          "done": true,
+          "name": "Repoint the agent current-state references at `docs/project-status.md`.",
+          "reports": [
+            "docs/implementation/8.2/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "8.3",
+          "done": true,
+          "name": "Correct the stale `build.yaml` metadata and bump the version to",
+          "reports": [
+            "docs/implementation/8.3/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "8.4",
+          "done": true,
+          "name": "Add the Jellyfin plugin-repository manifest tooling and the release",
+          "reports": [
+            "docs/implementation/8.4/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "8.5",
+          "done": true,
+          "name": "Update `docs/release/build-and-release.md` and `docs/changelog.md`.",
+          "reports": [
+            "docs/implementation/8.5/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "8.6",
+          "done": true,
+          "name": "Release-readiness verification, commit the generated `manifest.json`,",
+          "reports": [
+            "docs/implementation/8.6/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Dashboard settings UI and runtime configuration activation",
+      "release": "1.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 9",
+      "tag": "v1.1.0-phase9",
+      "execution_order": [
+        "9.1",
+        "9.2",
+        "9.3",
+        "9.4",
+        "9.5"
+      ],
+      "tasks": [
+        {
+          "id": "9.1",
+          "done": true,
+          "name": "Configuration round-trip spike (blocking prerequisite).",
+          "reports": [
+            "docs/implementation/9.1/reviewer-report.json",
+            "docs/implementation/9.1/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "9.2",
+          "done": true,
+          "name": "Dashboard settings page and embedded page resource.",
+          "reports": [
+            "docs/implementation/9.2/reviewer-report.json",
+            "docs/implementation/9.2/security-review.json"
+          ]
+        },
+        {
+          "id": "9.3",
+          "done": true,
+          "name": "Elevation-gated save path and runtime activation.",
+          "reports": [
+            "docs/implementation/9.3/reviewer-report.attempt-2.json",
+            "docs/implementation/9.3/reviewer-report.attempt-3.json",
+            "docs/implementation/9.3/reviewer-report.attempt-4.json",
+            "docs/implementation/9.3/reviewer-report.json",
+            "docs/implementation/9.3/security-review.attempt-2.json",
+            "docs/implementation/9.3/security-review.json"
+          ]
+        },
+        {
+          "id": "9.4",
+          "done": true,
+          "name": "Bounded post-save reconciliation trigger.",
+          "reports": [
+            "docs/implementation/9.4/reviewer-report.attempt-2.json",
+            "docs/implementation/9.4/reviewer-report.json",
+            "docs/implementation/9.4/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "9.5",
+          "done": true,
+          "name": "Goal A documentation and integration verification.",
+          "reports": [
+            "docs/implementation/9.5/reviewer-report.attempt-2.json",
+            "docs/implementation/9.5/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Logging with configurable verbosity",
+      "release": "1.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 10",
+      "tag": "v1.1.0-phase10",
+      "execution_order": [
+        "10.1",
+        "10.2",
+        "10.3",
+        "9.4"
+      ],
+      "tasks": [
+        {
+          "id": "10.1",
+          "done": true,
+          "name": "Logging foundation, verbosity configuration, and fingerprint exclusion.",
+          "reports": [
+            "docs/implementation/10.1/reviewer-report-attempt-1.json",
+            "docs/implementation/10.1/reviewer-report.json",
+            "docs/implementation/10.1/test-quality-review-attempt-1.json",
+            "docs/implementation/10.1/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "10.2",
+          "done": true,
+          "name": "Bounded, redacted log call sites and volume bounds.",
+          "reports": [
+            "docs/implementation/10.2/reviewer-report.json",
+            "docs/implementation/10.2/security-review.json"
+          ]
+        },
+        {
+          "id": "10.3",
+          "done": true,
+          "name": "SEC-5 rewrite, documentation, and logging security review.",
+          "reports": [
+            "docs/implementation/10.3/reviewer-report.json",
+            "docs/implementation/10.3/security-review.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Provider inventory cache and library-refresh-driven refresh",
+      "release": "1.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 11",
+      "tag": "v1.1.0-phase11",
+      "execution_order": [
+        "11.1",
+        "11.2",
+        "11.3",
+        "11.4",
+        "9.4"
+      ],
+      "tasks": [
+        {
+          "id": "11.1",
+          "done": true,
+          "name": "Inventory cache model, bounds, and limits.",
+          "reports": [
+            "docs/implementation/11.1/reviewer-report.attempt-2.json",
+            "docs/implementation/11.1/reviewer-report.json",
+            "docs/implementation/11.1/security-review.attempt-2.json",
+            "docs/implementation/11.1/security-review.json",
+            "docs/implementation/11.1/test-quality-review.attempt-2.json",
+            "docs/implementation/11.1/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "11.2",
+          "done": true,
+          "name": "Provider-client integration and bulk reads.",
+          "reports": [
+            "docs/implementation/11.2/reviewer-report.attempt-2.json",
+            "docs/implementation/11.2/reviewer-report.json",
+            "docs/implementation/11.2/test-quality-review.attempt-2.json",
+            "docs/implementation/11.2/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "11.3",
+          "done": true,
+          "name": "ArrTags-side invalidation.",
+          "reports": [
+            "docs/implementation/11.3/reviewer-report.attempt-2.json",
+            "docs/implementation/11.3/reviewer-report.json",
+            "docs/implementation/11.3/test-quality-review.attempt-2.json",
+            "docs/implementation/11.3/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "11.4",
+          "done": true,
+          "name": "Goal C documentation and integration verification.",
+          "reports": [
+            "docs/implementation/11.4/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Badge value allowlist and badge size/position",
+      "release": "1.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 12",
+      "tag": "v1.1.0-phase12",
+      "execution_order": [
+        "12.1",
+        "12.2",
+        "12.3",
+        "12.4",
+        "9.4"
+      ],
+      "tasks": [
+        {
+          "id": "12.1",
+          "done": true,
+          "name": "Allowlist configuration, bounds, validation, and fingerprint.",
+          "reports": [
+            "docs/implementation/12.1/reviewer-report.attempt-2.json",
+            "docs/implementation/12.1/reviewer-report.json",
+            "docs/implementation/12.1/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "12.2",
+          "done": true,
+          "name": "Allowlist resolution and renderer filtering order.",
+          "reports": [
+            "docs/implementation/12.2/reviewer-report.attempt-2.json",
+            "docs/implementation/12.2/reviewer-report.attempt-3.json",
+            "docs/implementation/12.2/reviewer-report.json",
+            "docs/implementation/12.2/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "12.3",
+          "done": true,
+          "name": "Badge size/position configuration and layout engine.",
+          "reports": [
+            "docs/implementation/12.3/reviewer-report.attempt-2.json",
+            "docs/implementation/12.3/reviewer-report.attempt-3.json",
+            "docs/implementation/12.3/reviewer-report.attempt-4.json",
+            "docs/implementation/12.3/reviewer-report.json",
+            "docs/implementation/12.3/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "12.4",
+          "done": true,
+          "name": "Coordinated schema/`RenderVersion` advance, golden regeneration, and",
+          "reports": [
+            "docs/implementation/12.4/reviewer-report.attempt-2.json",
+            "docs/implementation/12.4/reviewer-report.json",
+            "docs/implementation/12.4/test-quality-review.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "README and documentation pass",
+      "release": "1.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 13",
+      "tag": "v1.1.0-phase13",
+      "execution_order": [
+        "13.1",
+        "13.2",
+        "12.4"
+      ],
+      "tasks": [
+        {
+          "id": "13.1",
+          "done": true,
+          "name": "README palette documentation and v1.1 feature documentation.",
+          "reports": [
+            "docs/implementation/13.1/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "13.2",
+          "done": true,
+          "name": "Canonical current-state reconciliation sweep.",
+          "reports": [
+            "docs/implementation/13.2/reviewer-report.attempt-1.json",
+            "docs/implementation/13.2/reviewer-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "v1.1 release",
+      "release": "1.1.0",
+      "status": "COMPLETE",
+      "gate": "Gate 14",
+      "tag": "v1.1.0",
+      "execution_order": [
+        "14.1",
+        "14.2",
+        "14.3",
+        "14.4",
+        "14.5",
+        "13.2",
+        "1.0"
+      ],
+      "tasks": [
+        {
+          "id": "14.1",
+          "done": true,
+          "name": "Version bump and release metadata.",
+          "reports": [
+            "docs/implementation/14.1/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "14.2",
+          "done": true,
+          "name": "Release build, full suite, reproducible artifact, and release",
+          "reports": [
+            "docs/implementation/14.2/reviewer-report.attempt-1.json",
+            "docs/implementation/14.2/reviewer-report.json",
+            "docs/implementation/14.2/test-quality-review.attempt-1.json",
+            "docs/implementation/14.2/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "14.3",
+          "done": true,
+          "name": "Live pinned-host verification.",
+          "reports": [
+            "docs/implementation/14.3/live-verification.json",
+            "docs/implementation/14.3/reviewer-report.json"
+          ]
+        },
+        {
+          "id": "14.4",
+          "done": true,
+          "name": "Release security review.",
+          "reports": [
+            "docs/implementation/14.4/reviewer-report.json",
+            "docs/implementation/14.4/security-review.json"
+          ]
+        },
+        {
+          "id": "14.5",
+          "done": true,
+          "name": "Changelog, release-readiness verification, manifest commit, and the"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Plugin log subject identifier and render classification",
+      "release": "1.2.0",
+      "status": "COMPLETE",
+      "gate": "Gate 15",
+      "tag": "v1.2.0-phase15",
+      "execution_order": [
+        "15.1",
+        "15.2",
+        "15.3",
+        "15.4"
+      ],
+      "tasks": [
+        {
+          "id": "15.1",
+          "done": true,
+          "name": "Bounded log-subject policy and helper",
+          "reports": [
+            "docs/implementation/15.1/reviewer-report.json",
+            "docs/implementation/15.1/test-quality-review.json",
+            "docs/implementation/15.1/worker-report.json"
+          ]
+        },
+        {
+          "id": "15.2",
+          "done": true,
+          "name": "Thread the bounded log subject through the identity-bearing and fallback sites",
+          "reports": [
+            "docs/implementation/15.2/reviewer-report.attempt-2.json",
+            "docs/implementation/15.2/reviewer-report.json",
+            "docs/implementation/15.2/test-quality-review.attempt-2.json",
+            "docs/implementation/15.2/test-quality-review.json",
+            "docs/implementation/15.2/worker-report.json"
+          ]
+        },
+        {
+          "id": "15.3",
+          "done": true,
+          "name": "Emit the bounded render classification in the artwork log",
+          "reports": [
+            "docs/implementation/15.3/reviewer-report.json",
+            "docs/implementation/15.3/test-quality-review.json",
+            "docs/implementation/15.3/worker-report.json"
+          ]
+        },
+        {
+          "id": "15.4",
+          "done": true,
+          "name": "Logging documentation, ADR-020 amendment, and security review",
+          "reports": [
+            "docs/implementation/15.4/reviewer-report.json",
+            "docs/implementation/15.4/security-review.attempt-2.json",
+            "docs/implementation/15.4/security-review.json",
+            "docs/implementation/15.4/worker-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Settings byte units and restart-required surfacing",
+      "release": "1.2.0",
+      "status": "COMPLETE",
+      "gate": "Gate 16",
+      "tag": "v1.2.0-phase16",
+      "gate_record": "docs/implementation/phase-16/phase-review.json",
+      "execution_order": [
+        "16.1",
+        "16.2",
+        "16.3",
+        "16.4",
+        "16.5",
+        "16.6"
+      ],
+      "tasks": [
+        {
+          "id": "16.1",
+          "done": true,
+          "name": "Byte/unit conversion helper and per-field MB/KB mapping (explicit off-step rejection)",
+          "reports": [
+            "docs/implementation/16.1/reviewer-report.json",
+            "docs/implementation/16.1/worker-report.json"
+          ]
+        },
+        {
+          "id": "16.2",
+          "done": true,
+          "name": "Authoritative restart-required set with code evidence",
+          "reports": [
+            "docs/implementation/16.2/reviewer-report.attempt-2.json",
+            "docs/implementation/16.2/reviewer-report.json",
+            "docs/implementation/16.2/worker-report.attempt-2.json",
+            "docs/implementation/16.2/worker-report.json"
+          ]
+        },
+        {
+          "id": "16.3",
+          "done": true,
+          "name": "Restart-required note text on the settings page",
+          "reports": [
+            "docs/implementation/16.3/reviewer-report.json",
+            "docs/implementation/16.3/worker-report.json"
+          ]
+        },
+        {
+          "id": "16.4",
+          "done": true,
+          "name": "Modal-on-change research spike (jellyfin-expert)",
+          "reports": [
+            "docs/implementation/16.4/reviewer-report.json",
+            "docs/implementation/16.4/worker-report.json",
+            "docs/research/jellyfin-expert/modal-notification-api.json"
+          ]
+        },
+        {
+          "id": "16.5",
+          "done": true,
+          "name": "Modal-on-change implementation (fail-open to note text)",
+          "reports": [
+            "docs/implementation/16.5/reviewer-report.json",
+            "docs/implementation/16.5/worker-report.json"
+          ]
+        },
+        {
+          "id": "16.6",
+          "done": true,
+          "name": "G6/G8 documentation and integration verification",
+          "reports": [
+            "docs/implementation/16.6/reviewer-report.json",
+            "docs/implementation/16.6/worker-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Read-only diagnostics status surface",
+      "release": "1.2.0",
+      "status": "COMPLETE",
+      "gate": "Gate 17",
+      "tag": "v1.2.0-phase17",
+      "gate_record": "docs/implementation/phase-17/phase-review.json",
+      "execution_order": [
+        "17.1",
+        "17.2",
+        "17.3",
+        "17.4"
+      ],
+      "tasks": [
+        {
+          "id": "17.1",
+          "done": true,
+          "name": "Bounded diagnostics metrics model and instrumentation",
+          "reports": [
+            "docs/implementation/17.1/reviewer-report.json",
+            "docs/implementation/17.1/worker-report.json"
+          ]
+        },
+        {
+          "id": "17.2",
+          "done": true,
+          "name": "Administrator-authenticated status endpoint",
+          "reports": [
+            "docs/implementation/17.2/reviewer-report.json",
+            "docs/implementation/17.2/worker-report.json"
+          ]
+        },
+        {
+          "id": "17.3",
+          "done": true,
+          "name": "Read-only status panel on the settings page",
+          "reports": [
+            "docs/implementation/17.3/reviewer-report.json",
+            "docs/implementation/17.3/worker-report.json"
+          ]
+        },
+        {
+          "id": "17.4",
+          "done": true,
+          "name": "F3 documentation and security review",
+          "reports": [
+            "docs/implementation/17.4/reviewer-report.attempt-2.json",
+            "docs/implementation/17.4/reviewer-report.json",
+            "docs/implementation/17.4/security-review.json",
+            "docs/implementation/17.4/worker-report.attempt-2.json",
+            "docs/implementation/17.4/worker-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Extra Large badge size",
+      "release": "1.2.0",
+      "status": "COMPLETE",
+      "gate": "Gate 18",
+      "tag": "v1.2.0-phase18",
+      "gate_record": "docs/implementation/phase-18/phase-review.json",
+      "execution_order": [
+        "18.1",
+        "18.2",
+        "18.3"
+      ],
+      "tasks": [
+        {
+          "id": "18.1",
+          "done": true,
+          "name": "Extra Large enum, geometry factor, and settings dropdown ordering",
+          "reports": [
+            "docs/implementation/18.1/reviewer-report.json",
+            "docs/implementation/18.1/worker-report.json"
+          ]
+        },
+        {
+          "id": "18.2",
+          "done": true,
+          "name": "Golden coverage and version-decision verification",
+          "reports": [
+            "docs/implementation/18.2/reviewer-report.json",
+            "docs/implementation/18.2/worker-report.json"
+          ]
+        },
+        {
+          "id": "18.3",
+          "done": true,
+          "name": "G7 documentation and integration verification",
+          "reports": [
+            "docs/implementation/18.3/reviewer-report.json",
+            "docs/implementation/18.3/worker-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Reconciliation coverage and version-aware coalescing",
+      "release": "1.2.0",
+      "status": "COMPLETE",
+      "gate": "Gate 19",
+      "tag": "v1.2.0-phase19",
+      "gate_record": "docs/implementation/phase-19/phase-review.json",
+      "execution_order": [
+        "19.1",
+        "19.2",
+        "19.3",
+        "19.4",
+        "19.5"
+      ],
+      "tasks": [
+        {
+          "id": "19.1",
+          "done": true,
+          "name": "F4 mechanism confirmation and persisted-cursor implementation",
+          "reports": [
+            "docs/implementation/19.1/reviewer-report.attempt-2.json",
+            "docs/implementation/19.1/reviewer-report.json",
+            "docs/implementation/19.1/worker-report.attempt-2.json",
+            "docs/implementation/19.1/worker-report.json"
+          ]
+        },
+        {
+          "id": "19.2",
+          "done": true,
+          "name": "F4 successive-run coverage tests",
+          "reports": [
+            "docs/implementation/19.2/reviewer-report.json",
+            "docs/implementation/19.2/test-quality-review.json",
+            "docs/implementation/19.2/worker-report.json"
+          ]
+        },
+        {
+          "id": "19.3",
+          "done": true,
+          "name": "F6 mechanism confirmation and stale-basis re-enqueue implementation",
+          "reports": [
+            "docs/implementation/19.3/reviewer-report.json",
+            "docs/implementation/19.3/worker-report.json"
+          ]
+        },
+        {
+          "id": "19.4",
+          "done": true,
+          "name": "F6 coalescing coverage tests",
+          "reports": [
+            "docs/implementation/19.4/reviewer-report.json",
+            "docs/implementation/19.4/test-quality-review.json",
+            "docs/implementation/19.4/worker-report.json"
+          ]
+        },
+        {
+          "id": "19.5",
+          "done": true,
+          "name": "F4/F6 documentation and integration verification",
+          "reports": [
+            "docs/implementation/19.5/reviewer-report.attempt-2.json",
+            "docs/implementation/19.5/reviewer-report.json",
+            "docs/implementation/19.5/worker-report.attempt-2.json",
+            "docs/implementation/19.5/worker-report.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Empty-selection artwork restoration",
+      "release": "1.2.0",
+      "status": "COMPLETE",
+      "gate": "Gate 20",
+      "tag": "v1.2.0-phase20",
+      "gate_record": "docs/implementation/phase-20/phase-review.attempt-2.json",
+      "execution_order": [
+        "20.1",
+        "20.2",
+        "20.3"
+      ],
+      "tasks": [
+        {
+          "id": "20.1",
+          "done": true,
+          "name": "Empty-selection restore/removal behavior",
+          "reports": [
+            "docs/implementation/20.1/worker-report.json",
+            "docs/implementation/20.1/reviewer-report.json",
+            "docs/implementation/20.1/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "20.2",
+          "done": true,
+          "name": "F7 coverage tests",
+          "reports": [
+            "docs/implementation/20.2/worker-report.json",
+            "docs/implementation/20.2/reviewer-report.json",
+            "docs/implementation/20.2/test-quality-review.json"
+          ]
+        },
+        {
+          "id": "20.3",
+          "done": true,
+          "name": "F7 documentation and integration verification",
+          "reports": [
+            "docs/implementation/20.3/worker-report.json",
+            "docs/implementation/20.3/worker-report.attempt-2.json",
+            "docs/implementation/20.3/reviewer-report.json",
+            "docs/implementation/20.3/reviewer-report.attempt-2.json",
+            "docs/implementation/20.3/test-quality-review.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "v1.2 release",
+      "release": "1.2.0",
+      "status": "COMPLETE",
+      "gate": "Gate 21",
+      "tag": "v1.2.0",
+      "gate_record": "docs/implementation/final-review/release-review-v1.2.json",
+      "execution_order": [
+        "21.1",
+        "21.2",
+        "21.3",
+        "21.4",
+        "21.5",
+        "21.7",
+        "21.8",
+        "21.9",
+        "21.10",
+        "21.11",
+        "21.12",
+        "21.13",
+        "21.14",
+        "21.6"
+      ],
+      "tasks": [
+        {
+          "id": "21.1",
+          "done": true,
+          "name": "Version bump and release metadata",
+          "reports": [
+            "docs/implementation/21.1/reviewer-report.attempt-2.json",
+            "docs/implementation/21.1/reviewer-report.json",
+            "docs/implementation/21.1/test-quality-review.json",
+            "docs/implementation/21.1/worker-report.attempt-2.json",
+            "docs/implementation/21.1/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.2",
+          "done": true,
+          "name": "Canonical documentation reconciliation",
+          "reports": [
+            "docs/implementation/21.2/documentation-review.attempt-2.json",
+            "docs/implementation/21.2/documentation-review.json",
+            "docs/implementation/21.2/reviewer-report.attempt-2.json",
+            "docs/implementation/21.2/reviewer-report.json",
+            "docs/implementation/21.2/worker-report.attempt-2.json",
+            "docs/implementation/21.2/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.3",
+          "done": true,
+          "name": "Release build, full suite, reproducible artifact, and release documentation",
+          "reports": [
+            "docs/implementation/21.3/reviewer-report.json",
+            "docs/implementation/21.3/test-quality-review.json",
+            "docs/implementation/21.3/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.4",
+          "done": true,
+          "name": "Live pinned-host verification",
+          "reports": [
+            "docs/implementation/21.4/live-verification.json",
+            "docs/implementation/21.4/reviewer-report.json",
+            "docs/implementation/21.4/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.5",
+          "done": true,
+          "name": "Release security review",
+          "reports": [
+            "docs/implementation/21.5/reviewer-report.json",
+            "docs/implementation/21.5/security-review.json"
+          ]
+        },
+        {
+          "id": "21.6",
+          "done": true,
+          "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag",
+          "reports": [
+            "docs/implementation/21.6/release-readiness-v1.2-final.json",
+            "docs/implementation/21.6/release-readiness.json",
+            "docs/implementation/21.6/reviewer-report.json",
+            "docs/implementation/21.6/worker-report.attempt-2.json",
+            "docs/implementation/21.6/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.7",
+          "done": true,
+          "name": "Provider transport: never follow a redirect (fix SEC-21.5-01) with a non-egress test",
+          "reports": [
+            "docs/implementation/21.7/reviewer-report.json",
+            "docs/implementation/21.7/test-quality-review.json",
+            "docs/implementation/21.7/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.8",
+          "done": true,
+          "name": "Corrected release build, full suite, reproducible artifact, and release documentation",
+          "reports": [
+            "docs/implementation/21.8/reviewer-report.json",
+            "docs/implementation/21.8/test-quality-review.json",
+            "docs/implementation/21.8/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.9",
+          "done": true,
+          "name": "Live pinned-host verification of the corrected artifact",
+          "reports": [
+            "docs/implementation/21.9/live-verification.json",
+            "docs/implementation/21.9/reviewer-report.attempt-2.json",
+            "docs/implementation/21.9/reviewer-report.json",
+            "docs/implementation/21.9/worker-report.attempt-2.json",
+            "docs/implementation/21.9/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.10",
+          "done": true,
+          "name": "Release security review of the corrected candidate",
+          "reports": [
+            "docs/implementation/21.10/reviewer-report.json",
+            "docs/implementation/21.10/security-review.json"
+          ]
+        },
+        {
+          "id": "21.11",
+          "done": true,
+          "name": "Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)",
+          "reports": [
+            "docs/implementation/21.11/reviewer-report.attempt-2.json",
+            "docs/implementation/21.11/reviewer-report.json",
+            "docs/implementation/21.11/test-quality-review.json",
+            "docs/implementation/21.11/worker-report.attempt-2.json",
+            "docs/implementation/21.11/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.12",
+          "done": true,
+          "name": "Corrected release build, full suite, reproducible artifact, and release documentation",
+          "reports": [
+            "docs/implementation/21.12/reviewer-report.json",
+            "docs/implementation/21.12/test-quality-review.json",
+            "docs/implementation/21.12/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.13",
+          "done": true,
+          "name": "Live pinned-host verification of the corrected artifact",
+          "reports": [
+            "docs/implementation/21.13/live-verification.json",
+            "docs/implementation/21.13/reviewer-report.attempt-2.json",
+            "docs/implementation/21.13/reviewer-report.json",
+            "docs/implementation/21.13/worker-report.attempt-2.json",
+            "docs/implementation/21.13/worker-report.json"
+          ]
+        },
+        {
+          "id": "21.14",
+          "done": true,
+          "name": "Release security review of the corrected candidate",
+          "reports": [
+            "docs/implementation/21.14/reviewer-report.json",
+            "docs/implementation/21.14/security-review.json"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": {
+    "open": [],
+    "resolved": [
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F6",
+      "F7",
+      "F8"
+    ],
+    "accepted": [
+      "F5",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6",
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5",
+      "P6",
+      "D1",
+      "D2",
+      "RR-1",
+      "RR-15",
+      "SEC-2",
+      "SEC-3",
+      "SEC-4",
+      "SEC-5",
+      "SEC-6",
+      "SEC-7",
+      "SEC-8",
+      "SEC-9",
+      "SEC-10",
+      "SEC-11",
+      "SEC-12",
+      "P12R-F1",
+      "V11-G1",
+      "V11-G2",
+      "V11-G3",
+      "V11-G4",
+      "V12-G6-1",
+      "V12-G8-1",
+      "V12-G8-2",
+      "V12-F3-1",
+      "V12-F4-1",
+      "V12-F4-2",
+      "V12-F4-3",
+      "V12-F4-4",
+      "V12-F4-5",
+      "V12-F4-6",
+      "V12-F6-1",
+      "V12-F6-2",
+      "V12-F7-1"
+    ]
+  }
+}

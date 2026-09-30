@@ -1,0 +1,124 @@
+{
+  "task": "21.9",
+  "attempt": 1,
+  "reviewer_status": "CHANGES_REQUIRED",
+  "summary": "Task 21.9 re-ran the documented v1.2 pinned-host matrix against the corrected 1.2.0.0 archive and the substantive deliverables are sound. I verified the artifact identity independently of the report: 'sha256sum/md5sum/stat artifacts/ArrTags_1.2.0.0.zip' returns 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277 / f3b50a91c7cb63d9560316d8abe2f9dc / 619,636 bytes, which equals docs/release/build-and-release.md 'Release artifact identity' and the task 21.8 record, and whose MD5 equals manifest.json versions[0].checksum. overall_verdict VERIFIED is coherent with the eight rows L1-L8 all PASS, and each row carries concrete live evidence (installed folder identity, one 'Loaded plugin: ArrTags 1.2.0.0' with Status Active, the byte round-trip through the elevation-gated save, three distinct served identities per item across the Extra Large and position changes, the fixed-shape secret-free status body, the bounded 13 provider-unavailable warnings during a 31-response 503 window, and the durable uninstall). The task 21.4 report is unmodified ('git status --porcelain docs/implementation/21.4/' empty; last commit touching it is 7ad12dc), and docs/testing/jellyfin-12-musl-test-host.md now carries a Superseded-candidate marker over the 21.4 section plus a corrected 21.9 section. I independently checked the F-21.9-4 bounds rather than accepting them: scripts/mock-arr-fixture.cs contains no redirect-emitting path at all (its Handle method only ever emits 200/401/404/500/503 and reads fixture files per request), so the 21.7 SEC-21.5-01 change is genuinely unobservable live, and tests/ArrTags.Tests/ProviderRedirectTransportTests.cs exists with the redirect cases. The diff scope is exactly right: three tracked files plus the new docs/implementation/21.9/, with no code, test, manifest, or release-state change. One required change remains: the F-21.9-6 caveat was propagated verbatim into the procedure doc and asserts a product mechanism that the source code and an existing unit test both contradict, so a future verifier following that section would draw a wrong conclusion about the reconciliation behaviour.",
+  "findings": [
+    {
+      "id": "R-21.9-1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "correctness / documented workflow",
+      "summary": "The F-21.9-6 procedure note, now in docs/testing/jellyfin-12-musl-test-host.md, attributes the stale post-fixture-edit observation to the provider inventory cache, but every reconciliation invalidates that cache unconditionally, so the stated mechanism is false.",
+      "detail": "The note at docs/testing/jellyfin-12-musl-test-host.md:396-403 says a verifier must issue a configuration save after a fixture edit because 'Otherwise the inventory cache still serves the pre-edit observation', citing this run's observation that a scheduled task at 15:20:23Z still produced RenderPassThrough (PassThroughReason=NoDisplayableValue) for the sparse movie and that the change only became visible after the additional save at 15:21:40Z. That causal claim is contradicted by the implementation. src/ArrTags/Reconciliation/LibraryReconciliationService.cs:139 calls InvalidateInventory() unconditionally at the top of every ReconcileAsync run, and the comment above it (lines 130-138) states this explicitly: 'Post-scan (Jellyfin library refresh), manual and periodic scheduled, and post-save all run through this path, so discarding the retained observation sets here makes the work this enqueued begin a fresh provider-read window instead of serving a set observed before the trigger.' The same contract is asserted by an existing test, tests/ArrTags.Tests/ReconciliationTriggerTests.cs:261-271, which loops PostScan, Scheduled and PostSave and asserts each one discards the retained observation sets. So a scheduled task after a fixture edit already invalidates the inventory and could not have served the pre-edit observation. The observation itself is plausibly real, but the mechanism is not the inventory cache. The explanation consistent with the code and ADR-022 is the durable reconciliation cursor: src/ArrTags/Reconciliation/LibraryReconciliationService.cs:151 sets usesCursor only for Scheduled and PostScan, and ADR-022 clause 6 (docs/decisions/ADR-022.md:105-113) states that the post-save trigger 'is deliberately excluded ... so it always enumerates from the start and leaves the cursor untouched', whereas a scheduled run resumes from the persisted anchor and is round-robin. A scheduled run that had not yet reached the sparse movie in the current cycle would therefore not re-render it, while the following configuration save produced a PostSave reconciliation that always enumerates from the start and did cover it. That is a materially different lesson for a verifier: the cursor's round-robin coverage (ADR-022), not cache staleness. The practical instruction (issue a configuration save after a fixture edit) remains functionally correct for the wrong reason, so this is a documentation-accuracy defect rather than a product defect, but it is an asserted claim about product behaviour on a current-state surface, it is check-docs-guarded, and AGENTS.md forbids claiming behaviour that was not verified. It cannot be waved through as stylistic, because a verifier acting on the stated reason would conclude the scheduled trigger does not invalidate provider reads, which is the opposite of ADR-018 clause 3 as implemented and tested.",
+      "evidence": [
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:130-139 - unconditional InvalidateInventory() with the comment naming post-scan, scheduled/manual and post-save as all invalidating",
+        "tests/ArrTags.Tests/ReconciliationTriggerTests.cs:261-271 - asserts PostScan, Scheduled and PostSave each discard retained observation sets (ADR-018 clause 3)",
+        "src/ArrTags/Reconciliation/LibraryReconciliationService.cs:151 - usesCursor = source is Scheduled or PostScan (PostSave is excluded)",
+        "docs/decisions/ADR-022.md:105-113 - clause 6: the post-save trigger always enumerates from the start and leaves the cursor untouched; the cursor governs only scheduled and post-scan",
+        "docs/testing/jellyfin-12-musl-test-host.md:396-403 - the propagated note asserting the inventory cache as the cause",
+        "docs/implementation/21.9/live-verification.json F-21.9-6 evidence - 'because the provider inventory was still cached'"
+      ],
+      "recommended_action": "Correct the mechanism in docs/testing/jellyfin-12-musl-test-host.md:396-403 (and, if the 21.9 live-verification report is still editable, in F-21.9-6): keep the practical instruction to issue one configuration save after a fixture edit, but attribute it to the ADR-022 durable reconciliation cursor (a scheduled run resumes from the persisted anchor and covers the library round-robin, while the post-save trigger always enumerates from the start) instead of to the provider inventory cache, and state that every reconciliation including a scheduled one already invalidates the inventory per ADR-018 clause 3. Documentation only; no product code changes."
+    },
+    {
+      "id": "R-21.9-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "worker evidence / agent contract",
+      "summary": "state.json does not yet list this reviewer report in task 21.9's reports array; check-agents enforces that pairing, so the two transient check-docs FAIL lines clear only once the report is listed.",
+      "detail": "scripts/check-agents.sh requires every task with a worker-report.json (and no review exemption) to list its reviewer-report.json in docs/plan/state.json reports. As of this review, docs/plan/state.json task 21.9 reports is [live-verification.json, worker-report.json], so scripts/check-docs.sh reports the two expected lines 'FAIL: task 21.9 has a worker report but no reviewer report' and 'FAIL: task 21.9 has a reviewer report on disk but docs/plan/state.json does not list it in reports', and check-docs: FAIL. The worker documented exactly this in its interpretations and predicted it would clear, and the precedent commit for 21.4 (7ad12dc) listed all three reports in the same commit. This is not a worker defect, since the report could not exist before the review, but it must be completed by whoever folds this review into state.json.",
+      "evidence": [
+        "scripts/check-agents.sh:105-150 - worker/reviewer pairing and the state.json reports requirement",
+        "docs/agent-contracts.md 'Where reports go' item 5 - reports lists the evidence reports, at minimum worker + reviewer",
+        "bash scripts/check-docs.sh - FAIL on exactly the two pairing lines; all other sections ok",
+        "git show 7ad12dc -- docs/plan/state.json - task 21.4 reports listed all three report paths"
+      ],
+      "recommended_action": "Add docs/implementation/21.9/reviewer-report.json to task 21.9's reports array in docs/plan/state.json and re-run scripts/check-docs.sh to confirm PASS."
+    },
+    {
+      "id": "R-21.9-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "verification bounds",
+      "summary": "The F-21.9-4 structural bounds are honest and independently confirmed, not understated; no named matrix item is falsely claimed as executed.",
+      "detail": "I checked the three non-executable surfaces against the repository rather than accepting the finding. The settings-page unit conversion, step-multiple rejection and modal reminder and the diagnostics panel behaviour are page JavaScript and the host is launched with --nowebclient (scripts/provision-jellyfin-test-host.sh:105), so the server-side byte round-trip was exercised live while the page logic is structural only. The Extra Large clamp/shorten-omit path is a render-path behaviour, not reachable through the served resource, matching the residuals already registered as V12-G6-1, V12-G8-1 and V12-G8-2 in docs/limitations/00-index.md and carried forward unchanged from F-21.4-4. The 21.7 redirect transport fix is genuinely not live-observable: scripts/mock-arr-fixture.cs has no redirect-emitting path, so no live run against the committed fixture could distinguish it, and it is covered by tests/ArrTags.Tests/ProviderRedirectTransportTests.cs (ProviderRedirectIsNotFollowedAndTheKeyNeverReachesTheTarget and AllFourNamedProviderClientsForbidRedirectsAndKeepTheirTlsPolicy) plus AllowAutoRedirect = false at src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:248. These bounds were already registered before this task, so the corrected build does not add or hide a new unverified surface; the rows are genuinely PASS for the v1.2 matrix, which never contained a redirect row.",
+      "evidence": [
+        "scripts/provision-jellyfin-test-host.sh:105 - --nowebclient",
+        "scripts/mock-arr-fixture.cs:144-215 - Handle emits only 200/401/404/500/503 and reads fixture files per request; no redirect or Location handling",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:243-249 - AllowAutoRedirect = false on the strict provider handler",
+        "tests/ArrTags.Tests/ProviderRedirectTransportTests.cs - redirect cases exist",
+        "docs/limitations/00-index.md:105-107 - V12-G6-1, V12-G8-1, V12-G8-2 already Accepted",
+        "docs/implementation/21.4/live-verification.json F-21.4-4 - the same bound recorded previously"
+      ],
+      "recommended_action": "None required; keep the structural/unit-test-only qualifier on any release claim about the page conversion, the diagnostics panel, the Extra Large clamp path or the redirect transport."
+    },
+    {
+      "id": "R-21.9-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "secrets and scope hygiene",
+      "summary": "No secret appears in either 21.9 report, and the diff changes no code, test, manifest, artifact or release state.",
+      "detail": "A token sweep over live-verification.json for runs of 24+ characters returns only SHA-256/MD5 hashes, the plugin GUID, served-image hashes, file and route paths and identifier names; the six credential sites are redacted placeholders ('<admin>' six times) and there is no literal Bearer or X-Api-Key value anywhere in the report. The report also states the admin token, the throwaway password and both mock API keys appear zero times in the console log and are recorded neither in the repository nor in the report, which is consistent with the fixture logging only apiKey=valid / apiKey=missing-unenforced (scripts/mock-arr-fixture.cs:151-154, 214). Scope: git diff --name-only HEAD lists exactly PLANS.md, docs/plan/state.json and docs/testing/jellyfin-12-musl-test-host.md, plus the untracked docs/implementation/21.9/; artifacts/ is gitignored (.gitignore:4) and manifest.json, src/ and tests/ are untouched, so no build, test or packaging step ran. The single-writer rule was respected: docs/plan/README.md assigns task done/reports to the worker, and the diff touches only those fields plus updated_utc, leaving the Phase 21 status, gate and tag and current_release (still 1.1.0.0 / v1.1.0, live_verification 14.3) alone, which is correct because release state and the tag belong to 21.6.",
+      "evidence": [
+        "git diff --name-only HEAD - three tracked documentation files only",
+        "git status --porcelain - only docs/implementation/21.9/ untracked",
+        "token sweep for 24+ char runs - hashes, GUID, paths and identifiers only; no secret",
+        ".gitignore:4 - artifacts/ ignored",
+        "docs/plan/README.md:7-15 - single-writer table"
+      ],
+      "recommended_action": "None required."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The full documented matrix is re-run against an archive whose SHA-256 equals task 21.8's.",
+      "verdict": "MET",
+      "evidence": "docs/implementation/21.9/live-verification.json records eight rows L1-L8, all PASS, against artifacts/ArrTags_1.2.0.0.zip at SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277. I confirmed that hash, the MD5 f3b50a91c7cb63d9560316d8abe2f9dc and the 619,636-byte size directly on the on-disk artifact; they match docs/release/build-and-release.md 'Release artifact identity' (619,636 / 3e59cb06... / f3b50a91... / 7 entries), the task 21.8 three-run reproducible identity, and manifest.json versions[0].checksum (f3b50a91c7cb63d9560316d8abe2f9dc). The run used a fresh prefix /tmp/arrtags-21.9 and the documented provisioning script, so this is a re-run rather than a restatement of 21.4."
+    },
+    {
+      "criterion": "Per-row results plus the installed artifact identity are recorded in docs/implementation/21.9/live-verification.json.",
+      "verdict": "MET",
+      "evidence": "The file carries a package block (path, version, sha256, md5, bytes, entries, identity_matches), a host block, timestamps, and eight matrix rows each with id, goal, description, command, observed and verdict. L1 records the installed identity concretely: extraction into data/plugins/ArrTags_1.2.0.0, the host-written meta.json (8 files), the loaded assembly from that folder, one 'Loaded plugin: ArrTags 1.2.0.0', Status Active, build.yaml targetAbi 12.0.0.0 matching the manifest, 0 [FTL], 0 ArrTags-logger [ERR] and no plugin-folder SkiaSharp binary. overall_verdict VERIFIED is coherent with eight PASS rows."
+    },
+    {
+      "criterion": "The task 21.4 report is unmodified.",
+      "verdict": "MET",
+      "evidence": "git status --porcelain docs/implementation/21.4/ is empty and the working-tree diff contains no path under docs/implementation/21.4/; the last commit touching docs/implementation/21.4/live-verification.json is 7ad12dc ('Implement 21.4 live pinned-host verification'). Its package block still records the superseded 619,538-byte / 50580499... / 3100aae9... identity, and the new testing-doc section states the 21.4 section remains the record of the superseded build."
+    },
+    {
+      "criterion": "If a row cannot pass it is reported honestly.",
+      "verdict": "MET",
+      "evidence": "No row failed, and the items that could not be exercised live are bounded rather than claimed: F-21.9-4 records the page JavaScript, the diagnostics panel and the Extra Large clamp path as verified structurally only, and the 21.7 redirect transport as not live-observable because the committed mock answers plain HTTP 200 without redirects. I confirmed the mock has no redirect path (scripts/mock-arr-fixture.cs) and that the residual limitations V12-G6-1/V12-G8-1/V12-G8-2 were already registered, so the corrected build neither adds nor hides a surface. F-21.9-3 discloses the single host-internal [ERR] as unrelated to ArrTags, and F-21.9-2/F-21.9-5 carry forward F-21.4-2 and F-21.4-6 unchanged. The one honesty defect is not a row verdict but the mechanism asserted in the propagated F-21.9-6 caveat (R-21.9-1)."
+    }
+  ],
+  "tests_checked": [
+    "No test run was required or re-executed: task 21.9 changed no code, test, manifest or artifact, so the task 21.8 suite evidence (default 1,937 passed / 2,003 total, host-guarded 1,957 / 2,003, forced-native 2,024 / 2,045) remains valid and the plugin under test is the same corrected archive 21.8 validated.",
+    "Inspected tests/ArrTags.Tests/ProviderRedirectTransportTests.cs (4 test methods covering the redirect and TLS-policy cases) to confirm the F-21.9-4 redirect bound is covered by the suite rather than the live matrix.",
+    "Inspected tests/ArrTags.Tests/ReconciliationTriggerTests.cs:261-271, which asserts that PostScan, Scheduled and PostSave each invalidate the retained provider observation sets; this is the evidence that the F-21.9-6 stated cause is wrong.",
+    "bash scripts/check-docs.sh - FAIL (exit 1) on exactly the two agent-pairing lines for task 21.9 (no reviewer report on disk yet, and state.json not listing it); the other sections report ok, including compatibility stubs, decisions index (29 ADRs), limitations index coverage, architecture/data-model indexes, artifact identity agreement (sha256, md5, bytes), doc budget and current-state links.",
+    "bash -lc '. /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check' - 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree', exit 0, confirming no generated block was hand-edited."
+  ],
+  "research_checked": [
+    "docs/agent-contracts.md - report paths, attempt rule, status/severity enums and the worker/reviewer pairing requirement used to judge the report layout and the state.json obligation.",
+    "docs/plan/README.md single-writer table - confirmed the worker's state.json edit stayed inside the worker-owned surface and that release state and the tag belong to 21.6.",
+    "ADR-018 clause 3 and ADR-022 clause 6 (docs/decisions/ADR-018.md, docs/decisions/ADR-022.md) - the authoritative statements on inventory invalidation and cursor scoping behind R-21.9-1.",
+    "scripts/mock-arr-fixture.cs and scripts/provision-jellyfin-test-host.sh - the --nowebclient launch and the absence of any redirect-emitting fixture path, which underpins the F-21.9-4 bounds.",
+    "src/ArrTags/Configuration/config.html and src/ArrTags/Providers/{ArrInventoryCache,ArrInventoryCacheProvider}.cs, RadarrMetadataReader.cs - to check the L3 structural claims (unit/step/precision table, restart-required notes) and the invalidation surface; the recorded page values match the source."
+  ],
+  "documentation_checked": [
+    "PLANS.md - task 21.9 checkbox flipped to '- [x]'; generated milestone and active-scope blocks unchanged and verified current by render-docs-state.cs --check.",
+    "docs/plan/state.json - task 21.9 done true with reports [live-verification.json, worker-report.json]; updated_utc advanced; Phase 21 status, gate, tag and current_release untouched (still 1.1.0.0 / v1.1.0, live_verification 14.3), correct because 21.6 owns the release state.",
+    "docs/status.md - regenerated and current; unmodified because the task-level change does not alter the milestone table.",
+    "docs/testing/jellyfin-12-musl-test-host.md - Superseded-candidate blockquote added above the 21.4 section naming the pre-fix 619,538-byte / 50580499... build and linking to the corrected section; new 'Corrected v1.2 live matrix (Phase 21 task 21.9)' section with the corrected identity, the eight PASS rows, the link to both 21.9 reports, the F-21.9-4 redirect bound and the 'Corrected v1.2 cautions' carrying the two F-21.9-6 notes. The V1, v1.1 and 21.4 section bodies are unrewritten.",
+    "docs/release/build-and-release.md - 'Release artifact identity' for 1.2.0.0 equals the on-disk archive and the 21.9 package block; not modified by this task.",
+    "docs/limitations/00-index.md - V12-G6-1, V12-G8-1 and V12-G8-2 already Accepted, so the F-21.9-4 residuals need no new entry; correctly no limitation row was added by this task.",
+    "docs/implementation/21.9/worker-report.json - status COMPLETE, attempt 1, acceptance_criteria, test_sensitivity, documentation_reconciliation and interpretations all present and consistent with the diff; its prediction about the two transient check-docs lines matched what I observed."
+  ],
+  "reviewer_blockers": [],
+  "required_changes": [
+    "Correct the mechanism of the F-21.9-6 procedure note at docs/testing/jellyfin-12-musl-test-host.md:396-403: keep the instruction to issue one configuration save after a fixture edit, but attribute the stale post-edit observation to the ADR-022 durable reconciliation cursor (a scheduled run resumes from the persisted anchor and covers the library round-robin, while the post-save trigger always enumerates from the start) rather than to the provider inventory cache, and state that every reconciliation, including a scheduled one, already invalidates the inventory per ADR-018 clause 3. Align the F-21.9-6 evidence text in docs/implementation/21.9/live-verification.json if that file is still editable."
+  ],
+  "rework_log": [],
+  "ready_for_next_task": false
+}

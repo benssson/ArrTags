@@ -1,0 +1,56 @@
+{
+  "phase": 17,
+  "name": "Read-only diagnostics status surface",
+  "release": "1.2.0",
+  "status": "COMPLETE",
+  "tasks": ["17.1", "17.2", "17.3", "17.4"],
+  "task_commits": {
+    "17.1": "885ee7a",
+    "17.2": "79bf8df",
+    "17.3": "b8000a0",
+    "17.4": "a6f7777"
+  },
+  "subagents": [
+    {"role": "implementation-worker", "task": "17.1", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.228131862, "total_tokens": 24855409, "duration_seconds": 1738},
+    {"role": "implementation-reviewer", "task": "17.1", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.03673963199999999, "total_tokens": 2362312, "duration_seconds": 408},
+    {"role": "implementation-worker", "task": "17.2", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.11448442800000004, "total_tokens": 12334505, "duration_seconds": 1170},
+    {"role": "implementation-reviewer", "task": "17.2", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.05392635599999999, "total_tokens": 3840104, "duration_seconds": 517},
+    {"role": "implementation-worker", "task": "17.3", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.12320794799999997, "total_tokens": 11266530, "duration_seconds": 1299},
+    {"role": "implementation-reviewer", "task": "17.3", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.03522500399999999, "total_tokens": 2195538, "duration_seconds": 564},
+    {"role": "implementation-worker", "task": "17.4", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.12243750599999997, "total_tokens": 10249007, "duration_seconds": 859},
+    {"role": "security-reviewer", "task": "17.4", "attempt": 1, "outcome": "PASS_WITH_FINDINGS", "cost_usd": 0.167990838, "total_tokens": 12865825, "duration_seconds": 598},
+    {"role": "implementation-reviewer", "task": "17.4", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.036446381999999986, "total_tokens": 3041509, "duration_seconds": 353},
+    {"role": "implementation-worker", "task": "17.4", "attempt": 2, "outcome": "COMPLETE", "cost_usd": 0.050248518, "total_tokens": 3392846, "duration_seconds": 410},
+    {"role": "implementation-reviewer", "task": "17.4", "attempt": 2, "outcome": "APPROVED", "cost_usd": 0.032010786, "total_tokens": 1683604, "duration_seconds": 354}
+  ],
+  "aggregate": {
+    "task_count": 4,
+    "review_rounds": 5,
+    "rework_rounds": 1,
+    "subagent_invocations": 11,
+    "cost_usd": 1.0008492599999999,
+    "note": "Per-subagent figures are the authoritative runtime values recorded in docs/implementation/<task>/orchestration.json; this aggregate is the exact sum of the eleven per-subagent execution.cost_usd values across the four task files (17.1 0.228131862 + 0.03673963199999999 + 17.2 0.11448442800000004 + 0.05392635599999999 + 17.3 0.12320794799999997 + 0.03522500399999999 + 17.4 0.12243750599999997 + 0.167990838 + 0.036446381999999986 + 0.050248518 + 0.032010786 = 1.0008492599999999). The phase-reviewer finding P17-F1 (a 5.2e-8 mis-add in the originally recorded figure) is corrected here. The phase-reviewer invocation is recorded separately below and is not part of this per-task aggregate."
+  },
+  "phase_reviewer": {
+    "role": "phase-reviewer",
+    "attempt": 1,
+    "outcome": "APPROVED_WITH_FINDINGS",
+    "execution": {
+      "agent": "phase-reviewer",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "variant": "high",
+      "input_tokens": 149953,
+      "output_tokens": 12113,
+      "reasoning_tokens": 20655,
+      "cache_read_tokens": 3836928,
+      "cache_write_tokens": 0,
+      "total_tokens": 4019649,
+      "cost_usd": 0.05366453400000003,
+      "duration_seconds": 494,
+      "session_id": "ses_f24a330e8ffe0BGZfZQf17Gezp"
+    }
+  },
+  "gate": "Gate 17",
+  "tag": "v1.2.0-phase17",
+  "gate_status": "PENDING_PHASE_REVIEW"
+}

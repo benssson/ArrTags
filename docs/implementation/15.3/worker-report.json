@@ -1,0 +1,105 @@
+{
+  "task": "15.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Emitted the specific bounded render classification on the single artwork-boundary log line. ArtworkGenerationCoordinator.LogOutcome now appends a private DescribeClassification(result) qualifier between the bounded outcome and the generic reason: ' (PassThroughReason=<RenderPassThroughReason>)' for a pass-through result, ' (FailureReason=<RenderFailureReason>)' for a render failure, ' (SourceFailureReason=<ArtworkSourceReadFailureReason>)' for a source-read failure, and an empty string when the result carries no classification (published, no source, blocked, cancelled, publication-not-completed), so those records stay byte-identical to the pre-task shape. The value is a bounded enum named by its enum kind, so the three cases are distinguishable and no raw exception message, provider payload, path, credential, or other unbounded value is reachable. NoFittingBadge (ADR-024) is owned by task 20.1 and was not added. tests/ArrTags.Tests/LogRedactionTests.cs adds four theories over the six verbosity levels (24 cases) covering a pass-through reason, a render failure, a source-read failure, and a no-classification NoSource result; every case asserts no sentinel appears.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (final run after the last test edit).",
+    "./build.sh test -> Failed 0, Passed 1619, Skipped 63, Total 1682 (pre-task baseline after 15.1 and 15.2: Failed 0, Passed 1595, Skipped 63, Total 1658; +24 passed / +24 total, 0 new skips).",
+    "dotnet test ArrTags.slnx --configuration Release --no-build --filter \"FullyQualifiedName~LogRedactionTests\" -> Failed 0, Passed 167, Skipped 0, Total 167 (final run after the last test edit; the class had 143 cases after 15.2, +24).",
+    "Test-sensitivity probe A (temporarily dropped {DescribeClassification(result)} from the LogOutcome message, i.e. removed the classification emission) -> Failed 9, Passed 158, Total 167: the pass-through, failure, and source-failure theories each failed at Information, Debug, and Trace (3 enabled levels each), while the omission theory passed. Probe reverted.",
+    "Test-sensitivity probe B (temporarily returned ' (PassThroughReason=NoMetadata)' from DescribeClassification when the result carries no classification, i.e. emitted a classification when none is present) -> Failed 3, Passed 164, Total 167: ArtworkLogOmitsTheClassificationWhenTheResultCarriesNone failed at Information, Debug, and Trace. Probe reverted.",
+    "Restore verification: after both probes were reverted, the focused LogRedactionTests run passed 167/167 and the full default suite passed 1619/1682; git diff contains only the intended production, test, and documentation changes.",
+    "dotnet run scripts/render-docs-state.cs -> status.md and PLANS.md up to date (no generated block changed; the hand-written PLANS.md task checkbox now agrees with state.json).",
+    "scripts/check-docs.sh -> every documentation/state/index/artifact/budget/link check passes ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve'); the final agent-contract check fails only with the expected mid-flow 'task 15.3 has a worker report but no reviewer report', which the orchestrator's review stage resolves.",
+    "git diff --stat -> 2 production/test files plus 3 documentation/state files changed: docs/plan/state.json, PLANS.md, docs/changelog/v1.2.0.md, src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs, tests/ArrTags.Tests/LogRedactionTests.cs.",
+    "git status --short -> the 5 modified tracked files above plus the new docs/implementation/15.3/ report directory; no unrelated file changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs",
+    "tests/ArrTags.Tests/LogRedactionTests.cs",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/implementation/15.3/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The artwork log line emits the specific bounded PassThroughReason, FailureReason, or SourceFailureReason when present.",
+      "evidence": "DescribeClassification emits ' (PassThroughReason=<value>)', ' (FailureReason=<value>)', or ' (SourceFailureReason=<value>)' and LogOutcome interpolates it between {result.Outcome} and {result.Reason} (src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs). LogRedactionTests.ArtworkLogEmitsTheBoundedPassThroughClassification asserts 'completed with RenderPassThrough (PassThroughReason=NoMetadata):', ArtworkLogEmitsTheBoundedFailureClassification asserts 'completed with RenderFailed (FailureReason=DecodeFailed):', and ArtworkLogEmitsTheBoundedSourceFailureClassification asserts 'completed with SourceUnavailable (SourceFailureReason=Unreadable):' on the captured record at the levels where the Information line is enabled.",
+      "status": "met"
+    },
+    {
+      "criterion": "The classifications remain bounded and secret-free and are covered by redaction tests.",
+      "evidence": "The emitted values are the enum members of the bounded RenderPassThroughReason, RenderFailureReason, and ArtworkSourceReadFailureReason types plus fixed label text; no free text from the reader/renderer is interpolated. The four new theories run at all six verbosity levels and each asserts AssertNoSentinel over the captured records. The source-failure drive uses a FailedSourceArtworkReader whose raw reason carries the new SourceDetailSentinel; the sentinel is added to AllSentinels, so the test fails if the reader's detail (rather than only the bounded enum) reaches the log.",
+      "status": "met"
+    },
+    {
+      "criterion": "Also assert the classification is not emitted (or is empty/absent) when there is no classification.",
+      "evidence": "DescribeClassification returns string.Empty when all three fields are null. ArtworkLogOmitsTheClassificationWhenTheResultCarriesNone drives a valid request with an absent source (NoSource) and asserts the record ends with 'completed with NoSource: The image surface has no source artwork to render.' and contains none of 'PassThroughReason=', 'FailureReason=', or 'SourceFailureReason='. Probe B showed this case fails if a default classification is emitted.",
+      "status": "met"
+    },
+    {
+      "criterion": "Phase 15 acceptance (F8 half): the bounded classification is emitted when present; the classifications remain bounded and secret-free; redaction tests cover them.",
+      "evidence": "Implemented and tested as above. The other half of the phase-15 criterion - the ADR-020 clause 4 amendment, the canonical documentation, the logging security review, and the F8 resolution - remains owned by task 15.4 per the task scope boundary and is untouched.",
+      "status": "met (F8 code half; documentation/security half remains task 15.4)"
+    },
+    {
+      "criterion": "The change is compatible with ADR-020 clause 4 as amended by ADR-026.",
+      "evidence": "Only bounded enums and fixed label text are added to the log message; the subject threading, the item-id fallback, and the directory/full-path exclusion from ADR-026 are unchanged. The new emission contains no API key, webhook secret, SecretLease value, secret header, request/response body, provider payload, mutable PluginConfiguration, directory, or full path, and no sentinel appears in the captured records.",
+      "status": "met"
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The exact message shape for the emitted classification.",
+      "chosen": "A parenthesized qualifier ' (Kind=Value)' appended immediately after the bounded outcome and before the existing ': <reason>' text (for example 'completed with RenderPassThrough (PassThroughReason=NoMetadata): The render passed through; the current artwork is preserved.').",
+      "basis": "The design requirement keeps the message shape otherwise consistent with the existing line and the ADR-026 subject; the codebase already uses parenthesized bounded context (for example the metadata-read-failure '(ProviderKind)' and '(Code (Retryability))' forms); naming the enum kind is required to distinguish a pass-through from a failure and from a source-read failure.",
+      "impact": "Log text only. Task 15.4 owns documenting the exact emitted shape; this is an implementation-level format choice and does not persist or change any semantic."
+    },
+    {
+      "question": "How many classifications are emitted when more than one reason field is non-null.",
+      "chosen": "At most one, resolved in the order pass-through -> failure -> source failure, matching the enum kind the result's factory sets.",
+      "basis": "ArtworkGenerationResult's factories set exactly one of PassThroughReason, FailureReason, or SourceFailureReason (Success/NoSource/Blocked/BlockedByPublication/Cancelled/PublicationNotCompleted set none); the acceptance criterion names the three alternatives with 'or'.",
+      "impact": "Log text only; a result cannot currently carry two classifications, so no case is dropped."
+    },
+    {
+      "question": "What is emitted when the result carries no classification.",
+      "chosen": "Nothing: the qualifier is the empty string, so the record is byte-identical to the pre-task message for published, no-source, blocked, cancelled, and publication-not-completed outcomes.",
+      "basis": "The requirement allows the classification to be empty/absent when there is none and requires the establishments to remain bounded; adding a placeholder would be new, unrequested log content.",
+      "impact": "Log text only; existing assertions on those records (subject and redaction) are unaffected."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A: temporarily dropping {DescribeClassification(result)} from the LogOutcome message failed LogRedactionTests in 9 cases (ArtworkLogEmitsTheBoundedPassThroughClassification, ArtworkLogEmitsTheBoundedFailureClassification, and ArtworkLogEmitsTheBoundedSourceFailureClassification, each at Information, Debug, and Trace), so the classification assertions fail when the emission is removed. Probe reverted; final focused run 167/167.",
+    "Probe B: temporarily emitting a default ' (PassThroughReason=NoMetadata)' qualifier when the result carries no classification failed ArtworkLogOmitsTheClassificationWhenTheResultCarriesNone in 3 cases (Information, Debug, Trace), so the omission assertion is sensitive. Probe reverted; final focused run 167/167."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json (task 15.3 done true with reports path and updated_utc)",
+      "PLANS.md (task 15.3 checkbox [x])",
+      "docs/changelog/v1.2.0.md (task 15.3 entry)",
+      "docs/status.md (generated; render-docs-state reports up to date, no change)",
+      "PLANS.md milestone table (generated; render-docs-state reports up to date, no change)"
+    ],
+    "old_values_removed": [
+      "docs/plan/state.json task 15.3 \"done\": false and its missing reports path (now \"done\": true with reports [docs/implementation/15.3/worker-report.json])",
+      "PLANS.md \"- [ ] 15.3 Emit the bounded render classification in the artwork log\" (now \"[x]\")",
+      "The changelog had no task 15.3 entry; the new docs/changelog/v1.2.0.md section records the implementation, the 24 new cases, the two sensitivity probes, and the actual suite counts (1619/63/1682 against the 1595/63/1658 post-15.2 baseline)",
+      "F8 is still open in docs/limitations/open.md and architecture section 12 still describes the classification as not emitted; that reconciliation is explicitly owned by task 15.4 and was not changed here."
+    ],
+    "check_docs": "PASS for the documentation and plan-state surfaces; the final invocation reports only the expected mid-flow agent-contract FAIL 'task 15.3 has a worker report but no reviewer report', which the orchestrator's reviewer reports resolve."
+  },
+  "rework": [],
+  "known_limitations": [
+    "The classification qualifier is emitted only on the Information-level artwork-boundary record and is gated by the plugin log verbosity: at Off, Error, and Warning no artwork record is emitted at all, so the classification is not visible at those levels. This is the existing ADR-020 gating behavior, not changed by this task.",
+    "Limitation F8 remains open until task 15.4. Exact behavior: the shipped code now emits the bounded classification, while docs/limitations/open.md F8 and docs/architecture/12-performance-and-operational-limits.md still state that the specific classification is retained on the result but not emitted. Consequence: for the interval between this task and 15.4 the canonical documentation understates the shipped behavior; task 15.4 owns the reconciliation and the ADR-020 clause 4 amendment note.",
+    "The ADR-024 NoFittingBadge pass-through reason is not implemented or emitted here. Exact behavior: a non-empty layout-empty render currently reports the existing reason it maps to until task 20.1 adds NoFittingBadge; the emitted qualifier will then carry that new enum member automatically because DescribeClassification reads the result's PassThroughReason. Basis: the task scope boundary assigns NoFittingBadge to Phase 20 (task 20.1)."
+  ],
+  "ready_for_next_task": true
+}

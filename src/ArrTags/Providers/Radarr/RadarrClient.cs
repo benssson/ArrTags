@@ -78,7 +78,9 @@ public sealed class RadarrClient : IRadarrReadClient
 
         if (!result.IsSuccess)
         {
-            return ArrConnectionProbeResult.Failed(ToHealth(result.Error!), result.Error!);
+            return ArrConnectionProbeResult.Failed(
+                ArrConnectionHealthMapping.FromErrorCode(result.Error!.Code),
+                result.Error!);
         }
 
         var status = result.Value!;
@@ -391,6 +393,13 @@ public sealed class RadarrClient : IRadarrReadClient
 
         return code switch
         {
+            // ADR-005: redirect-following is disabled on every named provider
+            // client, so a 3xx is a terminal provider error, never a hop that
+            // would re-send X-Api-Key to the Location origin.
+            >= 300 and < 400 => new ArrProviderError(
+                ArrProviderErrorCode.InvalidResponse,
+                ArrErrorRetryability.Never,
+                "The provider answered with a redirect, which is not followed; verify the configured base URL."),
             401 or 403 => new ArrProviderError(
                 ArrProviderErrorCode.AuthenticationFailed,
                 ArrErrorRetryability.AfterConfiguration,
@@ -419,17 +428,6 @@ public sealed class RadarrClient : IRadarrReadClient
                 ArrProviderErrorCode.InvalidResponse,
                 ArrErrorRetryability.Never,
                 "The provider returned an unexpected response status."),
-        };
-    }
-
-    private static ArrConnectionHealth ToHealth(ArrProviderError error)
-    {
-        return error.Code switch
-        {
-            ArrProviderErrorCode.AuthenticationFailed => ArrConnectionHealth.AuthenticationFailed,
-            ArrProviderErrorCode.ProviderUnavailable => ArrConnectionHealth.Unavailable,
-            ArrProviderErrorCode.ProviderIncompatible => ArrConnectionHealth.Incompatible,
-            _ => ArrConnectionHealth.Unknown,
         };
     }
 }

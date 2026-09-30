@@ -1,0 +1,150 @@
+{
+  "task": "planning/v1.2",
+  "note": "Planning cycle for the v1.2 scope (Goals G6-G9 and limitations F3, F4, F6, F7, F8; F5 accepted and excluded). Advisory architecture review is evidence, not a completion gate; DG-19/DG-20/DG-21 and the ADR-022..ADR-028 acceptance remain genuine user decisions.",
+  "subagents": [
+    {
+      "role": "implementation-planner",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "note": "Authored docs/planning/v1.2.md, ADR-022..ADR-028, GOALS.md pointer, PLANS.md Phases 15-21, and the state.json derivation.",
+      "execution": {
+        "agent": "implementation-planner",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 617072,
+        "output_tokens": 38631,
+        "reasoning_tokens": 31360,
+        "cache_read_tokens": 6900224,
+        "cache_write_tokens": 0,
+        "total_tokens": 7587287,
+        "cost_usd": 0.15525607199999997,
+        "duration_seconds": 703,
+        "session_id": "ses_f26dadca6ffeRu1G22t32YXP7V"
+      }
+    },
+    {
+      "role": "architecture-reviewer",
+      "attempt": 1,
+      "outcome": "CHANGES_REQUIRED",
+      "note": "Advisory review of the v1.2 plan and ADR-022..ADR-028. 25 findings (6 HIGH, 9 MEDIUM, 10 LOW/INFORMATIONAL), no BLOCKER. Report: docs/reviews/architecture/v1.2-plan.json.",
+      "execution": {
+        "agent": "architecture-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 1322688,
+        "output_tokens": 19514,
+        "reasoning_tokens": 34120,
+        "cache_read_tokens": 8137856,
+        "cache_write_tokens": 0,
+        "total_tokens": 9514178,
+        "cost_usd": 0.25499716800000005,
+        "duration_seconds": 605,
+        "session_id": "ses_f26cf5b08ffeDhNEPwiCxWQUcq"
+      }
+    },
+    {
+      "role": "implementation-planner",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "note": "Rework to close all 25 attempt-1 findings (enqueue vocabulary and cursor stability for F4; post-single-flight re-enqueue ordering and DiscardReason for F6; empty-selection vs layout-empty discriminator and restore entry point for F7; per-field unit/step rules and mixed capture classification for G6/G8; ADR-026 framing and site enumeration; plan checklist gaps; F5 Open->Accepted).",
+      "execution": {
+        "agent": "implementation-planner",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 2650246,
+        "output_tokens": 44217,
+        "reasoning_tokens": 36718,
+        "cache_read_tokens": 15719168,
+        "cache_write_tokens": 0,
+        "total_tokens": 18450349,
+        "cost_usd": 0.4932554040000001,
+        "duration_seconds": 1202,
+        "session_id": "ses_f26c4f908ffe8vKbCdIIGQ7PtW"
+      }
+    },
+    {
+      "role": "architecture-reviewer",
+      "attempt": 2,
+      "outcome": "CHANGES_REQUIRED",
+      "note": "Closure verification: all 25 attempt-1 findings confirmed closed; 2 new minor residuals (AR-V12-26 stale F5 line; AR-V12-27 ADR-028 step-validation ownership). Report: docs/reviews/architecture/v1.2-plan.attempt-2.json.",
+      "execution": {
+        "agent": "architecture-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 167556,
+        "output_tokens": 15650,
+        "reasoning_tokens": 22756,
+        "cache_read_tokens": 3276288,
+        "cache_write_tokens": 0,
+        "total_tokens": 3482250,
+        "cost_usd": 0.05800586399999999,
+        "duration_seconds": 509,
+        "session_id": "ses_f26b23bfdffeDoW0LcfgNE91S5"
+      }
+    },
+    {
+      "role": "implementation-planner",
+      "attempt": 3,
+      "outcome": "COMPLETE",
+      "note": "Closed AR-V12-26 and AR-V12-27 per the reviewer's recommended actions; scripts/check-docs.sh passes.",
+      "execution": {
+        "agent": "implementation-planner",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 106259,
+        "output_tokens": 5311,
+        "reasoning_tokens": 7727,
+        "cache_read_tokens": 1811840,
+        "cache_write_tokens": 0,
+        "total_tokens": 1931137,
+        "cost_usd": 0.029197169999999995,
+        "duration_seconds": 204,
+        "session_id": "ses_f26a9d247ffeBWmB0l2u8zdng0"
+      }
+    },
+    {
+      "role": "implementation-planner",
+      "attempt": 4,
+      "outcome": "COMPLETE",
+      "note": "Post-acceptance reconciliation: flipped ADR-022..ADR-028 to Accepted (v1.2), resolved DG-19/DG-20/DG-21 across PLANS.md/state.json/the plan, recorded the acceptance in the planning record, and regenerated the status surfaces; scripts/check-docs.sh passes.",
+      "execution": {
+        "agent": "implementation-planner",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 155791,
+        "output_tokens": 19990,
+        "reasoning_tokens": 13040,
+        "cache_read_tokens": 4400896,
+        "cache_write_tokens": 0,
+        "total_tokens": 4589717,
+        "cost_usd": 0.056389338,
+        "duration_seconds": 433,
+        "session_id": "ses_f26a4138cffesFV8feO1ByQlI6"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "agent": "implementation-planner",
+      "reason": "Architecture review attempt 1 (CHANGES_REQUIRED) required completing the ADR-022 F4 mechanism (enqueue-result vocabulary and stable cursor), the ADR-023 F6 mechanism (post-single-flight re-enqueue and machine-readable DiscardReason), the ADR-024 F7 discriminator (empty resolved selection, not NoDisplayableValue) and restore entry point, the ADR-028 G6/G8 per-field unit/precision rule and mixed capture classification, plus the MEDIUM/LOW corrections; and reclassifying F5 Open->Accepted per the user decision."
+    },
+    {
+      "attempt": 3,
+      "agent": "implementation-planner",
+      "reason": "Architecture review attempt 2 residual items: AR-V12-26 (task 21.2 acceptance criterion still said 'F5 remains open') and AR-V12-27 (ADR-028 attributed step-multiple rejection to the existing range-only validation; the new step check is now explicitly owned by task 16.1)."
+    }
+  ],
+  "user_decisions_pending": [],
+  "user_decisions_resolved": [
+    "DG-19 / ADR-022 (F4 mechanism) accepted: persisted, bounded reconciliation cursor with a result-returning IWorkHintSink and a (SortName, itemId) seek key.",
+    "DG-20 / ADR-023 (F6 mechanism) accepted: bounded re-enqueue after CompleteProcessing on a machine-readable ConfigurationStale discard.",
+    "DG-21 / ADR-024 (F7 mechanism) accepted: owned empty resolved selection restores the baseline or removes the ArrTags image; layout-empty (NoFittingBadge) still preserves.",
+    "ADR-022..ADR-028 accepted (now Accepted (v1.2)).",
+    "F5 reclassification Open->Accepted confirmed by the user."
+  ],
+  "checks": {
+    "render_docs_state": "up to date",
+    "check_docs": "PASS"
+  }
+}

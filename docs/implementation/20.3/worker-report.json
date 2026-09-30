@@ -1,0 +1,159 @@
+{
+  "task": "20.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Completed the Phase 20 (Goal F7, ADR-024) closing task. (1) Added dated amendment/implementation notes without rewriting any accepted ADR text: ADR-009 records that ADR-024 supersedes its empty-selection pass-through clause only for the owned-session case, that the clause remains in force for absent metadata/ineligible match/unavailable source and for a non-owned empty selection, and that the non-empty layout-empty case is the distinct NoFittingBadge; ADR-003 records the extension of its restoration trigger set with the owned empty-selection obligation through the same crash-recoverable ArtworkOperation protocol and the ordinary recovery gate; ADR-024 carries an implementation note covering tasks 20.1-20.3 and the verification bounds. The decisions index rows for ADR-003 and ADR-009 name the extension/supersession (the ADR-009 row's pre-existing truncated status text was completed). (2) Corrected docs/architecture/09-persisted-artwork-rendering.md: the absent-baseline removal is attributed to the publisher (not the coordinator), and the text records that the leg is not reachable through the coordinator's normal generation path (ReadRetainedSource reports Absent -> the coordinator returns NoSource before rendering) and is exercised at the publisher and through the recovery-gate resume; the 'publishes only a Rendered result' clause now names the restore obligation. (3) Resolved F7 in the register: the entry moved from docs/limitations/open.md (now records no open limitations) to docs/limitations/archive.md with its resolving change, the 00-index row is Resolved/archive.md, and state.json moves F7 from limitations.open to limitations.resolved; PLANS.md's active-scope paragraph no longer claims F4/F6/F7 remain open. (4) Appended the Phase 20 changelog entry covering 20.1-20.3 with the measured suite counts. (5) Ran the F7 integration verification: build 0/0; default suite Failed 0, Passed 1927, Skipped 66, Total 1993; the five F7-focused classes 103 passed/4 skipped/107; the forced-native pinned-oracle suite 2014/21/2035; the native NoFittingBadge coordinator case 1/1 under the oracle. (6) Closed TQR-20.2-01 (LOW) by adding the absent-baseline restart-resume case to ArtworkReconcilerTests (seeded non-terminal Restoration with CandidateAfterPresence=Absent plus a RestorePending state; the ordinary recovery gate completes it as a removal). (7) Made the zero-open-limitation rendering in scripts/render-docs-state.cs read 'none' instead of '0 ()' (the state became reachable for the first time) and verified it with a stale-check probe. Phase 20 remains PLANNED; this task created no phase gate or tag.",
+  "validation": [
+    "Pre-change baseline: source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s); ./build.sh test -> Failed 0, Passed 1926, Skipped 66, Total 1992.",
+    "Focused after the new test: dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build --filter \"FullyQualifiedName~ArtworkReconcilerTests\" -> Failed 0, Passed 26, Skipped 0, Total 26 (25 pre-existing plus RestorationWithAnAbsentBaselineIsResumedAsARemoval).",
+    "Sensitivity probe: changed ArtworkPublisher.ResumeRestorationAsync to treat CandidateAfterPresence==Absent as a present-baseline resume (removed the absent-baseline guard) -> the same filter as above reported Failed 1, Passed 0, Skipped 0, Total 1 (Expected Completed, Actual RecoveryBlocked). Probe reverted; git diff src/ is empty; rebuild 0 warnings / 0 errors.",
+    "Final: source /config/arrtags-env.sh && ./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s).",
+    "Final full default suite: ./build.sh test -> Failed 0, Passed 1927, Skipped 66, Total 1993 (delta vs the measured pre-change baseline +1 passed, +0 skipped, +1 total, the new reconciler case).",
+    "F7-focused run (FullyQualifiedName~ArtworkGenerationCoordinatorTests|~ArtworkPublisherTests|~ArtworkReconcilerTests|~ArtworkGenerationResultTests|~RendererBehaviorFailureTests) -> Failed 0, Passed 103, Skipped 4, Total 107 (the 4 skips are the 3 native renderer decode cases plus the native coordinator NoFittingBadge case).",
+    "Pinned native oracle forced-native suite (LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=/tmp/arrtags-skia-probe/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/arrtags-skia-probe/sysroot/usr/share dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --configuration Release --no-build) -> Failed 0, Passed 2014, Skipped 21, Total 2035.",
+    "Pinned native oracle, focused native coordinator case --filter FullyQualifiedName~NonFittingSelectionOnAnOwnedSessionPassesThroughAsNoFittingBadgeWithoutMutation -> Failed 0, Passed 1, Skipped 0, Total 1 (the case genuinely executes under the oracle rather than skipping).",
+    "Generator sensitivity probe: temporarily reverted scripts/render-docs-state.cs to the old Open-limitations line and ran dotnet run scripts/render-docs-state.cs -- --check -> 'stale generated blocks: status.md', exit 2; the fixed line was restored and --check reports status.md up to date and 'PLANS.md and state.json agree'.",
+    "scripts/check-docs.sh on the tree before this worker report was persisted -> check-docs: PASS (all nine sections, including 'agent report contracts conform'; 29 ADRs; limitations index covers all IDs).",
+    "git status --short / git diff inspected: 14 modified files (1 test file, 10 documentation files, PLANS.md, docs/plan/state.json, scripts/render-docs-state.cs) plus this report; no production source file differs (git diff src/ empty). No golden, RenderVersion, renderer-configuration, provider, or unrelated file differs."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/ArtworkReconcilerTests.cs",
+    "docs/decisions/ADR-009.md",
+    "docs/decisions/ADR-003.md",
+    "docs/decisions/ADR-024.md",
+    "docs/decisions/00-index.md",
+    "docs/architecture/09-persisted-artwork-rendering.md",
+    "docs/limitations/open.md",
+    "docs/limitations/archive.md",
+    "docs/limitations/00-index.md",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/status.md",
+    "scripts/render-docs-state.cs",
+    "docs/implementation/20.3/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Deliverable 1a: docs/decisions/ADR-009.md records that ADR-024 supersedes its empty-selection clause for the owned-session case only; the other pass-through cases remain in force; the non-empty layout-empty case is the distinct NoFittingBadge.",
+      "evidence": "docs/decisions/ADR-009.md 'Amendment note (v1.2, ADR-024; task 20.3)' (after Consequences, before Rejected alternatives): names the superseded clause verbatim, states it remains in force for absent BadgeMetadata, an ineligible match, an unavailable source, and a non-owned empty selection, and describes NoFittingBadge as the distinct reason for a non-empty layout-empty selection. No decision clause is rewritten (git diff shows an insertion only). docs/decisions/00-index.md ADR-009 row now records the ADR-024 supersession."
+    },
+    {
+      "criterion": "Deliverable 1b: docs/decisions/ADR-003.md records that ADR-024 extends its restoration trigger set beyond item removal and lifecycle drain with the owned empty-selection obligation, using the same crash-recoverable ArtworkOperation protocol.",
+      "evidence": "docs/decisions/ADR-003.md 'Amendment note (v1.2, ADR-024; task 20.3)': the extended trigger set, the durable Kind=Restoration write-ahead record, the mutation/readback/postcondition phases, and the ordinary recovery gate (ArtworkRecoveryDecisions -> ArtworkReconciler -> ResumeRestorationAsync); the present-baseline restore and absent-baseline removal APIs are named. docs/decisions/00-index.md ADR-003 row now records the extension."
+    },
+    {
+      "criterion": "Deliverable 1c: docs/decisions/ADR-024.md gains an implementation/resolution note recording that tasks 20.1-20.3 implemented and verified the decision, with no change to the accepted decision text.",
+      "evidence": "docs/decisions/ADR-024.md 'Implementation note (v1.2, tasks 20.1-20.3)' records the shipped discriminator/restore obligation (20.1), the coverage across the coordinator/publisher/reconciler boundary (20.2), the documentation/resolution work (20.3), and the honest verification bounds. The Decision and Consequences sections are unchanged (diff is an insertion before References only)."
+    },
+    {
+      "criterion": "Deliverable 2: correct the architecture wording the task 20.1 test-quality audit flagged (TQR-20.1-04) so the absent-baseline removal is not presented as coordinator-reachable.",
+      "evidence": "docs/architecture/09-persisted-artwork-rendering.md: the coordinator drives ArtworkPublisher.RestoreAsync and 'The publisher restores a present retained source baseline and, when the retained baseline is absent, removes the ArrTags image'; the next sentences state the absent-baseline leg is not reachable through the coordinator's normal generation path (ReadRetainedSource reports Absent -> NoSource before rendering) and that it is exercised at the publisher (task 20.2) and through the recovery-gate resume (task 20.3). The old coordinator-attributed removal sentence is gone. The source path is verified in src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs (ReadRetainedSource line 346-349 returns Absent; GenerateCoreAsync lines 214-218 returns NoSource)."
+    },
+    {
+      "criterion": "Deliverable 3: resolve F7 honestly in docs/limitations/ and docs/plan/state.json.",
+      "evidence": "docs/limitations/open.md no longer contains the F7 entry and states no open limitations are recorded; docs/limitations/archive.md gains the F7 resolution entry (shipped behavior, resolving tasks 20.1-20.3, ADR-024, evidence, verification bounds, historical consequence); docs/limitations/00-index.md row F7 is Resolved/archive.md (the Open/open.md row is removed); docs/plan/state.json limitations.open is [] and resolved includes F7. The regenerated docs/status.md reports 'Open limitations: none'. Verified by grep: no 'F7 ... Open' wording remains in PLANS.md, docs/status.md, docs/limitations/00-index.md, or docs/limitations/open.md."
+    },
+    {
+      "criterion": "Deliverable 4: append the Phase 20 changelog entry to docs/changelog/v1.2.0.md in the established format, covering 20.1-20.3 and F7's resolution, with accurate suite counts.",
+      "evidence": "docs/changelog/v1.2.0.md gains '## Phase 20 - Empty-selection artwork restoration (v1.2)' with '### Task 20.1', '### Task 20.2', and '### Task 20.3' entries. 20.3's counts are from this task's actual runs (default 1927/66/1993 against the measured baseline 1926/66/1992; forced-native 2014/21/2035; focused 103/4/107; oracle case 1/1); the 20.1/20.2 counts are quoted from their committed worker reports and independently reproduced test-quality reviews (20.1: 1908/65/1973 vs 1901/64/1965; 20.2: 1926/66/1992 vs 1908/65/1973; forced-native 2013/21/2034)."
+    },
+    {
+      "criterion": "Deliverable 5: run the F7-focused tests and the full suite and confirm the end-to-end behaviour across the coordinator/publisher/reconciler boundary (owned empty selection restores; absent-baseline removes; other reasons and non-owned preserve; NoFittingBadge preserves), with honest bounds.",
+      "evidence": "Focused classes (ArtworkGenerationCoordinatorTests, ArtworkPublisherTests, ArtworkReconcilerTests, ArtworkGenerationResultTests, RendererBehaviorFailureTests): Failed 0, Passed 103, Skipped 4, Total 107; full default suite Failed 0, Passed 1927, Skipped 66, Total 1993; forced-native oracle suite Failed 0, Passed 2014, Skipped 21, Total 2035 with the native coordinator NoFittingBadge case 1/1. The changelog and the F7 register entry state the bounds: no live pinned-host run is part of Phase 20 (Phase 21 owns the live matrix); the native NoFittingBadge cases run only under the pinned oracle and are explicit skips in the default suite; the absent-baseline removal is publisher/recovery-gate coverage because the coordinator path returns NoSource."
+    },
+    {
+      "criterion": "Deliverable 6 (optional): close TQR-20.2-01 by adding one reconciler-resume case for an absent-baseline restoration, or reconcile the wording. The test was added.",
+      "evidence": "tests/ArrTags.Tests/ArtworkReconcilerTests.cs: RestorationWithAnAbsentBaselineIsResumedAsARemoval seeds a non-terminal Kind=Restoration operation with CandidateAfterPresence=Absent and a genuine RestorePending state (built through CaptureSession/CommitPublication/RequestRestore) and proves the ordinary recovery gate completes it (Completed, IsCommitted, same operation id, RemoveCalls==1, SaveCalls==0, UpdateCalls==0, current bytes cleared, durable operation Committed/Absent, state Restored/Absent with no ActiveImageIdentity). Probe demonstrated the test fails when the resume entry treats the absent candidate as present; no existing test was weakened (the file diff is an addition plus one new helper)."
+    },
+    {
+      "criterion": "Deliverable 7: update docs/plan/state.json (task 20.3 done, reports), the PLANS.md checkbox, run scripts/render-docs-state.cs, and run scripts/check-docs.sh.",
+      "evidence": "docs/plan/state.json task 20.3 done=true with reports [docs/implementation/20.3/worker-report.json]; PLANS.md '- [x] 20.3 F7 documentation and integration verification'; dotnet run scripts/render-docs-state.cs -- --check reports the generated blocks current and 'PLANS.md and state.json agree'; scripts/check-docs.sh PASS before the report was persisted and, after it, fails only the expected pre-review agent-contract pairing lines for 20.3 (see documentation_reconciliation.check_docs)."
+    },
+    {
+      "criterion": "Phase 20 acceptance contribution owned by this task: 'F7 is recorded as resolved' and the coverage tests pass.",
+      "evidence": "docs/limitations/archive.md F7 entry with the resolving tasks; docs/limitations/00-index.md Resolved row; docs/plan/state.json limitations.resolved contains F7; docs/status.md 'Open limitations: none'. Coverage: the F7-focused run and the full default suite pass as recorded above. Phase 20 itself remains PLANNED and no gate/tag was created (orchestrator-owned)."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How should the generated docs/status.md render the newly reachable zero-open-limitations state, given scripts/render-docs-state.cs previously always emitted '<count> (<ids>)'?",
+      "chosen": "Changed the generator to emit '**Open limitations:** none; see docs/limitations/00-index.md.' when the open list is empty, keeping the existing form otherwise.",
+      "basis": "The empty list is reached for the first time in this task; '0 ()' is a malformed-looking current-state surface. The change is one generator branch, and dotnet run scripts/render-docs-state.cs -- --check (and scripts/check-docs.sh) verifies the rendered block is current.",
+      "impact": "Generated status text only. The probe (old line restored) makes --check report 'stale generated blocks: status.md' (exit 2), so the new rendering is pinned by the existing gate."
+    },
+    {
+      "question": "PLANS.md's active-scope paragraph claimed 'F4, F6, and F7 are promoted by v1.2 and remain Open' — is that paragraph in scope, and how should it read?",
+      "chosen": "Updated it to 'F4, F6, and F7 were promoted by v1.2 and are resolved by their phases: F4 and F6 by Phase 19 (task 19.5), and F7 by Phase 20 (task 20.3)'.",
+      "basis": "The task requires no stale 'F7 open' claim on current-state surfaces; the sentence was already stale for F4/F6 after Phase 19 and F7 is resolved by this task. The rest of the scope text (F3/F8 resolutions, F5 accepted) is preserved.",
+      "impact": "Current-state wording in the active plan; no requirement, criterion, or acceptance text is changed."
+    },
+    {
+      "question": "The docs/decisions/00-index.md ADR-009 status cell was truncated mid-sentence ('...clauses are'), and the required ADR-024 supersession note had to be recorded there.",
+      "chosen": "Completed the cell while adding the note: 'Accepted (the geometry, placement, and scaling-model clauses are superseded by ADR-019 (v1.1); the empty-selection pass-through clause is superseded by ADR-024 (v1.2) for the owned-session case)'.",
+      "basis": "The v1.2 plan section 4 requires the older index row to be updated when the dependent work lands, and appending to a truncated cell would have left an incoherent status. The ADR-010 row's separate pre-existing truncation was left untouched as out of scope.",
+      "impact": "Decisions index text only; the row now states both supersessions completely."
+    },
+    {
+      "question": "Task 20.3's optional item 6 allowed either adding an absent-baseline resume test or narrowing the Phase 20 wording. Which was done?",
+      "chosen": "Added the test (RestorationWithAnAbsentBaselineIsResumedAsARemoval) rather than narrowing the wording.",
+      "basis": "The existing ArtworkReconcilerTests restoration-resume patterns made the case small and deterministic; adding it closes TQR-20.2-01 (LOW) with evidence instead of documenting a gap, and the probe shows it fails when the resume entry mishandles an absent candidate.",
+      "impact": "Suite counts move from 1926/66/1992 to 1927/66/1993; no existing test or production file changed."
+    },
+    {
+      "question": "The 20.1/20.2 tasks had no changelog entries yet; how were their numbers included?",
+      "chosen": "Wrote the Phase 20 section with separate 20.1/20.2/20.3 subsections, quoting 20.1/20.2's committed worker-report and test-quality-review counts and using only this task's own command output for 20.3.",
+      "basis": "docs/agent-contracts.md and the changelog convention: each task's entry records its own measured validation; the test-quality reviews independently reproduced the 20.1/20.2 counts.",
+      "impact": "History completeness only; no current-state claim depends on it."
+    }
+  ],
+  "test_sensitivity": [
+    "New test sensitivity (absent-baseline resume): temporarily changed ArtworkPublisher.ResumeRestorationAsync so an absent candidate (CandidateAfterPresence == Absent) fell into the present-baseline artifact-read branch -> ArtworkReconcilerTests.RestorationWithAnAbsentBaselineIsResumedAsARemoval failed (Failed 1, Passed 0, Skipped 0, Total 1; Expected Completed, Actual RecoveryBlocked at ArtworkReconcilerTests.cs line 473). Probe reverted; git diff src/ is empty; the class re-ran 26/26.",
+    "New generator behavior sensitivity (zero-open rendering): temporarily reverted scripts/render-docs-state.cs to the old line -> dotnet run scripts/render-docs-state.cs -- --check reported 'stale generated blocks: status.md' with exit 2; the fixed line restored, --check reports status.md up to date and 'PLANS.md and state.json agree'.",
+    "No other new production behavior is added by this task (the ADR notes, architecture correction, register resolution, changelog, and state updates are documentation/state changes); the documentation surfaces are gated by scripts/check-docs.sh, which passed on the pre-report tree and fails after the report only on the expected pre-review pairing lines."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/plan/state.json",
+      "PLANS.md",
+      "docs/status.md (generated)",
+      "docs/decisions/ADR-009.md",
+      "docs/decisions/ADR-003.md",
+      "docs/decisions/ADR-024.md",
+      "docs/decisions/00-index.md",
+      "docs/architecture/09-persisted-artwork-rendering.md",
+      "docs/limitations/open.md",
+      "docs/limitations/archive.md",
+      "docs/limitations/00-index.md",
+      "docs/changelog/v1.2.0.md",
+      "scripts/render-docs-state.cs",
+      "README.md (checked; no F7/empty-selection statement exists, so no change)"
+    ],
+    "old_values_removed": [
+      "docs/status.md: '**Open limitations:** 1 (`F7`)' -> '**Open limitations:** none' (regenerated from state.json).",
+      "docs/plan/state.json: limitations.open ['F7'] -> []; F7 added to limitations.resolved; task 20.3 done=false -> done=true with reports [docs/implementation/20.3/worker-report.json]; updated_utc advanced 2026-09-28T18:22:04Z -> 2026-09-28T18:54:19Z.",
+      "PLANS.md: '- [ ] 20.3 F7 documentation and integration verification' -> '[x]'; 'F4, F6, and F7 are promoted by v1.2 and remain **Open** until their resolving phase records the resolution' -> the resolved-by-phase sentence.",
+      "docs/limitations/open.md: the F7 section (its pre-fix 'no restore or removal path' description) removed; the file now records that no open limitations remain.",
+      "docs/limitations/00-index.md: F7 row 'Open | open.md' -> 'Resolved | archive.md'.",
+      "docs/architecture/09-persisted-artwork-rendering.md: removed the coordinator-attributed 'restoring the retained source baseline or removing the ArrTags image when the baseline was absent' wording and 'publishes only a `Rendered` result'; replaced with the publisher attribution, the NoSource unreachability statement, and the restore obligation.",
+      "docs/decisions/00-index.md: ADR-003 row 'Accepted' -> 'Accepted (restoration trigger set extended by ADR-024 (v1.2))'; ADR-009 row's truncated 'the geometry, placement, and scaling-model clauses are' completed with both supersessions.",
+      "Verified absent on current-state surfaces by grep: the old F7-open wording, 'remain **Open**' for F4/F6/F7, and 'Open limitations:** 1' no longer appear; README.md has no F7 statement to correct."
+    ],
+    "check_docs": "PASS on the tree before this worker report was persisted: all nine sections pass, including 'generated status blocks are current; plan state is consistent' and 'agent report contracts conform' (29 ADRs; limitations index covers all IDs). With this worker report in place, scripts/check-docs.sh fails only the two expected pre-review agent-contract lines for 20.3: 'FAIL: task 20.3 has a worker report but no reviewer report (add an exemption only if covered)' and 'FAIL: task 20.3 has a reviewer report on disk but docs/plan/state.json does not list it in reports'. Every other check-agents section passes (contract present and linked, review/research agents reference the contract, no legacy frontmatter, status/severity tokens conform, per-agent default path and status enum agree, no stale default report paths, enforcement scope agrees, phase gate conformance and orchestration shape, release agent-process review, task conformance precedence). Both failures clear when the orchestrator's implementation-reviewer report exists and is listed in docs/plan/state.json reports, per the same pattern as tasks 15.4, 16.1-16.6, and 19.5."
+  },
+  "rework": [],
+  "known_limitations": [
+    "No live pinned-host run is part of Phase 20; the v1.2 live pinned-host matrix is Phase 21 (PLANS.md 21.4). The F7 behavior is verified at the integration-test level only.",
+    "The native NoFittingBadge cases (the renderer-level case from 20.1 and the coordinator case from 20.2) execute only under the pinned SkiaSharp oracle (ARRTAGS_SKIA_COMPAT=1); the default suite reports both as explicit skips (the default skip count is 66). The default-configuration proof of the non-mutation guarantee is the coordinator pass-through theory, and the renderer-level empty-selection decision fact is unguarded.",
+    "The absent-baseline removal is not reachable through the coordinator's normal generation path (ReadRetainedSource reports Absent -> NoSource before rendering); it is proven at the publisher (fresh, task 20.2) and through the recovery-gate resume (task 20.3) with synthetic persisted states.",
+    "The crash-recovery coverage simulates an interrupted save and reconstructs fresh stores/services over the same state root (task 20.2); it is not a real process kill.",
+    "docs/decisions/00-index.md still contains a separate pre-existing truncated ADR-010 status cell ('...the SkiaSharp library'); it is unrelated to F7 and was deliberately left untouched.",
+    "Phase 20 remains PLANNED in docs/plan/state.json; the phase review, gate, and tag are orchestrator-owned and were not created by this task."
+  ],
+  "ready_for_next_task": true
+}

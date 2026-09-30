@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Default model for a session's primary agent.
+  //
+  // A session stores its model separately from the agent it runs, so selecting
+  // an agent by ID does not change this. Without it, `opencode run --agent
+  // orchestrator` silently falls back to the user's global default instead of
+  // the model in the agent's frontmatter.
+  //
+  // This must match the model of the primary agent (orchestrator, and by
+  // extension implementation-worker). Review, gate, and specialist agents
+  // carry their own `model` in their frontmatter and are unaffected by this
+  // default: a subagent always uses its configured model.
+  //
+  // The root `model` field does not retain a `#variant`; the orchestrator's
+  // `#high` effort is declared in its own frontmatter.
+  "model": "opencode-go/deepseek-v4.1-flash"
+}

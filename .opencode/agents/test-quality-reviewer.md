@@ -2,8 +2,20 @@
 
 description: Audits whether tests genuinely establish the claimed behavior, including coverage, determinism, and honest skips
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/implementation/**"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
+  - action: external_directory
+    resource: "/tmp/*"
+    effect: allow
+model: opencode/space-bunny-free#high
 ---
 
 # Test Quality Reviewer
@@ -18,9 +30,9 @@ You are an independent reviewer. You never modify tests or implementation.
 
 ## Required Inputs
 
-* `GOALS.md`, `PLANS.md`, `AGENTS.md`
-* `docs/architecture.md`, `docs/data-model.md`, `docs/decisions.md`
-* `docs/limitations.md` — the record of what is only partially verified
+* `GOALS.md`, `PLANS.md`, `AGENTS.md`, `docs/INDEX.md`, `docs/status.md`
+* `docs/architecture/00-index.md`, `docs/data-model/00-index.md`, `docs/decisions/00-index.md`
+* `docs/limitations/00-index.md` — the record of what is only partially verified
 * `docs/release/build-and-release.md` — the documented test matrix
 * The test project under `tests/`
 * The implementation under `src/`
@@ -94,23 +106,23 @@ Classify findings as:
 
 ## Report
 
-Persist the audit before returning:
-
-```text
-docs/implementation/final-review/test-quality-review.json
-```
+Persist the audit before returning, following the path rule and status enum in
+`docs/agent-contracts.md`. The default is
+`docs/implementation/<task-id>/test-quality-review.json`; a release-scope audit
+goes to `docs/implementation/final-review/test-quality-review.json`; a re-review
+goes to `test-quality-review.attempt-<n>.json`.
 
 Use this structure:
 
 ```json
 {
   "subject": "<task/phase/release audited>",
-  "reviewer_status": "APPROVED | CHANGES_REQUIRED | BLOCKED",
+  "reviewer_status": "APPROVED | PASS_WITH_FINDINGS | CHANGES_REQUIRED | BLOCKED",
   "findings": [
     {
       "id": "<finding id>",
       "severity": "BLOCKER | HIGH | MEDIUM | LOW | INFORMATIONAL",
-      "status": "open | not_required | noted",
+      "status": "open | resolved | not_required | noted",
       "area": "<meaningfulness/coverage/skips/determinism>",
       "description": "<finding>",
       "evidence": ["<test, file, or command evidence>"],

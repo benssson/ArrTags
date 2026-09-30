@@ -587,6 +587,32 @@ public class RendererConfigurationTests
     }
 
     [Fact]
+    public void ValidatorAcceptsDefinedExtraLargeBadgeSizeAndTheFingerprintIncludesIt()
+    {
+        var configuration = new PluginConfiguration();
+        configuration.Renderer.Size = BadgeSize.ExtraLarge;
+
+        // ADR-027 clause 6: the existing Enum.IsDefined check accepts the new
+        // defined member, so validation coverage is extended here rather than in
+        // production validation code.
+        var result = PluginConfigurationValidator.Validate(configuration);
+        Assert.True(result.IsValid, string.Join("; ", result.Errors));
+
+        var snapshot = PluginConfigurationSnapshot.From(configuration);
+        Assert.Equal(BadgeSize.ExtraLarge, snapshot.RendererOutputPolicy.Size);
+
+        // ADR-027 clause 4: a non-default size participates in the renderer
+        // configuration fingerprint, so selecting Extra Large republishes only
+        // the items whose policy selects it.
+        Assert.NotEqual(Fingerprint(new PluginConfiguration()), Fingerprint(configuration));
+
+        // An undefined value is still rejected by the same validator check.
+        var undefined = new PluginConfiguration();
+        undefined.Renderer.Size = (BadgeSize)99;
+        Assert.False(PluginConfigurationValidator.Validate(undefined).IsValid);
+    }
+
+    [Fact]
     public void ConfiguredPositionAndSizeResolveOntoTheOutputPolicy()
     {
         var configuration = new PluginConfiguration();

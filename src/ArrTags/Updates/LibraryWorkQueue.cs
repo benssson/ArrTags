@@ -20,6 +20,10 @@ namespace ArrTags.Updates;
 /// <item>The pending bound is the ADR-004 <see cref="OperationalLimits.QueueCapacity"/>,
 /// resolved from the current configuration snapshot on every enqueue so a
 /// replaced snapshot takes effect without rebuilding the singleton.</item>
+/// <item>The enqueue boundary reports the bounded
+/// <see cref="WorkHintEnqueueOutcome"/> (ADR-022 clause 1) so a whole-scope
+/// reconciliation run can locate the covered prefix instead of stalling on a
+/// coalesced duplicate.</item>
 /// <item>Overflow coalesces or drops redundant work. Enqueue never waits on
 /// external work, so it can never block the Jellyfin library-event
 /// publisher.</item>
@@ -115,12 +119,78 @@ public sealed class LibraryWorkQueue : IWorkHintSink, IDisposable
     /// <inheritdoc />
     public bool TryEnqueue(in LibraryWorkHint hint)
     {
+        return Enqueue(in hint) == WorkHintEnqueueOutcome.Accepted;
+    }
+
+    /// <inheritdoc />
+    public WorkHintEnqueueOutcome Enqueue(in LibraryWorkHint hint)
+    {
         if (hint.ItemId == Guid.Empty)
         {
-            return false;
+            // A malformed hint can never be a candidate; report it as a stop
+            // classification so a whole-scope run cannot silently skip it.
+            return WorkHintEnqueueOutcome.Stopped;
         }
 
-        return TryEnqueue(LibraryWorkItem.FromHint(in hint));
+        return Enqueue(LibraryWorkItem.FromHint(in hint));
+    }
+
+    /// <summary>
+    /// Attempts to enqueue a bounded, connection-scoped work item without
+    /// blocking and reports the bounded enqueue outcome. A redundant item for a
+    /// key that already has pending or in-flight work is coalesced, an item that
+    /// would exceed the bounded capacity is dropped, and a stopped queue refuses
+    /// the work, so the caller can locate the covered prefix without the
+    /// enqueue ever blocking or throwing into it.
+    /// </summary>
+    /// <param name="item">The bounded queued work item.</param>
+    /// <returns>The bounded enqueue outcome.</returns>
+    public WorkHintEnqueueOutcome Enqueue(in LibraryWorkItem item)
+    {
+        if (item.Key.ItemId == Guid.Empty || item.Key.Surface is null)
+        {
+            // A malformed item can never be a candidate; report it as a stop
+            // classification so a whole-scope run cannot silently skip it.
+            return WorkHintEnqueueOutcome.Stopped;
+        }
+
+        lock (_gate)
+        {
+            if (Volatile.Read(ref _accepting) == 0)
+            {
+                // A stopped queue rejects new work so host shutdown stops
+                // accepting work before the lifecycle drain.
+                return WorkHintEnqueueOutcome.Stopped;
+            }
+
+            var perItemInFlight = ResolvePerItemInFlight();
+
+            if (_inFlight.TryGetValue(item.Key, out var inFlight) && inFlight >= perItemInFlight)
+            {
+                // A worker re-reads current item and configuration state, so a
+                // redundant hint for in-flight work adds nothing.
+                return WorkHintEnqueueOutcome.InFlight;
+            }
+
+            if (_pendingKeys.Contains(item.Key))
+            {
+                // Coalesce: the item already has pending work.
+                return WorkHintEnqueueOutcome.Coalesced;
+            }
+
+            if (_pending.Count >= Capacity)
+            {
+                // Bounded overflow: drop the new work rather than block the
+                // library-event publisher or grow without bound.
+                return WorkHintEnqueueOutcome.Overflow;
+            }
+
+            _pending.Enqueue(item);
+            _pendingKeys.Add(item.Key);
+        }
+
+        _signal.Release();
+        return WorkHintEnqueueOutcome.Accepted;
     }
 
     /// <summary>
@@ -134,48 +204,7 @@ public sealed class LibraryWorkQueue : IWorkHintSink, IDisposable
     /// <returns><see langword="true"/> when the item was accepted; otherwise <see langword="false"/>.</returns>
     public bool TryEnqueue(in LibraryWorkItem item)
     {
-        if (item.Key.ItemId == Guid.Empty || item.Key.Surface is null)
-        {
-            return false;
-        }
-
-        lock (_gate)
-        {
-            if (Volatile.Read(ref _accepting) == 0)
-            {
-                // A stopped queue rejects new work so host shutdown stops
-                // accepting work before the lifecycle drain.
-                return false;
-            }
-
-            var perItemInFlight = ResolvePerItemInFlight();
-
-            if (_inFlight.TryGetValue(item.Key, out var inFlight) && inFlight >= perItemInFlight)
-            {
-                // A worker re-reads current item and configuration state, so a
-                // redundant hint for in-flight work adds nothing.
-                return false;
-            }
-
-            if (_pendingKeys.Contains(item.Key))
-            {
-                // Coalesce: the item already has pending work.
-                return false;
-            }
-
-            if (_pending.Count >= Capacity)
-            {
-                // Bounded overflow: drop the new work rather than block the
-                // library-event publisher or grow without bound.
-                return false;
-            }
-
-            _pending.Enqueue(item);
-            _pendingKeys.Add(item.Key);
-        }
-
-        _signal.Release();
-        return true;
+        return Enqueue(in item) == WorkHintEnqueueOutcome.Accepted;
     }
 
     /// <summary>

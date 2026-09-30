@@ -1,0 +1,126 @@
+{
+  "task": "21.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Task 21.3 release build, full suites, reproducible artifact, release documentation, and manifest regeneration for v1.2.0.0. The artifact was produced three times from clean states - two independent clean exports (1,085 tracked files each, no .git/bin/obj/artifacts) at different absolute paths, plus the repository working tree after wiping bin/obj/artifacts - and all three runs produced the byte-identical archive artifacts/ArrTags_1.2.0.0.zip: 619,538 bytes, SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, MD5 3100aae94a2b4aedf222eca040675271, 7 entries; the entry names, sizes, and per-entry SHA-256 were extracted and recorded. Suites: default with the archive present Failed 0 / Passed 1,927 / Skipped 66 / Total 1,993 (66 = 20 pinned-host facts + 45 ARRTAGS_SKIA_COMPAT native cases (41 SkiaNativeFact + 4 SkiaNativeTheory) + 1 ARRTAGS_NONCANONICAL_GOLDENS comparison); default without the archive 0 / 1,924 / 69 / 1,993 (3 additional PackagedPluginFact skips); host-guarded against the verified pinned Jellyfin 12.0.0 host /tmp/arrtags-14.3/jellyfin 0 / 1,947 / 46 / 1,993; forced-native with the repository's recorded probe sysroot 0 / 2,014 / 21 / 2,035. manifest.json was regenerated for 1.2.0.0 (checksum 3100aae94a2b4aedf222eca040675271, sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip, timestamp 2026-09-29T11:03:39Z; the prior 1.1.0.0 and 1.0.1.0 entries are retained). docs/release/build-and-release.md was updated for 1.2.0.0: version pin, the v1.2 default and host-guarded (and forced-native) counts with the archive-present precondition, the three-run clean-build evidence, the current artifact identity with the full per-entry table (the 1.1.0.0 and 1.0.1.0 identities are demoted to the prior-release record), the regenerated manifest entry fields, the v1.2.0 verification-step filenames, and the checklist/notes version references. README manual install now names ArrTags_1.2.0.0.zip / v1.2.0 / <plugins>/ArrTags_1.2.0.0/, and the docs/testing/jellyfin-12-musl-test-host.md task 7.3 reproduction step names the 1.2.0.0 package (no v1.2 live-matrix results added; task 21.4 owns those). PLANS.md task 21.3 checkbox and docs/plan/state.json done/reports/updated_utc were updated. scripts/check-docs.sh PASS (all nine sections) on the final tree before this report was written; render-docs-state --check up to date; git diff --stat is the six delegated tracked files only (112 insertions / 76 deletions); no production, test, build-metadata, or immutable-history change; no commit or tag.",
+  "validation": [
+    "Clean exports for reproducibility: 'git ls-files | tar -T - -cf - | tar -x -C /tmp/21.3/release-src-a' and '...-b' -> 1,085 files each, 0 .git markers, 0 bin/obj/artifacts directories.",
+    "Clean run 1 (export A, /tmp/21.3/release-src-a): '. /config/arrtags-env.sh && ./build.sh restore && ./build.sh build && ./build.sh package' -> exit 0, '0 Warning(s) / 0 Error(s)' for both projects, 'Created deterministic package: /tmp/21.3/release-src-a/artifacts/ArrTags_1.2.0.0.zip (7 entries)'; sha256sum 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, md5sum 3100aae94a2b4aedf222eca040675271, stat 619538 bytes.",
+    "Clean run 2 (export B, /tmp/21.3/release-src-b, different absolute path): same three commands -> exit 0, 0 warnings / 0 errors, same 7-entry package; SHA-256, MD5, and 619,538-byte size identical to run 1.",
+    "Clean run 3 (repository working tree): 'rm -rf src/ArrTags/bin src/ArrTags/obj tests/ArrTags.Tests/bin tests/ArrTags.Tests/obj artifacts && . /config/arrtags-env.sh && ./build.sh restore && ./build.sh build && ./build.sh package' -> exit 0, 0 warnings / 0 errors, 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.2.0.0.zip (7 entries)'; SHA-256/MD5/size identical to runs 1 and 2.",
+    "Archive contents: 'unzip -l artifacts/ArrTags_1.2.0.0.zip' -> 7 entries (ArrTags.deps.json 5,899; ArrTags.dll 1,346,560; THIRD-PARTY-NOTICES.md 1,368; build.yaml 2,744; licenses/DejaVu-Fonts-License.txt 8,816; licenses/SkiaSharp-LICENSE.txt 1,129; licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 139,775), all stamped 2000-01-01 00:00, total uncompressed 1,506,291.",
+    "Per-entry SHA-256: 'unzip -q artifacts/ArrTags_1.2.0.0.zip -d /tmp/21.3/pkg && find . -type f | sort | xargs sha256sum' -> ArrTags.deps.json fafb96315268f38ad417433ea7487857518330ee3d6ae44aff43d23ce3f5fbd0; ArrTags.dll 8d7b25c6b5e06c754e1fa3ed1492132a38188ec8e7d865acf279d571cea414f5; THIRD-PARTY-NOTICES.md 3656c9f037624237e0530c8729dbe792791ded877b93c28807034ff55bf181b1; build.yaml f4362c76b8715c4a116ea077fab0a5bd76eccf6041a0265972804055bf69b971; licenses/DejaVu-Fonts-License.txt 7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93; licenses/SkiaSharp-LICENSE.txt 89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938; licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5.",
+    "Default suite with the archive present: '. /config/arrtags-env.sh && ./build.sh test' -> exit 0, 'Passed! - Failed: 0, Passed: 1927, Skipped: 66, Total: 1993, Duration: 18 s - ArrTags.Tests.dll (net10.0)'.",
+    "Default-suite skip accounting (TRX rerun of the same tree, '--logger trx'): same Failed 0 / Passed 1927 / Skipped 66 / Total 1993; 66 NotExecuted results = 20 JellyfinHostFact (JellyfinImageRoute 5, JellyfinImageResponse 9, PluginDiscoveryHost 2, DashboardSettingsPage 2, ConfigurationRoundTrip 1, DiagnosticsStatusEndpoint 1) + 45 ARRTAGS_SKIA_COMPAT cases (41 SkiaNativeFact + 4 SkiaNativeTheory) + 1 NonCanonicalRuntimeFact; the 3 PackagedPluginFact package-content tests executed and passed.",
+    "Default suite without the archive: 'mv artifacts/ArrTags_1.2.0.0.zip /tmp/21.3/ && ./build.sh test' -> exit 0, 'Passed! - Failed: 0, Passed: 1924, Skipped: 69, Total: 1993'; the archive was moved back and re-hashed identically (505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762).",
+    "Host-guarded suite: 'ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin ./build.sh test' -> exit 0, 'Passed! - Failed: 0, Passed: 1947, Skipped: 46, Total: 1993' (46 = 45 native + 1 non-canonical; the 20 host facts pass). Host pre-check: Jellyfin.Api.dll present in /tmp/arrtags-14.3/jellyfin and /tmp/arrtags-14.3/console.log logs 'Jellyfin version: 12.0.0'.",
+    "Forced-native suite: 'LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib:$LD_LIBRARY_PATH ARRTAGS_SKIA_COMPAT=1 FONTCONFIG_PATH=/tmp/arrtags-skia-probe/sysroot/etc/fonts XDG_DATA_DIRS=/tmp/arrtags-skia-probe/sysroot/usr/share ./build.sh test' (host directory unset) -> exit 0, 'Passed! - Failed: 0, Passed: 2014, Skipped: 21, Total: 2035' (21 = 20 host + 1 non-canonical; Total grows from 1,993 to 2,035 as the enabled theories expand).",
+    "Manifest regeneration: 'dotnet run scripts/write-manifest.cs -- --build-yaml build.yaml --manifest manifest.json --checksum 3100aae94a2b4aedf222eca040675271 --source-url https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip --timestamp 2026-09-29T11:03:39Z' -> 'Wrote Jellyfin repository manifest: /workspace/ArrTags/manifest.json (1 plugin(s))'; manifest.json now lists versions 1.2.0.0, 1.1.0.0, 1.0.1.0 in that order.",
+    "Plan-state consistency: 'dotnet run scripts/render-docs-state.cs -- --check' -> exit 0, 'status.md: up to date / PLANS.md: up to date / PLANS.md and state.json agree'.",
+    "Documentation gate on the final tree (before this report was written): 'scripts/check-docs.sh' -> exit 0, 'check-docs: PASS', all nine ok sections (generated blocks current; stubs; decisions index 29 ADRs; limitations index; architecture/data-model indexes; artifact identity agrees (sha256, md5, bytes); doc budget; current-state links; agent report contracts).",
+    "Sensitivity probe A (artifact-identity guard): replaced the retained 1.1.0.0 SHA-256 in docs/release/build-and-release.md with a one-digit mutation -> 'scripts/check-docs.sh' exit 1, 'FAIL: state.json artifact sha256 not found in docs/release/build-and-release.md', 'check-docs: FAIL'; file restored byte-identically ('cmp -s' clean).",
+    "Sensitivity probe B (plan-state guard): reverted the PLANS.md 21.3 checkbox to '- [ ]' while state.json has done=true -> 'dotnet run scripts/render-docs-state.cs -- --check' exit 2, 'state/plan mismatch: task 21.3: PLANS.md checkbox does not match state.json done=true'; PLANS.md restored byte-identically ('cmp -s' clean).",
+    "Sensitivity probe C (reproducibility identity): appended a documented internal type to clean export B's source and rebuilt/repackaged -> SHA-256 changed from 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762 to 39d969763159ef673debaca5b178c6bef001de2dab59dec6af04bcbef49c432d, showing the recorded identity is content-derived and the two-run comparison detects a source/packer change; the repository tree was not modified.",
+    "Sensitivity probe D (package-content guard): packed a synthetic 8-entry archive (the 7 real entries plus a dummy SkiaSharp.dll) as the lexicographically-last artifacts/ArrTags_9.9.9.9.zip, then ran 'dotnet test ArrTags.slnx -c Release --no-build --filter FullyQualifiedName~PluginPackagingTests' -> exit 1, 'Assert.Null() Failure: Value is not null', 'Failed: 1, Passed: 6, Skipped: 0, Total: 7' (PackageDoesNotContainTheDuplicateSkiaSharpRuntime). The synthetic archive was removed and the filter re-run -> 'Failed: 0, Passed: 7, Skipped: 0, Total: 7' with the real archive still hashing 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762.",
+    "Scope: 'git diff --stat' -> PLANS.md, README.md, docs/plan/state.json, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md, manifest.json (6 files, 112 insertions(+), 76 deletions(-)); no source, test, build metadata, or immutable-history file changed; no commit or tag created."
+  ],
+  "changed_files": [
+    "docs/release/build-and-release.md",
+    "manifest.json",
+    "README.md",
+    "docs/testing/jellyfin-12-musl-test-host.md",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/implementation/21.3/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Task acceptance: 'The v1.2 artifact is reproducible and documented' (phase acceptance: './build.sh package' produces a reproducible artifacts/ArrTags_1.2.0.0.zip with recorded identity; v1.2 plan section 9: reproducible build/package at the v1.2 version 1.2.0.0).",
+      "evidence": "Three builds from clean states produced byte-identical artifacts (619,538 bytes; SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762; MD5 3100aae94a2b4aedf222eca040675271; 7 entries): two independent clean exports at different absolute paths and the repository working tree after wiping bin/obj/artifacts (validation entries 1-4). The identity, entry list, sizes, and per-entry SHA-256 are recorded in docs/release/build-and-release.md 'Release artifact identity' plus the clean-checkout '1.2.0.0 evidence' paragraph; manifest.json's 1.2.0.0 checksum equals `md5sum artifacts/ArrTags_1.2.0.0.zip` (validation entry 12); the release doc records the regenerated manifest fields."
+    },
+    {
+      "criterion": "Task acceptance: 'the full default and host-guarded suites pass'.",
+      "evidence": "Default suite with the archive present: Failed 0 / Passed 1,927 / Skipped 66 / Total 1,993; default without the archive: Failed 0 / Passed 1,924 / Skipped 69 / Total 1,993. Host-guarded against the pinned Jellyfin 12.0.0 host: Failed 0 / Passed 1,947 / Skipped 46 / Total 1,993. Documented in docs/release/build-and-release.md 'Build, test, and package commands'; the skip taxonomy is accounted for from the TRX run (20 host + 45 native + 1 non-canonical)."
+    },
+    {
+      "criterion": "Required scope 1 (record byte size, SHA-256, MD5, entry count, the 7 entry names, per-entry SHA-256) and scope 4 (regenerate the manifest 1.2.0.0 entry; keep prior entries).",
+      "evidence": "docs/release/build-and-release.md 'Release artifact identity' table and 7-row entry table; manifest.json regenerated by scripts/write-manifest.cs (validation entry 12) with 1.2.0.0 first and 1.1.0.0/1.0.1.0 retained."
+    },
+    {
+      "criterion": "Required scope 3 gate interaction: scripts/check-docs.sh must still find the first state.json sha256/md5/bytes (the 1.1.0.0 current_release identity) in the release document while the 1.2.0.0 identity becomes current.",
+      "evidence": "docs/release/build-and-release.md prior-release paragraph (lines 226-229) retains the '1.1.0.0' identity: '594,931 bytes', '85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1', and '547beb2f7d83cd256d3a3ce7bb7e7620'; state.json current_release was not changed; scripts/check-docs.sh section 'artifact identity agrees (sha256, md5, bytes)' PASS (validation entry 14)."
+    },
+    {
+      "criterion": "Required scope 5 (README manual install 1.2.0.0/v1.2.0/<plugins>/ArrTags_1.2.0.0/) and scope 6 (testing-doc task 7.3 reproduction package version only; no v1.2 live-matrix results).",
+      "evidence": "README.md manual-install steps; docs/testing/jellyfin-12-musl-test-host.md task 7.3 reproduction step 1. The v1.1 live-matrix section is untouched and no v1.2 matrix results were added."
+    },
+    {
+      "criterion": "Required scope 7 (PLANS.md 21.3 checkbox and state.json done/reports per single-writer rules) and required validation (check-docs PASS, render-docs-state --check up to date, diff scope).",
+      "evidence": "PLANS.md '- [x] 21.3 ...'; docs/plan/state.json 21.3 done=true with reports [reviewer-report.json, test-quality-review.json, worker-report.json] and refreshed updated_utc; validation entries 13, 14, and 19."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Which pinned-host directory to use for the host-guarded suite (the task named candidates without fixing one).",
+      "chosen": "/tmp/arrtags-14.3/jellyfin (the v1.1 live-matrix host).",
+      "basis": "The task's own candidate list; Jellyfin.Api.dll is present and /tmp/arrtags-14.3/console.log records 'Jellyfin version: 12.0.0', the pinned 12.0.0 host required by docs/testing/jellyfin-12-musl-test-host.md.",
+      "impact": "None on the artifact or persisted state; the host-guarded facts reflect over the pinned 12.0.0 host assemblies, matching the task's required precondition."
+    },
+    {
+      "question": "How to make the forced-native tier's native dependency chain available (the task allowed reporting it as not-run if infeasible).",
+      "chosen": "Ran it with the repository's recorded probe sysroot: LD_LIBRARY_PATH=/tmp/arrtags-skia-probe/sysroot/usr/lib plus FONTCONFIG_PATH/XDG_DATA_DIRS under that sysroot, host directory unset.",
+      "basis": "The same probe environment is recorded for the Phase 18.2/20.x pinned-native oracle runs (docs/implementation/18.2, 20.1, 20.2) and exists in this environment.",
+      "impact": "The tier's counts are recorded (0/2,014/21/2,035) instead of a not-run note; the bare ARRTAGS_SKIA_COMPAT=1 command without the chain remains documented as failing to load, which is an environment prerequisite, not a product defect."
+    },
+    {
+      "question": "How to phrase the no-archive default-suite figure (the clean-checkout procedure tests before packaging).",
+      "chosen": "Measured it in the built repository tree with the archive temporarily moved out of artifacts/, and documented it as 'Without a previously produced archive (as in the clean-checkout procedure below, which runs test before package)'.",
+      "basis": "The measured condition is exactly 'no artifacts/ArrTags_*.zip present', which is what the clean-checkout test-before-package step produces; the count was measured, not derived.",
+      "impact": "Documentation wording only; counts are the measured 1,924/69/1,993."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A (artifact-identity validator): mutating the retained 1.1.0.0 SHA-256 in docs/release/build-and-release.md made scripts/check-docs.sh exit 1 with 'FAIL: state.json artifact sha256 not found in docs/release/build-and-release.md'; restored byte-identically.",
+    "Probe B (plan-state checkbox validator): reverting PLANS.md 21.3 to '- [ ]' made render-docs-state --check exit 2 with 'state/plan mismatch: task 21.3: PLANS.md checkbox does not match state.json done=true'; restored byte-identically.",
+    "Probe C (reproducibility comparison): adding one documented source type to a clean export changed the repackaged archive's SHA-256 from 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762 to 39d969763159ef673debaca5b178c6bef001de2dab59dec6af04bcbef49c432d, so the two-run comparison detects source/packer changes (the repository itself was not modified).",
+    "Probe D (suite package-content guard): packing a synthetic archive with a duplicate SkiaSharp.dll entry made PluginPackagingTests fail 1/6/0/7 with 'Assert.Null() Failure: Value is not null'; with the real archive the same filter passes 7/0/7. This shows the suites detect a package-content regression (the class is content-asserting, not byte-identity-asserting).",
+    "No new production code or test was added by this task, so there is no new behavioural test to prove fail-sensitive; the executed default/host-guarded/forced-native suites are the existing regression oracle for the v1.2 code, and this task adds only documentation, manifest, and plan-state records plus the measured artifact identity."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/release/build-and-release.md (version pin 1.2.0.0; v1.2 default/host-guarded/forced-native counts and archive-present precondition; 1.2.0.0 clean-build evidence; current artifact identity and per-entry table; prior 1.1.0.0 and 1.0.1.0 identities; regenerated manifest fields; verification-step filenames; checklist preamble; debug-metadata note)",
+      "manifest.json (1.2.0.0 entry with checksum/sourceUrl/timestamp/changelog; prior 1.1.0.0 and 1.0.1.0 entries preserved)",
+      "README.md (manual-install package/tag/folder -> 1.2.0.0 / v1.2.0)",
+      "docs/testing/jellyfin-12-musl-test-host.md (task 7.3 reproduction package version only)",
+      "PLANS.md (21.3 checkbox)",
+      "docs/plan/state.json (21.3 done/reports; updated_utc)"
+    ],
+    "old_values_removed": [
+      "Pinned version row '1.1.0.0' -> '1.2.0.0'",
+      "v1.1 suite counts 1,494/63/1,557; 1,491/66/1,557; 1,513/44/1,557; 1,575/20/1,595 -> the v1.2 counts; grep over README/release doc/testing doc/PLANS.md for 1,494 / 1,513 / 1,575 / 1,557 / 1,595 returns no match",
+      "1.1.0.0 as the CURRENT artifact identity -> demoted to the prior-release record (its sha256/md5/bytes strings remain in the doc because check-docs.sh requires them; 1.0.1.0 remains beside it)",
+      "Manifest field table version/checksum/sourceUrl/timestamp values -> 1.2.0.0 / 3100aae... / v1.2.0 URL / 2026-09-29T11:03:39Z",
+      "Verification-step filenames artifacts/ArrTags_1.1.0.0.zip and /tmp/arrtags-pkg-1.1.0.0 -> 1.2.0.0",
+      "README manual-install ArrTags_1.1.0.0.zip / v1.1.0 / <plugins>/ArrTags_1.1.0.0/ -> 1.2.0.0 equivalents",
+      "testing-doc task 7.3 reproduction ArrTags_1.1.0.0.zip / PREFIX/data/plugins/ArrTags_1.1.0.0 -> 1.2.0.0",
+      "release-doc 'AssemblyInformationalVersion 1.1.0.0' note -> 1.2.0.0"
+    ],
+    "check_docs": "PASS",
+    "check_docs_note": "PASS (exit 0, all nine sections, 'check-docs: PASS') on the final tree before this report was written. With this report on disk, the re-run fails only the contract-mandated worker/reviewer pairing line in check-agents.sh - quoted: 'FAIL: task 21.3 has a worker report but no reviewer report (add an exemption only if covered)' - because the implementation-reviewer report does not exist yet; every other section and check passes ('ok: plan state lists the review evidence', 'check-docs: FAIL' only from that line). This is the same transient state recorded by tasks 21.1/21.2 and closed by the orchestrator when the reviewer report is committed."
+  },
+  "rework": [],
+  "known_limitations": [
+    "artifacts/ArrTags_1.2.0.0.zip is gitignored build output and is not part of the committed tree; the committed manifest.json checksum refers to that locally produced artifact.",
+    "No automated test guards archive byte-identity (pre-existing limitation): reproducibility is verified by producing the archive from clean states and comparing SHA-256/MD5, which is what this task did (three identical runs). PluginPackagingTests asserts package contents (required entries, no duplicate SkiaSharp runtime), not archive bytes.",
+    "The forced-native tier requires the pinned native dependency chain on the loader path; bare ARRTAGS_SKIA_COMPAT=1 ./build.sh test without the probe sysroot fails with System.DllNotFoundException (documented environment prerequisite, not a product defect). The recorded 0/2,014/21/2,035 counts use the repository's established probe sysroot.",
+    "The host-guarded suite reflects over the pinned host's assemblies; it does not run a live Jellyfin instance. The live pinned-host matrix remains task 21.4.",
+    "The GitHub release, asset upload, and manifest push are not performed (user's manual step); the manifest commit and annotated tag v1.2.0 remain task 21.6.",
+    "The documented no-archive default-suite figure (1,924/69/1,993) was measured in the built repository tree after moving the archive out of artifacts/ rather than from a fresh clean export; it is the measured result of the same 'no archive present' condition."
+  ],
+  "ready_for_next_task": true
+}

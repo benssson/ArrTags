@@ -1,0 +1,62 @@
+{
+  "phase": 16,
+  "name": "Settings byte units and restart-required surfacing",
+  "release": "1.2.0",
+  "status": "COMPLETE",
+  "tasks": ["16.1", "16.2", "16.3", "16.4", "16.5", "16.6"],
+  "task_commits": {
+    "16.1": "ed62b07",
+    "16.2": "04de6df",
+    "16.3": "b725d9b",
+    "16.4": "6a76327",
+    "16.5": "9d0d7a4",
+    "16.6": "b033c39"
+  },
+  "subagents": [
+    {"role": "implementation-worker", "task": "16.1", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.18255644999999995, "total_tokens": 20786704, "duration_seconds": 1176},
+    {"role": "implementation-reviewer", "task": "16.1", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.027095435999999997, "total_tokens": 988090, "duration_seconds": 238},
+    {"role": "implementation-worker", "task": "16.2", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.41801977199999985, "total_tokens": 27982771, "duration_seconds": 2077},
+    {"role": "implementation-reviewer", "task": "16.2", "attempt": 1, "outcome": "CHANGES_REQUIRED", "cost_usd": 0.05120768399999999, "total_tokens": 3825798, "duration_seconds": 401},
+    {"role": "implementation-worker", "task": "16.2", "attempt": 2, "outcome": "COMPLETE", "cost_usd": 0.17873915999999988, "total_tokens": 8401515, "duration_seconds": 904},
+    {"role": "implementation-reviewer", "task": "16.2", "attempt": 2, "outcome": "APPROVED", "cost_usd": 0.012371202, "total_tokens": 1750010, "duration_seconds": 645},
+    {"role": "implementation-worker", "task": "16.3", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.06385972800000002, "total_tokens": 3659907, "duration_seconds": 368},
+    {"role": "implementation-reviewer", "task": "16.3", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.03011179200000001, "total_tokens": 1294593, "duration_seconds": 229},
+    {"role": "jellyfin-expert", "task": "16.4", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.16106724000000002, "total_tokens": 11851411, "duration_seconds": 885},
+    {"role": "implementation-worker", "task": "16.4", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.040418778, "total_tokens": 2822721, "duration_seconds": 320},
+    {"role": "implementation-reviewer", "task": "16.4", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.019106556000000004, "total_tokens": 866392, "duration_seconds": 162},
+    {"role": "implementation-worker", "task": "16.5", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.09046164599999999, "total_tokens": 10156199, "duration_seconds": 986},
+    {"role": "implementation-reviewer", "task": "16.5", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.019388027999999998, "total_tokens": 814778, "duration_seconds": 190},
+    {"role": "implementation-worker", "task": "16.6", "attempt": 1, "outcome": "COMPLETE", "cost_usd": 0.25468346999999997, "total_tokens": 17798443, "duration_seconds": 1272},
+    {"role": "implementation-reviewer", "task": "16.6", "attempt": 1, "outcome": "APPROVED", "cost_usd": 0.029737157999999993, "total_tokens": 1575821, "duration_seconds": 514}
+  ],
+  "aggregate": {
+    "task_count": 6,
+    "review_rounds": 7,
+    "rework_rounds": 1,
+    "subagent_invocations": 15,
+    "cost_usd": 1.578824100000000,
+    "note": "Per-subagent figures are the authoritative runtime values recorded in docs/implementation/<task>/orchestration.json; this aggregate sums the six task files exactly (1.5788241). Phase 15 is not included. The phase-reviewer invocation is recorded separately below and is not part of this per-task aggregate."
+  },
+  "phase_reviewer": {
+    "role": "phase-reviewer",
+    "attempt": 1,
+    "outcome": "APPROVED_WITH_FINDINGS",
+    "execution": {
+      "agent": "phase-reviewer",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "variant": "high",
+      "input_tokens": 236824,
+      "output_tokens": 11497,
+      "reasoning_tokens": 28358,
+      "cache_read_tokens": 8373120,
+      "cache_write_tokens": 0,
+      "total_tokens": 8649799,
+      "cost_usd": 0.08455595999999999,
+      "duration_seconds": 559,
+      "session_id": "ses_f2532ec31ffe5abLHKD4dI8RET"
+    }
+  },
+  "gate": "Gate 16",
+  "tag": "v1.2.0-phase16",
+  "gate_status": "PENDING_PHASE_REVIEW"
+}

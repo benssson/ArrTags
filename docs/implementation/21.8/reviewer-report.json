@@ -1,0 +1,197 @@
+{
+  "task": "21.8",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "summary": "Independent review of task 21.8 (corrected release build, full suite, reproducible artifact, release documentation), superseding the 21.3 deliverable against the task 21.7 SEC-21.5-01 correction. I re-derived the artifact identity myself from two fresh git exports at absolute paths the worker did not use (/tmp/21.8/rev-a, /tmp/21.8/rev-b; 1,102 tracked files each, 0 .git/bin/obj/artifacts directories) plus the repository working tree: all three produced the byte-identical archive, 619,636 bytes, SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277, MD5 f3b50a91c7cb63d9560316d8abe2f9dc, 7 entries all stamped 2000-01-01 00:00, with `cmp` clean. My 7 extracted per-entry SHA-256 values match the release doc's per-entry table exactly. I re-ran all four documented suite tiers and every count reproduces exactly: default with the archive present 0/1,937/66/2,003; default without the archive 0/1,934/69/2,003; host-guarded (independently of the worker's choice, against /tmp/arrtags-21.4/jellyfin, verified as the pinned Jellyfin 12.0.0 host) 0/1,957/46/2,003; forced-native with the repository's recorded probe sysroot 0/2,024/21/2,045. I confirmed the skip taxonomy arithmetically from the test sources: 20 [JellyfinHostFact] + 41 [SkiaNativeFact] + 4 [SkiaNativeTheory] + 1 [NonCanonicalRuntimeFact] = 66, +3 [PackagedPluginFact] = 69, and the host-guarded 46 = 41+4+1 and forced-native 21 = 20+1. I confirmed the +10 delta over 21.3's 1,993 is ProviderRedirectTransportTests (0/10/0/10 on a focused run). manifest.json is valid JSON, lists 1.2.0.0 first with checksum equal to md5sum of the corrected archive, and regenerates byte-identically from the canonical generator scripts/write-manifest.cs with the committed inputs. The release doc records the corrected identity, marks the 21.3 identity superseded while retaining it, retains the 1.1.0.0 identity that state.json current_release records, and presents no stale identity as current. current_release and the release/tag state are untouched. Diff scope is exactly the four expected tracked files plus the new report directory; no code, test, or build-metadata change. One open MEDIUM follow-up (docs/testing/jellyfin-12-musl-test-host.md still names the superseded 21.4 candidate without a superseded marker) is outside this task's documented diff scope and is correctly owned by task 21.9, which runs the corrected live matrix; I record it as INFORMATIONAL/noted, not blocking. The only remaining scripts/check-docs.sh failures are the contract-defined transient worker/reviewer pairing checks, which clear when this report is listed in state.json 21.8 reports.",
+  "findings": [
+    {
+      "id": "21.8-REV-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/current-state",
+      "summary": "docs/testing/jellyfin-12-musl-test-host.md still names the superseded task 21.4 candidate identity without marking it superseded.",
+      "detail": "docs/testing/jellyfin-12-musl-test-host.md:311-312 describes the v1.2 live matrix as having run against 'artifacts/ArrTags_1.2.0.0.zip, 619,538 bytes, SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762'. The file at that path now hashes to the corrected identity, so a reader could reconcile the two without a marker. The statement is, however, an accurate historical record of what task 21.4 actually ran against, which is the documented purpose of that section, and the task 21.8 delegated diff scope is PLANS.md, docs/plan/state.json, docs/release/build-and-release.md, and manifest.json. Task 21.9 ('Live pinned-host verification of the corrected artifact') is the task that runs the corrected matrix and owns updating that testing document. The worker flagged this same item in known_limitations and the test-quality-reviewer recorded it as 21.8-TQ-1; I agree it is real but not a 21.8 defect. Leaving it for 21.9 keeps the historical record intact and avoids 21.8 editing a document it did not produce against.",
+      "evidence": [
+        "docs/testing/jellyfin-12-musl-test-host.md:311-312",
+        "grep -rln '505804992a50' docs/ -> only docs/testing/jellyfin-12-musl-test-host.md plus immutable docs/implementation/** records",
+        "git diff --stat -> docs/testing/jellyfin-12-musl-test-host.md not modified",
+        "docs/plan/state.json task 21.9 name: 'Live pinned-host verification of the corrected artifact'",
+        "docs/implementation/21.8/worker-report.json known_limitations (final entry)",
+        "docs/implementation/21.8/test-quality-review.json finding 21.8-TQ-1"
+      ],
+      "recommended_action": "Task 21.9 must mark the task 21.4 candidate identity in docs/testing/jellyfin-12-musl-test-host.md as superseded by the task 21.8 identity (619,636 bytes / 3e59cb06...) and record the corrected matrix. If 21.9 does not touch that document, a one-line superseded marker must be added there rather than left for a reader to reconcile."
+    },
+    {
+      "id": "21.8-REV-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/workflow",
+      "summary": "scripts/check-docs.sh currently fails only on the transient worker/reviewer report pairing checks, which clear once this report is listed in state.json 21.8 reports.",
+      "detail": "With docs/implementation/21.8/worker-report.json on disk and no reviewer-report.json yet, scripts/check-agents.sh reports two messages: 'task 21.8 has a worker report but no reviewer report' and 'task 21.8 has a reviewer report on disk but docs/plan/state.json does not list it in reports'. The second message is the script's fixed wording for the state.json pairing branch (docs/implementation/21.8/ contains no reviewer report at the time of the run); it does not assert the existence of a file that is absent. Every other section passes, including 'ok: artifact identity agrees (sha256, md5, bytes)', 'ok: generated status blocks are current; plan state is consistent', 'ok: doc budget checked', and 'ok: current-state links resolve'. scripts/render-docs-state.cs -- --check exits 0 with 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree'. Persisting this report and listing it in docs/plan/state.json task 21.8 reports (the orchestrator's record-and-commit step, per docs/agent-contracts.md 'Where reports go' item 5) clears both. This is the same interim state tasks 21.1, 21.2, 21.3, and 21.7 recorded.",
+      "evidence": [
+        "./scripts/check-docs.sh -> exit 1; 'ok: artifact identity agrees (sha256, md5, bytes)'; two FAIL lines, both in the worker/reviewer pairing block; 'check-docs: FAIL'",
+        ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check -> exit 0, 'PLANS.md and state.json agree'",
+        "docs/agent-contracts.md:20-26 (reports array must list the reviewer report)",
+        "docs/implementation/21.8/worker-report.json documentation_reconciliation.check_docs_note",
+        "scripts/check-agents.sh:113-151 (the two pairing branches)"
+      ],
+      "recommended_action": "The orchestrator's report-and-commit step must add docs/implementation/21.8/reviewer-report.json to the reports array of task 21.8 in docs/plan/state.json, then re-run scripts/check-docs.sh to confirm a full PASS. This is not a worker or task-21.8 change."
+    },
+    {
+      "id": "21.8-REV-3",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "scope",
+      "summary": "Diff scope is exactly the four expected tracked documentation/state files plus the new 21.8 report directory; no code, test, or build-metadata change.",
+      "detail": "git status --porcelain reports M PLANS.md, M docs/plan/state.json, M docs/release/build-and-release.md, M manifest.json, and the untracked docs/implementation/21.8/. git diff --stat is 4 files changed, 90 insertions(+), 47 deletions(-). Commit 5f72372 (task 21.7) is the last code-bearing commit and already landed src/ArrTags/Providers/*/SonarrClient.cs, RadarrClient.cs, ArrTagsServiceRegistrator.cs, and tests/ArrTags.Tests/ProviderRedirectTransportTests.cs; this task correctly adds nothing to them. No git commit or tag was created by this task, so the 21.6 release/tag state is untouched.",
+      "evidence": [
+        "git status --porcelain",
+        "git diff --stat -> 4 files changed, 90 insertions(+), 47 deletions(-)",
+        "git log --oneline -1 -> b73e035 (record commit); 5f72372 is the 21.7 implementation commit",
+        "git show --stat 5f72372"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.8-REV-4",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "correctness/reproducibility",
+      "summary": "Artifact byte-identity and the corrected-versus-superseded ArrTags.dll difference independently confirmed from four clean build sites plus the preserved 21.3 archive.",
+      "detail": "Two fresh exports at paths the worker did not use (/tmp/21.8/rev-a, /tmp/21.8/rev-b) and the repository working tree all produced SHA-256 3e59cb06... / MD5 f3b50a91... / 619,636 bytes; `cmp` between rev-a, rev-b, and the repository artifact is clean. The worker's export B now holds its Sensitivity Probe C output (c289aa81...), which is documented in the worker report and does not affect the recorded identity. Extracting the preserved superseded 21.3 archive (/tmp/21.8/superseded-21.3.zip, re-hashed by me to 505804992a50... / 619,538 bytes, matching the retained 21.3 identity) and comparing per entry against the corrected archive shows exactly one differing entry, ArrTags.dll: 1,346,560 bytes / 8d7b25c6b5e06c754e1fa3ed1492132a38188ec8e7d865acf279d571cea414f5 (21.3) versus 1,347,072 bytes / eae2cbabcba9b8ced8f41a55db3d216e020529ce2d567c33f50a2490892b235d (21.8); the other six entries are byte-identical. Both hashes are recorded in the release doc and in the worker report. As an independent cross-check on the 21.3 side, all 7 of the 21.3 per-entry hashes appear in the immutable docs/implementation/21.3/worker-report.json, and the 6 non-dll values agree with my extraction of the 21.8 archive.",
+      "evidence": [
+        "sha256sum over /tmp/21.8/rev-a, /tmp/21.8/rev-b, /workspace/ArrTags/artifacts -> all 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277",
+        "cmp rev-a vs rev-b vs repository archive -> clean (byte-identical)",
+        "unzip -l artifacts/ArrTags_1.2.0.0.zip -> 7 entries, all 01-01-2000 00:00, ArrTags.dll 1347072",
+        "sha256sum per entry of /tmp/21.8/rev-extract (superseded 21.3) -> ArrTags.dll 8d7b25c6...",
+        "cmp loop over 7 entries -> only ArrTags.dll DIFF",
+        "sha256sum /tmp/21.8/superseded-21.3.zip -> 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, 619538 bytes",
+        "grep -oE over docs/implementation/21.3/worker-report.json -> all 7 21.3 per-entry hashes present"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.8-REV-5",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "manifest",
+      "summary": "manifest.json is valid, lists 1.2.0.0 first with checksum equal to the artifact MD5, retains prior entries, and regenerates byte-identically from the canonical generator.",
+      "detail": "manifest.json parses as a JSON array with one ArrTags plugin object; versions are ordered 1.2.0.0 (first), 1.1.0.0, 1.0.1.0, so the prior entries are retained. versions[0] carries version 1.2.0.0, targetAbi 12.0.0.0, sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip, timestamp 2026-09-29T14:37:30Z, and checksum f3b50a91c7cb63d9560316d8abe2f9dc, which equals md5sum artifacts/ArrTags_1.2.0.0.zip. guid, name, owner, category, description, overview, and changelog match build.yaml (the generator reads metadata from build.yaml). Re-running scripts/write-manifest.cs with the committed build.yaml, checksum, sourceUrl, and timestamp into a separate output path produces a file byte-identical to the committed manifest.json, so the manifest is the canonical generator output rather than a hand edit. The git diff of manifest.json changes exactly the 1.2.0.0 checksum and timestamp.",
+      "evidence": [
+        "cat manifest.json -> valid JSON array, 1 plugin, 3 version entries in order 1.2.0.0 / 1.1.0.0 / 1.0.1.0",
+        "md5sum artifacts/ArrTags_1.2.0.0.zip -> f3b50a91c7cb63d9560316d8abe2f9dc == manifest versions[0].checksum",
+        "dotnet run scripts/write-manifest.cs -- --build-yaml build.yaml --manifest manifest.json --checksum f3b50a91c7cb63d9560316d8abe2f9dc --source-url .../v1.2.0/ArrTags_1.2.0.0.zip --timestamp 2026-09-29T14:37:30Z --output /tmp/21.8/manifest-regen.json; diff /tmp/21.8/manifest-regen.json manifest.json -> identical",
+        "git diff manifest.json -> 2 lines changed (checksum, timestamp) inside versions[0]",
+        "head -40 build.yaml -> version 1.2.0.0, targetAbi 12.0.0.0, framework net10.0, guid 40322d52-5680-449f-b33e-e01836ee2f46"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "21.8-REV-6",
+      "severity": "INFORMATIONAL",
+      "status": "resolved",
+      "area": "release-state",
+      "summary": "state.json current_release and the release/tag state are untouched by this task.",
+      "detail": "current_release remains version 1.1.0.0, tag v1.1.0, status COMPLETE, published false, with artifact bytes 594931, sha256 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1, md5 547beb2f7d83cd256d3a3ce7bb7e7620, entries 7. git diff docs/plan/state.json contains no current_release hunk; the only state.json changes are updated_utc, task 21.8 done true, and its reports array. All three of those 1.1.0.0 identity strings are retained verbatim in docs/release/build-and-release.md, which is what scripts/check-docs.sh section 6 ('artifact identity agrees (sha256, md5, bytes)') verifies, and it passes. docs/status.md continues to report 1.1.0.0 as the current release and was regenerated consistently (render-docs-state --check exit 0). No commit or tag was created by this task.",
+      "evidence": [
+        "jq '.phases[].tasks[] | select(.id==\"21.8\")' docs/plan/state.json -> done true, reports [worker-report.json]",
+        "grep -n 'current_release' -A 12 docs/plan/state.json -> 1.1.0.0 / v1.1.0 / 594931 / 85730fe7... / 547beb2f... / 7",
+        "git diff docs/plan/state.json | grep current_release -> no match",
+        "grep -n '85730fe7\\|547beb2f\\|594,931' docs/release/build-and-release.md -> lines 259-261",
+        "./scripts/check-docs.sh -> 'ok: artifact identity agrees (sha256, md5, bytes)'",
+        "dotnet run scripts/render-docs-state.cs -- --check -> exit 0",
+        "docs/status.md -> '**Current release:** `1.1.0.0` (tag `v1.1.0`)'"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": 1,
+      "criterion": "./build.sh package produces an archive byte-identical across two independent clean exports plus the wiped working tree.",
+      "verdict": "PASS",
+      "evidence": "I performed my own clean exports rather than relying on the worker's directories: `git ls-files | tar -T - -cf - | tar -x -C /tmp/21.8/rev-a` and the same into /tmp/21.8/rev-b (1,102 files each, 0 .git/bin/obj/artifacts directories, both at absolute paths the worker did not use). Each ran './build.sh restore && ./build.sh build && ./build.sh package' with exit 0 and '0 Warning(s) / 0 Error(s)' for both the solution build and the packaging build, logging 'Created deterministic package: ... (7 entries)'. All three sites (rev-a, rev-b, and the repository working tree) produced SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277, MD5 f3b50a91c7cb63d9560316d8abe2f9dc, 619,636 bytes; `cmp` of rev-a vs rev-b vs the repository archive is clean. I also re-ran the no-archive default suite in the repository tree and re-hashed the restored archive to the same SHA-256."
+    },
+    {
+      "id": 2,
+      "criterion": "New size/SHA-256/MD5/entries/per-entry hashes recorded in docs/release/build-and-release.md; the 21.3 identity retained as superseded, not deleted.",
+      "verdict": "PASS",
+      "evidence": "The 'Release artifact identity' section records Size 619,636 bytes, SHA-256 3e59cb06..., MD5 f3b50a91..., Entries 7, and a 7-row per-entry table; I extracted the archive and recomputed all 7 per-entry SHA-256 values, which match the table exactly (ArrTags.deps.json fafb9631..., ArrTags.dll eae2cbab..., THIRD-PARTY-NOTICES.md 3656c9f0..., build.yaml f4362c76..., licenses/DejaVu-Fonts-License.txt 7a083b13..., licenses/SkiaSharp-LICENSE.txt 89101e35..., licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 21504c46...). The 21.3 identity is retained and explicitly marked superseded in two places: the clean-checkout evidence paragraph headed '1.2.0.0 evidence (Phase 21 task 21.3; superseded by task 21.8)' with a closing superseded sentence, and the identity paragraph stating 'The superseded Phase 21 task 21.3 identity (619,538 bytes, SHA-256 505804992a50..., MD5 3100aae9...) is retained as the pre-correction build'. No stale identity is presented as current."
+    },
+    {
+      "id": 3,
+      "criterion": "Default and host-guarded suites pass; skip taxonomy accounted.",
+      "verdict": "PASS",
+      "evidence": "I re-ran both. Default with the corrected archive present: 'Passed! - Failed: 0, Passed: 1937, Skipped: 66, Total: 2003'. Host-guarded: I deliberately used a different pinned host than the worker (/tmp/arrtags-21.4/jellyfin, verified: Jellyfin.Api.dll present and console.log records 'Jellyfin version: 12.0.0') and got 'Passed! - Failed: 0, Passed: 1957, Skipped: 46, Total: 2003'. The skip taxonomy is exactly accounted and I verified it arithmetically from the test sources rather than taking the report's word: 20 [JellyfinHostFact] + 41 [SkiaNativeFact] + 4 [SkiaNativeTheory] + 1 [NonCanonicalRuntimeFact] = 66, matching the observed default skip count; +3 [PackagedPluginFact] = 69, matching the no-archive default I also re-ran (0/1,934/69/2,003); 41+4+1 = 46, matching the host-guarded count; 20+1 = 21, matching the forced-native count I re-ran with the recorded probe sysroot (0/2,024/21/2,045). The +10 delta over task 21.3's 1,993 total is independently confirmed by a focused run: FullyQualifiedName~ProviderRedirectTransportTests -> Failed 0, Passed 10, Skipped 0, Total 10."
+    },
+    {
+      "id": 4,
+      "criterion": "manifest.json 1.2.0.0 checksum = md5sum of the corrected archive.",
+      "verdict": "PASS",
+      "evidence": "md5sum artifacts/ArrTags_1.2.0.0.zip -> f3b50a91c7cb63d9560316d8abe2f9dc; manifest.json versions[0].checksum -> f3b50a91c7cb63d9560316d8abe2f9dc. manifest.json is valid JSON with 1.2.0.0 listed first, targetAbi 12.0.0.0 matching build.yaml, sourceUrl https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip, and the prior 1.1.0.0 and 1.0.1.0 entries retained. Re-running scripts/write-manifest.cs with the committed inputs into a separate output path produces a file byte-identical to the committed manifest.json. The git diff changes exactly the 1.2.0.0 checksum and timestamp."
+    },
+    {
+      "id": 5,
+      "criterion": "The release doc keeps the 1.1.0.0 identity that state.json current_release records; current_release unchanged.",
+      "verdict": "PASS",
+      "evidence": "state.json current_release is unchanged at 1.1.0.0 / v1.1.0 / 594931 bytes / 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1 / 547beb2f7d83cd256d3a3ce7bb7e7620 / 7 entries; git diff docs/plan/state.json has no current_release hunk. All three identity strings are retained verbatim in docs/release/build-and-release.md (lines 259-261), and scripts/check-docs.sh section 6 'artifact identity agrees (sha256, md5, bytes)' passes, which is the guard that depends on them. scripts/render-docs-state.cs -- --check exits 0 ('status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree')."
+    },
+    {
+      "id": 6,
+      "criterion": "The report states the corrected ArrTags.dll differs from 21.3's, with both hashes.",
+      "verdict": "PASS",
+      "evidence": "The worker report states both in its summary and in validation entry 9, and docs/release/build-and-release.md records the pair in the identity paragraph: 'the only entry it differs in is ArrTags.dll (task 21.3: 1,346,560 bytes, SHA-256 8d7b25c6b5e06c754e1fa3ed1492132a38188ec8e7d865acf279d571cea414f5; task 21.8: 1,347,072 bytes, SHA-256 eae2cbabcba9b8ced8f41a55db3d216e020529ce2d567c33f50a2490892b235d)'. I verified both sides independently rather than accepting the claim: extracting the preserved superseded 21.3 archive (which I re-hashed to 505804992a50... / 619,538 bytes) and comparing entry-by-entry against the corrected archive shows exactly one differing entry, ArrTags.dll, with the two sizes and hashes above; the other six entries are byte-identical."
+    }
+  ],
+  "required_scope_checks": [
+    {
+      "scope": "Required scope 3 (release doc updates)",
+      "verdict": "PASS",
+      "evidence": "Suite counts are the measured corrected values with the archive-present precondition stated (1,937/66/2,003 with archive, 1,934/69/2,003 without, 1,957/46/2,003 host-guarded, 2,024/21/2,045 forced-native) and the +10 task 21.7 reconciliation is stated. The identity section carries the corrected identity and per-entry table with the superseded 21.3 identity and the changed ArrTags.dll pair. The manifest field table shows checksum f3b50a91..., timestamp 2026-09-29T14:37:30Z, and the regeneration note now attributes the 1.2.0.0 entry to task 21.8 against the corrected archive while crediting 21.3 with first writing it. The verification-step filenames are unchanged and still correct. A grep for the old counts 1,927 / 1,947 / 2,014 / 2,035 finds no match in the document."
+    },
+    {
+      "scope": "Required scope 5 (report and state per single-writer rules)",
+      "verdict": "PASS",
+      "evidence": "The worker report is persisted at docs/implementation/21.8/worker-report.json; PLANS.md line 249 is '- [x] 21.8 Corrected release build, full suite, reproducible artifact, and release documentation'; state.json task 21.8 has done=true with updated_utc refreshed to 2026-09-29T14:39:09Z. scripts/render-docs-state.cs -- --check exits 0. The worker's changed_files list matches git status exactly."
+    },
+    {
+      "scope": "Required validation (three-run SHA-256 equality, entry list and per-entry hashes, suite counts, dll hash delta, check-docs, render-docs-state --check, diff scope)",
+      "verdict": "PASS",
+      "evidence": "Each element was independently reproduced by me rather than read from the report; see findings 21.8-REV-3 through 21.8-REV-6 and the acceptance_criteria evidence above. The only check-docs failures are the transient pairing checks described in 21.8-REV-2."
+    }
+  ],
+  "tests_checked": [
+    "Default suite with the corrected archive present, re-run: './build.sh test' -> Failed 0, Passed 1937, Skipped 66, Total 2003.",
+    "Default suite without the archive, re-run: archive moved out of artifacts/ -> Failed 0, Passed 1934, Skipped 69, Total 2003; archive restored and re-hashed to 3e59cb06...",
+    "Host-guarded suite, re-run against a host independent of the worker's choice (/tmp/arrtags-21.4/jellyfin, verified as the pinned Jellyfin 12.0.0 host): Failed 0, Passed 1957, Skipped 46, Total 2003.",
+    "Forced-native suite, re-run with the repository's recorded probe sysroot (/tmp/arrtags-skia-probe/sysroot): Failed 0, Passed 2024, Skipped 21, Total 2045.",
+    "Skip taxonomy derived from the test sources with ripgrep: 20 [JellyfinHostFact], 41 [SkiaNativeFact], 4 [SkiaNativeTheory], 1 [NonCanonicalRuntimeFact], 3 [PackagedPluginFact] across 145 .cs files; sums reconcile to the observed 66 / 69 / 46 / 21 skip counts.",
+    "Task 21.7 attribution, re-run: dotnet test --filter 'FullyQualifiedName~ProviderRedirectTransportTests' -> Failed 0, Passed 10, Skipped 0, Total 10.",
+    "Clean rebuild/package in two fresh exports at paths the worker did not use (/tmp/21.8/rev-a, /tmp/21.8/rev-b): restore/build/package exit 0, 0 warnings / 0 errors, 7-entry deterministic package, SHA-256/MD5/size identical to each other and to the repository artifact; cmp clean."
+  ],
+  "research_checked": [
+    "No new external research was required. The technically significant claims (archive reproducibility, suite counts, skip taxonomy, manifest shape) are all locally verifiable and were verified directly; the worker's research_required list is empty and I found no unsupported external integration mechanism or claim requiring an upstream source check.",
+    "Pinned-host precondition verified against the local pinned host rather than an external source: /tmp/arrtags-21.4/jellyfin/Jellyfin.Api.dll is present and /tmp/arrtags-21.4/console.log records 'Jellyfin version: 12.0.0', matching docs/testing/jellyfin-12-musl-test-host.md's pinned 12.0.0 host and build.yaml targetAbi 12.0.0.0."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json: task 21.8 done=true with reports [docs/implementation/21.8/worker-report.json], updated_utc 2026-09-29T14:39:09Z, current_release block unchanged; PLANS.md checkbox ticked and in agreement.",
+    "PLANS.md: line 249 '- [x] 21.8 ...'; Phase 21 order list intact; diff is one line.",
+    "docs/status.md: regenerated block still reports current release 1.1.0.0 / v1.1.0 with the 1.1.0.0 artifact identity and the 1.1.0.0 suite counts, which is correct because current_release is unchanged; render-docs-state.cs -- --check reports it up to date.",
+    "docs/release/build-and-release.md: header attribution extended to 21.8; all four suite tiers with the archive-present precondition and the task 21.7 +10 reconciliation; corrected three-run clean-build evidence with the 21.3 paragraph explicitly marked superseded; corrected current identity table and 7-row per-entry table; superseded 21.3 identity plus the differing ArrTags.dll size/hash pair retained; retained 1.1.0.0 and 1.0.1.0 prior-release identities; manifest field table with the corrected checksum and timestamp; verification-step and checklist preamble updated. No stale identity is presented as current.",
+    "manifest.json: valid JSON; 1.2.0.0 first with checksum equal to the corrected archive MD5, targetAbi 12.0.0.0, correct sourceUrl, timestamp 2026-09-29T14:37:30Z; prior 1.1.0.0 and 1.0.1.0 entries retained; regenerates byte-identically from scripts/write-manifest.cs; metadata matches build.yaml.",
+    "docs/changelog/*.md, docs/limitations/*.md, docs/INDEX.md: grep for the corrected and superseded 1.2.0.0 identities returns no match, so no changelog or limitations surface presents a stale artifact identity; docs/changelog/v1.2.0.md is owned by 21.6 for release finalisation and was correctly left untouched.",
+    "docs/agent-contracts.md: confirmed the report path, status/severity enums, and the rule that a task's reports array must list the reviewer report; confirmed scripts/check-agents.sh enforcement.",
+    "scripts/check-docs.sh and dotnet run scripts/render-docs-state.cs -- --check: every section passes except the transient worker/reviewer pairing pair described in finding 21.8-REV-2.",
+    "docs/testing/jellyfin-12-musl-test-host.md: checked; carries the superseded 21.4 candidate identity without a superseded marker, recorded as 21.8-REV-1 and deferred to task 21.9.",
+    "Immutable history (docs/implementation/21.3/**, 21.4/**, 21.5/**, 21.7/**, docs/changelog/**, ADR text): inspected read-only for corroboration of the 21.3 per-entry hashes and the SEC-21.5-01 provenance; none rewritten."
+  ],
+  "worker_evidence_assessment": {
+    "acceptance_criteria": "Present and consistent with the diff and with my independent measurements. All six criteria are substantiated by evidence I reproduced myself rather than by the report's assertions; the only worker numbers I could not literally re-execute are the specific paths it used for the clean exports and its host choice, and I reproduced the same results from independent paths and an independent host.",
+    "test_sensitivity": "Present with three probes. Probe A (mutating the retained 1.1.0.0 SHA-256 breaks check-docs) and Probe B (reverting the PLANS.md checkbox breaks render-docs-state --check) are both directly supported by the scripts I ran and by the guards' observed behaviour. Probe C (adding a type to export B changes the archive hash) is corroborated by the fact that the worker's own export B now hashes to c289aa81448cea27d49abfedd51ca30fae01dabd2c1731a06d07848cdec6b8c9 rather than the recorded identity, which I observed independently. The worker correctly states no new production code or test was added, so there is no new behavioural test requiring a fail-sensitive proof.",
+    "documentation_reconciliation": "Present and accurate. The stated old_values_removed are visible in the diff, and my greps confirm no stale suite count (1,927 / 1,947 / 2,014 / 2,035) and no stale 1.2.0.0 identity outside the explicitly superseded 21.3 paragraph. Its check_docs_note correctly anticipates the transient pairing failure and correctly attributes the fix to the orchestrator's record step. One small imprecision, not a defect: the note describes the second check-docs message as the script's 'fixed wording' for the state.json branch; I confirmed that reading against scripts/check-agents.sh:131-151.",
+    "interpretations": "Four entries present, each reasonable and non-load-bearing: host directory choice (verified the alternative pinned 12.0.0 host gives identical counts), the forced-native probe sysroot (reproduced), how much of the superseded 21.3 identity to retain (sufficient and reconstructible), and the +10 attribution (independently confirmed as 10 focused cases). None changes a requirement.",
+    "rework": "Empty, consistent with attempt 1."
+  },
+  "reviewer_blockers": [],
+  "ready_for_next_task": true
+}

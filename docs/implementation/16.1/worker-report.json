@@ -1,0 +1,127 @@
+{
+  "task": "16.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the ADR-028 byte-limit display mapping and the settings-page display/store wiring (goal G6, phase 16 task 16.1). src/ArrTags/Configuration/ByteLimitField.cs and ByteLimitUnits.cs are the code-owned mapping for the seven byte-denominated limits: fixed binary unit (MB, 1048576 bytes; KB, 1024 bytes for WebhookMaxPayloadBytes), fixed step S (64 KiB for ProviderResponseLimitBytes/SourceArtifactLimitBytes/DerivedArtifactLimitBytes, 1 MiB for RenderCacheQuotaBytes/ArtifactStorageQuotaBytes/InventoryCacheMaxBytes, 1 KiB for WebhookMaxPayloadBytes), fixed precision P (4 for the 64-KiB-step fields, else 0), and the unchanged OperationalLimits byte bounds/defaults. FormatDisplay renders bytes at P with trailing zeros trimmed; FormatRange renders the unit-labelled range (e.g. '0.0625 - 64 MB'); TryParseDisplay accepts at most P fractional digits, parses the decimal as a scaled integer, computes bytes = round(scaled * U / 10^P), and rejects any value that is not an exact step multiple (0.1 MB computes 104858 bytes and is rejected). The conversion does not re-check the byte range: that stays owned by the unchanged OperationalLimits.Validate and the page's native min/max. config.html now declares the seven inputs in the field unit (type=number, min/max/step in MB/KB, unit-labelled label and 'Valid range: ...' description), mirrors the mapping in the byteLimitFields table, renders stored bytes through byteLimitToDisplay on pageshow, converts displayed values through byteLimitToBytes (same algorithm plus the explicit 'bytes % definition.stepBytes !== 0' rejection) in readByteLimitValues before the save request, rejects an invalid value with a native validity message, and writes only converted bytes into config.Limits[...]. The persisted XML, OperationalLimits, PluginConfiguration, and the save path are untouched; no endpoint or dependency is added. Tests: ByteLimitUnitsTests (103 cases) and ByteLimitSettingsPageTests (5 structural cases) = 108 new cases; default suite Failed 0 / Passed 1727 / Skipped 63 / Total 1790 (baseline Failed 0 / Passed 1619 / Skipped 63 / Total 1682). Eight test-sensitivity probes were run and reverted (see test_sensitivity). Documentation: changelog task entry, PLANS.md checkbox, state.json task done/report; render-docs-state up to date; check-docs PASS before the worker report was persisted. Host-guarded run not performed: ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx).",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1727, Skipped: 63, Total: 1790, Duration: 16 s - ArrTags.Tests.dll (net10.0)'. Pre-task baseline on the same tree (commit 499b256, before any change) was 'Failed: 0, Passed: 1619, Skipped: 63, Total: 1682'; delta +108 passed / +108 total, 0 new skips.",
+    "ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the host-guarded run was not performed; the default run reports the 63 host-guarded skips. No host-guarded fact was changed by this task.",
+    "Focused runs: dotnet test --filter FullyQualifiedName~ArrTags.Tests.ByteLimitUnitsTests -> 'Failed: 0, Passed: 103, Skipped: 0, Total: 103'; --filter FullyQualifiedName~ArrTags.Tests.ByteLimitSettingsPageTests -> 'Failed: 0, Passed: 5, Skipped: 0, Total: 5'.",
+    "Test-sensitivity probes (each temporary edit followed by a focused run, then reverted): (A) removing the C# step-multiple check in ByteLimitField.TryParseDisplay -> 8 failures (7 OffStepDisplayValuesAreRejectedRatherThanRounded cases + TheAdrExampleOffStepValueWouldRoundToAnUnalignedByteCount); (B) removing the trailing-zero trim in FormatScaled -> 9 failures (6 DisplayUsesTheFixedUnitAndPrecisionWithTrailingZerosTrimmed + 3 RangeLabelStaysInTheFieldUnitAndShowsTheSubMebibyteBoundAsAFraction); (C) removing the page's 'bytes % definition.stepBytes !== 0' rejection -> 1 failure (PageConvertsDisplayedValuesToBytesBeforeSavingAndRejectsOffStepValues); (D) changing the webhook table unit to 'MB' in the page -> 1 failure (PageDeclaresTheByteLimitMappingUsedByTheConversion); (E) changing the provider input step attribute to '1' -> 1 failure (PageDeclaresTheNativeUnitStepAndRangeForEveryByteLimit); (F) reverting the submit path to a raw parseInt of the display value -> 2 failures (PageNoLongerWritesRawDisplayNumbersIntoByteFields and PageConvertsDisplayedValuesToBytesBeforeSavingAndRejectsOffStepValues); (G) changing the provider range label to KB -> 1 failure (PageShowsAUnitLabelledValidationRangeForEveryByteLimit); (H) breaking the C# provider step to 96 KiB -> 9 failures (UnitStepAndPrecisionMatchAdr028, MinimumDefaultAndMaximumRoundTripThroughTheDisplayedValue x3, StepMultiplesInTheFieldUnitConvertToTheExactByteValue x4, and the page mapping/native-attribute structural cases); (I) adding a temporary server-side step check to PluginConfigurationValidator -> 1 failure (AnExistingConfigurationWithAnOffStepByteValueStillLoadsUnchanged). All probes were reverted; the final build/test run above is on the reverted tree and the validator file has no diff.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. This run was on the tree before this report file existed; after the report is persisted the only expected failing check is the worker/reviewer pairing in section 9, which is satisfied when the orchestrator's implementation-reviewer report is added (same pattern as task 15.4).",
+    "No JavaScript runtime is available to execute the page (node/nodejs/deno/bun/qjs/js/d8/jsc absent; the desktop browser is not connected), and the repository deliberately has no JS test runtime; the page contract is verified structurally against the C# mapping instead.",
+    "git status --short / git diff inspection -> four modified tracked files (PLANS.md, docs/changelog/v1.2.0.md, docs/plan/state.json, src/ArrTags/Configuration/config.html) plus four new files (src/ArrTags/Configuration/ByteLimitField.cs, src/ArrTags/Configuration/ByteLimitUnits.cs, tests/ArrTags.Tests/ByteLimitSettingsPageTests.cs, tests/ArrTags.Tests/ByteLimitUnitsTests.cs) and this report; no probe residue, no unrelated file changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/ByteLimitField.cs",
+    "src/ArrTags/Configuration/ByteLimitUnits.cs",
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/ByteLimitUnitsTests.cs",
+    "tests/ArrTags.Tests/ByteLimitSettingsPageTests.cs",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/changelog/v1.2.0.md",
+    "docs/implementation/16.1/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "G6: Byte-denominated limits are displayed in a fixed binary unit chosen per field (MB, except the webhook payload limit in KB), with validation ranges shown in the same unit and precision; a range that spans 1 MiB stays in the field's unit and shows the sub-1-MiB bound as a fraction.",
+      "evidence": "ByteLimitUnits declares MB for six fields and KB for WebhookMaxPayloadBytes (unit bytes 1048576 / 1024); ByteLimitField.FormatRange renders the unit-labelled range in the field unit and precision, e.g. '0.0625 - 64 MB' for the provider limit (which spans 1 MiB). ByteLimitUnitsTests.RangeLabelStaysInTheFieldUnitAndShowsTheSubMebibyteBoundAsAFraction asserts all seven exact range labels and that no other unit appears; TheSixtyFourKibibyteMinimumDisplaysAsAnExactFractionOfTheFieldUnit asserts the 64 KiB minima render as '0.0625'. ByteLimitSettingsPageTests.PageShowsAUnitLabelledValidationRangeForEveryByteLimit asserts the page's exact 'Valid range: <FormatRange().>' description per field, and PageDeclaresTheNativeUnitStepAndRangeForEveryByteLimit asserts the label ends with the field unit and the min/max attributes are the display values."
+    },
+    {
+      "criterion": "G6: Display -> store -> display and store -> display -> store round-trips preserve the exact byte value at minimum, default, and maximum for every byte-denominated limit, including the 64 KiB minima of ProviderResponseLimitBytes, SourceArtifactLimitBytes, and DerivedArtifactLimitBytes.",
+      "evidence": "ByteLimitUnitsTests.MinimumDefaultAndMaximumRoundTripThroughTheDisplayedValue (21 cases = 7 fields x min/default/max) asserts TryParseDisplay(FormatDisplay(bytes)) == bytes and FormatDisplay(parsed) == display; UnitStepAndPrecisionMatchAdr028 asserts min/default/max are exact multiples of the field step, which is what makes the round-trip exact; TheSixtyFourKibibyteMinimumDisplaysAsAnExactFractionOfTheFieldUnit pins the three 64-KiB minima to '0.0625' (the 0.0625 MB x 1048576 = 65536 exactness). The page mirrors the same algorithm through byteLimitToDisplay/byteLimitToBytes (asserted by PageConvertsDisplayedValuesToBytesBeforeSavingAndRejectsOffStepValues)."
+    },
+    {
+      "criterion": "G6: A value that does not land on the field's fixed step (for example 0.1 MB for a 64-KiB-step field) is rejected by an explicit step-multiple check owned by this task; the existing OperationalLimits.Validate range check alone does not enforce step alignment, so the new check is required in the settings conversion/validation path (and, where native constraint validation is used, the input's step attribute).",
+      "evidence": "ByteLimitField.TryParseDisplay computes bytes = round(scaled * U / 10^P) and then rejects unless bytes % StepBytes == 0; ByteLimitUnitsTests.OffStepDisplayValuesAreRejectedRatherThanRounded (7 cases including 0.1 MB, 0.05, 0.0001, 0.1001, 63.9999) and TheAdrExampleOffStepValueWouldRoundToAnUnalignedByteCount (asserts the ADR example 0.1 MB computes 104858 bytes and that 104858 % 65536 != 0, and that the parse rejects it) prove the rejection is the step check. The page adds the same explicit check in byteLimitToBytes ('bytes % definition.stepBytes !== 0') plus the native step attributes on all seven inputs; ByteLimitSettingsPageTests.PageConvertsDisplayedValuesToBytesBeforeSavingAndRejectsOffStepValues asserts the check, the step attributes are asserted by PageDeclaresTheNativeUnitStepAndRangeForEveryByteLimit, and readByteLimitValues aborts the save before the configuration request. Probe (A) removed the C# check (8 failures) and probe (C) removed the page check (1 failure)."
+    },
+    {
+      "criterion": "G6: The persisted XML representation and the internal OperationalLimits values remain bytes; an existing ArrTags.xml loads unchanged.",
+      "evidence": "No change to OperationalLimits.cs, PluginConfiguration.cs, PluginConfigurationSnapshot.cs, or PluginConfigurationValidator.cs (git diff shows no diff for those files); the page still writes byte values (config.Limits[...] from converted bytes). ByteLimitUnitsTests.AnExistingConfigurationWithAnOffStepByteValueStillLoadsUnchanged sets an in-range off-step value (100000 bytes for ProviderResponseLimitBytes), asserts PluginConfigurationValidator.Validate accepts it, ConfigurationSnapshotService activates it with the exact value, and the XmlSerializer boundary preserves 100000 exactly. The full default suite (including ConfigurationRoundTripTests and ConfigurationFoundationTests) passes: Failed 0 / Passed 1727 / Skipped 63 / Total 1790. Probe (I) showed the test fails if a server-side step check is introduced."
+    },
+    {
+      "criterion": "Phase 16 acceptance criterion owned by this task: 'a value off its field's fixed step is rejected by an explicit step-multiple check (task 16.1), since the existing range validation does not enforce step alignment'.",
+      "evidence": "Same evidence as the explicit-step criterion above: the C# step check with its 8-case behavioural coverage and the page's mirrored check with native step attributes; probes (A), (C), and (E) demonstrate sensitivity."
+    },
+    {
+      "criterion": "Phase 16 acceptance criterion this task contributes to: byte limits are displayed in a fixed binary unit per field with exact min/default/max round-trip (including the 64 KiB minima) and the persisted representation stays bytes.",
+      "evidence": "The mapping, FormatDisplay/FormatRange, and the 21-case round-trip test cover the display and round-trip half; the unchanged persisted types and AnExistingConfigurationWithAnOffStepByteValueStillLoadsUnchanged cover the persisted-bytes half. The remaining phase criteria (restart-required set/note/modal, G6/G8 docs sweep) belong to tasks 16.2-16.6."
+    },
+    {
+      "criterion": "Task scope: settings-page display/store wiring for the seven byte-denominated fields and unit-labelled validation-range labels on the page.",
+      "evidence": "config.html declares all seven inputs with unit-labelled labels, min/max/step in the field unit, and a 'Valid range: ...' description; the pageshow path renders stored bytes through byteLimitToDisplay and the submit path stores converted bytes through byteLimitToBytes/readByteLimitValues. ByteLimitSettingsPageTests (5 structural cases) pins the mapping table, native attributes, range labels, conversion/rejection wiring and its ordering before ApiClient.updatePluginConfiguration."
+    },
+    {
+      "criterion": "Task constraints: keep page field element IDs and the config.Limits.<Property> references so the existing page tests keep passing; existing hidden/unknown-property checks remain satisfied.",
+      "evidence": "All seven element ids are unchanged (providerResponseLimitBytes, webhookMaxPayloadBytes, sourceArtifactLimitBytes, derivedArtifactLimitBytes, renderCacheQuotaBytes, artifactStorageQuotaBytes, inventoryCacheMaxBytes) and every property name still appears in the page (the JS byteLimitFields table); config.Limits.<Property> references are now table-driven (config.Limits[definition.property]). The full suite passes, including DashboardSettingsPageTests.PageFieldsCoverEveryUserAdjustableConfigurationProperty, PageOnlyReferencesKnownConfigurationProperties, PageDeclaresTheInTreeDashboardConfigurationPageContract, and PageSourceContainsNoSecretOrCredentialLiteral."
+    },
+    {
+      "criterion": "Task constraints: do not change the persisted representation or OperationalLimits byte-range semantics; do not add a new endpoint or save route; do not introduce dependencies.",
+      "evidence": "git diff touches only the settings page plus new Configuration mapping files and tests; OperationalLimits.cs and PluginConfigurationValidator.cs have no diff; no route/controller file is touched; no csproj/package reference is changed."
+    },
+    {
+      "criterion": "Task constraints: fractional number inputs must not mis-parse (ADR-028 algorithm, not parseInt) and preserve exact byte round-trip; an off-step value is rejected explicitly with native step attributes and a JS check.",
+      "evidence": "The seven byte inputs no longer use parseInt anywhere (ByteLimitSettingsPageTests.PageNoLongerWritesRawDisplayNumbersIntoByteFields asserts the absence of the old per-field parseInt and of any table-driven parseInt/parse of the byte inputs) and the integer-only pattern attribute is removed; the conversion uses the scaled-integer ADR-028 algorithm; the rejection path sets a native validity message and returns before the save request."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Does the display->store conversion also re-check the field's byte range?",
+      "chosen": "No. ByteLimitField.TryParseDisplay enforces syntax, at-most-P fractional digits, and step alignment only; the byte range stays owned by the unchanged OperationalLimits.Validate and by the page's native min/max constraints.",
+      "basis": "ADR-028 clause 1 fixes the conversion algorithm (scaled integer -> round -> step rejection) and states the internal OperationalLimits byte-range validation is unchanged; the new check introduced by this task is the step-multiple check.",
+      "impact": "An out-of-range displayed value is still rejected (natively before submit and server-side by the unchanged validator); the conversion itself makes no range claim, so no persisted or user-visible semantics change."
+    },
+    {
+      "question": "What happens to a persisted off-step byte value (possible from the pre-16.1 page, which accepted any in-range integer) when the page displays and saves it?",
+      "chosen": "It loads and is used unchanged and is displayed at the field's fixed precision. On save, the rounded display value is converted back and the step check applies: for the whole-KiB and whole-MiB fields the display rounds to a whole unit, so the save always lands on a step multiple (the nearest whole unit); for the three 64-KiB-step MB fields the save is rejected unless the rounded display value is itself a step multiple.",
+      "basis": "Follows directly from ADR-028 clause 1: display = bytes / U at fixed precision P and store = round(scaled * U / 10^P) with off-step rejection. The ADR guarantees exact round-trip only at min/default/max, which are all exact step multiples; there is no alternative algorithm consistent with the ADR.",
+      "impact": "An upgraded configuration carrying an off-step 64-KiB-field value must be edited to a step multiple before any settings save succeeds (the persisted value is never silently rewritten); an off-step value in the other four fields is written back as the nearest whole unit on save. Recorded in the changelog task entry and in known_limitations for the 16.6 documentation sweep."
+    },
+    {
+      "question": "Where does the explicit step-multiple check live, given that the page is a static embedded resource with no shared runtime with the C# code?",
+      "chosen": "In the settings conversion/validation path: the page's byteLimitToBytes/readByteLimitValues JS plus the native step attributes, and the C# ByteLimitField.TryParseDisplay that the page mirrors. It is deliberately not added to OperationalLimits.Validate or PluginConfigurationValidator.",
+      "basis": "ADR-028 clause 1 requires the check in the settings conversion/validation path and keeps the internal byte-range validation unchanged; the task hard constraint requires the persisted XML to load unchanged (adding it to the server validator would reject an existing off-step in-range XML and fall back to defaults).",
+      "impact": "A non-page client of the elevation-gated configuration POST could still persist an off-step in-range byte value (same as before this task); the page rejects it on the next save, and no new endpoint or exposure is introduced."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A: removing the C# step-multiple check in ByteLimitField.TryParseDisplay failed 8 cases (7 OffStepDisplayValuesAreRejectedRatherThanRounded cases + TheAdrExampleOffStepValueWouldRoundToAnUnalignedByteCount); reverted.",
+    "Probe B: removing the trailing-zero trim in FormatScaled failed 9 cases (6 DisplayUsesTheFixedUnitAndPrecisionWithTrailingZerosTrimmed + 3 RangeLabelStaysInTheFieldUnitAndShowsTheSubMebibyteBoundAsAFraction); reverted.",
+    "Probe C: removing the page's 'bytes % definition.stepBytes !== 0' rejection failed PageConvertsDisplayedValuesToBytesBeforeSavingAndRejectsOffStepValues (1); reverted.",
+    "Probe D: changing the webhook unit in the page mapping table to 'MB' failed PageDeclaresTheByteLimitMappingUsedByTheConversion (1); reverted.",
+    "Probe E: changing the provider input step attribute to '1' failed PageDeclaresTheNativeUnitStepAndRangeForEveryByteLimit (1); reverted.",
+    "Probe F: reverting the submit path to a raw parseInt of the display value failed PageNoLongerWritesRawDisplayNumbersIntoByteFields and PageConvertsDisplayedValuesToBytesBeforeSavingAndRejectsOffStepValues (2); reverted.",
+    "Probe G: changing the provider range label to KB failed PageShowsAUnitLabelledValidationRangeForEveryByteLimit (1); reverted.",
+    "Probe H: breaking the C# provider step to 96 KiB failed 9 cases (UnitStepAndPrecisionMatchAdr028, MinimumDefaultAndMaximumRoundTripThroughTheDisplayedValue x3, StepMultiplesInTheFieldUnitConvertToTheExactByteValue x4, PageDeclaresTheByteLimitMappingUsedByTheConversion, PageDeclaresTheNativeUnitStepAndRangeForEveryByteLimit); reverted.",
+    "Probe I: adding a temporary server-side step check to PluginConfigurationValidator failed AnExistingConfigurationWithAnOffStepByteValueStillLoadsUnchanged (1); reverted (the validator file has no diff).",
+    "The page's JavaScript could not be executed: no JS runtime exists in the repository or in this environment (node/nodejs/deno/bun/qjs/js/d8/jsc absent) and the desktop browser is not connected. The page's mirrored algorithm is therefore pinned structurally (exact mapping-table rows compared to ByteLimitUnits, native min/max/step attributes compared to FormatDisplay of the C# bounds/step, range labels compared to FormatRange, and the conversion/step-check/assignment snippets asserted) rather than executed."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md (new Phase 16 section and task 16.1 entry)",
+      "PLANS.md (task 16.1 checkbox ticked; milestone table unchanged because the phase gate is the orchestrator's)",
+      "docs/plan/state.json (task 16.1 done=true, reports path, updated_utc)"
+    ],
+    "old_values_removed": [
+      "The seven raw-byte labels '(bytes)' and byte min/max/pattern attributes in src/ArrTags/Configuration/config.html are replaced by the unit-labelled inputs and 'Valid range: ... MB/KB' descriptions.",
+      "The seven per-field 'config.Limits.<Property> = parseInt(document.querySelector('#<id>').value, 10)' submit assignments are removed; the submit path now stores converted byte values.",
+      "The seven per-field 'document.querySelector('#<id>').value = config.Limits.<Property>' pageshow assignments are replaced by the byteLimitToDisplay loop."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The page's inline JavaScript is not executed by any test: the repository deliberately has no JS runtime and none is available in this build environment (node/nodejs/deno/bun/qjs/js/d8/jsc absent; the desktop browser is not connected). The page mapping and algorithm are pinned structurally against the C# mapping; a change to the JS algorithm that preserves the asserted snippets and table would not be caught by a test, and the ADR-028 conversion could only be confirmed live on a real host.",
+    "Legacy off-step persisted values: precondition - an ArrTags.xml written by the pre-16.1 page may hold any in-range byte count, e.g. 100000 for ProviderResponseLimitBytes. Behaviour - the value loads, validates, activates, and displays at the field's fixed precision; a save converts the rounded display value back and applies the step check, so for the three 64-KiB-step MB fields the save is rejected until the operator enters a step multiple, and for the whole-KiB/whole-MiB fields the save writes the nearest whole unit. Consequence - an upgrade with such a value must edit that field before any settings save succeeds in the rejected case, and the value is silently adjusted (by at most half a display unit) in the other case; the persisted XML is never rewritten without a save. Recorded in the task 16.1 changelog entry for the 16.6 G6/G8 documentation sweep to consider for the limitations register.",
+    "The C# ByteLimitField/ByteLimitUnits mapping has no production caller: the page is a static embedded resource that cannot invoke C#, so the helper is the code-owned contract consumed by the test suite and mirrored by the page. A production-path regression in the page is therefore caught only by the structural tests, not by a shared runtime call."
+  ],
+  "ready_for_next_task": true
+}

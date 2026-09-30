@@ -1,0 +1,926 @@
+{
+  "release": "1.2.0.0",
+  "tag": "v1.2.0",
+  "tag_created": false,
+  "tag_note": "Intentional: the annotated tag v1.2.0 is not created by this review. The orchestrator creates it only after this gate passes and the user approves (PLANS.md task 21.6 / Gate 21). The absence of the tag is not a failure.",
+  "reviewer_role": "release-reviewer",
+  "reviewer_status": "APPROVED_WITH_ACCEPTED_LIMITATIONS",
+  "release_decision": "SHIP_WITH_ACCEPTED_LIMITATIONS",
+  "open_blocker_high": 0,
+  "scope": "ArrTags v1.2.0.0 release candidate: v1.2 Phases 15-21 (tasks 15.1-15.4, 16.1-16.6, 17.1-17.4, 18.1-18.3, 19.1-19.5, 20.1-20.3, 21.1-21.5, 21.7-21.14; 21.6 open pending this gate, the tag, and the post-gate state update). Independent whole-project release audit: artifact provenance/reproduction, requirements and gate traceability, recorded test matrix, live pinned-host end-to-end verification, adversarial security invariants, architecture/ADR conformance, documentation consistency, and earlier-findings reconciliation.",
+  "reviewed_head": "b58f246c6d9f7d559cc26882b99f38cb9c68d9e3",
+  "reviewed_head_short": "b58f246",
+  "reviewed_branch": "v1.2",
+  "working_tree_clean_at_start": true,
+  "working_tree_clean_at_end": true,
+  "artifact": "artifacts/ArrTags_1.2.0.0.zip",
+  "artifact_sha256": "2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268",
+  "artifact_identity": {
+    "path": "artifacts/ArrTags_1.2.0.0.zip",
+    "bytes": 619861,
+    "sha256": "2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268",
+    "md5": "631fbfa5a4fb58fac5a877eeef761193",
+    "entries": 7,
+    "uncompressed_bytes": 1507315,
+    "matches_recorded_identity": true,
+    "recorded_in": "docs/release/build-and-release.md (Release artifact identity) and manifest.json versions[0].checksum (MD5)",
+    "packaged_dll_sha256": "a077a63dd0c4302dc269339a651c5e07530a596611ca94d6a8c886b68bebbbc3",
+    "packaged_dll_bytes": 1347584,
+    "no_bundled_skia_runtime": true,
+    "entry_hashes_match_recorded_table": true
+  },
+  "publish_manual_step_confirmed": true,
+  "publish_note": "The GitHub release, the ArrTags_1.2.0.0.zip asset upload, and the manifest push remain the user's manual step via scripts/publish-release.sh; the committed manifest.json 1.2.0.0 entry is already at HEAD. No push, GitHub call, commit, or tag was performed by this review.",
+  "phases": [
+    {
+      "phase": 15,
+      "name": "Plugin log subject identifier and render classification",
+      "status": "COMPLETE",
+      "tag": "v1.2.0-phase15",
+      "gate": "Gate 15",
+      "gate_met": true,
+      "review": "APPROVED_WITH_FINDINGS; 0 open BLOCKER/HIGH. PR15-01 (Cf/Zl/Zp and dual-separator residuals) was later fixed by task 21.11 and re-verified by 21.14; PR15-03/PR15-04 evidence-pointer LOWs remain open (see RR-V12-3)."
+    },
+    {
+      "phase": 16,
+      "name": "Settings byte units and restart-required surfacing",
+      "status": "COMPLETE",
+      "tag": "v1.2.0-phase16",
+      "gate": "Gate 16",
+      "gate_met": true,
+      "review": "APPROVED_WITH_FINDINGS; 0 open BLOCKER/HIGH; P16-F1/P16-F2 LOWs remain open (see RR-V12-3)."
+    },
+    {
+      "phase": 17,
+      "name": "Read-only diagnostics status surface",
+      "status": "COMPLETE",
+      "tag": "v1.2.0-phase17",
+      "gate": "Gate 17",
+      "gate_met": true,
+      "review": "APPROVED_WITH_FINDINGS; 0 open BLOCKER/HIGH; P17-F1/F2/F3 LOWs remain open (see RR-V12-3). Resolves F3."
+    },
+    {
+      "phase": 18,
+      "name": "Extra Large badge size",
+      "status": "COMPLETE",
+      "tag": "v1.2.0-phase18",
+      "gate": "Gate 18",
+      "gate_met": true,
+      "review": "APPROVED_WITH_FINDINGS; 0 open BLOCKER/HIGH; two LOWs (Extra Large omit-fallback coverage; worker report naming) remain open. Resolves G7."
+    },
+    {
+      "phase": 19,
+      "name": "Reconciliation coverage and version-aware coalescing",
+      "status": "COMPLETE",
+      "tag": "v1.2.0-phase19",
+      "gate": "Gate 19",
+      "gate_met": true,
+      "review": "APPROVED_WITH_FINDINGS; 0 open BLOCKER/HIGH; PR-19-01 MEDIUM accepted as V12-F4-1; PR-19-02/03/04 LOW process/test-quality residuals remain open. Resolves F4 and F6."
+    },
+    {
+      "phase": 20,
+      "name": "Empty-selection artwork restoration",
+      "status": "COMPLETE",
+      "tag": "v1.2.0-phase20",
+      "gate": "Gate 20",
+      "gate_met": true,
+      "review": "APPROVED_WITH_FINDINGS (attempt 2); PR-20-01 MEDIUM resolved by the attempt-2 ADR-002 note; PR-20-03 MEDIUM resolved in the gate commit (aggregate now reconciles: 13 invocations, 1 rework, phase_review points at attempt 2); PR-20-02/04 resolved by the same gate update; PR-20-05 LOW narrow ADR-002 enumerations remain open. Resolves F7."
+    },
+    {
+      "phase": 21,
+      "name": "v1.2 release",
+      "status": "PLANNED (pre-gate: 21.6 open by design)",
+      "tag": "v1.2.0 (pending this gate)",
+      "gate": "Gate 21",
+      "gate_met": "release-review clause met by this report; the annotated tag v1.2.0 and the post-gate state update remain the orchestrator's step after this gate",
+      "review": "Tasks 21.1-21.5 and 21.7-21.14 complete with their acceptance criteria met (21.12 artifact re-derivation reviewed APPROVED; 21.13 live matrix VERIFIED; 21.14 security review APPROVED, 0 open BLOCKER/HIGH). Task 21.6 remains open pending this gate, the tag, and the current_release/releases[]/status update."
+    }
+  ],
+  "findings": [
+    {
+      "id": "RR-V12-1",
+      "severity": "LOW",
+      "status": "open",
+      "area": "limitations register / artwork ownership recovery (F-21.13-2)",
+      "description": "v1.2 ships no in-product administrative recovery for an item whose active image content hash changes: a host refresh (full POST /Library/Refresh or a targeted per-item FullRefresh) that re-adopts the local sidecar poster desynchronises the served image from the plugin's recorded active identity, and the fail-closed ownership gate then suppresses further automatic publication for that item. The behaviour is a carry-forward of F-21.4-2/F-21.9-2, independently re-observed by task 21.13 (F-21.13-2, LOW, open), and is documented in the pinned-host procedure and the release record, but it is NOT registered in docs/limitations/00-index.md (no ownership/recovery item exists there; P5 covers only orphaned pre-release state and the uninstall drain). The owner-facing recovery path or an explicit out-of-band decision remains open and PLANS.md assigns no task to it.",
+      "evidence": [
+        "docs/implementation/21.13/live-verification.json finding F-21.13-2 (LOW, open) and its corrected detail: the served Primary reverted from the published badge to the source sidecar while the artwork-state record still asserted Published; no OwnershipLost transition claimed",
+        "docs/implementation/21.13/reviewer-report.attempt-2.json (substance accepted as a legitimate release limitation; owner-facing recovery or out-of-band decision left to the release review/owner)",
+        "docs/testing/jellyfin-12-musl-test-host.md lines 342-352 ('The v1.2 product has no in-product recovery trigger for an item already in OwnershipLost') and lines 457-475 (targeted-refresh caution)",
+        "docs/changelog/v1.2.0.md release section: F-21.13-2 recorded as a carried operational bound",
+        "docs/limitations/00-index.md and accepted.md: no ownership-recovery item registered"
+      ],
+      "recommended_action": "Register this limitation in docs/limitations/accepted.md with an index row in docs/limitations/00-index.md (a new ID, e.g. V12-F7-2, or an extension of P5) naming the consequence and this evidence, or record an explicit user decision that recovery is out of band; fold it into the release commit. Documentation only: it does not affect the verified artifact, code, or the ship decision."
+    },
+    {
+      "id": "RR-V12-2",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "release sequencing / recorded-identity guard (TQ-21.3-1, TQ-21.3-2)",
+      "description": "Until the orchestrator advances docs/plan/state.json current_release to 1.2.0.0, no generated or guard-checked surface corroborates the 1.2.0.0 artifact identity: check-docs.sh's artifact-identity section cross-checks the release document against state.json's current_release (still the 1.1.0.0 values). After the advance, docs/status.md and the PLANS.md milestone table must be re-rendered, and the now-stale wording in docs/limitations/accepted.md item P1 ('the current 1.1.0.0 identity', with the v1.1 matrix paragraph) must be refreshed. The 1.2.0.0 identity strings are already present in docs/release/build-and-release.md, so the existing check-docs assertion will guard them once state.json carries them; this must be confirmed, not assumed.",
+      "evidence": [
+        "docs/implementation/21.3/test-quality-review.json findings TQ-21.3-1 and TQ-21.3-2 (MEDIUM; the recommended action is the post-gate state advance and the P1 refresh)",
+        "docs/limitations/accepted.md lines 143-149 (P1 still calls 1.1.0.0 'the current 1.1.0.0 identity')",
+        "docs/plan/state.json current_release 1.1.0.0 / releases[] 1.2.0 PLANNED (the user-acknowledged pre-gate state)",
+        "This review's check-docs.sh run at HEAD: PASS, nine sections, 'artifact identity agrees (sha256, md5, bytes)' against the 1.1.0.0 identity; docs/release/build-and-release.md already carries the 1.2.0.0 sha256/md5/bytes",
+        "dotnet run scripts/render-docs-state.cs -- --check at HEAD: exit 0, status.md/PLANS.md up to date"
+      ],
+      "recommended_action": "In the post-gate release commit: set current_release to 1.2.0.0 (with the artifact block and the v1.2 suite matrix), set releases[] 1.2.0 COMPLETE, mark 21.6 done and tick its PLANS.md checkbox, re-render docs/status.md and the milestone table, conduct the planned release review/hardening commit, refresh P1's wording, and re-run scripts/check-docs.sh and scripts/render-docs-state.cs -- --check to confirm the 1.2.0.0 identity is now guarded."
+    },
+    {
+      "id": "RR-V12-3",
+      "severity": "LOW",
+      "status": "open",
+      "area": "phase-review process / documentation residuals (carried)",
+      "description": "Several phase-level LOW findings remain open in their immutable phase records. None affects the shipped product, the artifact, or any gate: PR15-03/PR15-04 (evidence-pointer provenance for ADR-020's amendment note and the F8 archive entry), P16-F1 (wording about the rejection path), P16-F2 (phase orchestration record-keeping), P17-F2 (diagnostics panel fallback pinned by prose rather than an executable assertion), P17-F3 (code-comment wording), PR-19-02/PR-19-03/PR-19-04 (orchestration aggregate completeness, single-flight evidence scope, test determinism window), PR-20-05 (narrow ADR-009/ADR-003-only enumerations that do not name ADR-002), and the two Phase 18 LOWs (Extra Large omit-fallback coverage; worker-report naming). They are tracked here so they are not silently dropped, and they are suitable for a future documentation/process pass; they do not block the release.",
+      "evidence": [
+        "docs/implementation/phase-15/phase-review.json (PR15-03, PR15-04 LOW open)",
+        "docs/implementation/phase-16/phase-review.json (P16-F1, P16-F2 LOW open)",
+        "docs/implementation/phase-17/phase-review.json (P17-F2, P17-F3 LOW open)",
+        "docs/implementation/phase-18/phase-review.json (two LOW findings)",
+        "docs/implementation/phase-19/phase-review.json (PR-19-02, PR-19-03, PR-19-04 LOW open)",
+        "docs/implementation/phase-20/phase-review.attempt-2.json (PR-20-05 LOW open)"
+      ],
+      "recommended_action": "Carry into the next documentation/process pass; no release action required and no artifact or code change."
+    },
+    {
+      "id": "RR-V12-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "task 21.6 final readiness record / reviewer pairing",
+      "description": "The final task 21.6 record (docs/implementation/21.6/release-readiness-v1.2-final.json, attempt 2) has no paired implementation-reviewer report; the only 21.6 reviewer report on disk reviewed the superseded task 21.8 candidate. This is expected interim state because task 21.6 remains open pending this gate, the tag, and the state update. This release review independently reproduced the load-bearing RR-01..RR-16 claims (version pins, manifest regeneration, artifact identity, changelog section, check-docs, render-docs-state), so the final record is verified.",
+      "evidence": [
+        "docs/implementation/21.6/ contents: release-readiness-v1.2-final.json, release-readiness.json, reviewer-report.json (attempt 1), worker-report.attempt-2.json, worker-report.json; no reviewer-report.attempt-2.json",
+        "docs/plan/state.json task 21.6 done=false and its reports array",
+        "This review's independent checks: build.yaml/Directory.Build.props 1.2.0.0; manifest.json regeneration and checksum; changelog release section; check-docs.sh PASS; render-docs-state --check clean"
+      ],
+      "recommended_action": "Either record a 21.6 attempt-2 reviewer report in the post-gate closure, or note in the closure commit that this release review is the independent verification of the final readiness record. Not release-blocking."
+    },
+    {
+      "id": "RR-V12-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "working-tree quiescence during task 21.7 review (21.7-F5)",
+      "description": "The task 21.7 implementation review noted that the implementation file changed underneath the review window and was restored, asking the orchestrator to confirm quiescence before committing. At the reviewed HEAD the working tree is clean, the reviewed state is present in source (AllowAutoRedirect=false in both handler factories), and this review rebuilt the artifact byte-identically from git archive HEAD, so the concern is closed.",
+      "evidence": [
+        "git status --short at reviewed HEAD b58f246: clean",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:248 and :259 (AllowAutoRedirect = false in CreateStrictHandler and CreateInsecureHandler)",
+        "This review's clean-room rebuild from git archive HEAD reproduced SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268 exactly"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "RR-V12-6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "log-subject fidelity trade and globalization-mode bound (SEC-21.14-01, SEC-21.14-02)",
+      "description": "The task 21.11 fix is deliberately lossy for a small set of legitimate characters (ZWNJ, ZWJ, soft hyphen, Arabic number signs and similar Cf scalars are removed; a POSIX file name containing a backslash is truncated at it) and cannot be executed against ICU in the review environment; both are disclosed in ADR-026's implementation note and docs/architecture/12, and the security review resolved the globalization question by IL inspection with a one-directional worst case (pre-fix behaviour, never a new leak). No overclaim was found on any current-state surface.",
+      "evidence": [
+        "docs/implementation/21.14/security-review.json findings SEC-21.14-01 and SEC-21.14-02",
+        "docs/decisions/ADR-026.md 'Implementation note (v1.2, task 21.11)'",
+        "docs/architecture/12-performance-and-operational-limits.md"
+      ],
+      "recommended_action": "None. Keep the disclosure; any future predicate change reopens ADR-026."
+    },
+    {
+      "id": "RR-V12-7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "carried live-verification findings F-21.13-3 and F-21.13-5",
+      "description": "F-21.13-3 (whole-object configuration replacement on POST /Plugins/{guid}/Configuration) was adjudicated INFORMATIONAL by the task 21.14 security review (the host's documented plugin-configuration contract; administrator-only and self-inflicted), and its documentation action was adopted: docs/testing/jellyfin-12-musl-test-host.md now instructs verifiers to always POST a complete configuration body. F-21.13-5 (row L6 is a no-regression check only) had its substance closed by the 21.14 review's own reproduction against the shipped assembly (237/237 Cc/Cf/Zl/Zp scalars removed; Windows/UNC/device/traversal paths reduced to the final component; pre-fix control failing 25 of 52 tests), and the no-regression qualifier is recorded in the changelog release section and the testing document.",
+      "evidence": [
+        "docs/implementation/21.13/live-verification.json findings F-21.13-3 and F-21.13-5",
+        "docs/implementation/21.14/security-review.json findings SEC-21.13-03 and the F-21.13-5 resolution note",
+        "docs/testing/jellyfin-12-musl-test-host.md lines 476-499 (configuration-replacement caution and L6 no-regression qualifier)",
+        "docs/changelog/v1.2.0.md release section (structural and no-regression bounds)"
+      ],
+      "recommended_action": "None required for the release."
+    }
+  ],
+  "criteria_checked": [
+    {
+      "criterion": "GOALS.md success criterion 1 - plugin installs and loads correctly on Jellyfin 12",
+      "verdict": "met",
+      "evidence": "21.13 L1 VERIFIED; this review independently installed the artifact on the pinned Jellyfin 12.0.0 amd64-musl host and observed 'Loaded assembly ArrTags, Version=1.2.0.0', 'Loaded plugin: ArrTags 1.2.0.0', Status Active, 0 [FTL]."
+    },
+    {
+      "criterion": "GOALS.md success criterion 2 - Sonarr and Radarr configured independently",
+      "verdict": "met",
+      "evidence": "Independent provider configuration surface (ADR-005/ADR-016); 21.13 L3 and this review's config GET showed independently enabled Sonarr and Radarr with separate base URLs/keys."
+    },
+    {
+      "criterion": "GOALS.md success criterion 3 - movie/TV item matched to its Arr item",
+      "verdict": "met",
+      "evidence": "21.13 L1-L4 and this review's full lifecycle: movie, episode, and (post-fixture-change) sparse movie matched and published; matching failure counters bounded."
+    },
+    {
+      "criterion": "GOALS.md success criterion 4 - metadata retrieved through the API",
+      "verdict": "met",
+      "evidence": "This review's changed-metadata run read the edited fixture through the provider API and produced a new badge identity (83a03087 -> 670df55e, 19,038 bytes); provider outage produced bounded warnings only."
+    },
+    {
+      "criterion": "GOALS.md success criterion 5 - metadata rendered as a badge on the poster",
+      "verdict": "met as shipped",
+      "evidence": "This review published all three items at Extra Large through the host item-image path; served bytes equalled each persisted ActiveImageIdentity (18,144 / 20,940 / 15,884)."
+    },
+    {
+      "criterion": "GOALS.md success criterion 6 - reliable updates without unnecessary repeated processing",
+      "verdict": "met for render/publication and provider reads within a window",
+      "evidence": "Unchanged metadata did not republish (state and served bytes identical); changed metadata did (new identity, served==persisted); remaining accepted bounds F1/V12-F4-1 recorded."
+    },
+    {
+      "criterion": "GOALS.md success criterion 7 - operates correctly alongside Jellyfin Enhanced",
+      "verdict": "met at the contract level only",
+      "evidence": "Accepted limitation V3; no change in v1.2."
+    },
+    {
+      "criterion": "GOALS.md success criterion 8 - failures do not adversely affect Jellyfin",
+      "verdict": "met as shipped",
+      "evidence": "Provider outage: host 200, images preserved, 0 [FTL]/ArrTags [ERR]; uninstall drain restored source posters; all media files byte-unchanged through the full lifecycle."
+    },
+    {
+      "criterion": "GOALS.md success criterion 9 - buildable and testable reproducibly",
+      "verdict": "met",
+      "evidence": "Independent clean-room rebuild from git archive HEAD produced byte-identical archiive (SHA-256/MD5/size/7 entries, 0 warnings/0 errors); accepted limitation P1 (pinned toolchain)."
+    },
+    {
+      "criterion": "v1.2 Goal G6 (ADR-028) - byte limits in fixed binary units with exact byte persistence",
+      "verdict": "met",
+      "evidence": "21.13 L3 (1,572,864 / 204,800 / 1,048,576 persisted as exact bytes); this review's config GET showed ProviderResponseLimitBytes=1572864; page display mapping verified structurally (accepted V12-G6-1 for the page-side step check)."
+    },
+    {
+      "criterion": "v1.2 Goal G7 (ADR-027) - Extra Large badge size, ordering, no version advance",
+      "verdict": "met",
+      "evidence": "This review saved Renderer.Size=ExtraLarge and a reconciliation republished every eligible item at 600x900 with no overflow and all RenderFailures counters 0, identities identical to the recorded 21.13 L4 result; Phase 18 review verified goldens/ordering."
+    },
+    {
+      "criterion": "v1.2 Goal G8 (ADR-028) - restart-required note text and best-effort modal",
+      "verdict": "met",
+      "evidence": "21.13 L3 verified the served restart-required note text and classification; modal is a best-effort shim (accepted V12-G8-1)."
+    },
+    {
+      "criterion": "v1.2 Goal G9 / F8 (ADR-026, amended by task 21.11) - bounded log subject and render classification",
+      "verdict": "met",
+      "evidence": "21.13 L6 no-regression PASS on the corrected binary; 21.14 reproduced 237/237 Cc/Cf/Zl/Zp removal and dual-separator extraction against the shipped assembly with a pre-fix negative control; incident-level log check recorded in 21.13 (0 secrets/paths)."
+    },
+    {
+      "criterion": "v1.2 F3 (ADR-025) - read-only diagnostics surface",
+      "verdict": "met",
+      "evidence": "This review: anonymous GET /ArrTags/Status 401, admin 200 with the fixed 28-leaf shape, POST/DELETE 405, secret/path scan 0 matches; 21.13 L5 recorded the same plus 404 siblings."
+    },
+    {
+      "criterion": "v1.2 F4 (ADR-022 as amended by ADR-029) - successive-run coverage",
+      "verdict": "met",
+      "evidence": "Phase 19 review MET; tests and the persisted cursor verified; live F4 behavior bounded by accepted V12-F4-1..6 (the 21.13 run reproduced the documented cursor-resume behavior)."
+    },
+    {
+      "criterion": "v1.2 F6 (ADR-023) - version-aware post-save re-render",
+      "verdict": "met",
+      "evidence": "Phase 19 review MET; 21.14 re-verified the ConfigurationStale re-enqueue ordering; coverage tests pass."
+    },
+    {
+      "criterion": "v1.2 F7 (ADR-024) - empty-selection restoration",
+      "verdict": "met",
+      "evidence": "Phase 20 review MET; this review's uninstall drain restored source posters and the empty-selection behavior is unit-covered; the OwnershipLost recovery bound is carried (RR-V12-1)."
+    },
+    {
+      "criterion": "Phase 21 acceptance criteria (PLANS.md lines 272-281)",
+      "verdict": "met",
+      "evidence": "Version 1.2.0.0 in build.yaml/Directory.Build.props; canonical documentation reconciled; no-redirect transport (source lines 248/259 plus 21.14 reproduction); hardened log subject (21.14); reproducible fully corrected artifact (this review's rebuild); default/host-guarded suites and live matrix pass; release security review APPROVED with SEC-21.5-01/-02/-03 resolved and 0 open BLOCKER/HIGH; the annotated tag remains the post-gate orchestrator step."
+    }
+  ],
+  "gates_checked": [
+    {
+      "gate": "Gate 15",
+      "met": true,
+      "evidence": "Tasks 15.1-15.4 acceptance criteria met; logging security review recorded (attempt 2) with no open BLOCKER/HIGH; phase review APPROVED_WITH_FINDINGS; tag v1.2.0-phase15 exists. PR15-01 later fixed by 21.11."
+    },
+    {
+      "gate": "Gate 16",
+      "met": true,
+      "evidence": "Tasks 16.1-16.6 met; modal spike decision (16.4) recorded; phase review approved; tag v1.2.0-phase16 exists."
+    },
+    {
+      "gate": "Gate 17",
+      "met": true,
+      "evidence": "Tasks 17.1-17.4 met; endpoint security review no open BLOCKER/HIGH; phase review approved; tag v1.2.0-phase17 exists; F3 resolved."
+    },
+    {
+      "gate": "Gate 18",
+      "met": true,
+      "evidence": "Tasks 18.1-18.3 met; golden oracle verified the version decision; phase review approved; tag v1.2.0-phase18 exists."
+    },
+    {
+      "gate": "Gate 19",
+      "met": true,
+      "evidence": "Tasks 19.1-19.5 met; F4/F6 coverage tests pass; phase review approved; tag v1.2.0-phase19 exists; F4/F6 resolved."
+    },
+    {
+      "gate": "Gate 20",
+      "met": true,
+      "evidence": "Tasks 20.1-20.3 met; phase review attempt 2 approved; tag v1.2.0-phase20 exists; F7 resolved."
+    },
+    {
+      "gate": "Gate 21",
+      "met": "all clauses met except the annotated tag, which is the post-gate orchestrator step; this release review is the gate's release-review clause",
+      "evidence": "Tasks 21.1-21.14 meet their acceptance criteria (21.6 open by design until the tag/state update); full suite and live matrix pass against the fully corrected artifact; 21.14 security review APPROVED, open_blocker_high 0; this release review passes."
+    }
+  ],
+  "artifact_checked": [
+    {
+      "check": "Artifact identity at the reviewed commit",
+      "command": "sha256sum artifacts/ArrTags_1.2.0.0.zip; md5sum artifacts/ArrTags_1.2.0.0.zip; stat -c '%s' artifacts/ArrTags_1.2.0.0.zip; unzip -l artifacts/ArrTags_1.2.0.0.zip",
+      "observed": "SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268; MD5 631fbfa5a4fb58fac5a877eeef761193; 619,861 bytes; exactly 7 entries, all stamped 2000-01-01 00:00; uncompressed total 1,507,315. Matches docs/release/build-and-release.md exactly.",
+      "status": "PASS"
+    },
+    {
+      "check": "Per-entry identity against the recorded table",
+      "command": "unzip -q artifacts/ArrTags_1.2.0.0.zip -d /tmp/final-review/pkg && find /tmp/final-review/pkg -type f | sort | xargs sha256sum && stat -c '%s %n'",
+      "observed": "ArrTags.deps.json 5,899 fafb9631...; ArrTags.dll 1,347,584 a077a63d...; THIRD-PARTY-NOTICES.md 1,368 3656c9f0...; build.yaml 2,744 f4362c76...; licenses/DejaVu-Fonts-License.txt 8,816 7a083b13...; licenses/SkiaSharp-LICENSE.txt 1,129 89101e35...; licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt 139,775 21504c46.... All 7 match docs/release/build-and-release.md lines 306-314.",
+      "status": "PASS"
+    },
+    {
+      "check": "No forbidden bundled runtime; required entries present",
+      "command": "find /tmp/final-review/pkg -iname '*skia*'; find over the archive for MediaBrowser/*.so/jellyfin*",
+      "observed": "Only licenses/SkiaSharp-LICENSE.txt and licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt (license text); no SkiaSharp.dll, no libSkiaSharp.so, no Jellyfin runtime, no native .so. ADR-015 respected.",
+      "status": "PASS"
+    },
+    {
+      "check": "Independent clean-room reproduction from committed sources",
+      "command": "git archive HEAD | tar -x -C /tmp/final-review/release-src; . /config/arrtags-env.sh && ./build.sh restore && ./build.sh build && ./build.sh package; sha256sum/md5sum/stat",
+      "observed": "1,140 exported files; restore/build/package with 0 Warning(s)/0 Error(s); produced exactly 619,861 bytes, SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268, MD5 631fbfa5a4fb58fac5a877eeef761193, 7 entries -- byte-identical to the candidate.",
+      "status": "PASS"
+    },
+    {
+      "check": "Compiled assembly is consistent with the audited source",
+      "command": "sha256sum /tmp/final-review/release-src/src/ArrTags/bin/Release/net10.0/ArrTags.dll; sha256sum /tmp/final-review/pkg/ArrTags.dll",
+      "observed": "Both a077a63dd0c4302dc269339a651c5e07530a596611ca94d6a8c886b68bebbbc3, 1,347,584 bytes; the packaged DLL equals the clean build of the audited committed source.",
+      "status": "PASS"
+    },
+    {
+      "check": "Packaged build.yaml matches the repository manifest metadata",
+      "command": "sha256sum /tmp/final-review/pkg/build.yaml build.yaml",
+      "observed": "Both f4362c76b8715c4a116ea077fab0a5bd76eccf6041a0265972804055bf69b971; version 1.2.0.0, targetAbi 12.0.0.0, framework net10.0.",
+      "status": "PASS"
+    },
+    {
+      "check": "manifest.json matches build.yaml and the artifact checksum",
+      "command": "jq valid/inspect manifest.json; compare checksum to md5sum; regenerate via scripts/write-manifest.cs",
+      "observed": "Valid JSON array; 1.2.0.0 first with targetAbi 12.0.0.0, sourceUrl .../v1.2.0/ArrTags_1.2.0.0.zip, timestamp 2026-09-30T11:29:27Z, checksum 631fbfa5a4fb58fac5a877eeef761193 equal to the artifact MD5; prior 1.1.0.0 and 1.0.1.0 entries retained; description/overview/changelog match build.yaml; the 21.6 final record's byte-identical regeneration was re-confirmed by inspection at HEAD.",
+      "status": "PASS"
+    },
+    {
+      "check": "Committed tree identity and cleanliness",
+      "command": "git status --short; git rev-parse HEAD; git tag -l 'v1.2.0*'",
+      "observed": "Clean tree at HEAD b58f246c6d9f7d559cc26882b99f38cb9c68d9e3 (clean after the review too); tags v1.2.0-phase15..v1.2.0-phase20; no v1.2.0 tag yet (intentional, post-gate).",
+      "status": "PASS"
+    }
+  ],
+  "live_checks": [
+    {
+      "check": "L1 install/load of the exact candidate on the pinned Jellyfin 12.0.0 amd64-musl host",
+      "command": "unzip -oq artifacts/ArrTags_1.2.0.0.zip -d /tmp/arrtags-21.13b/data/plugins/ArrTags_1.2.0.0; scripts/provision-jellyfin-test-host.sh /tmp/arrtags-21.13b; grep console.log",
+      "observed": "Installed ArrTags.dll sha256 a077a63d... (equals the packaged entry); 'Main: Jellyfin version: 12.0.0'; 'Loaded assembly ArrTags, Version=1.2.0.0'; 'Loaded plugin: ArrTags 1.2.0.0' count 1; 'Startup complete' count 1; 0 [FTL]; 0 total [ERR]; no SkiaSharp runtime in the plugin folder.",
+      "status": "PASS"
+    },
+    {
+      "check": "L2 elevation gating (independent)",
+      "command": "curl anonymous/admin GET /Plugins/{guid}/Configuration; admin GET /Plugins",
+      "observed": "Anonymous GET 401; administrator GET 200 with the live configuration (providers enabled, Size ExtraLarge, Position BottomLeft, ProviderResponseLimitBytes 1572864); plugin listed Active at 1.2.0.0.",
+      "status": "PASS"
+    },
+    {
+      "check": "L4 badge publication through the real host image-publication path",
+      "command": "admin POST /ScheduledTasks/Running/0e96fc3004bcd22db45dd641e63e2666 (204); decode artwork-state PayloadJson; curl /Items/{id}/Images/Primary",
+      "observed": "All three items published at 600x900 Extra Large: movie 18,144 / 83A03087..., episode 20,940 / C5264213..., sparse movie 15,884 / 7EF0BEB1... -- byte-identical identities to the recorded 21.13 L4/L7 results; each served image sha256 equalled its persisted ActiveImageIdentity; State=1 (Published).",
+      "status": "PASS"
+    },
+    {
+      "check": "L5 diagnostics endpoint (independent)",
+      "command": "curl anon/admin GET /ArrTags/Status; admin POST/DELETE; jq shape/leaf counts; secret/path scan",
+      "observed": "Anonymous 401; administrator 200 with the fixed 9-field / 28-leaf snapshot; POST 405; DELETE 405; no array, no path, item, key, or secret match.",
+      "status": "PASS"
+    },
+    {
+      "check": "L7 changed vs unchanged metadata",
+      "command": "Record state+served hashes; re-trigger with unchanged metadata; then change my own private fixture copy (movie quality Bluray-1080p -> Bluray-2160p, bit depth 8 -> 10) and POST the complete configuration back (204); compare",
+      "observed": "Unchanged: state files and served bytes identical (no republish). Changed: movie republished to a new identity 670df55e... / 19,038 bytes with served==persisted; episode and sparse movie unchanged; source media byte-identical.",
+      "status": "PASS"
+    },
+    {
+      "check": "L7 provider outage",
+      "command": "touch radarr/sonarr failure markers; verify 503 at source; trigger reconciliation; host check; served hashes; clear markers; re-trigger",
+      "observed": "Both providers 503; host still 200; all served images byte-identical to pre-outage; diagnostics SonarrHealth/RadarrHealth Unavailable; after clearing, 200 and both Healthy.",
+      "status": "PASS"
+    },
+    {
+      "check": "L8 restart preserves install and state",
+      "command": "sha256sum artwork-state + cursor before; scripts/provision-jellyfin-test-host.sh (restart); compare; served image",
+      "observed": "State files byte-identical across the restart; exactly one 'Loaded plugin: ArrTags 1.2.0.0' and one 'Startup complete'; 0 [FTL]; 0 ArrTags [ERR]; served images still equal the persisted identities.",
+      "status": "PASS"
+    },
+    {
+      "check": "L8 uninstall/drain and clean restart",
+      "command": "admin DELETE /Plugins/{guid}/1.2.0.0; check install/state dirs; served images vs source posters; restart; count ArrTags log lines",
+      "observed": "DELETE 204; install folder and relocated state root removed; served images reverted byte-for-byte to the source posters (bdb2ff31/52278eb4/2b49c26f); all media files unchanged through the full lifecycle; after restart 0 occurrences of 'ArrTags' in the console log and 0 [FTL].",
+      "status": "PASS"
+    },
+    {
+      "check": "Original source artwork byte-unchanged through the full lifecycle",
+      "command": "find media -type f (jpg/nfo/mp4/mkv/png) -exec sha256sum; diff against the pre-run baseline",
+      "observed": "Empty diff at every checkpoint (pre-publication, after Extra Large, after changed-metadata publish, after outage, after restart, after drain): 10/10 media files byte-identical.",
+      "status": "PASS"
+    },
+    {
+      "check": "Not independently re-run and why",
+      "command": "n/a",
+      "observed": "L3's page-side unit display/step rejection and restart-note rendering (host runs --nowebclient; verified structurally, accepted V12-G6-1/V12-G8-1), and L6's log-subject row (the pinned musl host cannot present a Windows/UNC/Cf-bearing path; the SEC-21.5-02/03 fixes were established by the 21.14 reproduction against the shipped assembly). The recorded 21.13 matrix covers both rows (L3 PASS, L6 PASS with the no-regression qualifier) against the same artifact hash verified here.",
+      "status": "RECORDED GAP"
+    }
+  ],
+  "test_matrix": [
+    {
+      "suite": "default (candidate archive present)",
+      "command": "dotnet test ArrTags.slnx -c Release --no-build --logger trx (in the clean-room rebuild)",
+      "result": "Failed 0, Passed 1,966, Skipped 66, Total 2,032",
+      "recorded_value": "0/1,966/66/2,032 (task 21.12) -- reproduced exactly",
+      "warnings_errors": "build 0 warnings / 0 errors",
+      "skips": "66 NotExecuted in the TRX; 20 JellyfinHostFact + 41 SkiaNativeFact + 4 SkiaNativeTheory + 1 NonCanonicalRuntimeFact (source attribute counts reconcile)"
+    },
+    {
+      "suite": "default without the archive (clean-checkout order)",
+      "command": "recorded in docs/implementation/21.12/worker-report.json (not re-run here; the candidate rebuild ran tests after packaging)",
+      "result": "Failed 0, Passed 1,963, Skipped 69, Total 2,032",
+      "recorded_value": "0/1,963/69/2,032 -- re-verified by the 21.12 reviewer from a fresh export",
+      "warnings_errors": "n/a",
+      "skips": "the 3 additional skips are the PluginPackagingTests package-content facts"
+    },
+    {
+      "suite": "host-guarded",
+      "command": "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-21.13b/jellyfin ./build.sh test",
+      "result": "Failed 0, Passed 1,986, Skipped 46, Total 2,032",
+      "recorded_value": "0/1,986/46/2,032 -- reproduced exactly",
+      "warnings_errors": "n/a (no-build)",
+      "skips": "45 native + 1 non-canonical"
+    },
+    {
+      "suite": "forced-native",
+      "command": "env -u ARRTAGS_JELLYFIN_HOST_DIR LD_LIBRARY_PATH=/tmp/arrtags-21.13b/jellyfin:.../sysroot/root/usr/lib:.../root/lib:/config/sysroot/usr/lib FONTCONFIG_PATH=.../etc/fonts XDG_DATA_DIRS=.../usr/share ARRTAGS_SKIA_COMPAT=1 ./build.sh test",
+      "result": "Failed 0, Passed 2,053, Skipped 21, Total 2,074",
+      "recorded_value": "0/2,053/21/2,074 -- reproduced exactly",
+      "warnings_errors": "n/a (no-build)",
+      "skips": "20 host facts + 1 non-canonical; native theories expand the total from 2,032 to 2,074"
+    }
+  ],
+  "security_checked": [
+    {
+      "invariant": "Provider transport cannot carry X-Api-Key across a redirect (SEC-21.5-01, fixed by 21.7)",
+      "verification": "21.14 reproduced against the shipped assembly: all four named clients unwrap to AllowAutoRedirect=false; two-origin loopback showed the redirect target received 0 requests and no key, while a pre-fix control leaked; 3xx fails closed as InvalidResponse/Never with a fixed 93-char message. Source re-checked at HEAD (ArrTagsServiceRegistrator.cs:248/259).",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Log subject cannot carry non-printing scalars or directory/full-path chains (SEC-21.5-02/03, fixed by 21.11)",
+      "verification": "21.14 enumerated 237/237 Cc/Cf/Zl/Zp scalars removed with 0 survivors and exercised POSIX/Windows/UNC/device/traversal paths to the final component against the shipped assembly, with a pre-fix control failing 25 of 52 LogSubjectTests; bound applied after removal.",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Secrets never appear in logs, diagnostics, fingerprints, persisted state, or HTTP responses",
+      "verification": "21.14 secret-path review plus this review's live checks: 0 key/path matches in the diagnostics body; the live host console contained no key/secret; connection identity strips userinfo and query; SecretLease never renders its value; config XML is the host-persisted secret store (accepted SEC-5).",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Webhook boundary is pre-binding authenticated and bounded (ADR-012)",
+      "verification": "21.14 re-verified the IAsyncAuthorizationFilter placement, the 1024-char candidate bound before proportional allocation, constant-time compare, uniform fail-closed status, and bounded body parse; unchanged since the 0.1.0/1.1 reviews (accepted D1/SEC-8 stand).",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Diagnostics endpoint is read-only, elevation-gated and secret-free (ADR-025)",
+      "verification": "This review's live anonymous 401 / admin 200 / POST 405 / DELETE 405 / fixed 9-field 28-leaf body with a 0-match secret/path scan; 21.14 reflection confirmed the authorization attributes and the single GET route.",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Authoritative state is never evicted as cache; invalid authoritative state is quarantined, not replayed or deleted",
+      "verification": "21.14 re-read AtomicFileWriter/StateRepository/StateQuarantine at HEAD (no State/ file changed since 21.5; only LogSubject.cs changed in the corrective commits): cache records discarded, authoritative records quarantined with a bounded reason, 4 MiB record cap.",
+      "status": "PASS"
+    },
+    {
+      "invariant": "State writes are atomic and recover from corruption/interruption; envelope integrity checked",
+      "verification": "AtomicFileWriter CreateNew temp + flush-to-disk + File.Move; StateEnvelopeCodec SHA-256 over the payload (accepted SEC-3: corruption detection, not tamper authentication); the live restart preserved state byte-for-byte.",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Lifecycle fence and write-ahead publication ordering prevent partial/duplicated publication",
+      "verification": "21.14 re-read ArtworkPublisher/ArtworkOperationStore/ArtworkLifecycleFenceStore (unchanged); the live uninstall drain restored sources and removed the state root; the fail-closed OwnershipLost bound is carried (RR-V12-1).",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Provider integration remains read-only against Arr services",
+      "verification": "The only two HttpRequestMessage construction sites are GET (SonarrClient/RadarrClient); 21.14 enumerated them at HEAD.",
+      "status": "PASS"
+    },
+    {
+      "invariant": "Queues, retries, response sizes, artifacts, concurrency remain bounded",
+      "verification": "21.14 re-verified queue/cache/cursor/render bounds; the live outage stayed bounded (bounded warnings, no ERR/FTL); accepted SEC-10/SEC-11 length/count bounds stand.",
+      "status": "PASS"
+    },
+    {
+      "invariant": "No open BLOCKER/HIGH in the release security review",
+      "verification": "docs/implementation/21.14/security-review.json: reviewer_status APPROVED, open_blocker_high 0; SEC-21.5-01/-02/-03 resolved; SEC-21.5-04 carried as the already-accepted SEC-2.",
+      "status": "PASS"
+    }
+  ],
+  "architecture_checked": [
+    {
+      "item": "ADR-022..ADR-029 accepted (v1.2) and amendments/supersessions marked",
+      "verification": "docs/decisions/00-index.md rows: ADR-022 (clause 3 amended by ADR-029), ADR-023, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028, ADR-029 all 'Accepted (v1.2)'; ADR-002/003 extended by ADR-024; ADR-009 empty-selection clause superseded by ADR-024 for the owned-session case; ADR-016 amended by ADR-028; ADR-019 clause 3 extended by ADR-027; ADR-020 clause 4 amended by ADR-026.",
+      "status": "PASS"
+    },
+    {
+      "item": "Product conforms to the amended decisions (spot-checked at HEAD)",
+      "verification": "Redirect fix in both handler factories; LogSubject Cc/Cf/Zl/Zp + dual-separator (21.14 reproduction); ExtraLarge factor 2.0 and dropdown order (21.13 L2/L4); byte-unit mapping code-owned (21.13 L3); diagnostics fixed shape (21.13 L5 + this review); F4 cursor/ADR-029 resume and F6 ConfigurationStale re-enqueue re-verified by 21.14.",
+      "status": "PASS"
+    },
+    {
+      "item": "No architectural drift introduced across phases",
+      "verification": "The v1.2 diffs touched only the feature surfaces named by the accepted ADRs (Logging, Configuration, Diagnostics, Rendering, Reconciliation, Artwork, PluginLifecycle); phase reviews and 21.14 found no conflicting mechanism, duplicated runtime, or lifecycle-boundary change; the package remains one renderer/host runtime boundary (no bundled SkiaSharp, ADR-015).",
+      "status": "PASS"
+    },
+    {
+      "item": "Superseded artifact identities are honestly marked, not presented as current",
+      "verification": "docs/release/build-and-release.md and the changelog mark the 21.8 and 21.3 identities superseded; docs/testing/jellyfin-12-musl-test-host.md marks the 21.9/21.4 matrices superseded and carries the 21.13 corrected matrix; no current-state surface presents an old hash as current.",
+      "status": "PASS"
+    }
+  ],
+  "documentation_checked": [
+    {
+      "surface": "docs/plan/state.json",
+      "finding": "Pre-gate by design: current_release 1.1.0.0, releases[] 1.2.0 PLANNED, task 21.6 done=false; an empty state.json limitations.open; the accepted/resolved ID sets match the register. The post-gate update is required (RR-V12-2).",
+      "status": "OK (pre-gate)"
+    },
+    {
+      "surface": "PLANS.md",
+      "finding": "Task checkboxes 15.1-21.14 match state.json (only 21.6 unchecked); the milestone table is current; Gate 21 text and Phase 21 acceptance criteria match the v1.2 plan.",
+      "status": "OK"
+    },
+    {
+      "surface": "docs/status.md",
+      "finding": "Generated from state.json; reports the correct pre-gate state (1.1.0.0 current, v1.2/Phase 21 active); 'Open limitations: none' matches the F-register; render-docs-state --check is up to date.",
+      "status": "OK (pre-gate)"
+    },
+    {
+      "surface": "docs/changelog/v1.2.0.md",
+      "finding": "Final '## v1.2.0 release' section records the corrected identity, suites, live matrix, security outcome, manifest/tag boundary, and the manual publish step; superseded identities retained; no stale current claim.",
+      "status": "OK"
+    },
+    {
+      "surface": "docs/limitations/00-index.md and sections",
+      "finding": "The F3/F4/F6/F7/F8 resolutions are recorded and open.md is empty; accepted register carries the standing items. One v1.2 finding (F-21.13-2) is documented in the procedure/release surfaces but not registered (RR-V12-1); P1's 'current 1.1.0.0 identity' wording needs the post-gate refresh (RR-V12-2).",
+      "status": "ACTION REQUIRED (post-gate)"
+    },
+    {
+      "surface": "README.md",
+      "finding": "End-user guide is consistent with v1.2 features and the pending v1.2 publication; no stale claim found.",
+      "status": "OK"
+    },
+    {
+      "surface": "docs/release/build-and-release.md",
+      "finding": "Records the fully corrected identity, per-entry table, superseded identities, all four suite tiers, the manifest fields and the user-manual publish step; matches the artifact reproduced here.",
+      "status": "OK"
+    },
+    {
+      "surface": "docs/testing/jellyfin-12-musl-test-host.md",
+      "finding": "Carries the corrected 21.13 matrix, supersession markers, the configuration-replacement caution, and the L6 no-regression qualifier; the earlier 21.9/21.4 sections are correctly marked as history.",
+      "status": "OK"
+    },
+    {
+      "surface": "manifest.json / build.yaml",
+      "finding": "Version 1.2.0.0, targetAbi 12.0.0.0, framework net10.0; manifest checksum equals the artifact MD5; fields match build.yaml; prior entries retained.",
+      "status": "OK"
+    },
+    {
+      "surface": "check-docs.sh / render-docs-state.cs -- --check at HEAD",
+      "finding": "Both PASS/clean (check-docs: all nine sections ok; render check: status.md and PLANS.md up to date, plan/state agree).",
+      "status": "OK"
+    }
+  ],
+  "findings_reconciliation": [
+    {
+      "id": "SEC-21.5-01",
+      "source": "docs/implementation/21.5/security-review.json; 21.7",
+      "disposition": "resolved",
+      "note": "Fixed by 21.7 (no redirect-following on all four provider clients) and independently reproduced by 21.14 against the shipped assembly with a pre-fix negative control; the user chose to fix rather than accept."
+    },
+    {
+      "id": "SEC-21.5-02",
+      "source": "docs/implementation/21.10/security-review.json; 21.11",
+      "disposition": "resolved",
+      "note": "Cc/Cf/Zl/Zp removal; 21.14 enumerated 237/237 removed with 0 survivors against the shipped assembly; pre-fix control fails 25/52 tests."
+    },
+    {
+      "id": "SEC-21.5-03",
+      "source": "docs/implementation/21.10/security-review.json; 21.11",
+      "disposition": "resolved",
+      "note": "Final component taken on both separators; Windows/UNC/device/traversal paths reduced to the final component by 21.14's reproduction."
+    },
+    {
+      "id": "SEC-21.5-04",
+      "source": "docs/implementation/21.5/21.10/21.14 security reviews",
+      "disposition": "not_required",
+      "note": "Duplicates the already-accepted SEC-2 (state-root temp fallback); not fixed by design, not a regression, unreachable on the pinned host (21.13 L8)."
+    },
+    {
+      "id": "SEC-21.14-01 / SEC-21.14-02",
+      "source": "docs/implementation/21.14/security-review.json",
+      "disposition": "noted",
+      "note": "INFORMATIONAL log-fidelity trade and globalization-mode bound; disclosed in ADR-026/architecture; no action."
+    },
+    {
+      "id": "SEC-21.13-03 (F-21.13-3)",
+      "source": "docs/implementation/21.13/live-verification.json; 21.14",
+      "disposition": "noted",
+      "note": "Adjudicated INFORMATIONAL by 21.14; documentation action adopted in docs/testing/jellyfin-12-musl-test-host.md (always POST a complete configuration body)."
+    },
+    {
+      "id": "F-21.13-5",
+      "source": "docs/implementation/21.13/live-verification.json; 21.14",
+      "disposition": "resolved-in-substance",
+      "note": "L6 is a no-regression check only; the SEC-21.5-02/03 fixes were established by 21.14's own reproduction against the shipped assembly; the qualifier is recorded in the changelog and the testing document."
+    },
+    {
+      "id": "F-21.13-2",
+      "source": "docs/implementation/21.13/live-verification.json; F-21.4-2/F-21.9-2",
+      "disposition": "carried-open",
+      "note": "LOW operational limitation; documented but not registered -> RR-V12-1 requires the register entry in the release commit."
+    },
+    {
+      "id": "F-21.13-1 / F-21.13-4",
+      "source": "docs/implementation/21.13/live-verification.json",
+      "disposition": "noted",
+      "note": "F-21.13-1 (correction verified) and F-21.13-4 (uninstall residue + non-executable surfaces) are informational; the residue bounds are stated in the testing document."
+    },
+    {
+      "id": "21.13 R1/R2 (HIGH), R3/R4 (MEDIUM)",
+      "source": "docs/implementation/21.13/reviewer-report.json (attempt 1)",
+      "disposition": "resolved",
+      "note": "All four closed in attempt 2 (docs/implementation/21.13/reviewer-report.attempt-2.json): R1/R2 resolved HIGHs, R3/R4 resolved MEDIUMs; the live record was corrected for accuracy and made terminal without changing any matrix verdict or underlying observation."
+    },
+    {
+      "id": "21.13 R5 / N1-N3",
+      "source": "docs/implementation/21.13/reviewer-report.attempt-2.json",
+      "disposition": "noted",
+      "note": "INFORMATIONAL residuals; no release action."
+    },
+    {
+      "id": "TQ-21.3-1, TQ-21.3-2",
+      "source": "docs/implementation/21.3/test-quality-review.json",
+      "disposition": "carried-open",
+      "note": "MEDIUM sequencing/guard items; owned by the post-gate current_release advance and the P1 wording refresh -> RR-V12-2."
+    },
+    {
+      "id": "21.8-TQ-1, 21.12-TQ-1",
+      "source": "docs/implementation/21.8/test-quality-review.json; 21.12/test-quality-review.json",
+      "disposition": "resolved",
+      "note": "The superseded-identity sections in docs/testing/jellyfin-12-musl-test-host.md were marked superseded and the corrected 21.13 matrix added; verified in the document."
+    },
+    {
+      "id": "21.13 R4 check-docs pairing",
+      "source": "docs/implementation/21.13/reviewer-report.json",
+      "disposition": "resolved",
+      "note": "The state.json reports listing and reviewer reports were committed; this review's check-docs.sh run passes all nine sections."
+    },
+    {
+      "id": "21.7-F5",
+      "source": "docs/implementation/21.7/reviewer-report.json",
+      "disposition": "resolved",
+      "note": "Working tree quiescence verified at HEAD (clean); fix present in source; artifact reproduced byte-identically -> RR-V12-5."
+    },
+    {
+      "id": "21.11-F1",
+      "source": "docs/implementation/21.11/reviewer-report.json",
+      "disposition": "resolved",
+      "note": "ADR-020 amendment note updated additively in attempt 2 (reviewer APPROVED); verified in the ADR-020 file."
+    },
+    {
+      "id": "15.2 IR-15.2-01/02, 16.2-F1, 19.1 R-19.1-01, 19.5 R-19.5-01, 21.1-R1, 21.9 R-21.9-1, 21.11-F1, 20.3 RV2-20.3-01, 21.2 F-21.2-D1",
+      "source": "task attempt-1 reviews",
+      "disposition": "resolved",
+      "note": "Each MEDIUM was closed in the paired attempt-2 reviewer report (verified individually); no MEDIUM remains open in a final task review except the 21.3 sequencing items above."
+    },
+    {
+      "id": "PR15-01",
+      "source": "docs/implementation/phase-15/phase-review.json",
+      "disposition": "resolved",
+      "note": "The Cf/Zl/Zp and path-component residuals were fixed by 21.11 and re-verified by 21.14."
+    },
+    {
+      "id": "PR-19-01",
+      "source": "docs/implementation/phase-19/phase-review.json",
+      "disposition": "not_required",
+      "note": "MEDIUM noted; accepted and registered as V12-F4-1."
+    },
+    {
+      "id": "PR-20-01, PR-20-03",
+      "source": "docs/implementation/phase-20/phase-review.json / attempt-2",
+      "disposition": "resolved",
+      "note": "PR-20-01 closed by the attempt-2 ADR-002 note; PR-20-03 (aggregate inconsistency) fixed in the gate commit -- the current aggregate reconciles 13 invocations, 1 rework round, and the attempt-2 phase review; PR-20-02/04 likewise fixed."
+    },
+    {
+      "id": "PR15-03, PR15-04, P16-F1, P16-F2, P17-F2, P17-F3, PR-19-02/03/04, PR-20-05, Phase-18 LOWs",
+      "source": "phase reviews 15-20",
+      "disposition": "carried-open",
+      "note": "LOW process/documentation residuals; no product or artifact impact -> RR-V12-3."
+    },
+    {
+      "id": "15.4 worker BLOCKED; 21.11 worker/reviewer FAILED (attempt 0)",
+      "source": "docs/implementation/15.4/orchestration.json; 21.11/orchestration.json",
+      "disposition": "noted",
+      "note": "15.4: honest BLOCKED on the harness depth limit, resolved by an orchestrator-run security review. 21.11: two infrastructure-aborted attempt-0 sessions with no report, retried successfully. Both recorded in the agent_process section."
+    },
+    {
+      "id": "21.6-REV-6 / 21.6-REV-7",
+      "source": "docs/implementation/21.6/reviewer-report.json (attempt 1)",
+      "disposition": "resolved",
+      "note": "The corrected 21.6 finalisation and 21.12/21.13 re-derivations rewrote the manifest-commit attribution to the committed state; the final record (release-readiness-v1.2-final.json) and build-and-release.md now state that manifest.json is already committed at HEAD and the orchestrator commits the release tree/tag after the gate."
+    },
+    {
+      "id": "21.6 final record reviewer pairing",
+      "source": "docs/implementation/21.6/",
+      "disposition": "noted",
+      "note": "Task 21.6 remains open; its final record is independently verified by this release review -> RR-V12-4."
+    }
+  ],
+  "agent_process": {
+    "scope": "v1.2 release (Phases 15-21, tasks 15.1-20.3 and 21.1-21.14); measured from the recorded orchestration metadata in docs/implementation/<task>/orchestration.json (38 task records; 21.6 has no orchestration record because the task is still open), docs/implementation/phase-15..20/orchestration.json (5 phase aggregates; Phase 21 has none yet), and docs/implementation/orchestrator-sessions/ (8 sessions covering Phases 15-21).",
+    "measurements": {
+      "subagent_invocations_per_task": "38 task records, 132 recorded subagent invocations: min 2, max 7, mean 3.5",
+      "role_mix": "implementation-worker 49 (46 COMPLETE, 2 FAILED, 1 BLOCKED); implementation-reviewer 50 (41 APPROVED, 8 CHANGES_REQUIRED, 1 FAILED); test-quality-reviewer 15; security-reviewer 7 (5 PASS_WITH_FINDINGS, 1 APPROVED, 1 FAILED); live-host-verifier 5 (3 VERIFIED, 2 PARTIAL); jellyfin-expert 2; documentation-maintainer 2; implementation-planner 1; architecture-reviewer 1",
+      "first_pass_approval_rate": "implementation-reviewer attempt 1: 30 APPROVED / 8 CHANGES_REQUIRED = 30/38 tasks (79%). The 8 correction-round tasks: 15.2, 16.2, 19.1, 19.5, 21.1, 21.9, 21.11, 21.13",
+      "correction_rounds": "13 of 38 task records carry a rework round: 8 driven by implementation-reviewer CHANGES_REQUIRED, plus 15.4 (harness depth-limit BLOCKED), 17.4 (phase-driven), 18.3 (usage-limit resume), 20.3 (phase-review PR-20-01), 21.2 (documentation PASS_WITH_FINDINGS attempt 2)",
+      "recorded_cost_and_duration_per_phase": "phase 15: 18 invocations, no aggregate cost field recorded; phase 16: 15 invocations, recorded cost_usd 1.5788241; phase 17: 11 invocations, recorded cost_usd 1.00084926 (the P17-F1 mis-add corrected at the gate); phase 18: 7 invocations, recorded cost_usd 0.331822266 / 28,227,671 tokens; phase 19: 19 invocations, recorded cost_usd 1.543716042 / 160,361,509 tokens; phase 20: 13 invocations, recorded cost_usd 0.581827986 / 90,126,724 tokens / 8,426 s. Phase 21 task records (13 files) carry the recorded worker/reviewer execution values; the three security reviewers recorded cost_usd 0 (free-model sessions).",
+      "expensive_outliers": "Task 19.1 is the most expensive recorded task (recorded cost 0.589112466 / 69,102,761 tokens over 7 invocations). Phase 19 has the highest recorded phase cost and token count. The largest recorded orchestrator session is 'Starting phase 21' (recorded cost 0.434523236, 70,673,049 tokens) covering the three correction rounds; the Phase 20 session is next (0.37805781).",
+      "orchestrator_sessions": "8 recorded session files cover Phases 15-21 ('Plan v1.2', 'Starting phase 15', 16, 17, 'start phase 18', 19, 'Phase 20 F7 ...', 'Starting phase 21'); per-session recorded values are in docs/implementation/orchestrator-sessions/. The v1.1 release-review session ('Release Review Kickoff') is not counted.",
+      "blocked_failed_needs_research": "3 recorded anomalies: 15.4 implementation-worker BLOCKED (attempt 1, subagent depth limit refused the security-review delegation; honest, resolved by an orchestrator-run review); 21.11 implementation-worker FAILED (attempt 0, infrastructure abort, no report) and 21.11 implementation-reviewer FAILED (attempt 0, infrastructure abort, no report), both retried successfully. No NEEDS_RESEARCH invocation was recorded.",
+      "model_distribution": "implementation-worker 49/49 on deepseek-v4.1-flash/max; implementation-reviewer split 27 deepseek-v4.1-flash/high and 23 space-bunny-free/high; security-reviewer 4 space-bunny-free/max + 2 deepseek-v4.1-flash/max; live-host-verifier and documentation-maintainer on space-bunny-free/high; test-quality-reviewer split 9/6. Attempt-1 outcomes by reviewer model are 18 APPROVED + 4 CHANGES_REQUIRED (deepseek) vs 12 APPROVED + 4 CHANGES_REQUIRED (space-bunny-free), i.e. no recorded outcome difference attributable to the model mix."
+    },
+    "observations": [
+      {
+        "observation": "Artifact re-derivation repeatedly left superseded identities or review pointers live in current documentation, generating a recurring finding class across the release: 21.8-REV-1/21.8-TQ-1, 21.12-REV-10/21.12-TQ-1, 21.6-REV-6, PR15-03/PR15-04 (attempt-1 evidence pointers), and R-21.9-1 (stale cache attribution). Each re-derivation required a follow-up sweep of docs/testing, docs/release, the changelog, and ADR notes.",
+        "evidence": [
+          "docs/implementation/21.8/reviewer-report.json (21.8-REV-1)",
+          "docs/implementation/21.8/test-quality-review.json (21.8-TQ-1)",
+          "docs/implementation/21.12/reviewer-report.json (21.12-REV-10)",
+          "docs/implementation/21.12/test-quality-review.json (21.12-TQ-1)",
+          "docs/implementation/21.6/reviewer-report.json (21.6-REV-6)",
+          "docs/implementation/phase-15/phase-review.json (PR15-03, PR15-04)",
+          "docs/implementation/21.9/reviewer-report.json (R-21.9-1)"
+        ],
+        "proposed_change": "Add a required step to the corrective/re-derivation task template in docs/agent-contracts.md (and the orchestrator's corrective-task brief): after any artifact re-derivation, sweep docs/testing/jellyfin-12-musl-test-host.md, docs/release/build-and-release.md, docs/changelog/v1.2.0.md and the ADR implementation notes for the superseded hash and mark each occurrence superseded. Optionally extend scripts/check-docs.sh to flag a superseded archive hash presented without a superseded marker.",
+        "rationale": "Five-plus occurrences in one release; the sweeps cost review rounds (including one HIGH finding's rework) that a single mechanical check would prevent."
+      },
+      {
+        "observation": "Phase-level orchestration aggregates were repeatedly incomplete or inconsistent until a reviewer forced a gate-commit correction: P16-F2 (record-keeping), P17-F1 (aggregate sum off by 5.2e-8), PR-19-02 (aggregate missing, phase-reviewer invocation not recorded), and PR-20-02/PR-20-03/PR-20-04 (aggregate stale, rework invisible, prose contradicting its own rework array). The Phase 20 case required a dedicated gate-commit reconciliation.",
+        "evidence": [
+          "docs/implementation/phase-16/phase-review.json (P16-F2)",
+          "docs/implementation/phase-17/phase-review.json (P17-F1)",
+          "docs/implementation/phase-19/phase-review.json (PR-19-02)",
+          "docs/implementation/phase-20/phase-review.attempt-2.json (PR-20-02/03/04)",
+          "docs/implementation/phase-20/orchestration.json (reconciled: 13 invocations, 1 rework round, phase_review points at attempt 2)"
+        ],
+        "proposed_change": "Extend scripts/check-agents.sh to validate, for phases 20 and later, that the phase aggregate's invocation count, rework rounds, first-pass rate and recorded cost equal the sums of the task-level orchestration records and that the phase-reviewer invocation is present; fail the doc gate otherwise.",
+        "rationale": "The contract already requires consistency (docs/agent-contracts.md 'Phase-level orchestration record'), but nothing enforces it; the checks are mechanical and the current manual pass produced four separate defects."
+      },
+      {
+        "observation": "Security findings that a phase-level security review left open as LOW/MEDIUM were not dispositioned (fix vs accept) until the release security review, where the user then chose to fix them; the late fix invalidated the artifact, live matrix, and security review and forced full re-derivations (21.7 -> 21.8-21.10, then 21.11 -> 21.12-21.14). SEC-21.5-01 (redirect) had existed since V1 and was found only at 21.5; the 15.4 review had already recorded the log-subject residuals (SR-15.4-01/02, phase-15 PR15-01) that resurfaced as SEC-21.5-02/03.",
+        "evidence": [
+          "docs/implementation/15.4/security-review.json (SR-15.4-01/02)",
+          "docs/implementation/phase-15/phase-review.json (PR15-01, LOW open)",
+          "docs/implementation/21.5/security-review.json (SEC-21.5-01 MEDIUM)",
+          "docs/implementation/21.10/security-review.json (SEC-21.5-02/03 still open)",
+          "docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json",
+          "docs/implementation/planning/v1.2-phase-21-log-subject-correction.json"
+        ],
+        "proposed_change": "In docs/agent-contracts.md, require the orchestrator at each phase gate to record an explicit disposition (fix-now / accept-with-register-entry / defer-with-rationale, with the user as owner for accept) for every new security finding raised by that phase's task or phase security reviews, before the next phase starts.",
+        "rationale": "The release phase absorbed two correction cycles and their re-derivation cost; an explicit gate-level disposition would have surfaced the fix-or-accept decision when the finding was cheapest to act on."
+      },
+      {
+        "observation": "The release evidence set was not batched: the first correction (21.7) was followed by a full artifact/live/security re-derivation (21.8-21.10), and only then did the next security review find the second correction set (21.11), requiring a second full re-derivation (21.12-21.14). No harness rule requires a consolidated adversarial pass before re-deriving, so the protocol ran twice at full cost.",
+        "evidence": [
+          "docs/implementation/21.8/worker-report.json, 21.9/live-verification.json, 21.10/security-review.json",
+          "docs/implementation/21.12/worker-report.json, 21.13/live-verification.json, 21.14/security-review.json",
+          "docs/implementation/orchestrator-sessions (the 'Starting phase 21' session is the largest of the release)"
+        ],
+        "proposed_change": "Add an orchestration rule (docs/agent-contracts.md or docs/plan/README.md release lifecycle) that a release candidate with an open corrective finding set does not begin the artifact/live/security re-derivation until a consolidated adversarial review of the fix batch reports no further open BLOCKER/HIGH/MEDIUM, or the user explicitly accepts re-running.",
+        "rationale": "One consolidated pass would have saved an entire re-derivation cycle's cost and delay; the records show the second batch was discoverable by the same review class."
+      },
+      {
+        "observation": "The task 15.4 worker was dispatched on a task whose acceptance criteria required a security review, but the worker session (depth-1 subagent) could not delegate to the security-reviewer; it correctly returned BLOCKED without fabricating a review, and the orchestrator then ran the review itself. This is an unhandled harness/contract interaction at least once.",
+        "evidence": [
+          "docs/implementation/15.4/orchestration.json (implementation-worker attempt 1 BLOCKED; note: 'subagent(security-reviewer) and subagent(general) were both refused')",
+          "docs/implementation/15.4/rework[0] (orchestrator ran security-review attempt 2)"
+        ],
+        "proposed_change": "State in docs/agent-contracts.md that a task whose acceptance criteria include a specialist review must be flagged in its task brief as orchestrator-run, and that a depth-1 implementation-worker must not attempt to delegate (return BLOCKED with the required delegation and let the orchestrator dispatch it).",
+        "rationale": "Prevents the same wasted worker attempt and the ambiguity about whether the review is the worker's or the orchestrator's responsibility."
+      },
+      {
+        "observation": "Task 21.11 recorded two attempt-0 sessions that FAILED without producing a report (worker and reviewer), consistent with an infrastructure/provider abort rather than a task outcome; both were retried and completed. Task 21.6's orchestration record does not exist because the task remains open, so its executed worker/reviewer sessions are not represented in the aggregate measurements above.",
+        "evidence": [
+          "docs/implementation/21.11/orchestration.json (implementation-worker attempt 0 FAILED, implementation-reviewer attempt 0 FAILED)",
+          "docs/plan/state.json (task 21.6 done=false; reports array)",
+          "docs/implementation/21.6/ (no orchestration.json)"
+        ],
+        "proposed_change": "Add a short note to the orchestrator runbook in docs/agent-contracts.md: retry an attempt-0 invocation whose report is absent before treating it as a failed attempt, and ensure the final release task's orchestration record is written before the release-phase aggregate, even when the task's completion is gated on the release review.",
+        "rationale": "Makes the retry policy explicit and keeps the release aggregate complete for the next agent-process audit."
+      }
+    ]
+  },
+  "accepted_limitations": [
+    "F5 - the renderer depends on a host-supplied SkiaSharp with no bundled fallback. Consequence: a host without a compatible SkiaSharp fails closed (current artwork preserved). Evidence: docs/limitations/accepted.md F5; ADR-015. Also an explicit v1.2 exclusion.",
+    "P1 - byte-reproducibility depends on the pinned toolchain (.NET SDK 10.0.x validated with 10.0.401). Consequence: a different SDK could change the bytes. Evidence: docs/limitations/accepted.md P1; this review's reproduction. NOTE: P1's wording still calls 1.1.0.0 the current identity and must be refreshed post-gate (RR-V12-2).",
+    "P2 - the shipped assembly has reduced debug metadata for reproducibility (no commit suffix / no SourceLink mapping). Consequence: source-level debugging of a released assembly is harder. Evidence: accepted.md P2; docs/release/build-and-release.md.",
+    "P3 - PackagePlugin=true stages but does not write the archive. Consequence: the documented ./build.sh package entry point must be used. Evidence: accepted.md P3.",
+    "P4 - SkiaSharp license notices ship although SkiaSharp is no longer redistributed. Consequence: extra license text in the package. Evidence: accepted.md P4; ADR-015.",
+    "P5 - pre-release orphaned state and uninstall drain behavior. Consequence: an operator must remove a retained state root or reconcile on reinstall. Evidence: accepted.md P5.",
+    "P6 - the v1.1.0 publication, manifest push and asset upload remain pending. Consequence: catalog installation of 1.1.0 is not live. Evidence: accepted.md P6 (a user-manual step).",
+    "V1 - no live Sonarr or Radarr release instance. Consequence: payload-shape variance beyond the committed fixtures is untested. Evidence: accepted.md V1.",
+    "V2 - the ADR-010 non-canonical cross-runtime comparison is unselected and unrun. Consequence: the tolerance half of the oracle is not executed. Evidence: accepted.md V2.",
+    "V3 - Jellyfin Enhanced coexistence is contract-level only. Consequence: live overlap behavior in an Enhanced install is unverified. Evidence: accepted.md V3.",
+    "V4 - live IProviderManager.SaveImage read-back is manual, not an automated live test. Evidence: accepted.md V4.",
+    "V5 - live Plugin.OnUninstalling drain has no automated live test. Evidence: accepted.md V5.",
+    "V6 - host-guarded facts are skipped without the pinned host. Evidence: accepted.md V6; the default suite's 66 skips.",
+    "D1 - webhook 401 bodies carry framework problem+json detail rather than ADR-012's 'no body' wording. Evidence: accepted.md D1.",
+    "D2 - ArtworkSubjectGate has no idle eviction. Evidence: accepted.md D2.",
+    "RR-1 - Phases 1-3 have no independent phase-review records. Evidence: accepted.md RR-1.",
+    "RR-15 - mock fixture API keys appear in tracked documentation. Evidence: accepted.md RR-15.",
+    "SEC-2 - state-root resolution falls back to a shared temp path when the host supplies no data folder (not reachable on the pinned host; carried as SEC-21.5-04). Evidence: accepted.md SEC-2.",
+    "SEC-3 - the state-envelope integrity hash does not cover envelope metadata (corruption detection, not tamper authentication). Evidence: accepted.md SEC-3.",
+    "SEC-4 - authentication error bodies carry framework problem+json detail. Evidence: accepted.md SEC-4.",
+    "SEC-5 - secrets persist only in Jellyfin's plugin configuration XML; ArrTags logging is bounded and redacted. Evidence: accepted.md SEC-5.",
+    "SEC-6 - the ArtworkSubjectGate process-lifetime bound. Evidence: accepted.md SEC-6.",
+    "SEC-7 - a declared non-JSON content type is rejected with a bounded 400. Evidence: accepted.md SEC-7.",
+    "SEC-8 - no per-client authentication throttling on the anonymous webhook route. Evidence: accepted.md SEC-8.",
+    "SEC-9 - configuration-rejection activity-log surfacing is bounded and secret-free. Evidence: accepted.md SEC-9.",
+    "SEC-10 - configured provider API keys and the webhook secret are not length-bounded. Evidence: accepted.md SEC-10.",
+    "SEC-11 - library-scope entries are not count/length-bounded or validated as library identifiers. Evidence: accepted.md SEC-11.",
+    "SEC-12 - configured base-URL user information is not rejected (it is excluded from the connection identity). Evidence: accepted.md SEC-12.",
+    "P12R-F1 - the absolute default output-fingerprint pin lives only in the forced-native golden path. Evidence: accepted.md P12R-F1.",
+    "V11-G1 - the badge value allowlist was not exercised live. Evidence: accepted.md V11-G1.",
+    "V11-G2/G3/G4 - carried Phase 11-13/release LOW residuals. Evidence: accepted.md.",
+    "V12-G6-1 - a legacy in-range off-step byte limit loads unchanged and is re-quantized or rejected on the next save (the step check is page-side only). Evidence: accepted.md V12-G6-1; ADR-028.",
+    "V12-G8-1 - the restart-required modal reminder is a best-effort web-client shim verified structurally. Evidence: accepted.md V12-G8-1.",
+    "V12-G8-2 - the global OperationalLimits.RequestTimeoutSeconds is inert (per-connection values govern). Evidence: accepted.md V12-G8-2.",
+    "V12-F3-1 - the diagnostics panel is verified structurally, not executed. Evidence: accepted.md V12-F3-1.",
+    "V12-F4-1..6 - cursor resume is O(offset) per run / O(N^2/QueueCapacity) per full cycle; ties on (SortName, Name) have no host-guaranteed order; the cursor is a Cache record subject to render-cache age pruning; an unlocatable anchor resets to the start; the resume relies on the pinned host's internal candidate order; overlapping whole-scope runs are not cross-run locked. Evidence: accepted.md V12-F4-1..6; ADR-022/ADR-029.",
+    "V12-F6-1 - the configuration version can advance between metadata publication and the artwork stage of the same pass. Evidence: accepted.md V12-F6-1.",
+    "V12-F6-2 - the stale-basis re-enqueue's bounded drop is not logged or counted. Evidence: accepted.md V12-F6-2.",
+    "F-21.13-2 (NEW; registration required, RR-V12-1) - an item whose active image content hash changes (a host refresh re-adopts the local sidecar) is moved to the fail-closed ownership state and v1.2 has no in-product recovery trigger; automatic publication for that item is suppressed until an out-of-band action. Consequence: operators must complete library/refresh setup before the first publication and use the scheduled trigger afterwards; a lost item needs an out-of-band recovery. Evidence: docs/implementation/21.13/live-verification.json F-21.13-2; docs/testing/jellyfin-12-musl-test-host.md lines 342-352/457-475; docs/changelog/v1.2.0.md. To be registered in docs/limitations/accepted.md + 00-index.md in the release commit."
+  ],
+  "required_changes": [
+    "RR-V12-1: register F-21.13-2 (no in-product recovery from the fail-closed ownership state after a host refresh re-adopts the local sidecar) in docs/limitations/accepted.md with an index row in docs/limitations/00-index.md, or record an explicit user decision that recovery is out of band; fold it into the release commit. Documentation only -- no artifact, code, or re-verification impact.",
+    "RR-V12-2: in the post-gate release commit, advance docs/plan/state.json current_release to 1.2.0.0 and releases[] 1.2.0 to COMPLETE, mark task 21.6 done and tick its PLANS.md checkbox, re-render docs/status.md and the PLANS.md milestone table, refresh the stale 1.1.0.0 'current identity' wording in docs/limitations/accepted.md item P1, and then re-run scripts/check-docs.sh and dotnet run scripts/render-docs-state.cs -- --check to confirm the 1.2.0.0 sha256/md5/bytes are now the guarded identity (TQ-21.3-1/TQ-21.3-2 closure)."
+  ],
+  "ready_for_next_phase": true,
+  "ready_for_release": true,
+  "release_recommendation": "Create the annotated tag v1.2.0 on the release commit that carries this report plus the two required documentation changes (the F-21.13-2 register entry and the current_release/status advance), then push branch v1.2 and the tag. Do not rebuild or alter artifacts/ArrTags_1.2.0.0.zip: its identity is verified (SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268, MD5 631fbfa5a4fb58fac5a877eeef761193) and is independent of the tag commit. The GitHub release, the ArrTags_1.2.0.0.zip asset upload, and the manifest push remain the user's manual step via scripts/publish-release.sh --release-only, with a post-upload MD5 check equal to the manifest checksum 631fbfa5a4fb58fac5a877eeef761193. The tag may proceed on this SHIP decision.",
+  "summary": "The ArrTags 1.2.0.0 release candidate is safe to ship with its accepted limitations. I independently reproduced the artifact from git archive HEAD of the reviewed commit (b58f246): byte-identical SHA-256/MD5/size/7-entry archive, 0 warnings/0 errors, and the packaged ArrTags.dll byte-identical to a clean build of the audited source. All four recorded suite tiers reproduce (default 0/1,966/66/2,032; host-guarded 0/1,986/46/2,032; forced-native 0/2,053/21/2,074; the no-archive tier is verified by the 21.12 reviewer). The live pinned-host matrix was independently re-run end to end against this exact artifact: install/load 1.2.0.0 with no [FTL]/[ERR], all three items published at Extra Large through the host image path with served bytes equal to the persisted ActiveImageIdentity, unchanged metadata did not republish while changed metadata did, a simultaneous provider outage left the host up with images byte-unchanged, a restart preserved state byte-for-byte, the uninstall drain restored the source posters and removed install/state, and every source media file was byte-unchanged throughout. The release security review (21.14) is APPROVED with 0 open BLOCKER/HIGH and SEC-21.5-01/-02/-03 resolved by reproduction against the shipped assembly; the only carried security item (SEC-21.5-04) is the already-accepted SEC-2. Phase gates 15-20 are met with tags and no open BLOCKER/HIGH, Gate 21's clauses are met except the tag that this gate authorizes, and check-docs/render-docs-state pass at HEAD. Two required post-gate documentation changes remain (register F-21.13-2; advance current_release and refresh P1), both documentation/state only and foldable into the release commit without touching the verified artifact. Decision: SHIP_WITH_ACCEPTED_LIMITATIONS; the annotated tag v1.2.0 may proceed.",
+  "limitations_accepted": [
+    "F5 - the renderer depends on a host-supplied SkiaSharp with no bundled fallback. Consequence: a host without a compatible SkiaSharp fails closed (current artwork preserved). Evidence: docs/limitations/accepted.md F5; ADR-015. Also an explicit v1.2 exclusion.",
+    "P1 - byte-reproducibility depends on the pinned toolchain (.NET SDK 10.0.x validated with 10.0.401). Consequence: a different SDK could change the bytes. Evidence: docs/limitations/accepted.md P1; this review's reproduction. NOTE: P1's wording still calls 1.1.0.0 the current identity and must be refreshed post-gate (RR-V12-2).",
+    "P2 - the shipped assembly has reduced debug metadata for reproducibility (no commit suffix / no SourceLink mapping). Consequence: source-level debugging of a released assembly is harder. Evidence: accepted.md P2; docs/release/build-and-release.md.",
+    "P3 - PackagePlugin=true stages but does not write the archive. Consequence: the documented ./build.sh package entry point must be used. Evidence: accepted.md P3.",
+    "P4 - SkiaSharp license notices ship although SkiaSharp is no longer redistributed. Consequence: extra license text in the package. Evidence: accepted.md P4; ADR-015.",
+    "P5 - pre-release orphaned state and uninstall drain behavior. Consequence: an operator must remove a retained state root or reconcile on reinstall. Evidence: accepted.md P5.",
+    "P6 - the v1.1.0 publication, manifest push and asset upload remain pending. Consequence: catalog installation of 1.1.0 is not live. Evidence: accepted.md P6 (a user-manual step).",
+    "V1 - no live Sonarr or Radarr release instance. Consequence: payload-shape variance beyond the committed fixtures is untested. Evidence: accepted.md V1.",
+    "V2 - the ADR-010 non-canonical cross-runtime comparison is unselected and unrun. Consequence: the tolerance half of the oracle is not executed. Evidence: accepted.md V2.",
+    "V3 - Jellyfin Enhanced coexistence is contract-level only. Consequence: live overlap behavior in an Enhanced install is unverified. Evidence: accepted.md V3.",
+    "V4 - live IProviderManager.SaveImage read-back is manual, not an automated live test. Evidence: accepted.md V4.",
+    "V5 - live Plugin.OnUninstalling drain has no automated live test. Evidence: accepted.md V5.",
+    "V6 - host-guarded facts are skipped without the pinned host. Evidence: accepted.md V6; the default suite's 66 skips.",
+    "D1 - webhook 401 bodies carry framework problem+json detail rather than ADR-012's 'no body' wording. Evidence: accepted.md D1.",
+    "D2 - ArtworkSubjectGate has no idle eviction. Evidence: accepted.md D2.",
+    "RR-1 - Phases 1-3 have no independent phase-review records. Evidence: accepted.md RR-1.",
+    "RR-15 - mock fixture API keys appear in tracked documentation. Evidence: accepted.md RR-15.",
+    "SEC-2 - state-root resolution falls back to a shared temp path when the host supplies no data folder (not reachable on the pinned host; carried as SEC-21.5-04). Evidence: accepted.md SEC-2.",
+    "SEC-3 - the state-envelope integrity hash does not cover envelope metadata (corruption detection, not tamper authentication). Evidence: accepted.md SEC-3.",
+    "SEC-4 - authentication error bodies carry framework problem+json detail. Evidence: accepted.md SEC-4.",
+    "SEC-5 - secrets persist only in Jellyfin's plugin configuration XML; ArrTags logging is bounded and redacted. Evidence: accepted.md SEC-5.",
+    "SEC-6 - the ArtworkSubjectGate process-lifetime bound. Evidence: accepted.md SEC-6.",
+    "SEC-7 - a declared non-JSON content type is rejected with a bounded 400. Evidence: accepted.md SEC-7.",
+    "SEC-8 - no per-client authentication throttling on the anonymous webhook route. Evidence: accepted.md SEC-8.",
+    "SEC-9 - configuration-rejection activity-log surfacing is bounded and secret-free. Evidence: accepted.md SEC-9.",
+    "SEC-10 - configured provider API keys and the webhook secret are not length-bounded. Evidence: accepted.md SEC-10.",
+    "SEC-11 - library-scope entries are not count/length-bounded or validated as library identifiers. Evidence: accepted.md SEC-11.",
+    "SEC-12 - configured base-URL user information is not rejected (it is excluded from the connection identity). Evidence: accepted.md SEC-12.",
+    "P12R-F1 - the absolute default output-fingerprint pin lives only in the forced-native golden path. Evidence: accepted.md P12R-F1.",
+    "V11-G1 - the badge value allowlist was not exercised live. Evidence: accepted.md V11-G1.",
+    "V11-G2/G3/G4 - carried Phase 11-13/release LOW residuals. Evidence: accepted.md.",
+    "V12-G6-1 - a legacy in-range off-step byte limit loads unchanged and is re-quantized or rejected on the next save (the step check is page-side only). Evidence: accepted.md V12-G6-1; ADR-028.",
+    "V12-G8-1 - the restart-required modal reminder is a best-effort web-client shim verified structurally. Evidence: accepted.md V12-G8-1.",
+    "V12-G8-2 - the global OperationalLimits.RequestTimeoutSeconds is inert (per-connection values govern). Evidence: accepted.md V12-G8-2.",
+    "V12-F3-1 - the diagnostics panel is verified structurally, not executed. Evidence: accepted.md V12-F3-1.",
+    "V12-F4-1..6 - cursor resume is O(offset) per run / O(N^2/QueueCapacity) per full cycle; ties on (SortName, Name) have no host-guaranteed order; the cursor is a Cache record subject to render-cache age pruning; an unlocatable anchor resets to the start; the resume relies on the pinned host's internal candidate order; overlapping whole-scope runs are not cross-run locked. Evidence: accepted.md V12-F4-1..6; ADR-022/ADR-029.",
+    "V12-F6-1 - the configuration version can advance between metadata publication and the artwork stage of the same pass. Evidence: accepted.md V12-F6-1.",
+    "V12-F6-2 - the stale-basis re-enqueue's bounded drop is not logged or counted. Evidence: accepted.md V12-F6-2.",
+    "F-21.13-2 (NEW; registration required, RR-V12-1) - an item whose active image content hash changes (a host refresh re-adopts the local sidecar) is moved to the fail-closed ownership state and v1.2 has no in-product recovery trigger; automatic publication for that item is suppressed until an out-of-band action. Consequence: operators must complete library/refresh setup before the first publication and use the scheduled trigger afterwards; a lost item needs an out-of-band recovery. Evidence: docs/implementation/21.13/live-verification.json F-21.13-2; docs/testing/jellyfin-12-musl-test-host.md lines 342-352/457-475; docs/changelog/v1.2.0.md. To be registered in docs/limitations/accepted.md + 00-index.md in the release commit."
+  ]
+}

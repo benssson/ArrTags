@@ -1,0 +1,73 @@
+{
+  "task": "20.1",
+  "title": "Empty-selection restore/removal behavior",
+  "phase": 20,
+  "status": "COMPLETE",
+  "commit": "fd37a73",
+  "conformance": {
+    "required": false,
+    "reason": "Task 20.1 reuses the already-implemented and pinned-host-verified guarded artwork restoration/removal protocol (the internal ArtworkPublisher.RestoreAsync and the IArtworkImageWriter SaveImage/RemoveImage boundary, implemented in Phase 5 and exercised by the lifecycle drain and the task 14.3 live matrix). The task adds an internal discriminator (NoFittingBadge), an owned-session selection in the coordinator, a lifecycle-fence guard, and a bounded result classification; none of these introduces an unverified Jellyfin 12 platform behaviour, a Sonarr/Radarr API contract, or a first-time ADR-against-host implementability question.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 297748,
+        "output_tokens": 38185,
+        "reasoning_tokens": 60609,
+        "cache_read_tokens": 26452736,
+        "cache_write_tokens": 0,
+        "total_tokens": 26849278,
+        "cost_usd": 0.183296808,
+        "duration_seconds": 1301,
+        "session_id": "ses_f16efe1baffeZJO6VF4nRH1ot0"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 68256,
+        "output_tokens": 9968,
+        "reasoning_tokens": 6950,
+        "cache_read_tokens": 1618986,
+        "cache_write_tokens": 0,
+        "total_tokens": 1704160,
+        "cost_usd": 0,
+        "duration_seconds": 284,
+        "session_id": "ses_f16d7223fffeEVDqbvPuBb0rHt"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 64687,
+        "output_tokens": 8573,
+        "reasoning_tokens": 10800,
+        "cache_read_tokens": 1813198,
+        "cache_write_tokens": 0,
+        "total_tokens": 1897258,
+        "cost_usd": 0,
+        "duration_seconds": 348,
+        "session_id": "ses_f16d257d9ffecSZ5MClJlYcDsW"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": "Runtime figures are the authoritative OpenCode server values for each child session; the collect-session-usage.sh wrapper could not talk to this server instance (its CLI reports a V2 health mismatch), so the orchestrator read the same authoritative session objects directly from the running server. No value was estimated. implementation-reviewer and test-quality-reviewer reported cost_usd 0 (the provider's runtime value for those sessions), recorded as-is. No rework rounds: the implementation-reviewer approved attempt 1 with no open findings, and the test-quality-reviewer's open findings are LOW/INFORMATIONAL (unproven mappings, fence variants, and the absent-baseline direct publisher test assigned to task 20.2; the architecture-09 removal-reachability wording assigned to 20.3)."
+}

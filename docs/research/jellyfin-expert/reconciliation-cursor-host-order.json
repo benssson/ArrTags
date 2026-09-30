@@ -1,0 +1,157 @@
+{
+  "subject": "Jellyfin 12.0.0 host ordering and resume capability for the ArrTags reconciliation candidate query (ADR-022 clause 3)",
+  "question": "For the reconciliation candidate query (Recursive = true, IncludeItemTypes = [Movie, Episode], no user, OrderBy = [(SortName, Ascending)]), what is the exact effective order the pinned Jellyfin 12.0.0 host applies? Does any supported OrderBy/ItemSortBy configuration yield a stable total order keyed by an item identifier? Does the host query support a server-side 'strictly after key' resume predicate, or must a resume use a bounded linear skip, and at what bounded cost? Can ADR-022 clause 3's (SortName, itemId) total-order plus resume be realized against this host as written?",
+  "revision": {
+    "pinned_source_revision": "6c073e19ddf604b2369c638716164fdab4c952dc",
+    "pinned_source_tag": "v12.0",
+    "pinned_source_tag_verified": "https://api.github.com/repos/jellyfin/jellyfin/git/ref/tags/v12.0 returns object.sha 6c073e19ddf604b2369c638716164fdab4c952dc (queried 2026-09-28); the local source extract directory is /tmp/jfsrc/jellyfin-6c073e19ddf604b2369c638716164fdab4c952dc",
+    "pinned_host_artifact": "jellyfin_12.0-amd64-musl.tar.gz from repo.jellyfin.org stable/v12.0 (per docs/testing/jellyfin-12-musl-test-host.md)",
+    "host_assemblies_used": "/tmp/arrtags-14.3/jellyfin (the task 14.3 pinned-host prefix); Jellyfin.Server.Implementations.dll AssemblyName.Version = 12.0.0.0",
+    "entity_framework_core": "10.0.11 (host jellyfin.deps.json and the shipped Microsoft.EntityFrameworkCore*.dll)",
+    "applicable_jellyfin_version": "12.0.0"
+  },
+  "verification_method": {
+    "live_http_host": "NOT RUN. No Jellyfin host was listening on 127.0.0.1:8096 when this research was performed; the pinned host install exists at /tmp/arrtags-14.3/jellyfin but was not started, so no live HTTP query was observed.",
+    "shipped_binary_in_process": "OBSERVED. The shipped host assembly Jellyfin.Server.Implementations.dll (12.0.0.0) was loaded in a throwaway .NET 10 harness (under /tmp/arrtags-jfe-recon; not part of the repository) and the real public method Jellyfin.Server.Implementations.Item.BaseItemRepository.ApplyOrder(IQueryable<BaseItemEntity>, InternalItemsQuery, JellyfinDbContext) was invoked with a probe IQueryable and real InternalItemsQuery values. The returned expression tree was captured and printed.",
+    "shipped_binary_ef_translation": "OBSERVED. The host's EF Core 10.0.11 assemblies were used to translate Skip(n).Take(m) over an ordered query; ToQueryString showed LIMIT/OFFSET.",
+    "shipped_host_db_plan": "OBSERVED. The task-14.3 host database /tmp/arrtags-14.3/data/data/jellyfin.db was opened read-only via the host's Microsoft.Data.Sqlite and EXPLAIN QUERY PLAN was run for the candidate query shape.",
+    "pinned_source": "OBSERVED. Source read directly from the pinned revision extract listed above."
+  },
+  "conclusion": "The pinned Jellyfin 12.0.0 host does NOT order the ArrTags candidate query by (SortName, itemId). Its effective order is SortName ASC, Name ASC, where Name is the raw BaseItemEntity.Name column and is neither unique nor an item identifier. No supported ItemSortBy member or OrderBy configuration produces an identifier tie-break, so no supported host order is identifier-stable. The host query has no server-side 'strictly after key' predicate: the only order-relative controls are offset paging (StartIndex/Limit), the AdjacentTo window (which materialises the whole ordered id set), and the by-name SortName range filters, none of which is a keyset seek on (SortName, itemId). A resume must therefore use a bounded linear skip via StartIndex, which the host translates to SQL LIMIT/OFFSET; the cost is O(offset) ordered rows produced and discarded per resume (plus the page's ordering work, observed as USE TEMP B-TREE FOR ORDER BY), and across a cycle of successive page-advancing runs the cumulative skip work is O(N^2) in the server-wide candidate count N. ADR-022 clause 3's (SortName, itemId) total order cannot be realized from the host's paged query as written: the host's order is keyed by (SortName, Name), so a page-boundary split between rows that tie on (SortName, Name) is not controllable or guaranteed by the host. The clause's alternative resume branch ('a bounded linear skip at run start') IS realizable against this host, at the cost above.",
+  "answers": {
+    "1_effective_order": {
+      "effective_order_by": "SortName ASC, Name ASC",
+      "sortname_tie_break": "Name ASC (raw BaseItemEntity.Name column), NOT the item id",
+      "empty_or_default_order": "If OrderBy is empty or only ItemSortBy.Default, the effective order is OrderBy(SortName) with no tie-break at all.",
+      "evidence": "BaseItemRepository.ApplyOrder, Jellyfin.Server.Implementations/Item/BaseItemRepository.QueryBuilding.cs lines 306-384 (esp. 308, 338-361, 377-381); OrderMapper.MapOrderByField, Jellyfin.Server.Implementations/Item/OrderMapper.cs lines 30-90 (esp. 71 and 88); and the chosen entries in the ApplyOrder probe",
+      "probe_result": [
+        "[SortName asc (ArrTags query)] effective order: OrderBy(SortName), ThenBy(Name)",
+        "[(empty OrderBy)] effective order: OrderBy(SortName)",
+        "[Default asc] effective order: OrderBy(SortName)"
+      ]
+    },
+    "2_identifier_stable": false,
+    "3_resume_capability": {
+      "server_side_strictly_after_key_predicate": "None. No property or method on InternalItemsQuery or IItemRepository expresses an 'after key', cursor, keyset, or seek predicate; a search of InternalItemsQuery.cs and IItemRepository.cs for keyset/cursor/seek/after/AfterId found no such surface.",
+      "available_order_relative_controls": [
+        "StartIndex (int?) and Limit (int?) -> offset paging. ApplyQueryPaging (BaseItemRepository.QueryBuilding.cs lines 73-91) applies Skip(offset) then Take(limit); the host's EF Core 10.0.11 translates this to SQL LIMIT/OFFSET (observed: ORDER BY \"SortName\", \"Name\" LIMIT @p1 OFFSET @p).",
+        "AdjacentTo (Guid?) -> ApplyAdjacencyFilter (QueryBuilding.cs lines 48-71) first materialises the ENTIRE ordered id list (dbQuery.Select(e => e.Id).ToList()) and then takes the item and its neighbours. It is not a resume and shows the host has no ordered seek.",
+        "NameStartsWith, NameStartsWithOrGreater, NameLessThan -> ApplyNameFilters (QueryBuilding.cs lines 226-247). These compare the SortName column only (lower-cased), not Name and not the item id, and are the by-name alphabetical-index filters used by the Studios/Genres/Persons/etc. controllers; they are not a keyset cursor on (SortName, itemId)."
+      ],
+      "resume_mechanism": "bounded linear skip via StartIndex",
+      "bounded_cost": "O(offset) ordered rows produced and discarded per resume call (SQLite LIMIT/OFFSET), plus the ordering work for the page; the observed plan for the candidate query shape orders through USE TEMP B-TREE FOR ORDER BY. Because StartIndex is an absolute offset into the host order and the persisted cursor is a key rather than a count, resuming at a key requires scanning host pages from offset 0 to locate it. If each successive run advances the cursor by one page and resumes at the new offset, the cumulative skip work over a cycle is O(N^2) in the candidate count N (server-wide, see finding F7).",
+      "observed_evidence": [
+        "BaseItemRepository.QueryBuilding.cs lines 73-91 (Skip/Take)",
+        "EF Core 10.0.11 translation observed: SELECT ... ORDER BY \"SortName\", \"Name\" LIMIT @p1 OFFSET @p (p1=10, p=100)",
+        "EXPLAIN QUERY PLAN on the pinned host db for SELECT Id FROM BaseItems WHERE Type IN ('Movie','Episode') ORDER BY SortName, Name LIMIT 200 OFFSET 5000 returned: SEARCH BaseItems USING INDEX IX_BaseItems_Type_CleanName (Type=?), USE TEMP B-TREE FOR ORDER BY"
+      ],
+      "inference_note": "The O(offset) row-work statement is an inference from SQLite's LIMIT/OFFSET semantics; the LIMIT/OFFSET translation and the temp-B-tree plan are observed facts. The task-14.3 host database had 0 Movie/Episode rows, so the plan is the planner's choice for the candidate query shape on that (empty) host database and may differ on a populated database."
+    },
+    "4_clause_3_realizability": {
+      "total_order_plus_identifier_tie_break": "NOT realizable from the host's paged query as written. The host order is (SortName, Name); a client-side item-id tie-break applied within a page does not make the concatenation of pages a global (SortName, itemId) order, because the host selects page boundaries using (SortName, Name). Obtaining a true global (SortName, itemId) order would require materialising and sorting the whole scope client-side (unbounded), which contradicts ADR-022 clause 7's bounded-per-run requirement and the project's performance goals.",
+      "resume_branch": "REALIZABLE only as the clause's 'bounded linear skip at run start' branch, at the O(offset) per-resume / O(N^2) per-cycle cost above.",
+      "cursor_key_mismatch": "The persisted cursor is (SortName, itemId). The host cannot compare item ids in ORDER BY (no ItemSortBy member maps to Id; OrderMapper has no Id case) and cannot filter 'strictly after (SortName, Name)', let alone '(SortName, itemId)'. A host predicate is therefore impossible for the exact cursor key."
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "claim": "For OrderBy = [(SortName, Ascending)], no SearchTerm, and no User, ApplyOrder produces `query.OrderBy(e => e.SortName).ThenBy(e => e.Name)` (effective ORDER BY SortName ASC, Name ASC).",
+      "evidence": "Observed by invoking the shipped Jellyfin.Server.Implementations.dll 12.0.0.0 BaseItemRepository.ApplyOrder and reading the returned expression tree; matches the pinned source BaseItemRepository.QueryBuilding.cs lines 306-384: the SortName/Default special case at lines 356-361 adds ThenBy(e => e.Name), and the final SortName tie-break at lines 377-381 is skipped because the order list already contains SortName.",
+      "type": "observed"
+    },
+    {
+      "id": "F2",
+      "claim": "The SortName tie-break is the raw Name column (BaseItemEntity.Name), ascending for ascending SortName and descending for descending SortName. It is not the item id.",
+      "evidence": "BaseItemRepository.QueryBuilding.cs lines 356-361; probe result OrderBy(SortName), ThenBy(Name) and OrderByDescending(SortName), ThenByDescending(Name).",
+      "type": "observed"
+    },
+    {
+      "id": "F3",
+      "claim": "ItemSortBy.SortName is not mapped in OrderMapper's switch and falls to the default `_ => e => e.SortName`; ItemSortBy.Name maps to e.CleanName (not e.Name).",
+      "evidence": "Jellyfin.Server.Implementations/Item/OrderMapper.cs lines 30-90 (line 71 Name -> CleanName; line 88 default -> SortName). Probe: [Name asc] -> OrderBy(CleanName); [SortName asc, Name asc] -> OrderBy(SortName), ThenBy(Name), ThenBy(CleanName).",
+      "type": "observed"
+    },
+    {
+      "id": "F4",
+      "claim": "The ItemSortBy enum has no identifier member and no configuration produces an id tie-break. The only automatic tie-breaks ApplyOrder adds are Name (after Default/SortName) and SortName (after any other first key).",
+      "evidence": "Jellyfin.Data/Enums/ItemSortBy.cs values 0..29 (Default..IndexNumber, no Id); OrderMapper.cs has no Id case; QueryBuilding.cs lines 356-361 and 377-381. Probe across ten configurations never produced an Id key.",
+      "type": "observed"
+    },
+    {
+      "id": "F5",
+      "claim": "No server-side 'strictly after key' predicate exists on the supported query surface. InternalItemsQuery exposes only StartIndex, Limit, AdjacentTo, NameStartsWith, NameStartsWithOrGreater, NameLessThan, SearchTerm, and OrderBy for result-shaping; no keyset/cursor/after/seek member exists on InternalItemsQuery or IItemRepository.",
+      "evidence": "MediaBrowser.Controller/Entities/InternalItemsQuery.cs lines 174 (StartIndex), 176 (Limit), 222/224/226 (name range filters), 252 (AdjacentTo), 417 (OrderBy), 501 (SearchTerm); MediaBrowser.Controller/Persistence/IItemRepository.cs method list; grep for keyset/cursor/seek/after returned no such member.",
+      "type": "observed"
+    },
+    {
+      "id": "F6",
+      "claim": "The name-range filters (NameStartsWithOrGreater, NameLessThan) filter the SortName column only, via a lower-cased string comparison, and are not tied to Name or the item id; they cannot act as a seek for the (SortName, Name) or (SortName, itemId) order. The in-memory Folder path uses SortName with OrdinalIgnoreCase.",
+      "evidence": "BaseItemRepository.QueryBuilding.cs lines 226-247; MediaBrowser.Controller/Entities/Folder.cs lines 1114-1121; usage in Studios/Genres/Persons/Items controllers.",
+      "type": "observed"
+    },
+    {
+      "id": "F7",
+      "claim": "The ArrTags enumerator query is server-wide: CreateQuery sets only Recursive, IncludeItemTypes, and OrderBy. It sets no ParentId and no TopParentIds, and no User, so LibraryManager.GetItemList leaves the query unscoped and the host returns all Movie/Episode BaseItems server-wide in (SortName, Name) order; library scope is applied afterward by the ArrTags caller.",
+      "evidence": "src/ArrTags/Media/JellyfinMediaLibraryEnumerator.cs lines 52-63; Emby.Server.Implementations/Library/LibraryManager.cs lines 1730-1752 (get top-parent ids only when ParentId is non-empty; user filter only when User is non-null) and line 1746 (delegates to _itemRepository.GetItemList with no reordering). This widens the offset domain that a linear-skip resume must traverse.",
+      "type": "observed"
+    },
+    {
+      "id": "F8",
+      "claim": "Both SortName and Name are nullable BaseItemEntity columns with no unique constraint; the (SortName, Name) order is therefore not guaranteed to be a total order, and rows that tie on it have no host-guaranteed relative order.",
+      "evidence": "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/BaseItemEntity.cs (Name line 35, SortName line 51); src/Jellyfin.Database/Jellyfin.Database.Implementations/ModelConfiguration/BaseItemConfiguration.cs lines 39 (HasIndex Name), 45 and 70 (composite SortName indexes) — none unique.",
+      "type": "observed"
+    },
+    {
+      "id": "F9",
+      "claim": "When query.User is null (the ArrTags case), EnableGroupByPresentationUniqueKey returns false, so ApplyGroupingFilter takes the else branch (`dbQuery.Distinct()`) and then applies ApplyOrder. The result is SELECT DISTINCT with ORDER BY (SortName, Name), which SQLite must satisfy with a temp B-tree when the index order does not match.",
+      "evidence": "Jellyfin.Server.Implementations/Item/BaseItemRepository.cs lines 188-216 (line 213: if query.User is null return false); BaseItemRepository.QueryBuilding.cs lines 93-133 (Distinct at 119, ApplyOrder at 130).",
+      "type": "observed"
+    },
+    {
+      "id": "F10",
+      "claim": "StartIndex maps to SQL OFFSET, not to an index seek: the host's EF Core 10.0.11 emits `ORDER BY \"SortName\", \"Name\" LIMIT @p1 OFFSET @p` for Skip(100).Take(10). SQLite evaluates the ordered result then discards the first offset rows.",
+      "evidence": "BaseItemRepository.QueryBuilding.cs lines 73-91; EF Core 10.0.11 ToQueryString observed; SQLite OFFSET semantics are documented behaviour (inference for the row-work cost).",
+      "type": "observed (translation) / inference (cost model)"
+    }
+  ],
+  "api_classification": {
+    "MediaBrowser.Controller.Entities.InternalItemsQuery (StartIndex, Limit, OrderBy, IncludeItemTypes, Recursive, TopParentIds)": "Confirmed supported plugin query contract (ILibraryManager read surface used by the ArrTags enumerator)",
+    "MediaBrowser.Controller.Library.ILibraryManager.GetItemList / GetCount": "Confirmed supported plugin read API",
+    "Jellyfin.Server.Implementations.Item.BaseItemRepository and its ApplyOrder/OrderMapper implementation": "Internal implementation detail of the host, reached only through ILibraryManager/IItemRepository; NOT a plugin contract. Its ordering rules can change across Jellyfin releases without a documented plugin compatibility promise.",
+    "Jellyfin.Database.Implementations.Entities.BaseItemEntity sorting columns (SortName, Name, CleanName)": "Internal persistence detail; observable only through query results",
+    "server-side keyset/after-key resume predicate": "Unsupported/absent — no such API exists"
+  },
+  "risks": [
+    {
+      "severity": "HIGH",
+      "finding_status": "open",
+      "description": "ADR-022 clause 3 fixes a (SortName, itemId) total order and a strictly-after-key resume. The host provides (SortName, Name), which is neither identifier-stable nor guaranteed unique, and provides no keyset predicate. As written, clause 3 cannot be implemented as a host-level total order; an implementation that assumes it can will either (a) produce globally non-monotonic pages across restarts/library changes, or (b) silently degrade to an O(offset) linear scan whose cumulative cost is O(N^2) per cycle."
+    },
+    {
+      "severity": "MEDIUM",
+      "finding_status": "open",
+      "description": "A linear-skip resume is O(offset) per run and O(N^2) across a page-advancing cycle over the server-wide candidate set (F7). For hundreds to thousands of movies plus thousands to tens of thousands of episodes, a late-stage resume can scan a large prefix on every run, and the observed temp-B-tree ordering means each page also pays ordering work."
+    },
+    {
+      "severity": "MEDIUM",
+      "finding_status": "open",
+      "description": "Rows tied on (SortName, Name) have no host-guaranteed order (F8). If a page boundary falls inside such a tie, the same item can be skipped or re-covered across runs even though the library did not change, which undermines the clause 3 stability guarantee."
+    },
+    {
+      "severity": "LOW",
+      "finding_status": "noted",
+      "description": "The host's order (SortName, Name) is an internal implementation detail (ApplyOrder/OrderMapper) with no plugin contract; a Jellyfin upgrade could change it, invalidating any ArrTags cursor derived from it."
+    }
+  ],
+  "recommended_action": "Do not change ADR-022. Record, as task 19.1 evidence, that the host order is (SortName, Name) and that no identifier-stable order or server-side keyset predicate exists. Task 19.1's implementation should (a) use the host-supported bounded linear skip (StartIndex -> SQL OFFSET) as the only realizable resume branch, (b) treat the (SortName, itemId) cursor as an ArrTags-side position that must be located by scanning host-ordered pages, and (c) surface the O(offset) per-resume / O(N^2) per-cycle cost and the (SortName, Name) tie ambiguity to the architecture owner, because reconciling the clause 3 total-order wording with the host order is a decision for the architecture-reviewer/orchestrator, not an implementation choice.",
+  "documentation_impact": [
+    "docs/architecture/08-reconciliation-and-update-flow.md: the reconciliation section should state the host's actual candidate order (SortName ASC, Name ASC) and that no identifier-stable order or keyset resume predicate exists.",
+    "docs/decisions/ADR-022.md clause 3: flag that its (SortName, itemId) total-order wording does not match the host order (SortName, Name) and that the identifier tie-break is not host-supported; whether to amend the clause, accept the bounded-linear-skip branch as the sole mechanism, or key the cursor on the host order is an architecture decision.",
+    "docs/research/jellyfin-12-architecture.md or this research directory: link this note as the host-order evidence for task 19.1."
+  ],
+  "open_uncertainties": [
+    "No live HTTP host query was observed; all host-behaviour claims come from the shipped assembly, the pinned source revision, and one host database plan. The task-14.3 database held 0 Movie/Episode rows, so the observed EXPLAIN QUERY PLAN is for an empty candidate set and may differ on a populated database.",
+    "The exact SQLite collation of the SortName and Name columns was not resolved (no collation was found in BaseItemConfiguration.cs); this affects tie frequency but not the absence of an identifier tie-break."
+  ]
+}

@@ -7,7 +7,7 @@ namespace ArrTags.Tests;
 
 /// <summary>
 /// Focused checks for the durable <see cref="ArtworkOperation"/> model and the
-/// pure phase and lifecycle-fence rules from <c>docs/data-model.md</c> section
+/// pure phase and lifecycle-fence rules from <c>docs/data-model/03-10-artworkcacheentry.md</c> section
 /// 3.10.3 and ADR-003. No live Jellyfin or Arr instance is required and no image
 /// mutation is performed.
 /// </summary>

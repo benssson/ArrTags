@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ArrTags.Configuration;
+using ArrTags.Diagnostics;
 using ArrTags.Logging;
 using ArrTags.Media;
 using ArrTags.Providers;
@@ -37,6 +38,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     private readonly IReadOnlyDictionary<ArrProviderKind, IArrMetadataReader> _readers;
     private readonly MetadataStateStore _store;
     private readonly IArrTagsLog<MetadataReconciliationProcessor>? _log;
+    private readonly DiagnosticsMetrics? _metrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MetadataReconciliationProcessor"/> class.
@@ -46,6 +48,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
     /// <param name="readers">The provider-neutral reconciliation readers, one per provider.</param>
     /// <param name="store">The metadata state store.</param>
     /// <param name="log">The optional bounded, secret-free metadata-boundary log.</param>
+    /// <param name="metrics">The optional bounded diagnostics counters (ADR-025); when supplied the matching-failure classification and stale-metadata transition counts are recorded.</param>
     /// <exception cref="ArgumentNullException">A required dependency is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">More than one reader is registered for a provider.</exception>
     public MetadataReconciliationProcessor(
@@ -53,12 +56,14 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         IMediaLibraryResolver library,
         IEnumerable<IArrMetadataReader> readers,
         MetadataStateStore store,
-        IArrTagsLog<MetadataReconciliationProcessor>? log = null)
+        IArrTagsLog<MetadataReconciliationProcessor>? log = null,
+        DiagnosticsMetrics? metrics = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _library = library ?? throw new ArgumentNullException(nameof(library));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _log = log;
+        _metrics = metrics;
         ArgumentNullException.ThrowIfNull(readers);
 
         var map = new Dictionary<ArrProviderKind, IArrMetadataReader>();
@@ -104,36 +109,36 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         var snapshot = _configuration.Current;
         if (item.ConfigurationVersion != snapshot.ConfigurationVersion)
         {
-            return Discard(item.Key.ItemId, FormattableString.Invariant(
+            return Discard(item.Key.ItemId, DiscardReason.ConfigurationStale, FormattableString.Invariant(
                 $"The work was based on configuration v{item.ConfigurationVersion} but the current configuration is v{snapshot.ConfigurationVersion}."));
         }
 
         var currentItem = _library.ResolveItem(item.Key.ItemId);
         if (currentItem is null)
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item is no longer present.");
+            return Discard(item.Key.ItemId, DiscardReason.ItemMissing, "The Jellyfin item is no longer present.");
         }
 
         if (!MediaIdentityFactory.TryCreate(currentItem, _library, out var identity) || identity is null)
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item is no longer a supported media identity.");
+            return Discard(item.Key.ItemId, DiscardReason.IdentityUnavailable, "The Jellyfin item is no longer a supported media identity.");
         }
 
         if (!MediaEligibility.IsEligible(identity, snapshot))
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item is no longer eligible for a badge.");
+            return Discard(item.Key.ItemId, DiscardReason.Ineligible, "The Jellyfin item is no longer eligible for a badge.");
         }
 
         var kind = ResolveProviderKind(identity.ItemType);
         if (kind is null)
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item type has no reconciliation provider.");
+            return Discard(item.Key.ItemId, DiscardReason.Ineligible, "The Jellyfin item type has no reconciliation provider.");
         }
 
         var connection = ResolveConnection(snapshot, kind.Value);
         if (connection is null || !connection.Enabled)
         {
-            return Discard(item.Key.ItemId, "The provider connection is not available.");
+            return Discard(item.Key.ItemId, DiscardReason.ConnectionChanged, "The provider connection is not available.");
         }
 
         if (!_readers.TryGetValue(kind.Value, out var reader))
@@ -156,15 +161,24 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             // An unclassified reader failure is terminal and never publishes.
             if (_log is not null && _log.IsEnabled(LogLevel.Warning))
             {
+                var subject = LogSubject.Create(identity.JellyfinItemId, identity.MediaLocation?.PrimaryPath);
                 _log.Write(
                     LogLevel.Warning,
                     ArrTagsLogEvent.MetadataReadFailed,
                     FormattableString.Invariant(
-                        $"Metadata read failed for item {item.Key.ItemId:D} ({kind.Value.ToApiName()}): the reader threw {exception.GetType().Name}."));
+                        $"Metadata read failed for item {subject} ({kind.Value.ToApiName()}): the reader threw {exception.GetType().Name}."));
             }
 
             return MetadataReconciliationResult.Processed(
                 WorkProcessingResult.Terminal("The provider read failed."));
+        }
+
+        // The read outcome carries the bounded matching classification. Only the
+        // NotFound, Ambiguous, and Unsupported outcomes are matching failures;
+        // a matched or stale outcome records nothing.
+        if (read.Match?.Status is { } matchStatus)
+        {
+            _metrics?.RecordMatchingFailure(matchStatus);
         }
 
         if (!read.IsSuccess || read.Match is null)
@@ -177,11 +191,12 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
 
             if (_log is not null && _log.IsEnabled(LogLevel.Warning))
             {
+                var subject = LogSubject.Create(identity.JellyfinItemId, identity.MediaLocation?.PrimaryPath);
                 _log.Write(
                     LogLevel.Warning,
                     ArrTagsLogEvent.MetadataReadFailed,
                     FormattableString.Invariant(
-                        $"Metadata read failed for item {item.Key.ItemId:D} ({kind.Value.ToApiName()}): {read.Error.Code} ({read.Error.Retryability}). {read.Error.Message}"));
+                        $"Metadata read failed for item {subject} ({kind.Value.ToApiName()}): {read.Error.Code} ({read.Error.Retryability}). {read.Error.Message}"));
             }
 
             if (read.Error.Retryability == ArrErrorRetryability.Later)
@@ -203,28 +218,28 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         if (publishSnapshot.ConfigurationVersion != item.ConfigurationVersion
             || publishSnapshot.ConfigurationVersion != snapshot.ConfigurationVersion)
         {
-            return Discard(item.Key.ItemId, "The configuration changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, DiscardReason.ConfigurationStale, "The configuration changed while the work was processing.");
         }
 
         var publishItem = _library.ResolveItem(item.Key.ItemId);
         if (publishItem is null)
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item was removed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, DiscardReason.ItemMissing, "The Jellyfin item was removed while the work was processing.");
         }
 
         if (!MediaIdentityFactory.TryCreate(publishItem, _library, out var publishIdentity) || publishIdentity is null)
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, DiscardReason.IdentityUnavailable, "The Jellyfin item changed while the work was processing.");
         }
 
         if (!SubjectMatches(identity, publishIdentity))
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, DiscardReason.IdentityUnavailable, "The Jellyfin item changed while the work was processing.");
         }
 
         if (!MediaEligibility.IsEligible(publishIdentity, publishSnapshot))
         {
-            return Discard(item.Key.ItemId, "The Jellyfin item is no longer eligible for a badge.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, DiscardReason.Ineligible, "The Jellyfin item is no longer eligible for a badge.");
         }
 
         var publishConnection = ResolveConnection(publishSnapshot, kind.Value);
@@ -232,7 +247,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             || !publishConnection.Enabled
             || !publishConnection.ConnectionId.Equals(connection.ConnectionId))
         {
-            return Discard(item.Key.ItemId, "The provider connection changed while the work was processing.");
+            return Discard(item.Key.ItemId, identity.MediaLocation?.PrimaryPath, DiscardReason.ConnectionChanged, "The provider connection changed while the work was processing.");
         }
 
         var entry = MetadataStateEntry.From(
@@ -330,18 +345,44 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
         }
     }
 
-    private MetadataReconciliationResult Discard(Guid itemId, string reason)
+    /// <summary>
+    /// Writes one bounded, secret-free discard record for a call site with no
+    /// usable media identity, so the subject is the documented item-identifier
+    /// fallback (ADR-026 clause 3). The discard carries the bounded
+    /// machine-readable <paramref name="discardReason"/> classification
+    /// (ADR-023 clause 1).
+    /// </summary>
+    private MetadataReconciliationResult Discard(Guid itemId, DiscardReason discardReason, string reason)
+    {
+        return Discard(itemId, null, discardReason, reason);
+    }
+
+    /// <summary>
+    /// Writes one bounded, secret-free discard record. The mixed discard site is
+    /// reached both where a media identity exists and where it does not, so the
+    /// subject is the primary media file name when <paramref name="primaryPath"/>
+    /// is available and the item-identifier fallback otherwise. A caller with no
+    /// identity passes no path (ADR-026 clause 3). The discard carries the
+    /// bounded machine-readable <paramref name="discardReason"/> classification
+    /// (ADR-023 clause 1).
+    /// </summary>
+    private MetadataReconciliationResult Discard(
+        Guid itemId,
+        string? primaryPath,
+        DiscardReason discardReason,
+        string reason)
     {
         if (_log is not null && _log.IsEnabled(LogLevel.Information))
         {
+            var subject = LogSubject.Create(itemId, primaryPath);
             _log.Write(
                 LogLevel.Information,
                 ArrTagsLogEvent.MetadataDiscarded,
                 FormattableString.Invariant(
-                    $"Metadata reconciliation discarded item {itemId:D}: {reason}"));
+                    $"Metadata reconciliation discarded item {subject}: {reason}"));
         }
 
-        return MetadataReconciliationResult.Processed(WorkProcessingResult.Completed(reason));
+        return MetadataReconciliationResult.Processed(WorkProcessingResult.Discarded(discardReason, reason));
     }
 
     /// <summary>
@@ -371,6 +412,7 @@ public sealed class MetadataReconciliationProcessor : IWorkItemProcessor
             }
 
             _store.Write(entry.ToStale());
+            _metrics?.RecordStaleMetadata();
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {

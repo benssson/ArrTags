@@ -1,0 +1,133 @@
+{
+  "task": "17.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Independent review of task 17.2 (ADR-025 clause 1 administrator-authenticated read-only status endpoint) against the worker report, the full diff from 885ee7a, the controller, the tests, and the canonical docs. The controller is a public sealed ControllerBase with [ApiController], class-level [Authorize(Policy = Policies.RequiresElevation)] ('RequiresElevation'), [Route(\"ArrTags/Status\")], exactly one [HttpGet] action, no [AllowAnonymous], and no write route. It resolves the 17.1 singleton DiagnosticsSnapshotProvider (registered in ArrTagsServiceRegistrator, discovered by the host through ApplicationHost.GetApiPluginAssemblies/AddControllersAsServices) and returns the fixed-shape DiagnosticsSnapshot unchanged. I independently rebuilt (0 warnings/0 errors), ran the full suite (Failed 0 / Passed 1788 / Skipped 64 / Total 1852) and the focused 17.2 filter (8 passed / 1 host-guarded skip), confirmed the host-guarded fact skips honestly with ARRTAGS_JELLYFIN_HOST_DIR unset, and confirmed render-docs-state is up to date. I reproduced two key sensitivity probes in an isolated /tmp/17.2 git worktree (never touching the working tree): replacing the elevation gate with [AllowAnonymous] failed exactly the 3 claimed tests (surface + both authorization rejections), and adding a secret string property to the snapshot failed exactly the 2 claimed serialization/pipeline tests with a 'ProbeSecretPath' extra leaf. Documentation is consistent: changelog entry, PLANS.md 17.2 checkbox, state.json done=true + reports + updated_utc, architecture 04 component row; phase 17 remains PLANNED (Gate 17) with no v1.2.0-phase17 tag and F3 remains Open. No BLOCKER/HIGH/MEDIUM findings. Only informational notes remain (host-enforcement proxy disclosed, architecture 12's F3 paragraph owned by 17.4, check-docs post-persist pairing). Ready for the next task.",
+  "findings": [
+    {
+      "id": "F-17.2-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "authorization-evidence",
+      "summary": "The in-process 401/403/200 harness proxies MVC's AuthorizeFilter rather than the host's AuthorizationMiddleware; the gap is disclosed and the host-guarded fact only confirms the policy name.",
+      "detail": "The host enables endpoint routing, so [Authorize] is enforced by AuthorizationMiddleware, which is not reachable without Microsoft.AspNetCore.TestHost (a disallowed new dependency). The test harness disables endpoint routing so MVC's AuthorizeFilter evaluates the same [Authorize] metadata against the same IAuthorizationService and a policy registered with the pinned host shape (authenticated principal + Administrator role claim). The 401/403 results can only arise when the filter runs and enforces, and my independent probe (replacing the gate with [AllowAnonymous]) failed exactly the 3 expected tests, so the harness is genuinely load-bearing rather than vacuous. The host-guarded fact EndpointUsesThePinnedHostAdministratorGatingPolicy compares the endpoint's policy name to the pinned host Jellyfin.Api.Controllers.PluginsController class-level policy, but it skips here (ARRTAGS_JELLYFIN_HOST_DIR unset) and, when run, confirms the policy name rather than host AuthorizationMiddleware enforcement. The worker documents both residuals in known_limitations (items 1 and 2) and does not claim the skip as a pass. This is an accepted, honestly disclosed residual; the pinned-host live matrix (section 9 of docs/planning/v1.2.md) is the correct place to exercise real host enforcement.",
+      "evidence": [
+        "tests/ArrTags.Tests/DiagnosticsStatusEndpointTests.cs:434-530 (StatusPipelineHarness, EnableEndpointRouting=false, registered RequiresElevation policy)",
+        "tests/ArrTags.Tests/DiagnosticsStatusEndpointTests.cs:256-274 (host-guarded policy-name fact) and JellyfinHostFactAttribute.cs:22-27 (skip when env var unset)",
+        "docs/implementation/17.2/worker-report.json known_limitations items 1-2",
+        "Independent /tmp/17.2/repo probe: [AllowAnonymous] -> 3 failures (ControllerIsAnElevationGatedApiControllerWithOneGetRoute, AnonymousRequestIsChallengedWithoutASnapshot, AuthenticatedNonAdministratorIsForbidden)"
+      ],
+      "recommended_action": "No change for 17.2. Carry the live-host authorization confirmation into the section 9 pinned-host matrix and the 17.4 security review."
+    },
+    {
+      "id": "F-17.2-2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation-current-state",
+      "summary": "docs/architecture/12 still says the bounded status/diagnostic surface 'is not yet implemented' after the endpoint landed.",
+      "detail": "After 17.2 the elevation-gated endpoint exists, but the ADR-025 surface is endpoint + read-only panel (ADR-025 clauses 1-2), and the panel is task 17.3 with the F3 resolution assigned to task 17.4. The architecture 04 component row added by this task is consistent with architecture 12 (a controller can exist while the user-facing surface is incomplete), F3 correctly remains Open in docs/limitations/open.md, and PLANS.md assigns the F3 documentation to 17.4. The sentence remains defensible because it describes the whole F3 surface, not the endpoint alone, and the phase plan deliberately owns the rewrite in 17.4. Recorded so the orchestrator can confirm 17.4 updates this paragraph when F3 is recorded resolved.",
+      "evidence": [
+        "docs/architecture/12-performance-and-operational-limits.md:173-177",
+        "docs/limitations/open.md:5-15 (F3 still Open)",
+        "PLANS.md Phase 17 task 17.4 'F3 documentation and security review'"
+      ],
+      "recommended_action": "No change for 17.2; ensure 17.4 rewrites docs/architecture/12 and the F3 limitation when the surface ships."
+    },
+    {
+      "id": "F-17.2-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation-reconciliation-evidence",
+      "summary": "The worker's documentation_reconciliation.check_docs field says PASS while its validation log notes the post-persist check-docs run fails only on the expected reviewer-report pairing.",
+      "detail": "The worker recorded the pre-persist check-docs run as nine ok sections / PASS and separately recorded that re-running after persisting the worker report fails only section 9 ('task 17.2 has a worker report but no reviewer report'), which is the orchestrator's reviewer-pairing step. This is transparent and not a documentation defect. I independently confirmed the same: before this reviewer report existed, scripts/check-docs.sh failed only section 9; I will re-run it after persisting this report to confirm the pairing closes.",
+      "evidence": [
+        "docs/implementation/17.2/worker-report.json validation lines 20-21",
+        "Independent scripts/check-docs.sh run: sections 1-8 ok, section 9 'task 17.2 has a worker report but no reviewer report'"
+      ],
+      "recommended_action": "No change; informational."
+    }
+  ],
+  "criterion_verification": [
+    {
+      "criterion": "Read-only plugin controller surface: public sealed ControllerBase with exactly one GET action, [ApiController], class-level [Authorize(Policy = Policies.RequiresElevation)], route under ArrTags/..., not [AllowAnonymous], no POST/PUT/DELETE/PATCH.",
+      "status": "MET",
+      "evidence": "src/ArrTags/Diagnostics/ArrTagsStatusController.cs:27-59 — public sealed class : ControllerBase, [ApiController], [Authorize(Policy = Policies.RequiresElevation)], [Route(RoutePrefix)] with RoutePrefix const 'ArrTags/Status', single [HttpGet] GetStatus. Independent static inspection plus tests ControllerIsAnElevationGatedApiControllerWithOneGetRoute and ControllerExposesExactlyOneReadOnlyGetActionAndNoWriteRoute (passing)."
+    },
+    {
+      "criterion": "Resolves DiagnosticsSnapshotProvider from DI and returns the fixed-shape, bounded, secret-free snapshot; no string/path/item-name/identifier-list/provider-payload/credential/unbounded collection.",
+      "status": "MET",
+      "evidence": "Controller ctor takes DiagnosticsSnapshotProvider (registered TryAddSingleton in ArrTagsServiceRegistrator.cs:78-82 and discovered by the host via plugin assembly/AddControllersAsServices). Response graph: DiagnosticsSnapshot (2 int, 2 ArrConnectionHealth enums, 2 sub-records), MatchingFailureCounts (3 long), RenderFailureCounts (18 long) — no string/path/list/payload field. Serialized shape test pins exactly 28 leaf paths with only the two health enum strings, rejecting Array/Object/Boolean/Null. Independent probe adding a secret string property failed both the direct serialization and pipeline shape tests with extra leaf 'ProbeSecretPath'."
+    },
+    {
+      "criterion": "Never mutates configuration, work, or artwork; ADR-016 clause 6 anonymous static page resource and configuration save path unchanged; no new configuration.",
+      "status": "MET",
+      "evidence": "Action body only returns _snapshotProvider.GetSnapshot(); provider reads LibraryWorkQueue.Count/InFlightCount (lock-guarded getters) and DiagnosticsMetrics.Capture (Interlocked/Volatile reads) — no mutation. ActionReturnsTheLiveFixedShapeSnapshotAndChangesNoState asserts counters, queue depth, and in-flight count identical before/after. Full diff from 885ee7a touches no PluginConfiguration/OperationalLimits/Plugin.cs/Configuration/config.html/csproj; no package reference added; existing configuration/page tests still pass."
+    },
+    {
+      "criterion": "Authorization tests genuinely establish the elevation gate and secret-freedom; key guards fail when behavior is removed; in-process harness assessed as a meaningful proxy and any gap honestly disclosed.",
+      "status": "MET",
+      "evidence": "Structural test asserts the single AuthorizeAttribute policy and no AllowAnonymous; pipeline tests assert 401 (anonymous, empty body), 403 (authenticated non-admin, empty body), and 200 with a body equal to the live snapshot serialization for an admin. Independently reproduced probe A ([AllowAnonymous]) -> exactly 3 failures and probe H (secret string property) -> exactly 2 failures in an isolated worktree. The AuthorizeFilter-vs-AuthorizationMiddleware substitution is disclosed in known_limitations; the host-guarded fact skips here and is not claimed as a pass."
+    },
+    {
+      "criterion": "Acceptance criteria coverage against ADR-025 clauses 1, 3, 4, 5 and v1.2 Goal F3; no overreach into 17.3/17.4.",
+      "status": "MET",
+      "evidence": "Clause 1 endpoint/read-only/elevation/no-write -> controller surface above. Clause 3 fixed counter set (queue depth+in-flight, provider health, matching failures, cache hits/misses, render failures, stale metadata) -> DiagnosticsSnapshot fields. Clause 4 fixed bounded shape/no per-item array -> 28-leaf shape test. Clause 5 no new configuration + unchanged ADR-016 clause 6 page -> unchanged config/page files and passing existing page tests. F3 remains Open; panel (17.3) and endpoint security review + F3 resolution (17.4) are untouched."
+    },
+    {
+      "criterion": "Build passes 0 warnings; default suite passes with no new failures/skips beyond the disclosed host-guarded skip.",
+      "status": "MET",
+      "evidence": "Independent full rebuild: 'Build succeeded. 0 Warning(s) 0 Error(s)'. Independent ./build.sh test: 'Failed: 0, Passed: 1788, Skipped: 64, Total: 1852'. Focused 17.2 filter: Failed 0, Passed 8, Skipped 1. ARRTAGS_JELLYFIN_HOST_DIR unset; the one new skip is the host-guarded EndpointUsesThePinnedHostAdministratorGatingPolicy fact, and the worker does not claim it as a pass."
+    },
+    {
+      "criterion": "Documentation reconciliation: changelog entry, PLANS.md 17.2 checkbox, state.json done/reports/updated_utc, architecture 04 accuracy, render-docs-state and check-docs run, phase 17 still PLANNED with no gate/tag.",
+      "status": "MET",
+      "evidence": "Diff shows changelog 'Task 17.2' entry, PLANS.md '- [x] 17.2', state.json 17.2 done=true + reports path + updated_utc 2026-09-26T00:12:24Z, architecture 04 diagnostics status controller row. render-docs-state -> 'up to date'. Phase 17 state.json status 'PLANNED', gate 'Gate 17', tag 'v1.2.0-phase17'; git tag --list shows no v1.2.0-phase17. check-docs fails only on the reviewer-pairing step before this report; re-run after persisting is recorded below."
+    }
+  ],
+  "tests_checked": [
+    "tests/ArrTags.Tests/DiagnosticsStatusEndpointTests.cs (all 9 cases read; 8 pass, 1 host-guarded skip)",
+    "Focused run: dotnet test --filter FullyQualifiedName~ArrTags.Tests.DiagnosticsStatusEndpointTests -> Passed 8 / Skipped 1 / Failed 0",
+    "Full suite: ./build.sh test -> Failed 0 / Passed 1788 / Skipped 64 / Total 1852",
+    "Full rebuild: dotnet build ArrTags.slnx -c Release --no-restore -t:Rebuild -> 0 Warning(s) / 0 Error(s)",
+    "Independent sensitivity probe A in /tmp/17.2 worktree: [AllowAnonymous] -> 3 expected failures",
+    "Independent sensitivity probe H in /tmp/17.2 worktree: extra secret string property on DiagnosticsSnapshot -> 2 expected failures (extra 'ProbeSecretPath' leaf)",
+    "scripts/check-docs.sh (pre-reviewer-report: only section 9 reviewer-pairing failure)",
+    "dotnet run scripts/render-docs-state.cs -> status.md/PLANS.md up to date"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-12-architecture.md section 2.2 (plugin controllers discovered via ApplicationHost.GetApiPluginAssemblies and added as MVC application parts)",
+    "docs/research/jellyfin-12-architecture.md section 9.3 (PluginsController class-level [Authorize(Policy = Policies.RequiresElevation)]; policy defined as custom-auth scheme + RequireClaim(ClaimTypes.Role, UserRoles.Administrator))",
+    "docs/research/jellyfin-12-architecture.md section 9.6 (JsonDefaults.Options naming behavior classified as public-but-potentially-unstable; verified the endpoint shape contract does not depend on spelling)"
+  ],
+  "documentation_checked": [
+    "docs/changelog/v1.2.0.md (Task 17.2 entry)",
+    "PLANS.md (task 17.2 checkbox; phase 17 task list; Gate 17)",
+    "docs/plan/state.json (task 17.2 done/reports/updated_utc; phase 17 status PLANNED)",
+    "docs/status.md (regenerated; F3 remains Open, phase 17 active)",
+    "docs/architecture/04-plugin-components-and-boundaries.md (diagnostics status controller row accuracy)",
+    "docs/architecture/12-performance-and-operational-limits.md (F3 paragraph; deferred to 17.4)",
+    "docs/limitations/open.md (F3 still Open)",
+    "docs/decisions/ADR-025.md (clauses 1, 3, 4, 5)",
+    "docs/planning/v1.2.md (Goal F3, section 9 verification requirements)",
+    "docs/agent-contracts.md (report path/status enums)"
+  ],
+  "worker_evidence_check": {
+    "acceptance_criteria": "Present and consistent with the diff, tests, and independent probes.",
+    "test_sensitivity": "Present (8 probes A-H); key probes A and H independently reproduced in an isolated worktree.",
+    "documentation_reconciliation": "Present; claimed surfaces match the diff (changelog, PLANS.md, state.json, architecture 04); check-docs pairing explained.",
+    "interpretations": "Present and reasonable (direct DiagnosticsSnapshot vs DTO; in-process authorization harness rationale).",
+    "rework": "Empty; this is attempt 1 and the task was not previously returned for correction."
+  },
+  "validation_run": [
+    ". /config/arrtags-env.sh && dotnet build ArrTags.slnx --configuration Release --no-restore -t:Rebuild -> Build succeeded. 0 Warning(s) 0 Error(s)",
+    ". /config/arrtags-env.sh && ./build.sh test -> Passed! Failed: 0, Passed: 1788, Skipped: 64, Total: 1852",
+    ". /config/arrtags-env.sh && dotnet test --filter FullyQualifiedName~ArrTags.Tests.DiagnosticsStatusEndpointTests -> Passed 8, Skipped 1, Total 9",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> status.md: up to date; PLANS.md: up to date",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> sections 1-8 ok; section 9 reviewer-pairing failure only (expected before this report)",
+    "Isolated /tmp/17.2 git worktree (removed after use): baseline 8 passed/1 skipped; [AllowAnonymous] probe 3 failed; secret-string-property probe 2 failed. Main worktree confirmed unchanged (git status clean of probe residue)."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

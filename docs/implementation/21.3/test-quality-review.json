@@ -1,0 +1,150 @@
+{
+  "subject": "Task 21.3 — v1.2 release build, full default and host-guarded suites, reproducible artifact, and release documentation",
+  "reviewer": "test-quality-reviewer",
+  "attempt": 1,
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "status": "PASS_WITH_FINDINGS",
+  "summary": "I independently reproduced every load-bearing claim in the 21.3 worker report. The recorded archive identity is exact: artifacts/ArrTags_1.2.0.0.zip is 619,538 bytes, SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, MD5 3100aae94a2b4aedf222eca040675271, 7 entries with exactly the documented per-entry names, sizes, and per-entry SHA-256 values. I produced a fourth clean build myself, from an independent git-exported clean tree (1,085 tracked files, no .git/bin/obj/artifacts) at a different absolute path than any of the worker's runs, and it produced the byte-identical archive with 0 warnings / 0 errors. All four matrix cells reproduce exactly: default-with-archive 0/1927/66/1993, default-without-archive 0/1924/69/1993, host-guarded 0/1947/46/1993, forced-native 0/2014/21/2035. The pinned Jellyfin 12.0.0 host is genuinely present and the 20 host facts genuinely execute (0 skipped in the host-fact classes with ARRTAGS_JELLYFIN_HOST_DIR set; 1947-1927 = 20). The forced-native caveat is honest: bare ARRTAGS_SKIA_COMPAT=1 fails loudly with DllNotFoundException rather than silently skipping, so the guard is fail-open-on-set in the honest direction. Reproducibility is honestly documented as unguarded by any automated test, and the measured counts are labelled with their configuration preconditions rather than presented as invariants. Two repeat default runs returned identical counts, and no test writes to the committed goldens. The task changed no code and no tests (git diff is the six documentation/metadata files only), and introduced no new or widened guard. No BLOCKER and no HIGH. The two MEDIUM findings are the same underlying gap seen from two surfaces: the shipped v1.2.0 identity and matrix live only in docs/release/build-and-release.md, and the one automated cross-check that looks like it validates a recorded artifact identity (scripts/check-docs.sh) is bound to the superseded 1.1.0.0 identity in state.json, so it cannot catch a wrong v1.2.0 SHA-256. I demonstrated this by mutating the 1.2.0.0 SHA-256 in both places and observing check-docs still report 'ok: artifact identity agrees' and 'check-docs: PASS'. This is a real false-confidence surface, but it is an inherited property of the state.json release-sequencing decision that the worker disclosed and that task 21.6 owns, and the release document states the underlying untruth plainly. It therefore does not undermine the 21.3 acceptance criteria, which are the reproducibility of the build and the accuracy of the documented matrix, both of which I confirmed.",
+  "matrix_observed": {
+    "default": "0 failed / 1927 passed / 66 skipped / 1993 total (archive present) — independently reproduced; the documented no-archive variant 0 / 1924 / 69 / 1993 also independently reproduced",
+    "host_guarded": "0 failed / 1947 passed / 46 skipped / 1993 total (ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-14.3/jellyfin) — independently reproduced; all 20 host facts execute, 0 skipped",
+    "forced_native": "0 failed / 2014 passed / 21 skipped / 2035 total (ARRTAGS_SKIA_COMPAT=1 with the pinned probe sysroot) — independently reproduced; 21 = 20 host + 1 non-canonical",
+    "clean_rebuild_reproducibility": "4 independent clean builds (2 worker clean exports, 1 worker working-tree build after wiping bin/obj/artifacts, 1 reviewer clean export at a new absolute path) all produced SHA-256 50580499...f90762, MD5 3100aae9...5271, 619538 bytes, 7 entries",
+    "baseline_check_docs": "Fails only on the expected transient 'task 21.3 has a worker report but no reviewer report'; every other section ok, matching the worker's documentation_reconciliation.check_docs_note"
+  },
+  "skip_taxonomy_verified": {
+    "default_66": "20 pinned-host facts (JellyfinImageRoute 5, JellyfinImageResponse 9, PluginDiscoveryHost 2, DashboardSettingsPage 2, ConfigurationRoundTrip 1, DiagnosticsStatusEndpoint 1) + 45 ARRTAGS_SKIA_COMPAT cases (41 SkiaNativeFact + 4 SkiaNativeTheory) + 1 ARRTAGS_NONCANONICAL_GOLDENS case",
+    "arithmetic_check": "66 - 46 = 20 host facts (matches the 1947-1927 pass delta); 46 - 1 = 45 native; 2014 - 1927 = 87 executed native cases expanding the total 1993 -> 2035, i.e. the 45 gated cases become 87",
+    "no_archive_69": "66 + 3 PackagedPluginFact package-content skips; the same 3 execute and pass when the archive is present (1947 vs 1944 equivalent deltas are consistent)",
+    "guards_fail_rather_than_skip": "Verified by reading all four guard attributes: PackagedPluginFact, JellyfinHostFact, SkiaNativeFact/SkiaNativeTheory, and NonCanonicalRuntimeFact each set Skip only when the enabling environment variable is absent; when the variable is set the test executes and fails on a missing prerequisite. Confirmed empirically for the native guard: bare ARRTAGS_SKIA_COMPAT=1 produces DllNotFoundException failures rather than silent skips."
+  },
+  "findings": [
+    {
+      "id": "TQ-21.3-1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "detail": "The shipped v1.2.0 artifact identity has no automated guard at all. scripts/check-docs.sh's 'artifact identity agrees (sha256, md5, bytes)' section cross-checks the release document against the FIRST sha256/md5/bytes in docs/plan/state.json, which is still the superseded 1.1.0.0 identity — not the 1.2.0.0 identity. I demonstrated the gap directly: in a clean copy of the tree I replaced the 1.2.0.0 SHA-256 with a one-digit mutation in both places it appears in docs/release/build-and-release.md, and check-docs still reported 'ok: artifact identity agrees' and 'check-docs: PASS'. Because the release document also honestly states that no automated test guards archive byte-identity, there is therefore nothing — not a test, not check-docs — that would fail if the recorded 1.2.0.0 SHA-256, MD5, size, or entry table were wrong. The only assurance is the manual comparison this task performed. The root cause is the deliberate decision not to advance state.json current_release in 21.3 (the release is not published; 21.6 owns the manifest commit and tag), which the worker disclosed in acceptance criterion 3 and in interpretations. The document is not overclaiming about the archive bytes, but it does not say that the recorded identity STRINGS are also unguarded.",
+      "evidence": [
+        "scripts/check-docs.sh lines 73-84: `sha=$(grep -oE '\"sha256\": \"[0-9a-f]{64}\"' docs/plan/state.json | head -1 ...)` — takes the first match, i.e. the 1.1.0.0 identity",
+        "docs/plan/state.json lines 57-68: current_release.version = \"1.1.0.0\", artifact.sha256 = 85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1",
+        "Reviewer probe: sed-mutating 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762 -> deadbe04... (2 occurrences) in /tmp/final-review/test-quality/release-src-c/docs/release/build-and-release.md => 'ok: artifact identity agrees (sha256, md5, bytes)' and 'check-docs: PASS'; file restored byte-identically (sha256 ffdbdb1b6f7ead6f426c2e6bac1d72e15e2905a1ab7e216029327801e5160b3b, matching the repo copy)",
+        "Mirror of the worker's own sensitivity probe A, which mutated the retained 1.1.0.0 SHA-256 and correctly failed — confirming the guard is live but pointed at the superseded release"
+      ],
+      "recommended_action": "Record in docs/limitations/accepted.md item P1 (alongside the existing 'no automated test guards byte-reproducibility' bullet) that the recorded v1.2.0.0 identity strings are likewise unguarded until state.json current_release is advanced. When task 21.6 advances current_release to 1.2.0.0, the existing check-docs section will automatically begin guarding the shipped identity; confirm that at 21.6 rather than assuming it. Optionally add a check-docs assertion that every SHA-256/MD5 labelled as the current release in docs/release/build-and-release.md appears in state.json."
+    },
+    {
+      "id": "TQ-21.3-2",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "detail": "The canonical generated current-state still reports 1.1.0.0 as the current release and carries the v1.1 matrix, so the v1.2.0.0 identity and suite matrix exist in exactly one surface (docs/release/build-and-release.md). docs/status.md is rendered from state.json current_release, which 21.3 deliberately left at 1.1.0.0; it therefore shows the 1.1.0.0 artifact, the v1.1 counts (default 0/1494/63/1557, host-guarded 0/1513/44/1557, forced-native 0/1575/20/1595), and Verification pointers to the v1.1 live-verification, security-review, and release-review records. A reader of the canonical current-state document alone would conclude the current release is 1.1.0.0. The same staleness appears in docs/limitations/accepted.md item P1, which still calls the 1.1.0.0 archive 'the current 1.1.0.0 identity' and presents the v1.1 matrix as current. This is a consequence of the release-sequencing decision rather than an error in 21.3's own scope, but it widens the false-confidence surface created by TQ-21.3-1: no generated or guard-checked surface corroborates the v1.2.0.0 numbers.",
+      "evidence": [
+        "docs/status.md lines 8-19 (inside the BEGIN/END GENERATED markers): '**Current release:** `1.1.0.0` (tag `v1.1.0`)', '**Artifact:** `artifacts/ArrTags_1.1.0.0.zip` — 594931 bytes', '**Test suite (`1.1.0.0`)** ... default 0 / 1494 / 63 / 1557; host-guarded 0 / 1513 / 44 / 1557; forced-native 0 / 1575 / 20 / 1595', Verification pointers to docs/implementation/14.3 and 14.4",
+        "docs/plan/state.json lines 57-80: current_release = 1.1.0.0 with the v1.1 suite block",
+        "docs/limitations/accepted.md lines 145-147: 'Byte-identity of `artifacts/ArrTags_1.1.0.0.zip` ... the current `1.1.0.0` identity'",
+        "git diff --stat: only PLANS.md, README.md, docs/plan/state.json, docs/release/build-and-release.md, docs/testing/jellyfin-12-musl-test-host.md, manifest.json changed — docs/status.md is generated and correctly not hand-edited"
+      ],
+      "recommended_action": "Advance state.json current_release to 1.2.0.0 as part of task 21.6 (which already owns the manifest commit and the v1.2.0 tag) and re-render, so the generated current-state carries the v1.2.0.0 identity and matrix. In the same pass, refresh the stale 1.1.0.0 'current identity' wording in docs/limitations/accepted.md item P1 and its v1.1 matrix paragraph. No change to task 21.3's own deliverables is required."
+    },
+    {
+      "id": "TQ-21.3-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "detail": "The worker's manual multi-run reproducibility comparison is adequate evidence, and the documentation says so without overclaiming. I assess this explicitly as required. Three independent clean-state builds (two clean exports at different absolute paths, plus the working tree after wiping bin/obj/artifacts) plus my own fourth clean export at a new absolute path all produced the byte-identical archive. The result is structural rather than incidental: docs/release/build-and-release.md documents a sorted-ordinal-entry writer, a fixed 2000-01-01 ZIP timestamp, a PathMap to a fixed root, IncludeSourceRevisionInInformationalVersion=false, and SuppressImplicitGitSourceLink=true, so identical source bytes necessarily yield identical archives. The release document additionally records that byte-reproducibility is demonstrated with the pinned SDK only and that a different SDK could change compiler or deflate output, and limitations item P1 repeats this. The counts are framed as measurements scoped to 1.2.0.0 with explicit preconditions ('With a previously produced artifacts/ArrTags_1.2.0.0.zip present ... Without a previously produced archive (as in the clean-checkout procedure below...)'), not as configuration-independent invariants. I found no place where reproducibility is presented as test-guarded, and no place where a measured count is presented as a guaranteed invariant. No action required.",
+      "evidence": [
+        "Reviewer clean rebuild: git-exported tree to /tmp/final-review/test-quality/release-src-c (1,085 files, 0 bin/obj/artifacts dirs, only .gitignore and docs/planning/.gitkeep matching '.git*', no .git) => 'Build succeeded. 0 Warning(s) 0 Error(s)', 'Created deterministic package: .../artifacts/ArrTags_1.2.0.0.zip (7 entries)', sha256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, md5 3100aae94a2b4aedf222eca040675271, 619538 bytes",
+        "Direct re-hash of the repository artifact: 619538 bytes, sha256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762, md5 3100aae94a2b4aedf222eca040675271, 7 entries with the exact documented sizes",
+        "docs/release/build-and-release.md lines 116-145 (deterministic packaging mechanism), lines 394-403 ('Byte-reproducibility depends on the pinned toolchain ... No automated test guards byte-identity; PluginPackagingTests asserts the package contents ... not the archive bytes')",
+        "docs/limitations/00-index.md line 44: criterion 9 'Met — Reproducibility is guaranteed only for the pinned SDK (item P1)'; docs/limitations/accepted.md lines 143-157 (P1)",
+        "Archive restored bit-identical after the no-archive suite run: sha before = sha after = 50580499...f90762"
+      ],
+      "recommended_action": "None. Preserve the existing honest wording; keep TQ-21.3-1's suggested P1 addition separate from this."
+    },
+    {
+      "id": "TQ-21.3-4",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage",
+      "detail": "The package-content guard binds to the lexicographically greatest artifacts/ArrTags_*.zip, not to the archive matching build.yaml's current version. PluginPackagingPaths.TryFindPackageArchive enumerates artifacts/ArrTags_*.zip, OrderBy Ordinal, LastOrDefault. The release document states the precondition as 'With a previously produced artifacts/ArrTags_1.2.0.0.zip present', which is stricter than the guard actually enforces. If a stale higher-sorting archive (for example 1.10.0.0, which sorts before 1.2.0.0, but any 1.3.x or 9.x artifact) were left in artifacts/, the three PackagedPluginFact assertions would silently validate that archive instead of the shipping one and would not fail. This is pre-existing Phase 5/7 behaviour, not introduced or widened by 21.3, and it does not affect any 21.3 result because only ArrTags_1.2.0.0.zip is present. It is worth recording because the worker's own sensitivity probe D depended on this exact selection rule (the synthetic 9.9.9.9 archive was picked precisely because it sorts last), which makes the mechanism visible but not guarded.",
+      "evidence": [
+        "tests/ArrTags.Tests/PackagedPluginFactAttribute.cs lines 57-74: `Directory.EnumerateFiles(artifacts, \"ArrTags_*.zip\").OrderBy(path => path, StringComparer.Ordinal).LastOrDefault()`",
+        "tests/ArrTags.Tests/PluginPackagingTests.cs lines 78-120: the three PackagedPluginFact tests assert required entries, build.yaml artifacts, and absence of SkiaSharp.dll/libSkiaSharp.so — contents only, no byte-identity assertion and no version binding",
+        "docs/release/build-and-release.md lines 78-88: the documented precondition names artifacts/ArrTags_1.2.0.0.zip specifically",
+        "Worker report validation entry 15 (probe D): the synthetic ArrTags_9.9.9.9.zip was the archive selected by the guard, and the real archive was restored and re-hashed to 50580499...f90762 afterwards"
+      ],
+      "recommended_action": "Either bind the guard to the version parsed from build.yaml (so a mismatched archive is ignored or fails) or soften the release document's precondition wording to match the real rule ('with some artifacts/ArrTags_*.zip present'). Low priority; track rather than gate 21.3."
+    },
+    {
+      "id": "TQ-21.3-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "detail": "state.json 21.3 reports pre-declares reviewer-report.json and test-quality-review.json, so scripts/check-agents.sh currently fails with 'task 21.3 has a worker report but no reviewer report'. This is the expected single-writer transient: the worker had to declare the evidence paths before the review reports exist, and check-agents.sh section 'plan state lists the review evidence' already passes. The worker documented the exact failure and its cause in documentation_reconciliation.check_docs_note, and named the same transient for 21.1/21.2. Verified: my baseline scripts/check-docs.sh run on the current tree produced exactly that single FAIL and nothing else. No action for the worker; the orchestrator closes it when the implementation-reviewer report is committed.",
+      "evidence": [
+        "Reviewer baseline run of scripts/check-docs.sh: only 'FAIL: task 21.3 has a worker report but no reviewer report (add an exemption only if covered)'; all twelve other lines ok; final line 'check-docs: FAIL'",
+        "docs/plan/state.json lines 1374-1382: reports lists reviewer-report.json, test-quality-review.json, worker-report.json",
+        "Worker report documentation_reconciliation.check_docs_note: quotes the same transient and attributes it to the not-yet-existing implementation-reviewer report"
+      ],
+      "recommended_action": "None. Expected transient; ensure docs/implementation/21.3/reviewer-report.json is committed by the orchestrator so check-agents.sh passes."
+    },
+    {
+      "id": "TQ-21.3-6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "detail": "No test and no check-docs section validates manifest.json. I confirmed the shipped values are correct — versions[0].checksum 3100aae94a2b4aedf222eca040675271 equals md5sum of the artifact, sourceUrl points at the v1.2.0 release asset, versions are newest-first with 1.1.0.0 and 1.0.1.0 retained, and versions[0].version/targetAbi match build.yaml. The equality is enforced at publish time by scripts/publish-release.sh, and the release document phrases it as a requirement ('The checksum must equal md5sum artifacts/ArrTags_1.2.0.0.zip') rather than as a tested invariant, so this is honest. Recorded for completeness because it is the same category of one-shot, non-repeating verification as TQ-21.3-1.",
+      "evidence": [
+        "manifest.json versions[0]: checksum 3100aae94a2b4aedf222eca040675271 (== md5sum artifacts/ArrTags_1.2.0.0.zip, independently recomputed), sourceUrl .../v1.2.0/ArrTags_1.2.0.0.zip, timestamp 2026-09-29T11:03:39Z, version 1.2.0.0, targetAbi 12.0.0.0; versions[1] 1.1.0.0 and versions[2] 1.0.1.0 retained",
+        "grep over scripts/: manifest.json is referenced only by scripts/write-manifest.cs and scripts/publish-release.sh; scripts/check-docs.sh has no manifest reference",
+        "docs/release/build-and-release.md line 293: 'The `checksum` must equal `md5sum artifacts/ArrTags_1.2.0.0.zip`'"
+      ],
+      "recommended_action": "None required. At 21.6, confirm publish-release.sh's post-write/post-upload MD5 verification runs against the committed manifest.json."
+    },
+    {
+      "id": "TQ-21.3-7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism",
+      "detail": "Determinism and guard-stability confirmed. The task changes no code and no tests: git diff --stat is the six documentation and metadata files only (112 insertions, 76 deletions), with docs/implementation/21.3/ untracked; no production, test, build-metadata, or immutable-history file was touched, and no commit or tag was created. Therefore no new skip or guard was introduced or widened. Empirically: two consecutive default ./build.sh test runs returned byte-identical counts (0/1927/66/1993 both times, 21 s and 20 s), and the host-guarded and forced-native tiers each reproduced their recorded figures on my run. No test writes or regenerates the committed goldens — a grep for File.Write/Create/Delete/Copy and .Save( across the test sources against 'Goldens' returns nothing, consistent with the tests csproj comment that goldens are read-only inputs copied unchanged. The packaging guard's archive selection is order-independent (Ordinal sort, Last), so it does not depend on filesystem enumeration order. No wall-clock, network, or process-state dependence was introduced.",
+      "evidence": [
+        "git status --porcelain: M PLANS.md, M README.md, M docs/plan/state.json, M docs/release/build-and-release.md, M docs/testing/jellyfin-12-musl-test-host.md, M manifest.json, ?? docs/implementation/21.3/ — no src/ or tests/ entries",
+        "git diff --stat: 6 files changed, 112 insertions(+), 76 deletions(-)",
+        "Two consecutive reviewer default-suite runs: 'Failed: 0, Passed: 1927, Skipped: 66, Total: 1993' (Duration 21 s) and 'Failed: 0, Passed: 1927, Skipped: 66, Total: 1993' (Duration 20 s)",
+        "grep -rn 'Goldens' tests/ArrTags.Tests/*.cs filtered on WriteAll|File.Write|File.Create|File.Delete|File.Copy|.Save( => no matches; tests/ArrTags.Tests/Goldens/ contains only committed read-only png inputs and a manifest.json",
+        "tests/ArrTags.Tests/ArrTags.Tests.csproj lines 48-52: '<None Update=\"Goldens/**/*\" CopyToOutputDirectory=\"PreserveNewest\" />' with the comment that no test may write or regenerate them"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "substitutes_checked": [
+    "PluginPackagingTests: three [PackagedPluginFact] tests open the real archive with ZipFile.OpenRead (real path substitution — the genuine produced artifact, not a fake) but assert contents only: required entry names present and non-empty, every build.yaml artifact present, and absence of SkiaSharp.dll / libSkiaSharp.so. They do not assert archive bytes, entry timestamps, entry order, or the recorded SHA-256/MD5/size, so the packaging claim is a content claim, not an identity claim. The four [Fact] tests in the same class assert build.yaml strings and csproj text — configuration assertions, correctly labelled by their own doc comment as pinning the shipped artifact list and the PackagePlugin contract.",
+    "JellyfinArtworkImageAccessTests: the two [SkiaNativeFact] tests use DispatchProxy doubles for ILibraryManager and IImageProcessor and a real temp file, so the item lookup and bounded-read logic is exercised against substitutes for the host, not against a live Jellyfin. I initially mis-read their skip under a host-guarded filtered run as a host-fact anomaly; re-reading the file shows they are [SkiaNativeFact] and correctly skip whenever ARRTAGS_SKIA_COMPAT is unset, in both the full and filtered host-guarded runs. No host fact skips when the host directory is set.",
+    "Host-guarded tier: reflects over the real pinned Jellyfin.Api.dll from /tmp/arrtags-14.3/jellyfin (assemblies on disk), not over a NuGet copy and not over a live instance. The live pinned-host matrix is explicitly out of scope and owned by task 21.4; the worker record and the release document both say so.",
+    "Forced-native tier: uses the real pinned SkiaSharp 3.119.4 native stack from the repository's recorded probe sysroot, not a stub. Recorded caveat confirmed empirically: bare ARRTAGS_SKIA_COMPAT=1 without the dependency chain fails with System.DllNotFoundException for libSkiaSharp rather than skipping, so the substitute-free claim holds.",
+    "Non-canonical golden set: no non-canonical runtime exists in this environment, so the single [NonCanonicalRuntimeFact] is skipped in every tier and is recorded as limitation V2 (ADR-010 unselected and unrun) rather than claimed as verified."
+  ],
+  "skips_checked": [
+    "PackagedPluginFact (3 cases): skips when no artifacts/ArrTags_*.zip is present. Present in the default and host-guarded runs I measured; skipped in the documented no-archive variant. Both figures documented with the precondition stated.",
+    "JellyfinHostFact (20 cases: JellyfinImageRoute 5, JellyfinImageResponse 9, PluginDiscoveryHost 2, DashboardSettingsPage 2, ConfigurationRoundTrip 1, DiagnosticsStatusEndpoint 1): skipped by default, executed under ARRTAGS_JELLYFIN_HOST_DIR. Confirmed executed: filtered run over exactly those six classes with the host directory set returned 43 passed / 0 skipped / 43 total, and the full-run pass delta 1947-1927 = 20 matches the documented count exactly.",
+    "SkiaNativeFact (41) + SkiaNativeTheory (4) = 45 cases: skipped unless ARRTAGS_SKIA_COMPAT=1. Skipped in default and host-guarded runs; executed in the forced-native run where 45 gated cases expand to 87 executed (total 1993 -> 2035, passes 1927 -> 2014). The doc states the expansion and the reason.",
+    "NonCanonicalRuntimeFact (1 case): skipped unless ARRTAGS_NONCANONICAL_GOLDENS=1; no such golden set exists here. Skipped in all three documented tiers and recorded as accepted limitation V2.",
+    "No guard was weakened: all four guard attributes set Skip only on an absent enabling variable, and the doc comment on each states that a set-but-unusable prerequisite fails rather than silently passing. Verified by reading PackagedPluginFactAttribute.cs, JellyfinHostFactAttribute.cs, SkiaHostCompatibilityTests.cs (SkiaNativeFactAttribute), SkiaNativeTheoryAttribute.cs, and NonCanonicalRuntimeFactAttribute.cs."
+  ],
+  "determinism_checked": [
+    "Two consecutive default-suite runs on the same tree: identical Failed 0 / Passed 1927 / Skipped 66 / Total 1993.",
+    "Clean-build determinism: four independent clean-state builds (three by the worker, one by me at a new absolute path) produced the identical archive SHA-256, MD5, and 619,538-byte size; the repository artifact was re-hashed after the no-archive suite run and was unchanged.",
+    "The archive was moved aside and restored during the no-archive measurement and verified bit-identical afterwards, so the measurement did not corrupt the shipped artifact.",
+    "No golden auto-approval risk: no test writes, regenerates, or normalizes the committed goldens; they are copied to the test output unchanged.",
+    "No filesystem-order dependence in the packaging guard (Ordinal sort then Last); no wall-clock or network dependence introduced by 21.3; no process-state or shared-mutable-state leakage observed across the six suite runs I performed."
+  ],
+  "limitations": [
+    "This audit verified task 21.3's claims (reproducible artifact, documented identity, accurate default and host-guarded matrices, honest forced-native caveat). It did not re-audit the correctness of the ~1,927 passing tests themselves; that is the accumulated Phase 1-21 verification effort, and the live pinned-host matrix is owned by task 21.4.",
+    "The host-guarded tier reflects over the pinned host's assemblies on disk. It is not a live Jellyfin run, and no claim in this review should be read as live-host verification.",
+    "The forced-native tier depends on the repository's recorded probe sysroot at /tmp/arrtags-skia-probe, which exists in this environment. On a host without that pinned native chain the tier is not runnable; the worker recorded this and the release document records it, but the recorded 0/2014/21/2035 figures are therefore environment-conditional and were measured only here.",
+    "The no-archive default figure (0/1924/69/1993) was measured in the built repository tree with the archive moved aside rather than from a fresh clean export. I reproduced it in the same condition. It is the correct measurement of 'no artifacts/ArrTags_*.zip present', which is what the clean-checkout test-before-package step produces, but it is not itself a clean-export run; the worker disclosed this and the release document's wording matches the condition rather than the procedure.",
+    "The artifact is gitignored build output and is not in the committed tree, so the recorded identity could only be verified against the local build, not against a committed or published asset. The GitHub release and asset upload remain the user's manual step (task 21.6).",
+    "Severity judgement on TQ-21.3-1 and TQ-21.3-2: both are recorded MEDIUM rather than HIGH because neither makes a 21.3 acceptance claim false. The reproducibility claim is independently reproducible (four runs, including mine), the matrix figures are exact, and the release document states the underlying unguarded-truth plainly. They are false-confidence surfaces for the *next* task and for the release reviewer, who should re-check that advancing state.json current_release at 21.6 brings the recorded v1.2.0.0 identity under the check-docs guard rather than assuming the guard already applies."
+  ]
+}

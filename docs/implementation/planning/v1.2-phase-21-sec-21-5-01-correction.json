@@ -1,0 +1,384 @@
+{
+  "name": "v1.2-phase-21-sec-21-5-01-correction",
+  "milestone": "v1.2",
+  "release": {
+    "version": "1.2.0.0",
+    "release_tag": "v1.2.0",
+    "phase": 21
+  },
+  "status": "PLANNED (corrective tasks 21.7-21.10 derived and recorded; none started; no product behavior implemented; no existing task reopened or renumbered)",
+  "change": "Add the corrective work the user decided on after the Phase 21 release security review recorded the new open MEDIUM finding SEC-21.5-01: fix the provider transport so a 3xx is never followed with X-Api-Key attached (task 21.7), then re-derive the release artifact identity (task 21.8), the live pinned-host matrix (task 21.9), and the release security review (task 21.10) against the corrected build, before task 21.6 tags the release. Task IDs continue the existing numbering (21.7-21.10) rather than using a re-execution suffix scheme, because the repo's report convention keys evidence by task-id directory (docs/implementation/<task-id>/), the task-id regex in the plan/state guard is a single dotted number, and history under docs/implementation/** is immutable: a re-execution therefore needs its own task id and its own report directory, while the superseded record of 21.3/21.4/21.5 stays verbatim. Task 21.5 is left complete (it was complete as a review) and 21.6 stays the final task.",
+  "canonical_form": {
+    "choice": "new task IDs continuing the Phase 21 numbering: 21.7, 21.8, 21.9, 21.10",
+    "rejected_alternatives": [
+      "Re-execution suffix on an existing id (21.3-r2, 21.4-r2, 21.5-r2): rejected. The task-id grammar the plan/state guard matches is ^- \\[([ xX])\\]\\s+(\\d+\\.\\d+)\\b, a suffix would not parse as a task id, the per-task report directory and the agent-contract report paths are keyed by task id, and it would imply a prior task was not complete.",
+      "Reopening 21.3/21.4/21.5 and re-running them in place: rejected. They are done, their reports are immutable history under docs/implementation/**, and AGENTS.md forbids rewriting history to match a newer path or status. Re-running them in place would also destroy the evidence that the first candidate was reviewed and dispositioned.",
+      "Inserting a new Phase 22 between 21.5 and 21.6: rejected. The work is the remediation of a finding raised inside Phase 21's own exit gate, not a new accepted scope; a new phase would need its own accepted scope document and would leave the v1.2 release split across two phases with the release tag on neither cleanly."
+    ],
+    "supersession": "Tasks 21.8, 21.9, and 21.10 are re-executions, not corrections: each replaces the deliverable of 21.3, 21.4, and 21.5 respectively for the corrected candidate. The 21.3/21.4/21.5 reports remain the record of the superseded candidate and are cited as such by the new reports."
+  },
+  "trigger": {
+    "finding": "SEC-21.5-01",
+    "severity": "MEDIUM",
+    "status_at_trigger": "open",
+    "report": "docs/implementation/21.5/security-review.json",
+    "reviewer_status": "PASS_WITH_FINDINGS",
+    "open_blocker_high": 0,
+    "summary": "The four named provider HTTP clients are registered with a bare AddHttpClient(name) in ArrTagsServiceRegistrator.RegisterProviderHttpClients and therefore inherit the .NET default AllowAutoRedirect=true. SecretLease.ApplyTo adds the X-Api-Key header to the shared HttpRequestMessage, and a redirect hop clones that request, so the credential is re-sent to whatever origin the 3xx Location names. Reproduced end to end against the exact DI shape ArrTagsServiceRegistrator builds. This widens the credential's egress beyond the configured connection, contrary to ADR-005's requirement that the key is added to the current request only and confined to the outbound authenticated request while it is being sent. MEDIUM rather than HIGH because the configured base URL is administrator-supplied and the redirect must come from that configured provider or from a network position that can already read the key; it is not remotely triggerable by an unauthenticated third party against the Jellyfin host.",
+    "user_decision": "Fix it now and re-verify, rather than accept it as a shipped limitation. The user decision is the authority for this corrective chain; no new decision gate was opened, because the required behavior (the key never leaves the configured connection) is already stated by accepted ADR-005 and the remedy is a transport configuration on the plugin's own named clients, which docs/research/jellyfin-12-architecture.md section 2.4 already prescribes.",
+    "consequence": "The fix changes ArrTags.dll, so it invalidates the 1.2.0.0 artifact identity recorded by task 21.3 (619,538 bytes; SHA-256 505804992a50d7aa073b07cfaa8dc0c8ac9a95041a7c394d8bd54dd959f90762; MD5 3100aae94a2b4aedf222eca040675271; 7 entries; per-entry hashes; manifest.json checksum; docs/release/build-and-release.md) and the live pinned-host matrix recorded by task 21.4, which was run against the superseded artifact. The release security review must be re-run against the corrected candidate before task 21.6 tags v1.2.0."
+  },
+  "active_scope": "docs/planning/v1.2.md",
+  "phases": [
+    {
+      "id": 21,
+      "name": "v1.2 release",
+      "objective": "Bump ArrTags to 1.2.0.0, reconcile the canonical documentation, build and package reproducibly, run the full suite and the live pinned-host verification, run the release security review, and complete the changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag. Extended by the user decision on SEC-21.5-01: correct the provider transport so a redirect cannot carry X-Api-Key off the configured connection, then re-derive the artifact identity, the live pinned-host matrix, and the release security review against the corrected build before the release is tagged.",
+      "deliverables_added_by_this_change": [
+        "A provider transport that never follows an HTTP redirect on any of the four named Arr clients, including the two opt-in insecure-TLS clients.",
+        "A transport test that proves the X-Api-Key value is not re-sent to a 3xx Location origin, for the strict and insecure-TLS clients of both providers.",
+        "A corrected, reproducible artifacts/ArrTags_1.2.0.0.zip with its new identity recorded in docs/release/build-and-release.md and a regenerated manifest.json checksum.",
+        "A live pinned-host matrix re-run against the corrected artifact.",
+        "A release security review of the corrected candidate that dispositions SEC-21.5-01 and shows no open BLOCKER/HIGH."
+      ],
+      "tasks": [
+        {
+          "id": "21.7",
+          "name": "Provider transport: never follow a redirect (fix SEC-21.5-01) with a non-egress test",
+          "objective": "Make it impossible for the plugin to send the X-Api-Key header to any origin other than the configured provider connection, by configuring every named Arr HTTP client not to follow redirects, and prove the property with a transport test that reproduces the reviewer's scenario.",
+          "traceability": {
+            "finding": "SEC-21.5-01 (docs/implementation/21.5/security-review.json)",
+            "adrs": ["ADR-005"],
+            "research": "docs/research/jellyfin-12-architecture.md section 2.4 (a plugin must configure the behavior it requires on its own named or typed client)",
+            "release": "v1.2 exit gate (the release security review must pass for the candidate that ships)",
+            "not_a_new_goal": "No GOALS.md goal is added; this closes a release-gate finding against an already-accepted decision."
+          },
+          "dependencies": [
+            "21.5 (the finding, its reproduction, and the evidence of the current registration shape)"
+          ],
+          "work": [
+            "In src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs RegisterProviderHttpClients, set the primary handler of all four named clients (ArrHttpClientNames.Sonarr, ArrHttpClientNames.Radarr, and the two .Insecure names) to a handler with AllowAutoRedirect=false, or otherwise configure MaxAutomaticRedirections=0, and set the same on the existing CreateInsecureHandler so the opt-in TLS relaxation does not also change credential scope. Keep handler pooling and the existing DI shape; do not add a dependency.",
+            "Decide and record how a 3xx response is now surfaced. A not-followed redirect must fail closed as a bounded provider error through the existing ArrProviderError path (bounded code, no response body, header, or Location value, no secret), consistent with the existing ClassifyStatus behavior for non-success statuses. Do not introduce a new unbounded-work or retry path: the bounded retry count and backoff must be unchanged.",
+            "Add a transport test in tests/ArrTags.Tests that stands up two local origins (a provider origin answering 302 with a Location naming a second origin, and the second origin) and asserts that the second origin receives no request carrying the key, for the client shape the plugin registers. Cover the strict and the insecure-TLS client of at least one provider, and assert the registration itself pins the behavior (so a future re-registration that drops the setting fails the test rather than silently restoring the leak).",
+            "Record the transport constraint where the architecture documents the provider client boundary (docs/architecture/07-sonarr-and-radarr-integration.md and, if it carries the secret-transport clauses, docs/architecture/11-failure-consistency-and-security-policy.md) and, per the reviewer's recommended action, record the decision in ADR-005 or as an explicit implementation note against ADR-005. ADR-005 is an accepted decision record; amending it is an architecture change and needs the smallest explicit decision. If the worker concludes the existing ADR-005 text already authorizes the behavior and only needs an implementation note, that is sufficient and must be stated in the report.",
+            "Update docs/changelog/v1.2.0.md with the security-relevant behavior change."
+          ],
+          "tests": {
+            "level": "integration (transport, against the real registration shape) plus unit coverage of the 3xx classification",
+            "required": [
+              "A test that fails on the pre-fix code: with AllowAutoRedirect left at the .NET default, the second origin receives the X-Api-Key; with the fix, it receives nothing. The test must be written so that reverting the fix fails it (the reviewer reproduced the pre-fix behavior, so the scenario is known to be discriminating).",
+              "A test asserting the four named clients are all registered with redirect-following disabled, so the two insecure-TLS names cannot regress independently.",
+              "A test asserting a not-followed 3xx surfaces as a bounded provider error with no secret, no Location value, and no response body, and that the retry count stays within the configured bound."
+            ],
+            "verification_surfaces": [
+              "The default suite and the host-guarded suite pass with no new failures.",
+              "Renderer goldens and byte-determinism are unaffected: the change is transport-only and must not alter any committed golden, so the golden oracle must still pass unchanged. If a golden changes, that is a defect, not an expected consequence."
+            ]
+          },
+          "acceptance_criteria": [
+            "Given a provider origin that answers 302 with a Location naming a different origin, the plugin issues no request to that other origin, and the X-Api-Key value is never sent to it.",
+            "All four named provider clients (strict Sonarr, strict Radarr, and both opt-in insecure-TLS clients) are registered with redirect-following disabled; a registration that drops the setting fails a test.",
+            "The opt-in insecure-TLS relaxation still works for its intended purpose and does not re-enable redirect-following or change the header the plugin sends.",
+            "A not-followed 3xx surfaces as a bounded provider error containing no secret, no response body, no header value, and no Location value, and the configured retry bound is unchanged.",
+            "A test exists that demonstrably fails on the pre-fix registration (the report records the pre-fix failure and the post-fix pass).",
+            "No committed renderer golden changes and no RenderVersion or renderer-configuration schema bump is introduced; the change is transport-only.",
+            "The transport constraint is recorded in the provider-integration architecture documentation and as an implementation note against ADR-005, and the ADR-005 decisions index row is updated only if an ADR was actually amended.",
+            "scripts/check-docs.sh passes and the default and host-guarded suites pass."
+          ],
+          "decision_gates": [
+            {
+              "gate": "DG-6 / DG-9 (unchanged)",
+              "status": "resolved",
+              "note": "The connection defaults and supported provider ranges are unaffected; the fix constrains transport only and does not retune a configurable default."
+            },
+            {
+              "gate": "new gate required?",
+              "status": "no",
+              "note": "The required behavior is already stated by accepted ADR-005 (the key is added to the current request only and is confined to the outbound authenticated request while it is being sent). The remedy is a transport configuration on the plugin's own named clients, already prescribed by docs/research/jellyfin-12-architecture.md section 2.4. If the worker or reviewer judges that honoring a legitimate provider redirect requires a new policy, that is a new decision and the task stops at the decision boundary rather than implementing it."
+            }
+          ],
+          "review": {
+            "implementation-reviewer": "required",
+            "security-reviewer": "not required as a separate task here; the security adjudication of SEC-21.5-01 belongs to task 21.10 against the corrected candidate, so a same-task security review would review a candidate that is about to be rebuilt. The reviewer of 21.7 must still confirm the transport constraint holds and no secret can reach the new error path.",
+            "test-quality-reviewer": "required (the test is the evidence that the finding is fixed; its determinism, local-port isolation, and the fact that it would fail without the fix must be established, not assumed)",
+            "jellyfin-expert": "not required (no Jellyfin platform behavior is assumed; the finding was reproduced against the plugin's own DI shape)"
+          },
+          "documentation": [
+            "docs/architecture/07-sonarr-and-radarr-integration.md (the provider client boundary states that redirects are not followed)",
+            "docs/architecture/11-failure-consistency-and-security-policy.md (if it carries the secret-transport clauses)",
+            "docs/decisions/ADR-005.md implementation note, or a new ADR if an actual amendment is required",
+            "docs/decisions/00-index.md only if a new ADR is created",
+            "docs/changelog/v1.2.0.md",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "A provider or reverse proxy in front of it that legitimately issues a 3xx (for example a trailing-slash or http-to-https redirect) would now fail closed as a provider error instead of being followed. This is the intended behavior and is surfaced as a bounded error, not silently swallowed; it is called out in the changelog and the architecture documentation so an operator can diagnose it.",
+            "The insecure-TLS clients use a separate handler; fixing only the two strict names would leave the leak on the opt-in path. The registration test must cover all four names.",
+            "The retry loop re-sends on transient failures; a redirect must not be treated as a transient retryable status or it would multiply requests. The classification must be checked, not assumed."
+          ],
+          "estimate": "30-120 minutes of focused implementation plus the test."
+        },
+        {
+          "id": "21.8",
+          "name": "Corrected release build, full suite, reproducible artifact, and release documentation",
+          "objective": "Re-derive the v1.2.0.0 release candidate from the corrected source: rebuild and repackage reproducibly, re-run the default and host-guarded suites, and record the new artifact identity in docs/release/build-and-release.md with a regenerated manifest.json entry.",
+          "traceability": {
+            "supersedes": "21.3 (re-execution, not correction: the 21.3 report and identity record stay verbatim as the superseded candidate)",
+            "adrs": ["ADR-015 (package contents unchanged by a transport fix)", "ADR-027 (no RenderVersion advance: the fix is transport-only)"],
+            "release": "v1.2 exit gate (reproducible artifacts/ArrTags_1.2.0.0.zip with recorded identity; full default and host-guarded suites pass)"
+          },
+          "dependencies": [
+            "21.7 (the fix must be in the source before the candidate is built)"
+          ],
+          "work": [
+            "Repeat the task 21.3 procedure against the corrected tree: two independent clean exports at different absolute paths plus the repository working tree after wiping bin/obj/artifacts, each running ./build.sh restore && ./build.sh build && ./build.sh test && ./build.sh package, and confirm all three archives are byte-identical.",
+            "Re-run the default suite with the archive present and the host-guarded suite against the pinned host from docs/testing/jellyfin-12-musl-test-host.md, and account for the skip taxonomy as 21.3 did (host facts, ARRTAGS_SKIA_COMPAT native cases, non-canonical goldens, package facts).",
+            "Record the new identity in docs/release/build-and-release.md: byte size, SHA-256, MD5, entry count, the entry names, and the per-entry SHA-256 values. Replace the current 1.2.0.0 identity with the corrected one and retain the superseded 21.3 identity as an explicitly superseded record, the way the 1.1.0.0 and 1.0.1.0 identities are retained, so the history is not rewritten.",
+            "Regenerate the manifest.json 1.2.0.0 entry with the corrected MD5 checksum via scripts/write-manifest.cs, keeping the 1.1.0.0 and 1.0.1.0 entries, and update the release document's manifest field description and version-pinned counts.",
+            "Do not change docs/plan/state.json current_release: the orchestrator owns that field and sets it at the release step, after task 21.6. The build-and-release.md document must keep the 1.1.0.0 identity present, because the documentation guard compares state.json current_release against it."
+          ],
+          "tests": {
+            "level": "build and suite verification (no new product tests; the fix's own tests land in 21.7)",
+            "required": [
+              "Three-run byte-identical archive equality for the corrected candidate.",
+              "Default suite passing with the archive present, and host-guarded suite passing against the pinned host.",
+              "manifest.json 1.2.0.0 checksum equals md5sum of the corrected artifacts/ArrTags_1.2.0.0.zip."
+            ]
+          },
+          "acceptance_criteria": [
+            "./build.sh package on the corrected source produces artifacts/ArrTags_1.2.0.0.zip that is byte-identical across two independent clean exports and the repository working tree.",
+            "The new byte size, SHA-256, MD5, entry count, entry names, and per-entry SHA-256 values are recorded in docs/release/build-and-release.md, and the superseded 21.3 identity is retained there as a superseded record rather than deleted.",
+            "The default suite and the host-guarded suite both pass on the corrected tree, with the skip count accounted for.",
+            "manifest.json's 1.2.0.0 checksum equals the MD5 of the corrected archive and the prior version entries are retained.",
+            "docs/release/build-and-release.md still contains the 1.1.0.0 identity that state.json current_release records, so the documentation guard passes.",
+            "scripts/check-docs.sh passes and render-docs-state --check reports the plan state consistent.",
+            "The worker report states explicitly that the corrected ArrTags.dll differs from the 21.3 build and gives both hashes, so the invalidation of the old identity is on the record."
+          ],
+          "decision_gates": [
+            {
+              "gate": "pinned-host availability for the host-guarded suite",
+              "status": "external validation, not a decision gate",
+              "note": "The host-guarded suite needs the pinned Jellyfin 12 host described in docs/testing/jellyfin-12-musl-test-host.md (ARRTAGS_JELLYFIN_HOST_DIR). If the host is unavailable, the task reports what it could and could not run rather than claiming the host-guarded result; the release gate cannot be met without it."
+            }
+          ],
+          "review": {
+            "implementation-reviewer": "required",
+            "test-quality-reviewer": "not required (no new product tests; the suite result is evidence, not a test-quality claim)",
+            "security-reviewer": "not required here; task 21.10 covers it"
+          },
+          "documentation": [
+            "docs/release/build-and-release.md (identity, entry table, suite counts, manifest fields, verification steps)",
+            "manifest.json (regenerated 1.2.0.0 entry)",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "Documentation guard coupling: state.json current_release still names the 1.1.0.0 artifact, so the 1.1.0.0 identity must stay in the release document. Deleting it as 'stale' fails check-docs.sh.",
+            "A stale artifacts/ or bin/ tree from the 21.3 build can silently produce a mix; the clean-export procedure is the mitigation and must actually be run, not described."
+          ],
+          "estimate": "30-60 minutes of build and verification time, dominated by the three clean builds and two suites."
+        },
+        {
+          "id": "21.9",
+          "name": "Live pinned-host verification of the corrected artifact",
+          "objective": "Re-run the documented live pinned-host matrix against the corrected 1.2.0.0 artifact so every live claim in the release rests on the build that actually ships.",
+          "traceability": {
+            "supersedes": "21.4 (re-execution: docs/implementation/21.4/live-verification.json stays verbatim as the superseded candidate's matrix and is cited as such)",
+            "release": "v1.2 exit gate (the live pinned-host matrix passes against the corrected artifact)"
+          },
+          "dependencies": [
+            "21.8 (the corrected artifact and its recorded identity)"
+          ],
+          "work": [
+            "Provision or reuse the pinned Jellyfin 12.0.0 host per docs/testing/jellyfin-12-musl-test-host.md and re-run the same matrix rows task 21.4 ran, against the corrected artifacts/ArrTags_1.2.0.0.zip (verifying the archive's SHA-256 before install, so the run is provably against the corrected candidate).",
+            "Include the rows that bear on this correction: plugin load and single-load behavior, the three elevation-gated surfaces rejecting anonymous access, the byte-limit round-trip through the save path, the diagnostics endpoint shape and 405/404 behavior, the provider-outage row (the host stays up and served images stay byte-identical), the log-subject row, and the restart/uninstall row that confirms the relocated state root.",
+            "Record the new results in a fresh docs/implementation/21.9/live-verification.json and leave the 21.4 report untouched."
+          ],
+          "tests": {
+            "level": "live end-to-end on the pinned host",
+            "required": [
+              "Every matrix row from the 21.4 run is re-executed, with PASS/FAIL per row and the artifact SHA-256 recorded.",
+              "The corrected artifact's hash is recorded so a later reader can tell this matrix from the 21.4 matrix."
+            ]
+          },
+          "acceptance_criteria": [
+            "The full documented matrix is re-run against artifacts/ArrTags_1.2.0.0.zip whose SHA-256 equals the value task 21.8 recorded.",
+            "docs/implementation/21.9/live-verification.json records the verifier status, the artifact identity, and a per-row result; every row that the 21.4 matrix covered is covered again.",
+            "The plugin loads once, all three elevation-gated surfaces reject anonymous access, and the diagnostics endpoint keeps its fixed shape and 405/404 behavior on the corrected build.",
+            "The provider-outage row shows the host stays up and served images are byte-identical, and the restart/uninstall row confirms the relocated state root is created and removed.",
+            "The 21.4 report is unmodified.",
+            "If the pinned host cannot be provisioned, the task reports the blocked rows honestly rather than claiming a pass, and the release gate stays unmet."
+          ],
+          "decision_gates": [
+            {
+              "gate": "pinned host availability and reproducibility",
+              "status": "external validation",
+              "note": "This is the project verification surface defined in docs/testing/jellyfin-12-musl-test-host.md. Its absence is a blocker for the release gate, not a decision to be taken."
+            }
+          ],
+          "review": {
+            "live-host-verifier": "owner of the report",
+            "implementation-reviewer": "required (the 21.4 task carried a reviewer report; the re-run carries one too)",
+            "security-reviewer": "not required here; task 21.10 consumes this matrix"
+          },
+          "documentation": [
+            "docs/implementation/21.9/live-verification.json",
+            "docs/changelog/v1.2.0.md only if the corrected run changes any user-visible statement",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "A live matrix that quietly reuses 21.4 rows would leave the release resting on the superseded artifact; recording the installed archive's SHA-256 per run is the mitigation.",
+            "Host-provisioning drift can change rows that are not about this correction; any difference from 21.4 must be explained rather than dropped."
+          ],
+          "estimate": "30-120 minutes of host provisioning and matrix execution."
+        },
+        {
+          "id": "21.10",
+          "name": "Release security review of the corrected candidate",
+          "objective": "Re-run the independent adversarial release security review against the corrected candidate so the release is gated on the build that ships, and so SEC-21.5-01 is formally dispositioned.",
+          "traceability": {
+            "supersedes": "21.5 (re-execution: docs/implementation/21.5/security-review.json stays verbatim as the record of the superseded candidate and of the finding's origin)",
+            "release": "v1.2 exit gate (the release security review has no open BLOCKER/HIGH)"
+          },
+          "dependencies": [
+            "21.7 (the fix)",
+            "21.8 (the corrected artifact identity)",
+            "21.9 (the corrected live matrix, as evidence)"
+          ],
+          "work": [
+            "Run the security-reviewer against the corrected candidate at the corrected HEAD and the corrected artifact: the same release-breadth scope as 21.5 (secrets, authentication, state integrity, bounded-input boundaries, the packaged artifact) plus the surfaces v1.2 added or changed, and specifically the provider transport and secret-egress boundary that 21.7 changed.",
+            "Require an explicit disposition of SEC-21.5-01: the finding is either resolved (with the 21.7 evidence and a reproduction attempt that no longer observes key egress) or still open with a stated reason. It must not be silently dropped, and the carried LOW findings (SEC-21.5-02, SEC-21.5-03, SEC-21.5-04) and the informational confirmations must be re-verified against the corrected candidate or explicitly carried.",
+            "Verify the packaged ArrTags.dll matches a fresh Release build of the corrected source, so the audited source is the shipped code, and confirm the artifact identity matches what 21.8 recorded.",
+            "Record the result in docs/implementation/21.10/security-review.json. If 21.5's report is re-run rather than a new file, the attempt rule in docs/agent-contracts.md applies: a prior attempt is preserved as .attempt-<n>.json, never overwritten."
+          ],
+          "tests": {
+            "level": "independent adversarial review with reproductions against the corrected candidate",
+            "required": [
+              "An explicit attempt to reproduce SEC-21.5-01 against the corrected build, reported whether or not it succeeds.",
+              "Confirmation that the artifact identity and the audited source match."
+            ]
+          },
+          "acceptance_criteria": [
+            "The review is recorded with reviewer_status and an explicit open_blocker_high count; the release gate requires zero open BLOCKER and zero open HIGH.",
+            "SEC-21.5-01 carries an explicit disposition (resolved, with the 21.7 evidence and the reproduction result, or open with a reason) and is not silently omitted.",
+            "The reviewed HEAD and artifact are the corrected ones, and the artifact's SHA-256 equals the value task 21.8 recorded.",
+            "The carried LOW and INFORMATIONAL findings are re-verified against the corrected candidate or explicitly carried forward with a status, not dropped.",
+            "Any new BLOCKER or HIGH finding reopens the release gate and stops task 21.6 until it is resolved and re-reviewed."
+          ],
+          "decision_gates": [
+            {
+              "gate": "new gate required?",
+              "status": "no",
+              "note": "The review adjudicates against the accepted decisions (ADR-005 for the secret boundary, ADR-012 for the webhook boundary, ADR-025 for the diagnostics surface, ADR-022/ADR-029 for the cursor). It opens no new decision; a new finding that would require a policy decision is reported as a finding, and the release stops at that boundary."
+            }
+          ],
+          "review": {
+            "security-reviewer": "owner of the report and of the SEC-21.5-01 disposition",
+            "implementation-reviewer": "not required (this is a review task, as 21.5 was)",
+            "test-quality-reviewer": "not required"
+          },
+          "documentation": [
+            "docs/implementation/21.10/security-review.json",
+            "docs/limitations/00-index.md and the underlying limitation file only if a new finding is registered as open or accepted",
+            "PLANS.md and docs/plan/state.json task state"
+          ],
+          "risks": [
+            "A re-run that treats 21.5 as sufficient would leave the release gated on a review of a build that no longer ships; the reviewed HEAD and artifact must be stated.",
+            "Silently closing the carried LOW findings would be dishonest history; they must be re-verified or carried, not dropped."
+          ],
+          "estimate": "30-120 minutes of review time."
+        }
+      ],
+      "authoritative_execution_order": ["21.1", "21.2", "21.3", "21.4", "21.5", "21.7", "21.8", "21.9", "21.10", "21.6"],
+      "phase_acceptance_criteria": [
+        "the version is 1.2.0.0",
+        "the canonical documentation reflects v1.2 with no stale claim",
+        "no provider request follows an HTTP redirect, so X-Api-Key is sent only to the configured connection and never to a 3xx Location target (ADR-005)",
+        "./build.sh package produces a reproducible artifacts/ArrTags_1.2.0.0.zip whose recorded identity comes from the corrected build",
+        "the full default and host-guarded suites and the live pinned-host matrix pass against that corrected artifact",
+        "the release security review of the corrected candidate has no open BLOCKER/HIGH",
+        "the annotated tag v1.2.0 is created after the release-review gate"
+      ],
+      "exit_gate": "Gate 21: met when tasks 21.1-21.10 meet their acceptance criteria, the full suite and live matrix pass against the corrected artifact, the release security review of the corrected candidate has no open BLOCKER/HIGH, the phase and release reviews pass, and the annotated tag v1.2.0 is created."
+    }
+  ],
+  "outline_mapping": {
+    "note": "The accepted plan's flat task outline (docs/planning/v1.2.md section 6) maps V1.2-8 to 21.1-21.6. No outlined task is dropped, merged, or renumbered. The corrective chain is additional work the user decided on after the 21.5 review; it is recorded here and in PLANS.md/state.json as tasks 21.7-21.10, and the v1.2-8 outline row is left unmodified because the accepted plan document is not rewritten.",
+    "V1.2-8": {
+      "21.1": "version bump and release metadata (complete)",
+      "21.2": "canonical documentation reconciliation (complete)",
+      "21.3": "release build, full suite, reproducible artifact, and release documentation (complete; deliverable re-derived by 21.8)",
+      "21.4": "live pinned-host verification (complete; deliverable re-derived by 21.9)",
+      "21.5": "release security review (complete; deliverable re-run by 21.10 after the SEC-21.5-01 fix)",
+      "21.6": "changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag (open; runs last, after 21.7-21.10)"
+    }
+  },
+  "decision_gates": [
+    {
+      "id": "DG-5-adjacent",
+      "status": "no new gate",
+      "note": "The fix constrains provider transport. It introduces no configuration, no setting, and no user-visible toggle, so it does not reopen DG-6 (defaults) or DG-9 (provider ranges), and it does not require path-mapping scope (DG-5). If the implementation turns out to need a configurable redirect policy, that is a new decision and is out of scope for this chain."
+    },
+    {
+      "id": "ADR-005",
+      "status": "resolved, no amendment assumed",
+      "note": "ADR-005 already requires the API key to be added to the current request only and confined to the outbound authenticated request while it is being sent, and forbids query-string authentication. Disabling redirect-following implements that decision rather than changing it. An explicit ADR-005 amendment is only required if the worker or reviewer concludes the existing text does not authorize the behavior; ADR-005 is an accepted decision record, so any amendment is the smallest explicit decision and is recorded before it is relied on."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "The fix changes ArrTags.dll, invalidating the recorded 1.2.0.0 artifact identity, the manifest.json checksum, the live matrix, and the security review.",
+      "mitigation": "Tasks 21.8, 21.9, and 21.10 re-derive each of those against the corrected build, and task 21.6 (the tag) is ordered last so nothing is tagged from the superseded candidate."
+    },
+    {
+      "risk": "A release is tagged or published from the superseded candidate because an earlier completed task looks finished.",
+      "mitigation": "The authoritative execution order places 21.7-21.10 between 21.5 and 21.6, and Gate 21 names tasks 21.1-21.10; the phase acceptance criteria state that the recorded identity, the live matrix, and the review must all come from the corrected build."
+    },
+    {
+      "risk": "The fix is applied to only two of the four named clients, leaving the opt-in insecure-TLS path leaking the key.",
+      "mitigation": "The 21.7 acceptance criteria require a registration test that fails if any of the four names drops the setting, and the security review re-checks the transport boundary (task 21.10)."
+    },
+    {
+      "risk": "A provider or reverse proxy that legitimately issues a 3xx now fails closed as a provider error, which could look like a regression to an operator.",
+      "mitigation": "The behavior is a bounded, diagnosable provider error with no secret and no Location value; it is documented in the architecture provider section, the release documentation, and the changelog."
+    },
+    {
+      "risk": "The evidence recorded for the corrected candidate silently mixes with the superseded candidate's evidence (artifact hash, suite counts, live rows).",
+      "mitigation": "Each re-execution task must record the corrected artifact SHA-256 explicitly and must not modify the 21.3, 21.4, or 21.5 reports; the superseded identity is retained in the release document as a superseded record."
+    },
+    {
+      "risk": "The pinned Jellyfin host is unavailable, so the host-guarded suite and the live matrix cannot be re-run and the release gate cannot honestly be met.",
+      "mitigation": "Both tasks report the blocked rows honestly rather than claiming a pass, and Gate 21 stays unmet until they run. This is a verification-scope limit, not a decision to waive."
+    }
+  ],
+  "open_questions": [
+    "USER DECISION APPLIED (not open): fix SEC-21.5-01 now and re-verify, rather than accept it as a shipped limitation. That decision is the authority for tasks 21.7-21.10 and for re-ordering 21.6 last.",
+    "CONFIRM (not a blocker): whether honoring a legitimate provider redirect is ever required. The corrective chain assumes it is not (the read paths are fixed GETs against the configured base URL, and a redirect is not a documented Arr API behavior). If an operator legitimately depends on a redirect, the correct outcome is a bounded provider error they can diagnose, not silent credential forwarding. Adding a configurable redirect policy would be a new decision and is out of scope.",
+    "CONFIRM (not a blocker): whether SEC-21.5-01's disposition also warrants a documentation note in the accepted plan (docs/planning/v1.2.md) or is satisfied by the ADR-005 implementation note plus the release documentation. The accepted plan document is not rewritten; the mapping of the corrective chain to Phase 21 is recorded in PLANS.md and in this record."
+  ],
+  "planning_gaps": [
+    "None. Every new deliverable maps to exactly one task: the transport constraint and its test (21.7), the corrected artifact identity and manifest (21.8), the corrected live matrix (21.9), the corrected security review and the SEC-21.5-01 disposition (21.10), and the release close-out (21.6, unchanged). Every phase acceptance criterion added by this change has a single owning task, and no decision gate is left unowned: the only candidate gate (whether an ADR-005 amendment is needed) is resolved as 'not required unless the implementation shows otherwise', with the stop-at-the-boundary rule recorded in 21.7 and 21.10.",
+    "The corrected candidates' evidence lives in the 21.8/21.9/21.10 report directories rather than in the 21.3/21.4/21.5 ones, because docs/implementation/** is immutable history and check-agents.sh keys the per-task report pairing by task id. The superseded reports remain the record of the first candidate and are cited by the new reports."
+  ],
+  "execution_order_invariants": {
+    "every_phase_task_appears_exactly_once": true,
+    "task_appears_in_plans_checkbox": true,
+    "task_appears_in_state_json": true,
+    "dependency_references_consistent": true,
+    "completed_tasks_preserved_verbatim": true,
+    "prior_tasks_not_reopened_or_renumbered": true,
+    "no_task_marked_done_by_this_planning_pass": true
+  },
+  "files_changed": [
+    "PLANS.md (Phase 21 corrective-work note, tasks 21.7-21.10, authoritative execution order, phase acceptance criteria, Gate 21, v1.2-8 outline mapping note, new v1.2 risk row)",
+    "docs/plan/state.json (updated_utc, active_scope_note, Phase 21 execution_order, tasks 21.7-21.10, 21.5 reports entry; tasks 21.1-21.5 records otherwise verbatim)",
+    "docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json (this record)"
+  ],
+  "not_changed": [
+    "docs/planning/v1.2.md (the accepted plan document is not rewritten)",
+    "docs/implementation/21.3/**, docs/implementation/21.4/**, docs/implementation/21.5/** (immutable history)",
+    "docs/release/build-and-release.md, manifest.json (owned by task 21.8)",
+    "docs/changelog/**, docs/limitations/** (owned by the executing tasks)",
+    "docs/decisions/ADR-005.md and docs/decisions/00-index.md (normative architecture; owned by task 21.7 if an amendment proves necessary)",
+    "src/**, tests/** (owned by task 21.7)"
+  ]
+}

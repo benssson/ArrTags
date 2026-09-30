@@ -14,6 +14,7 @@ using ArrTags.Providers;
 using ArrTags.Reconciliation;
 using ArrTags.State;
 using ArrTags.Updates;
+using MediaBrowser.Controller.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -98,6 +99,7 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         var result = await _processor.ProcessAsync(stale, default);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.ConfigurationStale, result.DiscardReason);
         Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
     }
 
@@ -110,6 +112,7 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.ConfigurationStale, result.DiscardReason);
         Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
     }
 
@@ -123,6 +126,7 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.ConnectionChanged, result.DiscardReason);
         Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
     }
 
@@ -135,6 +139,7 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.ItemMissing, result.DiscardReason);
         Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
     }
 
@@ -148,6 +153,20 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.Ineligible, result.DiscardReason);
+        Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
+    }
+
+    [Fact]
+    public async Task DiscardsWithIdentityUnavailableWhenTheItemIsNotASupportedIdentity()
+    {
+        _resolver.Items[ReconciliationFixtures.ItemId] = new UnsupportedTestItem { Id = ReconciliationFixtures.ItemId };
+        _reader.Handler = MatchedMovie;
+
+        var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.IdentityUnavailable, result.DiscardReason);
         Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
     }
 
@@ -160,6 +179,30 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.ItemMissing, result.DiscardReason);
+        Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
+    }
+
+    [Fact]
+    public async Task DiscardsWithIdentityUnavailableWhenTheSubjectChangesWhileProcessing()
+    {
+        _reader.Handler = MatchedMovie;
+        _reader.OnRead = () =>
+        {
+            // The item is still present but its canonical identity no longer
+            // matches the basis the work was built from.
+            var changed = ReconciliationFixtures.Movie(ReconciliationFixtures.ItemId, ReconciliationFixtures.LibraryId);
+            changed.ProviderIds.Clear();
+            changed.ProviderIds["Tmdb"] = "999999";
+            changed.Path = "/media/movies/example-changed.mkv";
+            changed.Sources = new[] { ReconciliationFixtures.FileSource("/media/movies/example-changed.mkv") };
+            _resolver.Items[ReconciliationFixtures.ItemId] = changed;
+        };
+
+        var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DiscardReason.IdentityUnavailable, result.DiscardReason);
         Assert.Equal(StateReadStatus.Missing, _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr).Status);
     }
 
@@ -172,7 +215,8 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
         _reader.Handler = MatchedMovie;
         _reader.OnRead = () => _resolver.Items.Remove(ReconciliationFixtures.ItemId);
 
-        await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
+        var result = await _processor.ProcessAsync(WorkItem(_configuration.Current.ConfigurationVersion), default);
+        Assert.Equal(DiscardReason.ItemMissing, result.DiscardReason);
 
         var stored = _store.Read(ReconciliationFixtures.ItemId, ArrProviderKind.Radarr);
         Assert.Equal(StateReadStatus.Found, stored.Status);
@@ -409,5 +453,13 @@ public sealed class MetadataReconciliationProcessorTests : IDisposable
             null,
             ArtworkImageSurface.Primary);
         return new LibraryWorkItem(key, LibraryWorkReason.Updated, configurationVersion);
+    }
+
+    /// <summary>
+    /// A Jellyfin item type outside the supported movie/episode/series/season
+    /// structural set, so the identity factory cannot build a canonical identity.
+    /// </summary>
+    private sealed class UnsupportedTestItem : BaseItem
+    {
     }
 }

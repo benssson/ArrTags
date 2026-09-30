@@ -1,0 +1,37 @@
+{
+  "session_id": "ses_f26e0905effecGhla3NXECvRx7",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "default",
+  "title": "Plan v1.2: F3, F4, F6–F8 and user settings improvements",
+  "tokens": {
+    "input": 690411,
+    "output": 20509,
+    "reasoning": 35495,
+    "cache": {
+      "read": 6510848,
+      "write": 0
+    }
+  },
+  "total_tokens": 7257263,
+  "cost_usd": 0.15665909399999997,
+  "duration_seconds": 1,
+  "first_recorded_at": "2026-09-25T16:15:40Z",
+  "last_updated_at": "2026-09-25T16:27:08Z",
+  "updates": [
+    {
+      "at": "2026-09-25T16:15:40Z",
+      "cost_usd": 0.10988055,
+      "total_tokens": 4922935,
+      "duration_seconds": 1,
+      "note": "Planned v1.2: created docs/planning/v1.2.md, ADR-022..ADR-028, PLANS.md Phases 15-21, state.json derivation, F5 reclassified to Accepted; architecture review iterated to closure; awaiting user acceptance of DG-19/20/21 and the ADRs."
+    },
+    {
+      "at": "2026-09-25T16:27:08Z",
+      "cost_usd": 0.15665909399999997,
+      "total_tokens": 7257263,
+      "duration_seconds": 1,
+      "note": "v1.2 planning accepted and committed (1f39e53): ADR-022..ADR-028 Accepted, DG-19/20/21 resolved, F5 Accepted, Phases 15-21 scheduled."
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "phase": "16",
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "P16-F1",
+      "severity": "LOW",
+      "status": "open",
+      "area": "behaviour accuracy / current-state documentation",
+      "description": "The restart-required modal reminder can fire after a plugin-level configuration rejection, not only after a transport failure. The pinned host `Jellyfin.Api.Controllers.PluginsController.UpdatePluginConfiguration` always returns `NoContent()` (204) and `Plugin.UpdateConfiguration` swallows an invalid candidate (it does not persist and does not throw/signal), so the client promise resolves and the page's success callback runs `Dashboard.processPluginConfigurationUpdateResult(result)` followed by `showRestartRequiredReminder(restartRequiredChanged)`. The current-state architecture sentence and the task 16.5 changelog/report claim a rejected POST shows no reminder (the 16.4 spike even names the ADR-021 rejection as the example); that holds only for an HTTP/transport-level rejection, not for the ADR-021 config-validation rejection. It is a best-effort modal and the always-present note text and save behaviour are unaffected.",
+      "detail": "The reminder is correctly placed inside the successful `updatePluginConfiguration(...).then` callback and no rejection handler calls it, which is exactly what the 16.5 tests assert. The gap is the wording/assumption that the ADR-021 rejection rejects the POST: it does not. The pre-existing save path already shows the SettingsSaved toast on a rejected candidate (the rejection is surfaced only through the ADR-021 activity log), so the reminder adds a second signal consistent with that pre-existing gap rather than introducing a new state problem.",
+      "evidence": [
+        "/tmp/jfsrc/jellyfin-6c073e19ddf604b2369c638716164fdab4c952dc/Jellyfin.Api/Controllers/PluginsController.cs:191-208 (UpdatePluginConfiguration always returns NoContent())",
+        "src/ArrTags/Plugin.cs:143-173 (invalid candidate is not persisted and does not throw; TryNotifyRejected)",
+        "src/ArrTags/Configuration/config.html:675-678 (reminder inside the success .then after processPluginConfigurationUpdateResult)",
+        "docs/architecture/06-configuration-and-persisted-state.md:149-150 (\"so a rejected POST shows no reminder\")",
+        "docs/changelog/v1.2.0.md:607-609 (\"a rejected POST shows no restart reminder\")",
+        "docs/research/jellyfin-expert/modal-notification-api.json (recommendation names the ADR-021 rejection as the no-reminder case)"
+      ],
+      "recommended_action": "Reword the current-state architecture-06 sentence (and any future report wording) to distinguish a transport/HTTP rejection from the ADR-021 config-validation rejection, or explicitly accept that a rejected candidate can still show the best-effort reminder. Changelog/implementation records are immutable history; correct only the current-state surface if the project wants the narrower claim. Not required for phase approval."
+    },
+    {
+      "id": "P16-F2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "orchestration / record-keeping",
+      "description": "The phase aggregate `aggregate.cost_usd` (1.6083892819999996) is not the sum of the per-task `cost_usd` values it claims to sum (1.5788241), a discrepancy of 0.029565182. The other aggregate fields are consistent: task_count 6, review_rounds 7 (six implementation-reviewer invocations plus the 16.2 re-review), rework_rounds 1 (16.2), subagent_invocations 15 (seven worker/expert + seven reviewer + the 16.4 jellyfin-expert), matching the per-task `orchestration.json` records exactly.",
+      "evidence": [
+        "docs/implementation/phase-16/orchestration.json:32-39 (aggregate)",
+        "Sum of the 15 per-task cost_usd values in docs/implementation/16.1..16.6/orchestration.json = 1.5788241",
+        "Phase aggregate subagent list (15 entries, outcomes) matches each per-task orchestration subagent list"
+      ],
+      "recommended_action": "Reconcile the phase aggregate cost against the per-task records (or state the basis if it intentionally includes an extra invocation). Advisory metric only; no functional impact."
+    },
+    {
+      "id": "P16-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "JS/C# parity edge (unreachable)",
+      "description": "`byteLimitToDisplay` in config.html renders a zero byte value as the empty string (the `(scaled/divisor).toFixed(P)` then trailing-zero/`.` trim removes all characters), while the mirrored C# `ByteLimitField.FormatDisplay(0)` returns \"0\". The edge is unreachable through validated configuration because every byte field's minimum is at least 1 KiB (4096 bytes) and an out-of-range persisted value is rejected at load. No action required.",
+      "evidence": [
+        "src/ArrTags/Configuration/config.html:380-388 (byteLimitToDisplay)",
+        "src/ArrTags/Configuration/ByteLimitField.cs:201-213 (FormatScaled)",
+        "src/ArrTags/Configuration/OperationalLimits.cs:185-198 (all byte minima > 0)"
+      ],
+      "recommended_action": "None for v1.2; a defensive `scaled === 0` branch could be added if the mapping ever gains a zero minimum."
+    },
+    {
+      "id": "P16-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "future risk / classification maintenance",
+      "description": "The reflection guard in RestartRequiredSettingsTests detects a newly added, entirely unclassified writable leaf property, but it cannot detect a future singleton that begins capturing an already-classified per-operation setting at construction (the setting would silently become misclassified). This is inherent to a static classification and is disclosed in the task 16.2 known limitations and ADR-028's consequence (adding a future limit requires classifying it).",
+      "evidence": [
+        "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs:283-344 (WritableLeafProperties/IsClassifiedLeaf guard)",
+        "docs/implementation/16.2/worker-report.attempt-2.json known_limitations (per-operation classification rests on cited consumer sites, not a per-setting mutation probe)",
+        "docs/decisions/ADR-028.md Consequences"
+      ],
+      "recommended_action": "No action for v1.2; keep the classification review as a maintained contract for future limit additions."
+    },
+    {
+      "id": "P16-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "verification coverage",
+      "description": "The page's inline JavaScript (byte display/store conversion and the Dashboard.alert modal) is not executed by any test or by the pinned live matrix (--nowebclient); it is pinned structurally against the code-owned ByteLimitUnits/RestartRequiredSettings sources and the embedded page resource. The byte conversion itself is exercised as real C#. This residual is registered as accepted limitation V12-G8-1 (LOW) and is stated in the ADR-028 implementation note, README, test XML docs, and changelog rather than overclaimed.",
+      "evidence": [
+        "docs/limitations/accepted.md V12-G8-1",
+        "tests/ArrTags.Tests/GoalG6G8IntegrationTests.cs class XML doc",
+        "tests/ArrTags.Tests/ByteLimitSettingsPageTests.cs / RestartRequiredReminderTests.cs / RestartRequiredNoteTextTests.cs",
+        "docs/testing/jellyfin-12-musl-test-host.md (corrected: archive ships jellyfin-web/; --nowebclient means the live matrix does not serve it)"
+      ],
+      "recommended_action": "No action; correctly registered and accurately bounded."
+    },
+    {
+      "id": "P16-F6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation (research note)",
+      "description": "The task 16.4 spike's `documentation_impact` suggested adding the pinned-host/12.0 web-client Dashboard compatibility-surface finding to `docs/research/jellyfin-12-architecture.md` section 9. It was instead recorded in the canonical architecture 06 and the changelog. The research document makes no false claim (it already scopes the exact client loading behaviour as jellyfin-web behaviour, not pinned), so this is an optional evidence-completeness item, not stale documentation. Two minor evidence imprecisions in the spike note (AMD-loader grep count; the `pinned/jellyfin` path) were independently confirmed by the 16.4 reviewer as not affecting the API decision.",
+      "evidence": [
+        "docs/research/jellyfin-expert/modal-notification-api.json documentation_impact and unresolved",
+        "docs/implementation/16.4/reviewer-report.json R1 (three minor evidence imprecisions, not affecting the decision)",
+        "docs/research/jellyfin-12-architecture.md:801-816 (no stale Dashboard notification claim)",
+        "docs/architecture/06-configuration-and-persisted-state.md:143-174 (canonical record of the shipped decision)"
+      ],
+      "recommended_action": "None required; optionally fold the Dashboard compatibility-surface finding into the research note in a future docs-only pass."
+    }
+  ],
+  "tasks_checked": [
+    "16.1 worker-report.json + reviewer-report.json + orchestration.json (APPROVED, no rework)",
+    "16.2 worker-report.json + worker-report.attempt-2.json + reviewer-report.json + reviewer-report.attempt-2.json + orchestration.json (attempt 1 CHANGES_REQUIRED -> rework -> attempt 2 APPROVED)",
+    "16.3 worker-report.json + reviewer-report.json + orchestration.json (APPROVED)",
+    "16.4 worker-report.json + reviewer-report.json + orchestration.json + docs/research/jellyfin-expert/modal-notification-api.json (APPROVED)",
+    "16.5 worker-report.json + reviewer-report.json + orchestration.json (APPROVED)",
+    "16.6 worker-report.json + reviewer-report.json + orchestration.json (APPROVED)"
+  ],
+  "commits_checked": [
+    "499b256 (phase base)",
+    "ed62b07 (16.1)",
+    "04de6df (16.2)",
+    "b725d9b (16.3)",
+    "6a76327 (16.4)",
+    "9d0d7a4 (16.5)",
+    "b033c39 (16.6)",
+    "8b29dfa, 18c54c4, fe08e13, b84f4cc, a4af666, f744356 (orchestrator commit-hash bookkeeping)",
+    "HEAD f74435655d4fe3404bf1308a6e03cfeeefb5d6e7; working tree clean except the untracked phase-16 review directory"
+  ],
+  "requirements_checked": [
+    "GOALS.md V1.2 pointer and V1 success criteria (unchanged; G6/G8 additive)",
+    "docs/planning/v1.2.md Goal G6 acceptance criteria (fixed per-field binary unit; same-unit range labels; exact min/default/max round-trip incl. 64 KiB minima; explicit step-multiple rejection; persisted bytes + existing XML loads unchanged)",
+    "docs/planning/v1.2.md Goal G8 acceptance criteria (code-owned evidenced restart-required set incl. mixed settings; note text on every restart-required setting; modal on change with note-text fail-open; jellyfin-expert spike before implementation)",
+    "docs/planning/v1.2.md DG-15 and DG-17; section 7 phase-16 documentation checklist; section 9 verification requirements",
+    "PLANS.md Phase 16 objective, deliverables, execution order 16.1-16.6, phase acceptance criteria, Gate 16",
+    "ADR-028 clauses 1-5 (units/precision/step/conversion; binary classification; note text; modal fail-open; no save-path/elevation change)",
+    "docs/limitations/accepted.md V12-G6-1, V12-G8-1, V12-G8-2 (accurate classification as Accepted; no hidden BLOCKER/HIGH)"
+  ],
+  "architecture_checked": [
+    "docs/architecture/06-configuration-and-persisted-state.md (settings page presentation, classification, note text, modal, per-operation vs construction-captured paragraph)",
+    "docs/architecture/12-performance-and-operational-limits.md (limits table, classification paragraph, unit round-trip, modal)",
+    "docs/data-model/03-12-configuration.md (byte-limit display units; restart-required classification)",
+    "ADR-028 implementation note vs shipped code",
+    "src/ArrTags/Configuration/{ByteLimitUnits,ByteLimitField,SettingApplicationScope,SettingClassification,RestartRequiredSettings}.cs",
+    "src/ArrTags/Configuration/config.html and src/ArrTags/Configuration/OperationalLimits.cs",
+    "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs (singleton construction captures: StateRepository, CreateArtworkImageAccess, CreateArtworkSourceReader, CreateArtworkPublisher, CreateSourceArtifactStore)",
+    "src/ArrTags/Artwork/{SourceArtifactStore,ArtworkSourceReader,JellyfinArtworkImageAccess,ArtworkPublisher}.cs and src/ArrTags/State/StateRepository.cs (construction capture evidence)"
+  ],
+  "research_checked": [
+    "docs/research/jellyfin-expert/modal-notification-api.json (availability/stability of window.Dashboard.alert; fail-open recommendation; documentation_impact)",
+    "docs/research/jellyfin-12-architecture.md sections 9.1-9.3 (page resource, authorization, client contract)",
+    "Pinned host PluginsController.cs (UpdatePluginConfiguration -> NoContent) for the rejection-path cross-check"
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json (phase 16 PLANNED, gate Gate 16, tag v1.2.0-phase16, no phase completion/gate applied; all six tasks done with reports)",
+    "PLANS.md (task checkboxes ticked; milestone table generated and in agreement with state.json; Gate 16 text still a future condition)",
+    "docs/status.md (generated; current release 1.1.0.0; active phases include 16; open limitations F3/F4/F6/F7)",
+    "docs/changelog/v1.2.0.md (Phase 16 / tasks 16.1-16.6 entries; exact build/suite figures)",
+    "docs/limitations/00-index.md and docs/limitations/accepted.md (V12-G6-1/V12-G8-1/V12-G8-2 rows and coverage sentence)",
+    "README.md (MB/KB display + exact byte persistence + off-step rejection; restart-required note text and best-effort modal; Limits row)",
+    "docs/decisions/ADR-028.md (append-only implementation note) and docs/decisions/00-index.md (ADR-016 amended-by-ADR-028 row; ADR count 28)",
+    "docs/testing/jellyfin-12-musl-test-host.md (web-client archive correction)",
+    "stale-wording grep over README.md, docs/architecture, docs/data-model, docs/status.md, PLANS.md, docs/limitations for raw-byte / pending-16 wording / 'does not ship the web client' -> no matches"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/phase-16/orchestration.json (status COMPLETE, tasks, task_commits, 15 subagents, aggregate, gate_status PENDING_PHASE_REVIEW)",
+    "Per-task orchestration.json for 16.1-16.6 (commit, status, subagent attempts/outcomes, rework) consistent with worker/reviewer reports",
+    "16.2 rework correctly preserved: attempts 1 and 2 for both worker and reviewer, rework entry present, state.json lists both worker reports",
+    "Aggregate counters task_count 6 / review_rounds 7 / rework_rounds 1 / subagent_invocations 15 consistent; aggregate cost_usd inconsistent (finding P16-F2)"
+  ],
+  "rework_summary": {
+    "total_subagent_invocations": 15,
+    "total_attempts": 15,
+    "correction_rounds": 1
+  },
+  "verification": {
+    "build": ". /config/arrtags-env.sh && ./build.sh build -> Build succeeded. 0 Warning(s) 0 Error(s)",
+    "default_suite": ". /config/arrtags-env.sh && ./build.sh test -> Failed: 0, Passed: 1756, Skipped: 63, Total: 1819, Duration ~16 s",
+    "host_guarded_suite": "ARRTAGS_JELLYFIN_HOST_DIR=/tmp/arrtags-host-dl/host/jellyfin ./build.sh test -> Failed: 0, Passed: 1775, Skipped: 44, Total: 1819, Duration ~19 s",
+    "check_docs": ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections, check-docs: PASS, exit 0",
+    "render_docs_state": "dotnet run scripts/render-docs-state.cs -> status.md: up to date; PLANS.md: up to date",
+    "phase_gate": "git tag: only v1.2.0-phase15 exists (no v1.2.0-phase16); state.json phase 16 status PLANNED; phase orchestration gate_status PENDING_PHASE_REVIEW -> not prematurely marked complete"
+  },
+  "summary": "Phase 16 (G6/G8, ADR-028) is complete and the six tasks 16.1-16.6 each have a commit, worker and reviewer evidence, and per-task orchestration records; the phase aggregate exists and is internally consistent except for its advisory cost figure (P16-F2). Independent inspection confirms the shipped code matches the documents: ByteLimitUnits/ByteLimitField implement the per-field fixed binary unit, step, precision, scaled-integer conversion, explicit step-multiple rejection, and trailing-zero-trimmed display; the mapping's bounds/defaults match the unchanged OperationalLimits.Validate (including the three 64 KiB minima at 0.0625 MB); the persisted XML and internal values stay bytes; RestartRequiredSettings classifies all 43 user-adjustable settings with the seven-setting restart-required set (three mixed, four construction-only) and per-consumer evidence that I spot-verified against the actual singleton constructors; every restart-required setting carries always-present static note text (mixed ones with the immediate-application clause); the modal reminder follows the 16.4 spike, runs only inside the accepted save callback, and fails open to the note text. The G6/G8 integration test composes the real dashboard POST deserialization, Plugin.UpdateConfiguration, and XML boundary, and all min/default/max round-trip exactly. Canonical documentation (architecture 06/12, data-model 03-12, README, ADR-028 implementation note, decisions index, limitations register V12-G6-1/V12-G8-1/V12-G8-2, musl test-host correction) is reconciled with no stale current-state claim, and the three registered limitations are accurately classified Accepted (all LOW/INFORMATIONAL; none hides an open BLOCKER/HIGH). check-docs passes, the generated surfaces are current, and phase 16 correctly remains PLANNED with tag v1.2.0-phase16 and no gate/tag applied. No BLOCKER or HIGH finding is open; the LOW/INFORMATIONAL findings (modal can fire after a plugin-level config rejection due to the ADR-021 silent-save path; aggregate cost mismatch; and inherent structural-only/static-classification limitations) do not block the phase or the next phase."
+}

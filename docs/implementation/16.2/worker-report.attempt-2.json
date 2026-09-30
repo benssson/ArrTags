@@ -1,0 +1,116 @@
+{
+  "task": "16.2",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction attempt for the one required change of the task 16.2 review (finding 16.2-F1, MEDIUM): the no-silent-member classification guard now genuinely reflects over PluginConfiguration. RestartRequiredSettingsTests.ExpectedClassifiedNames no longer hardcodes PluginConfiguration's five settings; it derives them with the same WritableLeafProperties(typeof(PluginConfiguration)) / IsClassifiedLeaf filter used for ArrConnectionConfiguration, OperationalLimits, RendererConfiguration, and BadgeSelectorConfiguration. The inherited pinned Jellyfin 12.0.0 BasePluginConfiguration exposes no writable members, so the reflected domain is exactly the same five leaf settings as before and the classification is unchanged; a future writable leaf property on any of the five model types now fails EveryUserAdjustableConfigurationPropertyIsClassified (proven by probe I: a temporary PluginConfiguration.ProbeClassificationGuard property failed the test with missing [\"PluginConfiguration.ProbeClassificationGuard\"]). The overstated test-coverage wording is corrected in docs/changelog/v1.2.0.md and docs/implementation/16.2/consumer-evidence.md ('every writable leaf property of the five configuration model types, including PluginConfiguration, derived by the same WritableLeafProperties filter'); the attempt-1 worker report is preserved verbatim as history and is superseded by this report's accurate wording. docs/plan/state.json now lists both the attempt-1 and attempt-2 reports. No production classification, capture behavior, page mirror, persisted state, save path, validation semantics, endpoint, or dependency changed; all previously approved behaviour is untouched. Validation: build succeeded with 0 warnings / 0 errors; focused RestartRequired run Failed 0 / Passed 17 / Skipped 0 / Total 17; default suite Failed 0 / Passed 1744 / Skipped 63 / Total 1807 (unchanged from attempt 1: +17/+17 over the 16.1 baseline 1727/63/1790); check-docs.sh PASS with the reviewer report present. Host-guarded run still not performed: ARRTAGS_JELLYFIN_HOST_DIR is unset.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx) on the corrected tree.",
+    "Focused: . /config/arrtags-env.sh && dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~RestartRequired' -> 'Passed! - Failed: 0, Passed: 17, Skipped: 0, Total: 17, Duration: 197 ms - ArrTags.Tests.dll (net10.0)'.",
+    "Default suite: . /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1744, Skipped: 63, Total: 1807, Duration: 18 s - ArrTags.Tests.dll (net10.0)'. The test-case count is unchanged from attempt 1 (10 classification + 7 consumer cases); the 16.1 baseline remains Failed 0, Passed 1727, Skipped 63, Total 1790 (+17 passed / +17 total, 0 new skips).",
+    "F1 sensitivity probe (probe I): temporarily added 'public bool ProbeClassificationGuard { get; set; }' (with a conforming XML summary) to PluginConfiguration, ran the focused guard: 'Failed ArrTags.Tests.RestartRequiredSettingsTests.EveryUserAdjustableConfigurationPropertyIsClassified' with 'Collection: [\"PluginConfiguration.ProbeClassificationGuard\"]' (Failed 1, Passed 0, Total 1). The property was removed, the file diff-verified identical to its pre-probe state, and the tree rebuilt so the probe is not in the final test DLL. This proves the fixed guard detects an unclassified writable leaf property on PluginConfiguration, which the previous hardcoded expected set did not.",
+    "ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the host-guarded run was not performed; the default run reports the same 63 host-guarded skips as the baseline, and this correction changes no host-guarded fact.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. Run after the reviewer report was present and after both worker reports (attempt 1 and attempt 2) were persisted; the worker/reviewer pairing check of the review is satisfied.",
+    "Diff/scope inspection: attempt 2 changed only tests/ArrTags.Tests/RestartRequiredSettingsTests.cs, docs/changelog/v1.2.0.md, docs/implementation/16.2/consumer-evidence.md, docs/plan/state.json, and this new attempt report; the probe property was reverted (git diff shows no PluginConfiguration change) and no probe residue remains."
+  ],
+  "changed_files": [
+    "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs",
+    "docs/changelog/v1.2.0.md",
+    "docs/implementation/16.2/consumer-evidence.md",
+    "docs/plan/state.json",
+    "docs/implementation/16.2/worker-report.attempt-2.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Rework 16.2-F1: the no-silent-member test must actually cover PluginConfiguration by reflecting over its writable leaf properties with the same WritableLeafProperties filter used for the other four model types, and the report/changelog wording must match the real guard.",
+      "evidence": "RestartRequiredSettingsTests.ExpectedClassifiedNames now loops WritableLeafProperties(typeof(PluginConfiguration)) (the same filter used for ArrConnectionConfiguration/OperationalLimits/RendererConfiguration/BadgeSelectorConfiguration); the pinned BasePluginConfiguration exposes no writable members, so the reflected domain is the same five leaf settings and the test passes (17/17 focused, 1744/1807 default). Probe I (temporary PluginConfiguration.ProbeClassificationGuard) fails the test with missing [\"PluginConfiguration.ProbeClassificationGuard\"]. The changelog and consumer-evidence wording now read 'every writable leaf property of the five configuration model types (including PluginConfiguration, whose five leaf settings are derived by the same WritableLeafProperties filter as the other four types)'; the phrase 'container recursion' is removed from the current-state wording and appears only in the preserved attempt-1 worker report and the reviewer report that quotes it."
+    },
+    {
+      "criterion": "G8: The authoritative restart-required set is recorded with per-setting code evidence and is testable (a code-owned classification); a setting with both a construction-captured and a per-operation consumer is classified restart-required.",
+      "evidence": "Unchanged from attempt 1: src/ArrTags/Configuration/RestartRequiredSettings.cs with per-consumer evidence for 43 settings; the seven-setting restart-required set with the three mixed limits; RestartRequiredSettingsTests (exact sets, capture-site names, no-silent-member guard) and RestartRequiredConsumerEvidenceTests (capture and per-operation probes) pass 17/17."
+    },
+    {
+      "criterion": "Phase 16 contribution: the restart-required set is code-owned, evidenced, and testable with mixed settings classified restart-required.",
+      "evidence": "Unchanged classification and evidence; the corrected guard now covers all five configuration model types (probe I), and docs/implementation/16.2/consumer-evidence.md remains the per-consumer audit."
+    },
+    {
+      "criterion": "Task boundary: no settings-page note text (16.3), no modal (16.4/16.5), no persisted-state, save-path, validation, endpoint, or dependency change; correction only.",
+      "evidence": "git diff for attempt 2 touches only the test file, the changelog, the evidence doc, state.json, and the new attempt report; the three Configuration production types, config.html, and the consumer test file are unchanged from attempt 1."
+    },
+    {
+      "criterion": "Required validation: build succeeds, focused RestartRequired tests and the default suite pass with exact figures, check-docs.sh PASS, and host-guarded status reported.",
+      "evidence": "Build 0 warnings / 0 errors; focused 17/0/0/17; default 1744 passed / 63 skipped / 0 failed / 1807 total; check-docs.sh PASS (nine sections) after the attempt reports were persisted; ARRTAGS_JELLYFIN_HOST_DIR unset so the host-guarded run was not performed."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How should the global OperationalLimits.RequestTimeoutSeconds be classified when it has no runtime consumer at all?",
+      "chosen": "Per-operation, with an explicit audited note recording that the field is inert and that the effective timeout is the per-connection ArrConnectionConfiguration.RequestTimeoutSeconds.",
+      "basis": "ADR-028 clause 2 defines the binary classification in terms of consumers; with zero consumers no construction capture exists, and classifying it restart-required would be a false page claim. The reviewer confirmed this reading is defensible (finding 16.2-F2, noted) and disclosed.",
+      "impact": "Task 16.3 renders no restart note for this inert field. Unchanged by this correction attempt."
+    },
+    {
+      "question": "What is the classification domain?",
+      "chosen": "Every writable property of the five configuration model types the settings page round-trips (43 settings).",
+      "basis": "ADR-028 clause 2 says 'settings', G8 requires page note-text completeness, and DashboardSettingsPageTests uses the same five types as the user-adjustable domain. Unchanged by this correction attempt.",
+      "impact": "The 19 non-limit settings are recorded per-operation with evidence; no restart-required setting can hide outside the operational limits."
+    },
+    {
+      "question": "How does task 16.3 get the classification from the static page?",
+      "chosen": "The data-only restartRequiredFields mirror in config.html, pinned by an exact structural test (the 16.1 byteLimitFields precedent).",
+      "basis": "The page cannot read C# at runtime; the task allows a page-side mirror. Unchanged by this correction attempt.",
+      "impact": "16.3 renders note text from it; no note text or modal is implemented here."
+    },
+    {
+      "question": "Should BadgeSelectorConfiguration.Selector be classified?",
+      "chosen": "No; it is the fixed code-owned selector identity, not a user-adjustable field.",
+      "basis": "The page never writes it from user input. Unchanged by this correction attempt.",
+      "impact": "The reflection coverage test skips exactly that property with the documented reason."
+    }
+  ],
+  "test_sensitivity": [
+    "F1 (new): a temporary unclassified writable leaf property added to PluginConfiguration (ProbeClassificationGuard) -> 1 failure, EveryUserAdjustableConfigurationPropertyIsClassified, with missing [\"PluginConfiguration.ProbeClassificationGuard\"]; the property was reverted and the tree rebuilt. This is the sensitivity the review found missing.",
+    "Mixed flags flipped off in the classification -> 2 failures (TheMixedSetIsExactlyTheEvidencedDualConsumerSettings; ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification).",
+    "Restart-required-only entries flipped to per-operation -> 3 failures (TheRestartRequiredSetIsExactlyTheEvidencedConstructionCapturedSettings; EveryRestartRequiredEntryNamesItsRealConstructionCaptureSite; ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification).",
+    "One classified OperationalLimits entry renamed away -> 1 failure (EveryUserAdjustableConfigurationPropertyIsClassified).",
+    "One page mirror entry changed (mixed and elementId) -> 1 failure (ThePageRestartRequiredMirrorMatchesTheCodeOwnedClassification).",
+    "A restart-required page input id renamed -> 1 failure (EveryRestartRequiredSettingHasAStaticSettingsPageElement).",
+    "SourceArtifactStore changed to re-read the live limits per promotion -> 1 failure (SourceArtifactStoreUsesTheSourceLimitAndQuotaCapturedAtConstruction).",
+    "ArtworkPublisher derived-limit enforcement removed -> 1 failure (ArtworkPublisherUsesTheDerivedLimitCapturedAtConstruction).",
+    "The SettingClassification constructor guard seeds three violations (mixed with PerOperation; PerOperation with construction evidence; RestartRequired with neither evidence nor note) and asserts ArgumentException.",
+    "Sensitivity not shown for: StateRepositoryLimitsDoNotTrackAReplacementSnapshot is a value-lock whose failure mode requires changing the StateRepository constructor contract (compile-level failure); the per-operation classification of settings other than the LibraryWorkQueue and LogVerbosityGate probes rests on cited consumer sites plus existing suite coverage rather than a per-setting mutation probe."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md (Task 16.2 entry: corrected no-silent-member wording to 'every writable leaf property of the five configuration model types (including PluginConfiguration...)'; added the PluginConfiguration guard probe to the sensitivity list)",
+      "docs/implementation/16.2/consumer-evidence.md (section 7 wording corrected and the PluginConfiguration probe row added to the sensitivity table)",
+      "docs/plan/state.json (16.2 reports now list worker-report.json and worker-report.attempt-2.json; updated_utc advanced)",
+      "PLANS.md and docs/status.md regenerated/checked: unchanged (16.2 remains ticked; no phase status change)",
+      "docs/implementation/16.2/worker-report.json (attempt 1) preserved verbatim per the attempt rule; its superseded 'container recursion' wording is corrected in this attempt report and in the current-state surfaces above"
+    ],
+    "old_values_removed": [
+      "'no-silent-member reflection over the five configuration model types' in docs/changelog/v1.2.0.md and docs/implementation/16.2/consumer-evidence.md (replaced with the accurate leaf-property wording)",
+      "'no-silent-member reflection over the five configuration model types with container recursion' in the attempt-1 worker report is deliberately retained as the historical attempt record and superseded by this report"
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    {
+      "finding_id": "16.2-F1",
+      "closure": "The no-silent-member guard now reflects over PluginConfiguration's writable leaf properties using the same WritableLeafProperties/IsClassifiedLeaf filter as the other four model types: the five hardcoded names.Add calls in ExpectedClassifiedNames were replaced by a WritableLeafProperties(typeof(PluginConfiguration)) loop. The changelog and consumer-evidence wording was corrected to describe the real guard (every writable leaf property of the five model types, including PluginConfiguration), and the attempt-1 report's superseded wording is preserved as history and superseded by this attempt report.",
+      "evidence": "tests/ArrTags.Tests/RestartRequiredSettingsTests.cs ExpectedClassifiedNames (reflection loop for PluginConfiguration); probe I: temporary PluginConfiguration.ProbeClassificationGuard failed EveryUserAdjustableConfigurationPropertyIsClassified with missing [\"PluginConfiguration.ProbeClassificationGuard\"] (1 failure), then reverted and rebuilt; focused RestartRequired 17/17; default suite Failed 0 / Passed 1744 / Skipped 63 / Total 1807; check-docs.sh PASS; docs/changelog/v1.2.0.md and docs/implementation/16.2/consumer-evidence.md corrected; docs/plan/state.json reports updated."
+    }
+  ],
+  "known_limitations": [
+    "The global OperationalLimits.RequestTimeoutSeconds has no runtime consumer: changing it is applied neither at runtime nor by a restart; the effective request timeout is the per-connection Sonarr/Radarr RequestTimeoutSeconds. Recorded in the classification note and the 16.2 evidence; not changed by this task; an open follow-up not assigned to any PLANS.md task (reviewer finding 16.2-F2 noted the optional limitations-register follow-up).",
+    "The host-guarded suite was not executed because ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment; the default run reports the same 63 host-guarded skips as the baseline.",
+    "Sensitivity for StateRepositoryLimitsDoNotTrackAReplacementSnapshot was not shown by a runtime probe (its failure mode requires a constructor-contract change, a compile-level failure); RenderCacheQuotaBytes has code evidence, the exact-set/capture-site tests, and that value-lock, while the other six restart-required settings also have behavioral capture probes.",
+    "The per-operation classification of settings other than LibraryWorkQueue.Capacity and LogVerbosityGate is evidenced by cited consumer sites and existing suite coverage, not by a dedicated mutation probe per setting; a future singleton that begins capturing a currently per-operation setting would not be detected automatically."
+  ],
+  "ready_for_next_task": true
+}

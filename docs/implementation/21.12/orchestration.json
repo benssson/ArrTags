@@ -1,0 +1,78 @@
+{
+  "task": "21.12",
+  "title": "Corrected release build, full suite, reproducible artifact, and release documentation",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "c78a7d6",
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.12 re-derives the release build, artifact identity, suites, manifest, and release documentation against the code corrected by task 21.11. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause; it re-executes established build/verification on the pinned host. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 224338,
+        "output_tokens": 39718,
+        "reasoning_tokens": 44295,
+        "cache_read_tokens": 11227264,
+        "cache_write_tokens": 0,
+        "total_tokens": 11535615,
+        "cost_usd": 0.11774029199999997,
+        "duration_seconds": 952,
+        "session_id": "ses_f0df4d0fcffehy0s4y0w9GEpgA"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 146341,
+        "output_tokens": 18148,
+        "reasoning_tokens": 32761,
+        "cache_read_tokens": 6885289,
+        "cache_write_tokens": 0,
+        "total_tokens": 7082539,
+        "cost_usd": 0,
+        "duration_seconds": 1028,
+        "session_id": "ses_f0de5fdedffecI2uXdB7XOThyD"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 71298,
+        "output_tokens": 11613,
+        "reasoning_tokens": 4619,
+        "cache_read_tokens": 1597764,
+        "cache_write_tokens": 0,
+        "total_tokens": 1685294,
+        "cost_usd": 0,
+        "duration_seconds": 560,
+        "session_id": "ses_f0de5fdebffe5bxI2N5gp5qyoT"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Fully corrected artifact: artifacts/ArrTags_1.2.0.0.zip, 619,861 bytes, SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268, MD5 631fbfa5a4fb58fac5a877eeef761193, 7 entries; byte-identical across two independent clean exports plus the wiped repository tree (worker) and independently reproduced by both reviewers at further unused paths. Only the packaged ArrTags.dll changed versus the superseded 21.8 archive (1,347,072 / eae2cbab... -> 1,347,584 / a077a63d...); the other six entries are byte-identical.",
+    "Suites (fully corrected): default with archive 0/1966/66/2032; no-archive default 0/1963/69/2032; host-guarded 0/1986/46/2032; forced-native 0/2053/21/2074; the +39 total over 21.3 (1993 -> 2032) is the task 21.7 transport tests (+10) and task 21.11 log-subject tests (+29). manifest.json 1.2.0.0 checksum = 631fbfa5... = md5sum of the corrected archive.",
+    "The 21.8 and 21.3 identities are retained as superseded in docs/release/build-and-release.md and the changelog release section; the 1.1.0.0 identity required by the check-docs artifact guard is retained; current_release and the release/tag state are untouched (task 21.6 owns them).",
+    "Carried non-blocking findings: test-quality (MEDIUM) docs/testing/jellyfin-12-musl-test-host.md still names the superseded 21.8 candidate and asserts equality with the manifest checksum that 21.12 changed — owned by task 21.13, which rewrites that section; (LOW) no document states artifacts/ is gitignored so the manifest checksum is only verifiable by rebuilding — disclosed in the worker report; implementation-reviewer informational notes on the state reports listing (resolved by the orchestrator) and the same testing-doc item."
+  ]
+}

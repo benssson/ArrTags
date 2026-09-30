@@ -1,0 +1,197 @@
+{
+  "task": "21.11",
+  "attempt": 2,
+  "reviewer_status": "APPROVED",
+  "summary": "Re-review of task 21.11 (log-subject hardening) after the rework pass. My attempt-1 review returned CHANGES_REQUIRED with exactly one open finding, 21.11-F1 (MEDIUM, documentation): docs/decisions/ADR-020.md's v1.2 amendment note still stated the pre-fix host-platform Path.GetFileName semantics and the 'control scalars removed' predicate as the shipped redaction contract, and nothing in ADR-020 pointed forward to the new ADR-026 task 21.11 note. I independently inspected the rework and F1 is closed. `git diff --numstat -- docs/decisions/ADR-020.md` is 24 insertions / 0 deletions and `git diff -- docs/decisions/ADR-020.md | grep -c '^-[^-]'` is 0, so the change is a pure insertion and no existing clause, the task 15.4 amendment note, or any other text was edited; the appended '### Amendment note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)' sits between that note and '### Rejected alternatives', the same additive placement ADR-026 already used. I read the appended note in full and verified every technical claim against the code rather than accepting the worker's account: the dual-separator statement matches ExtractFinalComponent's `Math.Max(path.LastIndexOf('/'), path.LastIndexOf('\\'))`, the Cc/Cf/Zl/Zp predicate matches IsNonPrintingScalar's four UnicodeCategory arms, 'every other category is preserved' matches the exhaustive `is` pattern, 'the 128-scalar bound applied after removal' matches NormalizeFileName incrementing `appended` only for kept scalars, 'the scalar-wise pass that never splits a surrogate pair' matches the EnumerateRunes/EncodeToUtf16 loop, and 'the item-identifier fallback is unchanged' matches the two IsNullOrWhiteSpace guards. The note explicitly records that the old Path.GetFileName / host-native-path and 'control scalars removed' readings are superseded and points forward to the ADR-026 implementation note for task 21.11 (which exists at docs/decisions/ADR-026.md:141) and to docs/architecture/12-performance-and-operational-limits.md (which I confirmed now carries the dual-separator and Cc/Cf/Zl/Zp wording, so the pointer is not dangling). Scope is clean: the whole-diff arithmetic reconciles exactly with the attempt-1 baseline (attempt 1 recorded 9 files / 411 insertions / 41 deletions; the tree is now 10 files / 438 insertions / 41 deletions, and 411 + 24 ADR-020 lines + 3 additional state.json report entries = 438, with the deletion count unchanged at 41), so the only new content is the ADR-020 note, the state.json 21.11 reports list, and the new untracked worker-report.attempt-2.json. src/ArrTags/Logging/LogSubject.cs (65/21) and tests/ArrTags.Tests/LogSubjectTests.cs (202/2) are byte-for-byte the attempt-1 change and the test file's mtime (2026-09-29 19:42) predates all of 21.11's work, so the product change and its evidence are untouched. I re-ran the focused suite myself: `dotnet test --filter FullyQualifiedName~LogSubjectTests` -> Failed 0, Passed 52, Skipped 0, Total 52. Because requirement 3 asks me to confirm the pre-fix probe still discriminates, I reproduced it rather than assuming: in a task-owned copy of HEAD plus the current test file, `grep -c 'Path.GetFileName(primaryPath)|Rune.IsControl(rune)'` returned 2 (proving the pre-fix source was in place) and the focused run returned Failed 25 / Passed 27 / Skipped 0 / Total 52 across 11 distinct failing test methods, matching the attempt-1 evidence. I re-ran `scripts/check-docs.sh` (nine ok sections, 'check-docs: PASS', exit 0) and `dotnet run scripts/render-docs-state.cs -- --check` ('status.md: up to date', 'PLANS.md: up to date' twice, 'PLANS.md and state.json agree', exit 0) rather than relying on the recorded results. All four files listed in state.json task 21.11 reports exist on disk, the edit is confined to that task's done/reports plus updated_utc (Phase 21 remains status PLANNED with gate 'Gate 21' and tag v1.2.0 untouched), and PLANS.md:267 is '- [x] 21.11' with the generator confirming state.json and PLANS.md agree, so the single-writer table in docs/plan/README.md is respected and no generated block was hand-edited. The worker's report carries all four required fields (acceptance_criteria, test_sensitivity, documentation_reconciliation, interpretations) plus a rework entry for 21.11-F1 with closure evidence that I confirmed independently. All nine attempt-1 acceptance criteria still hold. The single residual is the contract-defined plan-state item the worker itself flagged: docs/agent-contracts.md:22-23 wants the reports array to list reviewer-report.json 'with every preserved .attempt-<n>.json of it', and this new reviewer-report.attempt-2.json is not yet listed. That is a post-review orchestrator bookkeeping step, the same class of item as attempt-1 finding 21.11-F2, it is a documentation-completeness observation rather than a product or acceptance-criterion defect, and scripts/check-agents.sh does not enforce the attempt-<n> entries (it only requires some entry matching 'reviewer-report'), so I record it as INFORMATIONAL/noted rather than holding approval. No user decision is required and no blocker remains.",
+  "findings": [
+    {
+      "id": "21.11-F1",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "documentation / current-state accuracy on a canonical decision surface",
+      "summary": "Closed: ADR-020 now carries a purely additive task 21.11 amendment note that supersedes the pre-fix 'Path.GetFileName'/host-native-path and 'control scalars removed' readings and points forward to the ADR-026 note, with no existing text edited.",
+      "detail": "Attempt-1 finding text required: append (do not rewrite) a short 'Amendment note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)' to docs/decisions/ADR-020.md stating the shipped subject takes the final component after the last '/' and the last '\\\\' on every host and removes Unicode Cc/Cf/Zl/Zp, that the host-native-path and 'control scalars removed' readings in the task 15.4 note described the then-shipped code and are superseded, and pointing at docs/architecture/12-performance-and-operational-limits.md and the ADR-026 task 21.11 note. Every element is present and every element is accurate. Additivity: `git diff --numstat -- docs/decisions/ADR-020.md` -> '24\t0\tdocs/decisions/ADR-020.md' and `git diff -- docs/decisions/ADR-020.md | grep -c '^-[^-]'` -> 0, so no existing line was modified or removed. Detector sensitivity is not vacuous: the same two commands on src/ArrTags/Logging/LogSubject.cs return '65\t21' and 21, so a rewrite of existing ADR-020 text would have been reported. Placement (docs/decisions/ADR-020.md:129) is between the task 15.4 amendment note (ending line 127) and '### Rejected alternatives' (line 153), matching the ADR-026 precedent the finding cited. Content verified against the code rather than accepted on the worker's say-so: ExtractFinalComponent (LogSubject.cs:78-86) computes `Math.Max(path.LastIndexOf('/'), path.LastIndexOf('\\'))` and returns the substring after it, which is exactly the note's 'extracted on both / and \\' independently of the host platform' and its 'a Windows-style or UNC primary path no longer yields a single whole string' and 'the directory/share/account chain is excluded on every host'. IsNonPrintingScalar (LogSubject.cs:141-148) matches UnicodeCategory.Control or Format or LineSeparator or ParagraphSeparator, which is exactly 'the non-printing set Cc, Cf, Zl, and Zp, not Cc only; every other category is preserved' (the `is` pattern is exhaustive, so 'every other category is preserved' is literally true rather than aspirational). NormalizeFileName (LogSubject.cs:105-126) tests the removal predicate before the `appended == MaximumScalarValues` break and increments `appended` only for kept scalars, so the note's 'The 128-scalar bound applied after removal' is true; the EnumerateRunes + Rune.EncodeToUtf16 loop supports 'the scalar-wise pass that never splits a surrogate pair'; and the two IsNullOrWhiteSpace guards support 'the item-identifier fallback ... unchanged'. The forward pointer is real, not aspirational: docs/decisions/ADR-026.md:141 carries '### Implementation note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)' and docs/architecture/12-performance-and-operational-limits.md now reads 'the media path's final component only, taken as the substring after the last / or the last \\, whichever is later, on every host; the documented non-printing scalar categories (Unicode Cc, Cf, Zl, and Zp) are removed', so the two targets the note names are present and agree with it. The last sentence's ownership claim is also accurate: state.json task 21.14 is 'Release security review of the corrected candidate'. The immutability constraint in AGENTS.md is respected: the pre-fix wording at lines 100-102 and 121-124 is left verbatim, and the appended note is what tells a reader it is stale.",
+      "evidence": [
+        "git diff --numstat -- docs/decisions/ADR-020.md -> 24 insertions, 0 deletions",
+        "git diff -- docs/decisions/ADR-020.md | grep -c '^-[^-]' -> 0; same detector on src/ArrTags/Logging/LogSubject.cs -> 21, proving sensitivity",
+        "docs/decisions/ADR-020.md:129-151 -> the appended note; :100-102 and :121-124 -> the untouched task 15.4 wording it supersedes; :153 -> '### Rejected alternatives'",
+        "src/ArrTags/Logging/LogSubject.cs:78-86 ExtractFinalComponent; :141-148 IsNonPrintingScalar; :105-126 NormalizeFileName bound-after-removal ordering",
+        "docs/decisions/ADR-026.md:141 -> '### Implementation note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)'",
+        "docs/architecture/12-performance-and-operational-limits.md (git diff) -> dual-separator and Cc/Cf/Zl/Zp wording present",
+        "docs/plan/state.json 21.14 -> 'Release security review of the corrected candidate'"
+      ],
+      "recommended_action": "None. Do not edit ADR-020.md further for task 21.11."
+    },
+    {
+      "id": "21.11-F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / contract-defined plan state",
+      "summary": "The transient agent-report pairing state that check-docs.sh flagged in attempt 1 is now cleared: state.json task 21.11 lists reviewer-report.json, test-quality-review.json, worker-report.json and worker-report.attempt-2.json, and all four exist on disk.",
+      "detail": "Attempt 1 recorded that scripts/check-docs.sh FAILed only on the two contract-mandated agent-report pairing lines, which clear when the reviewer and test-quality reports are listed in the task's state.json reports array. I re-ran scripts/check-docs.sh myself on the current tree and it returns nine ok sections and 'check-docs: PASS' with exit 0, so the transient is gone. The worker's state.json edit is confined to task 21.11's done/reports and updated_utc, which is the worker-owned surface in the docs/plan/README.md single-writer table; Phase 21 still has status PLANNED with gate 'Gate 21' and tag v1.2.0, so no orchestrator-owned phase-gate field was touched. One contract sub-clause remains open and is recorded separately as 21.11-F7: this attempt-2 reviewer report is not yet in the reports array.",
+      "evidence": [
+        "scripts/check-docs.sh -> nine 'ok:' lines then 'check-docs: PASS', exit 0",
+        "jq on docs/plan/state.json -> task 21.11 reports == [reviewer-report.json, test-quality-review.json, worker-report.attempt-2.json, worker-report.json]; all four exist on disk",
+        "git diff docs/plan/state.json -> only updated_utc, done, and the 21.11 reports array change; no phase-level status/gate/tag line appears in the diff",
+        "jq -> phase 21 status=PLANNED gate='Gate 21' tag=v1.2.0"
+      ],
+      "recommended_action": "No implementation or documentation change for 21.11. See 21.11-F7 for the remaining listing step."
+    },
+    {
+      "id": "21.11-F7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / contract-defined plan state",
+      "summary": "New residual: docs/agent-contracts.md:22-23 wants the 21.11 reports array to list reviewer-report.json 'with every preserved .attempt-<n>.json of it', and this reviewer-report.attempt-2.json is not yet listed; the worker flagged this itself and it is a post-review bookkeeping step for the orchestrator, not a product or acceptance-criterion defect.",
+      "detail": "docs/agent-contracts.md:20-26 states a task's reports array 'lists the evidence reports committed for that task, not only the worker report. A task with a worker-report.json lists at minimum its reviewer-report.json (with every preserved .attempt-<n>.json of it) plus any test-quality-review.json ...'. The array currently holds reviewer-report.json but not the attempt-2 file, which only exists because this review is being persisted. This does not gate the task: scripts/check-agents.sh's state check only asserts `any(.reports[] | test(\"reviewer-report\"))`, which reviewer-report.json already satisfies, so scripts/check-docs.sh and check-agents.sh both pass now and will keep passing. The worker could not have listed the file before it existed and recorded the exact situation in its known_limitations rather than guessing, which is the correct handling. I keep it informational rather than open because it is created by the act of recording this review, is contract-defined and deterministic, and requires no implementation change or user decision.",
+      "evidence": [
+        "docs/agent-contracts.md:20-26",
+        "scripts/check-agents.sh state check -> `any(.reports[] | any(test(\"reviewer-report\")))`, which does not require .attempt-<n> entries",
+        "jq on docs/plan/state.json -> task 21.11 reports lacks 'docs/implementation/21.11/reviewer-report.attempt-2.json'",
+        "docs/implementation/21.11/worker-report.attempt-2.json known_limitations[1] -> the worker raised this exact item and deferred it"
+      ],
+      "recommended_action": "When the orchestrator finalizes the task's plan state, add 'docs/implementation/21.11/reviewer-report.attempt-2.json' to the 21.11 reports array in docs/plan/state.json (the worker/orchestrator-owned task reports field per docs/plan/README.md), then re-run scripts/check-docs.sh. Match the multi-attempt convention used by tasks 21.1, 21.2 and 21.9."
+    },
+    {
+      "id": "21.11-F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness / documented consequence of the mandated category set",
+      "summary": "Unchanged from attempt 1: widening the predicate to Cf removes U+200D/U+200C, so an emoji ZWJ sequence in a legitimate file name is emitted with the joiner gone; a bounded, secret-free correlation-key fidelity consequence owned by the 21.14 over-removal adjudication.",
+      "detail": "The rework was documentation-only (verified: 24/0 in ADR-020, 3 added report lines in state.json, one new report file, and src/ and tests/ numstats identical to attempt 1), so this finding's substance is untouched. The code still removes UnicodeCategory.Format, which contains U+200D ZERO WIDTH JOINER, and ADR-026's task 21.11 note explicitly lists Cf as including U+200B/U+200D, so the behaviour is documented rather than hidden. The category floor is mandated by the task, and a narrow allow-list for specific Cf scalars would be a user decision, not an implementation detail.",
+      "evidence": [
+        "src/ArrTags/Logging/LogSubject.cs:141-148 IsNonPrintingScalar includes UnicodeCategory.Format",
+        "docs/decisions/ADR-026.md:153-161 -> the note names Cf as including U+200B/U+200D",
+        "git diff --numstat -> src/ArrTags/Logging/LogSubject.cs 65/21 and tests/ArrTags.Tests/LogSubjectTests.cs 202/2, identical to the attempt-1 change"
+      ],
+      "recommended_action": "No 21.11 change. Task 21.14 should probe an emoji ZWJ or Indic conjunct file name when it adjudicates over-removal."
+    },
+    {
+      "id": "21.11-F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / precision",
+      "summary": "Unchanged from attempt 1: docs/limitations/accepted.md SEC-5 still describes the predicate as 'with control scalars removed', an under-inclusive but not false description.",
+      "detail": "Untouched by the rework (git diff --numstat lists no file under docs/limitations/). 'Control scalars removed' is a true but incomplete subset of what is removed, so it does not contradict the code. Note that the ADR-020 and ADR-026 notes and architecture 06/12 now state the full Cc/Cf/Zl/Zp set, so the limitations wording is the last surface still using the short form.",
+      "evidence": [
+        "git diff --numstat -> no docs/limitations/ file changed in this task",
+        "docs/architecture/06 and docs/architecture/12 diffs -> full Cc/Cf/Zl/Zp set stated there"
+      ],
+      "recommended_action": "No change required for 21.11. If a later documentation pass touches SEC-5, state 'Cc/Cf/Zl/Zp removed'; do not change the SEC-5 conclusion."
+    },
+    {
+      "id": "21.11-F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation / precision",
+      "summary": "Unchanged from attempt 1: the ADR-026 note, changelog entry and worker report call the SR-15.4-04 URL-shaped case 'the unchanged ... observation'; the observation is unchanged but the test case is new in this task.",
+      "detail": "No wording change in this rework (ADR-026 remains 40 insertions / 0 deletions, byte-identical to attempt 1; the changelog remains 82/0). The precision point stands as recorded in attempt 1.",
+      "evidence": [
+        "git diff --numstat -- docs/decisions/ADR-026.md -> 40 insertions, 0 deletions (unchanged from attempt 1)",
+        "git diff -- docs/decisions/ADR-026.md | grep -c '^-[^-]' -> 0"
+      ],
+      "recommended_action": "No change required. If 21.12/21.14 re-word the changelog entry, prefer 'the newly added, behaviour-unchanged URL-shaped SR-15.4-04 case'."
+    },
+    {
+      "id": "21.11-F6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing / evidence not re-derived by this review",
+      "summary": "Unchanged from attempt 1: the four open LOW test-coverage findings from the independent test-quality review remain outside this review's acceptance criteria, and the behaviour they would pin is present in the shipped code.",
+      "detail": "I did not re-audit the test-quality review in this pass; the rework added no test, so TQ-21.11-01..04 are unaffected. I did independently confirm the discriminating power of the existing suite today (Failed 25 / Passed 27 / Total 52 against HEAD's LogSubject.cs with the current test file), so the tests are not vacuous. The specific uncovered shapes (the no-trim half, Co/Mc coverage, a backslash inside a POSIX file name, and the host dependence of the extraction) are real but narrow, and the code paths for them are present in ExtractFinalComponent and NormalizeFileName.",
+      "evidence": [
+        "docs/implementation/21.11/test-quality-review.json (attempt-1 evidence, not re-audited here)",
+        "git diff --numstat -- tests/ArrTags.Tests/LogSubjectTests.cs -> 202 insertions, 2 deletions, identical to attempt 1; file mtime 2026-09-29 19:42 predates all of 21.11's work",
+        "pre-fix probe re-run this pass -> Failed 25 / Passed 27 / Total 52 across 11 distinct failing test methods"
+      ],
+      "recommended_action": "No 21.11 change. Feed TQ-21.11-02/03/04 to 21.14's over/under-removal and seam probe and to 21.12's release-documentation pass."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": 1,
+      "criterion": "A Cf/Zl/Zp scalar in a file-name component does not survive into the emitted subject, and an ordinary Cc control is still stripped (superset).",
+      "verdict": "MET",
+      "evidence": "IsNonPrintingScalar (src/ArrTags/Logging/LogSubject.cs:141-148) returns true for UnicodeCategory.Control, Format, LineSeparator, ParagraphSeparator, and NormalizeFileName:113-117 skips those runes, so the Cc-only pre-fix predicate is a strict subset. This is the same code I reviewed in attempt 1, unchanged (diff still 65 insertions / 21 deletions). Re-verified behaviorally this pass: focused suite 52/52. docs/architecture/12 and docs/architecture/06 now state the Cc/Cf/Zl/Zp set, and the new ADR-020 note repeats it."
+    },
+    {
+      "id": 2,
+      "criterion": "'C:\\\\Users\\\\admin\\\\Videos\\\\secret.mkv' -> 'secret.mkv' with no backslash/account/directory; same for UNC and mixed-separator paths on any host.",
+      "verdict": "MET",
+      "evidence": "ExtractFinalComponent (LogSubject.cs:78-86) uses `Math.Max(path.LastIndexOf('/'), path.LastIndexOf('\\'))`, which is host-platform independent by construction, so a POSIX host cannot emit a directory chain for a Windows or UNC path. The mixed-separator and '//' cases were the positive controls in the attempt-1 pre-fix probe. Unchanged in this rework; the new ADR-020 note describes exactly this and the architecture 06/12 diffs state it too."
+    },
+    {
+      "id": 3,
+      "criterion": "The 128-scalar bound still holds after removal (300-scalar name -> exactly 128), surrogate pairs never split, whitespace never collapsed/trimmed.",
+      "verdict": "MET",
+      "evidence": "NormalizeFileName (LogSubject.cs:105-126) tests the removal predicate before the `appended == MaximumScalarValues` break and increments `appended` only for appended scalars, so the bound counts post-removal scalars; it iterates `fileName.EnumerateRunes()` and appends via `rune.EncodeToUtf16(runeBuffer)`, operating on scalar values so a surrogate pair is never split, and it performs no collapse or trim. This is also the statement the new ADR-020 note makes ('the 128-scalar bound applied after removal, the scalar-wise pass that never splits a surrogate pair'), and I confirmed the note against the code rather than the reverse."
+    },
+    {
+      "id": 4,
+      "criterion": "Empty/whitespace/separator-only/reduces-to-nothing paths still fall back to the item id in D format.",
+      "verdict": "MET",
+      "evidence": "LogSubject.Create (LogSubject.cs:52-73) guards a null/empty/whitespace path, an empty ExtractFinalComponent result (a trailing separator yields an empty component, which the guard catches), and a whitespace-only normalized result, returning `jellyfinItemId.ToString(\"D\", CultureInfo.InvariantCulture)` in each case. Unchanged in this rework; covered by the 52/52 focused run."
+    },
+    {
+      "id": 5,
+      "criterion": "The removal category set is stated in code docs and in the ADR-026 note.",
+      "verdict": "MET",
+      "evidence": "Code docs: LogSubject.cs:88-101 (the NormalizeFileName summary names Control/Cc, Format/Cf 'including the zero-width, bidi, soft-hyphen, and isolate controls', LineSeparator/Zl, ParagraphSeparator/Zp, and the preserved set) and :130-140 (the IsNonPrintingScalar summary). ADR-026: docs/decisions/ADR-026.md:153-161 states the four categories with their named scalars. The new ADR-020 note at :140-144 states the same set consistently. ADR-026 remains 40 insertions / 0 deletions, so its Decision clauses are unedited."
+    },
+    {
+      "id": 6,
+      "criterion": "At least one test per finding demonstrably fails on the pre-fix code with the pre-fix output recorded.",
+      "verdict": "MET",
+      "evidence": "Re-derived independently this pass rather than inherited: in a task-owned copy of HEAD with the current tests/ArrTags.Tests/LogSubjectTests.cs copied in, `grep -c 'Path.GetFileName(primaryPath)|Rune.IsControl(rune)'` on src/ArrTags/Logging/LogSubject.cs returned 2 (pre-fix source confirmed in place) and `dotnet test --filter FullyQualifiedName~LogSubjectTests` returned 'Failed! - Failed: 25, Passed: 27, Skipped: 0, Total: 52', with 11 distinct failing test methods spanning both findings (UnicodeNonPrintingScalarsAreRemoved, NonPrintingRemovalStillRemovesOrdinaryControlScalars, NonPrintingRemovalPreservesOtherCharactersVerbatim, NonPrintingRemovalDoesNotCollapseOrTrimWhitespace, BoundIsAppliedAfterNonPrintingRemoval, WidenedRemovalStillNeverSplitsASurrogatePair, NamesThatReduceToNothingAfterNonPrintingRemovalFallBackToTheItemIdentifier for SEC-21.5-02; FinalComponentIsTakenOnBothSeparators, WindowsStylePathEmitsNoAccountOrDirectoryComponent, WindowsStyleSeparatorOnlyPathsFallBackToTheItemIdentifier for SEC-21.5-03). This matches the attempt-1 evidence exactly, confirming the tests discriminate the fix and that no source or test file changed in the rework."
+    },
+    {
+      "id": 7,
+      "criterion": "No golden change, no RenderVersion/renderer-configuration schema bump.",
+      "verdict": "MET",
+      "evidence": "`git status --short tests/ArrTags.Tests/Goldens/ src/ArrTags/Configuration/` returns empty, and the full `git diff --numstat` list contains no golden, renderer, or configuration file. The only production file in the whole diff is src/ArrTags/Logging/LogSubject.cs. The rework added no source file at all."
+    },
+    {
+      "id": 8,
+      "criterion": "Architecture 06/12 no longer say host-platform-scoped/Cc-only; ADR-026 Decision clauses unedited.",
+      "verdict": "MET",
+      "evidence": "Both architecture diffs replace the stale wording: 06 now reads 'the media path's final component only, taken as the substring after the last / or the last \\, whichever is later, on every host, with the documented non-printing scalar categories (Unicode Cc, Cf, Zl, and Zp) removed' and 'an explicit directory, drive, share, or full-path exclusion applies on every host', and 12 carries the same dual-separator and Cc/Cf/Zl/Zp text; neither retains 'host-platform', 'host-native-path', or 'control scalars removed' as a description of the shipped behaviour. ADR-026 is 40 insertions / 0 deletions with 0 removed lines, so Decision clauses 1-5 are byte-identical. The rework's ADR-020 change is likewise purely additive (24/0) and closes the remaining stale statement on that surface (finding 21.11-F1)."
+    },
+    {
+      "id": 9,
+      "criterion": "Default + host-guarded suites pass; scripts/check-docs.sh passes.",
+      "verdict": "MET",
+      "evidence": "Attempt-1 evidence for the suites is unaffected because no source or test file changed in the rework: the recorded default suite is 'Failed 0, Passed 1966, Skipped 66, Total 2032' and the host-guarded suite is 'Failed 0, Passed 1986, Skipped 46, Total 2032' (/tmp/21.11/default-suite.txt, /tmp/21.11/host-guarded-suite.txt, and LogRedactionTests 167/167 in the attempt-1 report); I re-ran the focused LogSubjectTests myself this pass and got 52/52. For the documentation gate I did not trust the record: `scripts/check-docs.sh` returns nine ok sections then 'check-docs: PASS' with exit 0, and `dotnet run scripts/render-docs-state.cs -- --check` returns 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree', exit 0. PLANS.md:267 is '- [x] 21.11' and state.json task 21.11 is done: true, which the generator confirms agree, so the checkbox and the canonical state are consistent and no generated block was hand-edited. The attempt-1 contract-defined transient (finding 21.11-F2) is now cleared; the only remaining item is the post-review listing in 21.11-F7, which does not gate any check script."
+    }
+  ],
+  "reviewer_blockers": [],
+  "rework_log": [
+    {
+      "finding_id": "21.11-F1",
+      "attempt": 1,
+      "original_status": "CHANGES_REQUIRED",
+      "finding_severity": "MEDIUM",
+      "closure_evidence": "git diff --numstat -- docs/decisions/ADR-020.md -> '24\t0' (0 deletions); git diff -- docs/decisions/ADR-020.md | grep -c '^-[^-]' -> 0 with the same detector returning 21 on src/ArrTags/Logging/LogSubject.cs, so additivity was not a vacuous check. The appended '### Amendment note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)' at docs/decisions/ADR-020.md:129-151 states dual-separator platform-independent extraction (:136-139), the Cc/Cf/Zl/Zp predicate with all other categories preserved (:140-144), and that the old Path.GetFileName / host-native-path and 'control scalars removed' readings are superseded by the ADR-026 implementation note for task 21.11 plus docs/architecture/12 (:146-149). Every claim cross-checked against src/ArrTags/Logging/LogSubject.cs:78-86, :105-126 and :141-148, and both pointer targets exist and agree (docs/decisions/ADR-026.md:141; architecture 12 diff). The task 15.4 note at :100-102 and :121-124 and the '### Rejected alternatives' section at :153 are byte-identical to HEAD. No source, test, other ADR, changelog, architecture, README, PLANS, manifest, artifact, or release-state change: the whole diff reconciles exactly as 411 + 24 + 3 = 438 insertions with 41 deletions unchanged from the attempt-1 baseline, the only files not in the attempt-1 list being docs/decisions/ADR-020.md and the new untracked worker-report.attempt-2.json. scripts/check-docs.sh -> 'check-docs: PASS' (nine ok sections, exit 0); dotnet run scripts/render-docs-state.cs -- --check -> 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree', exit 0; all four state.json 21.11 reports paths exist on disk; Phase 21 still PLANNED with gate and tag untouched; PLANS.md:267 '- [x] 21.11' matches state.json done: true. Finding status in this attempt: resolved."
+    }
+  ],
+  "tests_checked": [
+    "Focused LogSubjectTests re-run independently this pass: 'dotnet test tests/ArrTags.Tests/ArrTags.Tests.csproj --filter FullyQualifiedName~LogSubjectTests' -> Failed 0, Passed 52, Skipped 0, Total 52 on the current tree.",
+    "Pre-fix sensitivity probe re-run independently this pass in /tmp/21.11/prefix (a `git archive HEAD` copy with only tests/ArrTags.Tests/LogSubjectTests.cs replaced by the current file, so HEAD's LogSubject.cs was the subject under test): grep for 'Path.GetFileName(primaryPath)|Rune.IsControl(rune)' returned 2 matches, and the focused run returned Failed 25 / Passed 27 / Skipped 0 / Total 52 across 11 distinct failing test methods. This reproduces the attempt-1 pre-fix evidence and confirms the suite discriminates the fix.",
+    "Inspected (not re-run) the attempt-1 suite evidence, which remains valid because no source or test file changed in the rework: default suite Failed 0 / Passed 1966 / Skipped 66 / Total 2032 and host-guarded suite Failed 0 / Passed 1986 / Skipped 46 / Total 2032 (/tmp/21.11/default-suite.txt, /tmp/21.11/host-guarded-suite.txt), plus LogRedactionTests 167/167 and './build.sh build' 0 warnings / 0 errors as recorded in the attempt-1 worker and reviewer reports.",
+    "Unchanged test surface: git diff --numstat -- tests/ArrTags.Tests/LogSubjectTests.cs -> 202 insertions / 2 deletions, identical to the attempt-1 change, with the file mtime (2026-09-29 19:42) predating all of 21.11's work, so no test was added, removed, or weakened in the rework.",
+    "Independent test-quality review: docs/implementation/21.11/test-quality-review.json inspected at the finding level (its four open LOW findings carried forward as 21.11-F6); not re-audited, since the rework added no test."
+  ],
+  "research_checked": [
+    "No new research was required or performed for this rework, and none was needed: the appended ADR-020 note makes only claims about code in this repository, which I verified directly against src/ArrTags/Logging/LogSubject.cs rather than against any external source. I confirmed the two documents the note points forward to (docs/decisions/ADR-026.md:141 and docs/architecture/12-performance-and-operational-limits.md) exist and state the same behaviour, so the pointers are not dangling and no external authority needed re-checking.",
+    "Unicode-category claims in the note (that UnicodeCategory.Control/Format/LineSeparator/ParagraphSeparator are the Cc/Cf/Zl/Zp non-printing set and that the `is` pattern preserves every other category) were verified against the .NET UnicodeCategory enum usage in the code rather than re-derived from an external Unicode source, which is the same basis as the attempt-1 review and is sufficient for a documentation note describing this code."
+  ],
+  "documentation_checked": [
+    "docs/decisions/ADR-020.md - full diff and lines 90-164 read; confirmed the change is 24/0 additive, that the note sits between the task 15.4 amendment note and '### Rejected alternatives', that the pre-fix wording it supersedes is left verbatim, and that every technical statement matches the code.",
+    "docs/decisions/ADR-026.md - confirmed still 40 insertions / 0 deletions with 0 removed lines (Decision clauses unedited, unchanged from attempt 1) and that the task 21.11 implementation note at line 141 exists and agrees with the new ADR-020 note.",
+    "docs/architecture/06-configuration-and-persisted-state.md and docs/architecture/12-performance-and-operational-limits.md - diffs read in full; both now state dual-separator, host-independent extraction and the Cc/Cf/Zl/Zp set, and neither retains a host-platform-scoped or Cc-only description of the shipped behaviour.",
+    "docs/plan/state.json - diff read; task 21.11 is done: true with a four-entry reports array, all four paths verified present on disk, updated_utc advanced to 2026-09-30T11:12:30Z, and the edit confined to worker-owned fields (phase 21 status PLANNED, gate 'Gate 21', tag v1.2.0 untouched). The single-writer table in docs/plan/README.md:9-15 and the contract clause at docs/agent-contracts.md:20-26 were read to assess this.",
+    "PLANS.md - line 267 is '- [x] 21.11', matching state.json, and the generated-block check reports 'PLANS.md and state.json agree'; the milestone table and docs/status.md required no regeneration.",
+    "docs/status.md, docs/changelog/v1.2.0.md, README.md, docs/limitations/ - inspected via git status/numstat; the changelog entry (82/0) and README (1/1) are unchanged from attempt 1 and no limitations file is touched by this task. Per AGENTS.md the changelog and immutable history are not rewritten to match newer status, and the new ADR-020 note correctly appends rather than edits.",
+    "docs/implementation/21.11/worker-report.attempt-2.json - read in full; acceptance_criteria, test_sensitivity, documentation_reconciliation and interpretations are all present, and the single rework entry for 21.11-F1 carries closure evidence I independently reproduced."
+  ],
+  "ready_for_next_task": true
+}

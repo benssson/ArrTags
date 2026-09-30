@@ -1,0 +1,160 @@
+{
+  "task": "21.6",
+  "attempt": 1,
+  "title": "Release-readiness verification of the corrected ArrTags 1.2.0.0 release candidate",
+  "phase": 21,
+  "release": "1.2.0",
+  "verified_utc": "2026-09-29T17:47:54Z",
+  "head": "69220667d9d2f3d641a24cb22bd6f59951d0c105",
+  "artifact": {
+    "path": "artifacts/ArrTags_1.2.0.0.zip",
+    "bytes": 619636,
+    "sha256": "3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277",
+    "md5": "f3b50a91c7cb63d9560316d8abe2f9dc",
+    "entries": 7,
+    "uncompressed_bytes": 1506803,
+    "matches_release_doc": true,
+    "matches_manifest_checksum": true
+  },
+  "checks": [
+    {
+      "id": "RR-01",
+      "check": "build.yaml declares plugin version 1.2.0.0 and manifest ABI 12.0.0.0",
+      "command": "grep -nE '^(version|targetAbi|framework):' build.yaml",
+      "observed": "version: \"1.2.0.0\"; targetAbi: \"12.0.0.0\"; framework: \"net10.0\"",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-02",
+      "check": "Directory.Build.props declares 1.2.0.0",
+      "command": "grep -nE '<(Version|AssemblyVersion|FileVersion)>' Directory.Build.props",
+      "observed": "Version 1.2.0.0; AssemblyVersion 1.2.0.0; FileVersion 1.2.0.0",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-03",
+      "check": "manifest.json is valid JSON with the single ArrTags plugin entry",
+      "command": "jq empty manifest.json",
+      "observed": "VALID (root is an array with one plugin object)",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-04",
+      "check": "manifest.json lists 1.2.0.0 first and retains the prior entries",
+      "command": "jq -r '.[0].versions[].version' manifest.json",
+      "observed": "1.2.0.0, 1.1.0.0, 1.0.1.0 (newest first; prior 1.1.0.0 and 1.0.1.0 entries retained)",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-05",
+      "check": "manifest.json 1.2.0.0 checksum equals md5sum of artifacts/ArrTags_1.2.0.0.zip",
+      "command": "jq -r '.[0].versions[0].checksum' manifest.json; md5sum artifacts/ArrTags_1.2.0.0.zip",
+      "observed": "manifest f3b50a91c7cb63d9560316d8abe2f9dc == artifact f3b50a91c7cb63d9560316d8abe2f9dc (equal)",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-06",
+      "check": "manifest.json 1.2.0.0 targetAbi is 12.0.0.0",
+      "command": "jq -r '.[0].versions[0].targetAbi' manifest.json",
+      "observed": "12.0.0.0",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-07",
+      "check": "manifest.json 1.2.0.0 sourceUrl is the v1.2.0 release asset URL",
+      "command": "jq -r '.[0].versions[0].sourceUrl' manifest.json",
+      "observed": "https://github.com/benssson/ArrTags/releases/download/v1.2.0/ArrTags_1.2.0.0.zip",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-08",
+      "check": "manifest.json plugin fields and 1.2.0.0 changelog match build.yaml",
+      "command": "jq cross-check + 'dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml' + normalized folded-YAML comparison",
+      "observed": "name ArrTags, guid 40322d52-5680-449f-b33e-e01836ee2f46, owner arrtags, category General, overview and description byte-identical after folded-YAML normalization (1,037 bytes), changelog byte-identical to the write-manifest.cs --print-changelog output",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-09",
+      "check": "artifact identity matches the corrected release record",
+      "command": "stat -c '%s bytes' artifacts/ArrTags_1.2.0.0.zip; sha256sum; md5sum; unzip -l",
+      "observed": "619,636 bytes; SHA-256 3e59cb06dfd09da4df71e4e4a1c608b664db61326b0184c63cf846fcc502d277; MD5 f3b50a91c7cb63d9560316d8abe2f9dc; 7 entries, 1,506,803 uncompressed bytes",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-10",
+      "check": "committed manifest.json at HEAD is the verified file",
+      "command": "git status --porcelain; git show HEAD:manifest.json | jq -r '.[0].versions[0].checksum'",
+      "observed": "clean working tree at 69220667d9d2f3d641a24cb22bd6f59951d0c105; HEAD manifest 1.2.0.0 checksum f3b50a91c7cb63d9560316d8abe2f9dc (working tree identical)",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-11",
+      "check": "docs/release/build-and-release.md records the corrected identity and suite counts, with the superseded identity retained",
+      "command": "grep of identity/count strings in docs/release/build-and-release.md",
+      "observed": "619,636 / 3e59cb06... / f3b50a91... / 7 entries present; counts 1,937/66/2,003 (archive present), 1,934/69/2,003 (no archive), 1,957/46/2,003 (host-guarded), 2,024/21/2,045 (forced-native) present; superseded 21.3 identity 619,538 / 50580499... / 3100aae9... retained and marked superseded; manifest checksum f3b50a91... and v1.2.0 sourceUrl recorded",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-12",
+      "check": "docs/changelog/v1.2.0.md carries the v1.2.0 release section (identity, features with ADRs, matrices, manual publish step)",
+      "command": "grep of the appended '## v1.2.0 release' section",
+      "observed": "release section appended after the preserved Phase 21 per-task history; records version 1.2.0.0/tag v1.2.0, the eight v1.2 features with ADR-026/027/028/025/022+029/023/024, the corrected artifact identity with the superseded 21.3 identity, the four corrected suite counts, the task 21.9 live matrix (VERIFIED, L1-L8), the task 21.10 security outcome, and that the manifest commit/tag are the orchestrator's post-gate step and the GitHub publish the user's manual step",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-13",
+      "check": "canonical/current-state surfaces carry no stale v1.2 claim (spot-check README.md, docs/limitations/, docs/status.md, GOALS.md)",
+      "command": "stale-claim grep (not yet implemented | remains open | will be implemented | pending) over the four surfaces; docs/limitations/open.md content; docs/status.md generated block",
+      "observed": "README.md, docs/status.md, GOALS.md: no matches. docs/limitations/: only P6 (the v1.1 publication remains pending, accurate), V11-G4 (an accepted historical stale-phrasing item), and F6-1 race-window wording; docs/limitations/open.md records no open limitations. docs/status.md reports the current shipped release 1.1.0.0 with v1.2 (Phase 21) as the active scope, which is accurate until the orchestrator sets the v1.2 current-release state after the gate.",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-14",
+      "check": "generated status surfaces are current and state.json/PLANS.md agree",
+      "command": "dotnet run scripts/render-docs-state.cs -- --check",
+      "observed": "status.md: up to date; PLANS.md: up to date (x2); PLANS.md and state.json agree (exit 0)",
+      "status": "PASS"
+    },
+    {
+      "id": "RR-15",
+      "check": "scripts/check-docs.sh passes on the release-readiness tree",
+      "command": "scripts/check-docs.sh",
+      "observed": "PASS, all nine sections (see the worker report; run on the tree before the 21.6 worker report was persisted, because section 9's worker/reviewer pairing check is the contract-defined transient failure until the orchestrator's implementation-reviewer report and docs/plan/state.json report entry exist)",
+      "status": "PASS"
+    }
+  ],
+  "acceptance_criteria_status": [
+    {
+      "criterion": "docs/changelog/v1.2.0.md and the status surfaces reflect v1.2",
+      "status": "PARTIAL - the changelog release section is complete in this task; docs/changelog/00-index.md already lists 1.2.0; docs/status.md and docs/plan/state.json current_release/releases[] still report the pre-gate state by delegation (the orchestrator sets them after the release-review gate)."
+    },
+    {
+      "criterion": "the release-review gate passes",
+      "status": "NOT RUN - the release-reviewer gate is the orchestrator's step after this task; docs/implementation/final-review/ currently holds no v1.2 release review (the latest is release-review.json for 1.1.0.0)."
+    },
+    {
+      "criterion": "the annotated tag v1.2.0 exists",
+      "status": "NOT CREATED - git tag has no v1.2.0 (only v1.2.0-phase15..phase20); the orchestrator creates it after the gate."
+    },
+    {
+      "criterion": "the GitHub publish remains the user's manual step",
+      "status": "SATISFIED AS DOCUMENTED - stated in the changelog release section, docs/release/build-and-release.md, and this record; no GitHub call was made."
+    }
+  ],
+  "post_gate_owned": [
+    "Release-reviewer gate on the release candidate (docs/implementation/final-review/).",
+    "Annotated tag v1.2.0 creation.",
+    "docs/plan/state.json current_release and releases[] v1.2 COMPLETE/current update, regeneration of docs/status.md and the PLANS.md milestone table, PLANS.md 21.6 checkbox, and the 21.6 done flag.",
+    "Git commit of the release-readiness tree (manifest.json is already committed at HEAD 6922066).",
+    "GitHub release, ArrTags_1.2.0.0.zip asset upload, and manifest push (user's manual step with scripts/publish-release.sh)."
+  ],
+  "not_re_executed_here": [
+    "The corrected suite matrix was not re-run by this documentation task (no source or test changed); the values are transcribed from the task 21.8 evidence and docs/release/build-and-release.md.",
+    "The task 21.9 live pinned-host matrix and the task 21.10 security review were read and reconciled, not independently re-executed.",
+    "The release artifact was hashed, not rebuilt."
+  ],
+  "notes": [
+    "manifest.json was verified current and was NOT modified by task 21.6; build.yaml and Directory.Build.props were NOT modified.",
+    "The task 21.10 review recorded one optional, non-blocking release-note completeness choice (whether the manifest.json 1.2.0.0 changelog one-liner should state that a provider 3xx is no longer followed); task 21.6 left it unchanged because changing the packaged build.yaml would change the verified artifact identity, and the behavior is already recorded in docs/changelog/v1.2.0.md, docs/architecture sections 7 and 11, and the ADR-005 implementation note."
+  ]
+}

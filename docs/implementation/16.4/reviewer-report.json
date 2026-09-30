@@ -1,0 +1,66 @@
+{
+  "task": "16.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "research-evidence-precision",
+      "summary": "The spike note contains a few minor evidence imprecisions that do not change its API decision.",
+      "detail": "Independently reproduced the note's core claims against the pinned host asset and jellyfin-web v12.0 source: (1) window.Dashboard is present with the exact method set listed (window.Dashboard=G in /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/main.jellyfin.bundle.js); (2) Dashboard.showMessage is absent everywhere under the pinned web assets (grep found no matches); (3) alert/confirm/processPluginConfigurationUpdateResult function bodies match the note's excerpts; (4) jellyfin-web v12.0 src/utils/dashboard.js carries the exact 'TODO: Remove once plugins don't need it' comment and alert(object) maps options.message -> dialog text with no .catch; (5) server v12.0 DashboardController.cs line 94 serves the raw resource via File(stream, ...). However three evidence details are imprecise: (a) the note states 'grep across 974 .js files ... zero contain requirejs / define.amd', but three bundled third-party library files do match (libraries/pdf.worker.js, libraries/npo.js, node_modules.hls.js.*.chunk.js); the substantive conclusion (no AMD loader is exposed to plugin pages) still holds because those matches are library-internal; (b) finding 3 says alert(object) 'returns/swallows a promise', whereas the shim returns nothing (the note's own risks section correctly states 'it cannot be caught because alert() does not return the promise'); (c) the evidence field lists '/tmp/arrtags-host-dl/pinned/jellyfin' as carrying an identical web tree, but that directory contains only server DLLs and no jellyfin-web/ (the verified trees are /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web and /tmp/arrtags-14.3/jellyfin/jellyfin-web). None of these affects the recorded availability/stability decision or the 16.5 recommendation, and the note honestly marks the conclusion pinned-asset/source-confirmed, not live-browser confirmed.",
+      "evidence": [
+        "grep -rlE 'define\\.amd|requirejs' /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web -> libraries/pdf.worker.js, libraries/npo.js, node_modules.hls.js.6591d78d7f6228aaadc1.chunk.js",
+        "grep -rl 'showMessage' /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web -> no matches",
+        "https://raw.githubusercontent.com/jellyfin/jellyfin-web/v12.0/src/utils/dashboard.js (alert object form maps options.message; no return; TODO removal comment)",
+        "ls -la /tmp/arrtags-host-dl/pinned/jellyfin -> server DLLs only, no jellyfin-web dir"
+      ],
+      "recommended_action": "Optional: correct the three evidence details if the note is touched by task 16.5 or the 16.6 sweep. Not required for task 16.4; the API decision and recommendation stand."
+    },
+    {
+      "id": "R2",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation-scope",
+      "summary": "The out-of-scope musl test-host documentation discrepancy is correctly left unedited and flagged for the 16.6 sweep.",
+      "detail": "docs/testing/jellyfin-12-musl-test-host.md lines 98-101 still state 'the archive does not ship the web client', which the spike disproved: tar tzf the pinned archive contains 2363 jellyfin/jellyfin-web/ entries and the extracted host has the static client (2348 files recursively, 2292 top-level entries). The worker correctly did not silently edit that unrelated document; it is recorded in the changelog and the worker report's known_limitations for task 16.6. This matches the delegation's instruction and the scope discipline. No action required for this task.",
+      "evidence": [
+        "tar tzf /tmp/arrtags-host-dl/jellyfin_12.0.tar.gz | grep -c jellyfin-web -> 2363",
+        "docs/testing/jellyfin-12-musl-test-host.md lines 98-101 unchanged in git diff",
+        "docs/changelog/v1.2.0.md task 16.4 entry flags the discrepancy for 16.6"
+      ],
+      "recommended_action": "None for this task; task 16.6 owns the correction."
+    }
+  ],
+  "tests_checked": [
+      "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (Release, ArrTags.slnx)",
+      "./build.sh test -> Passed! - Failed: 0, Passed: 1747, Skipped: 63, Total: 1810, Duration: 17 s - ArrTags.Tests.dll (net10.0); matches the worker's claimed unchanged post-16.3 baseline",
+      "scripts/check-docs.sh -> sections 1-8 ok; section 9 fails only on 'task 16.4 has a worker report but no reviewer report', the expected pre-reviewer state that this report resolves",
+      "dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date'",
+      "git status --porcelain -> no changes under src/, tests/, or any .csproj; src/ArrTags/Configuration/config.html unchanged (no Dashboard.alert / showRestartRequiredReminder / Dashboard.showMessage present)"
+  ],
+  "research_checked": [
+      "docs/research/jellyfin-expert/modal-notification-api.json (read in full; conclusion, evidence, findings, api_classification, recommendation_for_task_16_5, risks, unresolved, documentation_impact)",
+      "jellyfin v12.0 tag revision verified via https://api.github.com/repos/jellyfin/jellyfin/git/matching-refs/tags/v12.0 -> sha 6c073e19ddf604b2369c638716164fdab4c952dc (matches note)",
+      "jellyfin-web v12.0 tag revision verified via https://api.github.com/repos/jellyfin/jellyfin-web/git/matching-refs/tags/v12.0 -> sha 0e83c6a724b31f3e9b5a499244331a288c060a4a (matches note)",
+      "jellyfin-web v12.0 src/utils/dashboard.js and src/components/alert.js fetched from GitHub raw; confirm window.Dashboard compat object, alert({title,message}) single ButtonGotIt modal, confirm two-button, processPluginConfigurationUpdateResult loading-hide + SettingsSaved toast, no showMessage, exact TODO removal comment",
+      "pinned host asset /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/main.jellyfin.bundle.js inspected: window.Dashboard=G method map, alert N / loading L/B/V / confirm z function bodies",
+      "/tmp/jfsrc/jellyfin-6c073e19.../Jellyfin.Api/Controllers/DashboardController.cs line 94 -> File(stream, MimeTypes.GetMimeType(resourcePath)), no injected scripts",
+      "tests/ArrTags.Tests/DashboardSettingsPageTests.cs -> line 74 asserts Dashboard.processPluginConfigurationUpdateResult, line 78 asserts no innerHTML; PageOnlyReferencesKnownConfigurationProperties exists"
+  ],
+  "documentation_checked": [
+      "docs/plan/state.json -> task 16.4 done:true with reports [worker-report.json, modal-notification-api.json]; Phase 16 status still PLANNED, tag v1.2.0-phase16 unchanged",
+      "PLANS.md -> '- [x] 16.4 Modal-on-change research spike (`jellyfin-expert`)'; milestone table generated and unchanged",
+      "docs/status.md -> regenerated check up to date; no per-task 16.4 status surface to stale",
+      "docs/changelog/v1.2.0.md -> Task 16.4 entry accurate (spike findings, 16.5 decision, musl discrepancy, exact counts)",
+      "docs/architecture/06-configuration-and-persisted-state.md -> records the decision as 'decided but not yet implemented' and 'the page currently ships the note text only'; does not claim the modal is shipped",
+      "docs/decisions/ADR-028.md clause 4 -> availability and stability recorded by the spike, as required; ADR text unchanged (immutable)",
+      "docs/testing/jellyfin-12-musl-test-host.md -> discrepancy confirmed and correctly deferred to 16.6",
+      "grep for stale task-16.4-pending wording over README.md, docs/status.md, PLANS.md, docs/architecture/, docs/data-model/, docs/limitations/ -> no stale pending/unrecorded claim"
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

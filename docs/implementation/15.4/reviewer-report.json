@@ -1,0 +1,85 @@
+{
+  "task": "15.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "IR-15.4-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/security-review provenance",
+      "summary": "The canonical docs cite the attempt-1 security review (security-review.json) and do not reference the independent attempt-2 review or the closure of its LOW SR2-15.4-05; the docs' claims remain true and the acceptance criterion holds via either review.",
+      "detail": "docs/decisions/ADR-020.md (amendment note), docs/limitations/archive.md (F8) and docs/changelog/v1.2.0.md all cite docs/implementation/15.4/security-review.json (attempt 1: PASS_WITH_FINDINGS, 2 LOW open, 10 INFORMATIONAL). The fresh independent review that the orchestrator ran is docs/implementation/15.4/security-review.attempt-2.json (PASS_WITH_FINDINGS, 1 open LOW SR2-15.4-05, all others LOW-not_required or INFORMATIONAL). That LOW was then closed by editing docs/limitations/accepted.md (SEC-5 now enumerates the bounded log subject and the explicit directory/drive/share/full-path exclusion, matching SR2-15.4-05's recommended_action and ADR-026). No current-state document records the attempt-2 review or the SR-05 closure. This is a documentation-precision matter, not an overclaim: both reviews report no open BLOCKER/HIGH and the cited attempt-1 artifact genuinely exists and says what the docs say. Both real threat classes (Cf/Zl/Zp residual; host-native path scope) are recorded in the tree and adjudicated.",
+      "evidence": [
+        "jq: docs/implementation/15.4/security-review.json reviewer_status=PASS_WITH_FINDINGS, open severities {LOW:2}; docs/implementation/15.4/security-review.attempt-2.json reviewer_status=PASS_WITH_FINDINGS, open severities {LOW:1} (SR2-15.4-05)",
+        "docs/decisions/ADR-020.md amendment note; docs/limitations/archive.md F8 entry; docs/changelog/v1.2.0.md task-15.4 entry (all cite security-review.json)",
+        "git diff -- docs/limitations/accepted.md adds the bounded log subject + explicit directory/drive/share/full-path exclusion, closing SR2-15.4-05; scripts/check-docs.sh 'doc budget'/'limitations index' sections pass"
+      ],
+      "recommended_action": "Optional, non-blocking: add a one-line pointer to the independent attempt-2 review and to the SR2-15.4-05 closure in a canonical current-state surface (e.g. the task-15.4 changelog entry), or accept the immutable attempt records as the audit trail. Do not edit the immutable security-review artifacts."
+    },
+    {
+      "id": "IR-15.4-02",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/limitations register evidence pointer",
+      "summary": "The archived F8 entry's evidence list cites worker-report.json (the attempt-1 BLOCKED base report) rather than the final attempt-2 worker report; the entry's substantive claims are correct.",
+      "detail": "docs/limitations/archive.md F8 'Evidence' lists docs/implementation/15.4/worker-report.json. That file is attempt 1 (status BLOCKED) whose summary states the security-review half was unmet; the F8-resolution documentation half it records is nevertheless accurate, and the F8 entry's own status/behavior text matches the shipped code (ArtworkGenerationCoordinator.DescribeClassification emits the classification; verified). The final report is worker-report.attempt-2.json (COMPLETE). Under the project's contract, attempt files are the audit trail and the base path is the canonical worker report, so this is a minor pointer-precision matter with no correctness impact.",
+      "evidence": [
+        "docs/limitations/archive.md F8 Evidence bullet cites docs/implementation/15.4/worker-report.json",
+        "docs/implementation/15.4/worker-report.json status=BLOCKED; docs/implementation/15.4/worker-report.attempt-2.json status=COMPLETE",
+        "grep 'DescribeClassification' src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs (lines 145,160-174) confirms the classification claim"
+      ],
+      "recommended_action": "Optional: cite worker-report.attempt-2.json (or both reports) in the F8 evidence list. No change required."
+    },
+    {
+      "id": "IR-15.4-03",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "planning/report contracts",
+      "summary": "The planning record names a documentation-maintainer review for task 15.4, but no documentation-review.json artifact exists; the documentation reconciliation is covered by the worker report and this independent review.",
+      "detail": "docs/implementation/planning/v1.2.json task 15.4 'review' is 'security-reviewer, documentation-maintainer'. The security review exists (attempts 1 and 2). No docs/implementation/15.4/documentation-review.json exists, and the agent-contracts table describes that artifact for documentation-maintainer reviewer mode. Nothing in the task acceptance criteria, the plan section 7 phase-15 checklist, or scripts/check-docs.sh/check-agents.sh requires it, and I independently verified every phase-15 checklist surface is reconciled, so no acceptance criterion is unmet.",
+      "evidence": [
+        "docs/implementation/planning/v1.2.json task 15.4 review field",
+        "ls docs/implementation/15.4/ shows no documentation-review.json",
+        "scripts/check-docs.sh and scripts/check-agents.sh enforce only the worker/reviewer pairing"
+      ],
+      "recommended_action": "None required. If the orchestrator wants the planning record honored literally, a documentation-maintainer pass could be recorded, but the reconciliation is already independently verified here."
+    }
+  ],
+  "tests_checked": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (independently reproduced).",
+    ". /config/arrtags-env.sh && dotnet test ArrTags.slnx --configuration Release --no-build -> 'Passed! - Failed: 0, Passed: 1619, Skipped: 63, Total: 1682' (independently reproduced; identical to the post-15.3 baseline, and no src/ or tests/ file changed: `git diff --stat -- src/ tests/` is empty).",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice) (independently reproduced; generated blocks not hand-edited).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh (before this reviewer report existed) -> all sections ok except the expected agent-contract pairing FAIL 'task 15.4 has a worker report but no reviewer report'; the pairing is satisfied by this report and the rerun after writing it is expected to PASS.",
+    "jq inspection of docs/implementation/15.4/security-review.json and security-review.attempt-2.json: valid JSON, security-reviewer schema keys, reviewer_status PASS_WITH_FINDINGS on both, no open BLOCKER/HIGH (attempt 1 open {LOW:2}; attempt 2 open {LOW:1}), and no finding with severity BLOCKER or HIGH anywhere.",
+    "Inspection of the code the documentation describes: src/ArrTags/Logging/LogSubject.cs (Path.GetFileName, Rune.IsControl/Cc-only, MaximumScalarValues=128 scalar bound, D-format fallback), src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs DescribeClassification, and MetadataReconciliationProcessor.Discard overloads (pathless pre-publish calls vs path-bearing post-identity calls) - all match the ADR-020/ADR-026 and architecture claims."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-020.md clause 4/8 and the new 'Amendment note (v1.2, ADR-026; task 15.4)' vs docs/decisions/ADR-026.md clauses 1-5 (the amendment adds the bounded subject and the explicit directory/drive/share/full-path exclusion; `git diff -- docs/decisions/ADR-020.md docs/decisions/ADR-026.md` is purely additive, so no clause text/history was rewritten).",
+    "docs/planning/v1.2.md G9 acceptance criteria and section 7 phase-15 documentation checklist; docs/implementation/planning/v1.2.json task 15.4 acceptance criteria ('ADR-020 clause 4's amendment and the canonical documentation are recorded; the log path is security-reviewed with no open BLOCKER/HIGH; F8 is recorded as resolved') and Gate 15 exit criterion.",
+    "src/ArrTags/Logging/LogSubject.cs (doc-comment and NormalizeFileName) confirming the documented path/readme claims: file-name component only, Cc-only control removal, 128-scalar bound in one pass that never splits a surrogate pair, D-format item-id fallback.",
+    "src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs LogOutcome/DescribeClassification confirming the F8 resolution claim (PassThroughReason/FailureReason/SourceFailureReason appended when present).",
+    "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs Discard call sites confirming the ADR-026 implementation-note clause-3 reconciliation (pre-identity/ineligible/connection-unavailable discards pass no path and take the item-id fallback; post-identity discards pass PrimaryPath).",
+    "docs/implementation/15.4/security-review.attempt-2.json summary/findings adjudications (Cf/Zl/Zp pass-through acceptable under clause 2 as written, SR2-15.4-01 not_required; host-native scope documented, SR2-15.4-02 resolved; SEC-5 incompleteness SR2-15.4-05 LOW closed by the accepted.md edit under review)."
+  ],
+  "documentation_checked": [
+    "docs/decisions/ADR-020.md - new dated amendment note; no clause text altered (additive diff); records the bounded subject, the explicit directory/drive/share/full-path exclusion, the shipped tasks, and the review status.",
+    "docs/decisions/ADR-026.md - new 'Implementation note (v1.2, tasks 15.1-15.4)'; records the helper/threading/classification, the clause-3 parenthetical reconciliation, the host-native Path.GetFileName scope, and the Cc-only decision (SR-15.4-01 closure).",
+    "docs/decisions/00-index.md - ADR-020 row marked 'Accepted (v1.1; clause 4 amended by ADR-026 (v1.2))'.",
+    "docs/architecture/12-performance-and-operational-limits.md - allowed-emitted-values paragraph reconciled to the amended contract; stale 'not emitted / generic reason / F8 open' wording removed (grep 'not emitted' has no current-state matches); records F8 resolved.",
+    "docs/architecture/06-configuration-and-persisted-state.md - logging section adds the subject/classification and the host-native-scoped exclusion (SR-15.4-02 closure).",
+    "README.md - LogVerbosity row now names the bounded host-native media file-name component and render-classification enums and scopes the directory/share/full-path exclusion to a host-native path.",
+    "docs/limitations/open.md - F8 section removed (no 'F8' entry remains).",
+    "docs/limitations/archive.md - F8 resolved entry with status 'Resolved (v1.2 Phase 15...)' and the shipped behavior.",
+    "docs/limitations/00-index.md - F8 row moved to the resolved group ('Resolved' -> archive.md); 'limitations index covers all IDs' passes.",
+    "docs/limitations/accepted.md - SEC-5 allowlist paragraph reconciled to the ADR-026 amendment (bounded log subject + explicit directory/drive/share/full-path exclusion), closing SR2-15.4-05; the SEC-5 security conclusion is unchanged and correct.",
+    "PLANS.md - 15.4 checkbox [x]; active-scope preamble moves F8 to resolved and the v1.2 risk row gains the host-native qualifier; the generated milestone table is not hand-edited (render-docs-state 'up to date').",
+    "docs/plan/state.json - task 15.4 done:true with reports paths; limitations open F3/F4/F6/F7 and resolved F1/F2/F8; phase 15 status remains PLANNED (Gate 15 not applied, as expected for the orchestrator's later step).",
+    "docs/status.md - regenerated: 'Open limitations: 4 (F3, F4, F6, F7)'; renderer reports 'status.md: up to date'.",
+    "docs/changelog/v1.2.0.md - task-15.4 entry records the amendment, reconciliation, F8 resolution, review outcome, and unchanged suite counts."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

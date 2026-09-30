@@ -1,0 +1,59 @@
+{
+  "task": "21.5",
+  "title": "Release security review",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "84b052e",
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.5 is the adversarial security audit of the already-built v1.2 release candidate; it introduces no new Jellyfin or provider assumption and implements nothing. The specialist security review is the task's own verification activity; no pre-dispatch conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "security-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "max",
+        "input_tokens": 228472,
+        "output_tokens": 33709,
+        "reasoning_tokens": 102836,
+        "cache_read_tokens": 22699738,
+        "cache_write_tokens": 0,
+        "total_tokens": 23064755,
+        "cost_usd": 0,
+        "duration_seconds": 1898,
+        "session_id": "ses_f12c9315affetoDcWoX1tLlBlp"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 39309,
+        "output_tokens": 7160,
+        "reasoning_tokens": 3434,
+        "cache_read_tokens": 503136,
+        "cache_write_tokens": 0,
+        "total_tokens": 553039,
+        "cost_usd": 0,
+        "duration_seconds": 114,
+        "session_id": "ses_f129f7ab5ffeWX3D3OlkP5PMJ0"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Acceptance criterion met: the release security review is recorded with no open BLOCKER/HIGH. security-reviewer status PASS_WITH_FINDINGS, open_blocker_high 0 (recomputed independently by the implementation reviewer as 1 MEDIUM/open, 3 LOW/open, 6 INFORMATIONAL/noted).",
+    "New finding SEC-21.5-01 (MEDIUM, open): the four provider clients are registered with a bare AddHttpClient(name), so they follow HTTP redirects and the X-Api-Key header applied by SecretLease.ApplyTo is re-sent to whatever origin a 3xx Location names, widening credential egress beyond the configured connection contrary to ADR-005. Reproduced end-to-end by the reviewer; not remotely triggerable by an unauthenticated third party (admin-supplied base URL), hence MEDIUM.",
+    "Disposition (explicit user decision, this session): FIX NOW AND RE-VERIFY, rather than record as an accepted limitation. The implementation-planner added Phase 21 corrective tasks 21.7 (provider transport fix + non-egress test), 21.8 (corrected release build/artifact/docs), 21.9 (corrected live matrix), and 21.10 (corrected release security review), ordered before task 21.6; the Phase 21 execution order is now 21.1, 21.2, 21.3, 21.4, 21.5, 21.7, 21.8, 21.9, 21.10, 21.6. The planner's compensating update is recorded in docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json.",
+    "Carried findings: SEC-21.5-02/03 (LOW, log subject control-character removal and Path.GetFileName host semantics), SEC-21.5-04 (LOW, state-root shared-temp fallback = prior SEC-2), and SEC-21.5-05..10 (INFORMATIONAL). SEC-21.5-01 must carry an explicit disposition in the 21.10 re-review."
+  ]
+}

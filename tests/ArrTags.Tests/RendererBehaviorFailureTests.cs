@@ -70,6 +70,21 @@ public class RendererBehaviorFailureTests
         await AssertPassThroughAsync(request, RenderPassThroughReason.NoDisplayableValue);
     }
 
+    [SkiaNativeFact]
+    public async Task NonFittingSelectionPassesThroughAsNoFittingBadge()
+    {
+        // A non-empty resolved selection on a poster too small for any pill is
+        // the distinct NoFittingBadge pass-through (ADR-024 clause 1): the render
+        // reached layout, so it is never the empty-selection NoDisplayableValue
+        // restore discriminator.
+        var source = RendererBehaviorFixtures.CreateOpaquePng(10, 10);
+        var request = RenderTestFixtures.BuildRequest(
+            source,
+            metadata: RendererBehaviorFixtures.BuildMetadata());
+
+        await AssertPassThroughAsync(request, RenderPassThroughReason.NoFittingBadge);
+    }
+
     [Fact]
     public async Task UnavailableSourcePassesThrough()
     {

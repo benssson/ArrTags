@@ -161,9 +161,10 @@
                         </div>
                         <div class="inputContainer">
                             <select is="emby-select" id="rendererSize" label="Badge Size">
-                                <option value="Medium">Medium</option>
                                 <option value="Small">Small</option>
+                                <option value="Medium">Medium</option>
                                 <option value="Large">Large</option>
+                                <option value="ExtraLarge">Extra Large</option>
                             </select>
                         </div>
                     </div>
@@ -219,19 +220,26 @@
                             <input is="emby-input" type="number" id="retryBackoffMaxSeconds" pattern="[0-9]*" min="1" max="120" label="Maximum retry backoff (seconds)" />
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="providerResponseLimitBytes" pattern="[0-9]*" min="65536" max="67108864" label="Provider response limit (bytes)" />
+                            <input is="emby-input" type="number" id="providerResponseLimitBytes" min="0.0625" max="64" step="0.0625" label="Provider response limit (MB)" />
+                            <div class="fieldDescription" id="providerResponseLimitBytesRange">Valid range: 0.0625 - 64 MB.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="webhookMaxPayloadBytes" pattern="[0-9]*" min="4096" max="4194304" label="Webhook payload limit (bytes)" />
+                            <input is="emby-input" type="number" id="webhookMaxPayloadBytes" min="4" max="4096" step="1" label="Webhook payload limit (KB)" />
+                            <div class="fieldDescription" id="webhookMaxPayloadBytesRange">Valid range: 4 - 4096 KB.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="sourceArtifactLimitBytes" pattern="[0-9]*" min="65536" max="134217728" label="Source artifact limit (bytes)" />
+                            <input is="emby-input" type="number" id="sourceArtifactLimitBytes" min="0.0625" max="128" step="0.0625" label="Source artifact limit (MB)" />
+                            <div class="fieldDescription" id="sourceArtifactLimitBytesRange">Valid range: 0.0625 - 128 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="sourceArtifactLimitBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect. Some paths apply the change immediately.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="derivedArtifactLimitBytes" pattern="[0-9]*" min="65536" max="134217728" label="Derived artifact limit (bytes)" />
+                            <input is="emby-input" type="number" id="derivedArtifactLimitBytes" min="0.0625" max="128" step="0.0625" label="Derived artifact limit (MB)" />
+                            <div class="fieldDescription" id="derivedArtifactLimitBytesRange">Valid range: 0.0625 - 128 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="derivedArtifactLimitBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect. Some paths apply the change immediately.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="maxImageDimensionPixels" pattern="[0-9]*" min="512" max="16384" label="Maximum image dimension (pixels)" />
+                            <div class="fieldDescription restartRequiredNote" id="maxImageDimensionPixelsRestartNote">A Jellyfin server restart is required for a change to this setting to take effect. Some paths apply the change immediately.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="reconciliationBatchSize" pattern="[0-9]*" min="1" max="1000" label="Reconciliation batch size" />
@@ -241,15 +249,21 @@
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="renderCacheTtlMinutes" pattern="[0-9]*" min="1" max="43200" label="Render cache TTL (minutes)" />
+                            <div class="fieldDescription restartRequiredNote" id="renderCacheTtlMinutesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="renderCacheQuotaBytes" pattern="[0-9]*" min="67108864" max="68719476736" label="Render cache quota (bytes)" />
+                            <input is="emby-input" type="number" id="renderCacheQuotaBytes" min="64" max="65536" step="1" label="Render cache quota (MB)" />
+                            <div class="fieldDescription" id="renderCacheQuotaBytesRange">Valid range: 64 - 65536 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="renderCacheQuotaBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="artifactStorageQuotaBytes" pattern="[0-9]*" min="268435456" max="274877906944" label="Artifact storage quota (bytes)" />
+                            <input is="emby-input" type="number" id="artifactStorageQuotaBytes" min="256" max="262144" step="1" label="Artifact storage quota (MB)" />
+                            <div class="fieldDescription" id="artifactStorageQuotaBytesRange">Valid range: 256 - 262144 MB.</div>
+                            <div class="fieldDescription restartRequiredNote" id="artifactStorageQuotaBytesRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="terminalProvenanceRetentionDays" pattern="[0-9]*" min="1" max="365" label="Terminal provenance retention (days)" />
+                            <div class="fieldDescription restartRequiredNote" id="terminalProvenanceRetentionDaysRestartNote">A Jellyfin server restart is required for a change to this setting to take effect.</div>
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="inventoryCacheTtlMinutes" pattern="[0-9]*" min="1" max="1440" label="Inventory cache TTL (minutes)" />
@@ -258,7 +272,8 @@
                             <input is="emby-input" type="number" id="inventoryCacheMaxRecords" pattern="[0-9]*" min="1" max="100000" label="Inventory cache records per connection" />
                         </div>
                         <div class="inputContainer">
-                            <input is="emby-input" type="number" id="inventoryCacheMaxBytes" pattern="[0-9]*" min="1048576" max="268435456" label="Inventory cache bytes per connection" />
+                            <input is="emby-input" type="number" id="inventoryCacheMaxBytes" min="1" max="256" step="1" label="Inventory cache bytes per connection (MB)" />
+                            <div class="fieldDescription" id="inventoryCacheMaxBytesRange">Valid range: 1 - 256 MB.</div>
                         </div>
                     </div>
 
@@ -277,6 +292,12 @@
                         </div>
                     </div>
 
+                    <div class="verticalSection" id="diagnosticsSection">
+                        <h2>Diagnostics</h2>
+                        <div class="fieldDescription" style="margin-bottom:1em;">Read-only process counters for this Jellyfin session. Process-lifetime counters reset when Jellyfin restarts.</div>
+                        <div id="diagnosticsPanel" style="display:none;"></div>
+                    </div>
+
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
                     </div>
@@ -289,6 +310,131 @@
             };
 
             var selectorNames = ['Quality', 'Resolution', 'DynamicRange', 'Source', 'VideoCodec', 'Audio', 'CustomBadge', 'UpgradePending'];
+
+            // ADR-028: the byte-denominated operational limits are displayed in a
+            // fixed binary unit per field (MB, or KB for the webhook payload) with
+            // a fixed step and display precision. The stored and persisted value
+            // stays bytes. byteLimitToBytes converts a displayed value back to
+            // bytes and rejects any value that is not an exact multiple of the
+            // field step; byteLimitToDisplay renders stored bytes at the field's
+            // precision with trailing zeros trimmed. The unit, step, and precision
+            // mirror the code-owned ByteLimitUnits mapping in C#.
+            var byteLimitFields = [
+                { property: 'ProviderResponseLimitBytes', id: 'providerResponseLimitBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 65536, precision: 4 },
+                { property: 'WebhookMaxPayloadBytes', id: 'webhookMaxPayloadBytes', unit: 'KB', unitBytes: 1024, stepBytes: 1024, precision: 0 },
+                { property: 'SourceArtifactLimitBytes', id: 'sourceArtifactLimitBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 65536, precision: 4 },
+                { property: 'DerivedArtifactLimitBytes', id: 'derivedArtifactLimitBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 65536, precision: 4 },
+                { property: 'RenderCacheQuotaBytes', id: 'renderCacheQuotaBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 1048576, precision: 0 },
+                { property: 'ArtifactStorageQuotaBytes', id: 'artifactStorageQuotaBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 1048576, precision: 0 },
+                { property: 'InventoryCacheMaxBytes', id: 'inventoryCacheMaxBytes', unit: 'MB', unitBytes: 1048576, stepBytes: 1048576, precision: 0 }
+            ];
+
+            // ADR-028 clause 2: the authoritative restart-required settings,
+            // mirroring the code-owned RestartRequiredSettings classification
+            // (scope and mixed flag). Every restart-required setting carries
+            // always-present static note text next to its element (task 16.3); a
+            // mixed setting has both a construction-captured and a per-operation
+            // consumer, so its note also states that some paths apply the change
+            // immediately. This table is data for the modal reminder (task 16.5),
+            // and the structural tests compare it against the C# classification.
+            var restartRequiredFields = [
+                { setting: 'SourceArtifactLimitBytes', elementId: 'sourceArtifactLimitBytes', mixed: true },
+                { setting: 'DerivedArtifactLimitBytes', elementId: 'derivedArtifactLimitBytes', mixed: true },
+                { setting: 'MaxImageDimensionPixels', elementId: 'maxImageDimensionPixels', mixed: true },
+                { setting: 'RenderCacheTtlMinutes', elementId: 'renderCacheTtlMinutes', mixed: false },
+                { setting: 'RenderCacheQuotaBytes', elementId: 'renderCacheQuotaBytes', mixed: false },
+                { setting: 'ArtifactStorageQuotaBytes', elementId: 'artifactStorageQuotaBytes', mixed: false },
+                { setting: 'TerminalProvenanceRetentionDays', elementId: 'terminalProvenanceRetentionDays', mixed: false }
+            ];
+
+            // ADR-028 clause 4 / task 16.5: best-effort modal reminder. When at
+            // least one restart-required setting changed on save and the
+            // jellyfin-web Dashboard compatibility shim exposes the single-button
+            // alert, show a modal reminder. The Dashboard object is resolved
+            // lazily through the window global so a standalone page load without
+            // the host client cannot fail, and the availability guard plus
+            // swallowing try/catch make the call fail open: an absent or failing
+            // modal API changes nothing and the always-present static restart
+            // note text (task 16.3) remains the authoritative behavior.
+            var showRestartRequiredReminder = function (restartRequiredChanged) {
+                if (!restartRequiredChanged) {
+                    return;
+                }
+
+                if (!window.Dashboard || typeof window.Dashboard.alert !== 'function') {
+                    return;
+                }
+
+                try {
+                    window.Dashboard.alert({
+                        title: 'Jellyfin restart required',
+                        message: 'A restart-required setting changed. A Jellyfin server restart is required for the change to take effect; the note text next to the setting states whether some paths apply the change immediately.'
+                    });
+                } catch (error) {
+                    // The reminder is best effort: a failing modal API changes
+                    // nothing and the always-present restart note remains.
+                }
+            };
+
+            var byteLimitDivisor = function (precision) {
+                var divisor = 1;
+                for (var i = 0; i < precision; i++) {
+                    divisor = divisor * 10;
+                }
+                return divisor;
+            };
+
+            var byteLimitToDisplay = function (bytes, definition) {
+                var divisor = byteLimitDivisor(definition.precision);
+                var scaled = Math.round(bytes * divisor / definition.unitBytes);
+                var text = (scaled / divisor).toFixed(definition.precision);
+                if (text.indexOf('.') === -1) {
+                    return text;
+                }
+                return text.replace(/0+$/, '').replace(/\.$/, '');
+            };
+
+            var byteLimitToBytes = function (text, definition) {
+                var value = text === null || text === undefined ? '' : String(text).trim();
+                var match = /^([0-9]+)(?:\.([0-9]+))?$/.exec(value);
+                if (!match || (match[2] && match[2].length > definition.precision)) {
+                    return null;
+                }
+
+                var fractional = match[2] || '';
+                while (fractional.length < definition.precision) {
+                    fractional = fractional + '0';
+                }
+
+                var scaled = Number(match[1] + fractional);
+                var divisor = byteLimitDivisor(definition.precision);
+                var bytes = Math.round(scaled * definition.unitBytes / divisor);
+                if (bytes % definition.stepBytes !== 0) {
+                    return null;
+                }
+
+                return bytes;
+            };
+
+            var readByteLimitValues = function () {
+                var values = {};
+                for (var i = 0; i < byteLimitFields.length; i++) {
+                    var definition = byteLimitFields[i];
+                    var input = document.querySelector('#' + definition.id);
+                    var bytes = byteLimitToBytes(input.value, definition);
+                    if (bytes === null) {
+                        input.setCustomValidity('Enter the value in ' + definition.unit + ' as a multiple of ' + byteLimitToDisplay(definition.stepBytes, definition) + ' ' + definition.unit + '.');
+                        if (typeof input.reportValidity === 'function') {
+                            input.reportValidity();
+                        }
+                        return null;
+                    }
+
+                    values[definition.property] = bytes;
+                }
+
+                return values;
+            };
 
             var populateLibraries = function (enabledLibraries) {
                 var container = document.querySelector('#enabledLibraries');
@@ -358,6 +504,165 @@
                 return values;
             };
 
+            // ADR-025 clauses 2 and 3 (Phase 17 task 17.3): the read-only
+            // diagnostics panel renders only the fixed bounded counter set from
+            // the elevation-gated GET ArrTags/Status endpoint. Every group and
+            // label is a fixed page literal; a count renders only after the
+            // bounded numeric check below, and a health value only when it is
+            // one of the declared ArrConnectionHealth names, so a free-form
+            // response string is never rendered. The panel stays hidden and
+            // empty until a bounded snapshot has rendered, so a rejected,
+            // unauthorized, unavailable, or malformed response leaves no data
+            // and no error surface (fail-closed). Adding or removing a counter
+            // requires a new decision (ADR-025 clause 3). This block adds no
+            // input, no form field, no settings property, and no save-path
+            // change.
+            var diagnosticsCounters = [
+                { id: 'diagnosticsQueueDepth', group: 'Update queue', label: 'Queue depth', path: 'QueueDepth' },
+                { id: 'diagnosticsQueueInFlight', group: 'Update queue', label: 'In-flight work', path: 'QueueInFlight' },
+                { id: 'diagnosticsSonarrHealth', group: 'Provider health', label: 'Sonarr', path: 'SonarrHealth', kind: 'health' },
+                { id: 'diagnosticsRadarrHealth', group: 'Provider health', label: 'Radarr', path: 'RadarrHealth', kind: 'health' },
+                { id: 'diagnosticsMatchingFailuresNotFound', group: 'Matching failures', label: 'Not found', path: 'MatchingFailures.NotFound' },
+                { id: 'diagnosticsMatchingFailuresAmbiguous', group: 'Matching failures', label: 'Ambiguous', path: 'MatchingFailures.Ambiguous' },
+                { id: 'diagnosticsMatchingFailuresUnsupported', group: 'Matching failures', label: 'Unsupported', path: 'MatchingFailures.Unsupported' },
+                { id: 'diagnosticsCacheHits', group: 'Inventory cache', label: 'Cache hits', path: 'CacheHits' },
+                { id: 'diagnosticsCacheMisses', group: 'Inventory cache', label: 'Cache misses', path: 'CacheMisses' },
+                { id: 'diagnosticsRenderFailuresInvalidRequest', group: 'Render failures', label: 'Invalid request', path: 'RenderFailures.InvalidRequest' },
+                { id: 'diagnosticsRenderFailuresMalformedSource', group: 'Render failures', label: 'Malformed source', path: 'RenderFailures.MalformedSource' },
+                { id: 'diagnosticsRenderFailuresSourceByteLimitExceeded', group: 'Render failures', label: 'Source byte limit exceeded', path: 'RenderFailures.SourceByteLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresSourceDimensionLimitExceeded', group: 'Render failures', label: 'Source dimension limit exceeded', path: 'RenderFailures.SourceDimensionLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresOutputDimensionLimitExceeded', group: 'Render failures', label: 'Output dimension limit exceeded', path: 'RenderFailures.OutputDimensionLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresOutputByteLimitExceeded', group: 'Render failures', label: 'Output byte limit exceeded', path: 'RenderFailures.OutputByteLimitExceeded' },
+                { id: 'diagnosticsRenderFailuresColorPolicyInvalid', group: 'Render failures', label: 'Color policy invalid', path: 'RenderFailures.ColorPolicyInvalid' },
+                { id: 'diagnosticsRenderFailuresContrastTooLow', group: 'Render failures', label: 'Contrast too low', path: 'RenderFailures.ContrastTooLow' },
+                { id: 'diagnosticsRenderFailuresDecodeFailed', group: 'Render failures', label: 'Decode failed', path: 'RenderFailures.DecodeFailed' },
+                { id: 'diagnosticsRenderFailuresUnsupportedInput', group: 'Render failures', label: 'Unsupported input', path: 'RenderFailures.UnsupportedInput' },
+                { id: 'diagnosticsRenderFailuresUnsupportedColorProfile', group: 'Render failures', label: 'Unsupported color profile', path: 'RenderFailures.UnsupportedColorProfile' },
+                { id: 'diagnosticsRenderFailuresFontUnavailable', group: 'Render failures', label: 'Font unavailable', path: 'RenderFailures.FontUnavailable' },
+                { id: 'diagnosticsRenderFailuresFontInvalid', group: 'Render failures', label: 'Font invalid', path: 'RenderFailures.FontInvalid' },
+                { id: 'diagnosticsRenderFailuresLayoutFailed', group: 'Render failures', label: 'Layout failed', path: 'RenderFailures.LayoutFailed' },
+                { id: 'diagnosticsRenderFailuresEncodeFailed', group: 'Render failures', label: 'Encode failed', path: 'RenderFailures.EncodeFailed' },
+                { id: 'diagnosticsRenderFailuresNativeAssetUnavailable', group: 'Render failures', label: 'Native asset unavailable', path: 'RenderFailures.NativeAssetUnavailable' },
+                { id: 'diagnosticsRenderFailuresRenderError', group: 'Render failures', label: 'Render error', path: 'RenderFailures.RenderError' },
+                { id: 'diagnosticsRenderFailuresCancelled', group: 'Render failures', label: 'Cancelled', path: 'RenderFailures.Cancelled' },
+                { id: 'diagnosticsStaleMetadataTransitions', group: 'Metadata freshness', label: 'Stale metadata transitions', path: 'StaleMetadataTransitions' }
+            ];
+
+            // The declared ArrConnectionHealth names. Any other response value
+            // renders as Unknown, never as the raw response text.
+            var diagnosticsHealthNames = ['Unknown', 'Healthy', 'Unavailable', 'AuthenticationFailed', 'Incompatible'];
+
+            var diagnosticsPanelElement = function () {
+                return document.querySelector('#diagnosticsPanel');
+            };
+
+            var diagnosticsClearPanel = function () {
+                var panel = diagnosticsPanelElement();
+                if (!panel) {
+                    return;
+                }
+
+                panel.textContent = '';
+                panel.style.display = 'none';
+            };
+
+            var diagnosticsReadValue = function (snapshot, path) {
+                var parts = path.split('.');
+                var value = snapshot;
+                for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+                    if (!value || typeof value !== 'object') {
+                        return undefined;
+                    }
+                    value = value[parts[partIndex]];
+                }
+                return value;
+            };
+
+            var diagnosticsReadCount = function (snapshot, path) {
+                var value = diagnosticsReadValue(snapshot, path);
+                return typeof value === 'number' && isFinite(value) ? value : 0;
+            };
+
+            var diagnosticsReadHealth = function (snapshot, path) {
+                var value = diagnosticsReadValue(snapshot, path);
+                for (var healthIndex = 0; healthIndex < diagnosticsHealthNames.length; healthIndex++) {
+                    if (value === diagnosticsHealthNames[healthIndex]) {
+                        return diagnosticsHealthNames[healthIndex];
+                    }
+                }
+                return 'Unknown';
+            };
+
+            var diagnosticsRenderPanel = function (snapshot) {
+                // Only a bounded JSON object can be rendered; a null, array,
+                // string, or number response leaves the panel cleared and hidden.
+                if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+                    return;
+                }
+
+                var panel = diagnosticsPanelElement();
+                if (!panel) {
+                    return;
+                }
+
+                var groups = {};
+
+                for (var counterIndex = 0; counterIndex < diagnosticsCounters.length; counterIndex++) {
+                    var entry = diagnosticsCounters[counterIndex];
+                    var list = groups[entry.group];
+                    if (!list) {
+                        var groupElement = document.createElement('div');
+                        groupElement.className = 'diagnosticsGroup';
+                        var heading = document.createElement('h3');
+                        heading.textContent = entry.group;
+                        groupElement.appendChild(heading);
+                        list = document.createElement('div');
+                        list.className = 'diagnosticsList';
+                        groupElement.appendChild(list);
+                        panel.appendChild(groupElement);
+                        groups[entry.group] = list;
+                    }
+
+                    var row = document.createElement('div');
+                    row.className = 'diagnosticsRow';
+                    row.id = entry.id;
+                    var label = document.createElement('span');
+                    label.className = 'diagnosticsLabel';
+                    label.textContent = entry.label + ': ';
+                    var valueElement = document.createElement('span');
+                    valueElement.className = 'diagnosticsValue';
+                    valueElement.textContent = entry.kind === 'health'
+                        ? diagnosticsReadHealth(snapshot, entry.path)
+                        : String(diagnosticsReadCount(snapshot, entry.path));
+                    row.appendChild(label);
+                    row.appendChild(valueElement);
+                    list.appendChild(row);
+                }
+
+                panel.style.display = '';
+            };
+
+            var diagnosticsLoad = function () {
+                // The panel is cleared while the request is in flight and stays
+                // hidden unless a snapshot renders; one request per page show,
+                // with no retry or polling.
+                diagnosticsClearPanel();
+
+                ApiClient.ajax({
+                    type: 'GET',
+                    url: ApiClient.getUrl('ArrTags/Status'),
+                    dataType: 'json'
+                }).then(function (snapshot) {
+                    try {
+                        diagnosticsRenderPanel(snapshot);
+                    } catch (error) {
+                        diagnosticsClearPanel();
+                    }
+                }, function () {
+                    diagnosticsClearPanel();
+                });
+            };
+
             document.querySelector('#configPage')
                 .addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
@@ -401,32 +706,58 @@
                         document.querySelector('#retryBackoffInitialSeconds').value = config.Limits.RetryBackoffInitialSeconds;
                         document.querySelector('#retryBackoffFactor').value = config.Limits.RetryBackoffFactor;
                         document.querySelector('#retryBackoffMaxSeconds').value = config.Limits.RetryBackoffMaxSeconds;
-                        document.querySelector('#providerResponseLimitBytes').value = config.Limits.ProviderResponseLimitBytes;
-                        document.querySelector('#webhookMaxPayloadBytes').value = config.Limits.WebhookMaxPayloadBytes;
-                        document.querySelector('#sourceArtifactLimitBytes').value = config.Limits.SourceArtifactLimitBytes;
-                        document.querySelector('#derivedArtifactLimitBytes').value = config.Limits.DerivedArtifactLimitBytes;
+                        byteLimitFields.forEach(function (definition) {
+                            document.querySelector('#' + definition.id).value =
+                                byteLimitToDisplay(config.Limits[definition.property], definition);
+                        });
                         document.querySelector('#maxImageDimensionPixels').value = config.Limits.MaxImageDimensionPixels;
                         document.querySelector('#reconciliationBatchSize').value = config.Limits.ReconciliationBatchSize;
                         document.querySelector('#metadataStaleWindowMinutes').value = config.Limits.MetadataStaleWindowMinutes;
                         document.querySelector('#renderCacheTtlMinutes').value = config.Limits.RenderCacheTtlMinutes;
-                        document.querySelector('#renderCacheQuotaBytes').value = config.Limits.RenderCacheQuotaBytes;
-                        document.querySelector('#artifactStorageQuotaBytes').value = config.Limits.ArtifactStorageQuotaBytes;
                         document.querySelector('#terminalProvenanceRetentionDays').value = config.Limits.TerminalProvenanceRetentionDays;
                         document.querySelector('#inventoryCacheTtlMinutes').value = config.Limits.InventoryCacheTtlMinutes;
                         document.querySelector('#inventoryCacheMaxRecords').value = config.Limits.InventoryCacheMaxRecords;
-                        document.querySelector('#inventoryCacheMaxBytes').value = config.Limits.InventoryCacheMaxBytes;
 
                         document.querySelector('#logVerbosity').value = config.LogVerbosity;
 
                         Dashboard.hideLoadingMsg();
                     });
+
+                    diagnosticsLoad();
+                });
+
+            document.querySelector('.configForm')
+                .addEventListener('input', function (e) {
+                    // A rejected byte limit stays invalid until the field is
+                    // edited, so clear the explicit step-multiple message then.
+                    if (e.target && typeof e.target.setCustomValidity === 'function') {
+                        e.target.setCustomValidity('');
+                    }
                 });
 
             document.querySelector('.configForm')
                 .addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    var byteLimitValues = readByteLimitValues();
+                    if (byteLimitValues === null) {
+                        return false;
+                    }
+
                     Dashboard.showLoadingMsg();
 
                     ApiClient.getPluginConfiguration(PluginConfig.pluginId).then(function (config) {
+                        // ADR-028 clause 4 / task 16.5: the freshly fetched config
+                        // still holds the persisted values here, so snapshot the
+                        // restart-required ones before the handler below mutates
+                        // them; the save compares the submitted values against
+                        // this pre-mutation snapshot.
+                        var previousRestartRequiredLimits = {};
+                        for (var restartIndex = 0; restartIndex < restartRequiredFields.length; restartIndex++) {
+                            var restartField = restartRequiredFields[restartIndex];
+                            previousRestartRequiredLimits[restartField.setting] = config.Limits[restartField.setting];
+                        }
+
                         config.Sonarr.Enabled = document.querySelector('#sonarrEnabled').checked;
                         config.Sonarr.BaseUrl = document.querySelector('#sonarrBaseUrl').value;
                         config.Sonarr.ApiKey = document.querySelector('#sonarrApiKey').value;
@@ -482,28 +813,38 @@
                         config.Limits.RetryBackoffInitialSeconds = parseInt(document.querySelector('#retryBackoffInitialSeconds').value, 10);
                         config.Limits.RetryBackoffFactor = parseInt(document.querySelector('#retryBackoffFactor').value, 10);
                         config.Limits.RetryBackoffMaxSeconds = parseInt(document.querySelector('#retryBackoffMaxSeconds').value, 10);
-                        config.Limits.ProviderResponseLimitBytes = parseInt(document.querySelector('#providerResponseLimitBytes').value, 10);
-                        config.Limits.WebhookMaxPayloadBytes = parseInt(document.querySelector('#webhookMaxPayloadBytes').value, 10);
-                        config.Limits.SourceArtifactLimitBytes = parseInt(document.querySelector('#sourceArtifactLimitBytes').value, 10);
-                        config.Limits.DerivedArtifactLimitBytes = parseInt(document.querySelector('#derivedArtifactLimitBytes').value, 10);
+                        byteLimitFields.forEach(function (definition) {
+                            config.Limits[definition.property] = byteLimitValues[definition.property];
+                        });
                         config.Limits.MaxImageDimensionPixels = parseInt(document.querySelector('#maxImageDimensionPixels').value, 10);
                         config.Limits.ReconciliationBatchSize = parseInt(document.querySelector('#reconciliationBatchSize').value, 10);
                         config.Limits.MetadataStaleWindowMinutes = parseInt(document.querySelector('#metadataStaleWindowMinutes').value, 10);
                         config.Limits.RenderCacheTtlMinutes = parseInt(document.querySelector('#renderCacheTtlMinutes').value, 10);
-                        config.Limits.RenderCacheQuotaBytes = parseInt(document.querySelector('#renderCacheQuotaBytes').value, 10);
-                        config.Limits.ArtifactStorageQuotaBytes = parseInt(document.querySelector('#artifactStorageQuotaBytes').value, 10);
                         config.Limits.TerminalProvenanceRetentionDays = parseInt(document.querySelector('#terminalProvenanceRetentionDays').value, 10);
                         config.Limits.InventoryCacheTtlMinutes = parseInt(document.querySelector('#inventoryCacheTtlMinutes').value, 10);
                         config.Limits.InventoryCacheMaxRecords = parseInt(document.querySelector('#inventoryCacheMaxRecords').value, 10);
-                        config.Limits.InventoryCacheMaxBytes = parseInt(document.querySelector('#inventoryCacheMaxBytes').value, 10);
 
                         config.LogVerbosity = document.querySelector('#logVerbosity').value;
 
-                        ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
-                    });
+                        // ADR-028 clause 4 / task 16.5: compare the submitted
+                        // restart-required values against the pre-mutation
+                        // snapshot; only a real change triggers the reminder.
+                        var restartRequiredChanged = false;
+                        for (var restartCheckIndex = 0; restartCheckIndex < restartRequiredFields.length; restartCheckIndex++) {
+                            var restartCheckField = restartRequiredFields[restartCheckIndex];
+                            if (config.Limits[restartCheckField.setting] !== previousRestartRequiredLimits[restartCheckField.setting]) {
+                                restartRequiredChanged = true;
+                            }
+                        }
 
-                    e.preventDefault();
-                    return false;
+                        // The existing SettingsSaved result handler is preserved
+                        // and runs first; the reminder only runs for an accepted
+                        // POST and only when a restart-required value changed.
+                        ApiClient.updatePluginConfiguration(PluginConfig.pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                            showRestartRequiredReminder(restartRequiredChanged);
+                        });
+                    });
                 });
         </script>
     </div>

@@ -1,0 +1,118 @@
+{
+  "task": "15.4",
+  "attempt": 1,
+  "status": "BLOCKED",
+  "implementation_complete": false,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation half of task 15.4 implemented and validated: the ADR-020 clause 4 amendment note (recording ADR-026: the bounded log subject added to the allowed redacted-value set and the explicit directory/drive/share/full-path exclusion), the ADR-026 implementation note (clause 3 parenthetical reconciliation and the host-native POSIX path scope), the reconciled architecture sections 06 and 12, the README LogVerbosity row, F8 recorded resolved (moved from docs/limitations/open.md to docs/limitations/archive.md with the index row updated and the state.json register lists updated), the decisions-index ADR-020 row annotated, the PLANS.md preamble F8 sentence updated, and docs/status.md regenerated. Validation: build 0 warnings / 0 errors; default suite Failed 0 / Passed 1619 / Skipped 63 / Total 1682 (unchanged from the post-15.3 baseline, as expected for a documentation-only task); dotnet run scripts/render-docs-state.cs up to date; scripts/check-docs.sh PASS (nine ok sections, exit 0) on the tree before this report was persisted. BLOCKED on the required fresh log-path security review: this worker session is itself a depth-1 subagent and the environment's subagent depth limit is 1, so both the `security-reviewer` subagent call and the `general`-subagent fallback were refused with 'Subagent depth limit reached (1)'. The orchestrator directed that the detached opencode CLI not be used again, so no valid review could be obtained and docs/implementation/15.4/security-review.json does not exist. The orchestrator (at depth 0) must run the security review (or raise experimental.subagent_depth) and then return the task for finalization; task 15.4 is deliberately left done=false with no changelog entry until that review is recorded, because the review is an acceptance criterion.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)'.",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1619, Skipped: 63, Total: 1682, Duration: 16 s - ArrTags.Tests.dll (net10.0)'; pre-task baseline after tasks 15.1-15.3 was Failed 0 / Passed 1619 / Skipped 63 / Total 1682, i.e. unchanged (0 production/test behavior change; no test added or modified).",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice; docs/status.md had been regenerated earlier in the task to show the 4-item open-limitations list).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> all nine sections ok ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. This run was on the tree before this report file existed, so the agent-contract worker/reviewer pairing check was skipped for 15.4 (no worker report yet).",
+    "Stale-wording search over the current-state surfaces (README.md, PLANS.md, docs/architecture, docs/decisions, docs/limitations, docs/status.md): grep for 'not emitted' returns no matches; the only remaining F8 open/limitation references are the resolved archive entry, the resolved index row, the architecture 12 sentence stating F8 is resolved, and the scope/planning statements that list the v1.2 promoted limitations.",
+    "docs/implementation/15.4/ contains no security-review.json (only folder; this report was persisted afterwards), so the required 'no open BLOCKER/HIGH' security review evidence does not exist.",
+    "Security-review delegation attempts: subagent(agent: security-reviewer) -> refused with 'Subagent depth limit reached (1)'; subagent(agent: general, instructed to act strictly as the security reviewer) -> the same refusal. Per the orchestrator correction the opencode CLI was not used again; consequently no review artifact exists.",
+    "git status --short / git diff --stat inspection -> 12 modified tracked files plus the new docs/implementation/15.4/ report directory; no source or test file changed (production/test tree clean), no unrelated file changed."
+  ],
+  "changed_files": [
+    "docs/decisions/ADR-020.md",
+    "docs/decisions/ADR-026.md",
+    "docs/decisions/00-index.md",
+    "docs/architecture/12-performance-and-operational-limits.md",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "README.md",
+    "docs/limitations/open.md",
+    "docs/limitations/archive.md",
+    "docs/limitations/00-index.md",
+    "PLANS.md",
+    "docs/plan/state.json",
+    "docs/status.md",
+    "docs/implementation/15.4/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "ADR-020 clause 4's amendment is recorded (task acceptance: the bounded log subject added to the allowed redacted-value set and the explicit directory/drive/share/full-path exclusion added).",
+      "evidence": "docs/decisions/ADR-020.md, new '### Amendment note (v1.2, ADR-026; task 15.4)' section: records the ADR-026 amendment of clause 4 (bounded file-name subject, control-stripped and bounded to 128 Unicode scalar values, D-format item-id fallback; explicit directory/drive/share/full-path exclusion; all other clause 4 values in force) without rewriting the clause text; it also records the shipped tasks 15.1-15.3 threading, the F8-resolving classification emission, and the host-native path scope."
+    },
+    {
+      "criterion": "The canonical documentation is recorded (phase 15 checklist: ADR-026, architecture 06, architecture 12, limitations F8, README).",
+      "evidence": "docs/decisions/ADR-026.md '### Implementation note (v1.2, tasks 15.1-15.4)'; docs/architecture/12-performance-and-operational-limits.md (allowed-emitted-values paragraph now names the bounded log subject, the exclusion, the host-native path scope, and the emitted bounded classification with F8 resolved); docs/architecture/06-configuration-and-persisted-state.md (Logging and verbosity adds the allowed subject/classification and exclusion); README.md LogVerbosity row; docs/decisions/00-index.md ADR-020 row annotated 'Accepted (v1.1; clause 4 amended by ADR-026 (v1.2))'; docs/status.md regenerated (open limitations 5 -> 4)."
+    },
+    {
+      "criterion": "The log path is security-reviewed with no open BLOCKER/HIGH (task acceptance; ADR-026 clause 5 / ADR-020 clause 8).",
+      "evidence": "NOT SATISFIED. docs/implementation/15.4/security-review.json does not exist. Both permitted delegation routes were refused by the environment: subagent(security-reviewer) and subagent(general) each returned 'Subagent depth limit reached (1)' because this worker session is already at depth 1. The orchestrator instructed that the detached opencode CLI not be used, and it was not used again. No review outcome can be claimed and no BLOCKER/HIGH status can be asserted."
+    },
+    {
+      "criterion": "F8 is recorded as resolved.",
+      "evidence": "docs/limitations/archive.md new '### F8. The specific render classification is not surfaced in the artwork log' with '**Status:** Resolved (v1.2 Phase 15; the classification is emitted by task 15.3, and the documentation reconciliation and the log-path security review are task 15.4)' and the shipped-behavior description; docs/limitations/00-index.md F8 row status 'Resolved' pointing at archive.md; docs/plan/state.json limitations moved F8 from open to resolved; docs/status.md renders '**Open limitations:** 4 (`F3`, `F4`, `F6`, `F7`)'; docs/limitations/open.md no longer contains the F8 section. scripts/check-docs.sh 'limitations index covers all IDs' passes."
+    },
+    {
+      "criterion": "Phase 15 acceptance criterion owned by this task: 'No directory, drive, share, full path, credential, or secret appears in any log output; the bounded classification is emitted; ADR-020 clause 4 is amended (adding the subject and the explicit directory/full-path exclusion) and the log path is security-reviewed.'",
+      "evidence": "The code/test half is shipped and evidenced by tasks 15.1-15.3 (LogSubjectTests 23 cases, LogRedactionTests 167 cases, unchanged by this documentation-only task; suite 0/1619/63/1682 confirms no behavior change). The amendment half is recorded in docs/decisions/ADR-020.md and the canonical docs above. The security-review half is NOT satisfied (no review artifact), and the phase documents now state the host-native/POSIX path scope rather than an unconditional drive/share claim; the Unicode Cf question remains for the pending review to adjudicate."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How should F8 be recorded as resolved in the limitations register?",
+      "chosen": "Moved the F8 entry from docs/limitations/open.md to docs/limitations/archive.md with a 'Resolved (v1.2 Phase 15; ...)' status and updated the index row to 'Resolved'/'archive.md', following the F1/F2 resolution convention.",
+      "basis": "docs/limitations/00-index.md states resolved items are retained in archive.md, and the F1/F2 rows (the only prior resolutions) use exactly this shape; the orchestration brief also asked to follow the F1/F2 convention.",
+      "impact": "The register and index agree; docs/limitations/open.md no longer lists F8; state.json open/resolved lists match (open F3,F4,F6,F7; resolved F1,F2,F8)."
+    },
+    {
+      "question": "How should task 15.4 be marked while the required security review cannot be obtained?",
+      "chosen": "Left docs/plan/state.json task 15.4 done=false, the PLANS.md checkbox unchecked, and no docs/changelog/v1.2.0.md task-15.4 entry; the documentation deliverables are in the working tree and validated.",
+      "basis": "The security review is an explicit task and phase acceptance criterion; the worker contract forbids marking a task complete without evidence and forbids manipulating status to let the orchestrator continue.",
+      "impact": "Phase 15 remains PLANNED and 15.4 open in the current-state surfaces until the orchestrator records the security review (or raises experimental.subagent_depth) and returns the task for a short finalization (review outcome, done flag, changelog entry)."
+    },
+    {
+      "question": "Should the PLANS.md active-scope preamble keep listing F8 among the 'remain Open' limitations?",
+      "chosen": "Updated the preamble to list F3, F4, F6, and F7 as remaining Open and to state that F8 was promoted by v1.2 and is resolved by Phase 15 (task 15.4).",
+      "basis": "The shipped classification makes the F8 limitation genuinely resolved, and the preamble is a hand-written current-state surface; leaving F8 in the Open list would contradict the regenerated status block.",
+      "impact": "Preamble and register agree; the checkbox/state for 15.4 itself stays open (see above), so the plan does not claim the task complete."
+    }
+  ],
+  "test_sensitivity": [
+    "Not applicable: this task adds no production or test behaviour (documentation/state only), so there is no new behaviour that could be broken. The suite is unchanged at Failed 0 / Passed 1619 / Skipped 63 / Total 1682 versus the post-15.3 baseline, which is the evidence that no production/test behaviour changed. The redaction/classification behaviours this documentation describes are covered by the pre-existing 15.1-15.3 tests (LogSubjectTests 23, LogRedactionTests 167) and were sensitivity-probed by those tasks."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/decisions/ADR-020.md (Amendment note (v1.2, ADR-026; task 15.4))",
+      "docs/decisions/ADR-026.md (Implementation note (v1.2, tasks 15.1-15.4))",
+      "docs/decisions/00-index.md (ADR-020 row notes the clause 4 amendment)",
+      "docs/architecture/12-performance-and-operational-limits.md (allowed-emitted-values paragraph reconciled, F8 resolved)",
+      "docs/architecture/06-configuration-and-persisted-state.md (logging section adds the subject/classification and exclusion)",
+      "README.md (LogVerbosity row)",
+      "docs/limitations/open.md (F8 removed)",
+      "docs/limitations/archive.md (F8 resolved entry)",
+      "docs/limitations/00-index.md (F8 row Resolved -> archive.md)",
+      "PLANS.md (active-scope preamble F8 sentence)",
+      "docs/plan/state.json (limitations open/resolved lists; task 15.4 deliberately left done=false)",
+      "docs/status.md (generated: open limitations 4)"
+    ],
+    "old_values_removed": [
+      "'The artwork-generation boundary currently logs only the bounded outcome and the generic reason; the specific bounded PassThroughReason, FailureReason, and SourceFailureReason are retained on the generation result but are not emitted, which is documented as an open diagnostic limitation (docs/limitations/00-index.md F8).' in docs/architecture/12-performance-and-operational-limits.md - replaced; a grep for 'not emitted' across README.md, PLANS.md, docs/architecture, docs/decisions, docs/limitations and docs/status.md returns no matches.",
+      "F8 section 'The specific render classification is not surfaced in the artwork log' in docs/limitations/open.md - removed and moved to docs/limitations/archive.md.",
+      "docs/limitations/00-index.md F8 row '| Open | [open.md](open.md) |' - now '| Resolved | [archive.md](archive.md) |' (row moved next to the other resolved rows).",
+      "docs/plan/state.json limitations '\"open\": [... \"F7\", \"F8\"]' / '\"resolved\": [\"F1\", \"F2\"]' - now open F3/F4/F6/F7 and resolved F1/F2/F8.",
+      "README.md LogVerbosity row 'ArrTags logs only bounded, secret-free diagnostics (provider error codes, connection identity, and counts); it never writes an API key or the webhook secret to the log.' - now also names the bounded media file name, the bounded render-classification enums, and the directory/full-path exclusion.",
+      "docs/decisions/00-index.md ADR-020 row 'Accepted (v1.1)' - now 'Accepted (v1.1; clause 4 amended by ADR-026 (v1.2))'.",
+      "PLANS.md active-scope preamble 'F3, F4, F6, F7, and F8 are promoted by v1.2 and remain Open' - now F3/F4/F6/F7 remain Open with F8 resolved by Phase 15 (task 15.4).",
+      "docs/status.md generated line 'Open limitations: 5 (F3, F4, F6, F7, F8)' - regenerated to '4 (F3, F4, F6, F7)'."
+    ],
+    "check_docs": "PASS on the tree before this report was persisted (nine ok sections, exit 0). After this report is persisted the agent-contract pairing check is expected to fail with 'task 15.4 has a worker report but no reviewer report'; the orchestrator's separate implementation-reviewer gate (and the still-missing security review) resolves that state. This is the expected mid-flow state, not a stale documentation surface."
+  },
+  "rework": [],
+  "known_limitations": [
+    "BLOCKER (task acceptance, not a security finding): the required fresh log-path security review could not be delegated. Exact behaviour: this worker session runs at subagent depth 1 and the environment sets experimental.subagent_depth to 1, so subagent(agent: security-reviewer) and subagent(agent: general) both return 'Subagent depth limit reached (1)'; no security-review.json exists. Precondition: any nested subagent spawn from this session. Consequence: the 'no open BLOCKER/HIGH' acceptance criterion has no evidence, so 15.4 is not complete. Required unblock: the orchestrator (depth 0) runs the security review itself against the documented scope and has it persist to docs/implementation/15.4/security-review.json, or raises experimental.subagent_depth and returns the task so the worker can run it; then the task can be finalized.",
+    "The ADR-020 amendment note, the ADR-026 implementation note, and the archive F8 entry reference docs/implementation/15.4/security-review.json as the review location, but that file does not exist yet. Precondition: the review is recorded at the contract path. Consequence: until the orchestrator records it, those current-state references point at a not-yet-written artifact.",
+    "Task 15.4 is deliberately left open in the current-state surfaces (docs/plan/state.json done=false, PLANS.md checkbox unchecked, no docs/changelog/v1.2.0.md task-15.4 entry). Precondition: the security review is missing. Consequence: Phase 15 remains PLANNED and the Gate 15 security-review criterion is unmet; a short finalization attempt (review outcome, done flag, changelog entry, PLANS checkbox) is required after the orchestrator records the review.",
+    "The open observations the security review was asked to adjudicate remain unadjudicated: the Unicode Cf format characters (U+202E, U+200B) are still emitted verbatim because control removal is Cc-only (Rune.IsControl), and the clause 1 directory/drive/share exclusion remains verified only for host-native POSIX paths. The canonical documentation now states the host-native/POSIX scope explicitly, but the Cf question is recorded only as the pending review's scope, not as an adjudicated result.",
+    "docs/release/build-and-release.md still records the v1.1.0.0 artifact identity and its suite counts; docs/plan/state.json's current_release is still 1.1.0.0, and scripts/check-docs.sh pins that artifact identity to the release record. The v1.2 plan's phase 21 checklist assigns the release documentation refresh to Phase 21 (tasks 21.2/21.3), so it was deliberately not touched here.",
+    "The detached opencode CLI review attempt from the previous session (killed before completion) produced only invalid intermediate JSON output under /tmp/15.4/; it was discarded and contributed nothing to this tree or report."
+  ],
+  "ready_for_next_task": false
+}

@@ -1,0 +1,125 @@
+{
+  "task": "17.3",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Implemented the ADR-025 clause 2 read-only diagnostics panel on the existing embedded settings page (Phase 17 task 17.3, goal F3). src/ArrTags/Configuration/config.html gains one read-only verticalSection ('Diagnostics') after the Logging section and before the Save button, with a static-hidden empty #diagnosticsPanel container, plus an inline-JS block declaring the fixed 28-leaf diagnosticsCounters table derived from the endpoint contract (QueueDepth/QueueInFlight; SonarrHealth/RadarrHealth; MatchingFailures.NotFound/Ambiguous/Unsupported; CacheHits/CacheMisses; one RenderFailures.<reason> row per declared RenderFailureReason; StaleMetadataTransitions), each with a fixed page label and a stable path-derived element id. On pageshow (after the configuration load request, one call per page show) the panel makes exactly one ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('ArrTags/Status'), dataType: 'json' }) request; the pinned bundled web client (node_modules.jellyfin-apiclient.bundle.js in the extracted pinned host) was inspected directly: getUrl prepends the server address and a separator, and ajax delegates to fetch which rejects on status >= 400 and parses dataType 'json', so 401/403/404/500 and a malformed body all take the rejection path. The panel is fail-closed: the container starts display:none and empty in the served page, the load path clears it before requesting, the success path renders only a JSON object (a null, array, string, or number body returns without rendering), a render exception is caught and cleared, and the rejection branch clears the panel; the clear path writes only textContent = '' and display: none, so no data and no error/status/endpoint surface is rendered. Rendering is bounded: counts pass typeof value === 'number' && isFinite(value) ? value : 0, health renders only when the value equals one of the declared ArrConnectionHealth names (Unknown/Healthy/Unavailable/AuthenticationFailed/Incompatible) and otherwise Unknown, the fixed table is the only render domain, the response object is never indexed directly by the render, iterated (no Object.keys/for...in), or stringified, and the only textContent assignments are the panel clear, the group heading, the fixed label, and the bounded value. The panel adds no input/select/textarea/button/form element, no configuration property, no write verb, no retry/polling, and no save-path change; the submit handler does not reference the panel and keeps its single configuration read and write. tests/ArrTags.Tests/DiagnosticsStatusPanelTests.cs adds 6 structural cases (the repository has no JavaScript runtime) deriving the expected counter set and health whitelist from the C# model types and the route from ArrTagsStatusController.RoutePrefix, and pinning the fetch helper pair, the bounded fallbacks, the fail-closed branches, the absence of any input/save wiring, and the placement. Nine temporary page probes each failed exactly the intended test and the page was restored byte-identically. ./build.sh build reports 0 warnings / 0 errors (an initial build's 6 xUnit2013 analyzer warnings on literal MatchCollection count assertions in the new test file were rewritten before the final run); the default suite is Failed 0, Passed 1794, Skipped 64, Total 1858 (pre-task baseline after 17.2: Failed 0, Passed 1788, Skipped 64, Total 1852; +6 passed, +6 total, 0 new failures/skips). ARRTAGS_JELLYFIN_HOST_DIR is unset, so no host-guarded run was performed and the 64 host-guarded skips are unchanged. The panel's inline JavaScript cannot be executed in this environment and the pinned live matrix runs --nowebclient, so the panel is verified structurally against the endpoint model and the pinned web client source, not by a live browser run; the F3 canonical documentation (F3 register entry, architecture 11/12, ADR-025 implementation note, README) and the endpoint/panel security review are the plan-assigned task 17.4, and F3 remains open and the phase gate/tag unapplied.",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> final run 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx). The first build of the new test file flagged 6 xUnit2013 analyzer warnings on literal MatchCollection.Count assertions; they were rewritten to Assert.Single / a LINQ count local and the final run is clean.",
+    "Focused run: dotnet test ArrTags.slnx --configuration Release --no-build --filter 'FullyQualifiedName~ArrTags.Tests.DiagnosticsStatusPanelTests' -> 'Passed!  - Failed:     0, Passed:     6, Skipped:     0, Total:     6, Duration: 89 ms'.",
+    "Full suite: . /config/arrtags-env.sh && ./build.sh build && ./build.sh test -> 'Passed!  - Failed:     0, Passed:  1794, Skipped:    64, Total:  1858, Duration: 17 s'. Pre-task baseline (task 17.2 report and this tree at commit 28c679d, docs-only since 79bf8df): Failed 0, Passed 1788, Skipped 64, Total 1852; delta +6 passed / +6 total / 0 new failures / 0 new skips.",
+    "Honest note on one intermediate full-suite invocation: after the probe script finished (the page was restored but the last built assembly was probe I's), './build.sh test' (which uses --no-build) reported 1 failure in PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow because the built page still had 'diagnosticsLoad();' removed. './build.sh build' followed by './build.sh test' on the restored source is the authoritative result above (0 failed / 1794 passed). No implementation failure occurred.",
+    "Test-sensitivity probes (temporary page edits, each followed by a focused run of the class, then reverted; a post-probe cmp verified the page is byte-identical to the pre-probe implementation): (A) removing the StaleMetadataTransitions entry -> 1 failure, PageDeclaresExactlyTheFixedEndpointCounterSet; (B) drifting the route to ArrTags/StatusProbe -> 1 failure, PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow; (C) replacing every standalone diagnosticsClearPanel(); call in the load path with ';' -> 1 failure, PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed; (D) making the count reader return the raw value -> 1 failure, PageRendersCountsAndHealthOnlyThroughBoundedFallbacks; (E) making the health reader return the raw value -> 1 failure, PageRendersCountsAndHealthOnlyThroughBoundedFallbacks; (F) adding an <input> into the diagnostics section -> 1 failure, PageAddsNoSettingsFieldNoWritePathAndNoSaveWiring; (G) removing the panel's display:none -> 1 failure, PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed; (H) switching the fetch to POST -> 1 failure, PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow; (I) removing the diagnosticsLoad(); call -> 1 failure, PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow. Every probe was reverted; the restore check reported 'page is byte-identical to the pre-probe state'.",
+    "Pinned web-client verification (autonomous research, read-only): inspected /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/node_modules.jellyfin-apiclient.bundle.js. getUrl is 'if(!e)throw...;var n=r||this._serverAddress;...return \"/\"!==e.charAt(0)&&(n+=\"/\"),n+=e...', so ApiClient.getUrl('ArrTags/Status') resolves to <serverAddress>/ArrTags/Status; ajax is 'return e?this.fetch(e,t):...' and fetch resolves 't.status<400?(\"json\"===e.dataType...?t.json():...):(S(r,e.url,t),Promise.reject(t))', so a non-2xx status rejects and dataType 'json' parses the body. This is the basis for the fail-closed rejection coverage of 401/403/404/500 and a malformed body.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (twice).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. This run was before this report file was persisted; the worker/reviewer pairing in section 9 is satisfied when the orchestrator's implementation-reviewer report for 17.3 is added (the same pattern as tasks 17.1 and 17.2).",
+    "git status / git diff inspection -> modified tracked files are exactly src/ArrTags/Configuration/config.html (167 added lines, no removed line), PLANS.md (17.3 checkbox), docs/changelog/v1.2.0.md (104 added lines, 0 removed), docs/plan/state.json (updated_utc + task 17.3 done/reports), plus the new tests/ArrTags.Tests/DiagnosticsStatusPanelTests.cs and this report; no probe residue (post-probe cmp and probe-specific source search), no csproj or package reference change, no unrelated file changed."
+  ],
+  "changed_files": [
+    "src/ArrTags/Configuration/config.html",
+    "tests/ArrTags.Tests/DiagnosticsStatusPanelTests.cs",
+    "PLANS.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "docs/implementation/17.3/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The settings page contains a read-only diagnostics panel that fetches GET ArrTags/Status via ApiClient and renders the fixed counter set: queue depth/in-flight, provider health, matching failures, cache hits/misses, render failures, and stale metadata.",
+      "evidence": "src/ArrTags/Configuration/config.html has the 'Diagnostics' verticalSection and the 28-entry diagnosticsCounters table; DiagnosticsStatusPanelTests.PageDeclaresExactlyTheFixedEndpointCounterSet derives the expected leaf set from DiagnosticsSnapshot/MatchingFailureCounts/RenderFailureCounts and asserts exact set equality, the path-derived stable element id, and kind:'health' exactly for the two ArrConnectionHealth fields; PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow pins the single ApiClient.ajax GET of ApiClient.getUrl(ArrTagsStatusController.RoutePrefix) with dataType 'json' called once from the pageshow listener; PagePlacesThePanelAfterLoggingAndBeforeTheSaveButton pins the placement. Probes A, B, and I show the counter-set and fetch assertions are load-bearing."
+    },
+    {
+      "criterion": "The panel is fail-closed: when the fetch is rejected/unauthorized/unavailable or the body is malformed, it renders no data and no error surface.",
+      "evidence": "The static container is display:none and empty; diagnosticsLoad clears the panel before requesting; diagnosticsRenderPanel returns for a non-object (null/array/string/number) body; the rejection half of the two-argument then and a caught render exception both call diagnosticsClearPanel, which writes only textContent='' and display:'none'. DiagnosticsStatusPanelTests.PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed pins all of these. Probes C and G (dropping the clear calls; making the panel visible by default) each fail that case. The pinned web client's ajax rejects on status >= 400, so a 401/403/404/500 never reaches the render path."
+    },
+    {
+      "criterion": "The panel adds no configuration field, no write route, and does not alter the save path or the existing page behavior; the page remains secret-free.",
+      "evidence": "The section carries no input/select/textarea/button/form element; the JS block references no config.* value and no configuration request; the fetch is GET-only; the submit handler region contains no 'diagnostics' reference and keeps its single getPluginConfiguration and updatePluginConfiguration calls (page totals: 2 reads, 1 write, both pre-existing). DiagnosticsStatusPanelTests.PageAddsNoSettingsFieldNoWritePathAndNoSaveWiring pins this and probe F (an added input) fails it; the existing DashboardSettingsPageTests page-contract, configuration-property coverage, and sentinel secret-literal facts still pass in the full suite (1794 passed, no new failures)."
+    },
+    {
+      "criterion": "The panel source contains no secret literal and renders no free-form response string.",
+      "evidence": "DiagnosticsStatusPanelTests.PageRendersCountsAndHealthOnlyThroughBoundedFallbacks pins the numeric 0 fallback, the health whitelist exactly equal to Enum.GetNames<ArrConnectionHealth>() with the Unknown fallback, exactly four textContent assignments (panel clear, group heading, fixed label, bounded value), no direct snapshot[ indexing, no JSON.parse/JSON.stringify/Object.keys/for...in, and no innerHTML; PageAddsNoSettingsFieldNoWritePathAndNoSaveWiring pins that the block references no ApiKey/Secret and no configuration value. Probes D and E (raw count and raw health passthrough) fail the bounded-fallback case. The existing PageSourceContainsNoSecretOrCredentialLiteral sentinel test remains green."
+    },
+    {
+      "criterion": "Structural tests (following the existing settings-page-test style) pin the panel's presence, its endpoint URL, its render of each counter, the fail-closed branch, and the absence of any input/save wiring. Prove test sensitivity with temporary probes (edit + focused run, then revert).",
+      "evidence": "tests/ArrTags.Tests/DiagnosticsStatusPanelTests.cs adds 6 cases (26 assertions of page structure derived from the C# contract); nine probes (A-I, listed in validation) each produced exactly one intended failure and the page was restored byte-identically. The panel's inline JS cannot be executed here (no JS runtime; the pinned live matrix runs --nowebclient), so the verification is structural, and this residual is recorded in known_limitations."
+    },
+    {
+      "criterion": "Build passes 0 warnings; the default suite passes with no new failures/skips.",
+      "evidence": "'. /config/arrtags-env.sh && ./build.sh build' -> 0 Warning(s) 0 Error(s); './build.sh test' on the rebuilt restored tree -> Failed 0, Passed 1794, Skipped 64, Total 1858 against the post-17.2 baseline Failed 0, Passed 1788, Skipped 64, Total 1852 (+6 passed / +6 total, 0 new failures, 0 new skips)."
+    },
+    {
+      "criterion": "Documentation reconciliation: docs/changelog/v1.2.0.md Phase 17 task 17.3 entry, PLANS.md checkbox 17.3, docs/plan/state.json task 17.3 \"done\": true + report path + updated_utc. Do not apply the phase gate/tag.",
+      "evidence": "docs/changelog/v1.2.0.md gains the '### Task 17.3 - Read-only status panel on the settings page' entry (104 added lines); PLANS.md is '- [x] 17.3 ...'; state.json has 'done': true, 'reports': ['docs/implementation/17.3/worker-report.json'], and updated_utc '2026-09-26T00:40:51Z'. 'dotnet run scripts/render-docs-state.cs' -> status.md up to date and PLANS.md up to date; 'scripts/check-docs.sh' -> nine ok sections, check-docs: PASS (before this report was persisted). Phase 17 status remains PLANNED in state.json and no tag was created."
+    },
+    {
+      "criterion": "Phase 17 acceptance criterion this task contributes to: the panel is served from the anonymous static page resource but renders no data when the endpoint is not authorized (fail-closed).",
+      "evidence": "The panel is static markup plus inline JS in the unchanged anonymous ADR-016 clause 6 page resource (no page-resource, route, registration, or authorization change was made), and its data comes solely from the elevation-gated GET /ArrTags/Status endpoint. The fail-closed branch and the static-hidden container are pinned by PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed. The endpoint's elevation gating and the F3 security review are tasks 17.2 and 17.4; F3 remains open until 17.4."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Where on the settings page does the panel live, and is the whole section or only the panel container hidden before data arrives?",
+      "chosen": "The section is a new verticalSection placed after the Logging section and before the Save button (one of the locations the task suggests); it stays in the page layout, while the #diagnosticsPanel container is static-hidden (display:none) and empty until a bounded snapshot renders.",
+      "basis": "The task's design constraint names 'after the Logging section / before the Save button' as an acceptable placement; ADR-025 clause 2 and the task allow keeping the panel hidden/empty when the endpoint is not authorized or unavailable. The static heading/description are fixed page copy, not data or an error surface, so they do not violate fail-closed.",
+      "impact": "User-visible fail-closed behavior only; no persisted state, configuration, endpoint, or save-path semantics change. A non-administrator or a failed fetch sees an empty hidden panel with no status detail."
+    },
+    {
+      "question": "How is a partial or missing field rendered without exposing a free-form response string?",
+      "chosen": "A count renders only after typeof value === 'number' && isFinite(value) and otherwise renders 0; a health value renders only when it equals one of the declared ArrConnectionHealth names and otherwise renders 'Unknown'. The render iterates only the fixed page table; it never iterates response keys.",
+      "basis": "The task explicitly requires tolerating a missing field with a safe fallback (0/Unknown) rather than failing, and ADR-025 clause 3 fixes the counter set and the bounded enum; the fixed table (not the response) is the render domain.",
+      "impact": "Rendering only. A malformed non-object body still renders nothing (the fail-closed branch); a well-formed object with missing/non-numeric fields renders the documented fallbacks."
+    },
+    {
+      "question": "How are the render-failure classifications shown, given the endpoint returns an object with one count per RenderFailureReason?",
+      "chosen": "A fixed 18-row 'Render failures' list, one row per declared RenderFailureReason, including zero counts, with a fixed page label per classification.",
+      "basis": "The task requires rendering the render failures as a bounded list of classification/count pairs rather than raw JSON, and ADR-025 clause 3 fixes the counter set; the classification list is derived from RenderFailureCounts and pinned by the test.",
+      "impact": "Rendering only; adding or removing a classification requires the endpoint and the page table to move together (the new test fails otherwise)."
+    },
+    {
+      "question": "When is the panel data fetched, and is there a manual refresh?",
+      "chosen": "One GET per pageshow (after the configuration load request); no refresh control and no polling/retry.",
+      "basis": "The task requires a read-only panel with no input and no unbounded retry; the established page pattern loads data on pageshow. A refresh button would add a control, which the task's 'no input, no form field' constraint and the read-only intent disfavor.",
+      "impact": "An administrator sees current process counters each time the settings page is shown; stale values cannot be refreshed without re-showing the page."
+    }
+  ],
+  "test_sensitivity": [
+    "Probe A: removing the StaleMetadataTransitions table entry failed PageDeclaresExactlyTheFixedEndpointCounterSet (1 failure); reverted.",
+    "Probe B: drifting the route to ArrTags/StatusProbe failed PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow (1); reverted.",
+    "Probe C: replacing the standalone diagnosticsClearPanel(); calls in the load path with ';' failed PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed (1); reverted.",
+    "Probe D: making diagnosticsReadCount return the raw value failed PageRendersCountsAndHealthOnlyThroughBoundedFallbacks (1); reverted.",
+    "Probe E: making diagnosticsReadHealth return the raw value failed PageRendersCountsAndHealthOnlyThroughBoundedFallbacks (1); reverted.",
+    "Probe F: adding an <input> to the diagnostics section failed PageAddsNoSettingsFieldNoWritePathAndNoSaveWiring (1); reverted.",
+    "Probe G: removing the panel's display:none failed PageFailsClosedWhenTheRequestIsRejectedOrTheBodyIsMalformed (1); reverted.",
+    "Probe H: switching the fetch to POST failed PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow (1); reverted.",
+    "Probe I: removing the diagnosticsLoad(); call failed PageFetchesTheElevationGatedRouteThroughTheWebClientOncePerPageShow (1); reverted.",
+    "The post-probe byte comparison reports the page is byte-identical to the pre-probe state. No probe is claimed for browser execution of the inline JS: this environment has no JavaScript runtime, so the panel's runtime behavior (DOM construction, the browser's ApiClient.ajax rejection path, and the no-data rendering) is verified structurally against the pinned web-client source and the endpoint contract, not executed."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md (new '### Task 17.3 - Read-only status panel on the settings page' entry)",
+      "PLANS.md (task 17.3 checkbox ticked; the generated milestone table is unchanged because the phase status remains PLANNED)",
+      "docs/plan/state.json (task 17.3 done=true + reports path + updated_utc 2026-09-26T00:40:51Z)",
+      "docs/status.md and the PLANS.md milestone-status block (regenerated with scripts/render-docs-state.cs; reported 'up to date')"
+    ],
+    "old_values_removed": [
+      "PLANS.md '- [ ] 17.3 Read-only status panel on the settings page' is now '- [x] ...'.",
+      "docs/plan/state.json task 17.3 no longer has \"done\": false and no longer lacks the reports array.",
+      "docs/plan/state.json updated_utc no longer reads 2026-09-26T00:12:24Z.",
+      "No test-count or capability statement elsewhere became stale from this task: the per-task suite counts live only in the changelog entry (docs/status.md records the unchanged 1.1.0.0 release suite), and the F3 limitation/README/architecture statements are the plan-assigned task 17.4 sweep (see known_limitations)."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The panel's inline JavaScript is not executed by the suite or any live run here. Precondition - the repository deliberately has no JavaScript runtime, this environment has none, and the pinned live matrix runs --nowebclient. Behaviour - the fetch, the DOM construction, the pinned web client's rejection path, and the fail-closed no-data rendering are verified structurally (the counter set and health whitelist derived from the C# model, the route from ArrTagsStatusController.RoutePrefix, the helper pair verified against the pinned bundled web client source in /tmp/arrtags-host-dl/host/jellyfin/jellyfin-web/node_modules.jellyfin-apiclient.bundle.js), not executed in a browser. Consequence - a browser/runtime behavior change in ApiClient.ajax or in the page script would not be caught by the suite; the F3 security review (task 17.4) is the plan-assigned place to adjudicate this residual, which matches the existing V12-G8-1-style accepted page limitation.",
+    "No host-guarded run was performed: ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment, so the default suite reports the same 64 host-guarded skips as the pre-task baseline, and the host's route discovery of the controller and its live 401/403/200 behavior are not exercised here (they were pinned in 17.2 by the host-guarded policy-name fact and the in-process MVC harness).",
+    "The F3 canonical documentation is deliberately deferred to the plan-assigned task 17.4 and F3 remains Open: docs/limitations/open.md F3 and docs/architecture/12-performance-and-operational-limits.md still describe the status surface as not implemented, and the README, architecture 11, and ADR-025 do not yet record the shipped endpoint/panel. This task was explicitly scoped to the changelog/PLANS/state surfaces and the F3 documentation and security review is task 17.4 (v1.2 plan section 7, phase 17 checklist), so those files were not edited; a reviewer should read them as pending 17.4, not as verified-current.",
+    "The panel reports process-lifetime counters that reset when Jellyfin restarts (ADR-025 consequence), and only the fixed bounded values are rendered; there is no per-item listing, history, or export. This is the accepted ADR-025 shape, not a defect of this task."
+  ],
+  "ready_for_next_task": true
+}

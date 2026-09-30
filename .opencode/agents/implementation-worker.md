@@ -1,7 +1,6 @@
 ---
 description: Implements one assigned project task, performs required research and validation, and reports completion status
-model: opencode-go/deepseek-v4.1-flash
-variant: high
+model: opencode-go/deepseek-v4.1-flash#max
 mode: subagent
 ---
 
@@ -19,7 +18,11 @@ Read the repository's authoritative project instructions and relevant context, i
 
 * `AGENTS.md`
 * `GOALS.md`
+* `docs/INDEX.md`
+* `docs/status.md`
 * `PLANS.md`
+* `docs/plan/state.json` and `docs/plan/README.md` (plan-state schema)
+* `docs/agent-contracts.md` (report path, status, and attempt rules)
 * `README.md`
 * Architecture and design documentation.
 * Relevant research.
@@ -86,7 +89,7 @@ answer:
 * Any behaviour that becomes part of persisted authoritative state.
 * A conflict between two authoritative documents.
 
-When an ADR, `docs/architecture.md`, `docs/data-model.md`, `PLANS.md`, or an
+When an ADR, `docs/architecture/00-index.md`, `docs/data-model/00-index.md`, `PLANS.md`, or an
 accepted research finding already defines the meaning of a value or behaviour,
 follow it. Do not reinterpret it. If it is genuinely ambiguous or incomplete and
 the answer is not derivable from the project, stop and ask *before* implementing,
@@ -97,6 +100,20 @@ interpretation. A reviewer or the user should never be the first to discover a
 semantic decision you made alone.
 
 Never resolve genuine ambiguity by silently guessing.
+
+### Delegation boundary
+
+You cannot delegate. You are a subagent, and the environment's subagent depth
+limit is 1, so any attempt to spawn another subagent is refused with
+`Subagent depth limit reached (1)`. Do not try, and do not fall back to a
+detached CLI process to obtain a review.
+
+If the task needs a report from another agent — a security review, a host
+verification, a provider-contract check — do not attempt to produce or obtain it.
+Record exactly what is needed and why in `research_required`, and return
+`NEEDS_RESEARCH` (or `BLOCKED` if the task cannot proceed without it). The
+orchestrator delegates that specialist itself. Returning this status is correct
+and expected; attempting the delegation is the failure.
 
 ## Implementation
 
@@ -130,9 +147,45 @@ Do not claim tests passed unless they were actually run.
 
 If the environment prevents required validation, report that explicitly.
 
+## Definition of Done (mandatory)
+
+These are completion obligations, not optional self-review. The scope, tool-use,
+rerun, diff, and stop rules later in this document govern work *beyond* them;
+they do not replace them. A task that skips one of these is not complete.
+
+1. **Acceptance criteria.** Map every acceptance criterion — including any phase
+   acceptance criterion the task owns — to the specific code and test evidence
+   that satisfies it. A criterion with no evidence means the task is not done.
+2. **Build and tests.** Run the build and the relevant suite; capture the exact
+   failed/passed/skipped/total counts from the command output.
+3. **Test sensitivity.** For every new production behaviour, prove the new test
+   can fail: temporarily break the behaviour, observe the failure, then revert.
+   For every guard or validator, seed a violation and show it rejects. Record the
+   probe. If sensitivity cannot be shown, say so and why.
+4. **Documentation reconciliation.** Enumerate the facts the change alters (suite
+   counts, phase/task status, capability, configuration, limitation). Update the
+   canonical editable source (`docs/plan/state.json`, the release changelog file,
+   `docs/limitations/`), run `dotnet run scripts/render-docs-state.cs` and
+   `scripts/check-docs.sh`, then search the current-state surfaces for the
+   **old** value or wording and confirm it is gone. Never hand-edit a generated
+   block; never rewrite historical entries.
+5. **Claim precision.** Every number written into code comments, documentation,
+   or the report must be copied from actual command output or the artifact —
+   never from memory, intent, or an earlier value. Do not state an absolute claim
+   ("unchanged", "not the asset", "fully met") where only a qualified truth was
+   verified; state the qualification.
+6. **Interpretations.** List any semantic choice the task or an ADR did not fully
+   fix, with its basis and impact. If the choice changes persisted authoritative
+   state, user-visible behaviour, or the meaning of a limit/window/unit, stop and
+   report `NEEDS_USER_INPUT` instead of choosing.
+7. **Scope.** List the changed files and confirm each belongs to the task.
+
 ## Execution Discipline
 
 Optimize for completing the assigned task efficiently and reliably, not for exhaustive self-review.
+
+The Definition of Done above is mandatory. These discipline rules govern work
+*beyond* it; they are not permission to omit it.
 
 The implementation worker is responsible for:
 
@@ -172,6 +225,11 @@ Prefer the simplest available tool that directly answers the question.
 
 Do not rerun successful validation unless something relevant changed after the successful run.
 
+Treat successful authoritative validation as evidence: after a successful build,
+do not re-prove compilation correctness; after a successful test run, do not
+reproduce individual assertions unless investigating a failure. Additional
+validation is driven by the acceptance criteria or by evidence of a problem.
+
 A rerun is justified when:
 
 * Relevant source code changed.
@@ -186,18 +244,6 @@ Use change impact to determine what needs rerunning:
 * **Test-only change:** rerun the affected tests; rebuild only if required.
 * **Documentation-only change:** do not rerun implementation tests unless required by the task.
 * **No relevant change:** do not rerun validation.
-
-### Trust successful validation
-
-Treat authoritative tool results as evidence.
-
-After a successful build, do not manually re-prove compilation correctness.
-
-After a successful test run, do not manually reproduce individual assertions unless investigating a failure.
-
-After a successful validation command, do not perform another equivalent check solely for reassurance.
-
-Additional validation should be driven by the acceptance criteria or by evidence of a problem.
 
 ### Diff inspection
 
@@ -232,23 +278,24 @@ These are the project's current-state status surfaces. When the task changes
 project status or a documented behaviour, update every one that the change makes
 stale:
 
-* `PLANS.md` — the Project Status paragraph, the Milestone Status table row, and
-  the task's own status text/checkbox.
-* `docs/changelog.md` — the task entry.
-* `docs/project-status.md` — current build/test/structure/next-step statements.
-* `docs/architecture.md` — the status line and any section the change makes
-  inaccurate.
-* `docs/implementation-readiness.md` — its status line and any deferral list.
-* `docs/limitations.md` — the canonical limitations record: resolve, add, or
-  update any limitation the change affects.
+* `docs/plan/state.json` — set the task's `done` flag and record its report and commit.
+* `PLANS.md` — the task's own checkbox. The milestone table is
+  generated; do not hand-edit between its markers.
+* `docs/changelog/<release>.md` — the task entry.
+* `docs/limitations/` — resolve, add, or update any limitation the change
+  affects, and keep its index entry.
 * `README.md` — the end-user guide: update any capability, configuration, or
   limitation statement the change makes stale.
+* `docs/architecture/` and `docs/data-model/` — only the normative section the
+  change makes inaccurate. These documents carry no status line; do not add one.
+* `docs/status.md` and the `PLANS.md` milestone table — **generated**; regenerate
+  with `dotnet run scripts/render-docs-state.cs`, never by hand.
 
 Do not guess that a surface is unaffected: if the task changes a completion
 count, a phase status, an implemented capability, or a deferred item, verify the
 affected surfaces explicitly. Stale lines in these files are a recurring
 carry-over defect; leaving them is not acceptable merely because the task "did
-not touch that file".
+not touch that file". Run `scripts/check-docs.sh` after updating the surfaces.
 
 Do not create additional documentation, scripts, reports, or artifacts unless they are required by the task or the project's established workflow.
 
@@ -304,6 +351,7 @@ Those concerns belong in the independent review unless they reveal a concrete fa
 
 Stop when all of the following are true:
 
+* The Definition of Done above is satisfied.
 * The assigned task is implemented.
 * Required validation has passed.
 * Acceptance criteria have been checked.
@@ -318,6 +366,20 @@ Then:
 3. Stop.
 
 Do not perform additional investigation after the completion criteria have been met.
+
+## Correcting a returned task
+
+If the orchestrator returns the task after review:
+
+1. Re-read every required change verbatim.
+2. For each finding, make the smallest correction and record the finding id, the
+   exact edit, and the verification.
+3. Re-run the full Definition of Done, including documentation reconciliation and
+   test sensitivity. Corrections frequently introduce new stale statements.
+4. Do not claim a finding is closed unless you have shown the corrected text or
+   the evidence; if closure is not verifiable, say so.
+5. Populate the report's `rework` array, write a new attempt report, and never
+   overwrite or rewrite the prior attempt.
 
 ## Completion Status
 
@@ -340,12 +402,34 @@ Return a structured completion report using this schema:
   "changed_files": [
     "Files materially changed by this task."
   ],
+  "acceptance_criteria": [
+    { "criterion": "<criterion>", "evidence": "<file, test, or command>" }
+  ],
+  "interpretations": [
+    { "question": "<semantic choice not fixed by the task or an ADR>", "chosen": "<choice>", "basis": "<basis>", "impact": "<impact>" }
+  ],
+  "test_sensitivity": [
+    "<test proven to fail when <behaviour> is removed, or why it cannot be shown>"
+  ],
+  "documentation_reconciliation": {
+    "surfaces": ["<current-state surface updated>"],
+    "old_values_removed": ["<old value or wording searched for and removed>"],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    { "finding_id": "<id>", "closure": "<what changed>", "evidence": "<evidence>" }
+  ],
   "known_limitations": [],
   "ready_for_next_task": true
 }
 ```
 
 The fields must reflect reality.
+
+The `interpretations`, `test_sensitivity`, and `documentation_reconciliation`
+fields are mandatory (`interpretations` may be `[]` when the task's semantics were
+fully fixed). A correction attempt must populate `rework` for every required
+change.
 
 Set `attempt` to the invocation number for this task (start at `1`; increment if
 the orchestrator returns the task for correction). Do not overwrite a previous

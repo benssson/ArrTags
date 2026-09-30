@@ -1,0 +1,101 @@
+{
+  "subject": "ArrTags task 15.2 - Thread the bounded log subject through the identity-bearing and fallback sites (ADR-026 clause 3)",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "findings": [
+    {
+      "id": "TQ-15.2-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "description": "The reader-threw metadata-read-failure path is a distinct subject substitution that the new tests never exercise. The only MetadataReadFailed theory drives the failed-read result path (FakeMetadataReader.Result = ArrMetadataReadResult.Failure(...)); no test configures a reader that throws, so the catch-block subject at MetadataReconciliationProcessor.cs:159 is unverified. The worker report and the v1.2 changelog claim both provider-error paths are covered by MetadataReadFailureSubjectIsTheFileNameOnlyAtEveryVerbosity, which overstates what the suite establishes: a regression that changes only the catch-path subject (for example back to the raw item id, or a path-bearing variant) passes the whole suite.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:259-299 (MetadataReadFailureSubjectIsTheFileNameOnly... and ...FallsBackToTheItemIdWhenNoPathIsAvailable)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:952-984 (DriveMetadataReadFailureAsync sets Result = Failure; never a throwing reader or throwing Handler)",
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:154-168 (reader-threw catch subject) versus :171-187 (failed-read result subject) are two separate LogSubject.Create call sites",
+        "docs/implementation/15.2/worker-report.json acceptance_criteria[1] names both paths as verified by the theory; docs/changelog/v1.2.0.md:57-59 repeats the two-path claim",
+        "Independent probe: changed only the catch-path subject (MetadataReconciliationProcessor.cs:159) to LogSubject.Create(identity.JellyfinItemId) (item-id only, no file name); rebuilt (0 warnings / 0 errors) and LogRedactionTests still passed 125/125 (0 failed). Source restored from a byte-identical backup and verified via sha256sum -c: OK"
+      ],
+      "recommended_action": "Add one case (or theory) that drives the reader-threw catch path with a FakeMetadataReader.Handler that throws, with a path-bearing and a pathless identity, and assert the same file-name-only / item-id-fallback subjects; or narrow the worker report and changelog claims to the failed-read path that is actually covered."
+    },
+    {
+      "id": "TQ-15.2-02",
+      "severity": "LOW",
+      "status": "open",
+      "area": "coverage",
+      "description": "The LibraryWorkWorker retry-scheduled subject substitution is not exercised. DriveQueueAsync uses RecordingWorkItemProcessor, which always returns a non-retryable Completed result, so LogRetryScheduled is never reached. The worker report and changelog cite LogProcessed and LogRetryScheduled together as covered by WorkWorkerSubjectIsTheItemIdAtEveryVerbosity, but only LogProcessed is on the exercised path.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:378-393 (WorkWorkerSubjectIsTheItemIdAtEveryVerbosity)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:794-817 (DriveQueueAsync) and :1323-1333 (RecordingWorkItemProcessor returns WorkProcessingResult.Completed, never retryable)",
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:255-269 (LogRetryScheduled subject) is a separate call site from :233-247 (LogProcessed)",
+        "docs/implementation/15.2/worker-report.json acceptance_criteria[4] evidence names LogProcessed/LogRetryScheduled; docs/changelog/v1.2.0.md:70-72 names both records",
+        "Independent probe: set the retry subject (LibraryWorkWorker.cs:262) to LogSubject.Create(System.Guid.Empty); rebuilt (0 warnings / 0 errors) and LogRedactionTests still passed 125/125 (0 failed). Source restored byte-identically (sha256sum -c: OK)"
+      ],
+      "recommended_action": "Add a queue case whose processor returns a retryable result for one attempt so LogRetryScheduled is emitted, and assert the item-id subject on the WorkItemRetryScheduled record; or drop LogRetryScheduled from the coverage claim."
+    },
+    {
+      "id": "TQ-15.2-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "The fallback (identity present but no usable primary path) branch is site-tested at the mixed discard site and at the metadata-read-failure site only. The identity-bearing artwork and Radarr/Sonarr reader fallbacks are not driven without a path; they rely on the shared helper's unit tests (LogSubjectTests, task 15.1) plus one representative site-level fallback test. Residual risk is low because those sites pass `identity.MediaLocation?.PrimaryPath` into the same helper and the null-path behavior is thoroughly unit-tested.",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:1130-1149 (SentinelIdentity always has primaryPath) and :1180-1205 (SentinelEpisodeIdentity always has primaryPath); DriveMatchingAsync/DriveSonarrMatchingAsync/DriveArtworkAsync never construct a pathless identity",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:281-299 (representative site-level fallback: metadata-read-failure)",
+        "tests/ArrTags.Tests/LogSubjectTests.cs:137-159 (helper fallback coverage, task 15.1)"
+      ],
+      "recommended_action": "No action required for 15.2; recorded for traceability. If a future task wants per-site fallback proof, add pathless-identity variants of the artwork and reader theories."
+    },
+    {
+      "id": "TQ-15.2-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "description": "Of the 60 new theory cases, roughly half run at verbosity levels where the line is gated off and assert only that the record count is 0 (the sentinel scan over an empty record list is vacuous). This is honest and sufficient - count 0 is itself the gating assertion and no output can leak - but the phrase 'at every verbosity level' in the test remarks/worker report should not be read as a subject assertion at every level; the subject is asserted at the enabled levels (30 cases).",
+      "evidence": [
+        "tests/ArrTags.Tests/LogRedactionTests.cs:200-417 (early `if (expected == 0) return;` on all ten new theories; AssertNoSentinel is called but iterates no records at gated levels)",
+        "tests/ArrTags.Tests/LogRedactionTests.cs:1273-1277 (Expected maps verbosity to 0/1)"
+      ],
+      "recommended_action": "No action required; the pattern is accurate as written."
+    },
+    {
+      "id": "TQ-15.2-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "The 15.2 change is reported against the default suite only (1577/63/1640). The canonical release matrix in docs/release/build-and-release.md still records the 1.1.0.0 counts (1513/44/1557 host-guarded, 1575/20/1595 forced-native). This is not a 15.2 test-quality gap: the new tests are not host-gated or native-gated, and the worker's known_limitations state the current-state surfaces are updated by task 15.4. Host-guarded and forced-native were not rerun for this audit.",
+      "evidence": [
+        "docs/release/build-and-release.md:77-105 (1.1.0.0 release matrix)",
+        "docs/implementation/15.2/worker-report.json known_limitations[2] (15.4 owns the canonical documentation reconciliation)"
+      ],
+      "recommended_action": "No action for 15.2; task 15.4 / the release task must refresh the matrix once Phase 15 closes."
+    }
+  ],
+  "matrix_observed": {
+    "default": "1577 passed / 63 skipped / 1640 total, 0 failed (independently reproduced; post-15.1 baseline 1517/63/1580, so +60 passed / +60 total / 0 new skips)",
+    "host_guarded": "not run (unaffected by 15.2: the 60 new cases are not host-gated; release doc still records 1513/44/1557 for 1.1.0.0 and is owned by a later task)",
+    "forced_native": "not run (unaffected by 15.2: the new cases are not native-gated; release doc still records 1575/20/1595 for 1.1.0.0 and is owned by a later task)",
+    "focused_LogRedactionTests": "125 passed / 0 skipped / 125 total, 0 failed (independently reproduced before and after the sensitivity probe, byte-identical restore)"
+  },
+  "substitutes_checked": [
+    "ArrTagsLog<T> + LogVerbosityGate are the real production log facade/gate; only the host ILogger is captured (CapturingLoggerProvider/CapturingLogger<T>), so gating behavior is real and observed.",
+    "MetadataReconciliationProcessor, ArtworkGenerationCoordinator, RadarrMetadataReader, SonarrMetadataReader, LibraryWorkWorker, and ArrTagsLifecycleService are real production classes; the subject under test is built inside them, not in a double.",
+    "FakeMetadataReader / FakeRadarrReadClient / FakeSonarrReadClient / FakeReadClientFactory substitute only the external Arr HTTP-provider boundary.",
+    "ReconciliationLibraryResolver, ReconciliationTestMovie, FakeMediaLibraryEnumerator substitute the Jellyfin library boundary; MediaIdentityFactory and MediaIdentity are production.",
+    "PipelineArtworkHost and FingerprintingRenderer substitute only the host image read/write boundary; ArtworkPublisher/state stores are production.",
+    "RecordingWorkItemProcessor, RecordingWorkHintSink, NoOpLifecycleCoordinator, and FakeLibraryEventSource are queue/lifecycle boundary doubles; the worker and lifecycle service that build the subject are production.",
+    "TestTimeProvider isolates LogThrottle from wall-clock time."
+  ],
+  "skips_checked": [
+    "The 10 new theories carry no skip guard (no [Fact(Skip)], no environment gate); the focused run reported 0 skipped.",
+    "The full default run reported 63 skipped, identical to the post-15.1 baseline, so 0 new skips (matches the worker claim).",
+    "The 63 skips are the environment/host-gated facts documented at docs/release/build-and-release.md:79-85 (19 pinned-host + 43 ARRTAGS_SKIA_COMPAT-native + 1 ARRTAGS_NONCANONICAL_GOLDENS); none of the ADR-026 subject behavior depends on them."
+  ],
+  "determinism_checked": [
+    "New tests use static verbosity data, InvariantCulture and StringComparison.Ordinal; no clock, culture, machine-name, or network input affects any assertion.",
+    "Each test constructs its own CapturingLoggerProvider and a unique temp state root (Path.GetTempPath() + Guid), so there is no shared mutable state or order dependence.",
+    "LogThrottle uses TestTimeProvider with a fixed epoch; no wall-clock dependence in the new theories.",
+    "The pre-existing webhook wait uses a bounded polling loop (WaitForRecordAsync) but is not on any new 15.2 theory path.",
+    "Repeated focused runs (before and after restore) both reported 125/125, and the full default run matched the worker count exactly."
+  ],
+  "summary": "The task-15.2 tests are genuinely meaningful on the paths they exercise: they drive the real production coordinator/processor/readers/worker/lifecycle classes with doubles only at external boundaries, assert the positive exact subject substring ('item example.mkv' / 'item s02e05.mkv') plus the absence of '/' and of the replaced item id (so a full-path regression fails, not just a missing-name check), and reproduce the reported counts exactly (focused 125/125; default 1577 passed / 63 skipped / 1640 total; +60 / 0 new skips). No tautologies or wrong-reason passes were found. Two concrete coverage gaps remain. First (MEDIUM), the reader-threw metadata-read-failure path is a separate subject call site that no test drives, yet the worker report and changelog claim both provider-error paths are verified; an independent probe reverting only that catch-path subject to the item-id-only form was not caught (125/125 still passed). Second (LOW), LibraryWorkWorker.LogRetryScheduled is named as covered but the retry branch is never reached, and a probe corrupting its subject was likewise not caught. Both probed files were restored byte-identically (sha256 verified) and the tree is unchanged. The remaining observations (unexercised site-level fallback for artwork/readers, gated-off cases asserting only record count 0, and the still-stale 1.1.0.0 release matrix owned by task 15.4) are informational. Because no BLOCKER or HIGH finding is open, the status is PASS_WITH_FINDINGS."
+}

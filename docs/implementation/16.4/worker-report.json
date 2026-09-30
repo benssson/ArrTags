@@ -1,0 +1,107 @@
+{
+  "task": "16.4",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Consolidated the task 16.4 jellyfin-expert modal-on-change research spike into the task record. This is a research/decision task: no product code or tests were required or added, so implementation_complete/tests_complete reflect that the task deliverable (the spike decision, recorded) is complete and that the unchanged build/suite were run to confirm no regression, not that code was implemented. The spike note (produced on the pinned Jellyfin 12.0 host by the jellyfin-expert agent) is persisted at docs/research/jellyfin-expert/modal-notification-api.json and was read in full: the pinned bundled web client defines window.Dashboard; Dashboard.alert({title, message}) is the only single-button modal (Dashboard.alert('text') is a non-modal toast, Dashboard.confirm(...) is a two-button modal, Dashboard.showMessage does not exist); Dashboard.processPluginConfigurationUpdateResult() only hides loading and shows the SettingsSaved toast; the page is injected into the client document so the inline script shares window.Dashboard/ApiClient; the shim is public but potentially unstable (in-source TODO to remove it), web-only, and not a server ABI; confirmation is pinned-asset/source-level, not live-browser. Decision recorded for task 16.5 (not implemented here): call window.Dashboard.alert({title, message}) inside the successful ApiClient.updatePluginConfiguration(...) .then after Dashboard.processPluginConfigurationUpdateResult, conditionally on a restart-required value changing, with a fail-open guard (window.Dashboard presence check plus swallowing try/catch) and plain-text message; the task 16.3 always-present note text stays the authoritative fail-open behavior. Recorded in docs/architecture/06-configuration-and-persisted-state.md and docs/changelog/v1.2.0.md; state.json/PLANS.md updated. No modal, classification, note-text, save-path, persisted-state, endpoint, or dependency change. One out-of-scope repository documentation discrepancy found by the spike (docs/testing/jellyfin-12-musl-test-host.md states the pinned musl archive does not ship the web client, but the archive contains jellyfin/jellyfin-web/, 2363 entries; --nowebclient only means the live matrix does not serve it) was not edited and is flagged for the phase's documentation sweep (task 16.6).",
+  "validation": [
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Release, ArrTags.slnx).",
+    ". /config/arrtags-env.sh && ./build.sh test -> 'Passed! - Failed: 0, Passed: 1747, Skipped: 63, Total: 1810, Duration: 17 s - ArrTags.Tests.dll (net10.0)'. This is unchanged from the post-16.3 baseline (Failed 0 / Passed 1747 / Skipped 63 / Total 1810): the spike adds no tests and no product code changed.",
+    "ARRTAGS_JELLYFIN_HOST_DIR is unset in this environment (echo shows 'unset'), so the host-guarded run was not performed; the default run reports the same 63 host-guarded skips as the baseline. No host-guarded fact was changed by this task.",
+    ". /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -> 'status.md: up to date'; 'PLANS.md: up to date' (milestone table unchanged because Phase 16 remains PLANNED).",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> (1) after the documentation/state edits and before this worker-report.json was persisted: 'check-docs: PASS' with nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (28 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), exit 0; (2) re-run after this report and the changelog wording correction: sections 1-8 still ok and the only failure is the expected section-9 post-worker pairing ('task 16.4 has a worker report but no reviewer report'), which the orchestrator's implementation-reviewer report resolves (the same post-worker state as tasks 15.4 and 16.1-16.3).",
+    "Stale-wording search: grep over README.md, docs/status.md, PLANS.md, docs/architecture/, docs/data-model/, docs/limitations/ for task-16.4-pending wording and unchecked 16.4 references -> only the intended new/modified text; no current-state surface still presents the modal API decision as unrecorded. docs/planning/v1.2.md (accepted plan; not a per-task status surface) still names the task 16.4 spike in DG-17 and section 8 as the research owner, which is consistent with the recorded decision and the deferred 16.5 implementation.",
+    "Evidence review: docs/research/jellyfin-expert/modal-notification-api.json read in full (conclusion, evidence, findings, api_classification, recommendation_for_task_16_5, risks, unresolved, documentation_impact). Nothing in the note contradicts ADR-028 clause 4 or the task-16.3 note text; the note's documentation_impact items outside this task (jellyfin-12-architecture.md section 9, the musl test-host claim) are recorded for the 16.6 sweep rather than silently changed.",
+    "git status --short / git diff inspection -> docs/research/jellyfin-expert/modal-notification-api.json (new, untracked, produced by the orchestrator-run spike), docs/architecture/06-configuration-and-persisted-state.md, docs/changelog/v1.2.0.md, docs/plan/state.json, PLANS.md, and this report; no product, test, project, or workflow file changed. No git commit was created."
+  ],
+  "changed_files": [
+    "docs/research/jellyfin-expert/modal-notification-api.json (new; produced by the orchestrator-run jellyfin-expert spike, consolidated and referenced by this task)",
+    "docs/architecture/06-configuration-and-persisted-state.md",
+    "docs/changelog/v1.2.0.md",
+    "docs/plan/state.json",
+    "PLANS.md",
+    "docs/implementation/16.4/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Gate 16 / task deliverable: the modal spike has recorded the API decision.",
+      "evidence": "docs/research/jellyfin-expert/modal-notification-api.json records the conclusion, pinned-artifact/v12.0-source evidence, findings, api_classification (window.Dashboard and Dashboard.alert/confirm/showLoading/hideLoading/processPluginConfigurationUpdateResult/dialogHelper and window.ApiClient as public-but-unstable; Dashboard.showMessage absent; no AMD loader), recommendation_for_task_16_5, risks, unresolved items, and documentation_impact. The decision is restated in docs/architecture/06-configuration-and-persisted-state.md ('The modal restart reminder is decided but not yet implemented...')."
+    },
+    {
+      "criterion": "Record the decision where the canonical documentation expects it (phase-16 checklist / planning section 8): the modal mechanism and its 16.5 recommendation are recorded, without doing the full G6/G8 sweep (16.6 owns it) and without a stale or speculative claim.",
+      "evidence": "docs/architecture/06-configuration-and-persisted-state.md gains a paragraph recording the chosen call (Dashboard.alert({title, message})), its placement/conditionality/fail-open guard, the public-but-unstable classification, and explicitly that the modal is task 16.5 and 'the page currently ships the note text only'. docs/planning/v1.2.md section 8 already required 'a new jellyfin-expert note for the jellyfin-web modal/notification API (task 16.4)', which now exists at the recorded path; the phase-16 checklist's remaining surfaces (ADR-028, architecture 12, data-model 03-12, README) are the 16.6 sweep and were not pre-empted. No implemented-or-working modal is claimed anywhere."
+    },
+    {
+      "criterion": "Update docs/changelog/v1.2.0.md with the task 16.4 entry.",
+      "evidence": "docs/changelog/v1.2.0.md gains 'Task 16.4 - Modal-on-change research spike (jellyfin-expert)' with the spike findings, the recorded 16.5 decision, the open dismissal choice, the musl-archive documentation discrepancy flagged for 16.6, and the exact build/suite counts."
+    },
+    {
+      "criterion": "Plan state: task 16.4 done:true with reports (worker report and the jellyfin-expert research note) in docs/plan/state.json; PLANS.md '- [x] 16.4 ...'; phase not complete and no tag set.",
+      "evidence": "docs/plan/state.json task 16.4 has \"done\": true and reports ['docs/implementation/16.4/worker-report.json', 'docs/research/jellyfin-expert/modal-notification-api.json']; PLANS.md line '- [x] 16.4 Modal-on-change research spike (`jellyfin-expert`)'; Phase 16 status remains PLANNED with tag v1.2.0-phase16 unchanged; scripts/render-docs-state.cs reports both generated surfaces up to date."
+    },
+    {
+      "criterion": "Boundary: do NOT implement the modal (no Dashboard.alert call in config.html), do NOT change the classification/note text/save path, and do NOT add dependencies or endpoints.",
+      "evidence": "git diff touches no file under src/, tests/, or any csproj; src/ArrTags/Configuration/config.html is unchanged (the task 16.2 restartRequiredFields table and the task 16.3 note text are untouched), and no dependency, endpoint, or persisted-state change exists."
+    },
+    {
+      "criterion": "Validation: ./build.sh build and ./build.sh test confirm no regression with exact counts; scripts/check-docs.sh PASS.",
+      "evidence": "Build 0 warnings / 0 errors; default suite Failed 0 / Passed 1747 / Skipped 63 / Total 1810 (identical to the post-16.3 baseline); check-docs.sh PASS with nine ok sections on the final tree before this report was persisted (post-report, only the expected reviewer-pairing check for 16.4 is pending, owned by the orchestrator). ARRTAGS_JELLYFIN_HOST_DIR is unset, so no host-guarded run was performed."
+    },
+    {
+      "criterion": "Do not create a git commit; report the spike-evidence discrepancy rather than guessing.",
+      "evidence": "No commit was created (git status shows working-tree changes only). The spike note was internally consistent with ADR-028 clause 4 and the shipped 16.3 note text, so no stop condition applied; its out-of-scope doc discrepancy is reported (changelog entry + known_limitations) for task 16.6 instead of being silently fixed."
+    },
+    {
+      "criterion": "Research-task completeness: the assigned spike was not re-run or contradicted; its findings were consolidated as authoritative evidence.",
+      "evidence": "The delegation stated the jellyfin-expert spike was already run by the orchestrator (this worker cannot spawn sub-agents); the note was read in full and no new research was performed. All statements in the architecture/changelog additions trace to the note's excerpts/findings/recommendation, and no claim is made beyond its classification (pinned-asset/source confirmed, not live-browser confirmed)."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Which canonical surface records the spike decision, given the phase-16 checklist lists several documents and 16.6 owns the full G6/G8 sweep.",
+      "chosen": "docs/architecture/06-configuration-and-persisted-state.md (the existing restart-surfacing paragraph) plus the changelog entry; ADR-028 text, docs/architecture/12, docs/data-model/03-12, and README are left to task 16.6.",
+      "basis": "The delegation asked for the minimal canonical surface(s) and to avoid the full G6/G8 sweep; architecture 06 already carries the 16.2 classification and 16.3 note-text statements in the same paragraph, so the modal decision belongs beside them. ADR text is immutable and does not require a research-outcome edit.",
+      "impact": "Documentation only. The modal decision is discoverable from the settings-page architecture section and the changelog; 16.5 must update architecture 06 again when the modal ships, and 16.6 owns the user-facing sweep."
+    },
+    {
+      "question": "How to record the spike's musl-archive/web-client documentation discrepancy without changing an unrelated document.",
+      "chosen": "Recorded in the changelog entry and this report as an item for the phase's documentation sweep (task 16.6); docs/testing/jellyfin-12-musl-test-host.md was not edited.",
+      "basis": "The delegation allowed flagging it for 16.6 or reporting it and explicitly warned against silently fixing unrelated docs. The claim does not affect the modal API conclusion.",
+      "impact": "docs/testing/jellyfin-12-musl-test-host.md remains inaccurate ('the archive does not ship the web client') until 16.6 corrects it; the live-matrix procedure is otherwise unaffected."
+    }
+  ],
+  "test_sensitivity": [
+    "Not applicable: this task adds no production behaviour and no test. No new test could be made to fail because none was added; the existing suite is unchanged and was run only to confirm the documentation-only change caused no regression.",
+    "No guard or validator was added or modified by this task; the task 16.2 SettingClassification constructor guard and the task 16.3 note-text cases are untouched and remain covered by RestartRequiredSettingsTests and RestartRequiredNoteTextTests.",
+    "The spike's fail-open recommendation (window.Dashboard presence check plus try/catch) is a task 16.5 implementation requirement and cannot be probed in this repository (no JS runtime); task 16.5 is expected to pin it structurally, and the spike note records that the actual modal behaviour cannot be unit-tested here."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/changelog/v1.2.0.md (Task 16.4 entry)",
+      "docs/architecture/06-configuration-and-persisted-state.md (modal decision and 16.5 recommendation)",
+      "docs/plan/state.json (task 16.4 done/reports, updated_utc)",
+      "PLANS.md (16.4 checkbox)",
+      "docs/status.md (regenerated check: up to date)",
+      "docs/research/jellyfin-expert/modal-notification-api.json (spike evidence, now part of the task record)"
+    ],
+    "old_values_removed": [
+      "\"id\": \"16.4\" adjacent to \"done\": false in docs/plan/state.json (now done true with reports)",
+      "'- [ ] 16.4 Modal-on-change research spike' in PLANS.md (now '- [x]')",
+      "No current-state surface stated the modal API decision as unrecorded; grep for task-16.4-pending wording over README.md, docs/status.md, PLANS.md, docs/architecture/, docs/data-model/, docs/limitations/ found no stale claim (the planning scope document's DG-17/section-8 references to the 16.4 spike as research owner remain accurate and are not per-task status surfaces)."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The modal reminder is not implemented: a change to a restart-required setting still shows only the task 16.3 always-present note text. Task 16.5 owns the implementation and must update docs/architecture/06 again when it lands.",
+    "The modal API conclusion is pinned-asset and jellyfin-web v12.0 source confirmed, not live-browser confirmed; the pinned live test host runs with --nowebclient, so the documented live matrix does not exercise the dashboard modal. The shim is explicitly temporary (in-source TODO to remove it), so any reliance is fail-open by ADR-028 clause 4.",
+    "One open design choice is recorded for task 16.5, not resolved here: the shim's alert(object) has no .catch and returns no promise, so dismissing the modal without pressing 'Got it' produces a benign unhandled promise rejection; 16.5 must accept that or use Dashboard.confirm with a no-op callback.",
+    "docs/testing/jellyfin-12-musl-test-host.md still claims the pinned musl archive does not ship the web client; the spike confirmed the archive contains jellyfin/jellyfin-web/ (2363 entries) and that --nowebclient only means the live matrix does not serve it. The correction is out of this task's scope and is flagged for the task 16.6 documentation sweep.",
+    "scripts/check-docs.sh passes all nine sections on the content tree before this report was persisted; after this report is persisted the section-9 agent-contract check fails only on 'task 16.4 has a worker report but no reviewer report' (verified by re-run; sections 1-8 still pass), which is the expected post-worker state and is satisfied when the orchestrator adds the implementation-reviewer report for 16.4."
+  ],
+  "ready_for_next_task": true
+}

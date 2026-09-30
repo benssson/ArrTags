@@ -1,0 +1,60 @@
+{
+  "task": "21.10",
+  "title": "Release security review of the corrected candidate",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "359ac1b",
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.10 is the adversarial security re-audit of the corrected v1.2 release candidate; it introduces no new Jellyfin or provider assumption and implements nothing. The specialist security review is the task's own verification activity; no pre-dispatch conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "security-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "security-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "max",
+        "input_tokens": 115268,
+        "output_tokens": 35751,
+        "reasoning_tokens": 15077,
+        "cache_read_tokens": 6629342,
+        "cache_write_tokens": 0,
+        "total_tokens": 6795438,
+        "cost_usd": 0,
+        "duration_seconds": 796,
+        "session_id": "ses_f11d6f0b7ffeTuZk3mxm0Cwx7Y"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 84403,
+        "output_tokens": 21328,
+        "reasoning_tokens": 20058,
+        "cache_read_tokens": 4621829,
+        "cache_write_tokens": 0,
+        "total_tokens": 4747618,
+        "cost_usd": 0,
+        "duration_seconds": 717,
+        "session_id": "ses_f11ca97f2ffeD3y7kMKyORDygt"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Gate met: the corrected release security review is recorded with no open BLOCKER/HIGH. security-reviewer status PASS_WITH_FINDINGS, open_blocker_high 0, open_medium 0, reviewed_head 2072ec14776b5cb08ead9b467ecffcd32cffa692. Independently recomputed by the implementation reviewer: 1 MEDIUM/resolved, 3 LOW/open, 8 INFORMATIONAL/noted.",
+    "SEC-21.5-01 disposition: RESOLVED, independently reproduced by both reviewers against the SHIPPED ArrTags.dll (all four named clients AllowAutoRedirect=False; 0 requests/no X-Api-Key egress to a 3xx Location origin; a pre-fix control registration does leak the key, so the negative discriminates). The packaged ArrTags.dll was byte-identical to a clean build of the audited source.",
+    "Carried findings re-verified, not dropped: SEC-21.5-02 (log-subject Cc-only control removal), SEC-21.5-03 (Path.GetFileName host path semantics), SEC-21.5-04 (state-root shared-temp fallback) remain LOW/open (reproduced against the shipped assembly). These match the previously accepted/reported bounds.",
+    "New INFORMATIONAL findings: SEC-21.10-01 (the task 21.7 recorded rationale named HttpClientHandler as the factory default primary handler; on .NET 10 it is SocketsHttpHandler — properties otherwise identical, conclusion unaffected) and SEC-21.10-02 (the manifest 1.2.0.0 changelog omits the redirect behavior change, already documented in the changelog/architecture/ADR-005 note; a non-blocking release-note completeness item owned by task 21.6).",
+    "This task had specialist producers (security-reviewer) that cannot edit docs/plan/state.json, so the orchestrator set the task done/reports and the PLANS.md checkbox as its state-persistence step. No product code, tests, docs, manifest, or artifact were changed; no commit or tag created by the subagents."
+  ]
+}

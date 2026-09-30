@@ -9,7 +9,7 @@ namespace ArrTags.Artwork;
 /// <summary>
 /// The provider-neutral Phase 6 publication-fingerprint gate. After metadata state
 /// is published for a subject it decides whether artwork must be (re)generated and
-/// published, following <c>docs/architecture.md</c> section 8 step 7 and section 9
+/// published, following <c>docs/architecture/08-reconciliation-and-update-flow.md</c> step 7 and <c>docs/architecture/09-persisted-artwork-rendering.md</c>
 /// steps 2-4.
 /// </summary>
 /// <remarks>

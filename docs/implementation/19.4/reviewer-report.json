@@ -1,0 +1,88 @@
+{
+  "task": "19.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/single-flight evidence",
+      "summary": "The headline facts assert processor.PeakConcurrency(subjectKey) == 1 while running a one-worker pool, so that particular assertion is weak; the dedicated key fact carries the real per-key single-flight evidence.",
+      "detail": "SaveChainHarness facts create the worker with workerCount: 1, so per-key concurrency can never exceed 1 irrespective of queue mechanics; the PeakConcurrency assertion is therefore near-tautological. The requirement-8 fact (WorkItemKeyRemainsVersionBlindAndSingleFlightIsPerItemConnectionAndSurface) independently exercises the real LibraryWorkQueue: a version-only difference is Coalesced while pending and InFlight while processing, a distinct surface is Accepted while the primary key is in flight, and the key-equality assertions cover item/connection/surface. This is sufficient evidence for the acceptance criterion; the workerCount-1 assertion is redundant rather than false.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:99-102 (workerCount: 1), :114 (PeakConcurrency == 1)",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:599-653 (real-queue version-blind/single-flight assertions)"
+      ],
+      "recommended_action": "No change required; optional future strengthening could run two workers to make the headline PeakConcurrency assertion non-trivial."
+    },
+    {
+      "id": "F-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/coverage shape",
+      "summary": "Four helper facts drive ConfigurationSnapshotService.TryReplace directly rather than the full Plugin.UpdateConfiguration save path.",
+      "detail": "TheStaleBasisReenqueueIsIssuedOnlyAfterTheInFlightSlotIsReleased, StoppedQueueDropsTheStaleBasisReenqueue, and FullQueueDropsTheStaleBasisReenqueue activate the new version via Phase6.Configuration.TryReplace. The facts under test (worker re-enqueue ordering, stopped/full queue drop, and versions-blind key mechanics) do not depend on the plugin save path, and the headline save-while-pending, save-while-in-flight, second-advance, and changed-item facts do exercise the real Plugin.UpdateConfiguration -> TryActivateConfiguration -> trigger.RequestReconciliation path. The acceptance criterion (drives the real save path/post-save trigger/queue/worker/processor chain) is met by the matrix as a whole.",
+      "evidence": [
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:204, 492, 552 (direct TryReplace)",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:868-877 (harness.Save calls Plugin.UpdateConfiguration)"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "F-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "testing/test double",
+      "summary": "The only logic double is the classification-gate ScriptedProcessor, and it is necessary and disclosed.",
+      "detail": "The real MetadataReconciliationProcessor checks item.ConfigurationVersion before resolve/eligibility (clause 5), so a real non-version discard always carries the current version and is also blocked by the worker's same-version guard; the gate can only be isolated by supplying the classification directly. NonVersionDiscardsDoNotReenqueue wraps ScriptedProcessor in the real ChainRecordingProcessor and drives the real LibraryWorkWorker and real LibraryWorkQueue, so the gate under test is the production worker. The real-chain no-re-enqueue for all four classifications is separately covered by the changed-item theory. Disclosed in worker-report.json (interpretations/known_limitations).",
+      "evidence": [
+        "src/ArrTags/Reconciliation/MetadataReconciliationProcessor.cs:109-142 (version check precedes resolve/eligibility)",
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:252-266 (gate under test)",
+        "tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs:429-479, 1018-1036"
+      ],
+      "recommended_action": "No change required."
+    },
+    {
+      "id": "F-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation/state",
+      "summary": "The worker's check_docs PASS was taken from a pre-worker-report run; the later run fails only the expected worker/reviewer pairing line, which this reviewer report closes.",
+      "detail": "Independently ran scripts/check-docs.sh with the worker report present but before this reviewer report: every section passed except 'task 19.4 has a worker report but no reviewer report (add an exemption only if covered)'. This is the contract-mandated transient state. The state change (state.json task 19.4 done/reports, PLANS.md checkbox) is honest and the generated status blocks are current; F6 limitation, ADRs, architecture, changelog, and README are untouched, as 19.5 owns them.",
+      "evidence": [
+        "scripts/check-docs.sh output: 'ok: generated status blocks are current' ... 'FAIL: task 19.4 has a worker report but no reviewer report'",
+        "docs/plan/state.json:1000-1005 (done true, reports worker-report.json)",
+        "git diff PLANS.md (checkbox '- [x] 19.4 F6 coalescing coverage tests')",
+        "git diff --stat HEAD -- docs/limitations docs/changelog docs/architecture docs/decisions README.md docs/status.md (empty)"
+      ],
+      "recommended_action": "No change required; this report closes the pairing line."
+    }
+  ],
+  "tests_checked": [
+    "Source inspection of tests/ArrTags.Tests/CoalescingCoverageMatrixTests.cs (1088 lines; 7 facts + 2 theories x 4 cases = 15 cases).",
+    "./build.sh build -> Build succeeded, 0 Warning(s), 0 Error(s) (independently rerun before and after the temporary probe).",
+    "./build.sh test -> Failed 0, Passed 1901, Skipped 64, Total 1965 (independently reproduced; matches the worker report).",
+    "dotnet test --filter FullyQualifiedName~CoalescingCoverageMatrixTests repeated 5 consecutive times -> Failed 0, Passed 15, Skipped 0, Total 15 each run (no flakiness).",
+    "Independent probe P1 reproduction: temporarily moved ReenqueueStaleBasis(item, result) before _queue.CompleteProcessing(item.Key) in LibraryWorkWorker.RunWorkerAsync, rebuilt, ran the matrix -> Failed 8, Passed 7, Total 15, with TheStaleBasisReenqueueIsIssuedOnlyAfterTheInFlightSlotIsReleased among the failures. Source restored byte-identical (diff -q) and tree confirmed free of probe residue; build/tests re-run green afterward. This confirms the ADR-023 clause 3 mandated sensitivity.",
+    "Structural/behavioral checks: WorkItemKey has no version member (ItemId/ConnectionId/Surface only); LibraryWorkItem/LibraryWorkHint carry ConfigurationVersion outside the key; LibraryWorkQueue version-blind Coalesced/InFlight outcomes; MediaIdentityFactory rejects Guid.Empty (identity-less -> IdentityUnavailable); MediaLocationEligibility rejects Remote (ineligible); MediaEligibility does not depend on provider enablement so the connection-changed second pass is ConnectionChanged.",
+    "scripts/check-docs.sh -> all sections pass except the contract-mandated worker/reviewer pairing line, which this report closes."
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-023.md clauses 1-8, including clause 3's mandated ordering coverage test and clause 5's version-check-before-eligibility ordering.",
+    "docs/planning/v1.2.md Goal F6 acceptance criteria (all five bullets mapped to matrix facts).",
+    "docs/limitations/open.md F6 (remains an open limitation; correctly not resolved by this test-only task).",
+    "Production code: src/ArrTags/Plugin.cs (UpdateConfiguration save path), PluginLifecycle/ConfigurationReconciliationTrigger.cs, Reconciliation/LibraryReconciliationService.cs, Reconciliation/MetadataReconciliationProcessor.cs, Updates/LibraryWorkQueue.cs, Updates/LibraryWorkWorker.cs, Updates/WorkProcessingResult.cs, Updates/DiscardReason.cs, Updates/ArtworkPublishingWorkItemProcessor.cs, Updates/ArtworkRecoveringWorkItemProcessor.cs, Updates/WorkItemKey.cs, Media/MediaEligibility.cs, Media/MediaLocationEligibility.cs, Media/MediaIdentityFactory.cs.",
+    "Test harness: tests/ArrTags.Tests/Phase6Harness.cs, ReconciliationFixtures.cs, ReconciliationTriggerTests.cs (FakeMediaLibraryEnumerator)."
+  ],
+  "documentation_checked": [
+    "docs/plan/state.json (task 19.4 done=true, reports=[docs/implementation/19.4/worker-report.json], updated_utc advanced; phase 19 remains PLANNED).",
+    "PLANS.md checkbox '- [x] 19.4 F6 coalescing coverage tests'; generated milestone/status blocks current per scripts/check-docs.sh.",
+    "docs/status.md (generated blocks current; no task-level 19.4 content that would be stale).",
+    "docs/limitations/open.md, docs/changelog/, docs/architecture/, docs/decisions/, README.md (unchanged; correctly owned by 19.5)."
+  ],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}

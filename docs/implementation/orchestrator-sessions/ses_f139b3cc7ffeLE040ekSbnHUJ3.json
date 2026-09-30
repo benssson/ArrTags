@@ -1,0 +1,121 @@
+{
+  "session_id": "ses_f139b3cc7ffeLE040ekSbnHUJ3",
+  "agent": "orchestrator",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "variant": "default",
+  "title": "Starting phase 21",
+  "tokens": {
+    "input": 751751,
+    "output": 127080,
+    "reasoning": 95498,
+    "cache": {
+      "read": 86440704,
+      "write": 0
+    }
+  },
+  "total_tokens": 87415033,
+  "cost_usd": 0.5056047619999998,
+  "duration_seconds": 92333,
+  "first_recorded_at": "2026-09-29T09:51:08Z",
+  "last_updated_at": "2026-09-30T13:59:45Z",
+  "updates": [
+    {
+      "at": "2026-09-29T09:51:08Z",
+      "cost_usd": 0.03455388799999999,
+      "total_tokens": 2480493,
+      "duration_seconds": null,
+      "note": "Started Phase 21 (v1.2 release): completed and committed task 21.1 version bump and release metadata (commit 7eb7b85) after one review-driven rework closing 21.1-R1; duration_seconds recorded as null: the runtime reported 2s for 2480493 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T10:51:27Z",
+      "cost_usd": 0.06092949199999999,
+      "total_tokens": 5851050,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.2 canonical documentation reconciliation completed and committed (27e3416) after a focused rework closing F-21.2-D1/D2; duration_seconds recorded as null: the runtime reported 2s for 5851050 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T11:22:41Z",
+      "cost_usd": 0.08066722999999999,
+      "total_tokens": 8882414,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.3 release build, reproducible artifact, and release documentation completed and committed (eaeac72); duration_seconds recorded as null: the runtime reported 2s for 8882414 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T12:49:31Z",
+      "cost_usd": 0.11784444799999999,
+      "total_tokens": 14647162,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.4 live pinned-host verification completed and committed (7ad12dc); matrix VERIFIED across three verifier passes; duration_seconds recorded as null: the runtime reported 2s for 14647162 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T13:41:55Z",
+      "cost_usd": 0.147801656,
+      "total_tokens": 19869656,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.5 release security review completed and committed (84b052e); user decided to fix SEC-21.5-01 and planner added corrective tasks 21.7-21.10; duration_seconds recorded as null: the runtime reported 2s for 19869656 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T14:28:28Z",
+      "cost_usd": 0.166082594,
+      "total_tokens": 23793721,
+      "duration_seconds": null,
+      "note": "Phase 21 corrective task 21.7 provider transport no-redirect fix (SEC-21.5-01) completed and committed (5f72372); duration_seconds recorded as null: the runtime reported 2s for 23793721 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T15:06:37Z",
+      "cost_usd": 0.18192943399999997,
+      "total_tokens": 27026427,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.8 corrected release build and artifact identity completed and committed (35818fb); duration_seconds recorded as null: the runtime reported 2s for 27026427 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T17:14:15Z",
+      "cost_usd": 0.20838090199999995,
+      "total_tokens": 32906359,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.9 corrected-artifact live pinned-host verification completed and committed (6c7b45d); duration_seconds recorded as null: the runtime reported 2s for 32906359 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-29T17:40:47Z",
+      "cost_usd": 0.22536185599999994,
+      "total_tokens": 36886359,
+      "duration_seconds": null,
+      "note": "Phase 21 task 21.10 corrected release security review completed and committed (359ac1b); open_blocker_high 0, SEC-21.5-01 resolved; duration_seconds recorded as null: the runtime reported 2s for 36886359 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-30T11:20:04Z",
+      "cost_usd": 0.35779447999999986,
+      "total_tokens": 51935960,
+      "duration_seconds": 92333,
+      "note": "Phase 21 corrective task 21.11 log-subject hardening (SEC-21.5-02/03) completed and committed (a079358)"
+    },
+    {
+      "at": "2026-09-30T11:54:08Z",
+      "cost_usd": 0.37454802199999987,
+      "total_tokens": 55942731,
+      "duration_seconds": 92333,
+      "note": "Phase 21 task 21.12 fully corrected release build and artifact identity completed and committed (c78a7d6)"
+    },
+    {
+      "at": "2026-09-30T12:50:56Z",
+      "cost_usd": 0.4111770799999997,
+      "total_tokens": 64356713,
+      "duration_seconds": 92333,
+      "note": "Phase 21 task 21.13 fully corrected-artifact live pinned-host verification completed and committed (f54dc85)"
+    },
+    {
+      "at": "2026-09-30T13:15:02Z",
+      "cost_usd": 0.4345232359999998,
+      "total_tokens": 70673049,
+      "duration_seconds": 92333,
+      "note": "Phase 21 task 21.14 fully corrected release security review completed and committed (79be5ba); open_blocker_high 0"
+    },
+    {
+      "at": "2026-09-30T13:59:45Z",
+      "cost_usd": 0.5056047619999998,
+      "total_tokens": 87415033,
+      "duration_seconds": 92333,
+      "note": "Completed the v1.2.0 release: release-review gate SHIP_WITH_ACCEPTED_LIMITATIONS, registered accepted limitation V12-F7-1, advanced current_release/releases[], archived phases 15-21, created the annotated v1.2.0 tag on release commit 7f11afa"
+    }
+  ]
+}

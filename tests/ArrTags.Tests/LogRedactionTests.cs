@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -22,6 +23,8 @@ using ArrTags.Secrets;
 using ArrTags.State;
 using ArrTags.Updates;
 using ArrTags.Webhooks;
+using MediaBrowser.Model.Dto;
+using MediaBrowser.Model.MediaInfo;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -44,6 +47,17 @@ namespace ArrTags.Tests;
 /// and that the plugin registrator wires the logging boundary without a custom
 /// provider or a replaced factory.
 /// </summary>
+/// <remarks>
+/// Task 15.2 extends the harness for the ADR-026 bounded log subject at every
+/// verbosity level: the identity-bearing sites (the artwork coordinator, both
+/// metadata-read-failure lines — the reader-threw catch and the failed-read
+/// result — and the Sonarr/Radarr readers) emit the file-name component only
+/// when a path is available, the mixed metadata discard site uses the file name
+/// when a path is available and falls back to the item identifier otherwise, and
+/// the worker and lifecycle-removal fallback sites emit the item identifier.
+/// The worker's processed and scheduled-retry records retain the bounded,
+/// non-secret connection scope and image surface alongside the subject.
+/// </remarks>
 public sealed class LogRedactionTests
 {
     private const string ApiKeySentinel = "SENTINEL-API-KEY-2c1f9a7b";
@@ -58,6 +72,12 @@ public sealed class LogRedactionTests
 
     private const string BodySentinel = "SENTINEL-REQUEST-BODY-6b2e";
 
+    private const string SourceDetailSentinel = "SENTINEL-SOURCE-DETAIL-4f7c";
+
+    private const string ConnectionScopeId = "radarr-connection-scope";
+
+    private static readonly Guid SonarrEpisodeItemId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+
     private static readonly string[] AllSentinels =
     {
         ApiKeySentinel,
@@ -66,6 +86,7 @@ public sealed class LogRedactionTests
         IdentityNameSentinel,
         HeaderSentinel,
         BodySentinel,
+        SourceDetailSentinel,
     };
 
     public static IEnumerable<object[]> AllVerbosityLevels()
@@ -179,6 +200,398 @@ public sealed class LogRedactionTests
 
         AssertNoSentinel(capturing.Records);
         Assert.Equal(2 * Expected(verbosity, LogLevel.Information), capturing.Records.Count);
+    }
+
+    // ---- ADR-026 bounded log-subject threading ---------------------------------
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkSubjectIsTheFileNameOnlyAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        AssertFileNameSubject(capturing.Records[0], "example.mkv", ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task RadarrMatchSubjectIsTheFileNameOnlyAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMatchingAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Debug);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        AssertFileNameSubject(capturing.Records[0], "example.mkv", ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task SonarrMatchSubjectIsTheFileNameOnlyAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveSonarrMatchingAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Debug);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        AssertFileNameSubject(capturing.Records[0], "s02e05.mkv", SonarrEpisodeItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task MetadataReadFailureSubjectIsTheFileNameOnlyAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMetadataReadFailureAsync(capturing, verbosity, pathAvailable: true);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Warning);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        // The provider-error metadata-read-failure line runs after identity
+        // creation, where the identity's primary path is available.
+        Assert.Contains("The provider is unavailable.", capturing.Records[0].Message, StringComparison.Ordinal);
+        AssertFileNameSubject(capturing.Records[0], "example.mkv", ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task MetadataReadFailureSubjectFallsBackToTheItemIdWhenNoPathIsAvailable(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMetadataReadFailureAsync(capturing, verbosity, pathAvailable: false);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Warning);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        // The identity exists but carries no usable primary path, so the same
+        // line falls back to the item identifier.
+        Assert.Contains("The provider is unavailable.", capturing.Records[0].Message, StringComparison.Ordinal);
+        AssertItemIdSubject(capturing.Records[0], ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task MetadataReaderThrowSubjectIsTheFileNameOnlyAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMetadataReadFailureAsync(capturing, verbosity, pathAvailable: true, readerThrows: true);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Warning);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        // The reader-threw catch is a distinct MetadataReadFailed emission from
+        // the failed-read result, and it runs after identity creation.
+        Assert.Contains("the reader threw InvalidOperationException.", capturing.Records[0].Message, StringComparison.Ordinal);
+        AssertFileNameSubject(capturing.Records[0], "example.mkv", ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task MetadataReaderThrowSubjectFallsBackToTheItemIdWhenNoPathIsAvailable(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMetadataReadFailureAsync(capturing, verbosity, pathAvailable: false, readerThrows: true);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Warning);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        Assert.Contains("the reader threw InvalidOperationException.", capturing.Records[0].Message, StringComparison.Ordinal);
+        AssertItemIdSubject(capturing.Records[0], ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task MetadataDiscardSubjectIsTheFileNameWhenAPathIsAvailableAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMetadataDiscardAsync(capturing, verbosity, pathAvailable: true);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        // The identity exists at discard time: the provider read succeeded and
+        // the publish-time re-read found the item removed.
+        Assert.Contains(
+            "The Jellyfin item was removed while the work was processing.",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+        AssertFileNameSubject(capturing.Records[0], "example.mkv", ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task MetadataDiscardSubjectFallsBackToTheItemIdWhenTheIdentityHasNoPath(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMetadataDiscardAsync(capturing, verbosity, pathAvailable: false);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        // The identity exists but carries no usable primary path, and the discard
+        // is still the post-identity changed-basis discard.
+        Assert.Contains(
+            "The Jellyfin item was removed while the work was processing.",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+        AssertItemIdSubject(capturing.Records[0], ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task MetadataDiscardSubjectFallsBackToTheItemIdWhenNoIdentityExists(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveMetadataDiscardBeforeIdentityAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        // No identity exists yet: the version mismatch discards before the item
+        // is resolved, so only the item identifier is available.
+        Assert.Contains(
+            "The work was based on configuration v",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+        AssertItemIdSubject(capturing.Records[0], ReconciliationFixtures.ItemId);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task WorkWorkerSubjectIsTheItemIdAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveQueueAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Debug);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        AssertItemIdSubject(capturing.Records[0], ReconciliationFixtures.ItemId);
+
+        // The bounded connection scope and surface stay in the record: ADR-026
+        // clause 1 replaces the emitted item identifier only. A hint-derived key
+        // carries no connection scope.
+        AssertQueueContext(capturing.Records[0], ReconciliationFixtures.ItemId, "*", "Primary");
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task WorkWorkerRetrySubjectIsTheItemIdAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveQueueRetryAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+
+        var retries = capturing.Records
+            .Where(record => record.EventId == (int)ArrTagsLogEvent.WorkItemRetryScheduled)
+            .ToArray();
+
+        if (Expected(verbosity, LogLevel.Debug) == 0)
+        {
+            Assert.Empty(retries);
+            return;
+        }
+
+        Assert.NotEmpty(retries);
+        Assert.All(retries, record => AssertItemIdSubject(record, ReconciliationFixtures.ItemId));
+
+        // A connection-scoped work item retains both bounded context components.
+        AssertQueueContext(retries[0], ReconciliationFixtures.ItemId, ConnectionScopeId, "Primary");
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task LifecycleRemovalSubjectIsTheItemIdAtEveryVerbosity(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveLifecycleRemovalAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+
+        var removal = capturing.Records
+            .Where(record => record.EventId == (int)ArrTagsLogEvent.LifecycleItemRemoved)
+            .ToArray();
+
+        var expected = Expected(verbosity, LogLevel.Debug);
+        Assert.Equal(expected, removal.Length);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        AssertItemIdSubject(removal[0], ReconciliationFixtures.ItemId);
+    }
+
+    // ---- F8 bounded render classification --------------------------------------
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogEmitsTheBoundedPassThroughClassification(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkClassificationAsync(capturing, verbosity, new FingerprintingRenderer());
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        Assert.Contains(
+            "completed with RenderPassThrough (PassThroughReason=NoMetadata): The render passed through",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogEmitsTheBoundedFailureClassification(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkClassificationAsync(
+            capturing,
+            verbosity,
+            new FixedResultRenderer(RenderResult.Failed(RenderFailureReason.DecodeFailed)));
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        Assert.Contains(
+            "completed with RenderFailed (FailureReason=DecodeFailed): The render failed",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogEmitsTheBoundedSourceFailureClassification(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkSourceFailureAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        Assert.Contains(
+            "completed with SourceUnavailable (SourceFailureReason=Unreadable): The active source image could not be used.",
+            capturing.Records[0].Message,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(AllVerbosityLevels))]
+    public async Task ArtworkLogOmitsTheClassificationWhenTheResultCarriesNone(LogVerbosity verbosity)
+    {
+        var capturing = new CapturingLoggerProvider();
+
+        await DriveArtworkNoSourceAsync(capturing, verbosity);
+
+        AssertNoSentinel(capturing.Records);
+        var expected = Expected(verbosity, LogLevel.Information);
+        Assert.Equal(expected, capturing.Records.Count);
+        if (expected == 0)
+        {
+            return;
+        }
+
+        var message = capturing.Records[0].Message;
+        Assert.EndsWith(
+            "completed with NoSource: The image surface has no source artwork to render.",
+            message,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("PassThroughReason=", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("FailureReason=", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("SourceFailureReason=", message, StringComparison.Ordinal);
     }
 
     // ---- A verbosity raise cannot expand a redacted value -----------------------
@@ -528,15 +941,82 @@ public sealed class LogRedactionTests
 
     private static async Task DriveArtworkAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
     {
-        var repository = new StateRepository(CreateRoot());
         var host = new PipelineArtworkHost();
+
+        // The pre-task harness path: an invalid request (no badge definitions)
+        // blocks before the source read and carries no classification.
+        await DriveArtworkGenerationAsync(
+            capturing,
+            verbosity,
+            host,
+            host,
+            new FingerprintingRenderer(),
+            Array.Empty<BadgeDefinition>());
+    }
+
+    /// <summary>
+    /// Drives one artwork-boundary record with a valid request and a present
+    /// source, so the injected renderer's bounded result classification reaches
+    /// the artwork log line.
+    /// </summary>
+    private static Task DriveArtworkClassificationAsync(
+        CapturingLoggerProvider capturing,
+        LogVerbosity verbosity,
+        IRenderer renderer)
+    {
+        var host = new PipelineArtworkHost { CurrentBytes = PipelineArtworkHost.PngSignature };
+        return DriveArtworkGenerationAsync(
+            capturing, verbosity, host, host, renderer, BadgeDefinition.V1Default);
+    }
+
+    /// <summary>
+    /// Drives one artwork-boundary record whose result carries no classification:
+    /// a valid request with an absent source completes as <c>NoSource</c>.
+    /// </summary>
+    private static Task DriveArtworkNoSourceAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
+    {
+        var host = new PipelineArtworkHost();
+        return DriveArtworkGenerationAsync(
+            capturing, verbosity, host, host, new FingerprintingRenderer(), BadgeDefinition.V1Default);
+    }
+
+    /// <summary>
+    /// Drives one artwork-boundary record whose result carries the bounded source
+    /// read classification: the source read fails before any render.
+    /// </summary>
+    private static Task DriveArtworkSourceFailureAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
+    {
+        var writer = new PipelineArtworkHost();
+        return DriveArtworkGenerationAsync(
+            capturing,
+            verbosity,
+            new FailedSourceArtworkReader(),
+            writer,
+            new FingerprintingRenderer(),
+            BadgeDefinition.V1Default);
+    }
+
+    /// <summary>
+    /// Builds one artwork generation coordinator over the real publisher and state
+    /// stores with the supplied source reader, image writer, renderer, and badge
+    /// definitions, and runs one generation for the sentinel identity.
+    /// </summary>
+    private static async Task DriveArtworkGenerationAsync(
+        CapturingLoggerProvider capturing,
+        LogVerbosity verbosity,
+        IArtworkSourceReader reader,
+        IArtworkImageWriter writer,
+        IRenderer renderer,
+        IReadOnlyList<BadgeDefinition> badgeDefinitions)
+    {
+        var repository = new StateRepository(CreateRoot());
         var artifacts = new SourceArtifactStore(repository);
         var states = new PublishedArtworkStateStore(repository);
         var operations = new ArtworkOperationStore(repository);
-        var publisher = new ArtworkPublisher(host, host, artifacts, states, operations, new OperationalLimits());
+        var publisher = new ArtworkPublisher(reader, writer, artifacts, states, operations, new OperationalLimits());
         var coordinator = new ArtworkGenerationCoordinator(
-            host,
-            new FingerprintingRenderer(),
+            reader,
+            renderer,
             publisher,
             states,
             artifacts,
@@ -550,7 +1030,7 @@ public sealed class LogRedactionTests
             identity,
             match,
             metadata: null,
-            Array.Empty<BadgeDefinition>(),
+            badgeDefinitions,
             configurationFingerprint: "test-configuration-fingerprint");
 
         await coordinator.GenerateAsync(request, CancellationToken.None);
@@ -581,6 +1061,37 @@ public sealed class LogRedactionTests
         worker.Dispose();
     }
 
+    /// <summary>
+    /// Drives the worker's scheduled-retry record with a connection-scoped item
+    /// whose processor returns a transient (retryable) outcome.
+    /// </summary>
+    private static async Task DriveQueueRetryAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
+    {
+        var configuration = SentinelConfiguration();
+        using var queue = new LibraryWorkQueue(8);
+        var worker = new LibraryWorkWorker(
+            queue,
+            new RetryableWorkItemProcessor(),
+            configuration,
+            workerCount: 1,
+            boundedShutdownTimeout: TimeSpan.FromSeconds(2),
+            log: BuildLog<LibraryWorkWorker>(capturing, verbosity));
+
+        await worker.StartAsync(CancellationToken.None);
+        queue.TryEnqueue(new LibraryWorkItem(
+            new WorkItemKey(ReconciliationFixtures.ItemId, ConnectionScopeId, ArtworkImageSurface.Primary),
+            LibraryWorkReason.Updated,
+            configuration.Current.ConfigurationVersion));
+
+        var wait = Expected(verbosity, LogLevel.Debug) > 0
+            ? TimeSpan.FromSeconds(5)
+            : TimeSpan.FromMilliseconds(200);
+        await WaitForRecordAsync(capturing, ArrTagsLogEvent.WorkItemRetryScheduled, wait);
+
+        await worker.StopAsync(CancellationToken.None);
+        worker.Dispose();
+    }
+
     private static async Task DriveReconciliationAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
     {
         var configuration = SentinelConfiguration();
@@ -600,6 +1111,7 @@ public sealed class LogRedactionTests
             enumerator,
             sink,
             fences,
+            new ReconciliationCursorStore(new StateRepository(CreateRoot())),
             BuildLog<LibraryReconciliationService>(capturing, verbosity));
 
         await service.ReconcileAsync(LibraryReconciliationSource.Scheduled, progress: null, CancellationToken.None);
@@ -663,6 +1175,212 @@ public sealed class LogRedactionTests
         await service.StopAsync(CancellationToken.None);
     }
 
+    /// <summary>
+    /// Drives the Sonarr metadata reader's resolved-match log through its
+    /// matching path with a file-backed episode identity.
+    /// </summary>
+    private static async Task DriveSonarrMatchingAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
+    {
+        var connection = SonarrSentinelConnection();
+        var client = new FakeSonarrReadClient(connection)
+        {
+            Series = ArrProviderResults.Success<IReadOnlyList<SonarrSeriesResource>>(new[]
+            {
+                new SonarrSeriesResource { Id = 12, Title = "Example", TvdbId = 12345 },
+            }),
+            Episodes = ArrProviderResults.Success<IReadOnlyList<SonarrEpisodeResource>>(new[]
+            {
+                new SonarrEpisodeResource
+                {
+                    Id = 73,
+                    SeriesId = 12,
+                    TvdbId = 9001,
+                    SeasonNumber = 2,
+                    EpisodeNumber = 4,
+                    EpisodeFileId = 418,
+                    HasFile = true,
+                    EpisodeFile = new SonarrEpisodeFileResource
+                    {
+                        Id = 418,
+                        SeriesId = 12,
+                        QualityCutoffNotMet = false,
+                        Quality = new SonarrQualityModel
+                        {
+                            Quality = new SonarrQuality { Id = 3, Name = "WEBDL-1080p", Source = "webdl", Resolution = 1080 },
+                        },
+                        MediaInfo = new SonarrMediaInfoResource { AudioCodec = "EAC3", VideoCodec = "h264" },
+                    },
+                },
+            }),
+        };
+
+        var reader = new SonarrMetadataReader(
+            new FakeReadClientFactory { Sonarr = client },
+            BuildLog<SonarrMetadataReader>(capturing, verbosity));
+
+        await reader.ReadAsync(SentinelEpisodeIdentity(), connection, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Drives one of the two metadata-read-failure lines after identity creation:
+    /// the reader-threw catch when <paramref name="readerThrows"/> is set, and
+    /// the failed-read result otherwise. The identity has a primary path when
+    /// <paramref name="pathAvailable"/> is set and no usable path otherwise.
+    /// </summary>
+    private static async Task DriveMetadataReadFailureAsync(
+        CapturingLoggerProvider capturing,
+        LogVerbosity verbosity,
+        bool pathAvailable,
+        bool readerThrows = false)
+    {
+        var configuration = SentinelConfiguration();
+        var store = new MetadataStateStore(new StateRepository(CreateRoot()));
+        var resolver = new ReconciliationLibraryResolver();
+        resolver.LibraryIds[ReconciliationFixtures.ItemId] = ReconciliationFixtures.LibraryId;
+        resolver.Items[ReconciliationFixtures.ItemId] =
+            pathAvailable ? SentinelMovie() : PathlessSentinelMovie();
+
+        var reader = new FakeMetadataReader
+        {
+            Kind = ArrProviderKind.Radarr,
+        };
+
+        if (readerThrows)
+        {
+            reader.Handler = static (_, _, _) => throw new InvalidOperationException("The reader failed unexpectedly.");
+        }
+        else
+        {
+            reader.Result = ArrMetadataReadResult.Failure(new ArrProviderError(
+                ArrProviderErrorCode.ProviderUnavailable,
+                ArrErrorRetryability.Later,
+                "The provider is unavailable."));
+        }
+
+        var processor = new MetadataReconciliationProcessor(
+            configuration,
+            resolver,
+            new IArrMetadataReader[] { reader },
+            store,
+            BuildLog<MetadataReconciliationProcessor>(capturing, verbosity));
+
+        var key = new WorkItemKey(ReconciliationFixtures.ItemId, null, ArtworkImageSurface.Primary);
+        var item = new LibraryWorkItem(key, LibraryWorkReason.Updated, configuration.Current.ConfigurationVersion);
+
+        await processor.ReconcileAsync(item, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Drives the mixed discard site after identity creation: the provider read
+    /// succeeds and the item disappears from the library before the publish-time
+    /// re-read, so the changed-basis discard runs with the identity (and its
+    /// location) already captured.
+    /// </summary>
+    private static async Task DriveMetadataDiscardAsync(
+        CapturingLoggerProvider capturing,
+        LogVerbosity verbosity,
+        bool pathAvailable)
+    {
+        var configuration = SentinelConfiguration();
+        var store = new MetadataStateStore(new StateRepository(CreateRoot()));
+        var resolver = new ReconciliationLibraryResolver();
+        resolver.LibraryIds[ReconciliationFixtures.ItemId] = ReconciliationFixtures.LibraryId;
+        resolver.Items[ReconciliationFixtures.ItemId] =
+            pathAvailable ? SentinelMovie() : PathlessSentinelMovie();
+
+        var reader = new FakeMetadataReader
+        {
+            Kind = ArrProviderKind.Radarr,
+            OnRead = () => resolver.Items.Remove(ReconciliationFixtures.ItemId),
+            Handler = static (identity, connection, _) =>
+            {
+                var record = new RadarrIdentity(connection.ConnectionId, 42, ArrFileIdentity.Present(84));
+                var match = new MediaMatch(
+                    identity,
+                    connection.Provider,
+                    connection.ConnectionId,
+                    MediaMatchStatus.Matched,
+                    MediaMatchMethod.ProviderId,
+                    record,
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["tmdb"] = "603" });
+                var metadata = new BadgeMetadata(
+                    connection.Provider,
+                    record,
+                    DateTimeOffset.UtcNow,
+                    quality: new ArrQualityDescriptor("Bluray-1080p", "bluray", 1080, "Remux", 7),
+                    videoCodec: "h264");
+                return ArrMetadataReadResult.Success(match, metadata);
+            },
+        };
+
+        var processor = new MetadataReconciliationProcessor(
+            configuration,
+            resolver,
+            new IArrMetadataReader[] { reader },
+            store,
+            BuildLog<MetadataReconciliationProcessor>(capturing, verbosity));
+
+        var key = new WorkItemKey(ReconciliationFixtures.ItemId, null, ArtworkImageSurface.Primary);
+        var item = new LibraryWorkItem(key, LibraryWorkReason.Updated, configuration.Current.ConfigurationVersion);
+
+        await processor.ReconcileAsync(item, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Drives the mixed discard site before any identity exists: the work item's
+    /// configuration version does not match the current snapshot, so the version
+    /// mismatch discards with only the item identifier available.
+    /// </summary>
+    private static async Task DriveMetadataDiscardBeforeIdentityAsync(
+        CapturingLoggerProvider capturing,
+        LogVerbosity verbosity)
+    {
+        var configuration = SentinelConfiguration();
+        var store = new MetadataStateStore(new StateRepository(CreateRoot()));
+        var resolver = new ReconciliationLibraryResolver();
+        resolver.LibraryIds[ReconciliationFixtures.ItemId] = ReconciliationFixtures.LibraryId;
+        resolver.Items[ReconciliationFixtures.ItemId] = SentinelMovie();
+
+        var reader = new FakeMetadataReader
+        {
+            Kind = ArrProviderKind.Radarr,
+            Handler = static (_, _, _) => throw new InvalidOperationException("The reader must not be called."),
+        };
+
+        var processor = new MetadataReconciliationProcessor(
+            configuration,
+            resolver,
+            new IArrMetadataReader[] { reader },
+            store,
+            BuildLog<MetadataReconciliationProcessor>(capturing, verbosity));
+
+        var key = new WorkItemKey(ReconciliationFixtures.ItemId, null, ArtworkImageSurface.Primary);
+        var item = new LibraryWorkItem(key, LibraryWorkReason.Updated, configuration.Current.ConfigurationVersion + 1);
+
+        await processor.ReconcileAsync(item, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Starts the lifecycle service, raises the item-removed event, and stops the
+    /// service so the bounded removal confirmation completes.
+    /// </summary>
+    private static async Task DriveLifecycleRemovalAsync(CapturingLoggerProvider capturing, LogVerbosity verbosity)
+    {
+        var configuration = SentinelConfiguration();
+        var libraryEvents = new FakeLibraryEventSource();
+        var service = new ArrTagsLifecycleService(
+            libraryEvents,
+            new NoOpLifecycleCoordinator(),
+            configuration,
+            new RecordingWorkHintSink(),
+            TimeSpan.FromSeconds(2),
+            BuildLog<ArrTagsLifecycleService>(capturing, verbosity));
+
+        await service.StartAsync(CancellationToken.None);
+        libraryEvents.RaiseRemoved(ReconciliationFixtures.ItemId);
+        await service.StopAsync(CancellationToken.None);
+    }
+
     // ---- Helpers ---------------------------------------------------------------
 
     private static IArrTagsLog<T> BuildLog<T>(
@@ -722,6 +1440,114 @@ public sealed class LogRedactionTests
         var movie = ReconciliationFixtures.Movie(ReconciliationFixtures.ItemId, ReconciliationFixtures.LibraryId);
         movie.Name = IdentityNameSentinel;
         return movie;
+    }
+
+    /// <summary>
+    /// A file-protocol item without any usable path, so its canonical identity
+    /// carries an eligible location with a null primary path.
+    /// </summary>
+    private static ReconciliationTestMovie PathlessSentinelMovie()
+    {
+        var movie = ReconciliationFixtures.Movie(ReconciliationFixtures.ItemId, ReconciliationFixtures.LibraryId);
+        movie.Name = IdentityNameSentinel;
+        movie.Path = null;
+        movie.Sources = new[]
+        {
+            new MediaSourceInfo
+            {
+                Id = "source-1",
+                Protocol = MediaProtocol.File,
+                Size = 1024,
+                ETag = "etag-1",
+            },
+        };
+        return movie;
+    }
+
+    private static MediaIdentity SentinelEpisodeIdentity()
+    {
+        var series = new MediaIdentity(
+            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            MediaItemType.Series,
+            ReconciliationFixtures.LibraryId,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Tvdb"] = "12345" },
+            "Example Series");
+
+        return new MediaIdentity(
+            SonarrEpisodeItemId,
+            MediaItemType.Episode,
+            ReconciliationFixtures.LibraryId,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Tvdb"] = "9001" },
+            IdentityNameSentinel,
+            2021,
+            series,
+            seasonNumber: 2,
+            episodeNumber: 4,
+            mediaLocation: new MediaLocationSummary(
+                MediaLocationKind.FileSystem,
+                isFileProtocol: true,
+                mediaSourceCount: 1,
+                primaryPath: "/media/tv/example/s02e05.mkv"),
+            sourceFingerprint: "SOURCE-FINGERPRINT");
+    }
+
+    private static ArrConnection SonarrSentinelConnection()
+    {
+        var baseUrl = "http://user:" + UrlCredentialSentinel + "@sonarr.test:8989";
+        var connectionId = ArrConnectionId.For(ArrProviderKind.Sonarr, baseUrl);
+        var provider = new ArrProvider(ArrProviderKind.Sonarr, connectionId.Value);
+
+        return new ArrConnection(
+            connectionId,
+            provider,
+            baseUrl,
+            enabled: true,
+            requestTimeoutSeconds: 15,
+            ArrTlsPolicy.Strict,
+            SecretReference.SonarrApiKey,
+            configurationVersion: 1,
+            hasApiKey: true,
+            ArrConnectionHealth.Unknown,
+            lastProbedAt: null);
+    }
+
+    /// <summary>
+    /// Asserts that the record's bounded subject is the expected file-name
+    /// component only: the message names it, carries no path separator or
+    /// directory, and no longer carries the item identifier it replaced
+    /// (ADR-026).
+    /// </summary>
+    private static void AssertFileNameSubject(CapturedRecord record, string expectedFileName, Guid itemId)
+    {
+        Assert.Contains($"item {expectedFileName}", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("/", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(itemId.ToString("D", CultureInfo.InvariantCulture), record.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Asserts that the record's bounded subject is the documented item-id
+    /// fallback: the message names the item identifier in <c>D</c> format and
+    /// carries no path or file name (ADR-026 clause 3).
+    /// </summary>
+    private static void AssertItemIdSubject(CapturedRecord record, Guid itemId)
+    {
+        Assert.Contains($"item {itemId.ToString("D", CultureInfo.InvariantCulture)}", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("/", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.mkv", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("s02e05.mkv", record.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Asserts the bounded queue-boundary context retained alongside the
+    /// item-identifier subject: the connection scope and image surface
+    /// (ADR-026 clause 1 replaces the emitted item identifier only).
+    /// </summary>
+    private static void AssertQueueContext(CapturedRecord record, Guid itemId, string connectionScope, string surface)
+    {
+        Assert.Contains(
+            $"item {itemId.ToString("D", CultureInfo.InvariantCulture)} ({connectionScope}, {surface})",
+            record.Message,
+            StringComparison.Ordinal);
     }
 
     private static ArrConnection SentinelConnection()
@@ -787,6 +1613,37 @@ public sealed class LogRedactionTests
 
     // ---- Test doubles ----------------------------------------------------------
 
+    private sealed class FixedResultRenderer : IRenderer
+    {
+        private readonly RenderResult _result;
+
+        public FixedResultRenderer(RenderResult result)
+        {
+            _result = result;
+        }
+
+        public Task<RenderResult> RenderAsync(RenderRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_result);
+        }
+    }
+
+    private sealed class FailedSourceArtworkReader : IArtworkSourceReader
+    {
+        public Task<ArtworkSourceReadResult> ReadAsync(
+            Guid itemId,
+            ArtworkImageSurface surface,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(ArtworkSourceReadResult.Failed(
+                surface,
+                ArtworkSourceReadFailureReason.Unreadable,
+                "The source could not be read: " + SourceDetailSentinel));
+        }
+    }
+
     private sealed class TestTimeProvider : TimeProvider
     {
         public DateTimeOffset UtcNow { get; set; } = DateTimeOffset.UnixEpoch;
@@ -803,6 +1660,14 @@ public sealed class LogRedactionTests
         {
             Processed.TrySetResult(item);
             return Task.FromResult(WorkProcessingResult.Completed("The test work completed."));
+        }
+    }
+
+    private sealed class RetryableWorkItemProcessor : IWorkItemProcessor
+    {
+        public Task<WorkProcessingResult> ProcessAsync(LibraryWorkItem item, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(WorkProcessingResult.Transient("The test work is transiently unavailable."));
         }
     }
 
@@ -886,6 +1751,59 @@ public sealed class LogRedactionTests
 
         public Task<ArrProviderReadResult<IReadOnlyList<RadarrMovieFileResource>>> GetMovieFilesAsync(
             IReadOnlyList<int> movieIds,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Files);
+        }
+    }
+
+    private sealed class FakeSonarrReadClient : ISonarrReadClient
+    {
+        public FakeSonarrReadClient(ArrConnection connection)
+        {
+            Connection = connection;
+        }
+
+        public ArrProviderKind Kind => ArrProviderKind.Sonarr;
+
+        public ArrConnection Connection { get; }
+
+        public ArrProviderReadResult<IReadOnlyList<SonarrSeriesResource>> Series { get; set; } =
+            ArrProviderResults.Success<IReadOnlyList<SonarrSeriesResource>>(Array.Empty<SonarrSeriesResource>());
+
+        public ArrProviderReadResult<IReadOnlyList<SonarrEpisodeResource>> Episodes { get; set; } =
+            ArrProviderResults.Success<IReadOnlyList<SonarrEpisodeResource>>(Array.Empty<SonarrEpisodeResource>());
+
+        public ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>> Files { get; set; } =
+            ArrProviderResults.Success<IReadOnlyList<SonarrEpisodeFileResource>>(Array.Empty<SonarrEpisodeFileResource>());
+
+        public Task<ArrConnectionProbeResult> ProbeAsync(CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<ArrProviderReadResult<IReadOnlyList<SonarrSeriesResource>>> GetSeriesAsync(
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Series);
+        }
+
+        public Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeResource>>> GetEpisodesAsync(
+            int seriesId,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Episodes);
+        }
+
+        public Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>>> GetEpisodeFilesAsync(
+            int seriesId,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Files);
+        }
+
+        public Task<ArrProviderReadResult<IReadOnlyList<SonarrEpisodeFileResource>>> GetEpisodeFilesAsync(
+            IReadOnlyList<int> episodeFileIds,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(Files);

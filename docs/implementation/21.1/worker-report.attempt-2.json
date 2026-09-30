@@ -1,0 +1,94 @@
+{
+  "task": "21.1",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Correction attempt 2 for task 21.1, closing the single open MEDIUM finding 21.1-R1 in docs/implementation/21.1/reviewer-report.json. The build.yaml changelog's F7 clause was reworded to the reviewer's simplest correct form: the parenthetical '(or removes the ArrTags image when no baseline was retained)' is removed, so the changelog now reads '...and restores the original poster when a saved configuration narrows an owned item's badge selection to empty.' The absent-baseline removal is no longer attributed to the configuration-narrowing trigger; no removal trigger is claimed in the catalog text at all. The description block was not changed (grep confirms build.yaml never carried the phrase outside that one clause). No code, test, or other content file changed. . /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)'; ./build.sh package -> artifacts/ArrTags_1.2.0.0.zip (7 entries), 619,538 bytes (attempt 1: 619,561 bytes) with the packaged build.yaml byte-identical to the source (cmp clean); dotnet run scripts/write-manifest.cs -- --print-changelog parses build.yaml and prints the corrected sentence (the value publish-release.sh reads for the release notes). docs/plan/state.json task 21.1 reports now lists the existing reviewer report plus both worker reports (docs/plan/README.md:58-63 and scripts/check-agents.sh require an existing reviewer report to be listed; with only the two worker reports, check-docs section 9 failed), and updated_utc advanced 2026-09-29T09:04:24Z -> 2026-09-29T09:43:20Z. scripts/check-docs.sh: nine ok sections, 'check-docs: PASS', exit 0, both after the edits and after this report was persisted. No commit was created.",
+  "validation": [
+    "Diff/status inspection: git status --short and git diff -- build.yaml docs/plan/state.json show this attempt's edits are exactly the build.yaml changelog clause, the docs/plan/state.json reports/updated_utc update, and the new docs/implementation/21.1/worker-report.attempt-2.json. The attempt-1 file set (Directory.Build.props, PLANS.md, the three test files, build.yaml, docs/plan/state.json) is otherwise unchanged by this pass; no commit was created.",
+    ". /config/arrtags-env.sh && ./build.sh build -> 'Build succeeded. 0 Warning(s) 0 Error(s)' (Time Elapsed 00:00:02.57); ArrTags.dll and ArrTags.Tests.dll produced.",
+    ". /config/arrtags-env.sh && ./build.sh package -> 'Created deterministic package: /workspace/ArrTags/artifacts/ArrTags_1.2.0.0.zip (7 entries)'; the package stage's own build reported 0 Warning(s) 0 Error(s) (00:00:01.29).",
+    "ls -l artifacts/ArrTags_1.2.0.0.zip -> 619,538 bytes (attempt 1 produced 619,561 bytes per docs/implementation/21.1/worker-report.json, and the reworded changelog is shorter).",
+    "unzip -p artifacts/ArrTags_1.2.0.0.zip build.yaml > /tmp/21.1/packaged-build.yaml && cmp build.yaml /tmp/21.1/packaged-build.yaml -> byte-identical ('PACKAGED BUILD.YAML MATCHES SOURCE'). unzip -l -> 7 entries: ArrTags.deps.json, ArrTags.dll, THIRD-PARTY-NOTICES.md, build.yaml (2,744 bytes uncompressed), licenses/DejaVu-Fonts-License.txt, licenses/SkiaSharp-LICENSE.txt, licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt.",
+    ". /config/arrtags-env.sh && dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml -> build.yaml parses and the printed changelog contains '...dropping it, and restores the original poster when a saved configuration narrows an owned item's badge selection to empty.' and contains neither 'removes the ArrTags image' nor 'no baseline was retained'.",
+    "Old-wording sweep: grep -rn 'no baseline was retained' build.yaml manifest.json scripts/ docs/plan/state.json -> no match (exit 1); grep -n 'removes the ArrTags image' build.yaml -> no match (exit 1). The phrase survives only in the immutable reviewer report docs/implementation/21.1/reviewer-report.json, which quotes the defect it reports.",
+    ". /config/arrtags-env.sh && scripts/check-docs.sh -> nine ok sections ('generated status blocks are current; plan state is consistent', 'compatibility stubs checked', 'decisions index (29 ADRs)', 'limitations index covers all IDs', 'architecture and data-model indexes checked', 'artifact identity agrees (sha256, md5, bytes)', 'doc budget checked', 'current-state links resolve', 'agent report contracts conform'), 'check-docs: PASS', exit 0. Run after the build.yaml/state.json edits and re-run after this report was persisted (both PASS).",
+    "Finding-premise re-read (the code the finding cites, unchanged by this pass): src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:346 maps SourcePresence == ArtworkImagePresence.Absent to RetainedSourceResolution.Failed(Absent); line 218 returns ArtworkGenerationResult.NoSource for an Absent read before rendering; line 247 is the empty-selection RestoreEmptySelectionAsync branch, reachable only after a render PassThrough. src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs:200 is the publisher RestoreAsync call reached from the lifecycle-removal trigger. The removed parenthetical was therefore the only clause attaching the removal to the narrowing trigger, and the corrected text matches docs/architecture/09-persisted-artwork-rendering.md:276-282.",
+    "Not run (not required by this wording-only rework): the full test suite. Attempt 1 ran it (Failed 0, Passed 1927, Skipped 66, Total 1993) and the attempt-1 reviewer independently reproduced those counts; no test or script asserts the build.yaml changelog text, and no source/test file changed in this attempt. The host-guarded suite and live pinned-host matrix remain tasks 21.3/21.4."
+  ],
+  "changed_files": [
+    "build.yaml",
+    "docs/plan/state.json",
+    "docs/implementation/21.1/worker-report.attempt-2.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Task criterion 2 (metadata accurately describes the shipped v1.2 behavior with no overclaim): the F7 clause no longer attributes the absent-baseline removal to the configuration-narrowing trigger.",
+      "evidence": "build.yaml:41-42 now reads '...dropping it, and restores the original poster when a saved configuration / narrows an owned item's badge selection to empty.'; the '(or removes the ArrTags image when no baseline was retained)' parenthetical is gone and the description block is unchanged. The corrected attribution agrees with docs/architecture/09-persisted-artwork-rendering.md:276-282 and with the shipped path re-read at src/ArrTags/Artwork/ArtworkGenerationCoordinator.cs:346 (Absent -> Failed(Absent)), :218 (NoSource before render) and :247 (empty-selection restore branch unreachable in that state), plus src/ArrTags/Artwork/ArtworkLifecycleCoordinator.cs:200 (the trigger that does reach publisher RestoreAsync)."
+    },
+    {
+      "criterion": "Rework action 1: fix exactly as recommended, introduce no new overclaim, keep the description block unchanged, and do not expand scope.",
+      "evidence": "The reviewer's simplest correct form is used verbatim; git diff for this pass is the single clause plus the state.json report-list/timestamp edit and the new report. The description block and all other metadata clauses are unchanged; grep finds no removal claim ('removes the ArrTags image') and no 'no baseline was retained' anywhere in build.yaml."
+    },
+    {
+      "criterion": "Rework action 2: rebuild and repackage so the packaged build.yaml matches the source; record the new archive size.",
+      "evidence": ". /config/arrtags-env.sh && ./build.sh build -> 0 Warning(s)/0 Error(s); ./build.sh package -> artifacts/ArrTags_1.2.0.0.zip (7 entries); ls -l -> 619,538 bytes; cmp of the archive's build.yaml against the source -> identical; unzip -l lists the 7 expected entries."
+    },
+    {
+      "criterion": "Rework actions 3-4: docs/plan/state.json task 21.1 reports lists the attempt-1 and attempt-2 worker reports with updated_utc advanced; the attempt-2 report is a new file (attempt 1 not overwritten) carrying attempt 2 and a rework entry for 21.1-R1.",
+      "evidence": "docs/plan/state.json task 21.1 reports = [docs/implementation/21.1/reviewer-report.json, docs/implementation/21.1/worker-report.attempt-2.json, docs/implementation/21.1/worker-report.json]; updated_utc 2026-09-29T09:04:24Z -> 2026-09-29T09:43:20Z. docs/implementation/21.1/worker-report.json is unmodified (attempt: 1 preserved); this file is the new worker-report.attempt-2.json with \"attempt\": 2 and the rework entry; scripts/check-docs.sh 'agent report contracts conform' passes."
+    },
+    {
+      "criterion": "Constraints: no commit; no files outside build.yaml, the reports directory, and docs/plan/state.json are changed by this attempt; generated blocks are not hand-edited.",
+      "evidence": "git status --short shows the attempt-1 changed set plus the docs/implementation/21.1/ report directory; this pass touched only build.yaml, docs/plan/state.json, and the new report. docs/status.md and the PLANS.md milestone block are unchanged and reported current by check-docs step 1 ('generated status blocks are current; plan state is consistent'); no commit was created."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The delegation's action 3 names the two worker reports for the task 21.1 reports list, while the existing docs/implementation/21.1/reviewer-report.json is already on disk.",
+      "chosen": "Listed the existing reviewer report alongside the two worker reports: [reviewer-report.json, worker-report.attempt-2.json, worker-report.json].",
+      "basis": "docs/plan/README.md:58-63 states that reports lists the evidence reports committed for a task, not only the worker report, and that a task with a worker-report.json also lists its reviewer-report.json and every preserved .attempt-<n>.json that exists; scripts/check-agents.sh:146-151 enforces it, and with only the two worker reports check-docs section 9 failed with 'task 21.1 has a reviewer report on disk but docs/plan/state.json does not list it in reports'. Listing it makes the superset factually correct (all three files exist) and check-docs passes.",
+      "impact": "State-file content only; no generated block changes. When the re-review writes a new reviewer attempt file, that path must be appended to the same list (the orchestrator's step)."
+    }
+  ],
+  "test_sensitivity": [
+    "No production behaviour and no test changed in this attempt (release-metadata wording only), so there is no new code path to sensitivity-probe.",
+    "No executable guard covers build.yaml's changelog prose: PluginPackagingTests.BuildManifestKeepsPinnedIdentityAndAbi asserts the version/targetAbi strings (tests/ArrTags.Tests/PluginPackagingTests.cs:28), not the changelog, and no test or script asserts the clause wording, so a failing-probe cannot be shown. The wording's correctness was established from the reviewer's code-path analysis in 21.1-R1, the canonical statement docs/architecture/09-persisted-artwork-rendering.md:276-282, and the source re-read recorded in validation (ArtworkGenerationCoordinator.cs:218, 247, 346; ArtworkLifecycleCoordinator.cs:200).",
+    "The packaged-copy check is a build-freshness guard, not a wording guard: cmp would fail if the archive did not carry the current build.yaml; it was exercised by the repackage and passed."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "build.yaml (changelog F7 clause reworded)",
+      "artifacts/ArrTags_1.2.0.0.zip (rebuilt: packaged build.yaml byte-identical to the source; 619,538 bytes)",
+      "docs/plan/state.json (task 21.1 reports; updated_utc)",
+      "docs/implementation/21.1/worker-report.attempt-2.json (new attempt report)",
+      "docs/status.md and the PLANS.md milestone block (checked, unchanged: renderer reports 'generated status blocks are current; plan state is consistent', and reports/updated_utc are not rendered inputs)"
+    ],
+    "old_values_removed": [
+      "build.yaml: '(or removes the ArrTags image when no baseline was retained)' is gone; the clause now reads '...and restores the original poster when a saved configuration narrows an owned item's badge selection to empty.' grep for 'no baseline was retained' and 'removes the ArrTags image' over build.yaml, manifest.json, scripts/, and docs/plan/state.json returns no match (exit 1 each).",
+      "artifacts/ArrTags_1.2.0.0.zip: the packaged build.yaml no longer carries the overclaiming parenthetical; the archive is 619,538 bytes, no longer 619,561 (attempt 1), and cmp confirms the packaged copy equals the source.",
+      "docs/plan/state.json: task 21.1 reports no longer lists only docs/implementation/21.1/worker-report.json; updated_utc is no longer 2026-09-29T09:04:24Z.",
+      "Residual (immutable history, not a stale current-state surface): docs/implementation/21.1/reviewer-report.json quotes the old wording while reporting the defect; docs/limitations/archive.md:382-387 and docs/architecture/09-persisted-artwork-rendering.md:276-282 already carry the qualified publisher-attributed form and were not touched."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [
+    {
+      "finding_id": "21.1-R1",
+      "closure": "Applied the reviewer's simplest correct form at build.yaml:41-42: '...dropping it, and restores the original poster when a saved configuration narrows an owned item's badge selection to empty.' The parenthetical '(or removes the ArrTags image when no baseline was retained)' is deleted, so the absent-baseline removal is no longer attributed to the configuration-narrowing trigger, and no removal trigger is claimed elsewhere in the metadata (the alternative form naming the removal/uninstall drains was not used). No other clause, the description block, or any code/test file changed.",
+      "evidence": "build.yaml:41-42 (git diff); . /config/arrtags-env.sh && ./build.sh build -> 0 warnings/0 errors; ./build.sh package -> artifacts/ArrTags_1.2.0.0.zip (7 entries, 619,538 bytes) whose build.yaml is byte-identical to the source (cmp) and contains the corrected clause; dotnet run scripts/write-manifest.cs -- --print-changelog --build-yaml build.yaml prints the corrected sentence and none of the old phrases; the grep sweep returns no match for either phrase outside the immutable reviewer report; scripts/check-docs.sh PASS (nine ok sections)."
+    }
+  ],
+  "known_limitations": [
+    "The rework changes the packaged archive relative to the attempt-1 review: artifacts/ArrTags_1.2.0.0.zip is now 619,538 bytes (attempt 1: 619,561). Byte-for-byte reproducibility of the archive across clean builds was not re-verified in this attempt; the reproducible-artifact identity claim remains Phase 21 task 21.3's.",
+    "manifest.json still carries the v1.1.0.0 description/overview/changelog/checksum and the v1.1.0 sourceUrl. It is outside task 21.1's scope (assigned to Phase 21 task 21.3 by the attempt-1 delegation), so the plugin-catalog manifest continues to describe the last published 1.1.0.0 release; this pass did not touch it.",
+    "The canonical documentation and release surfaces still present the v1.1.0.0/v1.1.0 identity (docs/release/build-and-release.md, README.md manual-install references, docs/testing/jellyfin-12-musl-test-host.md, docs/limitations/accepted.md P6, docs/changelog 1.2.0 entry), and docs/plan/state.json current_release / docs/status.md still record 1.1.0.0 as the current release with Phase 21 PLANNED; those are owned by Phase 21 tasks 21.2/21.3/21.6 and the gate.",
+    "No test suite was run in this attempt (wording-only change per the delegation); the attempt-1 suite record (Failed 0, Passed 1927, Skipped 66, Total 1993) stands and was not re-validated here (the attempt-1 reviewer independently reproduced it). The host-guarded suite (ARRTAGS_JELLYFIN_HOST_DIR unset) and the live pinned-host matrix remain tasks 21.3/21.4.",
+    "The gitignored artifacts/ directory still holds older ArrTags_*.zip archives; the test helper's ordinal-last ArrTags_*.zip selection picks 1.2.0.0, unchanged from attempt 1."
+  ],
+  "ready_for_next_task": true
+}

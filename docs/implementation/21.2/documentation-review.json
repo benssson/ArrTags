@@ -1,0 +1,235 @@
+{
+  "task": "21.2",
+  "attempt": 1,
+  "title": "Canonical documentation reconciliation",
+  "reviewer": "documentation-maintainer",
+  "scope": "Independent documentation reconciliation review of task 21.2 on branch v1.2, HEAD 37a637a ('Record 21.1 commit hash and orchestrator session'), working tree carrying the 8 uncommitted tracked edits produced by the task (GOALS.md, PLANS.md, README.md, docs/architecture/12-performance-and-operational-limits.md, docs/limitations/00-index.md, docs/limitations/accepted.md, docs/limitations/archive.md, docs/plan/state.json) plus the untracked docs/implementation/21.2/ report directory. Reviewed surfaces: README.md, GOALS.md, docs/architecture/**, docs/data-model/**, docs/limitations/**, docs/decisions/00-index.md, PLANS.md, docs/status.md, docs/plan/state.json. Not in scope (assigned to other tasks): docs/release/build-and-release.md, manifest.json, the v1.2 artifact identity, the test matrix (21.3); the release changelog entry and the v1.2.0 tag (21.6). No files were edited by this reviewer; the only write is this report.",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "surfaces_checked": [
+    "README.md (requirements, configuration, fields, diagnostics panel, known limitations, manual install)",
+    "GOALS.md (V1, V1.1, V1.2 goal sections and success criteria)",
+    "docs/architecture/00-index.md and sections 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16",
+    "docs/data-model/00-index.md and sections 01-10 including 03-06, 03-07, 03-08, 03-10, 03-12",
+    "docs/limitations/00-index.md, open.md, accepted.md, exclusions.md, archive.md",
+    "docs/decisions/00-index.md (29 rows) and ADR-002/003/009/010/016/019/020/022/023/024/025/026/027/028/029 status and amendment notes",
+    "PLANS.md (Phase 21 task list, hand-written active-scope prose, generated active-scope and milestone blocks)",
+    "docs/status.md (generated block and header)",
+    "docs/plan/state.json (active_scope_note, limitations block, current_release, phase 21 task 21.2 entry, reports array)",
+    "docs/plan/README.md single-writer table and docs/agent-contracts.md report/attempt contract",
+    "docs/planning/v1.2.md (goals, decision-record table, section 10 out-of-scope, section 7 documentation checklist)",
+    "docs/implementation/14.3/live-verification.json, 15.4/security-review.json, 16.2/consumer-evidence.md, 17.4/security-review.json, 19.5/*, 20.3/* (cited evidence)",
+    "scripts/check-docs.sh and scripts/render-docs-state.cs --check (executed)"
+  ],
+  "verified_reconciliations": [
+    {
+      "claim": "GOALS.md no longer describes the v1.2 decision records as proposed and now names the accepted set.",
+      "evidence": [
+        "GOALS.md:104-106 now reads 'V1.2 decisions are recorded as ADR-022 onward in [`docs/decisions/00-index.md`](docs/decisions/00-index.md) (accepted; `Accepted (v1.2)`).'",
+        "docs/decisions/00-index.md rows 30-37: ADR-022 'Accepted (v1.2; clause 3 amended by ADR-029 (v1.2))'; ADR-023..ADR-028 'Accepted (v1.2)'; ADR-029 'Accepted (v1.2)'.",
+        "grep -rni 'proposed' over GOALS.md, README.md, docs/architecture/, docs/data-model/, docs/limitations/, docs/decisions/00-index.md returns no match."
+      ],
+      "result": "VERIFIED - the 'onward' form is exhaustive (29 is the highest ADR and every ADR-022..ADR-029 row is Accepted (v1.2)) and mirrors the established V1.1 'ADR-016 onward' convention at GOALS.md:96-97."
+    },
+    {
+      "claim": "F3, F4, F6, F7, F8 are recorded Resolved with resolving evidence and the register's open list is empty of them.",
+      "evidence": [
+        "docs/limitations/00-index.md rows 68-72: F3, F4, F6, F7, F8 all 'Resolved' -> archive.md; row 66 F1, row 67 F2 also Resolved.",
+        "docs/limitations/open.md: 'No open limitations are currently recorded.'",
+        "docs/limitations/archive.md: F8 (line 130, 'Status: Resolved (v1.2 Phase 15...)'), F3 (line 171, Phase 17), F4 (line 241, Phase 19), F6 (line 295, Phase 19), F7 (line 343, Phase 20); each carries the resolving phase/tasks, the shipped behaviour, the decision reference, an Evidence list, and explicit Verification bounds/residuals.",
+        "docs/plan/state.json limitations.resolved = [F1, F2, F3, F4, F6, F7, F8]; limitations.open = [].",
+        "Spot-verified cited evidence exists: src/ArrTags/Diagnostics/{DiagnosticsSnapshot,MatchingFailureCounts,RenderFailureCounts,DiagnosticsMetrics,DiagnosticsSnapshotProvider,ArrTagsStatusController}.cs, src/ArrTags/Configuration/RestartRequiredSettings.cs, src/ArrTags/Configuration/ByteLimitUnits.cs, src/ArrTags/Logging/LogSubject.cs, src/ArrTags/Reconciliation/ReconciliationCursorStore.cs, src/ArrTags/Updates/DiscardReason.cs, src/ArrTags/Artwork/ArtworkPublisher.cs, tests/ArrTags.Tests/{DiagnosticsSnapshot,DiagnosticsInstrumentation,DiagnosticsStatusEndpoint,DiagnosticsStatusPanel,ReconciliationCursorStore,ReconciliationCursorResume,MediaLibraryResume,SuccessiveRunCoverageMatrix,StaleBasisReenqueue,CoalescingCoverageMatrix}Tests.cs, docs/implementation/16.2/consumer-evidence.md, docs/implementation/17.4/security-review.json, docs/implementation/15.4/security-review.json."
+      ],
+      "result": "VERIFIED - every resolved entry names its resolving phase and tasks, and the verification bounds are stated (F3 panel not executed; F3 host-side authorization skipped without the pinned host; F4 no live host run, six registered residuals; F6 default suite skips host-guarded facts, two registered residuals; F7 native NoFittingBadge case skipped outside the pinned SkiaSharp oracle, absent-baseline leg unreachable through the coordinator's normal path). No resolved entry overstates its evidence."
+    },
+    {
+      "claim": "F5 remains Accepted (reclassified from Open) and excluded.",
+      "evidence": [
+        "docs/limitations/00-index.md row 65: '`F5` | The renderer depends on a host-supplied SkiaSharp with no bundled fallback | Accepted | [`accepted.md`](accepted.md)'.",
+        "docs/limitations/accepted.md F5 section: 'Disposition: accepted by explicit user decision for v1.2 and reclassified from Open to Accepted; a host-supplied SkiaSharp is the accepted runtime model and no bundled fallback is planned. Excluded from v1.2 (see `docs/planning/v1.2.md` section 10) and matching README's known shipped limitation framing.'",
+        "docs/planning/v1.2.md section 10 (lines 443-447) records F5 as accepted by explicit user decision, not implemented by v1.2, explicitly excluded, and recorded as Accepted in the register.",
+        "docs/plan/state.json limitations.accepted begins with 'F5'; F5 does not appear in limitations.open or limitations.resolved.",
+        "README.md:21 (Requirements) and README.md:232-233 (Known limitations) both cite F5 as a known shipped limitation."
+      ],
+      "result": "VERIFIED - the exclusion is stated in the plan, the register, and state.json consistently, and the accepted.md entry's 'reclassified from Open' framing matches the plan and the register status column."
+    },
+    {
+      "claim": "The limitations register's index and its underlying sections agree.",
+      "evidence": [
+        "ID-set diff: the 52 '### ID.' headings across open.md/accepted.md/exclusions.md/archive.md are byte-identical to the 52 '| `ID` |' rows in 00-index.md (diff of the two sorted sets is empty).",
+        "Title diff: for all 52 IDs the index row title equals the section heading text exactly (diff empty).",
+        "scripts/check-docs.sh section 'limitations index covers all IDs' -> ok."
+      ],
+      "result": "VERIFIED - the index is a complete and exact projection of the register sections; the V11-G4 retitle was applied to both the index row and the section heading."
+    },
+    {
+      "claim": "ADR-022..ADR-029 are accepted and their amendment/supersession relations are recorded in the index and in the ADR texts.",
+      "evidence": [
+        "Index dependent rows: ADR-002 and ADR-003 'Accepted (restoration trigger set extended by ADR-024 (v1.2))'; ADR-009 'Accepted (the geometry, placement, and scaling-model clauses are superseded by ADR-019 (v1.1); the empty-selection pass-through clause is superseded by ADR-024 (v1.2) for the owned-session case)'; ADR-016 'Accepted (v1.1; settings-page contract amended by ADR-028 (v1.2))'; ADR-019 'Accepted (v1.1; clause 3 extended by ADR-027 (v1.2); supersedes the code-owned geometry and placement clauses of ADR-009 and the corresponding renderer-configuration clauses of ADR-010)'; ADR-020 'Accepted (v1.1; clause 4 amended by ADR-026 (v1.2))'; ADR-022 'Accepted (v1.2; clause 3 amended by ADR-029 (v1.2))'.",
+        "ADR-029.md:3-6 'Status: Accepted (v1.2). This amends **only** ADR-022 clause 3. ADR-022's clauses 1, 2, 4, 5, 6, and 7 ... are unchanged, and no ADR-022 text is rewritten.' Consistent with the index row and with docs/limitations/archive.md F4 ('The mechanism is ADR-022 as amended for clause 3 by ADR-029').",
+        "ADR-024.md:3-4 'This supersedes the empty-selection clause of ADR-009 and extends the restoration triggers of ADR-002/ADR-003'; ADR-024.md:78-82 clauses 8 restate the supersession and the extension.",
+        "Implementation notes exist for ADR-020, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028; ADR-025's note (lines 115-119) records the F3 register move from open.md to archive.md, matching the register state."
+      ],
+      "result": "VERIFIED - every v1.2 ADR is Accepted (v1.2) and each amendment/supersession relation is recorded both on the newer ADR and on the older index row, with no ADR decision text rewritten."
+    },
+    {
+      "claim": "No architecture or data-model section still presents v1.2-fixed behaviour as missing, open, or unshipped.",
+      "evidence": [
+        "docs/architecture/08:99-121 describes the installed persisted (SortName, itemId) cursor, the ADR-022 clause 1-2 outcome vocabulary and advance rule, the ADR-029 identity-anchored locate/reset, and names V12-F4-1/V12-F4-2; 08:126-146 describes the installed F6 DiscardReason mechanism and names V12-F6-1. No 'not implemented' / 'known open limitation' phrasing survives.",
+        "docs/architecture/09:267-280 describes the empty-selection restore obligation, the publisher RestoreAsync path, the absent-baseline reachability bound, and the distinct NoFittingBadge preserve; 09:406 lists the global preset size as 'Small/Medium/Large/Extra Large, default ...'; 09:527-533 records the v1.2 Extra Large addition without a RenderVersion/schema advance.",
+        "docs/architecture/11:58-72 records the elevation-gated read-only GET ArrTags/Status route and the fail-closed panel, with the clause 6 security review path.",
+        "docs/architecture/12:38-75 records the ADR-028 restart-required classification (seven settings), the MB/KB fixed-unit presentation with exact-byte persistence and off-step rejection, and the best-effort modal; 12:77-102 records the ADR-026 bounded file-name log subject (Path.GetFileName, 128 scalars, D-format item-id fallback, no directory/full path) and the artwork-boundary render classification that resolves F8.",
+        "docs/data-model/03-12:118 (Extra Large preset, no version advance, two new goldens), 03-12:153-165 (byte-limit display units, exact step round-trip, V12-G6-1 residual), 03-12:167+ (restart-required classification); 03-08:83 (ADR-027 Extra Large), 03-08:96-113 (ADR-024 restore obligation, Restored outcome, NoFittingBadge, no fingerprint change); 03-06:15 and 03-06:43 (ADR-017 allowlist, ADR-027-extended placement/size).",
+        "The one pre-v1.2 forward reference the worker corrected: docs/architecture/12:173-175 now reads 'the formerly open limitation F3, resolved by Phase 17 task 17.4' instead of 'open limitation F3'.",
+        "Negative sweeps: grep -rniE 'not yet|remains phase|becomes task|is task [0-9]|unresolved|still not|no bounded|remains open|is open' over docs/architecture/ and docs/data-model/ returns only the two pre-existing v1.1-vintage implementation-note sentences recorded as findings F-21.2-D2 below, plus unrelated domain vocabulary ('unresolved' match status, 'pending' work-queue states)."
+      ],
+      "result": "VERIFIED - for every v1.2 goal and resolved limitation (G6, G7, G8, G9, F3, F4, F6, F7, F8) the architecture and data-model sections describe the shipped mechanism, and the registered residuals are cross-referenced rather than presented as gaps."
+    },
+    {
+      "claim": "README.md reflects the v1.2 capabilities and presents no unshipped capability.",
+      "evidence": [
+        "Diagnostics panel: README.md:138-153 describes the read-only panel, the administrator-only GET /ArrTags/Status route, the fail-closed and bounded-fallback behaviours, and the process-lifetime counter lifetime. Corroborated by src/ArrTags/Configuration/config.html:295 (diagnosticsSection) and the V12-F3-1 accepted item.",
+        "ExtraLarge: README.md:104 '`Renderer.Size` | The preset badge size: `Medium` (default), `Small`, `Large`, or `ExtraLarge` (ADR-027)' — matches config.html:164-168 (Small, Medium, Large, Extra Large; value ExtraLarge) and ADR-027 clause 4. README does not assert a version advance, so it makes no claim the code contradicts.",
+        "MB/KB limits: README.md:63-67 and README.md:105 state the fixed binary unit per field, exact-byte persistence, and off-step rejection; corroborated by config.html:223-261 and src/ArrTags/Configuration/ByteLimitUnits.cs.",
+        "Restart-required: README.md:58-63 state the construction-captured residual, the always-present note text, and the best-effort modal with its caveat; corroborated by config.html:233-257 (restartRequiredNote) and the V12-G8-1 accepted item.",
+        "Log subject: README.md:97 states the bounded media file-name component in place of the item id and 'never writes a directory, share, or full path'; corroborated by src/ArrTags/Logging/LogSubject.cs and ADR-026.",
+        "F1 bullet: README.md:215-226 now records the live pinned-host confirmation as completed in task 14.3 with the evidence path; docs/implementation/14.3/live-verification.json 'overall_verdict' is 'PASS' with all eight rows L1-L8 PASS, and row L6 is the provider-inventory-cache (Goal C) row that F1's live confirmation rests on."
+      ],
+      "result": "VERIFIED - every v1.2 capability README describes exists in the code and the cited limitations records, and README asserts no v1.2 release identity (the manual-install section still names the v1.1 package, which is task 21.3's artifact identity)."
+    },
+    {
+      "claim": "The v1.1 'owned by task 14.3' pending framing was removed from the editable current-state surfaces and correctly scoped to immutable history in the register.",
+      "evidence": [
+        "docs/limitations/accepted.md V11-G4 (lines 684-703) now reads 'At v1.1, `README.md` (known-limitations bullet) and the F1 status/consequence lines (now in [`archive.md`](archive.md)) presented the task 14.3 live pinned-host confirmation as pending ...' with the Consequence recording that task 21.2 corrected README.md and the F1 lines in archive.md, that docs/architecture/00-index.md no longer carries the framing, and that 'Only the immutable archived history under `docs/plan/archive/` retains the historical phrasing'.",
+        "Verified independently: grep -rn '14\\.3' docs/architecture/ returns no match, confirming the architecture/00-index claim.",
+        "Verified that the residual really is confined to immutable history: 'owned by task 14.3' still occurs in docs/plan/archive/project-status-history.md (8), docs/plan/archive/v1-readiness.md (1), docs/plan/archive/v1.1.md (4), docs/changelog/v1.1.0.md (2), and docs/implementation/** — all history under AGENTS.md's immutability rule. It occurs in no editable current-state surface.",
+        "Index row 104 title updated in step with the section heading ('... retained in archived history').",
+        "The stale evidence pointer 'README.md:201' cited by the previous V11-G4 entry was replaced with docs/implementation/14.3/live-verification.json ('overall_verdict' PASS) plus the v1.1 release audit's independent live re-run, which is recorded at docs/implementation/final-review/release-review.json:80."
+      ],
+      "result": "VERIFIED - the correction is accurate, the residual scope statement is true, and the register now describes only history as retaining the old framing."
+    },
+    {
+      "claim": "PLANS.md and docs/plan/state.json were updated for task 21.2 by the single writer, with no hand-edited generated block.",
+      "evidence": [
+        "PLANS.md:278 '- [x] 21.2 Canonical documentation reconciliation'.",
+        "docs/plan/state.json task 21.2: done=true, reports=['docs/implementation/21.2/worker-report.json'], updated_utc 2026-09-29T09:58:30Z.",
+        "Executed by this reviewer: `source /config/arrtags-env.sh && dotnet run scripts/render-docs-state.cs -- --check` -> 'status.md: up to date', 'PLANS.md: up to date', 'PLANS.md and state.json agree' (exit 0).",
+        "docs/plan/README.md single-writer table assigns state.json task done/reports to the worker and PLANS.md task checkboxes to planner/worker/orchestrator, so the worker's edit was within role."
+      ],
+      "result": "VERIFIED - the plan/state pair agrees and the generated blocks are current; the only state.json fields touched were the worker's own (task done, reports, updated_utc)."
+    },
+    {
+      "claim": "scripts/check-docs.sh passes on the reconciled tree apart from the contract-mandated agent-pairing lines.",
+      "evidence": [
+        "Executed by this reviewer: ./scripts/check-docs.sh -> ok for compatibility stubs, decisions index (29 ADRs), limitations index coverage, architecture/data-model indexes, artifact identity agreement (sha256, md5, bytes), doc budget, and current-state links; then 'check-docs: FAIL' solely from scripts/check-agents.sh: 'FAIL: task 21.2 has a worker report but no reviewer report' and 'FAIL: task 21.2 has a reviewer report on disk but docs/plan/state.json does not list it in reports'.",
+        "Both failing lines are the expected transient for a task whose implementation-reviewer report is written but not yet listed in state.json reports; docs/agent-contracts.md item 4 and 5 make that listing the orchestrator's commit step."
+      ],
+      "result": "VERIFIED (with the expected transient) - no documentation-content check fails. See finding F-21.2-D5."
+    },
+    {
+      "claim": "The diff contains only in-scope surfaces and modifies no immutable history.",
+      "evidence": [
+        "git diff --stat -> 8 files, 38 insertions(+), 29 deletions(-): GOALS.md, PLANS.md, README.md, docs/architecture/12-performance-and-operational-limits.md, docs/limitations/00-index.md, docs/limitations/accepted.md, docs/limitations/archive.md, docs/plan/state.json.",
+        "No path under docs/implementation/**, docs/reviews/**, docs/changelog/**, docs/plan/archive/**, docs/research/**, or any ADR file appears in the diff; ADR text is untouched (verified docs/decisions/ is unmodified).",
+        "No production or test code changed (git status shows no src/ or tests/ entries)."
+      ],
+      "result": "VERIFIED - the change set is confined to the delegated current-state surfaces."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-21.2-D1",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "docs/decisions/00-index.md (decisions index, ADR-010 status cell)",
+      "description": "The ADR-010 row's status cell is a truncated fragment: 'Accepted (partially superseded by ADR-015: the SkiaSharp library'. The parenthetical is never closed, the sentence ends mid-clause, and the cell omits the second recorded supersession (the renderer-configuration clauses superseded by ADR-019) that ADR-010's own Status line carries. The decisions index is one of the enumerated current-state surfaces for this task and the acceptance criteria require it to carry no stale or malformed claim; a reader cannot tell what ADR-010's current standing is. The defect is pre-existing (introduced by commit 13c8033, 'Split decisions, changelog, and limitations'), not introduced by 21.2, and it is not a v1.2 staleness, so it does not affect the v1.2 state this task reconciles. The worker's verification of this file cited only '29 index rows == 29 ADR files' and a 'proposed' grep; scripts/check-docs.sh likewise validates only the row count, so neither check covers cell integrity. Note the same truncation exists in ADR-010.md's own Status block, which is immutable decision text and must not be rewritten; only the index cell is in scope.",
+      "evidence": [
+        "docs/decisions/00-index.md:18 '| ADR-010 | V1 Renderer Implementation Contract | Accepted (partially superseded by ADR-015: the SkiaSharp library | [`ADR-010.md`](ADR-010.md) |' - unbalanced parenthesis; the only row in the file with unbalanced parentheses (awk paren-count check over rows 9-37 flags line 18 only).",
+        "docs/decisions/ADR-010.md:3-10 carries the full status: 'Accepted (partially superseded by ADR-015: ...; the renderer-configuration clauses that keep geometry, placement, and scale code-owned are superseded by ADR-019)'. The index cell reproduces only its first clause.",
+        "git log -L 18,18:docs/decisions/00-index.md -> the row has been truncated since 13c8033, the file's creation; no later commit touched it.",
+        "scripts/check-docs.sh:46 compares only `adr_rows` to `adr_files`, so the truncation is invisible to the guard."
+      ],
+      "recommended_action": "Complete the ADR-010 index cell to match the full relation recorded in ADR-010.md's Status line (ADR-015 partial supersession plus the ADR-019 renderer-configuration supersession), and consider adding a check-docs guard that rejects an unbalanced parenthesis or an unterminated status cell in the decisions index so the class cannot recur. Because ADR-010.md's own Status text carries the same truncation, decide explicitly whether that is an intentional carry-over of the historical record or an independent defect to record; do not rewrite ADR decision text without that decision."
+    },
+    {
+      "id": "F-21.2-D2",
+      "severity": "LOW",
+      "status": "open",
+      "area": "docs/data-model/03-08-renderresult.md (task-scoped implementation notes)",
+      "description": "Two sentences inside dated task notes still read as forward references to completed work. Line 35 (inside '**Phase 4 implementation note:**') says 'the Jellyfin host adapter that supplies it remains Phase 5 work'; Phase 5 is complete and its own note at line 85 records the shipped coordinator. Lines 51-52 (inside '**v1.1 task 12.1 implementation note:**') say 'Task 12.1 does not yet apply the filter to rendering; the renderer filtering order is task 12.2'; task 12.2 is complete and its result is documented in docs/architecture/09:487-497 and docs/data-model/03-06:28-31. This file's own convention, used at lines 83 and 97, is to mark a superseded task note with 'The ... text above remains the historical record'; the 12.1 note is never so marked, so its last sentence is the section's final word on the allowlist filter and reads as pending. This is v1.1-vintage residue, outside the v1.2 reconciliation and not a v1.2 claim; it is recorded because the worker's report certified docs/data-model/03-08 as 'verified: no change needed' and the sweeps it listed ('not implemented', 'remains open', 'no restart indication', 'raw byte counts') do not match this phrasing.",
+      "evidence": [
+        "docs/data-model/03-08-renderresult.md:35 'adapter that supplies it remains Phase 5 work.'",
+        "docs/data-model/03-08-renderresult.md:51-52 'Task 12.1 does not yet apply the filter to rendering; the renderer filtering order is task 12.2.'",
+        "docs/data-model/03-08-renderresult.md:83 and :97 show the file's supersession-marker convention ('The v1.1 text above remains the historical record...', 'The Phase 5 text above remains the historical task 5.8 record.').",
+        "docs/architecture/09:487-497 and docs/data-model/03-06:28-31 both state the allowlist filter is applied by the renderer in the ADR-017 order, so the two notes are contradicted by the current normative text.",
+        "docs/plan/state.json phases 5 and 12 both have status COMPLETE."
+      ],
+      "recommended_action": "In the next documentation-only pass, append a short supersession marker to the 12.1 note (and to the Phase 4 note) in the file's existing style, e.g. that task 12.2 applied the documented ADR-017 filter order, so the dated notes are not read as current-state claims. Do not restate the filter contract in 03-08; architecture 09 and 03-06 remain authoritative for it."
+    },
+    {
+      "id": "F-21.2-D3",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "docs/plan/state.json active_scope_note, PLANS.md active-scope prose, docs/status.md (generated) vs GOALS.md",
+      "description": "After this task corrected GOALS.md to 'ADR-022 onward', the planner-owned active-scope note still bounds the v1.2 decision records at 'ADR-022..ADR-028': docs/plan/state.json active_scope_note, the hand-written PLANS.md:20-21 paragraph, and the docs/status.md active-scope line rendered from it, while docs/planning/v1.2.md's Status line and section 6 outline task V1.2-1 also still say ADR-022..ADR-028. Every ADR the narrower range names is Accepted (v1.2), so no statement is false; the difference is exhaustiveness. The result is that the status page and GOALS.md now describe the v1.2 decision set with different bounds, and a reader of the status page alone cannot see that ADR-029 exists. The worker recorded this in known_limitations and correctly declined to edit it: state.json's active_scope_note is planner-scope text under the docs/plan/README.md single-writer table, and docs/implementation/planning/v1.2-f4-clause-3-amendment.json lists 'docs/plan/state.json (no phase/task status change)' under not_changed. Recording rather than resolving is the right call here; the residual is a consistency observation, not a wrong claim.",
+      "evidence": [
+        "docs/plan/state.json active_scope_note: 'Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)).'",
+        "docs/status.md:10 renders that note verbatim in the generated block.",
+        "PLANS.md:20-21 (hand-written, outside the generated active-scope block at lines 12-14): 'The v1.2 decision records ADR-022 through ADR-028 are **accepted** (`Accepted (v1.2)`)'.",
+        "GOALS.md:104-106 now reads 'ADR-022 onward'.",
+        "docs/planning/v1.2.md:3-5 and section 6 row V1.2-1 still bound the set at ADR-022..ADR-028; section 4's table does list ADR-029.",
+        "docs/implementation/planning/v1.2-f4-clause-3-amendment.json not_changed includes 'docs/plan/state.json (no phase/task status change)'.",
+        "docs/plan/README.md single-writer table: state.json scope/phases are the planner's."
+      ],
+      "recommended_action": "Route to the planner (or fold into task 21.3/21.6, which already own the release-status surfaces): widen the active_scope_note and the PLANS.md active-scope paragraph to 'ADR-022..ADR-029' or 'ADR-022 onward' so the status page and GOALS.md state the same set, and update docs/planning/v1.2.md's Status line and outline row V1.2-1 in the same pass. No change is required for correctness in the meantime, and this reviewer makes none."
+    },
+    {
+      "id": "F-21.2-D4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "docs/limitations/00-index.md row 89 (SEC-2) vs open.md",
+      "description": "The SEC-2 index row and section title carry the source finding's status token, 'State-root resolution falls back to a shared temp path (LOW, open)', while the row's Status column reads 'Accepted' and docs/limitations/open.md states 'No open limitations are currently recorded'. The '(LOW, open)' wording is an intentional-looking carry-over of the security review's own status (docs/implementation/final-review/security-review.json records SEC-2 with status 'open', and accepted.md's body says 'Accepted for V1'). It is therefore a title/status-column tension rather than a false claim, it predates v1.2 by several releases, and it is outside this task's reconciliation set. Recorded so a future register pass can decide whether to normalise the title.",
+      "evidence": [
+        "docs/limitations/00-index.md:89 '| `SEC-2` | State-root resolution falls back to a shared temp path (LOW, open) | Accepted | [`accepted.md`](accepted.md) |'.",
+        "docs/limitations/accepted.md:326 and :340-342 ('Accepted for V1; optional post-V1 hardening ...').",
+        "docs/limitations/open.md: 'No open limitations are currently recorded.'",
+        "docs/implementation/final-review/security-review.json: SEC-2 finding with \"status\": \"open\"; the review summary says 'SEC-2 remains open LOW'."
+      ],
+      "recommended_action": "Optional, in a documentation-only pass: either drop the '(LOW, open)' token from the SEC-2 title so the title and the Status column agree, or add a half-sentence to the entry stating that 'open' is the security-review finding's own status while the register disposition is Accepted. No change is required for the v1.2 release."
+    },
+    {
+      "id": "F-21.2-D5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scripts/check-agents.sh agent-pairing for task 21.2",
+      "description": "With the task's reports on disk, scripts/check-docs.sh exits non-zero on exactly two lines, both from the agent-contract pairing rule: 'task 21.2 has a worker report but no reviewer report' and 'task 21.2 has a reviewer report on disk but docs/plan/state.json does not list it in reports'. docs/implementation/21.2/reviewer-report.json (the implementation review) exists; docs/plan/state.json's task 21.2 reports array currently lists only the worker report. This is the expected transient state for any task between its implementation review and the orchestrator's commit step, and the worker recorded it in the same terms. Every documentation-content section passes.",
+      "evidence": [
+        "./scripts/check-docs.sh output: 'ok' for stubs, decisions index, limitations index, architecture/data-model indexes, artifact identity, doc budget, and current-state links; 'FAIL' only on the two check-agents lines quoted above.",
+        "ls docs/implementation/21.2/ -> reviewer-report.json, worker-report.json.",
+        "docs/plan/state.json task 21.2 reports = ['docs/implementation/21.2/worker-report.json'].",
+        "docs/agent-contracts.md items 4-5: a task's reports array lists the committed evidence reports including reviewer-report.json; scripts/check-agents.sh enforces it."
+      ],
+      "recommended_action": "Orchestrator: when committing, add 'docs/implementation/21.2/reviewer-report.json' (and this documentation-review.json) to the task 21.2 reports array in docs/plan/state.json, then re-run scripts/check-docs.sh and expect a clean PASS. No documentation change is required."
+    },
+    {
+      "id": "F-21.2-D6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "docs/limitations/accepted.md V11-G4 residual enumeration",
+      "description": "The rewritten V11-G4 entry names two archived files as retaining the pre-14.3 framing (docs/plan/archive/project-status-history.md and docs/plan/archive/v1-readiness.md). A third archived file, docs/plan/archive/v1.1.md, also retains four occurrences, as does docs/changelog/v1.1.0.md. The entry's Consequence sentence - 'Only the immutable archived history under `docs/plan/archive/` retains the historical phrasing' - remains true (v1.1.md is under that directory; the changelog is immutable history by the same rule), and the earlier sentence is introduced by 'some ... sentences in ... and ...', which does not claim exhaustiveness. This is therefore an incomplete enumeration inside a scope statement, not an inaccurate claim, and it is recorded only so the residual is auditable from the register entry itself.",
+      "evidence": [
+        "grep -rn 'owned by task 14.3' docs/ -> docs/plan/archive/project-status-history.md (8), docs/plan/archive/v1.1.md (4), docs/plan/archive/v1-readiness.md (1), docs/changelog/v1.1.0.md (2), plus docs/implementation/** and the two new V11-G4 lines in docs/limitations/.",
+        "docs/limitations/accepted.md:686-691 and :698-703 (the entry as rewritten).",
+        "AGENTS.md: 'History is immutable: docs/implementation/**, docs/reviews/**, docs/changelog/**, docs/plan/archive/** ... Do not rewrite it'."
+      ],
+      "recommended_action": "Optional: extend the V11-G4 enumeration to name docs/plan/archive/v1.1.md and docs/changelog/v1.1.0.md so a reader auditing the residual sees every location from the register entry. Leave the archived text itself unchanged."
+    }
+  ],
+  "limitations": [
+    "Scope was limited to the canonical current-state surfaces enumerated in the task. The v1.2 artifact identity, docs/release/build-and-release.md, manifest.json, and the release test matrix are task 21.3; the release changelog entry, the current_release block, and the v1.2.0 tag are task 21.6. README.md's manual-install section still names the v1.1 package `ArrTags_1.1.0.0.zip` and tag `v1.1.0`; that is correct for the current release and is 21.3's to update, not a defect here.",
+    "No build or test run was performed and none is required: the change set touches no code, and the worker's claim that the full suite was not run is accurate and appropriate for a documentation-only task.",
+    "The v1.2 live pinned-host matrix is task 21.4 and has not run, so no current-state claim in the reconciled surfaces asserts v1.2 live verification. Spot-checking was limited to confirming that cited evidence paths exist and that the specific claims they support are present in the shipped code (config.html, LogSubject.cs, ByteLimitUnits.cs, RestartRequiredSettings.cs, the Diagnostics sources, the reconciliation cursor and discard-reason sources, and the named test files).",
+    "ADR text was treated as immutable decision record throughout. Where an ADR and current behaviour diverge, the divergence was recorded as a finding rather than reconciled by editing the ADR; this applies to ADR-010's truncated Status block (F-21.2-D1) and to the F4/F6/F7/F8 'open.md' references in ADR-022/023/024/026/029, which point at entries that now live in archive.md. Those ADR-internal pointers are not surfaced by any current-state claim and ADR-025 already records the register move in its implementation note, so they were judged not to be a current-state defect; the general pattern (a resolved limitation leaving a stale 'docs/limitations/open.md' pointer inside ADR References sections) is worth a future sweep.",
+    "This reviewer did not evaluate whether the reconciled wording is the wording a product owner would choose; it evaluated only whether each current-state claim is supported by the repository and the recorded evidence."
+  ],
+  "summary": "The v1.2 current state is described accurately across the enumerated surfaces, and the task's specific acceptance criteria are met. F3, F4, F6, F7, and F8 are recorded Resolved in the register, the index, and state.json, each with its resolving phase, its evidence list, and explicit verification bounds and registered residuals; open.md is empty of them. F5 is Accepted (reclassified from Open) in accepted.md, the index, and state.json, with the exclusion recorded in docs/planning/v1.2.md section 10 and matching README's shipped-limitation framing. ADR-022 through ADR-029 are all Accepted (v1.2) and every amendment/supersession relation (ADR-024 into ADR-002/003/009, ADR-026 into ADR-020, ADR-027 into ADR-019, ADR-028 into ADR-016, ADR-029 into ADR-022 clause 3) is recorded on both the newer ADR and the older index row, with no ADR decision text rewritten. No surface presents v1.2-fixed behaviour as missing or open, and README claims no capability the code does not ship: the diagnostics panel, ExtraLarge, the MB/KB limit presentation with exact-byte persistence, the restart-required note text plus best-effort modal, and the bounded file-name log subject were each confirmed in the shipped configuration page, the cited source files, and the registered limitations. The register's 52 section headings match its 52 index rows exactly in both ID and title. The worker's edits stayed inside the delegated current-state surfaces, touched no immutable history, and left the generated blocks current (render-docs-state --check: up to date; PLANS.md and state.json agree), and its F1 correction is supported by task 14.3's PASS matrix including its Goal C inventory-cache row. Six findings are recorded, none of which makes a v1.2 claim wrong or overclaimed: one MEDIUM pre-existing defect the worker's evidence did not cover (the truncated ADR-010 status cell in the decisions index, which the row-count guard cannot see), one LOW pre-existing v1.1-vintage residue in two dated data-model notes that read as pending work, and four informational items (the SEC-2 title/status tension, the expected agent-pairing transient, an incomplete residual enumeration inside V11-G4, and the ADR-022..ADR-028 versus 'ADR-022 onward' bound difference between the planner-owned status surfaces and GOALS.md). The last of these is a genuine cross-surface consistency gap but every statement in it is true, and the owning role is the planner, so recording rather than resolving it was correct. Status is PASS_WITH_FINDINGS: the reconciliation itself is complete and evidence-backed, and the open items are narrow, pre-existing, and none blocks the v1.2 release."
+}

@@ -13,9 +13,20 @@ public enum RenderPassThroughReason
     NoMetadata,
 
     /// <summary>
-    /// The metadata produced no displayable value after selection and layout.
+    /// The resolved badge selection was empty: no enabled selector produced a
+    /// value (for example a selector allowlist that excludes every resolved
+    /// value). For an owned published session this reason is a restore
+    /// obligation rather than a preserve (ADR-024).
     /// </summary>
     NoDisplayableValue,
+
+    /// <summary>
+    /// The resolved badge selection was not empty, but nothing fit the safe area
+    /// after shortening and omission, so no badge was drawn. The current artwork
+    /// is preserved: a valid value that merely failed layout never removes a
+    /// correct ArrTags image.
+    /// </summary>
+    NoFittingBadge,
 
     /// <summary>
     /// The item is not a V1 badge-bearing Movie or Episode poster surface.

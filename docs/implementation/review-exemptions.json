@@ -1,0 +1,13 @@
+{
+  "note": "Tasks exempt from the per-task implementation-reviewer report, with the reason and the covering review. The orchestrator's Report and Commit Gate and scripts/check-agents.sh honor this list. Add an entry only for a release-closure or documentation-only task that a phase or release review explicitly covers; every other task must have a reviewer-report.json.",
+  "exemptions": [
+    {
+      "task": "14.5",
+      "reason": "v1.1 release-closure documentation task (changelog/project-status typo fix); no production or test behaviour. Covered by the release reviewer and the task 13.2 / 14 documentation reviews.",
+      "covered_by": [
+        "docs/implementation/final-review/release-review.json",
+        "docs/implementation/13.2/documentation-review.json"
+      ]
+    }
+  ]
+}
