@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 724610,
-    "output": 112954,
-    "reasoning": 81373,
+    "input": 751751,
+    "output": 127080,
+    "reasoning": 95498,
     "cache": {
-      "read": 69754112,
+      "read": 86440704,
       "write": 0
     }
   },
-  "total_tokens": 70673049,
-  "cost_usd": 0.4345232359999998,
+  "total_tokens": 87415033,
+  "cost_usd": 0.5056047619999998,
   "duration_seconds": 92333,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-30T13:15:02Z",
+  "last_updated_at": "2026-09-30T13:59:45Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -109,6 +109,13 @@
       "total_tokens": 70673049,
       "duration_seconds": 92333,
       "note": "Phase 21 task 21.14 fully corrected release security review completed and committed (79be5ba); open_blocker_high 0"
+    },
+    {
+      "at": "2026-09-30T13:59:45Z",
+      "cost_usd": 0.5056047619999998,
+      "total_tokens": 87415033,
+      "duration_seconds": 92333,
+      "note": "Completed the v1.2.0 release: release-review gate SHIP_WITH_ACCEPTED_LIMITATIONS, registered accepted limitation V12-F7-1, advanced current_release/releases[], archived phases 15-21, created the annotated v1.2.0 tag on release commit 7f11afa"
     }
   ]
 }

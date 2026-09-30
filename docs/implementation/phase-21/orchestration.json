@@ -48,7 +48,7 @@
     { "task": "21.12", "status": "COMPLETE", "commit": "c78a7d6", "orchestration": "docs/implementation/21.12/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
     { "task": "21.13", "status": "COMPLETE", "commit": "f54dc85", "orchestration": "docs/implementation/21.13/orchestration.json", "rework_rounds": 1, "final_gate": "APPROVED" },
     { "task": "21.14", "status": "COMPLETE", "commit": "79be5ba", "orchestration": "docs/implementation/21.14/orchestration.json", "rework_rounds": 0, "final_gate": "APPROVED" },
-    { "task": "21.6", "status": "COMPLETE", "commit": "release commit", "orchestration": "docs/implementation/21.6/orchestration.json", "rework_rounds": 0, "final_gate": "release-reviewer" }
+    { "task": "21.6", "status": "COMPLETE", "commit": "7f11afa", "orchestration": "docs/implementation/21.6/orchestration.json", "rework_rounds": 0, "final_gate": "release-reviewer" }
   ],
   "aggregate": {
     "task_count": 14,

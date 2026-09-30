@@ -3,7 +3,7 @@
   "title": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": "release commit",
+  "commit": "7f11afa",
   "conformance": {
     "required": false,
     "reason": "Task 21.6 finalises the release: changelog, release-readiness verification, and the release-state/tag bookkeeping. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause. No pre-dispatch specialist conformance check is required.",
