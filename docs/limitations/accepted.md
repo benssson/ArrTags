@@ -113,25 +113,28 @@ plugin-discovery, dashboard, and configuration round-trip facts (it does not
 enable the native-Skia facts); `ARRTAGS_SKIA_COMPAT=1` enables the 43
 native-render/decode facts (39 `SkiaNativeFact` + 4 `SkiaNativeTheory`);
 `ARRTAGS_NONCANONICAL_GOLDENS` enables the 1 non-canonical cross-runtime
-comparison; and a produced `artifacts/ArrTags_1.1.0.0.zip` is required for the 3
+comparison; and a produced `artifacts/ArrTags_1.2.0.0.zip` is required for the 3
 `PackagedPluginFact` package-content facts.
 
-The current `1.1.0.0` release matrix is: default suite with the archive present
-Failed 0, Passed 1,494, Skipped 63, Total 1,557 (the 63 skips are the 19 host +
-43 native + 1 non-canonical facts), or Failed 0, Passed 1,491, Skipped 66, Total
-1,557 from a clean checkout that tests before packaging; host-guarded suite (with
-`ARRTAGS_JELLYFIN_HOST_DIR` set and the archive present) Failed 0, Passed 1,513,
-Skipped 44, Total 1,557, where the host directory unskips only the 19 host facts
-and the 44 remaining are the 43 native facts plus the 1 non-canonical comparison;
-and with the pinned native SkiaSharp runtime forced (`ARRTAGS_SKIA_COMPAT=1`,
-with the pinned native dependency directory on `LD_LIBRARY_PATH`, host directory
-unset) Failed 0, Passed 1,575, Skipped 20, Total 1,595, where the 43 native facts
-unskip (the Total grows from 1,557 to 1,595 as the enabled native theories
-expand) and the remaining 20 are the 19 host facts plus the 1 non-canonical
-comparison. The previous `1.0.1.0` release matrix (default 1,228 passed / 60
-skipped / 1,288 total; host-guarded 1,244 passed / 44 skipped / 1,288 total) is
-historical. Task 14.2 recorded this v1.1 matrix (test-quality review finding
-TQ-8).
+The current `1.2.0.0` release matrix is: default suite with the archive present
+Failed 0, Passed 1,966, Skipped 66, Total 2,032 (the 66 skips are the 20 host +
+45 native (41 `SkiaNativeFact` + 4 `SkiaNativeTheory`) + 1 non-canonical facts),
+or Failed 0, Passed 1,963, Skipped 69, Total 2,032 from a clean checkout that
+tests before packaging; host-guarded suite (with `ARRTAGS_JELLYFIN_HOST_DIR` set
+and the archive present) Failed 0, Passed 1,986, Skipped 46, Total 2,032, where
+the host directory unskips the 20 host facts and the 46 remaining are the 45
+native facts plus the 1 non-canonical comparison; and with the pinned native
+SkiaSharp runtime forced (`ARRTAGS_SKIA_COMPAT=1`, with the pinned native
+dependency directory on `LD_LIBRARY_PATH`, host directory unset) Failed 0,
+Passed 2,053, Skipped 21, Total 2,074, where the 45 native facts unskip (the
+Total grows from 2,032 to 2,074 as the enabled native theories expand) and the
+remaining 21 are the 20 host facts plus the 1 non-canonical comparison. The
+previous `1.1.0.0` release matrix (default 1,494 passed / 63 skipped / 1,557
+total; host-guarded 1,513 passed / 44 skipped / 1,557 total; forced-native 1,575
+passed / 20 skipped / 1,595 total) and the `1.0.1.0` matrix (default 1,228
+passed / 60 skipped / 1,288 total; host-guarded 1,244 passed / 44 skipped / 1,288
+total) are historical. Task 21.12 recorded this v1.2 matrix (the prior v1.1
+matrix was recorded by task 14.2; test-quality review finding TQ-8).
 
 - Evidence: tasks 7.5/7.8 worker reports; task 14.2 worker report;
   `docs/release/build-and-release.md`.
@@ -142,12 +145,12 @@ TQ-8).
 
 ### P1. Byte-reproducibility depends on the pinned toolchain
 
-Byte-identity of `artifacts/ArrTags_1.1.0.0.zip` (594,931 bytes, SHA-256
-`85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1`, MD5
-`547beb2f7d83cd256d3a3ce7bb7e7620`, the current `1.1.0.0` identity) is
-demonstrated with the pinned toolchain (`global.json` pins SDK `10.0.0` with
-`latestMinor`; validated with `10.0.401`). A different .NET SDK version could in
-principle change compiler or deflate output.
+Byte-identity of `artifacts/ArrTags_1.2.0.0.zip` (619,861 bytes, SHA-256
+`2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268`, MD5
+`631fbfa5a4fb58fac5a877eeef761193`, the current corrected `1.2.0.0` release
+identity) is demonstrated with the pinned toolchain (`global.json` pins SDK
+`10.0.0` with `latestMinor`; validated with `10.0.401`). A different .NET SDK
+version could in principle change compiler or deflate output.
 
 - Evidence: task 7.5 worker/reviewer reports and
   `docs/release/build-and-release.md`.
@@ -166,10 +169,12 @@ principle change compiler or deflate output.
   version to `1.0.1.0`, changing only version/release metadata; the `1.0.1.0`
   artifact was byte-stable across repeated `./build.sh package` runs (the Phase 8
   task 8.4 and 8.5 runs produced the identical SHA-256). Phase 14 task 14.2 then
-  rebuilt at `1.1.0.0`; the current `1.1.0.0` artifact is byte-stable across
-  repeated clean builds (the two task 14.2 runs — the second after wiping
+  rebuilt at `1.1.0.0`, and that artifact was byte-stable across repeated clean
+  builds (the two task 14.2 runs — the second after wiping
   `bin`/`obj`/`artifacts` and re-restoring — produced the identical SHA-256
-  `85730fe7…`).
+  `85730fe7…`). The current corrected `1.2.0.0` identity is likewise byte-stable
+  across repeated clean builds (three recorded runs produced the identical
+  SHA-256 `2a039fc7…` and MD5; `docs/release/build-and-release.md`).
 
 ### P2. The shipped assembly has reduced debug metadata for reproducibility
 
@@ -1043,3 +1048,59 @@ the re-enqueue or its outcome.
 - Disposition: accepted for v1.2 (registered by task 19.5); no code change. A
   bounded log record (or counter) for the dropped re-enqueue is possible future
   hardening.
+
+## v1.2 release-review accepted limitations (F7 ownership recovery)
+
+The v1.2 release audit
+(`docs/implementation/final-review/release-review-v1.2.json`, finding RR-V12-1)
+registered the following carried operational bound for v1.2.
+
+### V12-F7-1. An item whose active image was re-adopted by a host refresh enters the fail-closed ownership state with no in-product recovery trigger (LOW, accepted)
+
+A host refresh that re-adopts the local sidecar poster as an item's Primary
+image desynchronises the served image from the plugin's recorded active
+identity, and the fail-closed ownership gate then suppresses further automatic
+publication for that item. v1.2 ships no in-product recovery trigger for such an
+item; recovery is an out-of-band operator action.
+
+- Precondition: an item whose active image the plugin recorded as published is
+  refreshed by the host in a way that re-adopts the local sidecar — a full
+  `POST /Library/Refresh` scan, or a targeted per-item
+  `POST /Items/{id}/Refresh?MetadataRefreshMode=FullRefresh&ImageRefreshMode=FullRefresh&ReplaceAllMetadata=false`
+  such as the one the task 21.13 verifier issued while repairing its own
+  library/sidecar setup after the first publication.
+- Behaviour: the host's image refresh serves the sidecar in place of the
+  plugin-published badge while the persisted artwork-state record can still
+  assert the published identity. The publication path then fails closed (the
+  task 21.4 characterisation inherited by task 21.13:
+  `ArtworkRegenerationPlanner.IsPublicationBlocked` blocks `OwnershipLost`,
+  `OwnershipUnknown`, `RestorePending`, and `RestoreBlocked`, and the
+  restoration path accepts only the published state), so no automatic trigger —
+  library event, webhook, post-save, post-scan, or scheduled reconciliation —
+  restores the badge, and the stored record is not self-healed.
+- Consequence: the item keeps the re-adopted host image, and a badge can be
+  restored only by an out-of-band operator action; v1.2 documents no supported
+  in-product procedure for it. The documented prevention is to complete all
+  library and sidecar setup and the final full refresh before the first
+  publication (the task 21.13 verifier deliberately abandoned its affected
+  prefix rather than clear the state out of band, because that would simulate an
+  undocumented operator action). The task 21.13 observation is narrower than a
+  transition and is stated as such: the episode's served Primary reverted from
+  the published 13,751-byte badge to the 3,473-byte source sidecar while the
+  artwork-state record continued to assert the published identity (State 1,
+  `ActiveImageIdentity` `9B084736…38FB4`, `LastOwnershipObservation.Status 0`),
+  and no `OwnershipLost` transition was observed or claimed on that prefix. The
+  fail-closed no-recovery substance is inherited from F-21.4-2 (carried through
+  F-21.9-2); this run adds no new evidence for the transition itself.
+- Evidence: `docs/implementation/21.13/live-verification.json` finding
+  F-21.13-2 and its corrected detail;
+  `docs/testing/jellyfin-12-musl-test-host.md` ("v1.2 cautions" and the
+  "A targeted item refresh can also re-adopt the sidecar (F-21.13-2, LOW)"
+  procedure note); `docs/implementation/21.4/live-verification.json` F-21.4-2;
+  `docs/implementation/21.9/live-verification.json` F-21.9-2; the release
+  section of `docs/changelog/v1.2.0.md`.
+- Disposition: accepted for v1.2 by the release review
+  (`docs/implementation/final-review/release-review-v1.2.json`, RR-V12-1);
+  recovery is an out-of-band operator action and no in-product recovery trigger
+  is planned for v1.2. Registered by
+  `docs/implementation/final-review/v1.2-limitation-registration.json`.

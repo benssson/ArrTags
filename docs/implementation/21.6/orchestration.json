@@ -1,0 +1,105 @@
+{
+  "task": "21.6",
+  "title": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag",
+  "phase": 21,
+  "status": "COMPLETE",
+  "commit": "release commit",
+  "conformance": {
+    "required": false,
+    "reason": "Task 21.6 finalises the release: changelog, release-readiness verification, and the release-state/tag bookkeeping. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause. No pre-dispatch specialist conformance check is required.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 213375,
+        "output_tokens": 31123,
+        "reasoning_tokens": 36990,
+        "cache_read_tokens": 8872192,
+        "cache_write_tokens": 0,
+        "total_tokens": 9153680,
+        "cost_usd": 0.09949062599999998,
+        "duration_seconds": 675,
+        "session_id": "ses_f11be2b7effeNJ3S80xqbnJELs"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 63676,
+        "output_tokens": 18633,
+        "reasoning_tokens": 100156,
+        "cache_read_tokens": 8251611,
+        "cache_write_tokens": 0,
+        "total_tokens": 8434076,
+        "cost_usd": 0,
+        "duration_seconds": 1649,
+        "session_id": "ses_f117330c3ffexGWrjr10oLNrxV"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 355616,
+        "output_tokens": 38443,
+        "reasoning_tokens": 47432,
+        "cache_read_tokens": 8611200,
+        "cache_write_tokens": 0,
+        "total_tokens": 9052691,
+        "cost_usd": 0.130701,
+        "duration_seconds": 711,
+        "session_id": "ses_f0d8b82ccffejhlvT2bwGcKpja"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 3,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 122134,
+        "output_tokens": 11002,
+        "reasoning_tokens": 22963,
+        "cache_read_tokens": 2625664,
+        "cache_write_tokens": 0,
+        "total_tokens": 2781763,
+        "cost_usd": 0.046576092,
+        "duration_seconds": 273,
+        "session_id": "ses_f0d700fb3ffeH43L7IMnZOXVfq"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "attempt": 2,
+      "reason": "Not a return-after-review correction: after tasks 21.12/21.13/21.14 re-derived the artifact, live matrix, and security review for the fully corrected candidate, the orchestrator re-invoked the worker to finalise the changelog release section and re-verify release readiness against that final candidate (the attempt-1 changelog/release-readiness covered the earlier 21.8 candidate)."
+    },
+    {
+      "attempt": 3,
+      "reason": "Release-review required changes RR-V12-1 (register live-verification finding F-21.13-2 as accepted limitation V12-F7-1 in docs/limitations/accepted.md + 00-index.md) and the P1 identity-wording refresh; the worker registered the limitation, refreshed P1, and the orchestrator then applied RR-V12-2 (current_release/releases[]/task-done/regenerate/tag)."
+    }
+  ],
+  "notes": [
+    "Attempt 1 produced the changelog release section and release-readiness record for the then-current (21.8) candidate; it was reviewed APPROVED. Attempt 2 finalised the section for the fully corrected (21.12) candidate and produced docs/implementation/21.6/release-readiness-v1.2-final.json. Attempt 3 registered the accepted limitation V12-F7-1 and refreshed P1.",
+    "The release-review gate is docs/implementation/final-review/release-review-v1.2.json: APPROVED_WITH_ACCEPTED_LIMITATIONS / SHIP_WITH_ACCEPTED_LIMITATIONS, open_blocker_high 0. Its two required changes were folded into the release commit.",
+    "The orchestrator applied RR-V12-2: docs/plan/state.json current_release advanced to 1.2.0.0 / v1.2.0 / COMPLETE with the 21.12 artifact identity and the final suite matrix, releases[] 1.2.0 COMPLETE, phase 21 COMPLETE with Gate 21 met and gate_record pointing to the release review, task 21.6 done; the v1.2 phases were archived (docs/plan/archive/v1.2.md, docs/plan/archive/v1.2-plan.md) and active_scope set to null; the annotated v1.2.0 tag was created. The GitHub publish remains the user's manual step."
+  ]
+}

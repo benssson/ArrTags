@@ -1,0 +1,96 @@
+{
+  "task": "v1.2 limitation registration (release-review required change RR-V12-1; P1 identity refresh per RR-V12-2)",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Documentation-only registration of live-verification finding F-21.13-2 as accepted limitation V12-F7-1: a new 'v1.2 release-review accepted limitations (F7 ownership recovery)' section in docs/limitations/accepted.md, an index row in docs/limitations/00-index.md, and the ID appended to docs/plan/state.json limitations.accepted after V12-F6-2. The stale P1 identity wording was refreshed to name artifacts/ArrTags_1.2.0.0.zip (619,861 bytes, SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268, MD5 631fbfa5a4fb58fac5a877eeef761193) as the current corrected 1.2.0.0 release identity, with the 1.1.0.0 identity retained as prior history. No code, test, artifact, changelog, release-review, current_release/releases[]/task-done, or tag state changed.",
+  "validation": [
+    "scripts/check-docs.sh -> 'check-docs: PASS' (nine 'ok:' sections including 'ok: limitations index covers all IDs'); exit 0. Run after the edits, then the sensitivity probe failed as expected, then PASS again after the row was restored.",
+    "Sensitivity probe: removing the V12-F7-1 index row made scripts/check-docs.sh report 'FAIL: limitation V12-F7-1 missing from index' (check-docs: FAIL, exit 1); restoring the row returned to PASS (exit 0).",
+    "dotnet run scripts/render-docs-state.cs -- --check -> exit 0: 'status.md: up to date', 'PLANS.md: up to date' (twice), 'PLANS.md and state.json agree'.",
+    "git diff --stat -> 3 files changed, 70 insertions(+), 10 deletions(-): docs/limitations/00-index.md 1 +, docs/limitations/accepted.md 76 ++++++...------, docs/plan/state.json 3 +-. The new report file is untracked and therefore not shown by git diff.",
+    "git diff docs/plan/state.json -> only the limitations.accepted array addition ('V12-F6-2' -> 'V12-F6-2', 'V12-F7-1'); no current_release, releases[], task done flag, or tag state changed.",
+    "grep for the P1 old wording 'the current `1.1.0.0` identity' and 'the current `1.1.0.0` artifact' in docs/limitations/accepted.md -> no matches; the P1 paragraph now reads 'the current corrected `1.2.0.0` release identity'."
+  ],
+  "changed_files": [
+    "docs/limitations/accepted.md",
+    "docs/limitations/00-index.md",
+    "docs/plan/state.json",
+    "docs/implementation/final-review/v1.2-limitation-registration.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "RR-V12-1: register F-21.13-2 as an accepted limitation in docs/limitations/accepted.md with an index row in docs/limitations/00-index.md, stating the finding, the consequence, the evidence, that it is accepted for v1.2 by the release review, and that recovery is an out-of-band operator action",
+      "evidence": "docs/limitations/accepted.md section 'v1.2 release-review accepted limitations (F7 ownership recovery)', entry V12-F7-1 (finding, precondition, behaviour, consequence, evidence, disposition); docs/limitations/00-index.md row; scripts/check-docs.sh PASS"
+    },
+    {
+      "criterion": "Add the new ID to docs/plan/state.json limitations.accepted, keeping the array sorted",
+      "evidence": "git diff docs/plan/state.json (V12-F7-1 after V12-F6-2); dotnet run scripts/render-docs-state.cs -- --check exit 0"
+    },
+    {
+      "criterion": "Refresh the stale P1 wording to name 1.2.0.0 / artifacts/ArrTags_1.2.0.0.zip as the current identity while keeping the pinned-toolchain limitation substance",
+      "evidence": "docs/limitations/accepted.md P1 (lines 145-150 and the verification note); old P1 wording no longer present"
+    },
+    {
+      "criterion": "Do not set current_release/releases[], mark 21.6 done, create a tag, or change the artifact/code/tests",
+      "evidence": "git diff docs/plan/state.json shows only the limitations.accepted addition; git status shows only the three modified tracked docs plus the new untracked report"
+    },
+    {
+      "criterion": "Persist a short worker report recording the change and evidence without overwriting an existing report",
+      "evidence": "docs/implementation/final-review/v1.2-limitation-registration.json (new file; the directory contained no report of this name)"
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "Which ID to use for the registered item",
+      "chosen": "V12-F7-1",
+      "basis": "The release review's recommended action suggested 'a new ID, e.g. V12-F7-2, or an extension of P5', and the task brief suggested V12-F7-1. No V12-F7-* ID exists and the register numbers each new feature area from -1 (V12-F3-1, V12-F4-1, V12-F6-1), while V12-F7-2 would imply a V12-F7-1 predecessor that does not exist; F7/ADR-024 is the artwork-ownership area.",
+      "impact": "ID only; the register convention is preserved and no other entry is renumbered."
+    },
+    {
+      "question": "Whether P1 may name the 1.2.0.0 artifact as the current identity while state.json current_release remains 1.1.0.0 (the post-gate advance is explicitly out of scope)",
+      "chosen": "P1 names 'the current corrected 1.2.0.0 release identity' and retains the 1.1.0.0 identity as prior history",
+      "basis": "The task explicitly requires the P1 refresh and explicitly forbids setting current_release/releases[]/done; docs/release/build-and-release.md already presents artifacts/ArrTags_1.2.0.0.zip as the current corrected 1.2.0.0 release artifact, and docs/status.md remains the pre-gate generated view until the orchestrator's advance (RR-V12-2).",
+      "impact": "Interim and intentional: generated docs/status.md still reports 1.1.0.0 as current_release until the post-gate state advance. check-docs.sh section 6 and render-docs-state --check still pass because they compare state.json with docs/release/build-and-release.md, not accepted.md."
+    },
+    {
+      "question": "Whether to add 1.2.0.0 byte-stability wording to P1's verification note",
+      "chosen": "Added one sentence: 'three recorded runs produced the identical SHA-256 2a039fc7... and MD5', sourced from docs/release/build-and-release.md",
+      "basis": "P1's first paragraph now claims byte-identity for the 1.2.0.0 artifact; the release record documents the repeated clean-build runs and the v1.2 release review additionally reproduced the archive clean-room from git archive HEAD.",
+      "impact": "Documentation precision only; no new claim beyond the release record."
+    },
+    {
+      "question": "Placement and heading of the new accepted-limitations section",
+      "chosen": "'## v1.2 release-review accepted limitations (F7 ownership recovery)', appended after the v1.2 phase 19 section",
+      "basis": "No phase-20 accepted-limitations section existed; the item is registered by the v1.2 release review (RR-V12-1) rather than by the Phase 20 phase review, and the file already uses release-review sections for such registrations.",
+      "impact": "Structure only; keeps the phase-based sections intact."
+    }
+  ],
+  "test_sensitivity": [
+    "Documentation guard probe: deleting the '| `V12-F7-1` |' row from docs/limitations/00-index.md made scripts/check-docs.sh fail with 'FAIL: limitation V12-F7-1 missing from index' (check-docs: FAIL, exit 1); restoring the row returned 'check-docs: PASS' (exit 0). This proves the new index row and the check-docs coverage check are genuinely paired.",
+    "No production behaviour changed (documentation-only), so no code-test sensitivity applies."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/limitations/accepted.md",
+      "docs/limitations/00-index.md",
+      "docs/plan/state.json"
+    ],
+    "old_values_removed": [
+      "the P1 phrase 'the current `1.1.0.0` identity' (now 'the current corrected `1.2.0.0` release identity')",
+      "the P1 phrase 'the current `1.1.0.0` artifact is byte-stable' (now 'that artifact was byte-stable')"
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "V6 in docs/limitations/accepted.md still says 'The current `1.1.0.0` release matrix is: ...' with the v1.1 suite counts. That paragraph belongs to the post-gate RR-V12-2 state advance (current_release -> 1.2.0.0, releases[] 1.2.0 COMPLETE, 21.6 done, tag) and was left unchanged per this task's explicit scope.",
+    "RR-V12-1 is satisfied as a documentation registration only: v1.2 still has no owner-facing in-product recovery path for an item in the fail-closed ownership state, and PLANS.md assigns no task to one. Open follow-up for the orchestrator to record, not assigned to a later task.",
+    "RR-V12-2's other clauses (current_release advance, releases[] 1.2.0 COMPLETE, 21.6 done/checkbox, re-render, and the annotated tag) remain open by explicit instruction and are the orchestrator's post-gate step."
+  ],
+  "ready_for_next_task": true
+}

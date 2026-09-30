@@ -99,7 +99,7 @@ as ADR-016 onward in [`docs/decisions/00-index.md`](docs/decisions/00-index.md).
 ## V1.2 Goals
 
 V1.2 is an additive release. Its scope, goals, decision gates, and task outline
-are defined in [`docs/planning/v1.2.md`](docs/planning/v1.2.md); the V1 scope and
+are defined in [`docs/plan/archive/v1.2-plan.md`](docs/plan/archive/v1.2-plan.md); the V1 scope and
 success criteria above remain authoritative for V1, and the V1.1 goals remain in
 force. V1.2 decisions are recorded as ADR-022 onward in
 [`docs/decisions/00-index.md`](docs/decisions/00-index.md) (accepted;

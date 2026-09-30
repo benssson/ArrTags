@@ -114,3 +114,4 @@ review are separate and are not declared by this document.
 | `V12-F4-6` | Overlapping whole-scope runs are not cross-run locked (INFORMATIONAL, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-F6-1` | The configuration version can advance between the metadata publication and the artwork stage of the same pass (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |
 | `V12-F6-2` | The stale-basis re-enqueue's bounded drop is not logged or counted (INFORMATIONAL, accepted) | Accepted | [`accepted.md`](accepted.md) |
+| `V12-F7-1` | An item whose active image was re-adopted by a host refresh enters the fail-closed ownership state with no in-product recovery trigger (LOW, accepted) | Accepted | [`accepted.md`](accepted.md) |

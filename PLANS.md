@@ -10,18 +10,18 @@ scheduling view for the active scope; completed phases are archived in
 ## Active Planning Scope
 
 <!-- BEGIN GENERATED: active-scope -->
-**Active plan:** `docs/planning/v1.2.md`.
+**Active plan:** none.
 <!-- END GENERATED: active-scope -->
 
-**v1.2 is accepted.** Its scope, goals, decision gates, dependency order, task outline, and verification
-requirements are defined in [`docs/planning/v1.2.md`](docs/planning/v1.2.md). v1.2 is Phases 15-21 (version
-`1.2.0.0`, release tag `v1.2.0`, phase tags `v1.2.0-phase<N>`); the v1.1 release (Phases 9-14) is complete and
-archived. The v1.2 decision records ADR-022 through ADR-028 are **accepted** (`Accepted (v1.2)`).
-Decision gates DG-19, DG-20, and DG-21 (mechanisms for F4, F6, and F7) are resolved by the accepted plan and
-their ADRs, so their dependent tasks are no longer gated. F3, F4, F6, F7, and F8 were promoted by v1.2 and
-are resolved by their phases: F8 by Phase 15 (task 15.4), F3 by Phase 17 (task 17.4), F4 and F6 by Phase 19
-(task 19.5), and F7 by Phase 20 (task 20.3). F5 is accepted as a known shipped limitation (not Open) and is
-not promoted.
+**No scope is currently accepted for planning.** v1.2 (Phases 15-21, version `1.2.0.0`, release tag
+`v1.2.0`) is complete and archived: the phase text is in
+[`docs/plan/archive/v1.2.md`](docs/plan/archive/v1.2.md) and its accepted scope plan is in
+[`docs/plan/archive/v1.2-plan.md`](docs/plan/archive/v1.2-plan.md). The v1.2 decision records ADR-022
+through ADR-029 are **accepted** (`Accepted (v1.2)`); decision gates DG-15 through DG-22 are resolved. F3,
+F4, F6, F7, and F8 were promoted by v1.2 and are resolved by their phases (F8 by Phase 15, F3 by Phase 17,
+F4 and F6 by Phase 19, F7 by Phase 20); F5 is accepted as a known shipped limitation (not Open) and is not
+promoted.
+
 The orchestrator determines the active scope from this pointer. When a new scope is accepted, its plan is
 placed under `docs/planning/`, this pointer is updated to name it, and the implementation-planner derives its
 phases into this file using the existing conventions. Phases continue the global numbering, and prior phases
@@ -46,249 +46,21 @@ are never renumbered or reopened; on completion a release's phases are moved ver
   matching, metadata, rendering, and cache pipeline consumes the canonical models.
 - Every milestone must leave Jellyfin safe when the provider, cache, matcher, or renderer fails.
 
-## Active Phases (v1.2)
+## Active Phases
 
-**Scope:** The accepted v1.2 scope is [`docs/planning/v1.2.md`](docs/planning/v1.2.md) (Goals G6-G9;
-limitations F3, F4, F6, F7, F8; decision gates DG-15..DG-22; dependency order section 5; task outline
-section 6; documentation checklist section 7; verification requirements section 9). Its decision records
-ADR-022..ADR-028 are **accepted** (`Accepted (v1.2)`); DG-19, DG-20, and DG-21 are resolved by the accepted
-plan and their ADRs, so their tasks are no longer gated. F5 is accepted as a known shipped limitation and
-excluded. Phases 1-14 are complete and are not restructured, reordered, or reopened; v1.2 is additive from
-Phase 15.
-
-**Phase 21 corrective work (SEC-21.5-01).** The 21.5 release security review recorded one new open
-MEDIUM finding: the four named provider HTTP clients inherit .NET's default `AllowAutoRedirect=true`,
-so the `X-Api-Key` header applied by `SecretLease.ApplyTo` is re-sent to whatever origin a `3xx`
-`Location` names, contrary to ADR-005's "current request only". The user chose to fix and re-verify,
-so 21.7 corrects the transport, then 21.8-21.10 re-derive the artifact identity, live matrix, and
-security review that the fix invalidates, before 21.6 tags the release; the 21.1-21.5 records are
-preserved verbatim and 21.8-21.10 are re-executions, not corrections, of 21.3-21.5. Definitions:
-[`v1.2-phase-21-sec-21-5-01-correction.json`](docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json).
-
-**Phase 21 corrective work (SEC-21.5-02, SEC-21.5-03).** The 21.10 release security review re-verified the two
-carried LOW log-subject residuals as still **open**: the bounded subject removes Unicode `Cc` scalars only, so
-`Cf` format characters and the `Zl`/`Zp` separators a media file name can carry reach the operator log verbatim
-(SEC-21.5-02), and the file-name component is taken with host-platform `Path.GetFileName` semantics, so a
-Windows-style or UNC primary path is emitted whole on the pinned Linux host (SEC-21.5-03). The user chose to fix
-them rather than accept them, so 21.11 hardens `LogSubject` and its tests, then 21.12-21.14 re-derive the artifact
-identity, live matrix, and security review that the fix invalidates, before 21.6 tags the release; the 21.1-21.10
-records are preserved verbatim and 21.12-21.14 are re-executions, not corrections, of 21.8-21.10.
-SEC-21.5-04 duplicates the already-accepted `SEC-2` and is explicitly **not** in this fix. Definitions:
-[`v1.2-phase-21-log-subject-correction.json`](docs/implementation/planning/v1.2-phase-21-log-subject-correction.json).
-
-**Phase set and ordering.** The phases follow the v1.2 dependency order: logging first (cross-cutting; amends
-a security contract), then the settings byte-unit and restart-required work, then the F3 diagnostics surface
-that extends the same page, then the output-affecting Extra Large size, then the F4/F6 reconciliation work,
-then the F7 artwork pass-through change, and the v1.2 release last. A phase is finalized only after its
-`phase-reviewer` gate passes and the phase tag `v1.2.0-phase<N>` is created; phases do not auto-advance.
-
-**v1.2 phase map and task-outline mapping.** The flat task outline in
-[`docs/planning/v1.2.md`](docs/planning/v1.2.md) section 6 maps as follows: V1.2-1 (planning) is complete with
-this package; V1.2-2 -> 15.1-15.4; V1.2-3 -> 16.1-16.6; V1.2-4 -> 17.1-17.4; V1.2-5 -> 18.1-18.3; V1.2-6 ->
-19.1-19.5; V1.2-7 -> 20.1-20.3; V1.2-8 -> 21.1-21.6. Tasks 21.7-21.14 are corrective work added after the
-21.5 and 21.10 reviews; no outlined work is dropped or renumbered.
-
-### 15. Plugin log subject identifier and render classification
-
-**Goal:** G9 and F8 (ADR-026; ADR-020 clause 4 as amended).
-**Objective:** Replace the Jellyfin item id in log output with a bounded file name (item-id fallback when no path
-is available) and emit the bounded render classification, under an amended ADR-020 clause 4, with a fresh
-security review.
-**Deliverables:** a bounded log-subject policy/helper; threading through the identity-bearing sites and explicit
-fallbacks at the sites without an identity; the render classification on the artwork log line; the ADR-020
-amendment and the logging security review.
-**Tasks:**
-- [x] 15.1 Bounded log-subject policy and helper
-- [x] 15.2 Thread the bounded log subject through the identity-bearing and fallback sites
-- [x] 15.3 Emit the bounded render classification in the artwork log
-- [x] 15.4 Logging documentation, ADR-020 amendment, and security review
-**Authoritative Phase 15 execution order:** 15.1, 15.2, 15.3, 15.4
-**Phase acceptance criteria:** the file-name-only subject (bounded, control characters stripped, item-id
-fallback) is emitted where a path is available and the item id where it is not, including the mixed
-`MetadataReconciliationProcessor` discard site that falls back to the item id when no path exists; no directory
-or secret appears in any log output; the bounded classification is emitted; ADR-020 clause 4 is amended (adding
-the subject and the explicit directory/full-path exclusion) and the log path is security-reviewed.
-**Gate 15:** Met when tasks 15.1-15.4 meet their acceptance criteria, the logging security review is recorded
-with no open BLOCKER/HIGH, the phase review is approved, and the tag `v1.2.0-phase15` is created.
-
-### 16. Settings byte units and restart-required surfacing
-
-**Goal:** G6 and G8 (ADR-028).
-**Objective:** Expose byte-denominated limits in a fixed binary unit per field (MB, with the webhook payload limit
-in KB) with exact byte round-trip at the 64 KiB minima as well as the defaults and maxima, and add
-restart-required note text plus a modal reminder on change for settings that only take effect after a host
-restart.
-**Deliverables:** a bytes<->unit conversion helper with per-field MB/KB mapping and unit-labelled validation
-ranges; the authoritative, code-evidenced restart-required set; restart-required note text on the settings page;
-the modal reminder (subject to the `jellyfin-expert` spike) with note text as the fail-open behavior; ADR-028
-and the canonical documentation.
-**Tasks:**
-- [x] 16.1 Byte/unit conversion helper and per-field MB/KB mapping (explicit off-step rejection)
-- [x] 16.2 Authoritative restart-required set with code evidence
-- [x] 16.3 Restart-required note text on the settings page
-- [x] 16.4 Modal-on-change research spike (`jellyfin-expert`)
-- [x] 16.5 Modal-on-change implementation (fail-open to note text)
-- [x] 16.6 G6/G8 documentation and integration verification
-**Authoritative Phase 16 execution order:** 16.1, 16.2, 16.3, 16.4, 16.5, 16.6
-**Phase acceptance criteria:** byte limits are displayed in a fixed binary unit per field with exact
-min/default/max round-trip (including the 64 KiB minima) and the persisted representation stays bytes; a value
-off its field's fixed step is rejected by an explicit step-multiple check (task 16.1), since the existing range
-validation does not enforce step alignment; the restart-required set is code-owned, evidenced, and testable with
-mixed settings classified restart-required; every restart-required setting carries note text; the modal fires on
-change when available and falls back to the note text otherwise.
-**Gate 16:** Met when tasks 16.1-16.6 meet their acceptance criteria, the modal spike has recorded the API
-decision, the phase review is approved, and the tag `v1.2.0-phase16` is created.
-
-### 17. Read-only diagnostics status surface
-
-**Goal:** F3 (ADR-025).
-**Objective:** Add a read-only status panel to the existing ArrTags settings page, backed by a new
-administrator-authenticated plugin endpoint exposing bounded, secret-free counters.
-**Deliverables:** a bounded diagnostics snapshot model derived from existing bounded sources; an
-elevation-gated read-only endpoint; the read-only settings panel; ADR-025, canonical documentation, and a
-security review of the endpoint and panel.
-**Tasks:**
-- [x] 17.1 Bounded diagnostics metrics model and instrumentation
-- [x] 17.2 Administrator-authenticated status endpoint
-- [x] 17.3 Read-only status panel on the settings page
-- [x] 17.4 F3 documentation and security review
-**Authoritative Phase 17 execution order:** 17.1, 17.2, 17.3, 17.4
-**Phase acceptance criteria:** the endpoint is read-only, requires elevation, and returns a fixed counter set
-(queue depth/in-flight, provider health, matching failures, cache hits/misses, render failures, stale metadata)
-with no secret, path, item name, provider payload, or unbounded collection; the panel is served from the
-anonymous static page resource but renders no data when the endpoint is not authorized (fail-closed); F3 is
-recorded as resolved.
-**Gate 17:** Met when tasks 17.1-17.4 meet their acceptance criteria, the endpoint security review is recorded
-with no open BLOCKER/HIGH, the phase review is approved, and the tag `v1.2.0-phase17` is created. Resolves F3.
-
-### 18. Extra Large badge size
-
-**Goal:** G7 (ADR-027).
-**Objective:** Add `BadgeSize.ExtraLarge` (factor 2.0), extend the `BadgeGeometry.SizeFactor` switch and the
-`RendererConfiguration` validation coverage for the new value, order the settings dropdown
-Small/Medium/Large/Extra Large, and record and verify the `RenderVersion` decision with golden coverage.
-**Deliverables:** the Extra Large enum member and geometry factor with safe-area clamping; the dropdown ordering;
-the ADR-027 version decision (no advance, existing goldens byte-identical, new Extra Large goldens);
-documentation.
-**Tasks:**
-- [x] 18.1 Extra Large enum, geometry factor, and settings dropdown ordering
-- [x] 18.2 Golden coverage and version-decision verification
-- [x] 18.3 G7 documentation and integration verification
-**Authoritative Phase 18 execution order:** 18.1, 18.2, 18.3
-**Phase acceptance criteria:** Extra Large renders at 2.0x Medium and never paints outside the safe area; the
-dropdown order is Small, Medium, Large, Extra Large; existing goldens are byte-identical and the version decision
-is recorded; new Extra Large goldens are deterministic and the fingerprint includes the non-default size.
-**Gate 18:** Met when tasks 18.1-18.3 meet their acceptance criteria, the golden oracle verifies the version
-decision, the phase review is approved, and the tag `v1.2.0-phase18` is created.
-
-### 19. Reconciliation coverage and version-aware coalescing
-
-**Goal:** F4 and F6 (ADR-022 as amended by ADR-029; ADR-023). **Decision gates:** DG-19 and DG-20 are resolved
-by the accepted ADRs, so the Phase 19 implementation tasks are no longer gated.
-**Objective:** Guarantee successive-run coverage of a scope larger than `QueueCapacity` and stop a post-save
-re-render from being dropped by version-blind coalescing.
-**Deliverables:** the accepted F4 mechanism (ADR-022 as amended by ADR-029, Accepted (v1.2): a persisted
-`(SortName, itemId)` cursor plus a bounded enqueue-outcome vocabulary and resume-capable enumerator) with a
-bounded `Cache`-authority state record and scope-reset rule; coverage tests including the coalesce/in-flight/
-overflow and library-mutation cases; the accepted F6 mechanism (ADR-023, Accepted (v1.2): a
-`ConfigurationStale` discard classification with a bounded re-enqueue after the in-flight slot is released);
-coalescing coverage tests; ADR-022 (as amended by ADR-029)/ADR-023 and the architecture documentation.
-**Tasks:**
-- [x] 19.1 F4 mechanism confirmation and persisted-cursor implementation
-- [x] 19.2 F4 successive-run coverage tests
-- [x] 19.3 F6 mechanism confirmation and stale-basis re-enqueue implementation
-- [x] 19.4 F6 coalescing coverage tests
-- [x] 19.5 F4/F6 documentation and integration verification
-**Authoritative Phase 19 execution order:** 19.1, 19.2, 19.3, 19.4, 19.5
-**Phase acceptance criteria:** successive scheduled/post-scan runs cover a scope larger than `QueueCapacity`
-(round-robin) with one run still bounded; a coalesced or in-flight item does not stall the run and the run stops
-at the first overflow; the cursor is a bounded, secret-free `(SortName, itemId)` `Cache` record that resets on
-scope change and is stable under library mutation; event/webhook/per-item/post-save triggers are unchanged; a
-`ConfigurationStale` discard re-enqueues one current-version work item after the in-flight slot is released,
-bounded per (item, surface, version), while a non-version discard does not re-enqueue and the version-blind key
-and single-flight are unchanged.
-**Gate 19:** Met when tasks 19.1-19.5 meet their acceptance criteria, the F4 and F6 coverage tests pass, the
-phase review is approved, and the tag `v1.2.0-phase19` is created. Resolves F4 and F6.
-
-### 20. Empty-selection artwork restoration
-
-**Goal:** F7 (ADR-024). **Decision gate:** DG-21 is resolved by the accepted ADR, so the Phase 20 implementation
-task is no longer gated.
-**Objective:** Restore the retained source baseline (or remove the ArrTags image when no baseline existed) when an
-owned session resolves an **empty resolved selection**, while preserving the current artwork for the other
-pass-through reasons, including a non-empty selection that cannot fit (`NoFittingBadge`).
-**Deliverables:** the empty-selection restore/removal behavior through the guarded lifecycle protocol and the
-internal `ArtworkPublisher.RestoreAsync` entry point; a distinct `NoFittingBadge` pass-through reason for a
-non-empty layout-empty render; unchanged preservation for the other pass-through reasons; ADR-024 plus ADR-009,
-ADR-002, and ADR-003 amendment notes; coverage tests.
-**Tasks:**
-- [x] 20.1 Empty-selection restore/removal behavior
-- [x] 20.2 F7 coverage tests
-- [x] 20.3 F7 documentation and integration verification
-**Authoritative Phase 20 execution order:** 20.1, 20.2, 20.3
-**Phase acceptance criteria:** an owned empty selection restores the baseline, or removes the ArrTags image when
-the baseline was absent, through the crash-recoverable protocol and the internal `ArtworkPublisher.RestoreAsync`
-entry point (resumed on restart by the ordinary recovery gate); the other pass-through reasons preserve the
-current artwork and mutate nothing, including a non-empty selection that cannot fit; a non-owned empty selection
-stays a pass-through; the absent-baseline removal is exercised by a direct publisher test with a synthetic
-persisted `Published` state without a baseline; coverage tests pass and F7 is recorded as resolved.
-**Gate 20:** Met when tasks 20.1-20.3 meet their acceptance criteria, the coverage tests pass, the phase review
-is approved, and the tag `v1.2.0-phase20` is created. Resolves F7.
-
-### 21. v1.2 release
-
-**Goal:** v1.2 release (outline task V1.2-8).
-**Objective:** Bump ArrTags to `1.2.0.0`, reconcile the canonical documentation, build and package
-reproducibly, run the full suite and the live pinned-host verification, run the release security review, and
-complete the changelog, release-readiness verification, manifest commit, and the annotated `v1.2.0` tag. After
-the 21.5 review, correct the provider transport so a redirect cannot carry `X-Api-Key` off the configured
-connection, then re-derive the artifact identity, the live matrix, and the security review against the corrected
-build. After the 21.10 review, harden the bounded log subject so no non-printing/format/separator scalar and no
-directory chain can reach the operator log, then re-derive the artifact identity, the live matrix, and the
-security review against that build too, so the tagged candidate is the fully corrected one.
-**Deliverables:** version `1.2.0.0` in `build.yaml` and `Directory.Build.props`; the reconciled canonical
-documentation; the provider transport that cannot carry `X-Api-Key` across a redirect; a hardened bounded log
-subject that strips the non-printing scalar categories and takes the final path component independently of host
-separator semantics, with tests that fail on the pre-fix code; a reproducible `artifacts/ArrTags_1.2.0.0.zip`;
-the full default and host-guarded suites passing; the recorded live pinned-host verification; the release
-security review with SEC-21.5-02 and SEC-21.5-03 dispositioned resolved; the changelog, `manifest.json`, and the
-annotated tag after the release-review gate; the GitHub publish remains the user's manual step.
-**Tasks:**
-- [x] 21.1 Version bump and release metadata
-- [x] 21.2 Canonical documentation reconciliation
-- [x] 21.3 Release build, full suite, reproducible artifact, and release documentation
-- [x] 21.4 Live pinned-host verification
-- [x] 21.5 Release security review
-- [ ] 21.6 Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag
-- [x] 21.7 Provider transport: never follow a redirect (fix SEC-21.5-01) with a non-egress test
-- [x] 21.8 Corrected release build, full suite, reproducible artifact, and release documentation
-- [x] 21.9 Live pinned-host verification of the corrected artifact
-- [x] 21.10 Release security review of the corrected candidate
-- [x] 21.11 Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)
-- [x] 21.12 Corrected release build, full suite, reproducible artifact, and release documentation
-- [x] 21.13 Live pinned-host verification of the corrected artifact
-- [x] 21.14 Release security review of the corrected candidate
-**Authoritative Phase 21 execution order:** 21.1, 21.2, 21.3, 21.4, 21.5, 21.7, 21.8, 21.9, 21.10, 21.11, 21.12, 21.13, 21.14, 21.6
-**Phase acceptance criteria:** the version is `1.2.0.0`; the canonical documentation reflects v1.2 with no stale
-claim; no provider request follows an HTTP redirect, so `X-Api-Key` is sent only to the configured connection and
-never to a `3xx Location` target (ADR-005); the bounded log subject emits no Unicode `Cc`, `Cf`, `Zl`, or `Zp`
-scalar and never a directory, drive, share, or parent chain regardless of host separator semantics, keeping the
-128-scalar bound, the single-pass surrogate-safe normalization, and the empty/whitespace/control-only item-id
-fallback (ADR-026); `./build.sh package` produces a reproducible `artifacts/ArrTags_1.2.0.0.zip` whose recorded
-identity comes from the **fully corrected** build (21.7 and 21.11 both included); the default and host-guarded
-suites and the live pinned-host matrix pass against that artifact; the release security review of the corrected
-candidate has no open BLOCKER/HIGH and dispositions SEC-21.5-01, SEC-21.5-02, and SEC-21.5-03 as resolved; the
-annotated tag `v1.2.0` is created after the release-review gate.
-**Gate 21:** Met when tasks 21.1-21.14 meet their acceptance criteria, the full suite and live matrix pass against
-the fully corrected artifact, the release security review of that artifact has no open BLOCKER/HIGH, the
-phase and release reviews pass, and the annotated tag `v1.2.0` is created.
+None: no release scope is currently accepted for planning, so this file carries no active phase
+sections. The most recent release, v1.2 (Phases 15-21), is complete; its phase text, task list, and
+execution orders are preserved verbatim in
+[`docs/plan/archive/v1.2.md`](docs/plan/archive/v1.2.md), and its accepted scope plan in
+[`docs/plan/archive/v1.2-plan.md`](docs/plan/archive/v1.2-plan.md). The machine state for those phases
+and tasks remains in [`docs/plan/state.json`](docs/plan/state.json).
 
 ## Milestone Status
 
 <!-- BEGIN GENERATED: milestone-status -->
 | # | Milestone | Status | Exit gate |
 | --- | --- | --- | --- |
-| 21 | v1.2 release | PLANNED | Gate 21 |
+| — | No active milestone | — | No release scope is currently accepted for planning. |
 <!-- END GENERATED: milestone-status -->
 
 Completed milestones and their gates are recorded in
@@ -296,11 +68,13 @@ Completed milestones and their gates are recorded in
 
 ## Completed Milestones
 
-All milestones through Phase 14 (v1.1) are complete and archived verbatim:
+All milestones through Phase 21 (v1.2) are complete and archived verbatim:
 
 - V1 (Phases 1-8): [`docs/plan/archive/v1.md`](docs/plan/archive/v1.md)
 - v1.1 (Phases 9-14): [`docs/plan/archive/v1.1.md`](docs/plan/archive/v1.1.md)
+- v1.2 (Phases 15-21, tag `v1.2.0`): [`docs/plan/archive/v1.2.md`](docs/plan/archive/v1.2.md)
 - v1.1 scope plan: [`docs/plan/archive/v1.1-plan.md`](docs/plan/archive/v1.1-plan.md)
+- v1.2 scope plan: [`docs/plan/archive/v1.2-plan.md`](docs/plan/archive/v1.2-plan.md)
 - V1 readiness history: [`docs/plan/archive/v1-readiness.md`](docs/plan/archive/v1-readiness.md)
 
 Machine state: [`docs/plan/state.json`](docs/plan/state.json).

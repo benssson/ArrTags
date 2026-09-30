@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "updated_utc": "2026-09-30T13:22:54Z",
-  "active_scope": "docs/planning/v1.2.md",
-  "active_scope_note": "v1.2 (Phases 15-21) is accepted: goals G6-G9 and limitations F3, F4, F6, F7, F8. Decision gates DG-15..DG-22; decision records ADR-022..ADR-028 are accepted (Accepted (v1.2)). DG-19, DG-20, and DG-21 (the F4, F6, and F7 mechanisms) are resolved by the v1.2 plan and their ADRs, so their dependent tasks are no longer gated. F5 is accepted as a known shipped limitation (reclassified from Open) and is excluded. Phase 21 additionally carries corrective tasks 21.7-21.14: the 21.5 release security review recorded the new open MEDIUM finding SEC-21.5-01 (the provider clients follow HTTP redirects, so X-Api-Key is re-sent to a 3xx Location origin, contrary to ADR-005), which the user decided to fix now and re-verify rather than accept, and the 21.10 review re-verified the two carried LOW log-subject residuals SEC-21.5-02 (the subject removes Cc scalars only, so Cf format characters and Zl/Zp separators reach the log verbatim) and SEC-21.5-03 (the file-name component uses host-platform Path.GetFileName semantics, so a Windows-style or UNC path is emitted whole on the pinned Linux host) as still open, which the user also decided to fix rather than accept. Tasks 21.12, 21.13, and 21.14 re-derive the deliverables of 21.8, 21.9, and 21.10 against the fully corrected build; SEC-21.5-04 duplicates the already-accepted SEC-2 and is not part of this fix. 21.6 (changelog, release readiness, manifest commit, annotated v1.2.0 tag) runs last and updates the release record for the new artifact identity.",
+  "updated_utc": "2026-09-30T13:55:45Z",
+  "active_scope": null,
+  "active_scope_note": "v1.2 (Phases 15-21, version 1.2.0.0, tag v1.2.0) is COMPLETE: Gates 15-21 are met and its phases were archived verbatim from PLANS.md to docs/plan/archive/v1.2.md, with the accepted v1.2 scope plan preserved at docs/plan/archive/v1.2-plan.md. All phases 1-21 are complete, so PLANS.md holds no active phase sections and docs/planning/ is empty. No release scope is currently accepted for planning: active_scope stays null until the user accepts a new plan, which is placed under docs/planning/, named by this pointer, and whose phases continue the global numbering from Phase 22 without renumbering or reopening prior phases. The v1.2 goals G6-G9 remain in force, decision records ADR-022..ADR-029 are Accepted (v1.2), decision gates DG-15..DG-22 are resolved, and limitations F3, F4, F6, F7, and F8 are resolved by their phases (F5 remains an accepted known shipped limitation).",
   "releases": [
     {
       "version": "0.1.0",
@@ -42,7 +42,7 @@
     {
       "version": "1.2.0",
       "tag": "v1.2.0",
-      "status": "PLANNED",
+      "status": "COMPLETE",
       "phases": [
         "15",
         "16",
@@ -55,40 +55,40 @@
     }
   ],
   "current_release": {
-    "version": "1.1.0.0",
-    "tag": "v1.1.0",
+    "version": "1.2.0.0",
+    "tag": "v1.2.0",
     "status": "COMPLETE",
     "published": false,
     "artifact": {
-      "path": "artifacts/ArrTags_1.1.0.0.zip",
-      "bytes": 594931,
-      "sha256": "85730fe7b3fb8b03c86a87228dc1043d42844b372a9493d4caf5bba4a7e836e1",
-      "md5": "547beb2f7d83cd256d3a3ce7bb7e7620",
+      "path": "artifacts/ArrTags_1.2.0.0.zip",
+      "bytes": 619861,
+      "sha256": "2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268",
+      "md5": "631fbfa5a4fb58fac5a877eeef761193",
       "entries": 7
     },
     "suite": {
       "default": {
         "failed": 0,
-        "passed": 1494,
-        "skipped": 63,
-        "total": 1557
+        "passed": 1966,
+        "skipped": 66,
+        "total": 2032
       },
       "host_guarded": {
         "failed": 0,
-        "passed": 1513,
-        "skipped": 44,
-        "total": 1557
+        "passed": 1986,
+        "skipped": 46,
+        "total": 2032
       },
       "forced_native": {
         "failed": 0,
-        "passed": 1575,
-        "skipped": 20,
-        "total": 1595
+        "passed": 2053,
+        "skipped": 21,
+        "total": 2074
       }
     },
-    "live_verification": "docs/implementation/14.3/live-verification.json",
-    "security_review": "docs/implementation/14.4/security-review.json",
-    "release_review": "docs/implementation/final-review/release-review.json",
+    "live_verification": "docs/implementation/21.13/live-verification.json",
+    "security_review": "docs/implementation/21.14/security-review.json",
+    "release_review": "docs/implementation/final-review/release-review-v1.2.json",
     "publish_note": "GitHub release, asset upload, and manifest push remain the user's manual step with scripts/publish-release.sh."
   },
   "phases": [
@@ -1333,9 +1333,10 @@
       "id": 21,
       "name": "v1.2 release",
       "release": "1.2.0",
-      "status": "PLANNED",
+      "status": "COMPLETE",
       "gate": "Gate 21",
       "tag": "v1.2.0",
+      "gate_record": "docs/implementation/final-review/release-review-v1.2.json",
       "execution_order": [
         "21.1",
         "21.2",
@@ -1409,7 +1410,7 @@
         },
         {
           "id": "21.6",
-          "done": false,
+          "done": true,
           "name": "Changelog, release-readiness verification, manifest commit, and the annotated v1.2.0 tag",
           "reports": [
             "docs/implementation/21.6/release-readiness-v1.2-final.json",
@@ -1562,7 +1563,8 @@
       "V12-F4-5",
       "V12-F4-6",
       "V12-F6-1",
-      "V12-F6-2"
+      "V12-F6-2",
+      "V12-F7-1"
     ]
   }
 }
