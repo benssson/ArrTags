@@ -335,13 +335,14 @@ ArrTags is prepared to be installable through the standard Jellyfin plugin
 catalog from the public repository `benssson/ArrTags` once the user pushes the
 committed manifest and publishes the GitHub release. The `v1.2.0` release
 publication has not been performed: Phase 21 task 21.12 regenerated the
-`manifest.json` entry for `1.2.0.0` against the task 21.12 archive (task 21.8
-regenerated it for the post-task-21.7 archive, and task 21.3 first wrote the
-entry for the pre-correction archive), and Phase 21 task 21.6
-creates the manifest commit and the annotated tag `v1.2.0`; the push and the
-GitHub release remain the user's manual step. Until that manifest commit is
-pushed, the raw catalog URL does not list `1.2.0.0`. Jellyfin is pointed at the
-raw manifest URL:
+`manifest.json` entry for `1.2.0.0` against the task 21.12 archive and committed
+it (task 21.8 regenerated it for the post-task-21.7 archive, and task 21.3 first
+wrote the entry for the pre-correction archive), and Phase 21 task 21.6
+finalises the release record; the orchestrator commits that release tree and
+creates the annotated tag `v1.2.0` after the `release-reviewer` gate, and the
+push and the GitHub release remain the user's manual step. Until the committed
+manifest is pushed, the raw catalog URL does not list `1.2.0.0`. Jellyfin is
+pointed at the raw manifest URL:
 
 ```text
 https://raw.githubusercontent.com/benssson/ArrTags/main/manifest.json
@@ -408,7 +409,9 @@ GitHub release in one run. Other flags are `--skip-build`, `--skip-tests`,
 `--no-push`, `--force` (move an existing tag to HEAD), `--tag <tag>` (override
 the derived tag), and `--repo <owner/name>` (default `benssson/ArrTags`). The
 GitHub release and asset upload remain the user's manual step; Phase 21 task
-21.6 only commits `manifest.json` and creates the annotated tag.
+21.6 finalises the release record, and the orchestrator commits that tree and
+creates the annotated tag after the `release-reviewer` gate (`manifest.json` is
+already committed).
 
 ## Verification steps
 
