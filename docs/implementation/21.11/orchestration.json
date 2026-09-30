@@ -3,7 +3,7 @@
   "title": "Harden the bounded log subject: strip non-printing scalars and take the final path component on both separators (fix SEC-21.5-02, SEC-21.5-03)",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "a079358",
   "conformance": {
     "required": false,
     "reason": "Task 21.11 corrects the plugin's own log-subject string handling so no non-printing Unicode scalar and no directory/drive/share component can reach the operator-facing log. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements already-accepted ADR-026 clauses 1-2 and the ADR-020 clause 4 redaction contract (the decision gate DG-22 is resolved). No pre-dispatch specialist conformance check is required.",

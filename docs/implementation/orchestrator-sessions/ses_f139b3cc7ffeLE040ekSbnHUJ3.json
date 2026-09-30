@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 244412,
-    "output": 72987,
-    "reasoning": 59008,
+    "input": 693872,
+    "output": 91877,
+    "reasoning": 75651,
     "cache": {
-      "read": 36509952,
+      "read": 51074560,
       "write": 0
     }
   },
-  "total_tokens": 36886359,
-  "cost_usd": 0.22536185599999994,
-  "duration_seconds": null,
+  "total_tokens": 51935960,
+  "cost_usd": 0.35779447999999986,
+  "duration_seconds": 92333,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-29T17:40:47Z",
+  "last_updated_at": "2026-09-30T11:20:04Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -81,6 +81,13 @@
       "total_tokens": 36886359,
       "duration_seconds": null,
       "note": "Phase 21 task 21.10 corrected release security review completed and committed (359ac1b); open_blocker_high 0, SEC-21.5-01 resolved; duration_seconds recorded as null: the runtime reported 2s for 36886359 tokens, which is not a plausible wall-clock measurement."
+    },
+    {
+      "at": "2026-09-30T11:20:04Z",
+      "cost_usd": 0.35779447999999986,
+      "total_tokens": 51935960,
+      "duration_seconds": 92333,
+      "note": "Phase 21 corrective task 21.11 log-subject hardening (SEC-21.5-02/03) completed and committed (a079358)"
     }
   ]
 }
