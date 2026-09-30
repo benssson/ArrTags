@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 702865,
-    "output": 97046,
-    "reasoning": 76196,
+    "input": 719544,
+    "output": 107345,
+    "reasoning": 80864,
     "cache": {
-      "read": 55066624,
+      "read": 63448960,
       "write": 0
     }
   },
-  "total_tokens": 55942731,
-  "cost_usd": 0.37454802199999987,
+  "total_tokens": 64356713,
+  "cost_usd": 0.4111770799999997,
   "duration_seconds": 92333,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-30T11:54:08Z",
+  "last_updated_at": "2026-09-30T12:50:56Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -95,6 +95,13 @@
       "total_tokens": 55942731,
       "duration_seconds": 92333,
       "note": "Phase 21 task 21.12 fully corrected release build and artifact identity completed and committed (c78a7d6)"
+    },
+    {
+      "at": "2026-09-30T12:50:56Z",
+      "cost_usd": 0.4111770799999997,
+      "total_tokens": 64356713,
+      "duration_seconds": 92333,
+      "note": "Phase 21 task 21.13 fully corrected-artifact live pinned-host verification completed and committed (f54dc85)"
     }
   ]
 }
