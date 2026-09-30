@@ -1,0 +1,144 @@
+{
+  "task": "21.14",
+  "attempt": 1,
+  "reviewer": "implementation-reviewer",
+  "reviewer_status": "APPROVED",
+  "summary": "Independently reviewed the task 21.14 release security review of the fully corrected ArrTags v1.2.0.0 candidate. The evidence file docs/implementation/21.14/security-review.json is coherent, internally consistent, and its load-bearing claims reproduce against the SHIPPED assembly rather than only being asserted. The gate clause under review is met: the review records reviewer_status APPROVED with open_blocker_high = 0, and SEC-21.5-01, SEC-21.5-02, and SEC-21.5-03 each carry an explicit RESOLVED verdict with the verification basis named. I independently confirmed the artifact identity (archive SHA-256 2a039fc7...97268, MD5 631fbfa5...193, 619,861 bytes, 7 entries; packaged ArrTags.dll a077a63d...bbc3 byte-identical to a clean Release build of the audited source at reviewed HEAD 0b7a260), reproduced the SEC-21.5-02 and SEC-21.5-03 resolutions with my own throwaway probe over the shipped ArrTags.dll (237 Cc/Cf/Zl/Zp scalars enumerated, 237 removed, 0 survivors; the full Windows/UNC/device/traversal/URL/trailing-separator path matrix component-only; bound applied after removal), and reproduced both pre-fix negative controls that prove the new tests genuinely pin the fixes (LogSubjectTests 25 of 52 fail with only LogSubject.cs reverted; ProviderRedirectTransportTests 5 of 10 fail with only AllowAutoRedirect removed from the two handler factories). Carried findings are re-verified rather than dropped, the 21.13-03 adjudication is reasoned against the pinned host's documented plugin-configuration contract and hides no new issue, and the review changed no product code, test, canonical document, or artifact. No open BLOCKER or HIGH. APPROVED.",
+  "gate_conformance": {
+    "gate_text": "the release security review of that artifact has no open BLOCKER/HIGH (PLANS.md lines 282-284, Gate 21)",
+    "task_acceptance_criterion": "the release security review of the corrected candidate has no open BLOCKER/HIGH and dispositions SEC-21.5-01, SEC-21.5-02, and SEC-21.5-03 as resolved (PLANS.md lines 277-281, phase acceptance criteria)",
+    "conforms": true,
+    "independent_count_of_open_blocker_high": 0,
+    "reported_open_blocker_high": 0,
+    "count_matches_actual": true
+  },
+  "acceptance_criteria": [
+    {
+      "criterion": "The release security review of the corrected candidate records no open BLOCKER/HIGH, and the recorded count matches the actual set of open BLOCKER/HIGH findings.",
+      "verdict": "MET",
+      "evidence": "docs/implementation/21.14/security-review.json declares open_blocker_high = 0 and reviewer_status APPROVED. Independent recomputation over its findings array: 15 findings total, severities INFORMATIONAL:11, LOW:3, MEDIUM:1, BLOCKER:0, HIGH:0. The four non-INFORMATIONAL findings are SEC-21.5-01 (MEDIUM, status resolved), SEC-21.5-02 (LOW, resolved), SEC-21.5-03 (LOW, resolved), SEC-21.5-04 (LOW, noted/carried as the already-accepted SEC-2). Every status value used is one of the contract's values, and no finding carries a BLOCKER or HIGH severity, so the actual open count is 0 and the reported count is accurate."
+    },
+    {
+      "criterion": "SEC-21.5-01, SEC-21.5-02, and SEC-21.5-03 each carry an explicit disposition (the phase acceptance criterion requires them dispositioned as resolved).",
+      "verdict": "MET",
+      "evidence": "The explicit_dispositions object carries all four IDs: SEC-21.5-01 = RESOLVED, SEC-21.5-02 = RESOLVED, SEC-21.5-03 = RESOLVED, SEC-21.5-04 = 'CARRIED FORWARD AS ALREADY-ACCEPTED SEC-2 — NOT FIXED, NOT A REGRESSION'. Each RESOLVED entry names the concrete verification basis rather than deferring to a prior task report, and each is corroborated by a corresponding finding with status 'resolved' and populated evidence arrays. I independently reproduced the SEC-21.5-02 and SEC-21.5-03 resolutions myself (see tests_checked); the SEC-21.5-01 resolution is corroborated by the repository's own non-egress two-origin test plus a pre-fix control I ran."
+    },
+    {
+      "criterion": "The review is against the shipped/corrected artifact, not a stale build.",
+      "verdict": "MET",
+      "evidence": "reviewed_head = 0b7a26022db73efe26e20757b2c0cb661e839165, which equals git rev-parse HEAD. I independently recomputed artifacts/ArrTags_1.2.0.0.zip as SHA-256 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268, MD5 631fbfa5a4fb58fac5a877eeef761193, 619,861 bytes, 7 entries; extracted ArrTags.dll is 1,347,584 bytes, SHA-256 a077a63dd0c4302dc269339a651c5e07530a596611ca94d6a8c886b68bebbbc3, and a fresh Release build of the source at HEAD produced a byte-identical ArrTags.dll. manifest.json versions[0].checksum equals the archive MD5, and all seven per-entry hashes match the table in docs/release/build-and-release.md. So the reviewed source is the shipped code."
+    },
+    {
+      "criterion": "The SEC-21.5-02 resolution (four-category non-printing removal predicate) and the SEC-21.5-03 resolution (dual-separator final-component extraction) are real and pinned, not asserted.",
+      "verdict": "MET",
+      "evidence": "Independently reproduced against the SHIPPED ArrTags.dll by direct reflection-driven invocation of LogSubject.Create. (a) Predicate: src/ArrTags/Logging/LogSubject.cs:139-146 removes exactly UnicodeCategory Control/Format/LineSeparator/ParagraphSeparator; my exhaustive sweep of U+0000..U+10FFFF (surrogates excluded) found 237 Cc/Cf/Zl/Zp scalars and all 237 were removed with 0 survivors; a targeted injection sweep (LF, CR, VT, FF, ESC, NEL, NUL, DEL, U+009B, U+2028, U+2029, U+202D, U+202E, U+2066, U+2069, U+00AD, U+200B, U+200E, U+200F, U+061C, U+FEFF) all reduced to 'AB'; and letters/marks/numbers/punctuation/symbols/Zs/private-use/unassigned samples were preserved. (b) Extraction: LogSubject.cs:83-87 takes the substring after Math.Max(LastIndexOf('/'), LastIndexOf('\\\\')); 'C:\\Users\\admin\\Videos\\secret.mkv' -> 'secret.mkv', '\\\\fileserver\\media\\secret\\file.mkv' -> 'file.mkv', '\\\\?\\C:\\...\\secret.mkv' -> 'secret.mkv', '//?/C:/secret.mkv' -> 'secret.mkv', both traversal shapes -> 'passwd', 'file:///media/movies/x.mkv' -> 'x.mkv', and trailing-separator/whitespace/empty/null forms fall back to the D-format item identifier. (c) Bound ordering: 10,000 invisible scalars plus a 22-scalar visible tail yielded exactly 'SECRETVISIBLE-TAIL.mkv' and 5,000 visible scalars yielded exactly 128, confirming removal precedes the 128-scalar bound. Both are genuinely pinned by tests: with only LogSubject.cs reverted to its pre-fix content, 25 of 52 LogSubjectTests fail."
+    },
+    {
+      "criterion": "The SEC-21.5-01 resolution (provider clients never follow a redirect, so X-Api-Key is not re-sent) is real and pinned.",
+      "verdict": "MET",
+      "evidence": "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:227-237 configures a primary handler for all four named clients via the two private factories at :241-263, both of which set AllowAutoRedirect = false, and the insecure factory additionally sets only ServerCertificateCustomValidationCallback = DangerousAcceptAnyServerCertificateValidator (so the strict/insecure TLS split is preserved and credential scope is not widened). SonarrClient.cs:414-428 consults a 3xx arm before ReadContentAsync and returns InvalidResponse / Retryability.Never with a fixed code-owned literal, so a 3xx is terminal and never retried or read. The repository's non-egress two-origin test (tests/ArrTags.Tests/ProviderRedirectTransportTests.cs) passes 10/10 at HEAD, asserting the redirect target receives zero requests and the error message carries no key, body, header, or Location value. I ran the pre-fix control by deleting only the two AllowAutoRedirect lines: 5 of 10 tests fail ('ArrTags.Sonarr must not follow redirects'), so the coverage genuinely observes the defect. The only two HttpRequestMessage construction sites in the whole source are SonarrClient.cs:287 and RadarrClient.cs:261, both HttpMethod.Get."
+    },
+    {
+      "criterion": "Carried findings are re-verified or explicitly carried forward, not silently dropped.",
+      "verdict": "MET",
+      "evidence": "The 12 findings from the 21.10 review all reappear in the 21.14 review (SEC-21.5-01..10, SEC-21.10-01, SEC-21.10-02), each with an updated status and re-verification evidence anchored to reviewed HEAD; the 21.5 review's 10 findings are all represented too. prior_findings_reconciled carries 40 entries spanning SEC-1..SEC-12, SR-15.4-01..12, SR-17.4-01..05, SEC-14.4-01..10, the V12-* accepted limitations, and the five F-21.13-* live-verifier findings, each with a status and a note, so no prior item vanishes. I confirmed the underlying 'unchanged since the 21.5 review' claim that several carried findings rest on: git diff 2072ec1 HEAD -- src/ lists only src/ArrTags/Logging/LogSubject.cs, and the state-root fallback at ArrTagsServiceRegistrator.cs:300-302 (SEC-21.5-04 / SEC-2) is byte-unchanged, still registered in docs/limitations/accepted.md as 'SEC-2. State-root resolution falls back to a shared temp path (LOW, open)'."
+    },
+    {
+      "criterion": "The 21.13-03 adjudication (downgrading the live verifier's open MEDIUM F-21.13-3 to INFORMATIONAL) is reasoned and does not hide a real security issue.",
+      "verdict": "MET",
+      "evidence": "The adjudication argues that (a) the administrator configuration GET returning live provider API keys is the host's own documented plugin-configuration contract, not a plugin surface, and the caller is already an elevation-gated administrator who can read the same values from the plugin's ArrTags.xml; and (b) the replace-whole-configuration POST semantics are the host's documented BasePlugin.UpdateConfiguration behaviour, reachable only by an authenticated administrator acting on their own configuration. I verified both premises against the pinned-host research rather than accepting them: docs/research/jellyfin-12-architecture.md lines 820-858 records that Jellyfin.Api.Controllers.PluginsController is class-level [Authorize(Policy = Policies.RequiresElevation)] and that UpdatePluginConfiguration deserializes Request.Body to configPlugin.ConfigurationType and calls UpdateConfiguration, whose BasePlugin<T> implementation is 'Configuration = ...; SaveConfiguration(Configuration);' - i.e. whole-object replacement is the host's contract, not the plugin's choice. A grep for JsonIgnore under src/ArrTags/Configuration/ returns nothing, matching the report. I also confirmed src/ArrTags/Plugin.cs:124-174 validates before base.UpdateConfiguration persists and holds one gate across validate/persist/activate, so an invalid candidate is never written. The downgrade is sound: neither behaviour adds privilege nor opens a new secret surface, the resulting state is a valid (empty-key) configuration rather than corruption, and the review carries the verifier's documentation action forward rather than dismissing it. It correctly stops short of the product decision (warning on a save that disables every provider) and assigns it out of scope."
+    },
+    {
+      "criterion": "The review's limitations are stated honestly and do not conceal a material gap behind the gate.",
+      "verdict": "MET",
+      "evidence": "Eight limitations are recorded, each specific and each naming what was not executed: no pinned host available (live claims cited from the 21.13 matrix, not re-executed), the native SkiaSharp runtime unavailable, the settings page's inline JavaScript never executed (structural review only, consistent with the standing V12-F3-1 / V12-G6-1 / V12-G8-1 qualifiers), SEC-21.5-01 reproduced against a faithful DI/transport reconstruction rather than the host process, the shipped assembly executable only in globalization-invariant mode, the pre-fix control run on a throwaway copy, the 237-scalar enumeration being a lower bound on the predicate's coverage, and the no-modification attestation. The invariant-mode limitation is handled correctly rather than waved away: the report resolves the question by IL inspection of the pinned runtime showing Rune.GetUnicodeCategory reaches no globalization or ICU surface, and bounds the residual risk one-directionally (the worst case is a Cf scalar surviving, i.e. pre-fix behaviour, never a new leak). I confirmed my own probe reproduced the shipped assembly's behaviour with InvariantGlobalization set, consistent with that analysis."
+    },
+    {
+      "criterion": "Scope discipline: the security review changed no product code, test, canonical document, or artifact.",
+      "verdict": "MET",
+      "evidence": "git status --porcelain at review time shows exactly one entry, the untracked directory docs/implementation/21.14/ containing only security-review.json; git diff HEAD is empty. No commit or tag was created by the review. I ran all of my own reproductions under /tmp/21.14/ (extracted archive, probe project, and two throwaway tree copies) and left the workspace source untouched; I reverted my single temporary state.json experiment and confirmed the file is byte-clean again."
+    }
+  ],
+  "findings": [
+    {
+      "id": "REV-21.14-01",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "worker evidence / state reconciliation",
+      "summary": "The 21.14 task is not yet recorded as done in the canonical state; correctly identified as the orchestrator's state update, not a defect in the review.",
+      "detail": "docs/plan/state.json still records task 21.14 with done: false and an empty reports array, and the PLANS.md checkbox at line 270 is unchecked. The review explicitly anticipates and correctly attributes this in its prior_findings_reconciled entry 'review-exemptions / state.json 21.14', stating that adding the report to the reports array and flipping done is the orchestrator's state update and that the review modified no canonical state. That is the right division of labour under docs/agent-contracts.md. I verified that scripts/check-docs.sh and scripts/check-agents.sh both PASS against the current repository state, and that flipping done alone does not trip the report-pairing check, so no check is currently failing. The orchestrator must still perform the state update (done: true plus listing this security-review.json and the reviewer report in the reports array) before the task can be considered closed in the canonical record.",
+      "evidence": [
+        "docs/plan/state.json: task 21.14 -> done: false, reports: []",
+        "PLANS.md:270 -> '- [ ] 21.14 Release security review of the corrected candidate'",
+        "docs/implementation/21.14/security-review.json prior_findings_reconciled entry 'review-exemptions / state.json 21.14'",
+        "docs/agent-contracts.md:20-26 (the reports array lists the evidence reports committed for the task; scripts/check-agents.sh enforces it)",
+        "bash scripts/check-docs.sh -> check-docs: PASS; bash scripts/check-agents.sh -> check-agents: PASS"
+      ],
+      "recommended_action": "Orchestrator: set task 21.14 done to true in docs/plan/state.json, add docs/implementation/21.14/security-review.json and docs/implementation/21.14/reviewer-report.json to its reports array, regenerate the generated status blocks, and tick the PLANS.md checkbox. Not a change to the security review itself."
+    },
+    {
+      "id": "REV-21.14-02",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "worker evidence / report precision",
+      "summary": "A handful of cited line numbers in the review's evidence arrays are approximate rather than exact; no claim is affected.",
+      "detail": "A few evidence citations are off by a small offset from the current file layout - for example SEC-21.5-05 cites AtomicFileWriter.cs:31-60 and StateRepository.cs:19 while SEC-21.5-04 cites ArrTagsServiceRegistrator.cs:300-302, which I confirmed is the correct current location of the state-root fallback. The 'approximately right' citations are all of the form 'this construct is in this file around here', and I was able to confirm every substantive claim they support by reading the cited file. None of these affects the severity, the status, a disposition, or the gate count, and the review's own load-bearing claims are anchored to reproductions rather than to line numbers.",
+      "evidence": [
+        "docs/implementation/21.14/security-review.json SEC-21.5-05, SEC-21.5-06, SEC-21.5-07, SEC-21.5-10 evidence arrays",
+        "src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:300-302 (confirmed exact)",
+        "src/ArrTags/Plugin.cs:124-174 (confirmed exact)"
+      ],
+      "recommended_action": "None. Do not churn the historical report for cosmetic line-number drift."
+    },
+    {
+      "id": "REV-21.14-03",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "carried finding disposition",
+      "summary": "F-21.13-2 (LOW, open, live-verification) is reconciled without a code change; correctly treated as operational rather than security.",
+      "detail": "The review reconciles the live verifier's open LOW F-21.13-2 - a targeted per-item FullRefresh after publication re-adopting the sidecar and desynchronising the served image from the recorded active identity - as an operational, data-integrity observation about an operator action outside the plugin, and notes the plugin's own fence and publisher behaviour is inherited unchanged from task 21.4. This is consistent: the finding was raised by live verification rather than by this security pass, the code path is unchanged since the 21.4/21.5 reviews, and the reviewer's own conclusion is that it does not contradict any security conclusion here. It is correctly left open with the verifier's documentation action standing rather than being closed or dropped. I confirmed the inherited ordering claim independently: src/ArrTags/Updates/LibraryWorkWorker.cs:180-188 calls _queue.CompleteProcessing(item.Key) before ReenqueueStaleBasis(item, result) in the finally block, which is the ordering ADR-023 clause 3 requires.",
+      "evidence": [
+        "docs/implementation/21.14/security-review.json prior_findings_reconciled entry 'F-21.13-2'",
+        "docs/implementation/21.13/live-verification.json finding F-21.13-2 (LOW, open)",
+        "src/ArrTags/Updates/LibraryWorkWorker.cs:180-188 (CompleteProcessing before ReenqueueStaleBasis)"
+      ],
+      "recommended_action": "None for the security gate. The documentation action remains with its owner."
+    }
+  ],
+  "tests_checked": [
+    "docs/implementation/21.14/security-review.json security-review.json read in full; coherence, severities, statuses, explicit_dispositions, prior_findings_reconciled (40 entries), limitations (8), secret/auth/state/input path lists, reproductions, reviewed_head, open_blocker_high, ready_for_next_task",
+    "Independent gate recomputation: findings grouped by severity (INFORMATIONAL 11, LOW 3, MEDIUM 1, BLOCKER 0, HIGH 0) and filtered for open BLOCKER/HIGH -> 0, matching the reported open_blocker_high = 0",
+    "Artifact identity recomputed independently: sha256sum/md5sum/stat/unzip -l on artifacts/ArrTags_1.2.0.0.zip -> 2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268 / 631fbfa5a4fb58fac5a877eeef761193 / 619,861 bytes / 7 entries; all seven extracted per-entry SHA-256 values match the docs/release/build-and-release.md table; manifest.json versions[0].checksum equals the archive MD5",
+    "Byte-consistency verified independently: a clean Release build of the source at reviewed HEAD 0b7a260 produced src/ArrTags/bin/Release/net10.0/ArrTags.dll with SHA-256 a077a63dd0c4302dc269339a651c5e07530a596611ca94d6a8c886b68bebbbc3, identical to the packaged ArrTags.dll",
+    "SEC-21.5-02 / SEC-21.5-03 independent reproduction: a reviewer-authored console probe in /tmp/21.14/probe referencing the extracted SHIPPED ArrTags.dll, invoking LogSubject.Create by reflection - exhaustive Cc/Cf/Zl/Zp sweep over U+0000..U+10FFFF (237 enumerated, 237 removed, 0 survivors), a 21-character log-injection sweep (all -> 'AB'), a 22-case path matrix, bound-after-removal checks (10000 invisibles + 22-scalar tail -> 'SECRETVISIBLE-TAIL.mkv'; 5000 visible -> exactly 128 scalars), and a category-preservation check (emoji, combining mark, NBSP, ideographic space, private use, unassigned all preserved)",
+    "Pre-fix negative control for SEC-21.5-02/-03 reproduced independently: a throwaway tree copy at /tmp/21.14/prefix with only src/ArrTags/Logging/LogSubject.cs reverted to the pre-fix e172c4c content -> dotnet test --filter FullyQualifiedName~LogSubjectTests -> Failed 25, Passed 27, Total 52, versus 52/52 passing at HEAD",
+    "SEC-21.5-01: dotnet test --filter FullyQualifiedName~ProviderRedirectTransport at HEAD -> Failed 0, Passed 10, Total 10; pre-fix control in the throwaway copy with only the two AllowAutoRedirect = false lines deleted -> Failed 5, Passed 5, Total 10, with 'ArrTags.Sonarr must not follow redirects', confirming the coverage observes the real defect",
+    "Full default suite executed independently: dotnet test ArrTags.slnx -c Release --no-build -> Failed 0, Passed 1966, Skipped 66, Total 2032, matching the reviewer's reported figure exactly",
+    "Source inspection: src/ArrTags/Logging/LogSubject.cs (full), src/ArrTags/PluginLifecycle/ArrTagsServiceRegistrator.cs:227-263 and :300-302, src/ArrTags/Providers/Sonarr/SonarrClient.cs:283-302 and :414-431, src/ArrTags/Plugin.cs:124-174, src/ArrTags/Updates/LibraryWorkWorker.cs:180-188, tests/ArrTags.Tests/ProviderRedirectTransportTests.cs:70-139",
+    "Repo-wide secret-transport spot check: grep for 'new HttpRequestMessage' / 'new HttpClient(' over src/ArrTags -> only SonarrClient.cs:287 and RadarrClient.cs:261, both HttpMethod.Get",
+    "Archive hygiene spot check: find over the extracted archive for *skia*, *.so, *jellyfin*, *MediaBrowser* -> only the two SkiaSharp license text files; strings scan of the shipped ArrTags.dll for private-key/token=/bearer patterns -> no credential literal",
+    "bash scripts/check-docs.sh -> check-docs: PASS; bash scripts/check-agents.sh -> check-agents: PASS",
+    "Carried-finding comparison: findings lists of docs/implementation/21.5/security-review.json (10) and docs/implementation/21.10/security-review.json (12) diffed against the 21.14 findings list (15) to confirm nothing was dropped"
+  ],
+  "research_checked": [
+    "docs/decisions/ADR-026.md 'Implementation note (v1.2, task 21.11)' read in full - it documents the Cc/Cf/Zl/Zp predicate, the dual-separator final-component contract, the removal-before-bound ordering, and explicitly discloses the backslash-in-POSIX-name trade, matching both the shipped code and the review's SEC-21.14-01",
+    "docs/decisions/ADR-020.md 'Amendment note (v1.2, task 21.11: SEC-21.5-02 and SEC-21.5-03)' confirmed present at line 129",
+    "docs/research/jellyfin-12-architecture.md lines 820-858 - the pinned-host plugin-configuration contract used to adjudicate SEC-21.13-03: PluginsController is class-level [Authorize(Policy = Policies.RequiresElevation)], GET returns configPlugin.Configuration, POST deserializes Request.Body to ConfigurationType and calls UpdateConfiguration, and BasePlugin<T>.UpdateConfiguration assigns then SaveConfiguration (whole-object replacement). This is the authoritative basis for the reviewer's downgrade of F-21.13-3 and I confirmed it independently",
+    "docs/limitations/accepted.md 'SEC-2. State-root resolution falls back to a shared temp path (LOW, open)' and 'SEC-3' - the accepted-limitation registry the review's carried findings must match; SEC-2's LOW/open state confirms SEC-21.5-04 is carried, not fixed",
+    "docs/implementation/21.13/live-verification.json - findings F-21.13-1..5, the 8-row matrix verdict against the corrected artifact, and the F-21.13-3 evidence the review adjudicates",
+    "docs/release/build-and-release.md 'Release artifact identity' per-entry hash table and the manifest.json versions[0] record (checksum, timestamp, targetAbi) - both match the recomputed identity",
+    "docs/agent-contracts.md report paths, status/severity enums, attempt rule, and the state.json reports-array rule used to judge scope and the state-reconciliation note"
+  ],
+  "documentation_checked": [
+    "PLANS.md lines 262-284 - task 21.14 checkbox (unchecked, correct while the task is in review), the authoritative Phase 21 execution order placing 21.6 last, the phase acceptance criteria that require no open BLOCKER/HIGH and the three explicit dispositions, and the Gate 21 text this review's clause comes from",
+    "docs/plan/state.json - task 21.14 entry (done: false, reports: []), and the active_scope_note describing the SEC-21.5-01/-02/-03 corrective scope and the exclusion of SEC-21.5-04",
+    "docs/status.md - generated from state.json; scripts/check-docs.sh confirms the generated status blocks are current, so no stale claim was introduced",
+    "docs/limitations/accepted.md - the canonical accepted-limitation register that SEC-21.5-04 / SEC-2, SEC-3, SEC-8, and the V12-* items must match; scripts/check-docs.sh confirms the limitations index covers all IDs",
+    "docs/architecture/12-performance-and-operational-limits.md and docs/architecture/06-configuration-and-persisted-state.md - spot-checked for the 21.11 extraction contract disclosure referenced by the review; the disclosed backslash trade is present in ADR-026 and the review's characterization of the docs as updated is accurate",
+    "docs/changelog/v1.2.0.md and ADR-005 'implementation note (v1.2, task 21.7)' - confirm the redirect behaviour change is documented there, corroborating SEC-21.10-02's claim that the manifest.json one-liner alone omits it (independently confirmed: grep for 'redirect' in the manifest changelog returns 0 matches, so the carried observation is accurate and correctly assigned to task 21.6 as optional)"
+  ],
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true
+}
