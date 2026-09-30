@@ -3,7 +3,7 @@
   "title": "Corrected release build, full suite, reproducible artifact, and release documentation",
   "phase": 21,
   "status": "COMPLETE",
-  "commit": null,
+  "commit": "c78a7d6",
   "conformance": {
     "required": false,
     "reason": "Task 21.12 re-derives the release build, artifact identity, suites, manifest, and release documentation against the code corrected by task 21.11. It introduces no new Jellyfin 12 API, lifecycle, or platform assumption, changes no provider contract, and implements no unverified ADR clause; it re-executes established build/verification on the pinned host. No pre-dispatch specialist conformance check is required.",

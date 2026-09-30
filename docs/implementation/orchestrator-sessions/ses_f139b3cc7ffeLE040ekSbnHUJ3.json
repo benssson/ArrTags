@@ -5,19 +5,19 @@
   "variant": "default",
   "title": "Starting phase 21",
   "tokens": {
-    "input": 693872,
-    "output": 91877,
-    "reasoning": 75651,
+    "input": 702865,
+    "output": 97046,
+    "reasoning": 76196,
     "cache": {
-      "read": 51074560,
+      "read": 55066624,
       "write": 0
     }
   },
-  "total_tokens": 51935960,
-  "cost_usd": 0.35779447999999986,
+  "total_tokens": 55942731,
+  "cost_usd": 0.37454802199999987,
   "duration_seconds": 92333,
   "first_recorded_at": "2026-09-29T09:51:08Z",
-  "last_updated_at": "2026-09-30T11:20:04Z",
+  "last_updated_at": "2026-09-30T11:54:08Z",
   "updates": [
     {
       "at": "2026-09-29T09:51:08Z",
@@ -88,6 +88,13 @@
       "total_tokens": 51935960,
       "duration_seconds": 92333,
       "note": "Phase 21 corrective task 21.11 log-subject hardening (SEC-21.5-02/03) completed and committed (a079358)"
+    },
+    {
+      "at": "2026-09-30T11:54:08Z",
+      "cost_usd": 0.37454802199999987,
+      "total_tokens": 55942731,
+      "duration_seconds": 92333,
+      "note": "Phase 21 task 21.12 fully corrected release build and artifact identity completed and committed (c78a7d6)"
     }
   ]
 }
