@@ -7,7 +7,7 @@ not hand-edit it. Everything outside the markers is a short, stable header.
 <!-- BEGIN GENERATED: status -->
 **Current release:** `1.2.0.0` (tag `v1.2.0`) — COMPLETE; the GitHub release, asset upload, and manifest push are not yet performed.
 
-**Active scope:** none. v1.2 (Phases 15-21, version 1.2.0.0, tag v1.2.0) is COMPLETE: Gates 15-21 are met and its phases were archived verbatim from PLANS.md to docs/plan/archive/v1.2.md, with the accepted v1.2 scope plan preserved at docs/plan/archive/v1.2-plan.md. All phases 1-21 are complete, so PLANS.md holds no active phase sections and docs/planning/ is empty. No release scope is currently accepted for planning: active_scope stays null until the user accepts a new plan, which is placed under docs/planning/, named by this pointer, and whose phases continue the global numbering from Phase 22 without renumbering or reopening prior phases. The v1.2 goals G6-G9 remain in force, decision records ADR-022..ADR-029 are Accepted (v1.2), decision gates DG-15..DG-22 are resolved, and limitations F3, F4, F6, F7, and F8 are resolved by their phases (F5 remains an accepted known shipped limitation).
+**Active scope:** `docs/planning/v1.3.md`. v1.3 (Phases 22-25, version 1.3.0.0, release tag v1.3.0) is the accepted active scope; the plan is docs/planning/v1.3.md and it is PLANNED, not implemented. It covers goals G10-G12 and limitations F9 and F10, recorded as ADR-030..ADR-032 (Accepted (v1.3)), with decision gates DG-23..DG-25 open. v1.2 (Phases 15-21) is complete and archived at docs/plan/archive/v1.2.md with its scope plan at docs/plan/archive/v1.2-plan.md. Phases 1-21 are complete and are not renumbered or reopened; v1.3 continues the global numbering from Phase 22. Origin: the 2026-09-30/2026-10-01 live operator debugging session recorded in docs/implementation/planning/v1.3.json. V12-F7-1 remains an accepted historical record and is not re-registered; ADR-030 provides a remedy for it without rewriting it.
 
 **Artifact:** `artifacts/ArrTags_1.2.0.0.zip` — 619861 bytes, 7 entries;
 SHA-256 `2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268`; MD5 `631fbfa5a4fb58fac5a877eeef761193`.
@@ -18,9 +18,9 @@ SHA-256 `2a039fc7075f4e4c1a1c785eb0b3757636fc0573da1361ee814cfd4099297268`; MD5 
 **Verification:** live pinned-host matrix `docs/implementation/21.13/live-verification.json`;
 release security review `docs/implementation/21.14/security-review.json`; release review `docs/implementation/final-review/release-review-v1.2.json`.
 
-**Phases:** all 21 complete (1-21); Gates 1-21 met. Completed plans are archived in `docs/plan/archive/`.
+**Active phases:** Phase 22, Phase 23, Phase 24, Phase 25; all other phases are complete.
 
-**Open limitations:** none; see `docs/limitations/00-index.md`.
+**Open limitations:** 2 (`F9`, `F10`); see `docs/limitations/00-index.md`.
 <!-- END GENERATED: status -->
 
 ## Detail

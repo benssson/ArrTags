@@ -7,8 +7,8 @@ it; record a divergence or a superseding ADR instead. The former
 | ADR | Title | Status | File |
 | --- | --- | --- | --- |
 | ADR-001 | Persisted Derived Poster Artwork | Accepted | [`ADR-001.md`](ADR-001.md) |
-| ADR-002 | Guarded Artwork Ownership and Restoration | Accepted (restoration trigger set extended by ADR-024 (v1.2)) | [`ADR-002.md`](ADR-002.md) |
-| ADR-003 | Crash-Recoverable Artwork Publication | Accepted (restoration trigger set extended by ADR-024 (v1.2)) | [`ADR-003.md`](ADR-003.md) |
+| ADR-002 | Guarded Artwork Ownership and Restoration | Accepted (restoration trigger set extended by ADR-024 (v1.2); restoration postcondition refined by ADR-032 (v1.3)) | [`ADR-002.md`](ADR-002.md) |
+| ADR-003 | Crash-Recoverable Artwork Publication | Accepted (restoration trigger set extended by ADR-024 (v1.2); terminal-outcome set amended by ADR-030 (v1.3)) | [`ADR-003.md`](ADR-003.md) |
 | ADR-004 | Foundation Operational Limits and Defaults | Accepted | [`ADR-004.md`](ADR-004.md) |
 | ADR-005 | Versioned Secret Access Boundary | Accepted | [`ADR-005.md`](ADR-005.md) |
 | ADR-006 | V1 Badge Surfaces and Library Scope Identifier | Accepted | [`ADR-006.md`](ADR-006.md) |
@@ -30,8 +30,11 @@ it; record a divergence or a superseding ADR instead. The former
 | ADR-022 | Successive-Run Reconciliation Coverage | Accepted (v1.2; clause 3 amended by ADR-029 (v1.2)) | [`ADR-022.md`](ADR-022.md) |
 | ADR-023 | Version-Aware Post-Save Re-Render | Accepted (v1.2) | [`ADR-023.md`](ADR-023.md) |
 | ADR-024 | Empty-Selection Artwork Restoration | Accepted (v1.2) | [`ADR-024.md`](ADR-024.md) |
-| ADR-025 | Read-Only Diagnostics Status Surface | Accepted (v1.2) | [`ADR-025.md`](ADR-025.md) |
+| ADR-025 | Read-Only Diagnostics Status Surface | Accepted (v1.2; clause 3 counter set extended by ADR-031 (v1.3)) | [`ADR-025.md`](ADR-025.md) |
 | ADR-026 | Human-Readable Log Subject Identifier | Accepted (v1.2) | [`ADR-026.md`](ADR-026.md) |
 | ADR-027 | Extra Large Badge Size | Accepted (v1.2) | [`ADR-027.md`](ADR-027.md) |
 | ADR-028 | Limit Display Units and Restart-Required Settings Surfacing | Accepted (v1.2) | [`ADR-028.md`](ADR-028.md) |
 | ADR-029 | Identity-Anchored Reconciliation Cursor (Amendment to ADR-022 Clause 3) | Accepted (v1.2) | [`ADR-029.md`](ADR-029.md) |
+| ADR-030 | Cancellation Is Not a Terminal Artwork-Mutation Outcome | Accepted (v1.3); amends ADR-003's terminal-outcome set | [`ADR-030.md`](ADR-030.md) |
+| ADR-031 | Bounded Artwork Outcome Observability | Accepted (v1.3); amends ADR-025 clause 3 | [`ADR-031.md`](ADR-031.md) |
+| ADR-032 | Restoration Verification Semantics | Accepted (v1.3); refines the ADR-002/ADR-003 restoration postcondition | [`ADR-032.md`](ADR-032.md) |

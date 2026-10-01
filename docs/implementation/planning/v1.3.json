@@ -1,0 +1,248 @@
+{
+  "name": "v1.3",
+  "milestone": "v1.3",
+  "status": "PLANNED (v1.3 plan and ADR-030..ADR-032 accepted by the user; DG-23/DG-24/DG-25 open; no product behavior implemented)",
+  "change": "Derive the accepted v1.3 scope (docs/planning/v1.3.md; goals G10-G12 and limitations F9, F10; decision gates DG-23..DG-25; decision records ADR-030..ADR-032, accepted by the user) into phases 22-25 with objectives, deliverables, acceptance criteria, exit gates, and authoritative execution orders in PLANS.md, and record the phase set in docs/plan/state.json.",
+  "active_scope": "docs/planning/v1.3.md",
+  "release": {
+    "version": "1.3.0.0",
+    "release_tag": "v1.3.0",
+    "phase_tag_convention": "v1.3.0-phase<N>"
+  },
+  "origin": {
+    "kind": "live-operator-debugging-session",
+    "dates": "2026-09-30/2026-10-01",
+    "host": "Jellyfin 12, Docker, Radarr-only ArrTags connection, two enabled libraries",
+    "summary": "An operator reported that one Movie had no badge while the rest of the library reconciled correctly. The shipped diagnostics surface could not answer why. The session ended in three manual state edits. Two defects were isolated and are registered as F9 and F10; one observation was already covered by the accepted item V12-F7-1 and is deliberately not re-registered.",
+    "reproduction": "A scheduled reconciliation over 845 eligible items, a per-selector Quality allowlist restricted to CAM/TELESYNC/TELECINE, and a single affected subject. The queue drained normally; the item was matched and its metadata was published Fresh with quality CAM."
+  },
+  "prior_scope": {
+    "v1_phases": "1-8 complete; not restructured, reordered, or reopened",
+    "v1_1_phases": "9-14 complete (tag v1.1.0); archived verbatim; not restructured, reordered, or reopened",
+    "v1_2_phases": "15-21 complete (tag v1.2.0); archived verbatim; not restructured, reordered, or reopened",
+    "v1_3_1": {
+      "outline_task": "V1.3-1",
+      "status": "COMPLETE",
+      "note": "This planning package: docs/planning/v1.3.md, ADR-030..ADR-032, decisions-index entries, the GOALS.md pointer, the PLANS.md/state.json derivation, the F9/F10 limitation registration, and this record. Not re-planned as open work."
+    }
+  },
+  "investigation": {
+    "method": "Read the shipped bounded log at Information, then the plugin-owned state tree under <ProgramDataPath>/ArrTags, then the provider API. No code was modified and no shipped surface was trusted without corroboration.",
+    "wrong_hypotheses_recorded": [
+      {
+        "hypothesis": "The Radarr bulk moviefile read dropped a file, so the mapper produced empty metadata (an inventory-cache defect at RadarrMetadataReader.cs:253 and :166-167).",
+        "outcome": "REFUTED. The provider returned the file with id 3143 for movie 918, and movieFileId 3143 matched, so ResolveCurrentFile accepted it. The mapper did produce values (Quality CAM, Source cam).",
+        "lesson": "The empty resolved selection was a configuration filter, not a missing file. Recorded because the refutation is what redirected the investigation to the selector configuration."
+      },
+      {
+        "hypothesis": "The authoritative provenance store was evicting retained source artifacts, violating ADR-004.",
+        "outcome": "REFUTED. 654 artifacts on disk against 651 claimed, and a full sweep found no missing artifact. The alarming first sweep was an operator-command defect, not a plugin defect: SourceArtifactPaths.GetArtifactPath lowercases the shard directory and uppercases the filename, so a check built from the uppercase state id looked in the wrong directory.",
+        "lesson": "SourceArtifactPaths.GetArtifactPath (src/ArrTags/Artwork/SourceArtifactPaths.cs:56-58) has an asymmetric casing contract. Recorded as a diagnosability hazard for any future operator tooling, not as a plugin defect."
+      }
+    ],
+    "subjects": [
+      {
+        "label": "subject-A",
+        "description": "The originally reported Movie with no badge.",
+        "metadata_state": "cache/metadata-state/9f0d3ee4c97808019448d2c1d66a1f1e-radarr.json: State Fresh, MatchStatus Matched, MatchMethod ProviderId, QualityLabel CAM, fetched 2026-10-01T03:52:02Z, StaleUntil 2026-10-02T03:52:02Z",
+        "artwork_state": "authoritative/artwork-state/9f0d3ee4c97808019448d2c1d66a1f1e-Primary.json: State 2 (OwnershipLost), SourcePresence Present, PublishedFingerprint 27305F25.., RendererVersion 2, UpdatedAt 2026-09-23T18:55:31Z, LastOwnershipObservation Changed 'The active image content hash changed.'",
+        "diagnosis": "ArrTags published a 6,061,341-byte badged poster on 2026-09-22T18:53:27Z (SHA 7333B60C..). The poster was replaced on 2026-09-23T13:47:26Z by a different 969,450-byte image (SHA F46938D8..). The next reconciliation observed the content-hash change and set OwnershipLost, a blocked state that ArtworkRegenerationPlanner.Decide skips permanently and silently.",
+        "classified_as": "V12-F7-1 (already accepted; not re-registered)",
+        "resolution_applied": "Operator restored the clean poster out of band, then the artwork-state record was deleted, which made the planner take its 'No owned source baseline exists' branch. The subject re-published correctly with Phase Committed, Kind Publication, Attempt 0, LastError null."
+      },
+      {
+        "label": "subject-B",
+        "description": "A second item found in the operator's own state sweep, not reported in the original question.",
+        "metadata_state": "not inspected; not required for the diagnosis",
+        "artwork_state": "authoritative/artwork-state/23f05d15d184fa94d6ddf5f56dde6f5c-Primary.json: State 6 (RestoreBlocked), SourcePresence Present, SourceArtifactId ECE24D0C.., RendererVersion 2, PublishedFingerprint 9E50622B.., LastOwnershipObservation Owned 'The active image was verified after publication.' at 2026-09-24T18:57:38Z against an 11,578,522-byte active image (SHA 5B4B1AAC..)",
+        "operation_state": "authoritative/artwork-operation/23f05d15d184fa94d6ddf5f56dde6f5c-Primary.json: Kind 1 (Restoration), Phase 7 (RecoveryBlocked), Attempt 0, LastError 'The restoration mutation was cancelled.', CandidateAfterContentSha256 ECE24D0C.., ObservedAfterIdentity null, UpdatedAt 2026-09-24T21:58:55Z",
+        "diagnosis": "The badge was published and verified on 2026-09-24T18:57:38Z. Three hours later an ADR-024 restoration was attempted; SaveImageAsync threw OperationCanceledException and the catch block at ArtworkPublisher.cs:735-743 wrote the durable operation to RecoveryBlocked and the state to RestoreBlocked, then returned Cancelled. Because ArtworkOperationPhases.IsTerminal counts RecoveryBlocked as terminal, ArtworkRecoveryGate.EnsureRecoveredAsync returns AlreadyTerminal and ResumeRestorationAsync requires RestorePending, so the one reopen path at :892-894 was unreachable. ObservedAfter is null, confirming no read-back comparison was reached.",
+        "classified_as": "F9 (new, open)",
+        "evidence_check": "The retained source artifact was intact: artifacts/source/ec/ECE24D0C..bin is 1,843,158 bytes and its manifest ByteLength matches, so the missing-artifact branch at PublishedArtworkStateTransitions.cs:375-381 was not the cause. That branch is in fact unreachable from the publisher, because ArtworkPublisher.cs:701 and :1470 both pass sourceArtifactIntegrityValid: true as a literal."
+      },
+      {
+        "label": "subject-class-C",
+        "description": "The bulk of the eligible library.",
+        "diagnosis": "Roughly 645 of 845 eligible subjects resolved an empty badge selection because the configured per-selector Quality allowlist was restricted to CAM, TELESYNC, and TELECINE. The allowlist was correct and intentional; the subjects correctly had no badge. Nothing reported this fact in any log or counter.",
+        "classified_as": "F10 (new, open)"
+      }
+    ],
+    "census_at_diagnosis": {
+      "artwork_state_by_value": { "1 Published": 3, "5 Restored": 647, "6 RestoreBlocked": 1, "7 Removed": 1 },
+      "reconciliation_run": "inspected 19114, eligible 845, enqueued 845, covered 19114, completed in 4m37s",
+      "artifacts_on_disk": 654,
+      "artifacts_claimed_by_state": 651,
+      "note": "The 3-artifact surplus includes the artifact orphaned by the operator's manual deletion of subject-A's state record. Deleting a state record leaks its artifact permanently; recorded as a cleanup nicety for the plan, not a defect."
+    }
+  },
+  "diagnosability_gaps_encountered": [
+    "The plugin's LogVerbosity was already Trace, yet no Debug record appeared: Jellyfin applies logging.default.json as a baseline and logging.json as the override, and the override was missing. An operator following the plugin's own documentation would not find this.",
+    "ADR-020 clause 6 throttles ArrTags to five records per category and event per minute, so a whole-library run cannot answer a per-subject question from logs even once the reasons are emitted. This is why F10 requires counters and not only log lines.",
+    "Two of the three failure classes produced no ArrTags log record at all: a planner Skip performs no generation attempt, so no ArtworkGenerationCompleted line is emitted."
+  ],
+  "files_changed": [
+    "docs/planning/v1.3.md (new)",
+    "docs/decisions/ADR-030.md (new, Accepted v1.3)",
+    "docs/decisions/ADR-031.md (new, Accepted v1.3)",
+    "docs/decisions/ADR-032.md (new, Accepted v1.3)",
+    "docs/decisions/00-index.md (added ADR-030..ADR-032 rows; ADR-002/ADR-003/ADR-025 rows annotated with the v1.3 amendments)",
+    "docs/limitations/open.md (F9, F10 registered)",
+    "docs/limitations/00-index.md (F9, F10 rows; register scope note)",
+    "GOALS.md (V1.3 Goals pointer section)",
+    "PLANS.md (active scope; Phases 22-25; DG-23..DG-25; v1.3 risks)",
+    "docs/plan/state.json (active_scope; releases[] 1.3.0 PLANNED; phases 22-25; limitations.open F9/F10)",
+    "docs/implementation/planning/v1.3.json (this record)",
+    "docs/status.md and the PLANS.md generated blocks (rendered)"
+  ],
+  "phases": [
+    {
+      "id": "22",
+      "name": "Resumable artwork mutation on cancellation",
+      "goal": "G10 (ADR-030; ADR-003's terminal-outcome set)",
+      "objective": "Stop a cancelled or bounded-retryable image mutation from sealing a subject into a permanently blocked state, and give an administrator an in-product way to re-baseline a subject already sealed by a prior release.",
+      "deliverables": [
+        "A bounded post-mutation outcome classification covering cancellation, bounded-retryable failure, and terminal failure (DG-23).",
+        "Resumable durable state on cancellation: a non-terminal operation phase and a resumable published state, with ADR-003's mutation lower bound unchanged.",
+        "An administrator-gated in-product re-baseline action for a subject sealed in OwnershipLost, OwnershipUnknown, or RestoreBlocked by a prior release.",
+        "Regression tests that fail against the pre-fix code.",
+        "The security review and the canonical documentation."
+      ],
+      "tasks": [
+        { "id": "22.1", "name": "Bounded post-mutation outcome classification (DG-23)" },
+        { "id": "22.2", "name": "Cancellation leaves a resumable operation and state, with regression tests" },
+        { "id": "22.3", "name": "Administrator-gated in-product re-baseline action" },
+        { "id": "22.4", "name": "F9 documentation, security review, and integration verification" }
+      ],
+      "execution_order": ["22.1", "22.2", "22.3", "22.4"],
+      "conformance_precondition": false,
+      "conformance_reason": "The task depends on no unverified Jellyfin platform behavior or provider contract; the behavior is fully determined by the plugin's own code paths and the reproduced live record."
+    },
+    {
+      "id": "23",
+      "name": "Bounded artwork outcome observability",
+      "goal": "G11 (ADR-031; ADR-025 clause 3 as amended)",
+      "objective": "Emit every bounded regeneration decision and restore-block reason in the bounded artwork log, and extend the diagnostics snapshot with bounded, value-free artwork-outcome counters and the matching panel rows.",
+      "deliverables": [
+        "The extended ADR-025 clause 3 counter model keyed by code-owned bounded enums (DG-24).",
+        "The bounded reason emission on the existing artwork log lines, under the ADR-026 bounded subject.",
+        "Instrumentation at the planner, ownership, and restore-block boundaries.",
+        "The read-only settings-page panel rows with the existing fail-closed behavior.",
+        "The security review and the canonical documentation."
+      ],
+      "tasks": [
+        { "id": "23.1", "name": "Extended artwork-outcome counter model (DG-24)" },
+        { "id": "23.2", "name": "Emit the bounded planner decision and restore-block reasons" },
+        { "id": "23.3", "name": "Instrument the artwork-outcome counters at their boundaries" },
+        { "id": "23.4", "name": "Read-only settings-page panel for the new counters" },
+        { "id": "23.5", "name": "F10 documentation and security review" }
+      ],
+      "execution_order": ["23.1", "23.2", "23.3", "23.4", "23.5"],
+      "conformance_precondition": false,
+      "conformance_reason": "The counter set, its bounded keys, and the redaction constraints are all decided by ADR-031 and DG-24; no external platform behavior is assumed."
+    },
+    {
+      "id": "24",
+      "name": "Restoration verification semantics",
+      "goal": "G12 (ADR-032; the ADR-002/ADR-003 restoration postcondition)",
+      "objective": "Settle whether the pinned host preserves image bytes across save and read-back, and derive the restoration verification predicate from that measurement rather than from an inherited assumption.",
+      "deliverables": [
+        "The jellyfin-expert byte-fidelity spike note for a JPEG and a PNG source against the pinned host.",
+        "The DG-25 restoration verification predicate with a regression test including its negative case.",
+        "The ADR-032 and architecture documentation reconciliation."
+      ],
+      "tasks": [
+        { "id": "24.1", "name": "Pinned-host image save/read-back byte-fidelity spike (jellyfin-expert)" },
+        { "id": "24.2", "name": "Restoration verification predicate per DG-25, with regression tests" },
+        { "id": "24.3", "name": "ADR-032 and architecture documentation reconciliation" }
+      ],
+      "execution_order": ["24.1", "24.2", "24.3"],
+      "conformance_precondition": true,
+      "conformance_reason": "Whether IProviderManager.SaveImage followed by the ArrTags read-back is byte-preserving is an unverified Jellyfin platform behavior, and ADR-032 makes the predicate depend on it. Task 24.1 is the conformance artifact and must be recorded before 24.2 is dispatched."
+    },
+    {
+      "id": "25",
+      "name": "v1.3 release",
+      "goal": "release",
+      "objective": "Ship the v1.3 recovery and observability work as a reviewed, verified release artifact.",
+      "deliverables": [
+        "The version bump to 1.3.0.0 and documentation reconciliation.",
+        "The full test suite and a reproducible build/package.",
+        "Live pinned-host verification of the resume, re-baseline, and counter behaviors.",
+        "The release security review and the release review.",
+        "Artifact publication and the v1.3.0 tag."
+      ],
+      "tasks": [
+        { "id": "25.1", "name": "Version bump to 1.3.0.0 and documentation reconciliation" },
+        { "id": "25.2", "name": "Full test suite and reproducible build/package" },
+        { "id": "25.3", "name": "Live pinned-host verification of the resume, re-baseline, and counters" },
+        { "id": "25.4", "name": "Release security review" },
+        { "id": "25.5", "name": "Release review, artifact publication, and tag v1.3.0" }
+      ],
+      "execution_order": ["25.1", "25.2", "25.3", "25.4", "25.5"],
+      "conformance_precondition": false,
+      "conformance_reason": "Release work depends on the completed phases, not on an unverified external behavior."
+    }
+  ],
+  "decision_gates": [
+    {
+      "id": "DG-23",
+      "goal": "G10",
+      "decision": "The classification of each post-MutationStarted outcome as cancellation, bounded-retryable failure, or terminal failure, and for each whether the durable record stays non-terminal and resumable.",
+      "status": "OPEN",
+      "proposed_skew": "Cancellation always stays resumable. The open question is whether a bounded-retryable failure also stays resumable, and with what bound. RestoreBlocked is reserved for an outcome that establishes the subject cannot be recovered."
+    },
+    {
+      "id": "DG-24",
+      "goal": "G11",
+      "decision": "The extended ADR-025 clause 3 counter set: which bounded reason enums are exposed, their names, and the confirmation that no value, name, or path is carried.",
+      "status": "OPEN",
+      "proposed_skew": "Three bounded counter groups (regeneration skipped, ownership blocked, restore blocked), each keyed by a code-owned enum, carrying counts and classifications only."
+    },
+    {
+      "id": "DG-25",
+      "goal": "G12",
+      "decision": "The restoration verification rule, selected against the task 24.1 spike: stay content-SHA-exact, or adopt a documented content-derived equivalence rule.",
+      "status": "OPEN",
+      "proposed_skew": "Undetermined until the spike runs. Recorded as a decision rather than an assumption so the pre-existing predicate is not silently ratified."
+    }
+  ],
+  "risks": [
+    { "risk": "A cancelled or bounded-retryable image mutation leaves the durable record in a state no recovery path will pick up.", "impact": "A poster is permanently stranded with a badge that cannot be removed.", "mitigation": "ADR-030 keeps cancellation non-terminal and resumable under ADR-003, preserves the mutation lower bound, reserves RestoreBlocked for terminal outcomes, and adds an elevation-gated re-baseline action; regression tests must fail against the pre-fix code; the live matrix interrupts a restore with a host restart.", "tasks": ["22.1", "22.2", "22.3", "22.4", "25.3"] },
+    { "risk": "Treating every host-call failure as resumable retries a permanently impossible mutation.", "impact": "Queue churn and repeated failed image writes on every trigger.", "mitigation": "DG-23 fixes the outcome set; only an outcome establishing non-recoverability may write a terminal phase, and the retry is bounded by the existing policy and per-item single-flight.", "tasks": ["22.1"] },
+    { "risk": "The observability change widens a redaction or unbounded-payload surface.", "impact": "A secret, path, or item name reaches the log or the diagnostics endpoint.", "mitigation": "ADR-031 carries bounded enum classifications and counts only; the throttle still bounds emission; the snapshot stays fixed-shape; the endpoint is security-reviewed before the gate.", "tasks": ["23.1", "23.2", "23.3", "23.4", "23.5"] },
+    { "risk": "The in-product re-baseline action re-baselines over an image a human set deliberately.", "impact": "ArrTags captures an operator-chosen poster as its new baseline and badges over it.", "mitigation": "The action is explicit, elevation-gated, single-item, refuses while a non-terminal durable operation exists, and never writes an image, so ADR-002 is unchanged.", "tasks": ["22.3"] },
+    { "risk": "The restoration verification predicate is derived from an unverified host assumption.", "impact": "A visually correct restore is sealed as blocked, or a genuinely different image is accepted.", "mitigation": "DG-25 is gated on the task 24.1 spike as a Task Conformance Precondition; any adopted rule is content-derived and bounded; the fail-closed outcomes are unchanged and tested.", "tasks": ["24.1", "24.2", "24.3"] }
+  ],
+  "execution_order_invariants": {
+    "authoritative": "The per-phase 'Authoritative Phase N execution order' line in PLANS.md is the canonical sequence; task numbers are stable labels only.",
+    "release_phase": "Phase 25 carries the release tag v1.3.0; Phases 22-24 use v1.3.0-phase<N>.",
+    "no_reopen": "Phases 1-21 are not renumbered, reordered, or reopened.",
+    "gates": "A milestone may be worked on only after its predecessor's gate is met, unless a task is explicitly marked as research or a test spike. Task 24.1 is explicitly a research spike and may run before its predecessor gate; its result is a precondition for 24.2, not an exception to the phase order."
+  },
+  "open_questions": [
+    "DG-23: does a bounded-retryable host-call failure stay resumable, and with what bound?",
+    "DG-24: confirmation of the exact bounded counter set and names before implementation.",
+    "DG-25: deferred to the task 24.1 spike measurement."
+  ],
+  "out_of_scope": [
+    "F5 (host-supplied SkiaSharp with no bundled fallback) remains Accepted.",
+    "V12-F7-1 remains an accepted historical record; v1.3 provides a remedy without rewriting it or changing its status retroactively.",
+    "Badge selection semantics, the per-selector allowlist (ADR-017), geometry/placement/size (ADR-019, ADR-027), rendering output, the render fingerprint, the inventory cache (ADR-018), and reconciliation coverage (ADR-022) are unchanged. v1.3 makes a suppressed selection countable; it does not change what is selected.",
+    "All V1 deliberate exclusions in GOALS.md and docs/limitations/ remain out of scope."
+  ],
+  "acceptance": {
+    "accepted_by": "user",
+    "accepted_utc": "2026-10-01T00:00:00Z",
+    "accepted_scope": "docs/planning/v1.3.md goals G10-G12, limitations F9 and F10, decision records ADR-030..ADR-032, and open decision gates DG-23..DG-25",
+    "user_choices": [
+      "Fix rather than accept: the cancellation-seals-the-subject defect (F9) is in scope for v1.3.",
+      "Fix rather than accept: the unobservable artwork skip/block/suppressed-selection outcomes (F10) are in scope for v1.3.",
+      "The restoration verification predicate is settled by measurement (DG-25) rather than ratified by assumption.",
+      "V12-F7-1 is not reopened; ADR-030's in-product remedy covers it prospectively."
+    ]
+  },
+  "planning_gaps": [
+    "The origin session ran against a live host with a Radarr-only connection and a per-selector allowlist; no Sonarr path and no allowlist-free configuration were exercised, so the F9 and F10 evidence is single-provider and single-configuration. The Phase 25 live matrix does not claim broader coverage than that.",
+    "The exact DG-23 and DG-24 outcomes are not decided here. Phase 22 task 22.1 and Phase 23 task 23.1 are gated on the user decisions, and no dependent task is marked complete in state.json."
+  ]
+}

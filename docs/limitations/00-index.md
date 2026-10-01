@@ -9,10 +9,11 @@ still-current accepted items and verification/packaging limits are in
 a pointer stub.
 
 This register exists so that no unsupported or unverified capability is
-presented as available. It covers the shipped V1 scope, the v1.1 work, and the
-v1.2 additions implemented by Phases 15-20. The resolved items are retained in
-[`archive.md`](archive.md), with their resolving change, so the current-state
-record stays traceable. It was consolidated by
+presented as available. It covers the shipped V1 scope, the v1.1 work, the
+v1.2 additions implemented by Phases 15-20, and the v1.3 open items F9 and F10
+promoted by [`../planning/v1.3.md`](../planning/v1.3.md). The resolved items are
+retained in [`archive.md`](archive.md), with their resolving change, so the
+current-state record stays traceable. It was consolidated by
 Phase 7 task 7.6 from the deferred decisions previously scattered across
 `PLANS.md` (Post-V1 Backlog), the former `docs/implementation-readiness.md`,
 `docs/release/build-and-release.md`, and the Phase 6/7 review findings.
@@ -70,6 +71,8 @@ review are separate and are not declared by this document.
 | `F6` | Version-blind work coalescing can drop a post-save re-render | Resolved | [`archive.md`](archive.md) |
 | `F7` | An empty resolved badge selection preserves the previous ArrTags badge instead of restoring the original | Resolved | [`archive.md`](archive.md) |
 | `F8` | The specific render classification is not surfaced in the artwork log | Resolved | [`archive.md`](archive.md) |
+| `F9` | A cancelled artwork mutation seals the subject into a permanently blocked state | Open | [`open.md`](open.md) |
+| `F10` | Artwork skip, block, and suppressed-selection outcomes are not surfaced in any log or counter | Open | [`open.md`](open.md) |
 | `V1` | No live Sonarr or Radarr instance | Accepted | [`accepted.md`](accepted.md) |
 | `V2` | ADR-010 non-canonical cross-runtime comparison is unselected and unrun | Accepted | [`accepted.md`](accepted.md) |
 | `V3` | Jellyfin Enhanced coexistence is contract-level only | Accepted | [`accepted.md`](accepted.md) |

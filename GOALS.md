@@ -104,3 +104,13 @@ success criteria above remain authoritative for V1, and the V1.1 goals remain in
 force. V1.2 decisions are recorded as ADR-022 onward in
 [`docs/decisions/00-index.md`](docs/decisions/00-index.md) (accepted;
 `Accepted (v1.2)`).
+
+## V1.3 Goals
+
+V1.3 is an additive release. Its scope, goals, decision gates, and task outline
+are defined in [`docs/planning/v1.3.md`](docs/planning/v1.3.md); the V1 scope and
+success criteria above remain authoritative for V1, and the v1.1 and v1.2 goals
+remain in force. V1.3 covers the artwork recovery and observability goals
+G10-G12 and the limitations F9 and F10. V1.3 decisions are recorded as ADR-030
+onward in [`docs/decisions/00-index.md`](docs/decisions/00-index.md) (accepted;
+`Accepted (v1.3)`).

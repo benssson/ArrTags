@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "updated_utc": "2026-09-30T13:55:45Z",
-  "active_scope": null,
-  "active_scope_note": "v1.2 (Phases 15-21, version 1.2.0.0, tag v1.2.0) is COMPLETE: Gates 15-21 are met and its phases were archived verbatim from PLANS.md to docs/plan/archive/v1.2.md, with the accepted v1.2 scope plan preserved at docs/plan/archive/v1.2-plan.md. All phases 1-21 are complete, so PLANS.md holds no active phase sections and docs/planning/ is empty. No release scope is currently accepted for planning: active_scope stays null until the user accepts a new plan, which is placed under docs/planning/, named by this pointer, and whose phases continue the global numbering from Phase 22 without renumbering or reopening prior phases. The v1.2 goals G6-G9 remain in force, decision records ADR-022..ADR-029 are Accepted (v1.2), decision gates DG-15..DG-22 are resolved, and limitations F3, F4, F6, F7, and F8 are resolved by their phases (F5 remains an accepted known shipped limitation).",
+  "updated_utc": "2026-10-01T00:00:00Z",
+  "active_scope": "docs/planning/v1.3.md",
+  "active_scope_note": "v1.3 (Phases 22-25, version 1.3.0.0, release tag v1.3.0) is the accepted active scope; the plan is docs/planning/v1.3.md and it is PLANNED, not implemented. It covers goals G10-G12 and limitations F9 and F10, recorded as ADR-030..ADR-032 (Accepted (v1.3)), with decision gates DG-23..DG-25 open. v1.2 (Phases 15-21) is complete and archived at docs/plan/archive/v1.2.md with its scope plan at docs/plan/archive/v1.2-plan.md. Phases 1-21 are complete and are not renumbered or reopened; v1.3 continues the global numbering from Phase 22. Origin: the 2026-09-30/2026-10-01 live operator debugging session recorded in docs/implementation/planning/v1.3.json. V12-F7-1 remains an accepted historical record and is not re-registered; ADR-030 provides a remedy for it without rewriting it.",
   "releases": [
     {
       "version": "0.1.0",
@@ -51,6 +51,17 @@
         "19",
         "20",
         "21"
+      ]
+    },
+    {
+      "version": "1.3.0",
+      "tag": "v1.3.0",
+      "status": "PLANNED",
+      "phases": [
+        "22",
+        "23",
+        "24",
+        "25"
       ]
     }
   ],
@@ -1505,10 +1516,180 @@
           ]
         }
       ]
+    },
+    {
+      "id": 22,
+      "name": "Resumable artwork mutation on cancellation",
+      "release": "1.3.0",
+      "status": "PLANNED",
+      "gate": "Gate 22",
+      "tag": "",
+      "execution_order": [
+        "22.1",
+        "22.2",
+        "22.3",
+        "22.4"
+      ],
+      "tasks": [
+        {
+          "id": "22.1",
+          "done": false,
+          "name": "Bounded post-mutation outcome classification (DG-23)",
+          "reports": []
+        },
+        {
+          "id": "22.2",
+          "done": false,
+          "name": "Cancellation leaves a resumable operation and state; regression tests",
+          "reports": []
+        },
+        {
+          "id": "22.3",
+          "done": false,
+          "name": "Administrator-gated in-product re-baseline action",
+          "reports": []
+        },
+        {
+          "id": "22.4",
+          "done": false,
+          "name": "F9 documentation, security review, and integration verification",
+          "reports": []
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Bounded artwork outcome observability",
+      "release": "1.3.0",
+      "status": "PLANNED",
+      "gate": "Gate 23",
+      "tag": "",
+      "execution_order": [
+        "23.1",
+        "23.2",
+        "23.3",
+        "23.4",
+        "23.5"
+      ],
+      "tasks": [
+        {
+          "id": "23.1",
+          "done": false,
+          "name": "Extended artwork-outcome counter model (DG-24)",
+          "reports": []
+        },
+        {
+          "id": "23.2",
+          "done": false,
+          "name": "Emit the bounded planner decision and restore-block reasons",
+          "reports": []
+        },
+        {
+          "id": "23.3",
+          "done": false,
+          "name": "Instrument the artwork-outcome counters at their boundaries",
+          "reports": []
+        },
+        {
+          "id": "23.4",
+          "done": false,
+          "name": "Read-only settings-page panel for the new counters",
+          "reports": []
+        },
+        {
+          "id": "23.5",
+          "done": false,
+          "name": "F10 documentation and security review",
+          "reports": []
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Restoration verification semantics",
+      "release": "1.3.0",
+      "status": "PLANNED",
+      "gate": "Gate 24",
+      "tag": "",
+      "execution_order": [
+        "24.1",
+        "24.2",
+        "24.3"
+      ],
+      "tasks": [
+        {
+          "id": "24.1",
+          "done": false,
+          "name": "Pinned-host image save/read-back byte-fidelity spike (jellyfin-expert)",
+          "reports": []
+        },
+        {
+          "id": "24.2",
+          "done": false,
+          "name": "Restoration verification predicate per DG-25 with regression tests",
+          "reports": []
+        },
+        {
+          "id": "24.3",
+          "done": false,
+          "name": "ADR-032 and architecture documentation reconciliation",
+          "reports": []
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "v1.3 release",
+      "release": "1.3.0",
+      "status": "PLANNED",
+      "gate": "Gate 25",
+      "tag": "v1.3.0",
+      "execution_order": [
+        "25.1",
+        "25.2",
+        "25.3",
+        "25.4",
+        "25.5"
+      ],
+      "tasks": [
+        {
+          "id": "25.1",
+          "done": false,
+          "name": "Version bump to 1.3.0.0 and documentation reconciliation",
+          "reports": []
+        },
+        {
+          "id": "25.2",
+          "done": false,
+          "name": "Full test suite and reproducible build/package",
+          "reports": []
+        },
+        {
+          "id": "25.3",
+          "done": false,
+          "name": "Live pinned-host verification of the resume, re-baseline, and counters",
+          "reports": []
+        },
+        {
+          "id": "25.4",
+          "done": false,
+          "name": "Release security review",
+          "reports": []
+        },
+        {
+          "id": "25.5",
+          "done": false,
+          "name": "Release review, artifact publication, and tag v1.3.0",
+          "reports": []
+        }
+      ]
     }
   ],
   "limitations": {
-    "open": [],
+    "open": [
+      "F9",
+      "F10"
+    ],
     "resolved": [
       "F1",
       "F2",
