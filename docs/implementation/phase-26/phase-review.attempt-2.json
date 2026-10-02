@@ -1,0 +1,154 @@
+{
+  "phase": "26",
+  "attempt": 2,
+  "reviewer_status": "APPROVED_WITH_FINDINGS",
+  "phase_complete": true,
+  "ready_for_next_phase": true,
+  "summary": "Phase 26 re-review after the 26.3 attempt-3 rework that closed attempt 1's single MEDIUM. The reworked from-phase-26 aggregate guard in scripts/check-agents.sh now recomputes every aggregate field from the phase's de-duplicated invocation set keyed by (role, execution.session_id, attempt): subagent_invocations_total and role_mix over the distinct set, phase_reviewer_invocations over the distinct phase-reviewer subset, task_level_* over the task-record invocations, phase_reviewer_* over the phase-only entries, and the unsuffixed triple = task-level + phase-only; the presence/equality check counts distinct phase-reviewer invocations across task records plus the phase record. I read the reworked section against the attempt-1 version and independently reproduced the required cases in /tmp/phase-26: with the real 26.1-26.6 records (17 task invocations, including 26.6's phase-reviewer) plus one phase-only gate reviewer, the semantically correct aggregate 18 total / phase-reviewer 2 PASSES; a double-counted aggregate FAILS in both the current-record form (19/3) and the pre-attempt-3 form the delegation quoted (18/3); a task-record-only phase-reviewer (17/1) satisfies presence and a recorded 0 against distinct 2 FAILS; and with AGGREGATE_APPLIES_FROM_PHASE temporarily lowered to 20, phase 20 (13/2) and phase 21 (56/0) still reconcile exactly, with perturbations proving neither is skipped. The attempt-1 MEDIUM is closed. One arithmetic nuance is recorded below: the semantically correct phase-26 count over the current records is 18/2, not the 17/2 in the worker's probe (which predated the attempt-3 orchestration entry), so the orchestrator must recompute the gate aggregate rather than copy the probe. The rest of the gate is unchanged and still met: scripts/check-agents.sh PASS (15/15) and scripts/check-docs.sh PASS (8 ok, dotnet-generated-block section self-skipped) on the current tree; docs/agent-contracts.md is exactly 220 lines; the rework commit changed only scripts/check-agents.sh, the A5 sentence in docs/agent-contracts.md, the 26.3 orchestration rework entry, worker-report.attempt-3.json, docs/plan/state.json's 26.3 reports list, and (newly tracked) the attempt-1 phase review; no product code, tests, artifact, or manifest changed across the phase; artifacts/ArrTags_1.2.0.0.zip is byte-identical and no 1.3.0.0 artifact exists. The tag v1.3.0-phase26 remains the orchestrator's post-approval step and is not created by this read-only review.",
+  "gate_conformance": {
+    "gate_text_audited": "**Gate 26:** Met when tasks 26.1-26.6 meet their acceptance criteria, `scripts/check-agents.sh` and `scripts/check-docs.sh` PASS with a recorded sensitivity probe per new guard, the phase review is approved, and the tag `v1.3.0-phase26` is created. There is no security-review clause: Phase 26 changes no product code and exposes no runtime surface.",
+    "matches_plan_of_record": true,
+    "amendment": null,
+    "basis": "The audited text is the Gate 26 text as it stands in PLANS.md (lines 116-120), with no criterion weakened, narrowed, or replaced, and no gate or criterion amendment (the only amendment is the user-approved 2026-10-02 addition of Phase 26 to v1.3, recorded in docs/implementation/planning/v1.3-harness-phase.json, which does not alter this gate text). At the time of this re-review: tasks 26.1-26.6 are done and their acceptance criteria are met as written (26.1's phase-21 record is the task concatenation plus a per-entry `task` provenance field and its aggregate reconciles exactly; 26.2's contract rules and the 200->220 budget are present; 26.3's reworked aggregate guard passes its recorded sensitivity probe, independently reproduced in both directions; 26.4's C1-C7 prompt corrections are present in the eight named prompts; 26.5's collector self-test and error behaviour hold; 26.6's advisory coverage record stands); scripts/check-agents.sh PASS (15/15) and scripts/check-docs.sh PASS (8 ok, generated-block section self-skipped because dotnet is absent from PATH) on the current tree; a recorded sensitivity probe per new guard exists (docs/implementation/26.3/worker-report.json and worker-report.attempt-3.json) and I independently reproduced the aggregate guard's PASS/FAIL directions and the phase-20/21 reconciliation; this attempt-2 record is the phase-review approval. The tag v1.3.0-phase26 is not yet created; it is the orchestrator's immediate post-approval step, exactly as in the attempt-1 review, and is not a defect in this read-only review."
+  },
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "finding_status": "resolved",
+      "area": "harness guard / phase aggregate consistency (scripts/check-agents.sh)",
+      "description": "CLOSED. Attempt 1's MEDIUM was that the from-phase-26 aggregate guard double-counted a phase-reviewer invocation recorded inside a task record: it computed subagent_invocations_total/role_mix as (all task-record invocations) + (every phase-reviewer entry in the phase record's subagents), so 26.6's task-record phase-reviewer landed in both sets and the semantically correct phase-26 aggregate failed. The attempt-3 rework replaces that recomputation with a de-duplicated invocation set keyed by (role, execution.session_id, attempt): `$pr_only` excludes phase-record phase-reviewer entries already present in the task-record invocation keys, `$uniq = [$inv[], $pr[]] | unique_by(invkey)`, counts/role_mix are over `$uniq`, phase_reviewer_* are over `$pr_only`, and the presence/equality check computes the distinct phase-reviewer count over task records plus the phase record. I independently reproduced: (1) the semantically correct aggregate over the current records plus one phase-only gate reviewer (18 total, phase-reviewer 2, role_mix worker 8 / reviewer 6 / tq 2 / phase-reviewer 2) PASSes; (2) the delegation's exact pre-attempt-3 numbers (16 task records + one gate = 17/2) PASS and the 18/3 double count FAILs with both the presence/equality line and the full mismatch list; (3) the current-record double count (19/3) FAILs; (4) a task-record-only phase-reviewer (17/1) PASSes and a recorded 0 against distinct 2 FAILs; (5) with AGGREGATE_APPLIES_FROM_PHASE=20, phases 20 (13/2) and 21 (56/0) reconcile exactly, and deleting phase 20's role_mix.phase-reviewer or inflating phase 21's total produces the expected failures. The MEDIUM is genuinely closed.",
+      "evidence": [
+        "scripts/check-agents.sh:320-344 (comment: distinct invocation set, (role, session_id, attempt) key, phase-only sums)",
+        "scripts/check-agents.sh:390-414 (pr_distinct presence/equality over task records + phase record, distinct by key)",
+        "scripts/check-agents.sh:415-453 (`def invkey`, `$pr_only`, `$uniq`, counts/role_mix over $uniq, phase_reviewer_* over $pr_only, unsuffixed = task-level + phase-only)",
+        "docs/implementation/26.3/worker-report.attempt-3.json (rework[0], validation entries 5-8, test_sensitivity)",
+        "docs/implementation/26.3/orchestration.json rework[1] (phase-26-review-MEDIUM-aggregate-double-count)",
+        "docs/agent-contracts.md:151-155 (A5 bullet now states de-duplication by (role, session_id, attempt))",
+        "/tmp/phase-26 reproduction: correct 18/2 -> 'check-agents: PASS'; 17/2 -> PASS; 18/3 -> FAIL 'phase 26 aggregate phase_reviewer_invocations is 3 but the record has 2 distinct phase-reviewer invocation(s)' + mismatch list; 19/3 -> FAIL; 17/1 task-record-only -> PASS; 0-vs-2 -> FAIL; constant 20 -> phases 20/21 PASS with perturbation controls"
+      ],
+      "recommended_action": "None - closed. No further change required for the gate. (Optional future hardening, not required by the plan of record: a permanent self-test fixture matching the task-record phase-reviewer shape; the rework's recorded d1/d3 probes already cover it.)"
+    },
+    {
+      "severity": "LOW",
+      "finding_status": "open",
+      "area": "documentation consistency (docs/agent-contracts.md and the agent prompts)",
+      "description": "The two LOW documentation residuals recorded in the attempt-1 review remain open. (1) The Enforcement-scope preamble still reads 'Rules below apply to phase records at phase 20 and later' although the section now contains an explicit from-phase-26 aggregate bullet; the bullet's own 'Phases before 26 are exempt' clause and the script's AGGREGATE_APPLIES_FROM_PHASE self-check keep it from drifting silently, but the scope sentence is imprecise. (2) The 'Invocation and evidence integrity' no-build/rebuild sentence ('A no-build test result is valid only after a rebuild when another agent may have touched the tree') still has no counterpart in any .opencode/agents prompt; the implementation-worker prompt's only 'rebuild' line is the unrelated test-only-change rule, so an agent reading only its prompt would not see the contract rule. These are carried residuals from 26.2/26.3/26.6, not regressions introduced by the rework.",
+      "evidence": [
+        "docs/agent-contracts.md:127-130 (Enforcement-scope preamble 'phase 20 and later')",
+        "docs/agent-contracts.md:69-71 (no-build/rebuild clause)",
+        ".opencode/agents/implementation-worker.md:244 (only the unrelated test-only 'rebuild only if required' line)",
+        "docs/implementation/26.6/agent-process-review.json limitations (both residuals recorded)",
+        "docs/implementation/phase-26/phase-review.json findings[1] (attempt-1 LOW)"
+      ],
+      "recommended_action": "Rephrase the Enforcement-scope preamble to distinguish the from-phase-20 rules from the from-phase-26 aggregate rule, and add the no-build/rebuild sentence to .opencode/agents/implementation-worker.md. Because docs/agent-contracts.md is exactly at its 220-line budget, pair any addition with a condense or a further documented budget raise. Not gate-blocking; can be folded into the next harness-touching phase."
+    },
+    {
+      "severity": "LOW",
+      "finding_status": "open",
+      "area": "orchestration recording / gate-record arithmetic (docs/implementation/26.3/worker-report.attempt-3.json)",
+      "description": "The rework's recorded sensitivity-probe figures predate the attempt-3 orchestration entry and no longer match the committed task records. Probe d1 (the required PASS case) was recorded as '17 total / phase-reviewer 2' built from 16 task-record invocations plus one synthetic gate reviewer, because when the guard was fixed the 26.3 record still had 6 subagents. The same rework commit then added 26.3's attempt-3 implementation-worker invocation to docs/implementation/26.3/orchestration.json, so the current task records carry 17 invocations and the semantically correct phase-26 aggregate (plus one phase-only gate reviewer) is 18 total / phase-reviewer 2, with role_mix implementation-worker 8 (not 7). The guard behaviour is unaffected - I reproduced both the 16-record (17/2) and 17-record (18/2) conforming forms as PASS and the double counts as FAIL - but if the orchestrator copies the probe's 17/2 into docs/implementation/phase-26/orchestration.json, the aggregate guard will FAIL at the gate ('subagent_invocations_total: recorded 17 != recomputed 18'). This is a recording-risk note, not a defect in the guard or any task deliverable.",
+      "evidence": [
+        "docs/implementation/26.3/worker-report.attempt-3.json validation entries 5-8 and test_sensitivity ('16 invocations ... total 17, phase_reviewer_invocations 2, role_mix {... implementation-worker:7 ...}')",
+        "docs/implementation/26.3/orchestration.json subagents array now has 7 entries including implementation-worker attempt 3 (session ses_f03be3b44ffeIHMq4kxxQOb3cj)",
+        "/tmp/phase-26 reproduction: with the attempt-3 entry present, semantically correct = 18/2 (worker 8) and recorded 17/2 FAILS; with it removed, 17/2 PASSES"
+      ],
+      "recommended_action": "When writing docs/implementation/phase-26/orchestration.json, compute the aggregate from the records actually committed (scripted jq recomputation), not from the probe's hard-coded 17/2; with the current records and one recorded gate reviewer the correct values are 18 total / phase-reviewer 2 / role_mix worker 8, reviewer 6, tq 2, phase-reviewer 2 (higher if both phase-review attempts are recorded). Optionally, in .opencode/agents/orchestrator.md, require record-derived sensitivity probes to be generated by a scripted recomputation and re-run after any later task-record change."
+    },
+    {
+      "severity": "INFORMATIONAL",
+      "finding_status": "noted",
+      "area": "scope of the 26.3 rework commit",
+      "description": "The rework commit 76532cb changes six files, one more than the five the delegation named: in addition to scripts/check-agents.sh, the A5 sentence in docs/agent-contracts.md, docs/implementation/26.3/worker-report.attempt-3.json, docs/implementation/26.3/orchestration.json, and docs/plan/state.json, it also first commits docs/implementation/phase-26/phase-review.json (the attempt-1 phase review, previously untracked). That file is required phase evidence and its commit is expected and benign; it is recorded here only so the scope statement is exact. No product, test, artifact, or manifest file is involved.",
+      "evidence": [
+        "git show --stat 76532cb (six paths)",
+        "git log --diff-filter=A -- docs/implementation/phase-26/phase-review.json -> 76532cb"
+      ],
+      "recommended_action": "None required. Optionally commit phase-review artifacts in their own step, or name them in the rework delegation's scope, so a rework commit contains only the named files."
+    }
+  ],
+  "reviewer_blockers": [],
+  "tasks_checked": ["26.1", "26.2", "26.3", "26.4", "26.5", "26.6"],
+  "commits_checked": [
+    "54e7aa9 (plan amendment adding Phase 26)",
+    "393a427 (26.1 amend the phase-21 orchestration record)",
+    "eda9361 (26.2 agent-contract rules)",
+    "2b86665 (26.3 guard enforcement)",
+    "4b84925 (26.4 agent prompt corrections)",
+    "5bdf1a1 (26.5 session-usage collection fix)",
+    "a16059f (26.6 advisory agent-process re-review)",
+    "76532cb (26.3 attempt-3 rework: aggregate guard de-duplication, HEAD)"
+  ],
+  "requirements_checked": [
+    "26.1: phase-21 orchestration record satisfies the contract phase-level shape and its aggregate reconciles exactly with the fourteen 21.1-21.14 task records (verified: 56 subagents; key multiset (role, attempt, session_id) equals the task-record concatenation; entries are equal ignoring the added per-entry `task` provenance field; phase-21 aggregate 56/phase-reviewer 0 reconciles at constant 20); no phase-21 task report modified (393a427 touches only phase-21/orchestration.json, +1166/-4)",
+    "26.2: corrective/re-derivation and invocation/evidence-integrity rules, tightened reports-array rule 5, phase-gate obligations, enforcement-scope entries, release-phase gate precedent recorded in docs/agent-contracts.md; budget raised 200->220 and PASSES (exactly 220 lines)",
+    "26.3: from-phase-20 evidence-completeness guard, from-phase-26 aggregate/de-dup guard, all-phases reviewer-report listing, scope self-checks; phases 20-25 grandfathered; sensitivity probes recorded and independently reproduced in both directions (aggregate: 18/2 and 17/2 PASS, 19/3 and 18/3 FAIL; phases 20/21 reconcile at constant 20)",
+    "26.4: C1-C7 corrections present in the eight named prompts (changed_files lists orchestrator, implementation-reviewer, implementation-planner, live-host-verifier, test-quality-reviewer, security-reviewer, phase-reviewer, release-reviewer); reviewer APPROVED; none contradicts the contract",
+    "26.5: collector fetches a real session, errors clearly when unreachable, never estimates; reviewer APPROVED with an independent byte-identical reproduction",
+    "26.6: advisory coverage record reconciles 15 observations against guards/rules; it is itself a review task, exempt from the worker/reviewer pairing and independently audited by the phase review",
+    "Gate 26: check-agents.sh PASS (15/15) and check-docs.sh PASS (8 ok, generated-block self-skip) on the current tree; recorded probe per new guard; the attempt-1 MEDIUM is closed; no product/tests/artifact/manifest change; tag v1.3.0-phase26 remains the orchestrator's post-approval step"
+  ],
+  "architecture_checked": [
+    "Phase 26 is deliberately outside the goal/DG/ADR machinery (no goal, no DG, no new ADR); PLANS.md and docs/implementation/planning/v1.3-harness-phase.json state this, so the absent goal is not a defect",
+    "Authoritative Phase 26 execution order (26.1, 26.2, 26.3, 26.4, 26.5, 26.6) in PLANS.md matches docs/plan/state.json and satisfies the documented dependencies (26.3 and 26.4 depend on 26.2; 26.6 depends on 26.1-26.5)",
+    "Global v1.3 phase order 26, 22, 23, 24, 25 is consistently stated; phases 1-21 are not reopened; the phase-21 amendment is additive (no task report modified)",
+    "No product architecture, data model, or decision record is affected; the phase changes no product behavior and no artifact identity",
+    "The reworked guard's de-duplication key (role, execution.session_id, attempt) matches the contract A5 wording and keeps a resumed-session attempt (same session_id, different attempt, e.g. 26.3 attempt 2/3 and 26.4 attempt 1/2) as distinct invocations, consistent with how the records sum them"
+  ],
+  "research_checked": [],
+  "documentation_checked": [
+    "docs/plan/state.json: phase 26 with six done tasks; 26.3 reports now list worker-report.attempt-3.json; status PLANNED is correct pre-gate; the 1.3.0 release remains PLANNED",
+    "PLANS.md: Phase 26 section, checkboxes [x], authoritative execution order, Gate 26 text, milestone table (26 PLANNED) agree with state.json",
+    "docs/agent-contracts.md: A5 bullet now states de-duplication by (role, session_id, attempt); exactly 220 lines; the attempt-1 LOW residual (Enforcement-scope preamble; missing no-build/rebuild prompt sentence) persists and is recorded as the LOW finding",
+    "docs/plan/README.md and docs/status.md: unchanged by the rework; the reports-array paraphrase and generated status remain consistent with the pre-gate state",
+    "docs/changelog/ and docs/limitations/: no entry required or expected for an internal harness phase that changes no product behavior",
+    "Artifact identity: artifacts/ArrTags_1.2.0.0.zip sha256 2a039fc7... / md5 631fbfa5... / 619861 bytes match state.json and check-docs; no 1.3.0.0 artifact exists"
+  ],
+  "orchestration_checked": [
+    "docs/implementation/26.1 through 26.6 orchestration.json (valid JSON, conformance blocks present, per-invocation execution metadata; 17 task-record invocations total)",
+    "docs/implementation/26.3/orchestration.json (attempt-3 worker entry added on the attempt-2 session_id as a delta; two rework entries)",
+    "docs/implementation/phase-21/orchestration.json (56 subagents = task concatenation plus per-entry `task` provenance; aggregate 56/0)",
+    "docs/plan/state.json reports arrays for the six tasks (check-agents pairing and from-phase-20 evidence-completeness checks PASS)",
+    "No docs/implementation/phase-26/orchestration.json exists yet, so the real phase-26 aggregate guard remains the orchestrator's first real exercise at the gate"
+  ],
+  "agent_process": {
+    "scope": "phase-26 (re-review after the 26.3 attempt-3 rework)",
+    "measurements": {
+      "task_record_invocations_per_task": "26.1: 2; 26.2: 2; 26.3: 7; 26.4: 3; 26.5: 2; 26.6: 1 (17 total)",
+      "role_mix_task_records": "implementation-worker 8, implementation-reviewer 6, test-quality-reviewer 2, phase-reviewer 1",
+      "distinct_phase_invocations_with_one_gate_reviewer": "18 (17 task + 1 phase-only); phase-reviewer distinct 2",
+      "first_pass_approval_rate": "5/5 task implementation-reviewer attempt-1 APPROVED (26.1, 26.2, 26.3, 26.4, 26.5); 26.3's implementation-reviewer attempt-0 FAILED with no report and was retried; 26.6 is a review task with no implementation-reviewer",
+      "correction_rounds": "3 rework entries: 26.3 x2 (F-26.3-TQ-01/02/03 in the attempt-1->2 round; phase-26-review-MEDIUM in the attempt-2->3 round) and 26.4 x1 (26.4-F1 LOW)",
+      "phase_review_attempts": "2 (attempt 1 APPROVED_WITH_FINDINGS with one MEDIUM; attempt 2 this re-review closing it)",
+      "blocked_failed_invocations": "26.3 implementation-reviewer attempt-0 FAILED (report absent, retried per the contract); no BLOCKED, NEEDS_RESEARCH, or NEEDS_USER_INPUT invocation",
+      "recorded_duration_seconds_per_task": "26.1 1453; 26.2 586; 26.3 9914 (4428 + attempt-3 delta 5486); 26.4 1467; 26.5 1447; 26.6 241",
+      "cost_tokens": "not recomputed for this advisory section per the re-review instruction; recorded in each task's orchestration.json",
+      "noteworthy": "26.3 is the most-invoked task (7) and the only one with two rework rounds; its attempt-3 was a resumed-session invocation (same session_id as attempt 2, delta recorded)"
+    },
+    "observations": [
+      {
+        "observation": "The attempt-3 worker's recorded sensitivity probe for the aggregate guard was built and its expected numbers hand-written against the 16-invocation task set that existed before the rework's own orchestration entry was added; the same commit then added 26.3's attempt-3 invocation, so the committed records recompute to 18/2, not the probe's 17/2 (worker 8, not 7). The guard is correct, but the recorded probe constants are stale relative to the tree the gate will aggregate.",
+        "evidence": [
+          "docs/implementation/26.3/worker-report.attempt-3.json validation entries 5-8 and test_sensitivity[0]",
+          "docs/implementation/26.3/orchestration.json subagents (7 entries, attempt-3 added)",
+          "/tmp/phase-26 reproduction: 16-record conforming 17/2 PASS, 17-record conforming 18/2 PASS, recorded 17/2 against the 17-record tree FAILS"
+        ],
+        "proposed_change": "In .opencode/agents/orchestrator.md's guard/delegation brief, require a recorded sensitivity probe whose inputs are the phase's own records to be produced by a scripted recomputation over the current records (and re-run/re-recorded after any later task-record change), instead of hand-typed expected counts.",
+        "rationale": "The first real exercise of the phase-26 aggregate branch is the gate record; a probe computed against a pre-commit snapshot is exactly how a correct guard reaches the gate with a stale number, and a scripted recomputation makes the probe self-consistent with the tree it is supposed to describe."
+      },
+      {
+        "observation": "The rework commit bundled the previously untracked attempt-1 phase review (docs/implementation/phase-26/phase-review.json) with the code fix, so the rework commit's scope (six files) is wider than the delegation's named five and cannot be read off the commit alone.",
+        "evidence": [
+          "git show --stat 76532cb",
+          "git log --diff-filter=A -- docs/implementation/phase-26/phase-review.json -> 76532cb"
+        ],
+        "proposed_change": "In .opencode/agents/orchestrator.md, commit a phase-review artifact in its own step (or name it in the rework delegation's scope), so a rework commit contains only the files the delegation named.",
+        "rationale": "Keeping a rework commit's scope equal to its named files lets the next reviewer verify scope from the commit without reconstructing which extra path is expected evidence and which is drift."
+      }
+    ]
+  },
+  "rework_summary": {
+    "total_subagent_invocations": 18,
+    "total_attempts": 18,
+    "correction_rounds": 3
+  }
+}

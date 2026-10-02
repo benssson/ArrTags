@@ -223,7 +223,6 @@ review are recorded, and the tag `v1.3.0` is created.
 | 23 | Bounded artwork outcome observability | PLANNED | Gate 23 |
 | 24 | Restoration verification semantics | PLANNED | Gate 24 |
 | 25 | v1.3 release | PLANNED | Gate 25 |
-| 26 | Harness and agent-contract remediation | PLANNED | Gate 26 |
 <!-- END GENERATED: milestone-status -->
 
 Completed milestones and their gates are recorded in
