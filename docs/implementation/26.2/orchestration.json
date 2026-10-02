@@ -1,0 +1,57 @@
+{
+  "task": "26.2",
+  "title": "Agent-contract rules",
+  "phase": 26,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 26.2 adds normative agent-report rules to docs/agent-contracts.md derived from already-recorded agent-process observations. It depends on no unverified Jellyfin or provider behavior, changes no product behavior, and implements no ADR clause. No pre-dispatch specialist conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 96723,
+        "output_tokens": 15786,
+        "reasoning_tokens": 28277,
+        "cache_read_tokens": 1940352,
+        "cache_write_tokens": 0,
+        "total_tokens": 2081138,
+        "cost_usd": 0.046767305999999995,
+        "duration_seconds": 331,
+        "session_id": "ses_f03e0d1efffecuTpaPaXmoVv0E"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 78203,
+        "output_tokens": 24456,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 1620992,
+        "cache_write_tokens": 0,
+        "total_tokens": 1723651,
+        "cost_usd": 0,
+        "duration_seconds": 255,
+        "session_id": "ses_f03db9168ffep24uj04H45gXfT"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Added rules A1-A6 to docs/agent-contracts.md (218 lines) and raised its budget 200 -> 220 in scripts/check-docs.sh (the raise is allowed only alongside a rule check-agents.sh enforces; A3/A5 are). A1 Corrective and re-derivation tasks; A2 Invocation and evidence integrity; A3 tightened reports-array rule; A4 Phase gate obligations; A5 Enforcement-scope entries from phase 20 (attempts listing) and from phase 26 (subagents/aggregate consistency); A6 release-phase gate precedent.",
+    "The implementation reviewer independently reproduced check-docs/check-agents PASS and swept every phase>=20 task dir for missing base reports/attempt files against state.json: no misses except 26.2's own unlisted worker report. It raised five non-blocking notes carried to 26.3/26.4: F1 (the Enforcement-scope preamble still says 'phase 20 and later'; the from-phase-26 bullet resolves it, and 26.3 must keep the aggregate constant at 26), F2 (docs/plan/README.md still paraphrases the pre-tightening reports-array rule and should be aligned in 26.3/26.4), F3 (name the two enforced rules explicitly in 26.3), F4 (the 15.4 specialist-delegation observation must land in 26.4), F5 (A4 does not name where the disposition is recorded)."
+  ]
+}

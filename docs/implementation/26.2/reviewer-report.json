@@ -1,0 +1,158 @@
+{
+  "task": "26.2",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "summary": "Reviewed the task 26.2 diff independently. The change is exactly two files: docs/agent-contracts.md (48 insertions / 4 deletions) and scripts/check-docs.sh (the single docs/agent-contracts.md budget line, 200 -> 220). The four deleted lines are only the old 'Where reports go' rule 5 body; no other existing rule was weakened or removed (Where reports go 1-4, the agent table, Shared enums, Phase review gate conformance, Task conformance precondition, Agent-process review, Review exemptions, Read-only reviewers are byte-identical to HEAD). Rules A1-A6 are present once each, are faithful to their recorded evidence, and are consistent with each other and with scripts/check-agents.sh. I independently confirmed both guards: with docs/implementation/26.2/worker-report.json temporarily moved aside, scripts/check-agents.sh and scripts/check-docs.sh both PASS (exit 0); with it in place the only failures are the two expected transient 26.2 pairing lines (worker report without reviewer report, and the unlisted report), every other section including 'ok: doc budget checked' and 'ok: contract enforcement scope agrees with the script' passing. The new 'from phase 26' wording does not break the existing APPLIES_FROM_PHASE=20 self-check (it greps 'from phase 20', still present six times), and the A5 reports-array rule is enforceable as written on the current tree: an independent sweep of every task directory at phase >= 20 found no missing base report and no missing .attempt-<n>.json other than 26.2's own not-yet-listed worker report. Findings are limited to non-blocking precision items (documented below); none blocks advancing.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "architecture / internal consistency",
+      "summary": "The Enforcement scope preamble still says all rules below apply 'at phase 20 and later', which now coexists with a rule explicitly scoped 'from phase 26'.",
+      "detail": "docs/agent-contracts.md:127-130 states 'Rules below apply to phase records at phase 20 and later; earlier records predate them ... The script fails if this number and its own APPLIES_FROM_PHASE disagree.' The A5 'from phase 26' bullet (lines 151-154) sits inside that list. The bullet's own marker plus 'Phases before 26 predate this rule and are not rewritten' resolves the ambiguity for a careful reader, and the grandfathering matches the plan's risk mitigation (docs/implementation/planning/v1.3-harness-phase.json 26.3 work item 4: grandfather Phases 20-25). It is not a contradiction, and it is not a defect in the guards to be written: task 26.3 is scoped to a separate phase-26 scope constant, and the plan's risk note requires that the phase-20 constant not be lowered. A related, pre-existing looseness is unchanged: rule 5 in 'Where reports go' carries no scope marker while its Enforcement-scope bullet applies from phase 20, which is why the four pre-phase-20 tasks holding unlisted attempt files (7.1, 7.8, 15.2, 15.4) stay outside the guard.",
+      "evidence": [
+        "docs/agent-contracts.md:127-130 (preamble) vs docs/agent-contracts.md:151-154 (from phase 26 bullet)",
+        "docs/implementation/planning/v1.3-harness-phase.json -> phases[0].tasks[id=26.3].work[3] ('Grandfather Phases 20-25 for the aggregate rule')",
+        "scripts/check-agents.sh:24-28,156-160 (APPLIES_FROM_PHASE=20 and its single grep for 'from phase 20')",
+        "bash scripts/check-agents.sh -> 'ok: contract enforcement scope agrees with the script'"
+      ],
+      "recommended_action": "No change required for 26.2. In 26.3, keep the aggregate guard's own scope constant at 26 (as planned) and, if convenient while editing that section, tighten the preamble sentence so it does not read as a blanket phase-20 statement."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "documentation reconciliation",
+      "summary": "docs/plan/README.md still paraphrases the pre-tightening reports-array rule, so a reader of the schema doc alone could omit attempts for non-reviewer report kinds and trip the guard 26.3 installs.",
+      "detail": "docs/plan/README.md:58-63 says a task lists 'its reviewer-report.json and every preserved .attempt-<n>.json of it, plus any test-quality-review.json, security-review.json, or live-verification.json that exists'. The contract's rule 5 (A3) is now strictly broader: the base report for every kind that exists (which also covers documentation-review.json, absent from the old enumeration) plus every preserved .attempt-<n>.json for every listed kind. The README paragraph is a strict subset of the contract, not a contradiction, and it explicitly defers ('See docs/agent-contracts.md, which defines the set'), so the contract remains authoritative. The task's declared documentation scope was 'docs/agent-contracts.md; scripts/check-docs.sh (budget line only)', so editing README here would exceed the boundary.",
+      "evidence": [
+        "docs/plan/README.md:58-63",
+        "docs/agent-contracts.md:20-25 (tightened rule 5)",
+        "docs/implementation/planning/v1.3-harness-phase.json -> phases[0].tasks[id=26.2].documentation ('docs/agent-contracts.md; scripts/check-docs.sh (budget line only, and only if required)')"
+      ],
+      "recommended_action": "Not required for 26.2. Align the README sentence with the tightened rule in 26.3 (which owns the guard) or in the next documentation-maintainer pass, so the schema doc does not under-state the reports-array requirement."
+    },
+    {
+      "id": "F3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness (transient doc/script divergence)",
+      "summary": "The closing Enforcement-scope sentence asserts present-tense enforcement of the two new rules, which only becomes true in 26.3; 'both' is also ambiguous.",
+      "detail": "docs/agent-contracts.md:156-157 states 'scripts/check-agents.sh enforces both rules and fails if its scope constants disagree with the phases stated here.' At review time the script enforces neither the attempts listing (its state check only requires some entry matching /reviewer-report/, scripts/check-agents.sh:146-151) nor the phase-level subagents/aggregate, and its only scope constant is APPLIES_FROM_PHASE=20. This is the intended contract-first ordering (26.3 depends on 26.2 so the text and the guards cannot disagree) and the worker disclosed it, but 'both' does not say whether it means the two new bullets or the two clauses of the phase-20 bullet. No existing check contradicts the sentence and nothing consumes it as a machine fact.",
+      "evidence": [
+        "docs/agent-contracts.md:148-157",
+        "scripts/check-agents.sh:28,146-151,156-160",
+        "docs/implementation/planning/v1.3-harness-phase.json -> phases[0].tasks[id=26.3].dependencies ('26.2 (the contract text the guards enforce must be written first...)')",
+        "docs/implementation/26.2/worker-report.json -> known_limitations[1]"
+      ],
+      "recommended_action": "No change required for 26.2. In 26.3, after the guards and the phase-26 self-check exist, name the two rules explicitly in that sentence so 'both' is unambiguous and the present tense is true."
+    },
+    {
+      "id": "F4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage of the evidence base",
+      "summary": "The release-review observation about a task whose criteria require a specialist review (task 15.4) is not reflected in the contract; it appears to be routed to 26.4's prompt corrections.",
+      "detail": "release-review-v1.2.json agent_process.observations[4] proposed that docs/agent-contracts.md state that such a task must be flagged orchestrator-run in its brief and that a depth-1 implementation-worker must not attempt to delegate. A1-A7 as scoped in docs/implementation/planning/v1.3-harness-phase.json do not list this item, and 26.4 is scoped to apply the seven prompt corrections sourced from the agent_process proposed_change entries, so it is not a 26.2 omission. I note it so it is not lost before 26.6's advisory re-review, which is scoped to record coverage per previously advisory class. The contract already covers the adjacent half of this case in 'Task conformance precondition' (a worker that discovers the dependency mid-task returns NEEDS_RESEARCH or BLOCKED without implementing).",
+      "evidence": [
+        "docs/implementation/final-review/release-review-v1.2.json -> agent_process.observations[4]",
+        "docs/implementation/planning/v1.3-harness-phase.json -> phases[0].tasks[id=26.4].work[1]",
+        "docs/agent-contracts.md:176-179"
+      ],
+      "recommended_action": "No change required for 26.2. Confirm in 26.4 that the 15.4 specialist-delegation observation is either carried into a prompt correction or explicitly deferred with a reason in 26.6."
+    },
+    {
+      "id": "F5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirement (A4 actionability)",
+      "summary": "A4 names the disposition vocabulary and the user's ownership of accept, but does not name the record in which the disposition is recorded.",
+      "detail": "docs/agent-contracts.md:102-107 requires the orchestrator to record a disposition per new security finding before the next phase starts and calls an undispositioned open finding a gate defect. The contract does not say where the disposition lives, whereas the gate_conformance block names its own JSON shape and location. Phase 26 raises no security finding, so nothing currently depends on it; a later phase reviewer would have to infer the record (phase review, phase orchestration notes, or the limitations register for an accept).",
+      "evidence": [
+        "docs/agent-contracts.md:102-107 vs docs/agent-contracts.md:82-89 (gate_conformance block, which names its location)",
+        "docs/implementation/planning/v1.3-harness-phase.json -> phases[0].tasks[id=26.2].work[3] (A4 as scoped)"
+      ],
+      "recommended_action": "No change required for 26.2 (A4's acceptance criterion is met). When the first phase that raises a security finding passes its gate, name the recording location so the obligation is auditable."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "A1 is present and faithful: post-re-derivation superseded-identity sweep over the named surfaces with a never-current rule; no full artifact/live/security re-derivation while a corrective set is open absent a consolidated adversarial pass clearing BLOCKER/HIGH/MEDIUM or explicit user acceptance; corrective work continues the single-dotted task-ID sequence.",
+      "verdict": "PASS",
+      "evidence": "docs/agent-contracts.md:51-63. Sweep targets match release-review-v1.2.json agent_process.observations[0] proposed_change and all four surfaces exist in the tree (docs/testing/jellyfin-12-musl-test-host.md, docs/release/build-and-release.md, docs/changelog/, docs/decisions/ADR-015.md carries an artifact SHA-256 in its implementation note). 'Mark superseded' matches established v1.2 practice of annotating in place (docs/release/build-and-release.md:197,216,219,230,279; docs/testing/jellyfin-12-musl-test-host.md:310,362,366) rather than rewriting immutable history. Batch rule matches observations[3] verbatim in substance. Task-ID bullet is grounded in docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json and v1.2-phase-21-log-subject-correction.json ('the plan/state guard's task-id grammar is a single dotted number') and adds no requirement beyond those records."
+    },
+    {
+      "criterion": "A2 is present and faithful: attempt-0 retry when the report is absent; destructive pre-fix probes in an isolated export or worktree and no-build results valid only after a rebuild when another agent may have touched the tree; causal procedure claims checked against pinned-host research or the source, with a disproved attribution withdrawn or superseded.",
+      "verdict": "PASS",
+      "evidence": "docs/agent-contracts.md:65-74. Bullet 1 <- release-review agent_process.observations[5] (21.11 worker and reviewer attempt 0 FAILED with no report, both retried). Bullet 2 <- the 21.7 shared-tree revert-probe / stale --no-build binary evidence listed in v1.3-harness-phase.json amendment.evidence. Bullet 3 <- 21.9 reviewer-report.attempt-2 finding R-21.9-5. The attempt-0 rule does not conflict with the FAILED status enum: it constrains interpretation, not the enum."
+    },
+    {
+      "criterion": "A3 tightens 'Where reports go' rule 5 to require every preserved .attempt-<n>.json on disk for every listed report kind plus the base report for each kind that exists, and is at least as strong as the old wording for every report kind.",
+      "verdict": "PASS",
+      "evidence": "docs/agent-contracts.md:20-25 vs HEAD:20-26. Old rule required reviewer-report.json plus its attempts plus any of test-quality/security/live-verification that exist; the new rule requires the base report of every kind that exists (a superset: it also covers documentation-review.json and any future kind) and every attempt file for every listed kind. The old enumeration is not a special case of the new rule in any direction that loses a requirement; grep confirms the old 'lists at minimum its' wording is gone from the contract."
+    },
+    {
+      "criterion": "A4 is present and actionable: an explicit per-finding disposition at each phase gate (fix-now / accept-with-register-entry / defer-with-rationale, the user owning an accept) for every new security finding the phase raised before the next phase starts, and an undispositioned open finding is a gate defect.",
+      "verdict": "PASS",
+      "evidence": "docs/agent-contracts.md:102-107. The three tokens appear nowhere in the repository except the release review (their source), the v1.3 planning record, and this contract, so no vocabulary was invented and none conflicts with the Shared enums (finding status stays open/resolved/not_required/noted). The wording covers LOW/MEDIUM findings, which is the class the release review identified. See F5 for the non-blocking absence of a named recording location."
+    },
+    {
+      "criterion": "A5 adds the from-phase-20 and from-phase-26 enforcement-scope entries, does not rewrite earlier phases, and states that the script enforces them and fails on scope-constant disagreement.",
+      "verdict": "PASS",
+      "evidence": "docs/agent-contracts.md:148-157. Enforceability of the from-phase-20 rule was verified independently by sweeping every docs/implementation/<task>/ directory at phase >= 20 for base reports and .attempt-<n>.json files absent from the task's state.json reports array: the only miss is 26.2's own worker report, which the orchestrator has not listed yet. The from-phase-26 entry matches 26.3's planned guard fields and grandfathers earlier phases, matching the plan's risk mitigation. See F1 and F3 for scoping-precision notes."
+    },
+    {
+      "criterion": "A6 adds the release-phase gate precedent: a release phase may use the release review as its gate, phase_review and phase_review_status then point at the release review, and there is no separate phase-reviewer record.",
+      "verdict": "PASS",
+      "evidence": "docs/agent-contracts.md:121-123. Verified against the two cited records: docs/implementation/phase-21/orchestration.json has phase_review 'docs/implementation/final-review/release-review-v1.2.json', phase_review_status APPROVED_WITH_ACCEPTED_LIMITATIONS, and no phase-reviewer invocation in subagents (implementation-worker 19, implementation-reviewer 20, test-quality-reviewer 6, security-reviewer 4, live-host-verifier 5, documentation-maintainer 2); docs/implementation/phase-14/orchestration.json is the v1.1 release phase gated by the release review (release_review.reviewer_status APPROVED_WITH_ACCEPTED_LIMITATIONS) with no phase-reviewer record. The pointer-field clause matches Phase 21 exactly; Phase 14 (pre-contract) used a release_review object with phase_review null, which the contract's own 'Records written before this contract ... are history' bullet already covers. No contradiction with the from-phase-20 phase-record bullet, which requires those two fields to be present and non-null."
+    },
+    {
+      "criterion": "A7: the budget line is raised only because an enforced rule requires it, and scripts/check-docs.sh passes.",
+      "verdict": "PASS",
+      "evidence": "scripts/check-docs.sh:98 'budget docs/agent-contracts.md 220'; wc -l docs/agent-contracts.md = 218, so the old 200 budget would fail and 220 leaves 2 lines of headroom. The unchanged comment at lines 95-97 requires the raise to accompany a rule check-agents.sh enforces; A3/A5 are those rules, enforced by 26.3. scripts/check-docs.sh exits 0 ('ok: doc budget checked', 'check-docs: PASS') in the pre-report state I reproduced."
+    },
+    {
+      "criterion": "The existing APPLIES_FROM_PHASE self-check still holds and the new 'from phase 26' wording does not break or contradict scripts/check-agents.sh.",
+      "verdict": "PASS",
+      "evidence": "scripts/check-agents.sh:158 greps 'from phase 20', which the contract still states six times (lines 132-150); 'from phase 26' does not match that pattern and does not displace any 'from phase 20' marker. check-agents.sh reports 'ok: contract enforcement scope agrees with the script'. No prompt or script outside the contract states a phase scope for these rules, so no other surface can drift. scripts/check-agents.sh itself was not modified."
+    },
+    {
+      "criterion": "Task boundary respected: no goal, DG, ADR, existing phase/gate text, docs/plan/state.json, PLANS.md, docs/planning/**, or scripts/check-agents.sh change; no product code, test, artifact, or manifest change; no commit or tag.",
+      "verdict": "PASS",
+      "evidence": "git diff --numstat -> docs/agent-contracts.md 48/4 and scripts/check-docs.sh 1/1, nothing else; git status --porcelain -uall -> the two modified files plus the untracked docs/implementation/26.2/worker-report.json; git log --oneline -1 -> 393a427 (no new commit); the check-docs.sh diff is the single budget line with its comment untouched; the contract diff's only deletions are the four old rule-5 lines."
+    },
+    {
+      "criterion": "scripts/check-docs.sh and scripts/check-agents.sh PASS (with the transient 26.2 pairing line noted).",
+      "verdict": "PASS",
+      "evidence": "Independently reproduced: with docs/implementation/26.2/worker-report.json moved to /tmp/26.2 and restored afterwards, check-agents.sh exits 0 with all twelve sections ok and check-docs.sh exits 0 ('check-docs: PASS'). In the current persisted state both fail on exactly two lines, 'FAIL: task 26.2 has a worker report but no reviewer report' and 'FAIL: task 26.2 has a reviewer report on disk but docs/plan/state.json does not list it in reports'; the second is the expected wording of the fixed-text check (state.json 26.2 reports is []) and clears when the orchestrator adds and lists this report. All other sections pass, including the doc budget and the enforcement-scope self-check."
+    }
+  ],
+  "tests_checked": [
+    "bash scripts/check-agents.sh - exit 1 in the persisted state with exactly the two expected transient 26.2 pairing lines; all other sections ok including 'contract enforcement scope agrees with the script'",
+    "bash scripts/check-agents.sh with docs/implementation/26.2/worker-report.json temporarily moved aside - exit 0, 'check-agents: PASS', twelve sections ok (report restored, git status unchanged)",
+    "bash scripts/check-docs.sh - exit 1 only via the mirrored check-agents failure in section 9; sections 1-8 ok including 'ok: doc budget checked' (218 <= 220); exit 0 'check-docs: PASS' in the moved-aside state",
+    "Independent A5 enforceability sweep over every docs/implementation/<task>/ at phase >= 20 comparing on-disk base reports and .attempt-<n>.json against docs/plan/state.json reports - only 26.2's own worker report is unlisted",
+    "git diff / git diff --numstat / git status --porcelain -uall / git log -1 - scope and boundary verification"
+  ],
+  "research_checked": [
+    "docs/implementation/final-review/release-review-v1.2.json agent_process.observations - observations[0] superseded identities, [3] unbatched re-derivation, [5] attempt-0 retry are the sources of A1 bullets 1-2 and A2 bullet 1; [2] aggregate inconsistency is the source of the A5 phase-26 rule; [4] (15.4 specialist delegation) is out of A1-A7 scope and routed to 26.4",
+    "docs/implementation/phase-20/phase-review.json agent_process.observations - both observations target prompts/script (orchestrator delegation baseline, collect-session-usage.sh), not the contract, so they correctly produce no A-rule here",
+    "docs/implementation/planning/v1.3-harness-phase.json tasks 26.2 and 26.3 - the authoritative A1-A7 wording, the 26.3 dependency, the phase-20/phase-26 scoping, and the grandfathering of Phases 20-25",
+    "docs/implementation/planning/v1.2-phase-21-sec-21-5-01-correction.json and v1.2-phase-21-log-subject-correction.json - recorded basis for the single-dotted task-ID rule",
+    "docs/decisions/ADR-015.md implementation note - confirms ADR notes do carry artifact SHA-256 values, so the A1 sweep target is real"
+  ],
+  "documentation_checked": [
+    "docs/agent-contracts.md (full read; diffed against HEAD; 218 lines)",
+    "docs/plan/README.md:58-63 (parallel statement of the reports-array rule - see F2)",
+    "docs/INDEX.md:61 and AGENTS.md (contract pointers; neither claims an exhaustive section list, so neither is stale)",
+    "docs/plan/state.json phase 26 entry (26.1 done with reports listed; 26.2 reports empty, done false - unchanged by this task)",
+    "docs/implementation/phase-14/orchestration.json and docs/implementation/phase-21/orchestration.json (A6 precedent verification)",
+    "docs/release/build-and-release.md and docs/testing/jellyfin-12-musl-test-host.md superseded-marking practice (A1 interpretation check)"
+  ],
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "rework_log": [],
+  "orchestrator_note": "check-agents.sh/check-docs.sh will keep failing on the two 26.2 pairing lines until docs/implementation/26.2/reviewer-report.json is listed in docs/plan/state.json phase 26 task 26.2 reports. That state.json write is the orchestrator's, not the reviewer's.",
+  "ready_for_next_task": true
+}

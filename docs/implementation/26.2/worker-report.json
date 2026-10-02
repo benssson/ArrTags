@@ -1,0 +1,110 @@
+{
+  "task": "26.2",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Added rules A1-A6 to docs/agent-contracts.md in its existing terse normative style and raised the contract's doc budget line from 200 to 220 in scripts/check-docs.sh (A7, required because the new enforced rules push the contract past 200 lines): new 'Corrective and re-derivation tasks' section (post-re-derivation sweep of docs/testing/jellyfin-12-musl-test-host.md, docs/release/build-and-release.md, the release changelog and ADR implementation notes with superseded marking and a never-current superseded hash; no full artifact/live/security re-derivation while a corrective set is open absent a consolidated adversarial review clearing BLOCKER/HIGH/MEDIUM or explicit user acceptance; corrective work continues the single-dotted task-ID sequence); new 'Invocation and evidence integrity' section (attempt-0 with absent report retried and recorded as retried; destructive pre-fix probes in an isolated export or worktree and no-build results valid only after a rebuild when the tree may have been touched; causal procedure claims checked against pinned-host research or source with disproved attributions withdrawn or superseded); tightened 'Where reports go' rule 5 (base report for every kind that exists for the task and every preserved .attempt-<n>.json on disk for every kind the reports array lists, not only reviewer-report.json); new 'Phase gate obligations' section (explicit fix-now / accept-with-register-entry / defer-with-rationale disposition, the user owning the accept, for every new security finding before the next phase starts; an open finding without a recorded disposition is a gate defect); two Enforcement-scope entries ('from phase 20' reports-array attempts and 'from phase 26' subagents/aggregate consistency with phases before 26 not rewritten) plus the statement that scripts/check-agents.sh enforces both and fails if its scope constants disagree with this section; and the release-phase gate precedent (Phase 14 and Phase 21) in 'Phase-level orchestration record'. docs/agent-contracts.md is 218 lines against the 220 target. No state.json, PLANS.md, docs/planning/**, scripts/check-agents.sh, goal/DG/ADR, product code, test, artifact, or manifest change; no commit or tag.",
+  "validation": [
+    "wc -l docs/agent-contracts.md -> 218 (at or below the 220 target); scripts/check-docs.sh:98 -> 'budget docs/agent-contracts.md 220' (was 200).",
+    "source /config/arrtags-env.sh && bash scripts/check-docs.sh -> exit 0, 'check-docs: PASS', all nine sections ok including 'ok: doc budget checked' and 'ok: agent report contracts conform'.",
+    "bash scripts/check-agents.sh -> exit 0, 'check-agents: PASS', all twelve sections ok including 'ok: contract enforcement scope agrees with the script' (the existing APPLIES_FROM_PHASE=20 self-check), 'ok: per-agent default path and status enum agree with the contract', 'ok: worker/reviewer report pairing checked', and 'ok: plan state lists the review evidence'.",
+    "Sensitivity probe (budget validator): with scripts/check-docs.sh temporarily set back to the old 'budget docs/agent-contracts.md 200', check-docs exits 1 with exactly 'FAIL: docs/agent-contracts.md is 218 lines (budget 200)' and 'check-docs: FAIL'; restoring 220 exits 0 with 'check-docs: PASS'. Probe output was captured under /tmp/26.2/ (removed after the task).",
+    "Sensitivity probe (existing enforcement-scope self-check): with 'from phase 20' temporarily replaced by 'from phase twenty' in docs/agent-contracts.md, check-agents exits 1 with exactly 'FAIL: APPLIES_FROM_PHASE=20 is not stated in docs/agent-contracts.md (Enforcement scope)' and 'check-agents: FAIL'; the file was then restored byte-identical (cmp clean) and check-agents exits 0 'check-agents: PASS'. This shows the new 'from phase 26' bullet does not displace or break the phase-20 marker the current script greps.",
+    "git diff --numstat -> docs/agent-contracts.md 48 insertions / 4 deletions; scripts/check-docs.sh 1 insertion / 1 deletion. git diff --check clean. git status --short before this report existed showed only ' M docs/agent-contracts.md' and ' M scripts/check-docs.sh'.",
+    "Content presence check over docs/agent-contracts.md: A1 section lines 51-63; A2 section lines 65-74; A3 rule 5 lines 20-25; A4 section lines 102-107; A5 entries lines 148-157 and the script statement lines 156-157; A6 bullet lines 121-123; the unchanged Enforcement-scope sentence naming APPLIES_FROM_PHASE at line 130. Searches confirm the old rule-5 wording ('lists at minimum its') is absent from the contract and the old budget value ('budget docs/agent-contracts.md 200') is absent repo-wide.",
+    "Post-persistence transient run, after docs/implementation/26.2/worker-report.json existed and before the orchestrator's 26.2 reviewer report exists/listed: bash scripts/check-agents.sh exits 1 with exactly 'FAIL: task 26.2 has a worker report but no reviewer report (add an exemption only if covered)' and 'FAIL: task 26.2 has a reviewer report on disk but docs/plan/state.json does not list it in reports' ('check-agents: FAIL'); bash scripts/check-docs.sh exits 1 in section 9 mirroring those two lines ('check-docs: FAIL') while its other eight sections are ok, including 'ok: doc budget checked'. jq empty docs/implementation/26.2/worker-report.json exits 0 (report is valid JSON). The pre-report runs above are the authoritative PASS results."
+  ],
+  "changed_files": [
+    "docs/agent-contracts.md",
+    "scripts/check-docs.sh",
+    "docs/implementation/26.2/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "A1 is present: after any artifact re-derivation, the named current-state surfaces (docs/testing/jellyfin-12-musl-test-host.md, docs/release/build-and-release.md, the release changelog, ADR implementation notes) are swept for the superseded artifact identity and each occurrence marked superseded; a superseded hash is never presented as current; a release candidate with an open corrective set does not begin a full artifact/live/security re-derivation until a consolidated adversarial review clears BLOCKER/HIGH/MEDIUM or the user accepts re-running; corrective work continues the single-dotted task-ID sequence.",
+      "evidence": "docs/agent-contracts.md lines 51-63 ('## Corrective and re-derivation tasks'), three bullets covering exactly those three rules."
+    },
+    {
+      "criterion": "A2 is present: an attempt-0 invocation whose report is absent on disk is retried before being treated as an outcome and recorded as retried; destructive pre-fix probes run in an isolated export or worktree, never the shared tree, and a no-build test result is valid after a rebuild when another agent may have touched the tree; a causal procedure finding is checked against the pinned-host research or source before entering a canonical procedure document, and a disproved attribution is recorded as withdrawn or superseded.",
+      "evidence": "docs/agent-contracts.md lines 65-74 ('## Invocation and evidence integrity'), three bullets covering exactly those three rules."
+    },
+    {
+      "criterion": "A3 tightens 'Where reports go' rule 5 so the reports array lists every preserved .attempt-<n>.json for every report kind it lists (not only reviewer-report.json), as well as the base report for each kind that exists.",
+      "evidence": "docs/agent-contracts.md lines 20-25: 'the base report for every kind that exists for the task, and every preserved `.attempt-<n>.json` on disk for every kind it lists (not only `reviewer-report.json`)'; the old 'lists at minimum its reviewer-report.json' wording is absent (grep)."
+    },
+    {
+      "criterion": "A4 is present: at each phase gate the orchestrator records an explicit disposition (fix-now / accept-with-register-entry / defer-with-rationale, the user owning an accept) for every new security finding the phase raised, before the next phase starts; an open finding without a recorded disposition is a gate defect.",
+      "evidence": "docs/agent-contracts.md lines 102-107 ('## Phase gate obligations')."
+    },
+    {
+      "criterion": "A5 adds both enforceable entries: from phase 20 the reports array lists every on-disk preserved .attempt-<n>.json for each listed report kind plus each existing kind's base report; from phase 26 a phase-level orchestration record carries subagents and an aggregate whose numeric fields equal sums recomputed from the task-level records, with phases before 26 stated as predating the rule and not rewritten; and states that scripts/check-agents.sh enforces both and fails if its scope constants disagree with the section.",
+      "evidence": "docs/agent-contracts.md lines 148-150 ('from phase 20' reports-array entry), lines 151-154 ('from phase 26' subagents/aggregate entry including 'Phases before 26 predate this rule and are not rewritten.'), lines 156-157 ('scripts/check-agents.sh enforces both rules and fails if its scope constants disagree with the phases stated here.')."
+    },
+    {
+      "criterion": "A6 adds one sentence to 'Phase-level orchestration record': a release phase may use the release review as its gate (the Phase 14 and Phase 21 precedent), in which case phase_review and phase_review_status point at the release review and there is no separate phase-reviewer record.",
+      "evidence": "docs/agent-contracts.md lines 121-123: a single-sentence bullet with the Phase 14 and Phase 21 precedent, the two pointer fields, and the absent separate phase-reviewer record."
+    },
+    {
+      "criterion": "A7: the docs/agent-contracts.md budget line in scripts/check-docs.sh is raised only because the new content requires it, and scripts/check-docs.sh passes including the budget check.",
+      "evidence": "scripts/check-docs.sh:98 'budget docs/agent-contracts.md 220' (was 200); 218-line file exceeds the old 200 budget; 'ok: doc budget checked' and 'check-docs: PASS' at exit 0; sensitivity probe shows the budget check fails at 200 and passes at 220."
+    },
+    {
+      "criterion": "The contract still states the existing APPLIES_FROM_PHASE rule, and the new 'from phase 26' wording does not contradict or break the current check-agents.sh self-check (which does not yet know a 26 constant; task 26.3 adds it).",
+      "evidence": "docs/agent-contracts.md line 130 retains 'The script fails if this number and its own `APPLIES_FROM_PHASE` disagree.' and the 'from phase 20' bullets remain; check-agents reports 'ok: contract enforcement scope agrees with the script'; the temporary-substitution probe fails check-agents with 'FAIL: APPLIES_FROM_PHASE=20 is not stated in docs/agent-contracts.md (Enforcement scope)' and passes after restore."
+    },
+    {
+      "criterion": "Task boundary respected: no goal, decision gate (DG-), ADR, or existing phase/gate text modified; no docs/plan/state.json, PLANS.md, docs/planning/**, or scripts/check-agents.sh change; no product code, test, artifact, or manifest change; no commit or tag.",
+      "evidence": "git status --short shows only ' M docs/agent-contracts.md' and ' M scripts/check-docs.sh' (plus the untracked docs/implementation/26.2/ report); git diff --numstat is 48/4 and 1/1 on exactly those two files; the check-docs.sh diff is the single budget line; the agent-contracts diff adds only the new sections, the tightened rule 5, the A5 bullets/statement, and the A6 bullet."
+    }
+  ],
+  "test_sensitivity": [
+    "Budget validator (check-docs.sh section 7): setting the budget line temporarily back to the old 200 makes docs/agent-contracts.md fail with 'FAIL: docs/agent-contracts.md is 218 lines (budget 200)' and check-docs exit 1; restoring 220 makes it pass at exit 0. The guard genuinely reads the new value and rejects the pre-change budget.",
+    "Existing contract/script scope self-check (check-agents.sh): removing all 'from phase 20' markers from the contract (temporary substitution to 'from phase twenty') makes check-agents fail with 'FAIL: APPLIES_FROM_PHASE=20 is not stated in docs/agent-contracts.md (Enforcement scope)'; the contract was restored byte-identical and check-agents passes. This confirms the A5 additions neither displaced nor disabled the existing rule, and that the marker the current script requires is still present.",
+    "No new production behaviour or test exists in this documentation-only task; the A3/A5 rules are prose, and their guard implementation is task 26.3 (per the phase plan), so no code-level sensitivity probe applies here. The two probes above are the guards this task touches."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/agent-contracts.md - the normative agent-report contract; updated with A1-A6 and the tightened rule 5.",
+      "scripts/check-docs.sh - only the docs/agent-contracts.md budget line (200 -> 220); the surrounding budget comment is unchanged.",
+      "docs/implementation/26.2/worker-report.json - this task's required report.",
+      "No canonical current-state surface needed updating: docs/plan/state.json, PLANS.md, docs/status.md, docs/changelog/, docs/limitations/, README.md, docs/architecture/, and docs/data-model/ carry no status/capability/configuration/limitation fact this change alters, and the task boundary forbids touching plan state."
+    ],
+    "old_values_removed": [
+      "scripts/check-docs.sh budget value 200 for docs/agent-contracts.md: repo-wide search for 'budget docs/agent-contracts.md 200' is empty; line 98 now reads 220.",
+      "Old 'Where reports go' rule 5 wording 'A task with a `worker-report.json` lists at minimum its `reviewer-report.json` ...': search for 'lists at minimum its' in docs/agent-contracts.md is empty; replaced by the tightened base-report/every-attempt wording."
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "Exact behaviour: with docs/implementation/26.2/worker-report.json on disk and no docs/implementation/26.2/reviewer-report.json and no 26.2 listing in docs/plan/state.json reports, scripts/check-agents.sh fails exactly the two contract-defined pairing lines for task 26.2 ('FAIL: task 26.2 has a worker report but no reviewer report (add an exemption only if covered)' and 'FAIL: task 26.2 has a reviewer report on disk but docs/plan/state.json does not list it in reports') and scripts/check-docs.sh section 9 mirrors them (exit 1) while its other eight sections are ok including the doc budget. Precondition: the orchestrator has not yet written the 26.2 review report and listed it. Consequence: the authoritative PASS runs recorded above were taken before this report existed; the interim state clears when the orchestrator writes the review report and lists it in reports. This is the same transient state tasks 20.3, 21.4/21.9/21.13, and 26.1 recorded; no exemption or workaround was applied.",
+    "Until task 26.3 lands, the A5 sentences 'from phase 20' (attempts listing) and 'from phase 26' (subagents/aggregate sums) describe rules the current scripts/check-agents.sh does not yet enforce: its only scope constant is APPLIES_FROM_PHASE=20 and its state-reports check only requires some reviewer-report entry. The delegation directed that the contract state the script enforces both, and 26.3 owns installing both guards and the phase-26 constant with its self-check; between 26.2 and 26.3 the contract states the target enforcement state rather than the script's current checks.",
+    "The budget raise to 220 leaves 2 lines of headroom above the current 218; any later contract growth beyond those 2 lines must again be accompanied by an actually enforced rule, per the unchanged budget comment in scripts/check-docs.sh.",
+    "The tightened rule 5 replaces the explicit kind enumeration (reviewer/test-quality/security/live-verification) with 'the base report for every kind that exists for the task'; this is at least as strong as the old wording. The 26.3 attempts guard, as scoped, checks every preserved .attempt-<n>.json for each report kind already listed, so no guard semantics depend on the enumeration."
+  ],
+  "interpretations": [
+    {
+      "question": "Which value should the docs/agent-contracts.md budget line carry now that the contract is 218 lines?",
+      "chosen": "220, the ceiling the delegation states, rather than the exact 218.",
+      "basis": "The delegation permits raising the budget only for the A3/A5 enforced rules and says to budget the prose so the contract ends at or below 220 lines; the check-docs comment requires the raise to accompany an actually enforced rule, which A3/A5 are (task 26.3).",
+      "impact": "Two lines of headroom before another raise would be required; the check itself passes at 218 <= 220."
+    },
+    {
+      "question": "How should rule 5 name the report kinds whose base reports must be listed, now that the enumeration is replaced by a general rule?",
+      "chosen": "'the base report for every kind that exists for the task' plus 'every preserved .attempt-<n>.json on disk for every kind it lists (not only reviewer-report.json)'.",
+      "basis": "The delegation's A3 wording ('as well as the base report for each kind that exists') and the requirement to generalize attempts beyond reviewer-report.json.",
+      "impact": "The contract is at least as strong as the old enumeration (reviewer, test-quality, security, live-verification); the 26.3 guard checks attempts for kinds already listed, so its behaviour is unchanged by this wording."
+    },
+    {
+      "question": "Where should the new sections sit in the contract?",
+      "chosen": "A1 and A2 after 'Shared enums'; A4 after 'Phase review gate conformance'; A6 as a bullet in 'Phase-level orchestration record'; A5 at the end of the Enforcement-scope bullet list.",
+      "basis": "Keeps related rules adjacent (integrity rules together, gate obligations next to gate conformance, enforcement bullets next to the scope constants they describe).",
+      "impact": "Presentation only; no rule text or semantics depend on section order."
+    }
+  ],
+  "ready_for_next_task": true
+}

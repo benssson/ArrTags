@@ -1712,9 +1712,12 @@
         },
         {
           "id": "26.2",
-          "done": false,
+          "done": true,
           "name": "Agent-contract rules",
-          "reports": []
+          "reports": [
+            "docs/implementation/26.2/reviewer-report.json",
+            "docs/implementation/26.2/worker-report.json"
+          ]
         },
         {
           "id": "26.3",

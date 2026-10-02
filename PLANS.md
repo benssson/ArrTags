@@ -93,7 +93,7 @@ session-usage collector; and an advisory re-review of which previously advisory
 classes the new guards now cover.
 **Tasks:**
 - [x] 26.1 Amend the phase-21 orchestration record
-- [ ] 26.2 Agent-contract rules
+- [x] 26.2 Agent-contract rules
 - [ ] 26.3 Guard enforcement
 - [ ] 26.4 Agent prompt corrections
 - [ ] 26.5 Session-usage collection fix

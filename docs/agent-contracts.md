@@ -18,10 +18,9 @@ Status and severity values are contracts, not free text. Do not invent values.
 4. A release-scope audit (the subject is the release candidate, not one task)
    goes under `docs/implementation/final-review/`.
 5. A task's `reports` array in `docs/plan/state.json` lists the evidence reports
-   committed for that task, not only the worker report. A task with a
-   `worker-report.json` lists at minimum its `reviewer-report.json` (with every
-   preserved `.attempt-<n>.json` of it) plus any `test-quality-review.json`,
-   `security-review.json`, or `live-verification.json` that exists for the task.
+   committed for that task, not only the worker report: the base report for every
+   kind that exists for the task, and every preserved `.attempt-<n>.json` on disk
+   for every kind it lists (not only `reviewer-report.json`).
    `scripts/check-agents.sh` enforces this so the canonical machine state cannot
    omit the review evidence the commit gate requires.
 
@@ -49,6 +48,31 @@ Status and severity values are contracts, not free text. Do not invent values.
   `accepted`, `closed`, and `informational` into these four.
 * Severity and status are uppercase/lowercase exactly as written here.
 
+## Corrective and re-derivation tasks
+
+* After any artifact re-derivation, sweep the current-state surfaces that name
+  the artifact identity - `docs/testing/jellyfin-12-musl-test-host.md`,
+  `docs/release/build-and-release.md`, the release changelog, and ADR
+  implementation notes - and mark every occurrence of a superseded hash
+  superseded. A superseded hash must never be presented as current.
+* A release candidate with an open corrective finding set does not begin a full
+  artifact/live/security re-derivation until a consolidated adversarial review of
+  the fix batch reports no further open `BLOCKER`/`HIGH`/`MEDIUM` finding, or the
+  user explicitly accepts re-running.
+* Corrective work continues the task-ID sequence (single dotted numbers) so the
+  state guard keeps parsing and report paths stay keyed by task id.
+
+## Invocation and evidence integrity
+
+* An attempt-0 invocation whose report is absent on disk is retried before it is
+  treated as an outcome, and recorded as a retried attempt, not a completed one.
+* Destructive pre-fix probes run in an isolated export or worktree, never the
+  shared working tree. A no-build test result is valid only after a rebuild when
+  another agent may have touched the tree.
+* A procedure finding that asserts a causal mechanism is checked against the
+  pinned-host research or the source before it enters a canonical procedure
+  document; a disproved prior attribution is recorded as withdrawn or superseded.
+
 ## Phase review gate conformance
 
 A phase review is the gate that decides whether a phase's stated exit condition
@@ -75,6 +99,13 @@ determination is a recorded artifact rather than prose inside `summary`:
 * A phase that cannot satisfy this block is not gateable: report
   `CHANGES_REQUIRED` rather than proceeding with an unrecorded amendment.
 
+## Phase gate obligations
+
+At each phase gate the orchestrator records an explicit disposition - `fix-now`,
+`accept-with-register-entry`, or `defer-with-rationale`, the accept being the
+user's - for every new security finding the phase raised, before the next phase
+starts. A finding left `open` without a recorded disposition is a gate defect.
+
 ## Phase-level orchestration record
 
 `docs/implementation/phase-<n>/orchestration.json` aggregates the phase's task
@@ -87,6 +118,9 @@ task-level record (including the nested `execution` object) and an `aggregate`.
 * Records written before this contract used earlier field names (for example
   `phase_complete` and `ready_for_next_phase`, or a flattened `execution`). They
   are history and are not rewritten; see **Enforcement scope**.
+* A release phase may use the release review as its gate (the Phase 14 and
+  Phase 21 precedent); `phase_review` and `phase_review_status` then point at the
+  release review, and there is no separate `phase-reviewer` record.
 
 ## Enforcement scope
 
@@ -111,6 +145,16 @@ its own `APPLIES_FROM_PHASE` disagree.
   backed by a recorded specialist invocation, and that invocation precedes the
   task's first `implementation-worker` invocation. See **Task conformance
   precondition**.
+* **from phase 20** — a task's `reports` array in `docs/plan/state.json` lists
+  every on-disk preserved `.attempt-<n>.json` for each report kind it lists, plus
+  the base report for each kind that exists. See **Where reports go** rule 5.
+* **from phase 26** — a phase-level orchestration record carries a `subagents`
+  array and an `aggregate` whose numeric fields equal the sums recomputed from
+  the task-level records. Phases before 26 predate this rule and are not
+  rewritten.
+
+`scripts/check-agents.sh` enforces both rules and fails if its scope constants
+disagree with the phases stated here.
 
 ## Task conformance precondition
 
