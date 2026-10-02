@@ -1,0 +1,192 @@
+{
+  "task": "26.6",
+  "title": "Advisory agent-process re-review",
+  "nature": "advisory; not a phase gate (no gate_conformance/gate_status and no docs/implementation/phase-26/phase-review.json)",
+  "scope": "The Phase 26 harness change set landed by tasks 26.1-26.5: the additive phase-21 orchestration amendment (26.1); the docs/agent-contracts.md rules A1-A7 (26.2); the scripts/check-agents.sh guards (26.3); the seven/eight .opencode/agents prompt corrections (26.4); and the .opencode/scripts/collect-session-usage.sh fix (26.5). It re-reviews the classes recorded as agent_process observations in the v1.2 release review, the phase-20 phase review (base and attempt-2), and the named Phase 21 task records.",
+  "method": "Read the actual agent_process.observations from docs/implementation/final-review/release-review-v1.2.json, docs/implementation/phase-20/phase-review.json, docs/implementation/phase-20/phase-review.attempt-2.json and the 21.5/21.7/21.9/21.13 finding records; read the changed harness files themselves (docs/agent-contracts.md, scripts/check-agents.sh, the eight .opencode/agents prompts, .opencode/scripts/collect-session-usage.sh); classified each distinct observation as enforced-by-guard (citing the exact scripts/check-agents.sh location), prompt-rule (citing the exact prompt/contract line), or uncovered; then ran scripts/check-agents.sh and scripts/check-docs.sh once. Every closure below was verified against the file, not taken from the task reports.",
+  "coverage": [
+    {
+      "observation": "After any artifact re-derivation, superseded identities or review pointers were repeatedly left live in current documentation (docs/testing, docs/release, the changelog, ADR notes), requiring a follow-up sweep each time.",
+      "source": "docs/implementation/final-review/release-review-v1.2.json agent_process.observations[0] (21.8-REV-1, 21.12-REV-10, 21.6-REV-6, PR15-03/04, R-21.9-1)",
+      "closure": "prompt-rule",
+      "evidence": [
+        "docs/agent-contracts.md:53-57 (\"Corrective and re-derivation tasks\": name the four surfaces, mark every superseded hash superseded, never present one as current)",
+        ".opencode/agents/orchestrator.md:309-314 (the corrective/re-derivation brief must name the sweep list)"
+      ],
+      "note": "Stated rule only. No mechanical check was added: the observation's optional suggestion to extend docs/check-docs.sh to flag a superseded archive hash presented without a superseded marker was not implemented, so a superseded hash left unmarked on a current-state surface would still pass both gates. Residual recorded in limitations."
+    },
+    {
+      "observation": "Phase-level orchestration aggregates were repeatedly incomplete or inconsistent until a reviewer forced a gate-commit correction (P16-F2, P17-F1, PR-19-02, PR-20-02/03/04); the aggregate must reconcile with the task records and the phase-reviewer invocation must be accounted for.",
+      "source": "docs/implementation/final-review/release-review-v1.2.json agent_process.observations[1]; docs/implementation/phase-20/phase-review.attempt-2.json agent_process.observations[1]",
+      "closure": "enforced-by-guard",
+      "evidence": [
+        "scripts/check-agents.sh:309-463 (phase aggregate consistency: from AGGREGATE_APPLIES_FROM_PHASE=26)",
+        "scripts/check-agents.sh:357-359 (subagents must be an array)",
+        "scripts/check-agents.sh:365-386 (a phase-review*.json implies >=1 phase-reviewer entry; aggregate.phase_reviewer_invocations must equal the count)",
+        "scripts/check-agents.sh:401-461 (task_count, per-task invocations, subagent_invocations_total, phase_reviewer_invocations, role_mix, review_rounds, test_quality_review_rounds, rework_rounds, and the cost/token/duration sums recomputed from the task records; cost within COST_TOLERANCE_USD=1e-6, tokens/durations exact)",
+        "scripts/check-agents.sh:240-250 (scope self-checks against docs/agent-contracts.md \"from phase 20\"/\"from phase 26\")",
+        "docs/agent-contracts.md:151-155 (enforcement-scope bullet), docs/agent-contracts.md:109-123 (phase-level record shape)"
+      ],
+      "note": "The observation proposed a from-phase-20 guard; the implemented guard is from phase 26 because phases 20-25 are immutable history and may not be rewritten, so their aggregates stay grandfathered. Two clauses of the observation are NOT mechanically enforced and are listed in `uncovered`: first_pass_approval_rate and aggregate.note are explicitly prose (scripts/check-agents.sh:340), and the proposed dangling-section-reference check for aggregate.note was not implemented."
+    },
+    {
+      "observation": "Security findings a phase/security review left open as LOW/MEDIUM were not dispositioned (fix vs accept) until the release security review, where the user then chose to fix them; the late fix invalidated the artifact and forced full re-derivations.",
+      "source": "docs/implementation/final-review/release-review-v1.2.json agent_process.observations[2]",
+      "closure": "prompt-rule",
+      "evidence": [
+        "docs/agent-contracts.md:102-107 (\"Phase gate obligations\": explicit fix-now / accept-with-register-entry / defer-with-rationale per new security finding before the next phase starts; an open finding without a disposition is a gate defect; the user owns an accept)",
+        ".opencode/agents/orchestrator.md:933-936 (record the disposition for every new security finding before the phase tag)"
+      ],
+      "note": "No guard; a security finding left open with no recorded disposition would not fail scripts/check-agents.sh. The obligation is prompt/contract only."
+    },
+    {
+      "observation": "The release evidence was not batched: a first correction was followed by a full artifact/live/security re-derivation, and only then did the next security review find the second correction set, forcing a second full re-derivation.",
+      "source": "docs/implementation/final-review/release-review-v1.2.json agent_process.observations[3]",
+      "closure": "prompt-rule",
+      "evidence": [
+        "docs/agent-contracts.md:58-61 (a release candidate with an open corrective set does not begin a full re-derivation until a consolidated adversarial review clears BLOCKER/HIGH/MEDIUM, or the user accepts re-running)",
+        ".opencode/agents/orchestrator.md:314-317 (same rule in the corrective brief)"
+      ],
+      "note": "Not mechanically checkable from records; stated as an orchestration rule only."
+    },
+    {
+      "observation": "The task 15.4 worker was dispatched on acceptance criteria that required a security review but, as a depth-1 subagent, could not delegate; it correctly returned BLOCKED and the orchestrator ran the review. A task requiring a specialist review must be flagged orchestrator-run.",
+      "source": "docs/implementation/final-review/release-review-v1.2.json agent_process.observations[4]; docs/implementation/15.4/orchestration.json",
+      "closure": "prompt-rule",
+      "evidence": [
+        ".opencode/agents/orchestrator.md:293-303 (a subagent cannot spawn another subagent; the orchestrator owns specialist delegation; a specialist-review task is declared orchestrator-run and the depth-1 worker returns BLOCKED naming the required delegation)"
+      ],
+      "note": "Prompt only. A related guard exists but does not cover this rule: scripts/check-agents.sh:552-561 enforces that a required conformance specialist invocation precedes the first worker, and its late-invocation list is limited to jellyfin-expert / arr-api-researcher / architecture-reviewer, not a required security-review delegation."
+    },
+    {
+      "observation": "Task 21.11 recorded attempt-0 invocations that FAILED with no report (worker and reviewer); 21.11 was retried successfully. Task 21.6's final orchestration record must be written before the release aggregate.",
+      "source": "docs/implementation/final-review/release-review-v1.2.json agent_process.observations[5]",
+      "closure": "prompt-rule",
+      "evidence": [
+        "docs/agent-contracts.md:67-68 (an attempt-0 invocation whose report is absent on disk is retried and recorded as a retried attempt, not a completed one)",
+        ".opencode/agents/orchestrator.md:910-912 (attempt-0 retry rule)",
+        ".opencode/agents/orchestrator.md:596-600 (write the final release task's orchestration.json before the phase/release aggregate that cites it)"
+      ],
+      "note": "Behavioral; not guarded. The aggregate-shape guard does not require a final task record to exist before the phase record."
+    },
+    {
+      "observation": "The 20.1 delegation quoted a stale expected suite baseline (1853/64/1917, the 19.1-era count); the worker measured its own baseline and corrected it, but the stale number had to be detected against the delegation text.",
+      "source": "docs/implementation/phase-20/phase-review.json agent_process.observations[0]",
+      "closure": "prompt-rule",
+      "evidence": [
+        ".opencode/agents/orchestrator.md:289 (do not quote an absolute historical suite total; require the worker to measure its own pre-change baseline; any quoted count must be generated from the current tree immediately before dispatch)"
+      ],
+      "note": "Prompt only; not mechanically checkable (a delegation is free text)."
+    },
+    {
+      "observation": "The contract's documented metadata-collection path was unusable: .opencode/scripts/collect-session-usage.sh could not reach the running server because it delegated to the broken `opencode api get` CLI, so the orchestrator read session objects directly for all three Phase 20 tasks.",
+      "source": "docs/implementation/phase-20/phase-review.json agent_process.observations[1]",
+      "closure": "uncovered",
+      "evidence": [
+        ".opencode/scripts/collect-session-usage.sh:35-39 (curl preferred, /dev/tcp fallback, opencode CLI never required on the success path)",
+        ".opencode/scripts/collect-session-usage.sh:90-91,131-148 (GET_TRANSPORT=curl and api_get to /api/session/<id>)",
+        "docs/implementation/26.5/worker-report.json"
+      ],
+      "note": "No guard and no agent-prompt rule; the observation is resolved directly by task 26.5, which removed the `opencode api get` dependency and fetches /api/session/<id> via curl (or a /dev/tcp fallback) while preserving the never-estimate contract. Explicit acceptance: no further action."
+    },
+    {
+      "observation": "A task-level implementation reviewer judged task 20.3 against the delegation's restated criteria rather than the owning goal criterion, so the missing ADR-002 note was found only by the phase reviewer.",
+      "source": "docs/implementation/phase-20/phase-review.attempt-2.json agent_process.observations[0]",
+      "closure": "prompt-rule",
+      "evidence": [
+        ".opencode/agents/implementation-reviewer.md:82-84 (read the owning goal or acceptance-criterion text itself, not only the delegation's restatement, and check every item it enumerates)"
+      ],
+      "note": "Prompt only; not guarded."
+    },
+    {
+      "observation": "The planner's task criteria could be narrower than the owning goal criterion (Phase 20 dropped the ADR-002 item the F7 goal criterion named).",
+      "source": "docs/implementation/phase-20/phase-review.attempt-2.json agent_process.observations[0]",
+      "closure": "prompt-rule",
+      "evidence": [
+        ".opencode/agents/implementation-planner.md:317-320 (a task's acceptance criteria must be a superset of the items the owning goal criterion enumerates; no criterion narrowed to what a task conveniently delivers)"
+      ],
+      "note": "Prompt only; not guarded."
+    },
+    {
+      "observation": "Specialists performing destructive pre-fix probes reverted production source in the shared working tree while another agent was reading it, so a `--no-build` run could execute another agent's stale/pre-fix binary (21.7 concurrent revert-probes).",
+      "source": "docs/implementation/21.7/test-quality-review.json; docs/implementation/21.7/reviewer-report.json; docs/implementation/21.7/orchestration.json:75",
+      "closure": "prompt-rule",
+      "evidence": [
+        "docs/agent-contracts.md:69-70 (destructive pre-fix probes run in an isolated export or worktree, never the shared working tree)",
+        ".opencode/agents/implementation-reviewer.md:178-180 (isolated export/worktree)",
+        ".opencode/agents/test-quality-reviewer.md:82-84 (isolated export/worktree)"
+      ],
+      "note": "Contract plus both probing reviewer prompts. No mechanical guard can observe where a probe was run."
+    },
+    {
+      "observation": "A no-build test result is meaningful only after a rebuild when another agent may have touched the tree (21.7 stale-binary burst).",
+      "source": "docs/implementation/21.7/test-quality-review.json; docs/implementation/21.7/reviewer-report.json:69,74",
+      "closure": "prompt-rule",
+      "evidence": [
+        "docs/agent-contracts.md:70-71 (a no-build test result is valid only after a rebuild when another agent may have touched the tree)"
+      ],
+      "note": "CONTRACT-ONLY: no `.opencode/agents/*.md` prompt carries this clause. A grep for 'no-build'/'rebuild' across the prompts returns only implementation-worker.md:244 on an unrelated topic. It is a stated rule (the contract is the single source of truth agents follow), but a prompt-only reader would not see it; residual recorded in limitations."
+    },
+    {
+      "observation": "A procedure note asserted a causal mechanism more firmly than the recorded evidence supported (21.9 R-21.9-5, the ADR-022 cursor attribution); a causal procedure claim must be checked against pinned-host research or source, and a disproved prior attribution withdrawn or superseded.",
+      "source": "docs/implementation/21.9/reviewer-report.attempt-2.json finding R-21.9-5",
+      "closure": "prompt-rule",
+      "evidence": [
+        "docs/agent-contracts.md:72-74 (check a causal procedure claim before it enters a canonical procedure document; record a disproved prior attribution as withdrawn or superseded)",
+        ".opencode/agents/implementation-reviewer.md:273-276 (causal claim checked before it is recorded)",
+        ".opencode/agents/security-reviewer.md:106-108 (state the causal mechanism and check it against the pinned-host research or the source)"
+      ],
+      "note": "Prompt/contract only; not guarded. The 21.13 R1 misattribution (admin GET omits keys) is the same class and was resolved by review, not by a guard."
+    },
+    {
+      "observation": "A planner reflow/condense of a budgeted document (PLANS.md) silently dropped incidental cross-references (generator source, ADR indexes, an archive sentence, the milestone-table note) outside the task's scope (21.5 RV-21.5-05).",
+      "source": "docs/implementation/21.5/reviewer-report.json finding RV-21.5-05",
+      "closure": "prompt-rule",
+      "evidence": [
+        ".opencode/agents/implementation-planner.md:468-470 (when condensing a budgeted document, move or condense redundantly and diff the result against the original to confirm no canonical content was dropped)"
+      ],
+      "note": "Prompt only; not guarded. The related guardrail gap recorded by the 21.2 documentation review (no check for a truncated decisions-index cell or stale note prose) also remains open."
+    },
+    {
+      "observation": "The 21.13 live verification record was non-terminal and self-contradicting (status IN_PROGRESS alongside overall_verdict VERIFIED; finished_utc before its own evidence) and used a non-enum top-level status field.",
+      "source": "docs/implementation/21.13/reviewer-report.json finding R2; docs/implementation/21.13/live-verification.json",
+      "closure": "prompt-rule",
+      "evidence": [
+        ".opencode/agents/live-host-verifier.md:191-195 (verifier_status is the only top-level status field; no top-level status/overall_verdict or other non-enum top-level status/verdict field; started_utc/finished_utc must bound every recorded check timestamp or the uncertainty recorded; incremental writes stay parseable and terminal)",
+        ".opencode/agents/live-host-verifier.md:159-160 (started_utc/finished_utc added to the documented schema)"
+      ],
+      "note": "Prompt only; scripts/check-agents.sh does not validate a live-verification.json's schema or terminal status. The status-enum agreement guard (scripts/check-agents.sh:80-108) checks only the declared enum in the prompt, not a produced report."
+    }
+  ],
+  "uncovered": [
+    {
+      "observation": "collect-session-usage.sh depended on the broken `opencode api get` CLI (phase-20 agent_process.observations[1]).",
+      "proposed_next_action": "None. Explicit acceptance: resolved by task 26.5's direct /api/session/<id> HTTP fetch; it is a tool repair, so no guard or agent-prompt rule applies. No residual."
+    },
+    {
+      "observation": "Residual clause of the phase-aggregate observation: aggregate.note may reference a section that does not exist (the dangling 'below' reference in the stale phase-20 record), and the observation explicitly proposed failing on that.",
+      "proposed_next_action": "Add a scripts/check-agents.sh check that parses aggregate.note for named-section references and fails when the referenced section is absent from the record, or record an explicit decision that note prose is unguarded."
+    },
+    {
+      "observation": "Residual clause of the phase-aggregate observation: first_pass_approval_rate is not recomputed; scripts/check-agents.sh:340 classifies it (and note) as prose that is not checked, so a wrong cited rate would pass.",
+      "proposed_next_action": "Recompute first_pass_approval_rate from the recorded implementation-reviewer attempt-1 outcomes and compare, or record an explicit decision that the rate is descriptive prose."
+    }
+  ],
+  "validation": {
+    "check_agents": "PASS, 15/15 sections ok (including 'phase aggregates reconcile with the task records' and 'release agent-process review present'); exit 0; no transient 26.6 lines (this record is not a report kind the guard tracks, and no 26.6 orchestration/worker report exists on disk).",
+    "check_docs": "PASS, 8 sections ok ('doc budget checked', 'agent report contracts conform'); generated-block section self-skipped because dotnet is not on PATH. exit 0. No transient 26.6 lines.",
+    "git_tree": "Clean at the start of this review (git status --short empty). The only file written is this report."
+  },
+  "summary": "The Phase 26 guards now cover the previously advisory classes that are mechanically checkable, and the remaining classes are stated rules rather than silent gaps. Of the distinct v1.2 process observations re-checked here, one cluster - phase-level aggregate consistency - is genuinely enforced by scripts/check-agents.sh:309-463 (numeric sums, subagents shape, and phase-reviewer presence/equality, with scope self-checks at :240-250); the rest are prompt-rule closures: the superseded-identity sweep, the security-disposition gate obligation, unbatched re-derivation, orchestrator-run specialist tasks, attempt-0 retry/final-task record, stale suite baselines, reviewer-reads-owning-criterion, planner criteria superset, isolated destructive probes, causal-claim checking, planner content-loss, and live-verifier terminality. Two items are honestly outside the guard/rule taxonomy: the collector observation was resolved by direct tool repair (task 26.5), and two clauses of the aggregate observation (aggregate.note dangling-reference detection and first-pass-rate recomputation) remain unenforced. No observation was found to be silently unaddressed. Residuals are recorded in `limitations`; none is a phase blocker, and this record holds nothing open because it is advisory.",
+  "limitations": [
+    "Most closed classes are prompt/contract-only and cannot be mechanically checked: a superseded-hash sweep, a security disposition, an unbatched re-derivation, an orchestrator-run declaration, a causal-claim check, a planner-superset criterion, and a live-verifier terminal status all depend on agent behavior, so the guards cannot prove they were followed. The guard only proves the record shapes it can parse.",
+    "The aggregate guard is enforced from phase 26 only. Phases 20-25 are grandfathered as immutable history, so the stale phase-20 aggregate that motivated the observation is not re-checked (it was reconciled in the Phase 20 gate commit).",
+    "The phase-26 aggregate branch has not yet been exercised by real data: docs/implementation/phase-26/orchestration.json does not exist at this review, so the branch is exercised only by the 26.3 reviewer's fabricated conforming fixture. Its first real exercise is the Phase 26 gate record; the guard should be re-run once that record exists (the 26.3 reviewer recorded the same reason).",
+    "scripts/check-agents.sh:340 explicitly excludes first_pass_approval_rate and note from recomputation; the phase-20 attempt-2 observation's proposed dangling-section-reference check was not implemented. Both are listed in `uncovered`.",
+    "The no-build/rebuild clause (docs/agent-contracts.md:70-71) has no counterpart in any .opencode/agents prompt; an agent that reads only its prompt, not the contract, would not see it.",
+    "The Enforcement scope preamble (docs/agent-contracts.md:127-130) still reads 'phase records at phase 20 and later' while the section now contains a from-phase-26 bullet; the from-phase-26 bullet is explicit so the self-checks pass and there is no guard drift, but the preamble wording is imprecise (the 26.2 reviewer flagged this as F1 and it was not rephrased in 26.3).",
+    "docs/agent-contracts.md sits exactly at its 220-line budget (wc -l = 220), so the next contract addition will require a budget raise or a condense.",
+    "The two scope self-checks (scripts/check-agents.sh:240-250) are bare phrase greps, so they fail only on absence, not on disagreement: lowering AGGREGATE_APPLIES_FROM_PHASE to 20 still passes because the contract contains 'from phase 20' for other rules (26.3 test-quality finding F-26.3-TQ-09). The undetected direction enforces more than the contract states, not less.",
+    "This record is itself advisory and was not gated by an independent reviewer, consistent with the planning record's note that task 26.6's review is the orchestrator's and the record holds nothing open."
+  ]
+}

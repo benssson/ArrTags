@@ -1,0 +1,39 @@
+{
+  "task": "26.6",
+  "title": "Advisory re-review",
+  "phase": 26,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 26.6 is the advisory agent-process coverage review of the harness change set. It depends on no unverified Jellyfin or provider behavior, changes no product behavior, and implements no ADR clause. No pre-dispatch specialist conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "phase-reviewer",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "phase-reviewer",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "high",
+        "input_tokens": 160542,
+        "output_tokens": 10490,
+        "reasoning_tokens": 14233,
+        "cache_read_tokens": 1892992,
+        "cache_write_tokens": 0,
+        "total_tokens": 2078257,
+        "cost_usd": 0.044594076,
+        "duration_seconds": 241,
+        "session_id": "ses_f037569a7ffew4pklQfZ5PSq7W"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "The phase-reviewer reconciled 15 distinct agent-process observations across the v1.2 release review, the phase-20 phase review, and the Phase 21 task records against the actual files: 1 is now enforced by a guard (the phase aggregate consistency in scripts/check-agents.sh), 13 are prompt rules in the corrected .opencode/agents prompts, and 1 (the collect-session-usage.sh CLI dependency) is resolved directly by task 26.5 rather than by a guard or prompt rule. No observation was found silently unaddressed.",
+    "This deliverable is itself a review, so it has no separate implementation-reviewer report; the phase-26 gate phase review is the independent audit of record for the phase. The task directory has no worker-report.json, so the contract's worker/reviewer pairing check does not apply.",
+    "Residuals recorded by the review: the aggregate guard applies from phase 26 only (phases 20-25 grandfather. as immutable); the contract's no-build/rebuild clause has no matching prompt sentence; the phase-26 aggregate branch is exercised so far only by the 26.3 fabricated fixture and will first run for real at the phase gate; the Enforcement-scope preamble still reads 'phase 20 and later' beside the from-phase-26 bullet; the contract sits exactly at its 220-line budget; the scope self-checks are phrase-only greps."
+  ]
+}

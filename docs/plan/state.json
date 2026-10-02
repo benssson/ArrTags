@@ -1752,9 +1752,11 @@
         },
         {
           "id": "26.6",
-          "done": false,
+          "done": true,
           "name": "Advisory re-review",
-          "reports": []
+          "reports": [
+            "docs/implementation/26.6/agent-process-review.json"
+          ]
         }
       ]
     }
