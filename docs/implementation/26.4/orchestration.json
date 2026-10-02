@@ -1,0 +1,83 @@
+{
+  "task": "26.4",
+  "title": "Agent prompt corrections",
+  "phase": 26,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 26.4 adds instructions to the agent prompts derived from already-recorded v1.2 agent-process observations. It depends on no unverified Jellyfin or provider behavior, changes no product behavior, and implements no ADR clause. No pre-dispatch specialist conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 401720,
+        "output_tokens": 18613,
+        "reasoning_tokens": 24222,
+        "cache_read_tokens": 4823040,
+        "cache_write_tokens": 0,
+        "total_tokens": 5267595,
+        "cost_usd": 0.10042812000000002,
+        "duration_seconds": 447,
+        "session_id": "ses_f039d9cf4ffewv5pKbR5IW6KDR"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 50935,
+        "output_tokens": 9012,
+        "reasoning_tokens": 9690,
+        "cache_read_tokens": 838205,
+        "cache_write_tokens": 0,
+        "total_tokens": 907842,
+        "cost_usd": 0,
+        "duration_seconds": 408,
+        "session_id": "ses_f039693bfffe0jEOJE4yAQ1CL6"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 22634,
+        "output_tokens": 8532,
+        "reasoning_tokens": 6174,
+        "cache_read_tokens": 2142464,
+        "cache_write_tokens": 0,
+        "total_tokens": 2179804,
+        "cost_usd": 0.018646092,
+        "duration_seconds": 612,
+        "session_id": "ses_f039d9cf4ffewv5pKbR5IW6KDR"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "finding_id": "26.4-F1",
+      "closure": "The review APPROVED and recorded one LOW finding: the live-verifier prohibition read 'or any other non-enum field', broader than its status scope and misreadable against the schema's legitimate fields. Attempt 2 narrowed it to 'or any other non-enum top-level status/verdict field'; no other file or instruction changed.",
+      "evidence": ".opencode/agents/live-host-verifier.md:192; docs/implementation/26.4/worker-report.attempt-2.json rework[0]; docs/implementation/26.4/reviewer-report.json finding F1 (LOW, noted)."
+    }
+  ],
+  "notes": [
+    "Applied corrections C1-C7 to eight prompt files (79 insertions, 3 deletions, the deletions being renumbering/list-line replacements): orchestrator C1a-f; implementation-reviewer C2a-c; implementation-planner C3a-c; live-host-verifier C4a-b; test-quality-reviewer C5; security-reviewer C6; phase-reviewer and release-reviewer C7. Each instruction is additive, cites the contract section it implements, and does not duplicate an existing rule.",
+    "Attempt 2 is a resumed-session invocation on the same session id as attempt 1, so this record carries attempt 1's snapshot and attempt 2's delta (their sum is the session's cumulative total) to keep the phase aggregate a true sum.",
+    "The implementation reviewer APPROVED attempt 1 and recorded three non-blocking observations (F1 LOW on the over-broad clause, closed by attempt 2; F2/F3 informational). The reviewer independently traced each correction to a recorded v1.2 incident and confirmed the C7 guard reference (check-agents.sh aggregate guard, task 26.3) is factual."
+  ]
+}

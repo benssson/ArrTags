@@ -242,6 +242,10 @@ merely for the sake of creating more milestones. If the architecture changes,
 propose the smallest corresponding change to `PLANS.md` and, where required, an
 architecture decision, rather than silently restructuring the plan.
 
+Corrective work continues the task-ID sequence with single dotted numbers, so
+the plan-state guard keeps parsing and report paths stay keyed by task id
+(`docs/agent-contracts.md`, "Corrective and re-derivation tasks").
+
 ## Deriving phases for a new accepted scope
 
 A new release or scope is planned only when the user has **explicitly accepted**
@@ -309,6 +313,11 @@ decision gates are unresolved; record the unresolved gate as a blocker instead.
 # Acceptance Criteria
 
 Acceptance criteria should be **observable and testable**.
+
+A task's acceptance criteria must be a **superset** of the items the owning goal
+criterion enumerates: every item the goal or ADR criterion lists maps to at
+least one task criterion, and no criterion is narrowed to what a task
+conveniently delivers.
 
 Prefer:
 
@@ -455,6 +464,10 @@ Completed phases do not stay in `PLANS.md`: when a release completes, move its
 phases verbatim to `docs/plan/archive/<release>.md`, leaving `PLANS.md` with only
 the active scope (or an explicit "no scope active" pointer), the generated
 milestone table, decision gates, risks, and the compact backlog.
+
+When condensing a budgeted document to fit, move or condense redundantly and
+diff the result against the original to confirm no canonical content
+(cross-references, archive links, machine-state lines) was dropped.
 
 Do not turn `PLANS.md` into a detailed implementation log.
 

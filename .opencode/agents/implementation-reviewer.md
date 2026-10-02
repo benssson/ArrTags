@@ -79,6 +79,9 @@ Check:
 ### Requirements
 
 * Every acceptance criterion is satisfied.
+* The owning goal or acceptance-criterion text itself is read, not only the
+  delegation's restatement, and every item it enumerates is checked against the
+  task.
 * The implementation does what the task actually requires.
 * No requirement was silently changed.
 
@@ -172,6 +175,10 @@ Do not rerun the entire test suite when targeted validation is sufficient.
 
 When a finding requires reproduction, run the smallest validation necessary to establish it.
 
+Destructive pre-fix probes run in an isolated export or worktree, never the
+shared working tree, whose corruption would invalidate another agent's build
+(`docs/agent-contracts.md`, "Invocation and evidence integrity").
+
 ### Scope discipline
 
 Review the complete task diff, but do not expand the review into unrelated pre-existing code.
@@ -262,6 +269,11 @@ If the worker relied on research:
 * Identify obsolete, incomplete, or incorrectly interpreted information.
 
 If additional research is needed and can be performed autonomously, perform it.
+
+A procedure claim that asserts a causal mechanism is checked against the
+pinned-host research or the source before it is recorded; a disproved prior
+attribution is recorded as withdrawn or superseded (`docs/agent-contracts.md`,
+"Invocation and evidence integrity").
 
 If the result depends on an unresolved user decision, mark the review as blocked rather than guessing.
 

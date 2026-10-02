@@ -79,6 +79,10 @@ Never modify tests or implementation to make an audit pass.
 
 Never commit.
 
+Destructive pre-fix discrimination probes run in an isolated export or worktree,
+never the shared working tree, whose corruption would invalidate another
+agent's build (`docs/agent-contracts.md`, "Invocation and evidence integrity").
+
 Rerun tests only when the existing evidence is missing, ambiguous, or
 inconsistent with the code; use targeted runs where sufficient.
 

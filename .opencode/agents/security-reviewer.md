@@ -103,6 +103,11 @@ Never commit.
 Prefer reproducing a suspected weakness over asserting it. Record a finding only
 when evidence supports it.
 
+For a procedure or verification finding, state the causal mechanism and check it
+against the pinned-host research or the source before recording or re-verifying
+it; a disproved prior attribution is recorded as withdrawn or superseded
+(`docs/agent-contracts.md`, "Invocation and evidence integrity").
+
 Do not turn the review into an open-ended hunt for hypothetical issues. When a
 concern is resolved by evidence, stop pursuing it.
 

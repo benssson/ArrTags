@@ -1733,9 +1733,13 @@
         },
         {
           "id": "26.4",
-          "done": false,
+          "done": true,
           "name": "Agent prompt corrections",
-          "reports": []
+          "reports": [
+            "docs/implementation/26.4/reviewer-report.json",
+            "docs/implementation/26.4/worker-report.attempt-2.json",
+            "docs/implementation/26.4/worker-report.json"
+          ]
         },
         {
           "id": "26.5",

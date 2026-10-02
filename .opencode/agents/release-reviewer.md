@@ -281,6 +281,10 @@ particular for:
   wrong effort variant — but only where the evidence spans more than one
   occurrence, and never on a single data point.
 
+If an observation's `proposed_change` is something `scripts/check-agents.sh` now
+enforces — for example the phase-aggregate consistency guard added in task 26.3 —
+say so and point at the guard rather than re-reporting the gap as open.
+
 Record this in the report's `agent_process` section, per
 `docs/agent-contracts.md`: the measurements, and observations that each carry
 evidence from the records and a `proposed_change` naming a specific file and

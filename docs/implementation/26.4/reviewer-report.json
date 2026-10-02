@@ -1,0 +1,119 @@
+{
+  "task": "26.4",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "summary": "Independently reviewed the 26.4 diff of the eight named agent prompts. Scope is correct and minimal: git diff touches exactly orchestrator.md, implementation-reviewer.md, implementation-planner.md, live-host-verifier.md, test-quality-reviewer.md, security-reviewer.md, phase-reviewer.md and release-reviewer.md (79 insertions, 3 deletions) plus the untracked docs/implementation/26.4/ report directory; no change to docs/agent-contracts.md, scripts/, docs/plan/**, PLANS.md, product code, tests, the artifact or the manifest. All three deletions are confined to orchestrator.md and are line-replacements/renumbering ('one a worker claims to have arranged.' extended; 'are visible. This file is committed with the phase review.' extended; '8. Only then create the phase git tag.' renumbered to 9), so no rule text was removed or weakened. All seven corrections C1-C7 are present in the file each belongs to and each traces to a real recorded finding: the release-review v1.2 agent_process proposed_change entries (superseded-identity sweep, security disposition, consolidated adversarial pass, 15.4 orchestrator-run, attempt-0 retry + final-release-task record), the phase-20 attempt-2 observation (owning-goal criterion read + planner superset), 20.1's stale 1853/64/1917 delegation total, 21.7's shared-tree probe reverts, 21.9 R-21.9-5, 21.5 RV-21.5-05, and 21.13's non-enum overall_verdict/IN_PROGRESS report. The three cited contract section titles resolve verbatim ('Corrective and re-derivation tasks', 'Invocation and evidence integrity', 'Phase gate obligations'); the contract carries no A1-A6 labels (grep count 0), so citing section titles is the correct anchor and the worker's interpretation is sound. No added instruction contradicts the contract or another prompt, and a duplicate sweep found each new rule stated once. scripts/check-agents.sh and scripts/check-docs.sh were rerun by me: every prompt/contract check passes on the edited files, including the status-enum and default-path agreement checks that actually read these prompts; the only failures are the three expected transient 26.4 lines that close when the orchestrator records the reviewer report and the state.json reports entry. Three precision observations are recorded as noted, none blocking.",
+  "acceptance_criteria": [
+    {
+      "id": "C1",
+      "target": ".opencode/agents/orchestrator.md",
+      "verdict": "PASS",
+      "detail": "All six sub-corrections are present and each answers its incident. C1a no absolute historical suite total, worker measures its own baseline (line 289) - incident 20.1/worker-report.json:12 records the delegation quoting the task-19-era 1853/64/1917 against a measured 1965 baseline. C1b the corrective/re-derivation brief must name the superseded-identity sweep list (lines 309-314), naming docs/testing/jellyfin-12-musl-test-host.md, docs/release/build-and-release.md, the release changelog and the ADR implementation notes, matching contract lines 53-57 and the release-review v1.2 observation. C1c no full artifact/live/security re-derivation while a corrective finding set is open absent a consolidated pass clearing BLOCKER/HIGH/MEDIUM or explicit user acceptance (lines 314-317), matching contract lines 58-61 and the un-batched evidence observation. C1d per-finding security disposition (fix-now / accept-with-register-entry / defer-with-rationale, user owning accept) before the next phase (list item 8, lines 933-936), matching contract lines 104-107. C1e specialist-review tasks declared orchestrator-run with a depth-1 worker that must not delegate and returns BLOCKED (lines 300-303), matching the task 15.4 observation. C1f attempt-0 retry when the report is absent (lines 910-912) and the final release task's orchestration.json written before the aggregate that cites it (lines 598-600), matching the 21.11/21.6 observation. The C1c prompt drops the contract's 'release candidate' qualifier, which broadens rather than weakens the rule."
+    },
+    {
+      "id": "C2",
+      "target": ".opencode/agents/implementation-reviewer.md",
+      "verdict": "PASS",
+      "detail": "C2a the owning goal/acceptance-criterion text is read, not only the delegation's restatement, and every enumerated item checked (Requirements list, lines 82-84) - matches the phase-20 attempt-2 observation and the PR-20-01 incident. C2b destructive pre-fix probes in an isolated export or worktree, never the shared working tree (lines 178-180), citing contract 'Invocation and evidence integrity' (lines 69-71) - matches the 21.7 shared-tree evidence. C2c a causal procedure claim is checked against the pinned-host research or the source before it is recorded, with a disproved attribution withdrawn or superseded (lines 273-276) - matches contract lines 72-74 and 21.9 R-21.9-5. The prompt scopes the check to 'before it is recorded' where the contract says 'before it enters a canonical procedure document', which is a superset, not a divergence."
+    },
+    {
+      "id": "C3",
+      "target": ".opencode/agents/implementation-planner.md",
+      "verdict": "PASS",
+      "detail": "C3a a task's acceptance criteria must be a superset of the items the owning goal criterion enumerates, with no criterion narrowed to what a task conveniently delivers (lines 317-320) - matches the phase-20 attempt-2 observation on 20.3's narrowed ADR-002/ADR-003 list. C3b condensing a budgeted document must move or condense redundantly and diff the result against the original so no canonical content (cross-references, archive links, machine-state lines) is dropped (lines 468-470) - the named loss modes match 21.5's RV-21.5-05, which recorded exactly a PLANS.md reflow dropping the generator source, the ADR indexes, the archive sentence and the milestone-table note. C3c corrective work continues the task-ID sequence with single dotted numbers so the state guard keeps parsing and report paths stay keyed by task id (lines 245-247), matching contract lines 62-63."
+    },
+    {
+      "id": "C4",
+      "target": ".opencode/agents/live-host-verifier.md",
+      "verdict": "PASS",
+      "detail": "C4a the schema is exact, verifier_status is the only top-level status field, and no top-level status, overall_verdict or other non-enum field is added (lines 190-192) - matches the 21.13 live-verification.json, whose report emitted overall_verdict (line 188) alongside a non-enum IN_PROGRESS status. The wording correctly scopes the prohibition to top-level fields, so it does not forbid the documented nested checks[].status enum (line 165). C4b started_utc/finished_utc are added to the documented schema (lines 159-160) and must provably bound every recorded check timestamp or the report must record the uncertainty, and an incrementally persisted report stays parseable at every write and terminal when returned (lines 192-195). The declared enum at line 161 still matches the contract table at docs/agent-contracts.md:35 exactly, which is what check-agents.sh reads."
+    },
+    {
+      "id": "C5",
+      "target": ".opencode/agents/test-quality-reviewer.md",
+      "verdict": "PASS",
+      "detail": "Destructive pre-fix discrimination probes run in an isolated export or worktree, never the shared working tree (lines 82-84), citing contract 'Invocation and evidence integrity'. Verified against 21.7/test-quality-review.json, which records the audit reverting files on the shared tree, and 21.7/orchestration.json:74-75."
+    },
+    {
+      "id": "C6",
+      "target": ".opencode/agents/security-reviewer.md",
+      "verdict": "PASS",
+      "detail": "For a procedure or verification finding, state the causal mechanism and check it against the pinned-host research or the source before recording or re-verifying it, with a disproved prior attribution recorded as withdrawn or superseded (lines 106-109), citing contract lines 72-74. Addresses the F-21.13-3 class. No status or severity enum token was introduced or changed, so the Shared enums (open/resolved/not_required/noted) are untouched and the withdrawn/superseded wording stays in finding prose exactly as the contract directs."
+    },
+    {
+      "id": "C7",
+      "target": ".opencode/agents/phase-reviewer.md and .opencode/agents/release-reviewer.md",
+      "verdict": "PASS",
+      "detail": "Both prompts add the same guidance (phase-reviewer lines 215-217, release-reviewer lines 284-286): when an observation's proposed_change is something scripts/check-agents.sh now enforces - naming the phase-aggregate consistency guard added in task 26.3 - say so and point at the guard rather than re-reporting the gap as open. The factual claim is verified: scripts/check-agents.sh implements the phase aggregate consistency guard at lines 309-457 under AGGREGATE_APPLIES_FROM_PHASE=26, and the contract states it at Enforcement scope lines 151-159. Consistent with the contract's Agent-process review section, which is advisory and holds nothing open. Applying it to both reviewers is correct because the contract scopes agent_process to both."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "The live-host-verifier schema sentence reads as banning any non-enum top-level field, one clause broader than its own status scope and than the schema block it sits beneath.",
+      "detail": "The added text at .opencode/agents/live-host-verifier.md:190-192 reads 'The schema is exact: `verifier_status` (`VERIFIED`/`PARTIAL`/`FAILED`) is the only top-level status field; do not add a top-level `status`, `overall_verdict`, or any other non-enum field.' The governing clause scopes the sentence to status fields, and the 'do not add' list names status/verdict fields, so the intended reading is 'no other non-enum status field'. A stricter reading would also appear to forbid the non-enum top-level fields the same prompt documents immediately above: summary (line 182), artifacts_created (line 181) and findings (lines 171-180). Not blocking: C4a's requirement (documented schema only, no non-enum top-level status field) is satisfied, the nested checks[].status enum is correctly unaffected, and the unchanged schema block directly above governs. The ambiguity could still prompt a verifier to omit a documented field.",
+      "evidence": [
+        ".opencode/agents/live-host-verifier.md:171-195",
+        "git diff .opencode/agents/live-host-verifier.md"
+      ],
+      "recommended_action": "Consider narrowing to 'or any other non-enum top-level status field' so the prohibition cannot be read against summary/findings/artifacts_created."
+    },
+    {
+      "id": "F2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "The security-disposition rule is inserted as phase-gate step 8, between the clean-tree verification (step 7) and the tag creation (step 9).",
+      "detail": ".opencode/agents/orchestrator.md:933-937 places the disposition recording after 'Verify the working tree is clean' and before 'Only then create the phase git tag'. Because a recorded disposition is a write (a register entry or a state.json line), executing step 8 literally leaves the tree modified after step 7 verified it clean, and the tag would then precede the disposition commit. This does not breach the contract, which requires the disposition 'before the next phase starts' (docs/agent-contracts.md:104-107) - satisfied - and no guard enforces dispositions (grep for 'disposition' in scripts/ returns nothing). The placement is also consistent with existing prompt practice, since the pre-existing steps after the tag already record the gate, tag and status in state.json. Noted as a sequencing improvement only.",
+      "evidence": [
+        ".opencode/agents/orchestrator.md:924-944",
+        "docs/agent-contracts.md:102-107",
+        "grep -rn 'disposition' scripts/ -> no matches"
+      ],
+      "recommended_action": "Optionally record and commit the disposition before the clean-tree verification, or state that any file write it requires is committed as part of the phase gate."
+    },
+    {
+      "id": "F3",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "requirement",
+      "summary": "Several additions condense-and-cite the contract rule rather than pointing at it alone; verified as consistent in substance, so the plan's prohibition on divergent restatement is not breached.",
+      "detail": "The delegation asked for terse additive text referencing the contract rules 'rather than restating them', while the normative task definition (docs/implementation/planning/v1.3-harness-phase.json, task 26.4 work item 3) prohibits restating the rule 'with different wording'. The additions take the middle path: a one-to-two-sentence condensed statement plus an explicit section citation. I compared each against its contract paragraph (docs/agent-contracts.md:51-74, 102-107) and found no divergence; where the prompt is broader than the contract (C1c drops the 'release candidate' qualifier, C2c says 'before it is recorded' where the contract says 'before it enters a canonical procedure document', C6 adds re-verifying) the prompt is stricter, never weaker. The corrections also have to be actionable at the point of use, which a bare pointer would not be.",
+      "evidence": [
+        "docs/implementation/planning/v1.3-harness-phase.json task 26.4 work item 3",
+        "docs/agent-contracts.md:51-74,102-107",
+        "git diff .opencode/agents/"
+      ],
+      "recommended_action": "None. No change required."
+    }
+  ],
+  "reviewer_blockers": [],
+  "tests_checked": [
+    "bash scripts/check-agents.sh rerun independently on the edited tree: exit 1 with exactly three FAIL lines, all transient for 26.4 ('worker report but no reviewer report', 'has a reviewer report on disk but docs/plan/state.json does not list it in reports', 'has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/26.4/worker-report.json'). Every prompt/contract check passes, including 'status/severity tokens conform', 'per-agent default path and status enum agree with the contract' and 'no stale default report paths'.",
+    "bash scripts/check-docs.sh rerun independently: same three agent-check failures embedded, and 'ok: doc budget checked', 'ok: artifact identity agrees (sha256, md5, bytes)', 'ok: compatibility stubs checked', 'ok: current-state links resolve' all pass.",
+    "Verified the three transient FAILs are genuine pending-orchestrator conditions, not a script defect: scripts/check-agents.sh:126-200 requires a reviewer-report.json per task directory plus the state.json reports entry, so they close once the orchestrator records this review and adds the 26.4 reports array.",
+    "Verified the prompt checks actually read the edited files (not a static constant): scripts/check-agents.sh:90 greps the agent prompt for '\"(reviewer_status|verifier_status)\": \"...\"' and line 100 fails on drift; the first match in the edited live-host-verifier.md is line 161, '\"verifier_status\": \"VERIFIED | PARTIAL | FAILED\"', equal to the contract table at docs/agent-contracts.md:35. Did not rerun the worker's destructive status-enum drift probe on the shared tree, since the read path and the unchanged declared enum already establish that the PASS covers the edited files.",
+    "git diff --numstat per file and a filtered -U0 deletion listing: 8 files, 79 insertions, 3 deletions, the 3 deletions all in orchestrator.md and all renumbering/line-replacement."
+  ],
+  "research_checked": [
+    "Traced all seven corrections to their recorded source findings rather than accepting the worker report: docs/implementation/final-review/release-review-v1.2.json agent_process proposed_change entries (superseded-identity sweep, phase aggregate, security disposition, un-batched re-derivation, task 15.4 orchestrator-run, 21.11/21.6 attempt-0 and final-release-task record) and docs/implementation/phase-20/phase-review.attempt-2.json (owning goal criterion read, planner superset, aggregate guard).",
+    "Verified the incidents cited per correction exist: 20.1/worker-report.json:12 (stale 1853/64/1917 delegation total vs measured 1965), 21.7/test-quality-review.json:12 and 21.7/orchestration.json:74-75 (shared-tree reverts), 21.9/reviewer-report.attempt-2.json:28,81 (R-21.9-5), 21.5/reviewer-report.json:74,110 (RV-21.5-05 dropped cross-references/ADR indexes/archive sentence/milestone note), 21.13/live-verification.json:188 and 21.13/reviewer-report.attempt-2.json:68 (overall_verdict, IN_PROGRESS).",
+    "Verified C7's factual claim independently: scripts/check-agents.sh:29-34,309-457 implements the from-phase-26 aggregate consistency guard, and docs/agent-contracts.md:151-159 states it.",
+    "Confirmed the worker's A1-A6 interpretation: grep for A1-A6 in docs/agent-contracts.md returns 0 matches, so citing the section titles is the only resolvable anchor; all three cited titles match the headings verbatim at lines 51, 65 and 102."
+  ],
+  "documentation_checked": [
+    "docs/agent-contracts.md:43-74,76-160,161-217 read in full to confirm no added prompt rule contradicts the contract and that the three cited sections resolve.",
+    "docs/implementation/planning/v1.3-harness-phase.json task 26.4 (work items, tests and the two acceptance criteria) read as the normative task definition.",
+    "docs/plan/state.json Phase 26: 26.1-26.3 done with reports listed, 26.4 done=false with reports [] - correct current state for a task whose review is still in flight; no completion count or implemented-capability claim changed by this task.",
+    "PLANS.md:98 '- [ ] 26.4 Agent prompt corrections' unchecked, consistent with state.json; no stale claim.",
+    "Artifact and manifest untouched: check-docs.sh 'ok: artifact identity agrees (sha256, md5, bytes)' and git status shows no modification outside the eight prompts."
+  ],
+  "scope_verified": "git status --porcelain shows exactly eight modified prompt files and one untracked directory (docs/implementation/26.4/). No other prompt file touched, and no change to docs/agent-contracts.md, scripts/, docs/plan/**, PLANS.md, product code, tests, the artifact or the manifest.",
+  "required_changes": [],
+  "rework_log": [],
+  "ready_for_next_task": true,
+  "notes_for_orchestrator": "Writing this reviewer report closes only the first of the three transient check-agents.sh/check-docs.sh failures. To reach PASS, record both docs/implementation/26.4/reviewer-report.json and docs/implementation/26.4/worker-report.json in the 26.4 reports array in docs/plan/state.json (state.json currently reads done=false with reports []), then set done=true and regenerate docs/status.md and the PLANS.md milestone table via scripts/render-docs-state.cs. Those edits are outside task 26.4's scope by design and are the orchestrator's step."
+}

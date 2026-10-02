@@ -156,6 +156,8 @@ Use this structure:
   "artifact_sha256": "<sha256>",
   "host": "<host path, runtime, and version>",
   "environment": "pinned | unavailable",
+  "started_utc": "<ISO-8601 UTC>",
+  "finished_utc": "<ISO-8601 UTC>",
   "verifier_status": "VERIFIED | PARTIAL | FAILED",
   "checks": [
     {
@@ -184,3 +186,10 @@ Use this structure:
 Set `verifier_status` to `FAILED` for any BLOCKER or HIGH, and `PARTIAL` when one
 or more checks could not be performed. Do not report `VERIFIED` for a check that
 was skipped or that used a substitute for the documented counterpart.
+
+The schema is exact: `verifier_status` (`VERIFIED`/`PARTIAL`/`FAILED`) is the
+only top-level status field; do not add a top-level `status`, `overall_verdict`,
+or any other non-enum top-level status/verdict field. `started_utc`/`finished_utc` must provably bound
+every recorded check timestamp, or the report must explicitly record the
+uncertainty. A report persisted incrementally stays parseable at every write and
+is terminal when returned.

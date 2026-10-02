@@ -1,0 +1,74 @@
+{
+  "task": "26.4",
+  "attempt": 2,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Rework pass for review finding F1 (LOW). The only change is the required wording narrowing in .opencode/agents/live-host-verifier.md: the prohibition now reads 'any other non-enum top-level status/verdict field' instead of 'any other non-enum field', so it cannot be misread against the schema's legitimate non-status fields (summary, findings, artifacts_created). No other file and no other instruction changed; the attempt-1 worker report is preserved unchanged.",
+  "validation": [
+    "bash scripts/check-agents.sh on the final tree (worker-report.json, worker-report.attempt-2.json, reviewer-report.json on disk; docs/plan/state.json still unlisted) -> exit 1 with exactly the two expected transient 26.4 report-listing lines, 13 of its 15 sections reporting 'ok', including 'ok: per-agent default path and status enum agree with the contract'; the two lines are quoted in known_limitations.",
+    "bash scripts/check-docs.sh on the final tree -> exit 1 solely because it embeds scripts/check-agents.sh; its own 8 sections all report 'ok' and the only failure is the embedded 'agent contract check failed' block.",
+    "Sensitivity probe re-run after the wording change: seeded the status-enum drift in .opencode/agents/live-host-verifier.md ('\"verifier_status\": \"VERIFIED | PARTIAL | FAILED\"' -> '\"verifier_status\": \"VERIFIED\"') and scripts/check-agents.sh failed with 'FAIL: live-host-verifier status enum drift: contract 'VERIFIED, PARTIAL, FAILED' vs prompt 'VERIFIED'' (exit 1); restored from a byte-identical backup (cmp clean) and the drift line disappeared.",
+    "Rework diff is confined to one line of one file: old '.opencode/agents/live-host-verifier.md' line 192 clause 'or any other non-enum field.' replaced by 'or any other non-enum top-level status/verdict field.'; git status shows the same eight prompt files as attempt 1 plus the new attempt-2 report, and no other tracked change."
+  ],
+  "changed_files": [
+    ".opencode/agents/live-host-verifier.md",
+    "docs/implementation/26.4/worker-report.attempt-2.json"
+  ],
+  "acceptance_criteria": [
+    { "criterion": "C1a - worker delegations do not quote an absolute historical suite total; the worker measures its own pre-change baseline, and any quoted count is generated from the current tree immediately before dispatch (incident: task 20.1 stale 1853/64/1917).", "evidence": ".opencode/agents/orchestrator.md:289 (unchanged this attempt), added: 'Do not quote an absolute historical suite total in the brief. Require the worker to measure its own pre-change baseline; any count the brief quotes must be generated from the current tree immediately before dispatch.'" },
+    { "criterion": "C1b - a corrective/re-derivation task brief names the superseded-identity sweep list (contract 'Corrective and re-derivation tasks').", "evidence": ".opencode/agents/orchestrator.md:309-314 (unchanged this attempt), added the sweep list and superseded-marking requirement." },
+    { "criterion": "C1c - no full artifact/live/security re-derivation while a corrective finding set is open, absent a consolidated adversarial pass clearing BLOCKER/HIGH/MEDIUM or explicit user acceptance.", "evidence": ".opencode/agents/orchestrator.md:314-317 (unchanged this attempt)." },
+    { "criterion": "C1d - at each phase gate the orchestrator records an explicit per-finding security disposition (fix-now / accept-with-register-entry / defer-with-rationale, the user owning accept) before the next phase.", "evidence": ".opencode/agents/orchestrator.md:933-936 (unchanged this attempt)." },
+    { "criterion": "C1e - a task whose acceptance criteria require a specialist review is orchestrator-run; the depth-1 worker returns BLOCKED with the required delegation.", "evidence": ".opencode/agents/orchestrator.md:300-303 (unchanged this attempt)." },
+    { "criterion": "C1f - attempt-0 retry when the report is absent; final release task orchestration record written before the phase/release aggregate.", "evidence": ".opencode/agents/orchestrator.md:910-912 and 598-600 (unchanged this attempt)." },
+    { "criterion": "C2a - the reviewer reads the owning goal/acceptance-criterion text and verifies every item it enumerates.", "evidence": ".opencode/agents/implementation-reviewer.md:82-84 (unchanged this attempt)." },
+    { "criterion": "C2b - destructive pre-fix probes run in an isolated export or worktree.", "evidence": ".opencode/agents/implementation-reviewer.md:178-180 (unchanged this attempt)." },
+    { "criterion": "C2c - a causal procedure claim is checked against the pinned host research or the source before it is recorded.", "evidence": ".opencode/agents/implementation-reviewer.md:273-276 (unchanged this attempt)." },
+    { "criterion": "C3a - a task's acceptance criteria are a superset of the items the owning goal criterion enumerates.", "evidence": ".opencode/agents/implementation-planner.md:317-320 (unchanged this attempt)." },
+    { "criterion": "C3b - condensing a budgeted document is diffed against the original to confirm no canonical content was dropped.", "evidence": ".opencode/agents/implementation-planner.md:468-470 (unchanged this attempt)." },
+    { "criterion": "C3c - corrective work continues the task-ID sequence with single dotted numbers.", "evidence": ".opencode/agents/implementation-planner.md:245-247 (unchanged this attempt)." },
+    { "criterion": "C4a - the live-verifier report uses the documented schema only: verifier_status (VERIFIED/PARTIAL/FAILED) and checks, with no non-enum top-level status field (review finding F1 narrowed 'any other non-enum field' to 'any other non-enum top-level status/verdict field').", "evidence": ".opencode/agents/live-host-verifier.md:190-192, final wording: 'The schema is exact: `verifier_status` (`VERIFIED`/`PARTIAL`/`FAILED`) is the only top-level status field; do not add a top-level `status`, `overall_verdict`, or any other non-enum top-level status/verdict field.' Line 192 carries the changed clause." },
+    { "criterion": "C4b - started_utc/finished_utc provably bound every recorded check timestamp, or the uncertainty is recorded explicitly; incremental persistence leaves the document parseable and terminal at return.", "evidence": ".opencode/agents/live-host-verifier.md:159-160 schema fields and 192-195 (unchanged this attempt)." },
+    { "criterion": "C5 - pre-fix discrimination probes run in an isolated export/worktree, never the shared working tree.", "evidence": ".opencode/agents/test-quality-reviewer.md:82-84 (unchanged this attempt)." },
+    { "criterion": "C6 - a procedure/verification finding states the causal mechanism and is checked against the pinned source/research; disproved attributions are withdrawn or superseded.", "evidence": ".opencode/agents/security-reviewer.md:106-109 (unchanged this attempt)." },
+    { "criterion": "C7 - an agent_process observation now enforced by scripts/check-agents.sh points at the guard instead of re-reporting the gap.", "evidence": ".opencode/agents/phase-reviewer.md:215-217 and .opencode/agents/release-reviewer.md:284-286 (unchanged this attempt)." }
+  ],
+  "interpretations": [
+    { "question": "The task brief calls the contract rules A1-A6, but docs/agent-contracts.md carries no A1-A6 labels.", "chosen": "The prompts cite the contract's section titles ('Corrective and re-derivation tasks', 'Invocation and evidence integrity', 'Phase gate obligations') rather than A1/A2/A4 identifiers.", "basis": "grep for 'A1' in docs/agent-contracts.md returns nothing; the section headings are the resolvable anchors.", "impact": "None on semantics; references resolve in the artifact instead of dangling." },
+    { "question": "The brief says 'the seven named prompt files', while C7 names two files.", "chosen": "Eight prompt files changed, exactly the files C1-C7 name.", "basis": "C1-C7 as written; 'seven' counts corrections, not files.", "impact": "No file outside the named set changed." },
+    { "question": "C1 requires the brief to name the superseded-identity sweep list while the task also says to reference the contract rather than restate it.", "chosen": "The orchestrator instruction names the four surfaces once and cites the contract section for the normative rule.", "basis": "The correction text explicitly requires the list to be named in the brief.", "impact": "None; the contract remains the single normative source." },
+    { "question": "C6's 'withdrawn'/'superseded' wording versus the contract's finding-status enum.", "chosen": "The prompt mirrors the contract's own sentence and points at it; no schema status token was added or changed.", "basis": "docs/agent-contracts.md already states the withdrawn/superseded requirement.", "impact": "No enum value changed; provenance wording stays in the finding text." }
+  ],
+  "test_sensitivity": [
+    "Prompt/contract validator sensitivity re-proven after the F1 wording change: seeding the status-enum drift in .opencode/agents/live-host-verifier.md made scripts/check-agents.sh fail with 'FAIL: live-host-verifier status enum drift: contract 'VERIFIED, PARTIAL, FAILED' vs prompt 'VERIFIED'' (exit 1); restoring the byte-identical backup removed the failure.",
+    "No product behaviour changed; no product test was run or required. The changed sentence is prompt text validated by scripts/check-agents.sh's per-agent status-enum check, which the probe shows can fail."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/implementation/26.4/worker-report.attempt-2.json (new; attempt 1's docs/implementation/26.4/worker-report.json is preserved unchanged)"
+    ],
+    "old_values_removed": [
+      "the clause 'or any other non-enum field' no longer appears in .opencode/agents/live-host-verifier.md"
+    ],
+    "check_docs": "FAIL (expected transient 26.4 report-listing lines only, because docs/plan/state.json is not updated in this task; all other check-docs sections pass)"
+  },
+  "rework": [
+    {
+      "finding_id": "F1",
+      "closure": "Narrowed the prohibition scope so it cannot be misread against the schema's legitimate fields (summary, findings, artifacts_created): the sentence now prohibits only a non-enum top-level status/verdict field.",
+      "old_wording": ".opencode/agents/live-host-verifier.md:192 (attempt-1 text): 'or any other non-enum field. `started_utc`/`finished_utc` must provably bound'",
+      "new_wording": ".opencode/agents/live-host-verifier.md:192 (final text): 'or any other non-enum top-level status/verdict field. `started_utc`/`finished_utc` must provably bound'",
+      "evidence": "sed -n '190,195p' .opencode/agents/live-host-verifier.md shows the full final sentence; git status/diff show no other tracked change from the rework besides this file and the attempt-2 report."
+    }
+  ],
+  "known_limitations": [
+    "On the final tree, scripts/check-agents.sh exits 1 on exactly two expected transient lines because docs/plan/state.json does not yet list task 26.4's reports, verbatim: 'FAIL: task 26.4 has a reviewer report on disk but docs/plan/state.json does not list it in reports' and 'FAIL: task 26.4 has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/26.4/worker-report.json, docs/implementation/26.4/reviewer-report.json' (13 of the 15 check-agents sections report ok). scripts/check-docs.sh exits 1 solely because it embeds that check (its own 8 sections report ok; the only failure is the embedded 'agent contract check failed' block). The on-disk evidence line lists only the base worker and reviewer reports because scripts/check-agents.sh requires an attempt file only once its base report kind is listed. This task's constraints forbid changing docs/plan/**, so the orchestrator closes the lines after recording the reports in state.json.",
+    "docs/plan/state.json task 26.4 done flag and the PLANS.md checkbox are untouched by this worker; they remain false/unchecked until the orchestrator records the reviewed completion.",
+    "Named-host confirmation that a future live report actually emits started_utc/finished_utc and no non-enum top-level status field is not possible in this task; the correction is prompt text checked by scripts/check-agents.sh."
+  ],
+  "ready_for_next_task": true
+}

@@ -286,6 +286,8 @@ Provide the worker with:
 * Any known dependencies.
 * The expected validation requirements.
 
+Do not quote an absolute historical suite total in the brief. Require the worker to measure its own pre-change baseline; any count the brief quotes must be generated from the current tree immediately before dispatch.
+
 Tell the worker explicitly that it must stop rather than guess if user input is required.
 
 You own specialist delegation, not the worker. A subagent cannot spawn another
@@ -295,11 +297,24 @@ a task's description, name, or acceptance criteria require a specialist report â
 a security review, a host verification, a provider-contract check â€” you delegate
 that specialist yourself, at depth 0, and treat its report as part of the task's
 evidence. Never instruct a worker to obtain a specialist report, and never accept
-one a worker claims to have arranged.
+one a worker claims to have arranged. When a task's acceptance criteria require
+a specialist review, state in the brief that the task is orchestrator-run: the
+depth-1 worker must not delegate and returns `BLOCKED` naming the required
+delegation, which you then dispatch.
 
 When returning a task for correction, pass the reviewer's findings verbatim
 (finding id, severity, detail, evidence, recommended action) and require a
 `rework` entry per finding with closure evidence. Do not paraphrase findings.
+
+A corrective or re-derivation brief must name the superseded-identity sweep list
+the contract requires (`docs/agent-contracts.md`, "Corrective and re-derivation
+tasks"): `docs/testing/jellyfin-12-musl-test-host.md`,
+`docs/release/build-and-release.md`, the release changelog, and the ADR
+implementation notes, with every occurrence of the superseded identity marked
+superseded. Do not begin a full artifact/live/security re-derivation while a
+corrective finding set is open; a consolidated adversarial pass over the fix
+batch must clear BLOCKER/HIGH/MEDIUM, or the user must explicitly accept
+re-running, before the re-derivation starts.
 
 Do not ask the worker to calculate token usage, cache usage, runtime cost, or other execution statistics. The orchestrator records those independently from runtime/session metadata.
 
@@ -580,7 +595,9 @@ Rules:
 
 At the phase level, aggregate the task records (or write
 `docs/implementation/phase-<n>/orchestration.json`) so phase cost and rework rate
-are visible. This file is committed with the phase review.
+are visible. This file is committed with the phase review. Write the final
+release task's `orchestration.json` before the phase or release aggregate that
+cites it, even when the task's completion is gated on the release review.
 
 Do not delegate the collection of this metadata to a subagent. It is the
 orchestrator's own accounting.
@@ -890,6 +907,10 @@ Never repeat a task that already has:
 
 If a task has a worker report but no reviewer report, resume at the review stage.
 
+An attempt-0 invocation whose report is absent on disk is retried before it is
+treated as an outcome, and recorded as a retried attempt, not a completed one
+(`docs/agent-contracts.md`, "Invocation and evidence integrity").
+
 If a task has an approved review but no commit, resume at the commit gate.
 
 If the working tree contains unexpected changes, stop and report the inconsistency.
@@ -909,7 +930,11 @@ After invoking the phase-reviewer:
 5. Verify there are no unresolved BLOCKER or HIGH findings.
 6. Verify the phase review report and all required phase state changes are committed.
 7. Verify the working tree is clean.
-8. Only then create the phase git tag.
+8. Record the contract's disposition (`fix-now`, `accept-with-register-entry`,
+   or `defer-with-rationale`, the user owning an accept) for every new security
+   finding the phase raised, before the next phase starts
+   (`docs/agent-contracts.md`, "Phase gate obligations").
+9. Only then create the phase git tag.
 
 Use the project's established tag naming convention. If no convention exists, stop and request user input rather than inventing one.
 

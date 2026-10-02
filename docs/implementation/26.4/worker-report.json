@@ -1,0 +1,144 @@
+{
+  "task": "26.4",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Applied the seven v1.2 agent-process corrections to the named agent prompts as terse, additive text in each file's existing style: C1 orchestrator.md (no historical suite totals in worker briefs; corrective/re-derivation brief names the superseded-identity sweep list; no full artifact/live/security re-derivation with an open corrective set absent a consolidated BLOCKER/HIGH/MEDIUM-clear pass or explicit user acceptance; per-finding security disposition recorded before the phase tag; specialist-review tasks declared orchestrator-run with a depth-1 worker returning BLOCKED; attempt-0 retry when the report is absent; final release task orchestration record written before the aggregate); C2 implementation-reviewer.md (owning goal/criterion text read and every item verified; destructive pre-fix probes isolated; causal procedure claims checked); C3 implementation-planner.md (task criteria a superset of the owning goal criterion; condensing a budgeted document diffed against the original; corrective work continues the single-dotted task-ID sequence); C4 live-host-verifier.md (documented schema only, no non-enum top-level status; started_utc/finished_utc bound every check timestamp or record the uncertainty; incremental writes parseable and return terminal); C5 test-quality-reviewer.md (pre-fix discrimination probes isolated); C6 security-reviewer.md (procedure findings state the causal mechanism, checked against pinned source/research, disproved attributions withdrawn or superseded); C7 phase-reviewer.md and release-reviewer.md (an observation whose proposed_change is now enforced by scripts/check-agents.sh points at the guard instead of re-reporting the gap). 8 files, 79 insertions, 3 deletions; no rule removed or weakened and no existing rule duplicated.",
+  "validation": [
+    "bash scripts/check-agents.sh -> PASS (exit 0), all 15 sections 'ok', including 'ok: per-agent default path and status enum agree with the contract' and 'ok: status/severity tokens conform', run on the final edited tree with docs/implementation/26.4/worker-report.json temporarily absent.",
+    "bash scripts/check-docs.sh -> PASS (exit 0), all 9 sections 'ok', including 'ok: doc budget checked' and 'ok: agent report contracts conform', run on the final edited tree with docs/implementation/26.4/worker-report.json temporarily absent.",
+    "Sensitivity probe on the prompt/contract validator: seeded a deliberate status-enum drift in .opencode/agents/live-host-verifier.md ('\"verifier_status\": \"VERIFIED | PARTIAL | FAILED\"' -> '\"verifier_status\": \"VERIFIED\"'); scripts/check-agents.sh FAIL exit 1 with 'FAIL: live-host-verifier status enum drift: contract 'VERIFIED, PARTIAL, FAILED' vs prompt 'VERIFIED''. Restored from a byte-identical backup (cmp clean); scripts/check-agents.sh PASS exit 0.",
+    "grep of each correction in its target file (all 17 added statements located by line number, listed in acceptance_criteria evidence below); duplicate sweep shows each new rule once, except the contract section name \"Invocation and evidence integrity\" which implementation-reviewer cites in two distinct rules (probe isolation, causal-mechanism check).",
+    "git diff --stat -> 8 files changed, 79 insertions(+), 3 deletions(-): the prompts C1-C7 name (C7 names two files) and no other tracked file; the new report is untracked and therefore outside git diff --stat. The 3 deletions are the phase-gate list line renumber and list-line replacements, no rule text removed. git diff --check reports no whitespace errors.",
+    "With docs/implementation/26.4/worker-report.json present and unreviewed, scripts/check-agents.sh (and scripts/check-docs.sh, which embeds it) fails on exactly three expected transient lines: 'FAIL: task 26.4 has a worker report but no reviewer report (add an exemption only if covered)', 'FAIL: task 26.4 has a reviewer report on disk but docs/plan/state.json does not list it in reports', and 'FAIL: task 26.4 has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/26.4/worker-report.json'. These close when the orchestrator records the reviewer report and the state.json entry; docs/plan/** was explicitly out of scope for this task."
+  ],
+  "changed_files": [
+    ".opencode/agents/orchestrator.md",
+    ".opencode/agents/implementation-reviewer.md",
+    ".opencode/agents/implementation-planner.md",
+    ".opencode/agents/live-host-verifier.md",
+    ".opencode/agents/test-quality-reviewer.md",
+    ".opencode/agents/security-reviewer.md",
+    ".opencode/agents/phase-reviewer.md",
+    ".opencode/agents/release-reviewer.md",
+    "docs/implementation/26.4/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "C1a - worker delegations do not quote an absolute historical suite total; the worker measures its own pre-change baseline, and any quoted count is generated from the current tree immediately before dispatch (incident: task 20.1 stale 1853/64/1917).",
+      "evidence": ".opencode/agents/orchestrator.md:289, added: 'Do not quote an absolute historical suite total in the brief. Require the worker to measure its own pre-change baseline; any count the brief quotes must be generated from the current tree immediately before dispatch.'"
+    },
+    {
+      "criterion": "C1b - a corrective/re-derivation task brief names the superseded-identity sweep list (contract 'Corrective and re-derivation tasks'): docs/testing/jellyfin-12-musl-test-host.md, docs/release/build-and-release.md, the release changelog, and the ADR implementation notes, marked superseded.",
+      "evidence": ".opencode/agents/orchestrator.md:309-314, added: 'A corrective or re-derivation brief must name the superseded-identity sweep list the contract requires ... `docs/testing/jellyfin-12-musl-test-host.md`, `docs/release/build-and-release.md`, the release changelog, and the ADR implementation notes, with every occurrence of the superseded identity marked superseded.'"
+    },
+    {
+      "criterion": "C1c - no full artifact/live/security re-derivation while a corrective finding set is open, absent a consolidated adversarial pass clearing BLOCKER/HIGH/MEDIUM or explicit user acceptance (contract 'Corrective and re-derivation tasks').",
+      "evidence": ".opencode/agents/orchestrator.md:314-317, added: 'Do not begin a full artifact/live/security re-derivation while a corrective finding set is open; a consolidated adversarial pass over the fix batch must clear BLOCKER/HIGH/MEDIUM, or the user must explicitly accept re-running, before the re-derivation starts.'"
+    },
+    {
+      "criterion": "C1d - at each phase gate the orchestrator records an explicit per-finding security disposition (fix-now / accept-with-register-entry / defer-with-rationale, the user owning accept) before the next phase (contract 'Phase gate obligations').",
+      "evidence": ".opencode/agents/orchestrator.md:933-936, added list item 8: 'Record the contract's disposition (`fix-now`, `accept-with-register-entry`, or `defer-with-rationale`, the user owning an accept) for every new security finding the phase raised, before the next phase starts (`docs/agent-contracts.md`, \"Phase gate obligations\").' Item 9 is the unchanged 'Only then create the phase git tag.'"
+    },
+    {
+      "criterion": "C1e - a task whose acceptance criteria require a specialist review is orchestrator-run: the brief says a depth-1 implementation-worker must not delegate and must return BLOCKED with the required delegation (incident: task 15.4).",
+      "evidence": ".opencode/agents/orchestrator.md:300-303, appended to the existing 'You own specialist delegation' paragraph: 'When a task's acceptance criteria require a specialist review, state in the brief that the task is orchestrator-run: the depth-1 worker must not delegate and returns `BLOCKED` naming the required delegation, which you then dispatch.'"
+    },
+    {
+      "criterion": "C1f - retry an attempt-0 invocation whose report is absent before treating it as an outcome (contract 'Invocation and evidence integrity'), and write the final release task's orchestration record before the phase/release aggregate (incident: 21.11 attempt-0 FAILED; 21.6 missing record).",
+      "evidence": ".opencode/agents/orchestrator.md:910-912, added: 'An attempt-0 invocation whose report is absent on disk is retried before it is treated as an outcome, and recorded as a retried attempt, not a completed one (`docs/agent-contracts.md`, \"Invocation and evidence integrity\").'; and .opencode/agents/orchestrator.md:598-600, appended: 'Write the final release task's `orchestration.json` before the phase or release aggregate that cites it, even when the task's completion is gated on the release review.'"
+    },
+    {
+      "criterion": "C2a - the reviewer reads the owning goal/acceptance-criterion text, not only the delegation's restated criteria, and verifies every item it enumerates (incident: task 20.3 PR-20-01).",
+      "evidence": ".opencode/agents/implementation-reviewer.md:82-84, added bullet: 'The owning goal or acceptance-criterion text itself is read, not only the delegation's restatement, and every item it enumerates is checked against the task.'"
+    },
+    {
+      "criterion": "C2b - destructive pre-fix probes run in an isolated export or worktree, never the shared working tree (contract 'Invocation and evidence integrity').",
+      "evidence": ".opencode/agents/implementation-reviewer.md:178-180, added: 'Destructive pre-fix probes run in an isolated export or worktree, never the shared working tree, whose corruption would invalidate another agent's build (`docs/agent-contracts.md`, \"Invocation and evidence integrity\").'"
+    },
+    {
+      "criterion": "C2c - a causal procedure claim is checked against the pinned host research or the source before it is recorded (contract 'Invocation and evidence integrity').",
+      "evidence": ".opencode/agents/implementation-reviewer.md:273-276, added: 'A procedure claim that asserts a causal mechanism is checked against the pinned-host research or the source before it is recorded; a disproved prior attribution is recorded as withdrawn or superseded.'"
+    },
+    {
+      "criterion": "C3a - a task's deliverable/acceptance-criteria list is a superset of the items the owning goal criterion enumerates (incident: 20.3's criteria narrowed ADR-002/ADR-003).",
+      "evidence": ".opencode/agents/implementation-planner.md:317-320, added: 'A task's acceptance criteria must be a **superset** of the items the owning goal criterion enumerates: every item the goal or ADR criterion lists maps to at least one task criterion, and no criterion is narrowed to what a task conveniently delivers.'"
+    },
+    {
+      "criterion": "C3b - condensing a budgeted document moves or condenses redundantly and diffs the result against the original to confirm no canonical content (cross-references, archive links, machine-state lines) was dropped (incident: RV-21.5-05).",
+      "evidence": ".opencode/agents/implementation-planner.md:468-470, added: 'When condensing a budgeted document to fit, move or condense redundantly and diff the result against the original to confirm no canonical content (cross-references, archive links, machine-state lines) was dropped.'"
+    },
+    {
+      "criterion": "C3c - corrective work continues the task-ID sequence with single dotted numbers so the state guard keeps parsing (contract 'Corrective and re-derivation tasks').",
+      "evidence": ".opencode/agents/implementation-planner.md:245-247, added: 'Corrective work continues the task-ID sequence with single dotted numbers, so the plan-state guard keeps parsing and report paths stay keyed by task id (`docs/agent-contracts.md`, \"Corrective and re-derivation tasks\").'"
+    },
+    {
+      "criterion": "C4a - the live-verifier report uses the documented schema only: verifier_status (VERIFIED/PARTIAL/FAILED) and checks, with no non-enum top-level status field (incident: 21.13 report emitted overall_verdict/matrix plus status IN_PROGRESS, review finding R2).",
+      "evidence": ".opencode/agents/live-host-verifier.md:190-192, added: 'The schema is exact: `verifier_status` (`VERIFIED`/`PARTIAL`/`FAILED`) is the only top-level status field; do not add a top-level `status`, `overall_verdict`, or any other non-enum field.'"
+    },
+    {
+      "criterion": "C4b - started_utc/finished_utc provably bound every recorded check timestamp, or the uncertainty is recorded explicitly; incremental persistence leaves the document parseable and terminal at return.",
+      "evidence": ".opencode/agents/live-host-verifier.md:159-160 added schema fields '\"started_utc\": \"<ISO-8601 UTC>\"' and '\"finished_utc\": \"<ISO-8601 UTC>\"'; lines 192-195 add: '`started_utc`/`finished_utc` must provably bound every recorded check timestamp, or the report must explicitly record the uncertainty. A report persisted incrementally stays parseable at every write and is terminal when returned.'"
+    },
+    {
+      "criterion": "C5 - pre-fix discrimination probes run in an isolated export/worktree, never the shared working tree (incident: 21.7 audit reverted production files on the shared tree).",
+      "evidence": ".opencode/agents/test-quality-reviewer.md:82-84, added: 'Destructive pre-fix discrimination probes run in an isolated export or worktree, never the shared working tree, whose corruption would invalidate another agent's build (`docs/agent-contracts.md`, \"Invocation and evidence integrity\").'"
+    },
+    {
+      "criterion": "C6 - a procedure/verification finding states the causal mechanism and checks it against the pinned source/research, and a disproved prior attribution is recorded withdrawn/superseded (incident: F-21.13-3).",
+      "evidence": ".opencode/agents/security-reviewer.md:106-109, added: 'For a procedure or verification finding, state the causal mechanism and check it against the pinned-host research or the source before recording or re-verifying it; a disproved prior attribution is recorded as withdrawn or superseded (`docs/agent-contracts.md`, \"Invocation and evidence integrity\").'"
+    },
+    {
+      "criterion": "C7 - when an agent_process observation proposes something scripts/check-agents.sh now enforces, the reviewer says so and points at the guard instead of re-reporting an open process gap (e.g. the phase aggregate consistency guard, task 26.3).",
+      "evidence": ".opencode/agents/phase-reviewer.md:215-217 and .opencode/agents/release-reviewer.md:284-286, added: 'If an observation's `proposed_change` is something `scripts/check-agents.sh` now enforces — for example the phase-aggregate consistency guard added in task 26.3 — say so and point at the guard rather than re-reporting the gap as open.'"
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The task brief calls the contract rules A1-A6, but docs/agent-contracts.md carries no A1-A6 labels.",
+      "chosen": "The prompts cite the contract's section titles ('Corrective and re-derivation tasks', 'Invocation and evidence integrity', 'Phase gate obligations') rather than A1/A2/A4 identifiers.",
+      "basis": "grep for 'A1' in docs/agent-contracts.md returns nothing (exit 1); the section headings are the resolvable anchors the 26.2 report itself uses.",
+      "impact": "None on semantics; references resolve in the artifact instead of dangling."
+    },
+    {
+      "question": "The brief says 'the seven named prompt files', while C7 names two files (phase-reviewer.md and release-reviewer.md).",
+      "chosen": "Eight files changed: exactly the files C1-C7 name (orchestrator, implementation-reviewer, implementation-planner, live-host-verifier, test-quality-reviewer, security-reviewer, phase-reviewer, release-reviewer).",
+      "basis": "C1-C7 as written; the same 'seven prompts' phrasing appears in docs/implementation/planning/v1.3-harness-phase.json task 26.4 and counts corrections, not files.",
+      "impact": "No file outside the named set changed; git diff --stat confirms 8 prompt files plus the report."
+    },
+    {
+      "question": "C1 requires the brief to name the superseded-identity sweep list while the task also says to reference the contract rather than restate it.",
+      "chosen": "The orchestrator instruction names the four surfaces once and cites the contract section for the normative rule.",
+      "basis": "The correction text explicitly requires the list to be named in the brief; the surrounding normative rule is not restated.",
+      "impact": "None; the brief instruction is executable and the contract remains the single normative source."
+    },
+    {
+      "question": "C6 tells the security reviewer to record 'withdrawn'/'superseded' explicitly, while the contract's Shared enums list finding status as open/resolved/not_required/noted.",
+      "chosen": "The prompt mirrors the contract's own 'Invocation and evidence integrity' sentence and points at it; no schema status token was added or changed.",
+      "basis": "docs/agent-contracts.md already states 'a disproved prior attribution is recorded as withdrawn or superseded'; the prompt did not introduce the terminology.",
+      "impact": "No reviewer_status/finding-status enum value changed; the provenance wording stays in the finding text as the contract directs."
+    }
+  ],
+  "test_sensitivity": [
+    "Prompt/contract validator sensitivity proven: seeding a status-enum drift in .opencode/agents/live-host-verifier.md ('\"verifier_status\": \"VERIFIED | PARTIAL | FAILED\"' -> '\"verifier_status\": \"VERIFIED\"') made scripts/check-agents.sh FAIL exit 1 with 'FAIL: live-host-verifier status enum drift: contract 'VERIFIED, PARTIAL, FAILED' vs prompt 'VERIFIED''; restoring the byte-identical backup returned PASS exit 0.",
+    "No product behaviour changed; no product test was run or required. The only executable semantics added are (a) the live-verifier report schema fields, which no code parses yet, and (b) prompt instructions, whose validator is check-agents.sh and is sensitivity-probed above."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/implementation/26.4/worker-report.json (new; the only documentation artifact this task is permitted to add)"
+    ],
+    "old_values_removed": [],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "scripts/check-agents.sh and scripts/check-docs.sh PASS (exit 0) on the final prompt tree with docs/implementation/26.4/worker-report.json temporarily absent. Once the unreviewed worker report is on disk, both checks fail on exactly three expected transient lines, verbatim: 'FAIL: task 26.4 has a worker report but no reviewer report (add an exemption only if covered)', 'FAIL: task 26.4 has a reviewer report on disk but docs/plan/state.json does not list it in reports', and 'FAIL: task 26.4 has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/26.4/worker-report.json'. This task's constraints forbid changing docs/plan/**, scripts/, PLANS.md, or any file other than the named prompts and this report, so the orchestrator closes the three lines after review by adding the reviewer report and the state.json reports entry.",
+    "Per the same constraint, docs/plan/state.json task 26.4 done flag/PLANS.md checkbox are untouched by this worker; they remain false/unchecked until the orchestrator records the reviewed completion.",
+    "Named-host verification of the live-verifier schema (a future live report actually emitting started_utc/finished_utc and no non-enum status) is not possible in this task; the correction is prompt text only and is checked by scripts/check-agents.sh reading the prompt."
+  ],
+  "ready_for_next_task": true
+}
