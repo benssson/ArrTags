@@ -96,7 +96,7 @@ classes the new guards now cover.
 - [x] 26.2 Agent-contract rules
 - [x] 26.3 Guard enforcement
 - [x] 26.4 Agent prompt corrections
-- [ ] 26.5 Session-usage collection fix
+- [x] 26.5 Session-usage collection fix
 - [ ] 26.6 Advisory re-review
 **Authoritative Phase 26 execution order:** 26.1, 26.2, 26.3, 26.4, 26.5, 26.6
 **Phase acceptance criteria:** the phase-21 record satisfies the contract's

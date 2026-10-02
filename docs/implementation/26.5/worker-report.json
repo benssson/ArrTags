@@ -1,0 +1,100 @@
+{
+  "task": "26.5",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Replaced the `opencode api get` dependency in .opencode/scripts/collect-session-usage.sh with a direct HTTP GET of the resolved server URL's /api/session/<id> endpoint. api_get() now prefers `curl -fsS --max-time 60` and falls back to a pure-bash HTTP/1.0 GET over /dev/tcp when curl is absent; the OPENCODE_SERVER override and the `opencode serve --port` process discovery are unchanged. When OPENCODE_SERVER_PASSWORD is set (the running server enforces HTTP basic auth as user `opencode`), both transports send basic auth; the CLI is no longer on the success path. The jq extraction and output contract are byte-identical: the same real 26.4 worker session produced the same one-line JSON from the old CLI-based script and the new script (diff empty). The header documents the self-test against docs/implementation/26.4/orchestration.json that checks the output parses and carries a non-null total_tokens; running it printed 7447399 and exited 0. An unreachable server prints {\"session_id\":\"<sid>\",\"error\":\"session fetch failed\"} and exits 1 with no token or cost figure estimated.",
+  "validation": [
+    "bash -n .opencode/scripts/collect-session-usage.sh -> OK (exit 0).",
+    "Old script baseline (git show HEAD:.opencode/scripts/collect-session-usage.sh > /tmp/26.5/old-collect.sh) run as: OPENCODE_SERVER=http://127.0.0.1:49374 timeout 60 bash /tmp/26.5/old-collect.sh ses_f039d9cf4ffewv5pKbR5IW6KDR -> exit 0, stdout: {\"session_id\":\"ses_f039d9cf4ffewv5pKbR5IW6KDR\",\"agent\":\"implementation-worker\",\"model\":\"opencode-go/deepseek-v4.1-flash\",\"variant\":\"max\",\"input_tokens\":424354,\"output_tokens\":27145,\"reasoning_tokens\":30396,\"cache_read_tokens\":6965504,\"cache_write_tokens\":0,\"total_tokens\":7447399,\"cost_usd\":0.11907421200000001,\"duration_seconds\":1059}. The session id came from `jq -r '.subagents[0].execution.session_id' docs/implementation/26.4/orchestration.json`; the environment still permitted the CLI-based run.",
+    "New script on the same session: OPENCODE_SERVER=http://127.0.0.1:49374 bash .opencode/scripts/collect-session-usage.sh ses_f039d9cf4ffewv5pKbR5IW6KDR -> exit 0, identical stdout; `diff -u /tmp/26.5/old.out /tmp/26.5/new.out` -> empty (byte-identical), stderr empty.",
+    "Documented self-test (header command, run from the repository root): sid=$(jq -r '.subagents[0].execution.session_id' docs/implementation/26.4/orchestration.json); .opencode/scripts/collect-session-usage.sh \"$sid\" | jq -e 'select(.total_tokens != null) | .total_tokens' -> printed 7447399, pipeline exit 0.",
+    "Unreachable server: OPENCODE_SERVER=http://127.0.0.1:1 bash .opencode/scripts/collect-session-usage.sh ses_f039d9cf4ffewv5pKbR5IW6KDR -> stdout {\"session_id\":\"ses_f039d9cf4ffewv5pKbR5IW6KDR\",\"error\":\"session fetch failed\"}, stderr empty, exit 1. No token or cost value was emitted.",
+    "OPENCODE_SERVER override without scheme: OPENCODE_SERVER=127.0.0.1:49374 bash .opencode/scripts/collect-session-usage.sh \"$sid\" | jq -r '.total_tokens' -> 7447399, exit 0. Process discovery without OPENCODE_SERVER also worked: bash .opencode/scripts/collect-session-usage.sh \"$sid\" -> same full JSON, exit 0 (it found `opencode serve --hostname 0.0.0.0 --port 49374` via ps/sed).",
+    "CLI not required on the success path: env PATH=/usr/bin:/bin OPENCODE_SERVER=http://127.0.0.1:49374 bash .opencode/scripts/collect-session-usage.sh \"$sid\" -> identical JSON, exit 0, while `env PATH=/usr/bin:/bin sh -c 'command -v opencode'` printed 'opencode NOT on PATH' (opencode lives at /usr/local/bin/opencode). grep -n 'opencode api\\|timeout 60 opencode' .opencode/scripts/collect-session-usage.sh -> no matches; the remaining `opencode` occurrences are comments, the OPENCODE_SERVER/OPENCODE_SERVER_PASSWORD names, the basic-auth username, and the retained `opencode serve --port` discovery pattern at line 79.",
+    "curl-less fallback proven: PATH=/tmp/26.5/nocurl (symlinks for bash, jq, cat, base64 only; no curl, no opencode), OPENCODE_SERVER=http://127.0.0.1:49374 bash .opencode/scripts/collect-session-usage.sh \"$sid\" -> exit 0 and output byte-identical to the curl run (`diff` empty); with OPENCODE_SERVER=http://127.0.0.1:1 -> same error object and exit 1.",
+    "Unfetchable session contract preserved: old and new scripts both printed {\"session_id\":\"ses_doesnotexist\",\"error\":\"session fetch failed\"} and exited 1 for a non-existent session id.",
+    "scripts/check-docs.sh -> PASS (exit 0), 8 'ok' sections plus the expected 'skip: dotnet not on PATH' line, including 'ok: doc budget checked' and 'ok: agent report contracts conform'. scripts/check-agents.sh -> PASS (exit 0), all 15 sections ok. Both were run on the final tree with docs/implementation/26.5/worker-report.json temporarily absent.",
+    "After docs/implementation/26.5/worker-report.json was written, scripts/check-agents.sh -> FAIL (exit 1) and scripts/check-docs.sh -> FAIL (exit 1) on exactly three expected transient lines: 'FAIL: task 26.5 has a worker report but no reviewer report (add an exemption only if covered)', 'FAIL: task 26.5 has a reviewer report on disk but docs/plan/state.json does not list it in reports', and 'FAIL: task 26.5 has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/26.5/worker-report.json'. These close when the orchestrator records the reviewer report and the state.json entry; docs/plan/** was explicitly out of scope for this task.",
+    "git diff --stat -> .opencode/scripts/collect-session-usage.sh | 80 +++++++++++++++++++++++++++---, 1 file changed, 74 insertions(+), 6 deletions(-); git diff --summary shows no mode change. No other tracked file changed.",
+    "Current-state sweep: grep for 'opencode api' and for the removed comment wording \"CLI's own discovery\" in .opencode/scripts/collect-session-usage.sh -> no matches. The orchestrator prompt's description of the script (.opencode/agents/orchestrator.md 'How to obtain the metadata') lists the same output fields, says the script resolves the server automatically, and says it exits non-zero only when the server cannot be reached; all remain true, and it was not modified (out of scope)."
+  ],
+  "changed_files": [
+    ".opencode/scripts/collect-session-usage.sh",
+    "docs/implementation/26.5/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Task 26.5 work item 1: replace the `opencode api get` dependency in api_get() with a direct HTTP request to the resolved server's /api/session/<id>, keeping the existing OPENCODE_SERVER/port discovery.",
+      "evidence": ".opencode/scripts/collect-session-usage.sh: transport selection lines 90-94, http_get_bash() lines 96-129, api_get() lines 131-144 issuing curl -fsS --max-time 60 (or http_get_bash) to \"${SERVER%/}$1\"; resolve_server() lines 69-86 unchanged. Validated by the real-session, discovery, and stripped-PATH runs above."
+    },
+    {
+      "criterion": "Task 26.5 work item 2 / planning criterion 3: keep the never-estimate contract: no recomputation of token counts or cost, and the same output contract.",
+      "evidence": "The jq extraction block (lines 154-187) is unchanged; diff touches only the header comment, the resolve_server comment, the transport helpers, and api_get. Old CLI run and new run produced byte-identical output for ses_f039d9cf4ffewv5pKbR5IW6KDR (total_tokens 7447399, cost_usd 0.11907421200000001, duration_seconds 1059); no value was computed from anything but the session object."
+    },
+    {
+      "criterion": "Task 26.5 work item 3 / planning criterion 1: document a self-test that fetches a real session.",
+      "evidence": "Header comment lines 41-54 document the exact command using .subagents[0].execution.session_id from docs/implementation/26.4/orchestration.json and `jq -e 'select(.total_tokens != null) | .total_tokens'`; it printed 7447399 and exited 0."
+    },
+    {
+      "criterion": "Planning criterion 2: a clear error when the server is unreachable.",
+      "evidence": "OPENCODE_SERVER=http://127.0.0.1:1 produced {\"session_id\":\"ses_f039d9cf4ffewv5pKbR5IW6KDR\",\"error\":\"session fetch failed\"} on stdout and exit 1 (curl path and /dev/tcp path); no estimated figures and no fabricated success."
+    },
+    {
+      "criterion": "Orchestrator constraint: curl preferred and checked on PATH; dependency-free fallback when curl is absent.",
+      "evidence": "`command -v curl` selects GET_TRANSPORT=curl; with a PATH containing no curl the /dev/tcp function returned byte-identical output for the real session and the same error/exit 1 for the unreachable server."
+    },
+    {
+      "criterion": "Orchestrator constraint: the `opencode` CLI is not required anywhere on the success path.",
+      "evidence": "Success with PATH=/usr/bin:/bin where `command -v opencode` fails; grep finds no CLI invocation (`opencode api` / `timeout 60 opencode`) in the script."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "The task does not name server authentication, but the running server enforces HTTP basic auth (an unauthenticated GET returns 401) and that is exactly why `opencode api` reported the recorded 'V2 health mismatch'.",
+      "chosen": "When OPENCODE_SERVER_PASSWORD is set in the environment, both transports send HTTP basic auth as user `opencode` (curl `-u \"opencode:$OPENCODE_SERVER_PASSWORD\"`; /dev/tcp an `Authorization: Basic` header).",
+      "basis": "Empirically verified on the running server: no auth -> 401; `-u opencode:$OPENCODE_SERVER_PASSWORD` -> 200; wrong username -> 401; `env -u OPENCODE_SERVER_PASSWORD opencode api ...` reproduces the recorded 'Server ... did not provide a compatible V2 health response' while the same CLI succeeds with the variable set. The variable is part of the orchestrator process environment. The alternative -- a CLI dependency -- is what the task removes.",
+      "impact": "The script reads one additional environment variable. Against a password-protected server without it, the fetch fails with the existing documented error object and exit 1; no value is estimated. No persisted authoritative state or output key changed."
+    },
+    {
+      "question": "The dependency-free fallback cannot do TLS.",
+      "chosen": "http_get_bash() handles only http:// URLs; an https:// server URL without curl fails the fetch (per-session error, exit 1) rather than substituting another transport.",
+      "basis": "A TLS client cannot be implemented in pure bash without an external binary; the preferred curl path covers https wherever curl exists. resolve_server emits http:// unless OPENCODE_SERVER explicitly carries https://.",
+      "impact": "In a curl-less environment with an explicitly https:// OPENCODE_SERVER, collection fails clearly instead of silently returning wrong data."
+    },
+    {
+      "question": "The /dev/tcp fallback needs an encoder for the optional Basic auth header.",
+      "chosen": "Use the coreutils `base64` binary; if it were absent with OPENCODE_SERVER_PASSWORD set, the header is empty, the server answers 401, and the script reports the documented fetch failure and exits 1.",
+      "basis": "`base64` is present at /bin/base64 in this environment; a hand-rolled base64 encoder in bash was not justified for a fallback-of-a-fallback. No branch fabricates or estimates values.",
+      "impact": "Bounded: worst case is the existing clear failure, never a wrong figure."
+    }
+  ],
+  "test_sensitivity": [
+    "Documented self-test proven to fail: with OPENCODE_SERVER=http://127.0.0.1:1 the exact header command produced no total_tokens and exited non-zero (script exit 1, jq -e exit 4).",
+    "Fallback transport proven necessary by mutation: a temp copy (/tmp/26.5/mutated-fallback.sh, repository untouched) with the request redirection `} >&3` removed failed the same self-test (script exit 1, jq exit 4, no number), while the repository script on the identical no-curl PATH printed 7447399 with both exits 0.",
+    "Self-test's non-null guard proven: `printf '{\"session_id\":\"x\",\"total_tokens\":null}\\n' | jq -e 'select(.total_tokens != null) | .total_tokens'` exits 4, so a null total is rejected rather than reported as success.",
+    "curl-vs-fallback equivalence is discriminating in practice: both independently exercised transports produced byte-identical JSON for the same real session; no product test suite exists for this harness script and none was required."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      ".opencode/scripts/collect-session-usage.sh header comment (the script's own documented transport contract and self-test)"
+    ],
+    "old_values_removed": [
+      "the `opencode api --server ... get` and `timeout 60 opencode api get` invocation lines",
+      "the resolve_server comment 'then fall back to the CLI's own discovery'"
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "The task constraints forbid changes to docs/plan/**, PLANS.md, docs/status.md, README.md, scripts/, and every other file except the script and this report, so no current-state status surface was edited. docs/plan/state.json task 26.5 remains done:false with reports:[] and the PLANS.md checkbox remains unchecked until the orchestrator records the reviewed completion; the header self-test is the only documentation this task updates.",
+    "With docs/implementation/26.5/worker-report.json on disk and before the orchestrator records it, scripts/check-agents.sh and scripts/check-docs.sh fail (exit 1 each) on exactly these transient lines, verbatim: 'FAIL: task 26.5 has a worker report but no reviewer report (add an exemption only if covered)', 'FAIL: task 26.5 has a reviewer report on disk but docs/plan/state.json does not list it in reports', 'FAIL: task 26.5 has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/26.5/worker-report.json'. They PASS (exit 0) on the identical tree with the report absent. This task's constraints forbid changing docs/plan/**, PLANS.md, scripts/, or any file other than the script and this report, so the orchestrator closes the three lines after review.",
+    "The documented self-test depends on the server that recorded the 26.4 session still holding that session. If the session database has rotated or the recording server is gone, a human must substitute a session id that server still serves; the script then reports the documented fetch failure rather than any estimate.",
+    "The /dev/tcp fallback is not exercised by the normal environment (curl is present at /usr/bin/curl); it was validated only by the PATH-controlled runs above."
+  ],
+  "ready_for_next_task": true
+}

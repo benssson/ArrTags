@@ -1,0 +1,58 @@
+{
+  "task": "26.5",
+  "title": "Session-usage collection fix",
+  "phase": 26,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 26.5 replaces the opencode-CLI dependency in the orchestrator's session-usage collector with a direct HTTP request. It depends on no unverified Jellyfin or provider behavior, changes no product behavior, and implements no ADR clause. No pre-dispatch specialist conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 170901,
+        "output_tokens": 20482,
+        "reasoning_tokens": 27693,
+        "cache_read_tokens": 1938048,
+        "cache_write_tokens": 0,
+        "total_tokens": 2157124,
+        "cost_usd": 0.06035429399999999,
+        "duration_seconds": 475,
+        "session_id": "ses_f038cabacffetEZsAehEPNMRks"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 47742,
+        "output_tokens": 14718,
+        "reasoning_tokens": 22087,
+        "cache_read_tokens": 2626058,
+        "cache_write_tokens": 0,
+        "total_tokens": 2710605,
+        "cost_usd": 0,
+        "duration_seconds": 972,
+        "session_id": "ses_f038531aaffebLLR4Rxult1KxA"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "collect-session-usage.sh now fetches /api/session/<id> directly: curl -fsS --max-time 60 preferred, with a pure-bash /dev/tcp HTTP/1.0 fallback when curl is absent; the OPENCODE_SERVER override and the opencode serve --port discovery are unchanged, and the opencode CLI is no longer on the success path. The jq extraction and output contract are byte-identical to the pre-change script (verified for two real sessions, including with the CLI absent and with the curl-less fallback).",
+    "The running server enforces HTTP basic auth; the script sends credentials as user 'opencode' with OPENCODE_SERVER_PASSWORD when set. The reviewer's security check confirmed no password, base64 credential, or Authorization header reaches stdout/stderr/a file on any path, including caller-forced bash -x, because api_get's stderr is redirected and the fallback writes the header on fd 3 (stdin to base64, not argv); curl masks the -u value in /proc/<pid>/cmdline and ps.",
+    "Carried informational notes (none blocking): R1 the /dev/tcp fallback has no request timeout (a hang, never a wrong figure; the pre-change explicit-server branch was also unbounded); R2 a >76-column base64 header wrap would still fail closed with the documented error; R3 the curl -u credential sits in argv, bounded by curl's scrubbing."
+  ]
+}

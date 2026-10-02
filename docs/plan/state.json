@@ -1743,9 +1743,12 @@
         },
         {
           "id": "26.5",
-          "done": false,
+          "done": true,
           "name": "Session-usage collection fix",
-          "reports": []
+          "reports": [
+            "docs/implementation/26.5/reviewer-report.json",
+            "docs/implementation/26.5/worker-report.json"
+          ]
         },
         {
           "id": "26.6",

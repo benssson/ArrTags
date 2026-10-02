@@ -30,6 +30,28 @@
 # record the affected fields as null (never estimate).
 #
 # The values are the runtime's own authoritative figures. Do not recompute cost.
+#
+# Transport: a direct HTTP GET of the resolved server URL's /api/session/<id>
+# endpoint. curl is preferred; when curl is absent an HTTP/1.0 GET over bash's
+# /dev/tcp is used instead, so the `opencode` CLI is never required on the
+# success path. When the server was started with a password
+# (OPENCODE_SERVER_PASSWORD in the environment), HTTP basic auth is sent as
+# user `opencode`; the https scheme requires curl.
+#
+# Self-test (run from the repository root, with the server that recorded the
+# session still running; OPENCODE_SERVER and OPENCODE_SERVER_PASSWORD override
+# the discovered server as in normal use). It fetches a real session id from
+# this repository's own records, checks the output parses, and requires a
+# non-null total_tokens:
+#
+#   sid=$(jq -r '.subagents[0].execution.session_id' \
+#       docs/implementation/26.4/orchestration.json)
+#   .opencode/scripts/collect-session-usage.sh "$sid" \
+#       | jq -e 'select(.total_tokens != null) | .total_tokens'
+#
+# Expected: the number prints and the pipeline exits 0. Against an unreachable
+# server the script prints {"session_id":"<sid>","error":"session fetch failed"}
+# and exits 1; token and cost fields are never estimated.
 
 set -u
 
@@ -43,7 +65,7 @@ die() {
 command -v jq >/dev/null 2>&1 || die "jq is required but was not found on PATH"
 
 # Resolve the server URL. Prefer an explicit override, then the port of the
-# running background service, then fall back to the CLI's own discovery.
+# running background service; when neither is available the fetch fails clearly.
 resolve_server() {
     if [ -n "${OPENCODE_SERVER:-}" ]; then
         case "$OPENCODE_SERVER" in
@@ -65,13 +87,59 @@ resolve_server() {
 
 SERVER="$(resolve_server)" || SERVER=""
 
+if command -v curl >/dev/null 2>&1; then
+    GET_TRANSPORT=curl
+else
+    GET_TRANSPORT=bash
+fi
+
+http_get_bash() {
+    # $1 = URL (http:// only). Prints the response body, returns 0 on HTTP 200.
+    local url="$1" rest hostport path host port line
+    case "$url" in
+        http://*) rest="${url#http://}" ;;
+        *) return 1 ;;
+    esac
+    hostport="${rest%%/*}"
+    if [ "$hostport" = "$rest" ]; then path="/"; else path="/${rest#*/}"; fi
+    host="${hostport%%:*}"
+    case "$hostport" in
+        *:*) port="${hostport##*:}" ;;
+        *) port=80 ;;
+    esac
+    {
+        {
+            printf 'GET %s HTTP/1.0\r\n' "$path"
+            printf 'Host: %s\r\n' "$hostport"
+            printf 'Accept: application/json\r\n'
+            printf 'Connection: close\r\n'
+            if [ -n "${OPENCODE_SERVER_PASSWORD:-}" ]; then
+                printf 'Authorization: Basic %s\r\n' \
+                    "$(printf 'opencode:%s' "$OPENCODE_SERVER_PASSWORD" | base64)"
+            fi
+            printf '\r\n'
+        } >&3
+        IFS= read -r line <&3 || return 1
+        case "$line" in *" 200 "*) ;; *) return 1 ;; esac
+        while IFS= read -r line <&3; do
+            [ -z "${line%$'\r'}" ] && break
+        done
+        cat <&3
+    } 3<>"/dev/tcp/$host/$port" 2>/dev/null || return 1
+}
+
 api_get() {
-    # $1 = API path
-    if [ -n "$SERVER" ]; then
-        opencode api --server "$SERVER" get "$1" </dev/null
+    # $1 = API path, for example /api/session/<id>
+    [ -n "$SERVER" ] || return 1
+    local url="${SERVER%/}$1"
+    if [ "$GET_TRANSPORT" = curl ]; then
+        if [ -n "${OPENCODE_SERVER_PASSWORD:-}" ]; then
+            curl -fsS --max-time 60 -u "opencode:$OPENCODE_SERVER_PASSWORD" "$url" </dev/null
+        else
+            curl -fsS --max-time 60 "$url" </dev/null
+        fi
     else
-        # No explicit server: rely on the CLI's background-service discovery.
-        timeout 60 opencode api get "$1" </dev/null
+        http_get_bash "$url"
     fi
 }
 

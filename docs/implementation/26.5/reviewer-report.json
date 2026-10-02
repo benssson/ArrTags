@@ -1,0 +1,119 @@
+{
+  "task": "26.5",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "summary": "Independent review of the session-usage collection fix. The diff is confined to the transport layer of .opencode/scripts/collect-session-usage.sh: the `opencode api get` invocation in api_get() is replaced by a direct HTTP GET of \"${SERVER%/}/api/session/<id>\", with curl preferred and a pure-bash /dev/tcp HTTP/1.0 fallback; resolve_server(), die(), the jq extraction block and the whole status/output tail are byte-identical to HEAD (verified by diffing the extracted function and the `status=0` tail). Byte-identical output to the pre-change CLI script was independently reproduced for two real sessions (26.4 and 26.1 orchestration records) and again with the CLI absent from PATH; the curl-less fallback produced byte-identical output too. Unreachable server, unreachable-in-fallback, non-existent session, wrong password, undiscoverable server, no-args and multi-session ordering all produce the documented error object with exit 1 and no token or cost figure. The documented self-test runs verbatim from the repository root, prints 7447399 and exits 0, and fails (jq exit 4) against an unreachable server. Security: no password, base64 credential, or Authorization header appears in stdout, stderr, or any file on any path, including under caller-forced `bash -x`; curl itself blanks the -u argument in process listings on this host (curl 8.22.0), and the bash transport never places the secret in argv (it goes to fd 3). Scope is correct: only the script plus the task report changed, with no docs/plan/**, PLANS.md, scripts/, product code, test, artifact or manifest change; the three transient 26.5 guard failures are exactly the documented worker-report-before-reviewer-report state that the orchestrator closes by recording the reports in state.json.",
+  "findings": [
+    {
+      "id": "26.5-R1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness (fallback transport)",
+      "summary": "The /dev/tcp fallback has no request timeout, so a server that accepts the connection but never responds hangs until the caller kills it (the old CLI path used `timeout 60`).",
+      "detail": "Reproduced: with a listener that accepts and stays silent, the fallback-path run blocked for the full 8s external `timeout` (exit 143) and printed nothing. The curl path is bounded by `--max-time 60`. The old script bounded only the CLI-discovery branch with `timeout 60` and left the explicit-SERVER branch unbounded too, so this is not a behavioural regression against HEAD, and the fallback is explicitly a best-effort path for a curl-less environment. It cannot fabricate a value: the failure mode is a hang, not a wrong figure, and the never-estimate contract is unaffected. Recorded as informational rather than required.",
+      "evidence": [
+        ".opencode/scripts/collect-session-usage.sh:137,139 (curl --max-time 60 only in the curl branch)",
+        "git show HEAD:.opencode/scripts/collect-session-usage.sh:74 (`timeout 60` on the CLI-discovery branch only)",
+        "/tmp/26.5: silent-listener run under the fallback PATH blocked until the external timeout fired (exit 143)"
+      ],
+      "recommended_action": "Optionally wrap the fallback branch in `timeout 60` when the `timeout` binary is present, matching the old bound. Not required for this task."
+    },
+    {
+      "id": "26.5-R2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness (fallback transport)",
+      "summary": "A password long enough for `base64` to wrap at 76 columns would split the Authorization header across lines; observed effect is still the documented failure, not a wrong value.",
+      "detail": "Captured the raw bytes the fallback writes on the wire: for a 12-byte password the header is a single correct line; for an 80-byte password GNU base64 wraps and the request contains a broken two-line header. The server then rejects it and the script reports the documented {\"error\":\"session fetch failed\"} with exit 1 - verified for both transports. No secret is written to stdout/stderr and no value is estimated, so the never-estimate contract holds; the worst case is a bounded clear failure. The real environment's password is 12 bytes, so this is unreachable in practice.",
+      "evidence": [
+        "/tmp/26.5/rawreq.bin: `Authorization: Basic b3BlbmNvZGU6...` followed by a wrapped continuation line for the 80-byte password",
+        "60-byte password run: stdout `{\"session_id\":\"...\",\"error\":\"session fetch failed\"}`, exit 1, empty stderr, on both curl and fallback paths"
+      ],
+      "recommended_action": "Optionally append `| tr -d '\\n'` to the base64 substitution. Not required; the failure mode is already the documented error."
+    },
+    {
+      "id": "26.5-R3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "security (credential handling)",
+      "summary": "The curl path passes the credential via `-u` on the command line; exposure is bounded because curl 8.22.0 blanks the argument in process listings on this host, and the fallback transport keeps the secret off argv entirely.",
+      "detail": "The orchestrator asked for an explicit secret-leakage check. Verified: (a) normal runs, unreachable runs, wrong-password runs and no-args runs print no trace of the password or its base64 form on stdout or stderr; (b) `bash -x` forced by the caller also leaks nothing, because api_get's stderr is swallowed by the existing `2>/dev/null` on the command substitution (the xtrace lines for both transports are suppressed); (c) a probe copy with that redirection removed does emit `curl ... -u 'opencode:<password>'` on stderr, confirming the leak vector exists but is closed in the committed script; (d) the fallback transport writes the header to fd 3, so `base64` receives the credential on stdin and never in argv; (e) /proc/<pid>/cmdline and `ps -eo args=` show the -u value as asterisks, and a plain non-credential curl argument is not masked, so the masking is curl's own argv scrubbing rather than a harness artefact. No file in the repository records the password.",
+      "evidence": [
+        "grep -F \"$OPENCODE_SERVER_PASSWORD\" over stdout/stderr of normal and `bash -x` runs: 0 matches (curl and fallback paths)",
+        "grep over /tmp/26.5/leak1.txt and /tmp/26.5/leak2.txt for the password and its base64 form: 0 matches",
+        "/tmp/26.5/noredir.sh probe (repository script unmodified): stderr line `++ curl -fsS --max-time 60 -u 'opencode:...'` - leak vector exists only without the committed `2>/dev/null`",
+        "/proc/<curl pid>/cmdline: `-u|***********************|`; a plain `?tok=PLAINTEXT123` URL argument is not masked",
+        "everything.curl.dev/cmdline/passwords.html and curl.se/docs/manpage.html: curl blanks credentials from process listings where the platform supports it (Linux does)"
+      ],
+      "recommended_action": "No change required. If a future hardening pass wants argv-free credentials, `curl --config -` on stdin is the standard alternative."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Task 26.5 work item 1: replace the `opencode api get` dependency in api_get() with a direct HTTP request to the resolved server's /api/session/<id>, keeping the existing OPENCODE_SERVER/port discovery.",
+      "verdict": "PASS",
+      "evidence": "git diff shows only the header comment, one resolve_server comment line, the new transport helpers, and api_get. resolve_server() extracted from HEAD and from the working tree diff empty. The CLI is gone from the success path: `env PATH=/usr/bin:/bin` (where `command -v opencode` fails) still produced output byte-identical to the old script; no `opencode api` or `timeout ... opencode` invocation remains."
+    },
+    {
+      "criterion": "Task 26.5 work item 2 / planning criterion 3: keep the never-estimate contract - no recomputation of token counts or cost, and the same output contract.",
+      "verdict": "PASS",
+      "evidence": "The `status=0` tail (jq extraction plus per-session loop and exit) extracted from HEAD and from the working tree diff empty. Output byte-identical for two real sessions: 26.4's ses_f039d9cf4ffewv5pKbR5IW6KDR (total_tokens 7447399) and 26.1's ses_f03f881f3ffeVGpd6gyr8qjgwT. No value is derived from anything but the session object; the only added arithmetic is base64 of a credential for the Authorization header."
+    },
+    {
+      "criterion": "Task 26.5 work item 3 / planning criterion 1: document a self-test that fetches a real session.",
+      "verdict": "PASS",
+      "evidence": "The header comment (lines 41-54) documents the exact command using `.subagents[0].execution.session_id` from docs/implementation/26.4/orchestration.json. Run verbatim from the repository root it printed 7447399 and the pipeline exited 0. It is discriminating: the identical command against OPENCODE_SERVER=http://127.0.0.1:1 produced no number and jq exited 4, and the script exited 1."
+    },
+    {
+      "criterion": "Planning criterion 2: a clear error when the server is unreachable.",
+      "verdict": "PASS",
+      "evidence": "Unreachable server (curl path and fallback path), undiscoverable server, non-existent session id and wrong password all print exactly {\"session_id\":\"<sid>\",\"error\":\"session fetch failed\"} on stdout with empty stderr and exit 1, matching the old script's behaviour for the same inputs. No token, cost or duration key appears in any failure output."
+    },
+    {
+      "criterion": "Orchestrator constraint: curl preferred and checked on PATH; dependency-free fallback when curl is absent.",
+      "verdict": "PASS",
+      "evidence": "`command -v curl` selects GET_TRANSPORT=curl. With a PATH containing bash/jq/cat/base64/ps/sed but no curl and no opencode, the run succeeded with output byte-identical to the old script and to the curl run, and the unreachable case produced the same error object and exit 1. An https:// URL without curl degrades to the documented failure rather than another transport."
+    },
+    {
+      "criterion": "Orchestrator constraint: the `opencode` CLI is not required anywhere on the success path.",
+      "verdict": "PASS",
+      "evidence": "Success with PATH=/usr/bin:/bin where `command -v opencode` fails; success with the curl-less PATH; grep finds no `opencode api` invocation in the script. Remaining `opencode` occurrences are comments, the OPENCODE_SERVER/OPENCODE_SERVER_PASSWORD variable names, the basic-auth username, and the retained `opencode serve --port` process-discovery pattern (a `ps` pattern string, not an invocation)."
+    },
+    {
+      "criterion": "Scope: only the script plus the task report changed.",
+      "verdict": "PASS",
+      "evidence": "`git status --porcelain` -> ` M .opencode/scripts/collect-session-usage.sh` and `?? docs/implementation/26.5/`. `git diff --stat` -> 1 file changed, 74 insertions, 6 deletions. No mode change (index mode 100755 preserved). No docs/plan/**, PLANS.md, scripts/, src/, tests/, artifact or manifest change. This reviewer's own reviewer-report.json is the only additional file."
+    }
+  ],
+  "tests_checked": [
+    "bash -n on both the HEAD copy and the working-tree script -> exit 0.",
+    "Byte-identical output vs `git show HEAD:.opencode/scripts/collect-session-usage.sh` for ses_f039d9cf4ffewv5pKbR5IW6KDR (26.4 record) and ses_f03f881f3ffeVGpd6gyr8qjgwT (26.1 record) -> `diff -u` empty, stderr empty, exit 0 on both sides.",
+    "Structural diff of resolve_server() and of the `status=0` tail against HEAD -> empty.",
+    "curl-less PATH run (bash/jq/cat/base64/ps/sed/head/grep/printf/timeout/env/sh only) -> exit 0, output byte-identical to the HEAD-script baseline.",
+    "Success with PATH=/usr/bin:/bin while `command -v opencode` fails -> output byte-identical to baseline.",
+    "Process discovery without OPENCODE_SERVER (both normal and curl-less PATH) -> same JSON, exit 0; discovered port 49374 from the `opencode serve --port` ps pattern.",
+    "Unreachable server on both transports, undiscoverable server, non-existent session id, wrong password -> documented error object, empty stderr, exit 1, no token/cost figure.",
+    "Multi-session invocation ordering and aggregate exit status; no-argument usage error.",
+    "Documented self-test executed verbatim from the repository root -> 7447399, exit 0; same command against an unreachable server -> no number, jq exit 4, script exit 1.",
+    "Credential-leak probes: grep for the plaintext password and its base64 form over stdout/stderr of normal, `bash -x` and failure runs -> 0 matches; /proc/<curl pid>/cmdline and `ps -eo args=` inspection; raw on-the-wire request captured to confirm the fallback puts the header on fd 3 and that a long password wraps.",
+    "scripts/check-agents.sh -> exit 1 with exactly three 26.5 transient lines (worker report with no reviewer report; reviewer report not listed in state.json; on-disk report evidence not listed in state.json). scripts/check-docs.sh -> exit 1 on the same three lines propagated from the agent-contract check, all other sections ok plus the expected `skip: dotnet not on PATH`."
+  ],
+  "research_checked": [
+    "curl credential handling on the command line (everything.curl.dev/cmdline/passwords.html, curl.se/docs/manpage.html, man7 curl(1)): curl blanks the -u argument from process listings where the platform supports it, which Linux does. Independently confirmed on this host against curl/8.22.0 via /proc/<pid>/cmdline."
+  ],
+  "documentation_checked": [
+    ".opencode/scripts/collect-session-usage.sh header (transport contract and self-test section) - rewritten consistently with the implementation; the removed `opencode api` invocation lines and the stale 'fall back to the CLI's own discovery' comment are gone and nothing stale remains.",
+    ".opencode/agents/orchestrator.md 'How to obtain the metadata' - still accurate: the listed output fields, automatic server resolution and non-zero-exit-only-when-unreachable statement all remain true; left unmodified (out of scope for this task).",
+    "docs/implementation/planning/v1.3-harness-phase.json task 26.5 (work items, tests, acceptance criteria, documentation target) - the delivered change matches all three work items and the declared documentation target.",
+    "PLANS.md phase 26 and docs/plan/state.json task 26.5 (done:false, reports []) - intentionally unchanged; the orchestrator records completion after this review.",
+    "docs/agent-contracts.md 'Where reports go' - this report is written to the default reviewer path; state.json listing is the orchestrator's step, which is what closes the three transient guard lines."
+  ],
+  "reviewer_blockers": [],
+  "required_changes": [],
+  "rework_log": [],
+  "notes_for_orchestrator": [
+    "Three transient guard lines remain until the orchestrator records both reports for task 26.5 in docs/plan/state.json (reports must list docs/implementation/26.5/worker-report.json and docs/implementation/26.5/reviewer-report.json) and ticks the PLANS.md checkbox. The worker was explicitly barred from touching docs/plan/**, so this is expected and not a task defect.",
+    "The self-test depends on the server that recorded the 26.4 session still serving that session; if the session database has rotated, substitute a session id the running server still serves."
+  ],
+  "ready_for_next_task": true
+}
