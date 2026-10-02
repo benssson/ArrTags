@@ -1,0 +1,111 @@
+{
+  "task": "26.1",
+  "attempt": 1,
+  "status": "COMPLETE",
+  "implementation_complete": true,
+  "tests_complete": true,
+  "research_complete": true,
+  "questions": [],
+  "research_required": [],
+  "summary": "Amended docs/implementation/phase-21/orchestration.json additively: added the contract-required `subagents` array (56 invocations copied verbatim from the fourteen phase-21 task records in task-id order 21.1-21.14, each entry role/attempt/outcome/nested execution plus its task id), and replaced the reduced `aggregate` with a conforming one whose numeric fields are the exact sums recomputed from the task records (56 task-level invocations; role_mix implementation-worker 19 / implementation-reviewer 20 / test-quality-reviewer 6 / documentation-maintainer 2 / live-host-verifier 5 / security-reviewer 4; review_rounds 20; test_quality_review_rounds 6; rework_rounds 7; task_level_cost_usd 1.4038497539999997; task_level_total_tokens 293509314; task_level_duration_seconds 46658; phase_reviewer_invocations 0 and phase-reviewer sums 0 because the release review was the release-phase gate). release_review_status and release_decision are preserved as additive fields, and a notes entry records the 2026-10-02 user-approved amendment. status, gate, gate_status, phase_review, phase_review_status, tasks (including the 21.6 commit 7f11afa), release_artifact, authoritative_execution_order and every other pre-existing field are unchanged, and no phase-21 task report was modified.",
+  "validation": [
+    "jq empty docs/implementation/phase-21/orchestration.json -> exit 0 (valid JSON).",
+    "Independent jq recomputation (--slurpfile over docs/implementation/21.1..21.14/orchestration.json) against the recorded aggregate: task_count, task_level_invocations_per_task, task_level_invocations, phase_reviewer_invocations, subagent_invocations_total, role_mix, review_rounds, test_quality_review_rounds, rework_rounds, task_level_cost_usd, task_level_total_tokens, task_level_duration_seconds, phase_reviewer_cost_usd, phase_reviewer_total_tokens, phase_reviewer_duration_seconds, cost_usd, total_tokens and duration_seconds all compared equal (true); .subagents equals the exact concatenation of the task-record subagents arrays with the task id added (true); all_true: true.",
+    "Recomputed totals from the task records: task_count 14; task_level_invocations 56; role_mix {implementation-worker: 19, implementation-reviewer: 20, test-quality-reviewer: 6, documentation-maintainer: 2, live-host-verifier: 5, security-reviewer: 4}; review_rounds 20; test_quality_review_rounds 6; rework_rounds 7; task_level_cost_usd 1.4038497539999997; task_level_total_tokens 293509314; task_level_duration_seconds 46658; phase_reviewer_cost_usd 0; phase_reviewer_total_tokens 0; phase_reviewer_duration_seconds 0.",
+    "bash scripts/check-agents.sh -> PASS (exit 0) with the amendment in the tree and before this worker report existed: all twelve sections ok, including 'phase gate conformance and orchestration shape checked', 'worker/reviewer report pairing checked', and 'plan state lists the review evidence'.",
+    "source /config/arrtags-env.sh && bash scripts/check-docs.sh -> PASS (exit 0) with the amendment in the tree and before this worker report existed: all nine sections ok, including 'ok: generated status blocks are current; plan state is consistent', 'ok: artifact identity agrees (sha256, md5, bytes)', and 'ok: agent report contracts conform'. dotnet run scripts/render-docs-state.cs -- --check also exits 0 with 'PLANS.md and state.json agree'.",
+    "git diff --stat before this worker report existed: 'docs/implementation/phase-21/orchestration.json | 1170 ++++++++++++++++++++++-'; 1 file changed, 1166 insertions(+), 4 deletions(-). git status --short showed only ' M docs/implementation/phase-21/orchestration.json'.",
+    "git diff --name-only is exactly docs/implementation/phase-21/orchestration.json; git diff --name-only over 'docs/implementation/21.*' is empty, confirming no phase-21 task report is modified.",
+    "Structural diff vs HEAD: del(.subagents,.aggregate,.notes) is identical; .notes[0:4] is identical; .tasks is identical. The removed/replaced lines are exactly the old aggregate.note, the old aggregate.rework_rounds_total, and the two comma-only replacements (aggregate.release_decision and the last existing notes entry each re-added with a trailing comma), for the stated 4 deletions.",
+    "21.6 commit value checked, not changed: the 21.6 task record records 7f11afa and the repository commit 7f11afa exists ('Complete v1.2.0 release: gate, state, archive, and tag'), so the task-list value is left as-is.",
+    "Sensitivity probe of the recomputation validator on task-owned temporary copies: true for the amended record; false for a copy with one subagents entry dropped (.subagents[1:]); false for a copy with .aggregate.rework_rounds set to 5 (the old tasks-array sum); false for a copy with one execution.total_tokens incremented by 1. The record under review was never mutated; the probe copies were written under /tmp/26.1/ and removed after the probe.",
+    "After docs/implementation/26.1/worker-report.json was persisted (no reviewer report yet and not listed in docs/plan/state.json reports): scripts/check-agents.sh exits 1 with exactly the two pairing lines quoted in known_limitations and all other twelve lines ok; scripts/check-docs.sh exits 1 in the agent-contracts section only, with the other eight sections ok. The PASS results above are the authoritative runs captured on the tree before this report existed; the transient post-persistence state clears when the orchestrator's review report exists and is listed in state.json reports."
+  ],
+  "changed_files": [
+    "docs/implementation/phase-21/orchestration.json",
+    "docs/implementation/26.1/worker-report.json"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The record satisfies the contract's phase-level shape (status, gate, gate_status, phase_review, phase_review_status, a subagents array with the per-invocation shape including the nested execution object, and an aggregate).",
+      "evidence": "jq keys_unsorted now shows phase, title, name, release, status, gate, gate_status, phase_review, phase_review_status, phase_tag, release_tag, authoritative_execution_order, release_artifact, release_review, tasks, subagents, aggregate, notes; .subagents has 56 entries, each with role/attempt/outcome/execution(agent, model, variant, token/cost fields, duration_seconds, session_id) and task; scripts/check-agents.sh reports 'ok: phase gate conformance and orchestration shape checked'."
+    },
+    {
+      "criterion": "Its aggregate reconciles with the task records (every numeric field equals the sums recomputed from the fourteen task records).",
+      "evidence": "Independent jq recomputation returned true for every aggregate field and for .subagents matching the task-record concatenation exactly (all_true: true); recomputed totals listed in validation: 56 invocations, 20 reviewer rounds, 6 test-quality rounds, 7 rework rounds, 1.4038497539999997 USD, 293509314 tokens, 46658 s; phase_reviewer_* 0."
+    },
+    {
+      "criterion": "No phase-21 task report is modified (verified by git diff --name-only over docs/implementation/21.*).",
+      "evidence": "git diff --name-only over 'docs/implementation/21.*' is empty; the structural diff shows .tasks and .notes[0:4] unchanged; the only modified path is docs/implementation/phase-21/orchestration.json."
+    },
+    {
+      "criterion": "The amendment is recorded in the record's own notes.",
+      "evidence": "The notes array now has 5 string entries; the appended entry records 'Amendment 2026-10-02, approved_by user ...', the original omission (no contract-required subagents array; reduced aggregate), what task 26.1 added, the reason, and the pointer docs/implementation/planning/v1.3-harness-phase.json. The diff shows the previous last note line changed only by an added comma."
+    },
+    {
+      "criterion": "The subagents array aggregates the task-record invocations in stable order (by task id, then task-array order) with fields reproduced faithfully (no invented session ids, tokens, or costs).",
+      "evidence": ".subagents equals exactly [ $t[] | . as $x | .subagents[] | . + {task: $x.task} ] for the fourteen task records read in order 21.1-21.14 (jq equality true); entries with attempt 0 / outcome FAILED (21.11 worker and reviewer, 21.14 security-reviewer) and with cost_usd 0 are copied as recorded."
+    },
+    {
+      "criterion": "The aggregate uses the phase-20 key set where it applies and preserves the old informational values not in that key set.",
+      "evidence": "aggregate keys_unsorted: task_count, task_level_invocations_per_task, task_level_invocations, phase_reviewer_invocations, subagent_invocations_total, role_mix, review_rounds, test_quality_review_rounds, rework_rounds, first_pass_approval_rate, task_level_cost_usd, task_level_total_tokens, task_level_duration_seconds, phase_reviewer_cost_usd, phase_reviewer_total_tokens, phase_reviewer_duration_seconds, cost_usd, total_tokens, duration_seconds, release_review_status, release_decision, note. release_review_status APPROVED_WITH_ACCEPTED_LIMITATIONS and release_decision SHIP_WITH_ACCEPTED_LIMITATIONS are retained as additive fields; the no-phase-reviewer basis is stated in the note."
+    },
+    {
+      "criterion": "jq empty on the amended record passes; scripts/check-agents.sh PASS and scripts/check-docs.sh PASS; git diff --stat covers only the phase-21 record and the new task directory, with no product code, tests, artifact, manifest, or plan-state change.",
+      "evidence": "jq empty exit 0; check-agents PASS exit 0 (before this worker report existed); check-docs PASS exit 0; git diff --stat 1 file changed, 1166 insertions(+), 4 deletions(-); git status shows only the modified phase-21 record and the untracked docs/implementation/26.1/ report (no src/, tests/, artifact, manifest.json, or docs/plan/state.json change)."
+    },
+    {
+      "criterion": "No task report may change and no gate field may change.",
+      "evidence": "git diff --name-only over 'docs/implementation/21.*' empty; structural diff of .tasks, .status, .gate, .gate_status, .phase_review, .phase_review_status, .release_artifact and all other non-amended fields identical to HEAD."
+    }
+  ],
+  "interpretations": [
+    {
+      "question": "How is the conforming aggregate's rework_rounds defined when the phase-21 tasks array's per-task rework_rounds sum (5) differs from the sum of the task records' rework arrays (7)?",
+      "chosen": "rework_rounds = 7, the sum of the lengths of the `rework` arrays in the fourteen task records (21.1, 21.2, 21.9, 21.11, 21.13 one each; 21.6 two).",
+      "basis": "The delegation says to compute the numeric values by summing the task records and to state the basis in the aggregate note; the tasks array is explicitly frozen by the task, and 21.6's task record carries two rework entries (attempts 2 and 3, the latter release-review-driven) while its task row records rework_rounds 0. The basis is stated in the aggregate note.",
+      "impact": "The aggregate records 7 rework rounds instead of the superseded rework_rounds_total 5; no other field or any task report changes."
+    },
+    {
+      "question": "Are review_rounds and test_quality_review_rounds invocation counts or distinct-attempt counts?",
+      "chosen": "Invocation counts of the implementation-reviewer and test-quality-reviewer roles (20 and 6), matching the phase-20 worked example where review_rounds 4 equals the four implementation-reviewer invocations.",
+      "basis": "docs/implementation/phase-20/orchestration.json aggregate and this task's instruction to use the phase-20 key set.",
+      "impact": "review_rounds 20 includes 21.11's attempt-0 FAILED reviewer invocation; no other field changes."
+    },
+    {
+      "question": "Should the amendment note be a structured object or a string?",
+      "chosen": "A single string appended to the existing notes array (all five entries are now strings), carrying date, approved_by, original, amended, reason and the planning-record pointer in prose.",
+      "basis": "The pre-existing notes entries are strings and no contract fixes a structured notes schema.",
+      "impact": "The record stays format-consistent; the facts are present but not machine-structured."
+    },
+    {
+      "question": "Where should subagents appear and where should each entry's task field sit?",
+      "chosen": "subagents inserted between tasks and aggregate; each task-level entry carries task after execution.",
+      "basis": "Phase-20 worked example (task-level entries carry task after execution) and the planning record's stated shape (role, attempt, outcome, nested execution, task).",
+      "impact": "Presentation only; no semantic effect."
+    }
+  ],
+  "test_sensitivity": [
+    "The independent recomputation validator cannot pass on a corrupted record: it returned false for a task-owned temporary copy with one subagents entry dropped, false for a copy with aggregate.rework_rounds set to 5, and false for a copy with one execution.total_tokens incremented by 1, while returning true for the amended record. The probe copies were removed after the probe; the record itself was never mutated.",
+    "No production code or product test exists in this task; the validator is the guard the phase-26 plan requires, and the probe above demonstrates it discriminates."
+  ],
+  "documentation_reconciliation": {
+    "surfaces": [
+      "docs/implementation/phase-21/orchestration.json - the one documented exception to docs/implementation/** immutability, approved by the user on 2026-10-02; amended additively only.",
+      "docs/implementation/26.1/worker-report.json - this task's required report.",
+      "No current-state surface changed: docs/plan/state.json, PLANS.md, docs/status.md, docs/changelog/, docs/limitations/, README.md, docs/architecture/ and docs/data-model/ are untouched because the task boundary forbids plan-state changes and the amendment adds no capability, configuration, or limitation."
+    ],
+    "old_values_removed": [
+      "aggregate.note: 'Per-task subagent invocation records and per-invocation token/cost figures are in each task's docs/implementation/<task-id>/orchestration.json. This phase-level record carries the gate determination; the invocation detail is not duplicated here.' (searched repo-wide: no remaining occurrence)",
+      "aggregate.rework_rounds_total: 5 (searched repo-wide: no remaining occurrence; superseded by aggregate.rework_rounds 7 with the basis stated in the new note)"
+    ],
+    "check_docs": "PASS"
+  },
+  "rework": [],
+  "known_limitations": [
+    "Exact behaviour: with docs/implementation/26.1/worker-report.json on disk and no docs/implementation/26.1/reviewer-report.json and no listing in docs/plan/state.json reports, scripts/check-agents.sh fails exactly the two contract-defined pairing lines for task 26.1 ('FAIL: task 26.1 has a worker report but no reviewer report (add an exemption only if covered)' and the state-reports line). Precondition: the orchestrator's review report has not yet been written/listed. Consequence: scripts/check-docs.sh section 9 mirrors those two lines and exits 1 until the review report exists and is listed; all other sections pass. This is the same interim state tasks 20.3 and 21.4/21.9/21.13 recorded; no exemption or workaround was applied.",
+    "The aggregate's rework_rounds (7) intentionally differs from the frozen tasks array's per-task rework_rounds sum (5) because 21.6's two worker re-invocations are recorded as rework entries in its task record but as rework_rounds 0 in the phase-21 task row; the basis is stated in the aggregate note. If the phase-26 aggregate guard defines rework_rounds differently, that guard's definition (task 26.3) governs from the guard's introduction.",
+    "The phase-21 record continues to carry no phase-reviewer invocation because none exists; the release review was the release-phase gate (v1.1 Phase 14 precedent), so phase_reviewer_invocations and the phase-reviewer sums are 0 rather than missing."
+  ],
+  "ready_for_next_task": true
+}

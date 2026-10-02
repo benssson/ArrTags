@@ -1,0 +1,202 @@
+{
+  "task": "26.1",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "summary": "Independently verified the amendment to docs/implementation/phase-21/orchestration.json without relying on the worker report. The diff is confined to one file and is semantically exactly: one added top-level `subagents` key, an extended `aggregate` (17 keys added, `rework_rounds_total` replaced by `rework_rounds`), and one appended `notes` string; 4 deletions, of which two are comma-only re-adds. A jq diff against HEAD confirms `phase`, `title`, `name`, `release`, `status`, `gate`, `gate_status`, `phase_review`, `phase_review_status`, `phase_tag`, `release_tag`, `authoritative_execution_order`, `release_artifact`, `release_review` and `tasks` are byte-equal, and that notes[0:4] is unchanged. I recomputed every aggregate field from the fourteen task records with my own jq and every recorded value matched exactly, including all fourteen per-task figures quoted in the aggregate note. `.subagents` is deep-equal to the exact concatenation of the fourteen task-record `subagents` arrays with `task` added, in task-id order 21.1-21.14, so no session id, token, cost, or duration was invented; the attempt-0 FAILED entries for 21.11 (worker, reviewer) and 21.14 (security-reviewer) are copied verbatim. Both of the worker's interpretations are correct and consistent with the phase-20 worked example: rework_rounds 7 is confirmed by three independent derivations (sum of task-record `rework` array lengths, count of worker invocations with attempt >= 2, and the phase-20 precedent where rework_rounds 1 equals the sum of the three task-record `rework` lengths), and review_rounds/test_quality_review_rounds as role invocation counts is confirmed by phase-20's aggregate, whose four role counts equal its recorded review_rounds 4, test_quality_review_rounds 3 and role_mix. scripts/check-agents.sh and scripts/check-docs.sh fail on exactly the two expected transient task-26.1 report-pairing lines and nothing else. Findings are informational only; the substantive output is a set of definitions task 26.3's aggregate guard must state explicitly, because the planning record grandfathers phases 20-25 so this record can never be validated by that guard.",
+  "findings": [
+    {
+      "id": "R-26.1-1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "downstream guard scope / architecture",
+      "summary": "Phase 21 is grandfathered for task 26.3's aggregate guard, so this amended record will never be checked by it; the aggregate field definitions must therefore be pinned in the contract and the script rather than inferred from this record.",
+      "detail": "docs/implementation/planning/v1.3-harness-phase.json task 26.3 work item 4 states 'Grandfather Phases 20-25 for the aggregate rule; they predate it and their records are immutable history.' Phase 21 is inside that range. The record amended here is therefore the one conforming aggregate in the repo that no guard validates, which makes findings R-26.1-2 through R-26.1-7 the only chance to fix the definitions at their source. This does not affect 26.1's correctness.",
+      "evidence": [
+        "docs/implementation/planning/v1.3-harness-phase.json:129 - \"Grandfather Phases 20-25 for the aggregate rule; they predate it and their records are immutable history.\"",
+        "docs/implementation/planning/v1.3-harness-phase.json 26.3 work item 2 - \"from phase 26, a phase-level orchestration record carries a `subagents` array and an `aggregate` whose numeric fields ... equal the sums recomputed from the task records\""
+      ],
+      "recommended_action": "In task 26.3, state each aggregate field's derivation explicitly in docs/agent-contracts.md (rule A5) and implement exactly that derivation in scripts/check-agents.sh, so the guard cannot disagree with this record. No change to this record."
+    },
+    {
+      "id": "R-26.1-2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "aggregate semantics / rework_rounds",
+      "summary": "rework_rounds must be defined as the sum of the task records' `rework` array lengths, never as the sum of the phase record's own `tasks[].rework_rounds` values, which give a different (wrong) answer for phase 21.",
+      "detail": "I confirmed the worker's interpretation (a) is correct and is the only reading that survives cross-checking. Three independent derivations all give 7: (1) sum of |rework| over the fourteen task records = 0+0+1+0+0+0+0+2+0+0+1+1+0+0 = 7 (21.1, 21.2, 21.9, 21.11, 21.13 one each, 21.6 two); (2) count of implementation-worker invocations with attempt >= 2 = 6 (attempt 2) + 1 (attempt 3) = 7; (3) the phase-20 worked example, where aggregate.rework_rounds 1 equals 20.1/20.2/20.3 rework array lengths 0+0+1. The competing value 5 is the sum of the phase record's frozen tasks[].rework_rounds, which under-counts because task row 21.6 records rework_rounds 0 while docs/implementation/21.6/orchestration.json carries two rework entries (attempts 2 and 3, orchestrator/release-review-driven). The frozen tasks array is out of scope for 26.1, so the aggregate's 7 is correct and the aggregate note states the basis and the discrepancy explicitly.",
+      "evidence": [
+        "jq -s '[.[].rework|length]|add' over docs/implementation/21.*/orchestration.json -> 7",
+        "jq -s '[.[].subagents[]|select(.role==\"implementation-worker\")]|group_by(.attempt)|map({attempt:.[0].attempt,n:length})' -> attempt 0: 1, attempt 1: 11, attempt 2: 6, attempt 3: 1 (so 7 re-invocations)",
+        "docs/implementation/phase-21/orchestration.json .aggregate.rework_rounds = 7; jq '[.tasks[].rework_rounds]|add' -> 5; task row 21.6 has rework_rounds 0 while docs/implementation/21.6/orchestration.json .rework has 2 entries (attempts 2, 3)",
+        "docs/implementation/phase-20/orchestration.json .aggregate.rework_rounds = 1 and rework array lengths 20.1=0, 20.2=0, 20.3=1",
+        "docs/implementation/phase-21/orchestration.json .aggregate.note - \"rework_rounds is the sum of the `rework` array lengths in the fourteen task records ... not the sum of the per-task `rework_rounds` values in this record's tasks array (5)\""
+      ],
+      "recommended_action": "In task 26.3, define guard `rework_rounds` as the sum of the task records' `rework` array lengths and say so in the contract, noting the phase-21 tasks-array divergence (7 vs 5) as the worked counter-example. No change to this record."
+    },
+    {
+      "id": "R-26.1-3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "aggregate semantics / review_rounds",
+      "summary": "review_rounds and test_quality_review_rounds must be defined as role invocation counts that include FAILED/aborted attempt-0 invocations; excluding them gives 19, not 20.",
+      "detail": "The worker's interpretation (b) is correct and matches the phase-20 worked example exactly: phase-20's recorded role_mix counts (implementation-worker 4, implementation-reviewer 4, test-quality-reviewer 3, phase-reviewer 2) equal its recorded role_mix, review_rounds 4 and test_quality_review_rounds 3 one-for-one, i.e. those fields are invocation counts of the role, not distinct attempts or rounds-with-outcomes. For phase 21 I counted 20 implementation-reviewer invocations and 6 test-quality-reviewer invocations. One of the 20 is 21.11's implementation-reviewer attempt 0 with outcome FAILED (aborted without a report); a guard that excluded FAILED outcomes would compute 19 and disagree with this record. The record's own aggregate note discloses the three attempt-0 FAILED invocations by task and role.",
+      "evidence": [
+        "jq role counts over .subagents in docs/implementation/phase-21/orchestration.json -> implementation-reviewer 20, test-quality-reviewer 6",
+        "docs/implementation/phase-20/orchestration.json - role counts implementation-reviewer 4 / test-quality-reviewer 3 equal .aggregate.review_rounds 4 / .aggregate.test_quality_review_rounds 3",
+        "docs/implementation/phase-21/orchestration.json .subagents[] where .task==\"21.11\" and .role==\"implementation-reviewer\" and .attempt==0 -> outcome FAILED, session_id ses_f0e0da764ffewPu1TBoGHV3t01",
+        "docs/implementation/phase-21/orchestration.json .aggregate.note - \"review_rounds and test_quality_review_rounds are the invocation counts of the implementation-reviewer and test-quality-reviewer roles\""
+      ],
+      "recommended_action": "In task 26.3, state that both counts include every recorded invocation of the role regardless of outcome, so attempt-0 FAILED entries are counted. No change to this record."
+    },
+    {
+      "id": "R-26.1-4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "aggregate semantics / subagent_invocations_total",
+      "summary": "subagent_invocations_total must be defined as the length of the `subagents` array including phase-reviewer entries; phase 20 includes them (13 = 11 + 2) and phase 21 only matches task_level_invocations because no phase-reviewer invocation exists.",
+      "detail": "docs/agent-contracts.md requires the phase-level record to carry 'the same `subagents` per-invocation shape as the task-level record', and phase-20 demonstrates the intent by putting its two phase-reviewer invocations in `subagents` with `task: \"phase-20\"`, giving subagent_invocations_total 13 against task_level_invocations 11. Phase 21's 56 equals both task_level_invocations and subagent_invocations_total only because phase_reviewer_invocations is 0 (no separate phase-reviewer record; the v1.2 release review was the release-phase gate per the v1.1 Phase 14 precedent). A guard that defined subagent_invocations_total as task-level-only would pass here and fail phase 22+ if a phase-reviewer invocation exists.",
+      "evidence": [
+        "docs/implementation/phase-20/orchestration.json - .subagents includes two {role: phase-reviewer, task: \"phase-20\"} entries; .aggregate.subagent_invocations_total 13 = task_level_invocations 11 + phase_reviewer_invocations 2",
+        "docs/implementation/phase-21/orchestration.json - jq role counts contain no phase-reviewer entry; .aggregate.phase_reviewer_invocations 0, subagent_invocations_total 56 = task_level_invocations 56",
+        "docs/implementation/phase-21/orchestration.json .aggregate.note - the release review was the release-phase gate following the v1.1 Phase 14 precedent, so phase_reviewer_invocations is 0"
+      ],
+      "recommended_action": "In task 26.3, define subagent_invocations_total as |subagents| (all roles) and require the per-role breakdown to reconcile with it. No change to this record."
+    },
+    {
+      "id": "R-26.1-5",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "aggregate semantics / cost, token and duration triples",
+      "summary": "The unsuffixed cost_usd/total_tokens/duration_seconds triple means task-level plus phase-reviewer in phase 20; in phase 21 it equals the task-level value only because the phase-reviewer sums are 0, and the guard must say which it computes.",
+      "detail": "Phase 20 carries both a task_level_* triple and an unsuffixed triple, and the unsuffixed values are the combined sums (token: 82312553 + 7814171 = 90126724; duration: 7621 + 805 = 8426; cost: 0.469312206 + 0.11251578 recorded as 0.581827986). Phase 21 carries the same six keys, but cost_usd == task_level_cost_usd, total_tokens == task_level_total_tokens and duration_seconds == task_level_duration_seconds because phase_reviewer_cost_usd / _total_tokens / _duration_seconds are all 0. The two records therefore use the same field names with different effective content, and a guard that recomputed the unsuffixed triple as task-level-only would pass phase 21 and fail any later phase with a phase-reviewer invocation. This is a genuine ambiguity in the phase-20 key set, not an error in this record.",
+      "evidence": [
+        "docs/implementation/phase-20/orchestration.json .aggregate - task_level_total_tokens 82312553 + phase_reviewer_total_tokens 7814171 = total_tokens 90126724; task_level_duration_seconds 7621 + 805 = 8426; cost_usd 0.581827986 != task_level_cost_usd 0.469312206",
+        "docs/implementation/phase-21/orchestration.json .aggregate - cost_usd == task_level_cost_usd, total_tokens == task_level_total_tokens, duration_seconds == task_level_duration_seconds, and phase_reviewer_* are all 0",
+        "Independent recomputation over docs/implementation/21.*/orchestration.json: task-level sums reproduce both the suffixed and unsuffixed recorded values exactly"
+      ],
+      "recommended_action": "In task 26.3, define the unsuffixed triple as task_level_* + phase_reviewer_* and state that equality with task_level_* is expected only when the phase-reviewer sums are zero. No change to this record."
+    },
+    {
+      "id": "R-26.1-6",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "guard implementation / numeric comparison",
+      "summary": "Cost aggregates are stored as full-precision float64 sums, so the guard must compare against a jq-summed value exactly rather than a re-rounded decimal or a string.",
+      "detail": "The recorded cost values carry every digit of the double, e.g. task_level_cost_usd 1.4038497539999997 and per-task values such as 0.10643258400000002, 0.14921658599999996 and 0.03366724200000001. Re-running the same jq sum reproduces those exact doubles, so exact numeric equality works; a guard that reformatted to a fixed decimal, compared as a string, or summed in a different order would produce a spurious mismatch. Token and duration sums are exact integers and carry no such risk.",
+      "evidence": [
+        "docs/implementation/phase-21/orchestration.json .aggregate.task_level_cost_usd = 1.4038497539999997; jq sum over the 56 subagent execution.cost_usd values reproduces the identical double",
+        "jq per-task cost sums over docs/implementation/21.*/orchestration.json match all fourteen values quoted in the aggregate note digit-for-digit (e.g. 21.1 0.10643258400000002, 21.2 0.14921658599999996, 21.6 0.276767718)"
+      ],
+      "recommended_action": "In task 26.3, compare numeric aggregate fields with jq numeric equality on the same float64 sums, and add a sensitivity probe that perturbs one execution cost to prove the guard discriminates. No change to this record."
+    },
+    {
+      "id": "R-26.1-7",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "aggregate semantics / per-task map and non-numeric fields",
+      "summary": "task_level_invocations_per_task must be each task record's total subagents length (14 keys, including the two tasks with no worker invocation), and the guard must not attempt to parse the prose first_pass_approval_rate.",
+      "detail": "task_level_invocations_per_task covers all fourteen task ids, including 21.5 and 21.10 whose only recorded invocations are a security-reviewer and an implementation-reviewer (2 each). Deriving it from implementation-worker counts instead would omit those two keys and under-count by 4. Separately, first_pass_approval_rate is a prose string that embeds a task list; it is not a numeric aggregate field and a guard must treat it (and release_review_status, release_decision, note) as informational rather than requiring or recomputing it. I verified its content is accurate: 10 of 14 tasks had an APPROVED first implementation-reviewer invocation (21.2, 21.3, 21.4, 21.5, 21.6, 21.7, 21.8, 21.10, 21.12, 21.14) and 21.1, 21.9, 21.13 plus 21.11 returned CHANGES_REQUIRED.",
+      "evidence": [
+        "docs/implementation/phase-21/orchestration.json .aggregate.task_level_invocations_per_task has 14 keys; 21.5 = 2 and 21.10 = 2 with roles security-reviewer/1 and implementation-reviewer/1 only (jq on the task records)",
+        "jq first-reviewer-outcome per task over .subagents -> APPROVED for 21.2, 21.3, 21.4, 21.5, 21.6, 21.7, 21.8, 21.10, 21.12, 21.14; CHANGES_REQUIRED for 21.1, 21.9, 21.13, 21.11 - matching the recorded '10/14 tasks (71.4%)'"
+      ],
+      "recommended_action": "In task 26.3, derive the per-task map from each task record's total subagents length and restrict the guard to the numeric fields plus role_mix, treating prose aggregate fields as informational. No change to this record."
+    },
+    {
+      "id": "R-26.1-8",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "amendment provenance",
+      "summary": "The amendment note's pointer resolves to a real record that declares the immutability exception, but the parenthetical could be read as pointing at a user-approval field for that exception when the file's `amendment` block covers the phase dependency order.",
+      "detail": "The appended note reads 'Amendment 2026-10-02, approved_by user (recorded in docs/implementation/planning/v1.3-harness-phase.json)'. That file exists and does declare the exception: task 26.1's `review` field states 'this is the one documented exception to the immutability of docs/implementation/**; the diff must be reviewed as additive', and `files_not_changed` records the opposite boundary for the planning step itself. The file's own top-level `amendment` object, however, is the user-approved 2026-10-02 amendment that inserted Phase 26 and reordered v1.3's phases - not a separate approval of the immutability exception. Since the user approval that created Phase 26 (and therefore task 26.1) is that same amendment, recorded in both this file and docs/plan/state.json's active_scope_note ('By the user-approved plan amendment of 2026-10-02, Phase 26 ... was added to v1.3'), the approval chain is present and adequate. No wording change is required.",
+      "evidence": [
+        "docs/implementation/planning/v1.3-harness-phase.json:93 - task 26.1 \"review\": \"orchestrator (this is the one documented exception to the immutability of docs/implementation/**; the diff must be reviewed as additive)\"",
+        "docs/implementation/planning/v1.3-harness-phase.json .amendment - approved_by user, date 2026-10-02, amends the v1.3 phase dependency order",
+        "docs/plan/state.json active_scope_note - \"By the user-approved plan amendment of 2026-10-02, Phase 26 (harness and agent-contract remediation) was added to v1.3 and executes first\"",
+        "docs/implementation/phase-21/orchestration.json .notes[4] - the appended amendment entry with date, approved_by, original defect, what was added, and the planning-record pointer"
+      ],
+      "recommended_action": "None for 26.1. If the orchestrator wants the provenance to be unambiguous, a later documentation pass could name the specific field the approval is recorded in; it is not required and would mean editing this record again."
+    },
+    {
+      "id": "R-26.1-9",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "validation state",
+      "summary": "check-agents.sh and check-docs.sh fail on exactly the two expected transient task-26.1 report-pairing lines and nothing else; both lines come from a single condition.",
+      "detail": "With docs/implementation/26.1/worker-report.json on disk and no reviewer report, scripts/check-agents.sh exits 1 with all twelve other sections ok, including 'ok: phase gate conformance and orchestration shape checked'. The two FAIL lines are 'task 26.1 has a worker report but no reviewer report' and 'task 26.1 has a reviewer report on disk but docs/plan/state.json does not list it in reports'. Inspection of scripts/check-agents.sh shows the second line is emitted by the same state.json listing check that the first line's condition triggers, so this is one missing condition reported twice, not two independent problems. scripts/check-docs.sh exits 1 only in the agent-contracts section for those same two lines, with the other eight sections ok; it also self-skipped the generated-blocks section because dotnet is not on PATH in this shell. This clears when the orchestrator lists this review in state.json reports and is not a defect in the record under review. Note that this finding is scoped to the pre-review tree; I did not re-run the scripts with dotnet sourced, because the amendment changes no generated block and PLANS.md and state.json are untouched.",
+      "evidence": [
+        "bash scripts/check-agents.sh -> 12 'ok' lines, 2 FAIL lines both on task 26.1 pairing, exit 1",
+        "bash scripts/check-docs.sh -> 'FAIL: agent contract check failed' wrapping the same two lines; 'ok: artifact identity agrees (sha256, md5, bytes)', 'ok: doc budget checked' and the other content sections ok; exit 1",
+        "scripts/check-agents.sh:146-150 - the state.json listing check that emits the second FAIL line"
+      ],
+      "recommended_action": "Orchestrator: add docs/implementation/26.1/reviewer-report.json to task 26.1's reports array in docs/plan/state.json; both scripts then pass. No change to the phase-21 record."
+    },
+    {
+      "id": "R-26.1-10",
+      "severity": "INFORMATIONAL",
+      "status": "not_required",
+      "area": "documentation reconciliation",
+      "summary": "No current-state surface needed changing and the removed aggregate keys leave no stale reference outside the worker's own historical report text.",
+      "detail": "The task's own boundary forbids plan-state and plan-of-record changes, and the amendment adds no capability, configuration, limitation, completion or phase status, so docs/plan/state.json, PLANS.md, the generated docs/status.md blocks, docs/changelog/, docs/limitations/, README.md and the architecture/data-model documents are correctly untouched. I searched the repository for the removed key rework_rounds_total: the only remaining occurrences are inside docs/implementation/26.1/worker-report.json, where they are the correct historical description of what was superseded. The old aggregate.note sentence likewise survives nowhere. No stale current-state claim results from this change.",
+      "evidence": [
+        "grep -rn 'rework_rounds_total' (excluding .git) -> only docs/implementation/26.1/worker-report.json lines 19, 67 and 100, all describing the superseded value",
+        "git status --porcelain --untracked-files=all -> ' M docs/implementation/phase-21/orchestration.json' and '?? docs/implementation/26.1/worker-report.json' only; no PLANS.md, state.json, status.md, changelog, limitations, src, tests, artifact or manifest change"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "The record satisfies the contract's phase-level shape (status, gate, gate_status, phase_review, phase_review_status, a subagents array with the per-invocation shape including the nested execution object, and an aggregate).",
+      "verdict": "MET",
+      "evidence": "jq keys_unsorted -> phase, title, name, release, status, gate, gate_status, phase_review, phase_review_status, phase_tag, release_tag, authoritative_execution_order, release_artifact, release_review, tasks, subagents, aggregate, notes. All five gate fields present; status COMPLETE with gate_status MET (never PENDING_PHASE_REVIEW while COMPLETE). .subagents has 56 entries and every entry has exactly the key set role/attempt/outcome/execution/task; every entry's execution has exactly agent, model, variant, input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_tokens, total_tokens, cost_usd, duration_seconds, session_id - the same shape as the phase-20 worked example entry. scripts/check-agents.sh reports 'ok: phase gate conformance and orchestration shape checked'."
+    },
+    {
+      "criterion": "Its aggregate reconciles with the task records (every numeric field equals the sums recomputed from the fourteen task records).",
+      "verdict": "MET",
+      "evidence": "My own jq -s recomputation over docs/implementation/21.1..21.14/orchestration.json produced task_count 14; task_level_invocations_per_task {21.1:5, 21.2:6, 21.3:3, 21.4:5, 21.5:2, 21.6:4, 21.7:3, 21.8:3, 21.9:5, 21.10:2, 21.11:7, 21.12:3, 21.13:5, 21.14:3}; task_level_invocations 56; role_mix {implementation-worker 19, implementation-reviewer 20, test-quality-reviewer 6, documentation-maintainer 2, live-host-verifier 5, security-reviewer 4}; review_rounds 20; test_quality_review_rounds 6; rework_rounds 7; cost 1.4038497539999997; tokens 293509314; duration 46658; phase-reviewer sums 0. Every recorded field equalled the recomputed value with no residual difference, and role_mix sums to 56 = |subagents|. The fourteen per-task figures quoted in the aggregate note also match digit-for-digit. subagent_invocations_total 56 and the phase_reviewer_* zeros are consistent with a phase that produced no phase-reviewer record."
+    },
+    {
+      "criterion": ".subagents is exactly the task-record invocations in task-id order with no invented session id, token or cost, and the attempt-0 FAILED entries are preserved.",
+      "verdict": "MET",
+      "evidence": "jq equality: .subagents == [ $tasks[] | . as $t | $t.subagents[] | . + {task: $t.task} ] over the task records read in order 21.1, 21.2, ..., 21.14 returned true, and |.subagents| == 56. Deep equality means no field of any invocation - including session_id, total_tokens, cost_usd and duration_seconds - differs from the recorded source. Spot-checks: 21.11 implementation-worker attempt 0 FAILED ses_f115174ffffe3GlZxDxf0MaKWG 1157653 tokens, 21.11 implementation-reviewer attempt 0 FAILED ses_f0e0da764ffewPu1TBoGHV3t01 926712 tokens, and 21.14 security-reviewer attempt 0 FAILED ses_f0da1a19cffeo2rurKN8NGzzu9 are all present verbatim. Outcome tally across the array: COMPLETE 18, APPROVED 16, PASS_WITH_FINDINGS 10, CHANGES_REQUIRED 4, FAILED 3, VERIFIED 3, PARTIAL 2 - the three FAILED entries being exactly the three the aggregate note names."
+    },
+    {
+      "criterion": "No phase-21 task report is modified (verified by git diff --name-only over docs/implementation/21.*).",
+      "verdict": "MET",
+      "evidence": "git diff --name-only -- 'docs/implementation/21.*' returns zero paths; git diff --name-only returns only docs/implementation/phase-21/orchestration.json; git status --porcelain --untracked-files=all shows only that modified file plus the untracked docs/implementation/26.1/worker-report.json."
+    },
+    {
+      "criterion": "The amendment is recorded in the record's own notes.",
+      "verdict": "MET",
+      "evidence": ".notes grew from 4 to 5 entries with notes[0:4] deep-equal to HEAD's notes. The appended entry records the date 2026-10-02, approved_by user, the pointer docs/implementation/planning/v1.3-harness-phase.json, the original defect (no contract-required subagents array, reduced aggregate), what task 26.1 added, and an explicit statement that no phase-21 task report, status, gate, gate_status, phase_review, phase_review_status, task row, release artifact, or other field changed."
+    },
+    {
+      "criterion": "The amendment is purely additive: status, gate, gate_status, phase_review, phase_review_status, tasks, release_artifact and authoritative_execution_order are unchanged.",
+      "verdict": "MET",
+      "evidence": "A jq deep comparison of the HEAD blob against the working copy shows every one of phase, title, name, release, status, gate, gate_status, phase_review, phase_review_status, phase_tag, release_tag, authoritative_execution_order, release_artifact, release_review and tasks identical. The only top-level key added is subagents; no key was removed. Within aggregate, 17 keys were added, rework_rounds_total was replaced by rework_rounds, and release_review_status, release_decision and task_count kept their recorded values. git diff shows exactly 4 deleted lines: the old aggregate.note, the old aggregate.rework_rounds_total, and two lines that were re-added verbatim with only a trailing comma added (aggregate.release_decision and the previous last notes entry)."
+    },
+    {
+      "criterion": "The record is valid JSON.",
+      "verdict": "MET",
+      "evidence": "jq empty docs/implementation/phase-21/orchestration.json exits 0."
+    },
+    {
+      "criterion": "scripts/check-agents.sh and scripts/check-docs.sh pass, with only the transient task-26.1 pairing lines outstanding.",
+      "verdict": "MET (with the expected transient pairing failure outstanding)",
+      "evidence": "check-agents.sh exits 1 with 12 ok sections and exactly two FAIL lines, both the task-26.1 worker/reviewer pairing and state.json listing pair, which scripts/check-agents.sh:146-150 shows are the same missing condition. check-docs.sh exits 1 only in the agent-contract section for those same two lines; artifact identity, doc budget, links, decisions index, limitations index, architecture/data-model indexes and compatibility stubs all report ok. No guard failure is attributable to the phase-21 record."
+    },
+    {
+      "criterion": "The worker's two interpretations (rework_rounds 7 vs 5; review rounds as invocation counts) are correct and consistent with the phase-20 worked example.",
+      "verdict": "MET",
+      "evidence": "Both confirmed against the phase-20 worked example and by independent recomputation. See findings R-26.1-2 and R-26.1-3. rework_rounds 7 is corroborated three ways (sum of task-record rework array lengths; count of worker invocations with attempt >= 2; phase-20's rework_rounds 1 = sum of 0+0+1). review_rounds/test_quality_review_rounds as role invocation counts matches phase-20, whose recorded role_mix, review_rounds 4 and test_quality_review_rounds 3 equal its four per-role invocation counts exactly. The aggregate note states both bases explicitly."
+    },
+    {
+      "criterion": "The worker report's acceptance_criteria, test_sensitivity, documentation_reconciliation and interpretations fields are present and consistent with the diff and the observed results.",
+      "verdict": "MET",
+      "evidence": "All four fields are present. Every quantitative claim in the report that I re-derived (per-task invocation counts, role mix, 56 invocations, 20/6 rounds, 7 rework rounds, the 4-deletion diff shape, the unchanged-field list) reproduced exactly, and its three-item sensitivity probe of the recomputation validator is a reasonable discrimination argument for a documentation-only task with no production code. Its known_limitations correctly predict the two pairing FAIL lines I observed, including the duplicate-cause detail."
+    }
+  ],
+  "reviewer_blockers": [],
+  "ready_for_next_task": true
+}

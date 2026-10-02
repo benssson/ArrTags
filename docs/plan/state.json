@@ -1703,9 +1703,12 @@
       "tasks": [
         {
           "id": "26.1",
-          "done": false,
+          "done": true,
           "name": "Amend the phase-21 orchestration record",
-          "reports": []
+          "reports": [
+            "docs/implementation/26.1/reviewer-report.json",
+            "docs/implementation/26.1/worker-report.json"
+          ]
         },
         {
           "id": "26.2",

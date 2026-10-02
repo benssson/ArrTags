@@ -1,0 +1,58 @@
+{
+  "task": "26.1",
+  "title": "Amend the phase-21 orchestration record",
+  "phase": 26,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 26.1 completes a phase-level orchestration record so it satisfies the agent-report contract's phase-level shape. It depends on no unverified Jellyfin or provider behavior, changes no product behavior, and implements no ADR clause; it is a harness record correction approved by the user. No pre-dispatch specialist conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 89705,
+        "output_tokens": 20008,
+        "reasoning_tokens": 54321,
+        "cache_read_tokens": 3992960,
+        "cache_write_tokens": 0,
+        "total_tokens": 4156994,
+        "cost_usd": 0.07003203000000001,
+        "duration_seconds": 400,
+        "session_id": "ses_f03f881f3ffeVGpd6gyr8qjgwT"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 122497,
+        "output_tokens": 15096,
+        "reasoning_tokens": 7905,
+        "cache_read_tokens": 902400,
+        "cache_write_tokens": 0,
+        "total_tokens": 1047898,
+        "cost_usd": 0,
+        "duration_seconds": 1053,
+        "session_id": "ses_f03f223bfffeYx2bQtv7iA1XbL"
+      }
+    }
+  ],
+  "rework": [],
+  "notes": [
+    "Amended docs/implementation/phase-21/orchestration.json additively: added the contract-required 56-entry subagents array copied verbatim from the fourteen phase-21 task records, and replaced the reduced aggregate with a conforming one recomputed from those records (task_count 14; 56 task-level invocations; role_mix implementation-worker 19 / implementation-reviewer 20 / test-quality-reviewer 6 / documentation-maintainer 2 / live-host-verifier 5 / security-reviewer 4; review_rounds 20; test_quality_review_rounds 6; rework_rounds 7; cost 1.4038497539999997; 293509314 tokens; 46658 s; phase_reviewer_* 0 because the v1.2 release review served as the release-phase gate). The amendment note (2026-10-02, approved_by user) is in the record's own notes.",
+    "This is the single user-approved exception to the docs/implementation/** immutability rule, recorded in docs/implementation/planning/v1.3-harness-phase.json. No phase-21 task report, gate field, or other field changed; the only semantic edits are the added subagents array, the aggregate replacement, and the appended note.",
+    "The implementation reviewer independently recomputed every aggregate field and confirmed .subagents equals the task-record invocation concatenation exactly. It recorded seven INFORMATIONAL findings that pin the definitions task 26.3's aggregate guard must state explicitly (rework_rounds = task-record rework lengths, not the frozen tasks-array sum; round counts include FAILED attempt-0 invocations; subagent_invocations_total includes phase-reviewer entries; the unsuffixed cost/token/duration triple = task-level + phase-reviewer; compare cost at full float64 precision; the per-task map derives from each task record's total subagents length; prose fields are informational)."
+  ]
+}
