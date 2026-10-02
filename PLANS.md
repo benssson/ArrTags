@@ -13,10 +13,12 @@ scheduling view for the active scope; completed phases are archived in
 **Active plan:** `docs/planning/v1.3.md`.
 <!-- END GENERATED: active-scope -->
 
-**v1.3 (Phases 22-25, version `1.3.0.0`, release tag `v1.3.0`) is the accepted active scope.** Its plan is
-[`docs/planning/v1.3.md`](docs/planning/v1.3.md) and it is **planned, not implemented**: goals G10-G12 and
-limitations F9 and F10, with decision records ADR-030 through ADR-032 **accepted** (`Accepted (v1.3)`) and
-decision gates DG-23 through DG-25 **open**. v1.2 (Phases 15-21) is complete and archived: the phase text is in
+**v1.3 (Phases 22-25 plus the added Phase 26, version `1.3.0.0`, release tag `v1.3.0`) is the accepted active
+scope.** Its plan is [`docs/planning/v1.3.md`](docs/planning/v1.3.md) and it is **planned, not implemented**:
+goals G10-G12 and limitations F9 and F10, with decision records ADR-030 through ADR-032 **accepted**
+(`Accepted (v1.3)`) and decision gates DG-23 through DG-25 **open**. Phase 26 (harness and agent-contract
+remediation) was added by the user-approved plan amendment of 2026-10-02, has no goal, no decision gate, and no
+ADR, and executes first; it changes no product behavior and no artifact identity. v1.2 (Phases 15-21) is complete and archived: the phase text is in
 [`docs/plan/archive/v1.2.md`](docs/plan/archive/v1.2.md) and its accepted scope plan is in
 [`docs/plan/archive/v1.2-plan.md`](docs/plan/archive/v1.2-plan.md). Phases 1-21 are not restructured, reordered,
 or reopened; v1.3 continues the global numbering at Phase 22.
@@ -37,7 +39,8 @@ are never renumbered or reopened; on completion a release's phases are moved ver
 ## How To Use This Plan
 
 - Keep milestone order unchanged. A milestone may be worked on only after its predecessor's gate is met,
-  unless a task is explicitly marked as research or a test spike.
+  unless a task is explicitly marked as research or a test spike. The only reordering is the recorded,
+  user-approved v1.3 amendment: Phase 26 precedes Phase 22.
 - Task numbers are stable identifiers only, not an execution sequence. Each phase's **Authoritative Phase X
   execution order** is the canonical sequence: walk it from the first entry and select the first task that is
   not complete, after verifying that task's documented prerequisites. When the execution order reorders task
@@ -54,12 +57,67 @@ are never renumbered or reopened; on completion a release's phases are moved ver
 
 ## Active Phases
 
-The v1.3 phases follow the accepted dependency order in
+**Authoritative v1.3 phase execution order: 26, 22, 23, 24, 25.** The phase number
+does not equal the order. Phase 26 was added by the user-approved plan amendment of
+2026-10-02 and executes first, ahead of the highest-severity recovery defect; the
+product order (recovery, observability, restoration semantics, release) is
+otherwise unchanged. Within a phase, that phase's **Authoritative Phase N execution
+order** is the canonical task sequence.
+
+The v1.3 product phases follow the accepted dependency order in
 [`docs/planning/v1.3.md`](docs/planning/v1.3.md) section 5: the highest-severity
 recovery defect first, then the observability work that makes it verifiable, then
 the restoration-verification predicate, then the release. A phase is finalized
 only after its `phase-reviewer` gate passes and the phase tag
 `v1.3.0-phase<N>` is created; phases do not auto-advance.
+
+### 26. Harness and agent-contract remediation
+
+**Goal:** none - Phase 26 is **internal harness maintenance** and is deliberately
+outside the goal/DG/ADR machinery: no goal number, no decision-gate number, and no
+new ADR. It changes no product behavior, no product code, and no part of the v1.3
+artifact, so the `1.3.0.0` artifact identity is unchanged. A phase reviewer must not
+read the absent goal as a missing-goal defect.
+**Objective:** Put the agent harness and its contract into the state v1.3's product
+phases and its build/live/security/release cycle require, by correcting the
+agent-process failures the v1.2 advisory reviews recorded. Those failures - stale
+identities left live after each artifact re-derivation, inconsistent phase
+aggregates, undispositioned security findings, unbatched re-derivation, evidence
+collected from a shared tree another agent was mutating - cost v1.2 two full
+artifact/live/security re-derivation cycles. Running this phase first prevents
+repeating them in v1.3.
+**Deliverables:** the amended phase-21 orchestration record (additive: `subagents` and
+a recomputed `aggregate`); the agent-contract rules; guard enforcement for the two
+recurring record-keeping classes; the seven agent prompt corrections; a working
+session-usage collector; and an advisory re-review of which previously advisory
+classes the new guards now cover.
+**Tasks:**
+- [ ] 26.1 Amend the phase-21 orchestration record
+- [ ] 26.2 Agent-contract rules
+- [ ] 26.3 Guard enforcement
+- [ ] 26.4 Agent prompt corrections
+- [ ] 26.5 Session-usage collection fix
+- [ ] 26.6 Advisory re-review
+**Authoritative Phase 26 execution order:** 26.1, 26.2, 26.3, 26.4, 26.5, 26.6
+**Phase acceptance criteria:** the phase-21 record satisfies the contract's
+phase-level shape and its aggregate reconciles exactly with the task records, added
+purely additively with no phase-21 task report modified; the corrective/re-derivation
+and invocation/evidence-integrity rules, the tightened reports-array rule, the
+phase-gate security-disposition obligation, the enforcement-scope entries, and the
+release-phase gate precedent are recorded in `docs/agent-contracts.md`; both new
+guards pass on the current tree with phases 20-25 grandfathered for the aggregate
+rule, and each has a recorded sensitivity probe showing it fails on a deliberately
+broken input and passes when restored; each of the seven named prompts carries its
+specific correction and none contradicts the contract; the session-usage collector
+fetches a real session in a documented self-test, errors clearly when the server is
+unreachable, and never estimates a token or cost figure; and the advisory
+re-review records, with evidence, whether the new guards cover the previously
+advisory classes.
+**Gate 26:** Met when tasks 26.1-26.6 meet their acceptance criteria,
+`scripts/check-agents.sh` and `scripts/check-docs.sh` PASS with a recorded
+sensitivity probe per new guard, the phase review is approved, and the tag
+`v1.3.0-phase26` is created. There is no security-review clause: Phase 26 changes
+no product code and exposes no runtime surface.
 
 ### 22. Resumable artwork mutation on cancellation
 
@@ -165,6 +223,7 @@ review are recorded, and the tag `v1.3.0` is created.
 | 23 | Bounded artwork outcome observability | PLANNED | Gate 23 |
 | 24 | Restoration verification semantics | PLANNED | Gate 24 |
 | 25 | v1.3 release | PLANNED | Gate 25 |
+| 26 | Harness and agent-contract remediation | PLANNED | Gate 26 |
 <!-- END GENERATED: milestone-status -->
 
 Completed milestones and their gates are recorded in
@@ -246,6 +305,8 @@ These decisions must be resolved and recorded before the dependent work relies o
 | v1.3: the observability change widens a redaction or unbounded-payload surface. | A secret, path, or item name reaches the log or the diagnostics endpoint, or an unbounded collection is exposed. | ADR-031 carries bounded enum classifications and counts only, never values, names, or paths; the ADR-020 clause 6 throttle still bounds emission; the snapshot stays fixed-shape; the endpoint is security-reviewed before the gate (tasks 23.1-23.5). |
 | v1.3: the in-product re-baseline action re-baselines over an image a human set deliberately. | ArrTags captures an operator-chosen poster as its new baseline and badges over it. | The action is explicit, elevation-gated, single-item, and refuses while a non-terminal durable operation exists; it is a state-session action and never writes an image, so ADR-002's fail-closed ownership rule is unchanged (task 22.3). |
 | v1.3: the restoration verification predicate is derived from an unverified host assumption. | A visually correct restore is sealed as blocked, or a genuinely different image is accepted as a match. | DG-25 is gated on the task 24.1 spike as a Task Conformance Precondition; any adopted rule is content-derived and bounded, and the fail-closed outcomes are unchanged and tested (tasks 24.1-24.3). |
+| v1.3 (Phase 26): a new harness guard is scoped too widely and fails on immutable history. | `check-agents.sh` fails on Phases 20-25, which may not be rewritten, and blocks the phase. | The reports-array guard is scoped from phase 20 (the only unlisted attempts on disk are tasks 7.1, 7.8, 15.2, and 15.4, all below phase 20) and the aggregate guard from phase 26 with phases 20-25 explicitly grandfathered; each guard carries a recorded sensitivity probe (tasks 26.2, 26.3). |
+| v1.3 (Phase 26): harness work expands into product or scope work. | Product behavior changes inside an internal phase and the `1.3.0.0` artifact identity is affected. | Every Phase 26 deliverable is a documentation, script, or prompt file; product code, tests, artifacts, and `manifest.json` are out of scope, the phase has no goal, gate, or ADR, and the artifact identity is stated as unchanged (tasks 26.1-26.6). |
 
 ## Post-V1 Backlog
 
