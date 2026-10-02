@@ -1,0 +1,252 @@
+{
+  "task": "26.3",
+  "attempt": 1,
+  "reviewer_status": "APPROVED",
+  "reviewer_blockers": [],
+  "summary": "Independent review of task 26.3 (Guard enforcement) after the attempt-2 rework. I inspected the full diff of scripts/check-agents.sh, docs/agent-contracts.md and docs/plan/README.md; confirmed no pre-existing check was weakened and that all 13 pre-existing sections survive with their logic intact; and reproduced every probe myself on a throwaway copy at /tmp/26.3/repo (now removed). TQ-01 is genuinely closed: the pre-change all-phases reviewer-report listing rule is restored as its own ungated section ('plan state lists the reviewer report from every phase', scripts/check-agents.sh:141-170) whose logic is byte-identical to the HEAD section modulo the comment and the end label; de-listing task 15.1 fails with the byte-identical pre-change line under both the new script and git-show HEAD:scripts/check-agents.sh, and the from-phase-20 on-disk evidence section independently still reports ok on that mutation, so the two sections neither shadow nor weaken each other. TQ-02 is closed: role_mix is now the reduce over the union of task-record invocations and the phase record's own phase-reviewer entries, so it sums to subagent_invocations_total; with AGGREGATE_APPLIES_FROM_PHASE lowered to 20 I measured phase 20 reconciling on every field including role_mix {worker 4, reviewer 4, tqr 3, phase-reviewer 2} and phase 21 reconciling, run exit 0; and I recomputed the phase-21 aggregate independently from the fourteen task records (56 invocations, cost 1.403849754, tokens 293509314, duration 46658s, rework 7, review rounds 20, test-quality rounds 6, role mix 19/20/6/4/5/2) matching the amended record exactly. TQ-03 is closed for the two required conditions: with a phase-review*.json on disk and zero phase-reviewer entries the guard fails with 'phase 26 has a phase review on disk but records no phase-reviewer invocation' (previously an undetectable PASS), and an aggregate.phase_reviewer_invocations of 2 against 1 recorded entry fails with both the dedicated line and the aggregate mismatch line. Scope is exactly the three permitted files plus the 26.3 report directory; no product code, tests, artifacts, manifest, docs/plan/state.json, PLANS.md, docs/status.md, docs/changelog/, docs/limitations/ or other docs/implementation/** record changed, and no commit or tag was created. On the real tree scripts/check-agents.sh fails exactly the three disclosed in-progress 26.3 lines (12 of 15 sections ok) and nothing else; I verified the clearing condition by writing a reviewer report plus the four report listings into the copy's state.json and getting 'check-agents: PASS' and 'check-docs: PASS'. Three residual limitations are recorded as noted, none blocking: the TQ-03 check enforces presence and equality but not completeness of the phase-reviewer set; the phase record's own subagents entries of non-phase-reviewer roles are outside the recomputation; and the scope self-checks are bare substring greps so they only fail on absence, not disagreement (pre-existing shape, affecting the phase-20 constant equally).",
+  "findings": [
+    {
+      "id": "R-26.3-TQ-01",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "coverage",
+      "summary": "The all-phases reviewer-report listing rule is genuinely restored as an ungated, separate guard section with the pre-change logic and error line verbatim.",
+      "detail": "The attempt-1 defect was that B1 replaced an ungated all-phases state-listing check with one gated at p >= APPLIES_FROM_PHASE (20). In the rework the pre-change check is back as its own begin/end section at scripts/check-agents.sh:141-170, ungated (no p=${b%%.*} extraction, no phase comparison), with the pre-change jq predicate any(.phases[].tasks[]; .id == $id and ((.reports // []) | any(test(\"reviewer-report\")))) and the verbatim pre-change error line. I compared the section body line-by-line against git show HEAD:scripts/check-agents.sh with comments and the end label excluded: identical. The stronger from-phase-20 on-disk evidence section survives as a separate section (scripts/check-agents.sh:172-238) and runs independently. Probe: removing docs/implementation/15.1/reviewer-report.json from 15.1's reports in the copy's state.json produced exactly 'FAIL: task 15.1 has a reviewer report on disk but docs/plan/state.json does not list it in reports' under the new script while 'ok: plan state lists the on-disk report evidence' still printed, and the HEAD script produced the byte-identical line on the same mutated copy. The contract's '**all phases**' Enforcement scope bullet is therefore once again true of what the script enforces, so the contract/enforcement mismatch that motivated the finding is gone.",
+      "evidence": [
+        "scripts/check-agents.sh:141-170 (restored section, no phase gate) and :172-238 (from-phase-20 section, p=${b%%.*} + [ \"$p\" -ge \"$APPLIES_FROM_PHASE\" ] || continue)",
+        "diff of the section body against git show HEAD:scripts/check-agents.sh lines 130-153: identical apart from the comment block and the end label 'plan state lists the review evidence' -> 'plan state lists the reviewer report from every phase'",
+        "/tmp/26.3/repo probe: de-listed 15.1 -> 'FAIL: task 15.1 has a reviewer report on disk but docs/plan/state.json does not list it in reports' from BOTH the new script and HEAD, with 'ok: plan state lists the on-disk report evidence' still reported",
+        "docs/agent-contracts.md:139 '**all phases** - a task that has a worker-report.json ... lists its reviewer-report.json in docs/plan/state.json reports' now matches enforcement",
+        "section-count check: HEAD had 13 end labels, the new script has 15 (13 preserved + 2 new)"
+      ],
+      "recommended_action": "None. The worker's rework entry F-26.3-TQ-01 closure is accurate."
+    },
+    {
+      "id": "R-26.3-TQ-02",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "area": "meaningfulness",
+      "summary": "role_mix is recomputed over the union of task-record invocations and the phase record's own phase-reviewer entries, so it sums to subagent_invocations_total and matches the phase-20 precedent.",
+      "detail": "The attempt-1 defect was an internal inconsistency: role_mix counted task-record invocations only while subagent_invocations_total and the phase-reviewer-derived fields added the phase record's own phase-reviewer entries, so the phase-20 precedent record (which does include phase-reviewer: 2) was rejected while the sums were correct. The rework changed the expression to reduce (($inv + $pr)[]) as $s ({}; .[$s.role // \"\"] += 1), and the guard comment now states the union basis and the phase-20 worked example. I verified the consequence directly: with AGGREGATE_APPLIES_FROM_PHASE lowered from 26 to 20 the run exits 0 with all 15 sections ok, i.e. phase 20 reconciles on every field including role_mix, and phase 21 still reconciles. I also recomputed the phase-20 aggregates by hand from the three task records and the phase record: task-level 11 invocations / 0.469312206 / 82,312,553 tokens / 7,621 s plus 2 phase-reviewer entries / 0.11251578 / 7,814,171 / 805 s, giving total 13 / 0.581827986 / 90,126,724 / 8,426 s, role_mix worker 4, reviewer 4, tqr 3, phase-reviewer 2 - all matching the record exactly. The phase-21-amended record is unchanged and still reconciles (see R-26.3-TQ-11). Sensitivity: removing phase-reviewer from the copy's phase-20 role_mix fails, and incrementing phase-21's implementation-worker count fails.",
+      "evidence": [
+        "scripts/check-agents.sh role_mix expression 'role_mix: (reduce (($inv + $pr)[]) as $s ({}; .[$s.role // \"\"] += 1))' and the comment bullet '* role_mix maps each role to its count over all recorded invocations: the task-record invocations plus the phase record's own phase-reviewer entries, so it sums to subagent_invocations_total (the phase-20 worked example includes phase-reviewer: 2)'",
+        "docs/agent-contracts.md:151-155 from-phase-26 bullet now reads 'sums recomputed from all recorded invocations (task-level plus the phase record's own)'",
+        "probe: AGGREGATE_APPLIES_FROM_PHASE=20 -> 'ok: phase aggregates reconcile with the task records' and 'check-agents: PASS', exit 0",
+        "independent arithmetic over docs/implementation/20.{1,2,3}/orchestration.json and phase-20: 11 task invocations + 2 phase-reviewer = 13; 82312553 + 7814171 = 90126724 tokens; 7621 + 805 = 8426 s; 0.469312206 + 0.11251578 = 0.581827986",
+        "grep for 'task-level records' and 'role_mix' over docs/agent-contracts.md, docs/plan/README.md, README.md, AGENTS.md, docs/INDEX.md: no stale basis wording remains"
+      ],
+      "recommended_action": "None. The union basis is now the right convention: it is the only basis under which role_mix equals subagent_invocations_total, and both in-repo records (phase 20 with 13 = 11 + 2, phase 21 with 56 = 56 + 0) reconcile under it."
+    },
+    {
+      "id": "R-26.3-TQ-03",
+      "severity": "LOW",
+      "status": "resolved",
+      "area": "correctness",
+      "summary": "From phase 26, a phase-review*.json on disk now requires at least one phase-reviewer entry and an equal phase_reviewer_invocations, closing the previously undetectable omission.",
+      "detail": "The attempt-1 defect was that a phase-26 record could omit every phase-reviewer invocation and record phase_reviewer_invocations 0, an aggregate otherwise self-consistent, and still PASS - because the phase-reviewer-derived fields were recomputed from the record's own subagents array with nothing cross-referencing the existence of the phase review on disk. The rework adds a phase_review_files glob over $d/phase-review*.json before the aggregate recomputation, keyed on the pre-existing grandfathering constant AGGREGATE_APPLIES_FROM_PHASE=26 so phases 20-25 stay untouched. I reproduced both required conditions: (a) a phase-26 record with a phase-review.json on disk, zero phase-reviewer entries, phase_reviewer_invocations 0, subagent_invocations_total 4, task-record-only role_mix and the unsuffixed triple set to task-level - an aggregate otherwise perfectly self-consistent - fails with exactly 'FAIL: phase 26 has a phase review on disk but records no phase-reviewer invocation' and no other failure; (b) phase_reviewer_invocations 2 against 1 recorded entry fails with 'FAIL: phase 26 aggregate phase_reviewer_invocations is 2 but the record has 1 phase-reviewer invocation(s)' plus the aggregate mismatch line. Positive control: the same record with one phase-reviewer entry and matching counts passes. The contract bullet at docs/agent-contracts.md:151-155 now states the requirement, so contract and enforcement agree. The check is correctly gated: I confirmed the same omission at AGGREGATE_APPLIES_FROM_PHASE=20 does not fire for the immutable phases (20 and 21 both have phase-review files and no phase-level documentation of a violation), and that a phase-26 record with no phase-review*.json is not subject to it.",
+      "evidence": [
+        "scripts/check-agents.sh:359-380 phase_review_files block with err 'phase $p has a phase review on disk but records no phase-reviewer invocation' and err 'phase $p aggregate phase_reviewer_invocations is $recorded_pr but the record has $pr_entries phase-reviewer invocation(s)'",
+        "probe (d2): zero phase-reviewer entries + phase-review.json on disk -> exactly one FAIL line, 'FAIL: phase 26 has a phase review on disk but records no phase-reviewer invocation', check-agents: FAIL",
+        "probe (d3b): phase_reviewer_invocations=2 with 1 entry -> 'phase_reviewer_invocations is 2 but the record has 1 phase-reviewer invocation(s)' plus 'phase_reviewer_invocations: recorded 2 != recomputed 1'",
+        "probe (d1): conforming record (1 phase-reviewer entry, role_mix incl. phase-reviewer: 1) -> 'ok: phase aggregates reconcile with the task records', exit 0",
+        "probe (d3): role_mix minus its phase-reviewer key -> 'role_mix: recorded {\"implementation-worker\":2,\"implementation-reviewer\":2} != recomputed {\"implementation-worker\":2,\"implementation-reviewer\":2,\"phase-reviewer\":1}'",
+        "docs/agent-contracts.md:154 'records a phase-reviewer invocation whenever a phase-review*.json exists'"
+      ],
+      "recommended_action": "None for the two required conditions. See R-26.3-N1 for the check's residual incompleteness."
+    },
+    {
+      "id": "R-26.3-N1",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "The TQ-03 check enforces presence and equality but not completeness of the phase-reviewer set, and it is skipped entirely when a phase-review*.json exists with no orchestration record.",
+      "detail": "Measured boundaries of the new check, in the interest of an honest record rather than as a required change. (1) Two phase-review files on disk (phase-review.json plus phase-review.attempt-2.json) with only one phase-reviewer entry still passes: the glob sets a boolean, not a count, so the check cannot express 'one invocation per review file'. (2) A phase >= 26 directory containing phase-review.json but no orchestration.json passes completely - the aggregate section's [ -f \"$o\" ] || continue skips it, and no other section requires a phase record to exist. (3) Conversely a phase-26 record carrying a phase-reviewer entry while no phase-review*.json exists also passes; that is the documented release-review-as-gate shape and is correct. (4) The glob is broad enough to match both the base and attempt filenames, which is what makes the phase-20 two-attempt precedent work. These are all completeness limits, not soundness limits: no probe can make the guard detect an invocation set that the phase record itself under-reports, because the record is the only authority for its own invocations. The worker discloses exactly this in known_limitations[2] ('the guard enforces presence, equality and per-entry sums, not completeness of the set'), so it is disclosed rather than hidden, and the residual direction is a false pass over an under-reported phase-reviewer set, which the phase review and the gate are the authorities for. Not blocking: the required conditions are enforced and the contract wording no longer overstates them.",
+      "evidence": [
+        "probe (X3): phase-review.json + phase-review.attempt-2.json with 1 phase-reviewer entry -> check-agents: PASS",
+        "probe (X2): phase-26/phase-review.json with phase-26/orchestration.json absent -> check-agents: PASS (aggregate section's [ -f \"$o\" ] || continue)",
+        "probe (X4): phase-26 record with 1 phase-reviewer entry, no phase-review*.json -> check-agents: PASS (correct: release-review-as-gate precedent)",
+        "scripts/check-agents.sh:359-362 'phase_review_files=0; for f in \"$d\"/phase-review*.json; do [ -f \"$f\" ] && phase_review_files=1; done'",
+        "docs/implementation/26.3/worker-report.attempt-2.json known_limitations[2]"
+      ],
+      "recommended_action": "None for 26.3. The completeness of the phase-reviewer set is the phase reviewer's and the phase gate's responsibility; keep the disclosure wording."
+    },
+    {
+      "id": "R-26.3-N2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "The phase record's own subagents entries of non-phase-reviewer roles are outside the aggregate recomputation, so the union basis is a definition rather than a whole-array read.",
+      "detail": "The guard derives the phase-reviewer contribution from the phase record's own subagents array but takes every other role from the task records, then unions them. A consequence I measured: adding an extra non-phase-reviewer entry (a security-reviewer) to the phase record's own subagents while leaving the aggregate untouched still PASSES, whereas recording that same entry and including it in the aggregate correctly FAILS. In other words the guard's contract is 'the phase record's own array carries the task-record invocations plus any phase-reviewer entries' (as the guard comment states) - it is not 'every entry in the phase record's array is authoritative'. Both in-repo records honour that shape: phase 20's own 13-entry array is exactly the 11 task-level invocations plus its 2 phase-reviewer entries, and phase 21's own 56-entry array is exactly its 56 task-level invocations. So the definition matches the project's own convention, and the delegation for this task specified precisely this union ('task-level plus the phase record's own phase-reviewer entries'). The worker discloses the underlying limitation in interpretations[0].impact ('a phase record whose copied task-level entries diverge from the task records is not detected by role_mix'). Worth recording because a future phase that dispatches a genuinely phase-level non-phase-reviewer role (a phase-level documentation-maintainer producing phase-<n>/documentation-update.json, as phases 9-12 do) would hit a confusing failure. Not blocking and not required: changing the recomputation to a whole-array read would break the phase-20 and phase-21 records, which are immutable history.",
+      "evidence": [
+        "probe (X5): extra security-reviewer entry in phase-26's own subagents, aggregate untouched -> check-agents: PASS",
+        "probe (X16): the same entry correctly included in the aggregate -> 'subagent_invocations_total: recorded 6 != recomputed 5', 'role_mix: recorded {...,\"documentation-maintainer\":1} != recomputed {...}', check-agents: FAIL",
+        "phase-20 own subagents length 13 = 11 task-level + 2 phase-reviewer; phase-21 own subagents length 56 = 56 task-level + 0 phase-reviewer (measured)",
+        "scripts/check-agents.sh guard comment '* The phase record's `subagents` array carries the task-record invocations plus any phase-reviewer entries'",
+        "docs/implementation/phase-9..12/documentation-update.json exist, showing phase-level documentation-maintainer output is a real project shape"
+      ],
+      "recommended_action": "None for 26.3. If a future phase needs a phase-level non-phase-reviewer role in its record, the recomputation basis must be revisited then, and the phase record author must follow the guard comment."
+    },
+    {
+      "id": "R-26.3-N3",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "Both scope self-checks are bare substring greps, so they fail on absence but not on disagreement; pre-existing shape, equal effect for the phase-20 constant.",
+      "detail": "B3's self-check is grep -q \"from phase $AGGREGATE_APPLIES_FROM_PHASE\" against the contract, so it detects removal or rewording of the phrase but not a constant lowered onto a phrase that happens to exist elsewhere. I confirmed this: with AGGREGATE_APPLIES_FROM_PHASE lowered to 20 the run still printed 'ok: contract aggregate enforcement scope agrees with the script', because the contract contains 'from phase 20' for two other rules. The pre-existing APPLIES_FROM_PHASE check has exactly the same shape and the same property, so this is not a regression introduced by 26.3 and not a weakening of anything. The dangerous direction (a constant raised above every matching phrase) is still caught: replacing 'from phase 26' with 'from phase twenty-six' produced exactly 'FAIL: AGGREGATE_APPLIES_FROM_PHASE=26 is not stated in docs/agent-contracts.md (Enforcement scope)'. The undetected drift direction (a lowered constant) makes the script enforce more than the contract states, which surfaces as loud failures on immutable history rather than as a silent pass. Recorded for completeness; optional hardening only.",
+      "evidence": [
+        "scripts/check-agents.sh:240-250 both self-check sections use bare grep -q \"from phase $CONSTANT\"",
+        "probe: AGGREGATE_APPLIES_FROM_PHASE=20 -> 'ok: contract aggregate enforcement scope agrees with the script' (contract untouched, still says 'from phase 26')",
+        "probe: contract 'from phase 26' -> 'from phase twenty-six' -> 'FAIL: AGGREGATE_APPLIES_FROM_PHASE=26 is not stated in docs/agent-contracts.md (Enforcement scope)'",
+        "docs/agent-contracts.md contains 'from phase 20' at lines 128, 131, 136, 146 - two other bullets use the same phrase"
+      ],
+      "recommended_action": "Optional hardening, not required: anchor each scope grep to its own bullet so a constant that collides with another bullet's phrase cannot pass silently."
+    },
+    {
+      "id": "R-26.3-N4",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "requirement",
+      "summary": "docs/agent-contracts.md now sits exactly at its 220-line budget with zero headroom; check-docs passes today.",
+      "detail": "The from-phase-26 A5 rewrite took docs/agent-contracts.md to 220 lines against the 220-line budget enforced by scripts/check-docs.sh:98. scripts/check-docs.sh reports 'ok: doc budget checked', so nothing is overclaimed or failing. Any further contract addition will require a deliberate, visible budget bump rather than drifting silently. Recorded for awareness; the guard change itself is unaffected.",
+      "evidence": [
+        "wc -l docs/agent-contracts.md -> 220",
+        "scripts/check-docs.sh:98 'budget docs/agent-contracts.md 220'",
+        "scripts/check-docs.sh on the copy with 26.3 set aside -> 'ok: doc budget checked', 'check-docs: PASS'"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "R-26.3-TQ-11",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "correctness",
+      "summary": "Independent recomputation of the phase-21 aggregate reconciles on every field, and no in-scope existing record fails.",
+      "detail": "Requested check 3. I recomputed the phase-21 aggregate myself from the fourteen task records rather than trusting the guard: task_count 14; task_level_invocations 56; cost 1.403849754 USD; total_tokens 293,509,314; duration_seconds 46,658; rework_rounds 7 (sum of the per-task rework array lengths); review_rounds 20 implementation-reviewer; test_quality_review_rounds 6; role_mix implementation-worker 19, implementation-reviewer 20, test-quality-reviewer 6, security-reviewer 4, live-host-verifier 5, documentation-maintainer 2. Every figure matches the 26.1-amended record, and with AGGREGATE_APPLIES_FROM_PHASE lowered to 20 the guard reports no failure for phase 21. Per-task invocation counts also match (21.1 5, 21.2 6, 21.3 3, 21.4 5, 21.5 2, 21.6 4, 21.7 3, 21.8 3, 21.9 5, 21.10 2, 21.11 7, 21.12 3, 21.13 5, 21.14 3). On scope: the real tree has no docs/implementation/phase-26/ directory and no phase 22-25 directory, so there is no in-scope existing record to fail; the only in-scope phase with a record once the constant is lowered is phase 21, and it reconciles. I additionally confirmed the guard is satisfiable rather than merely fail-on-anything: a fabricated conforming phase-26 record built from the real 26.1/26.2 records passes, and perturbations in scope behave as the definitions require (task_count off by one fails; +1 token fails; +2e-6 cost fails; +5e-7 cost passes inside the documented tolerance; missing aggregate, scalar aggregate, non-array subagents and invalid JSON each fail loudly).",
+      "evidence": [
+        "jq recomputation over docs/implementation/21.*/orchestration.json -> inv 56, cost 1.403849754, tokens 293509314, dur 46658, rework 7, reviewer 20, tqr 6, role_mix {worker 19, reviewer 20, tqr 6, security-reviewer 4, live-host-verifier 5, documentation-maintainer 2}",
+        "phase-21 aggregate as recorded: task_count 14, task_level_invocations 56, cost_usd 1.4038497539999997, total_tokens 293509314, duration_seconds 46658, rework_rounds 7, review_rounds 20, test_quality_review_rounds 6, role_mix identical",
+        "ls -d docs/implementation/phase-2[2-9]* -> none; so AGGREGATE_APPLIES_FROM_PHASE=26 has no in-scope phase record on the shipped tree",
+        "in-scope probes on a fabricated phase-26 record: X8 task_count, X9 +1 token, X10 +2e-6 cost, X11 +5e-7 cost (0 failures), X12 del(.aggregate), X13 aggregate scalar, X14 subagents object, X15 invalid JSON, X18 26.3 orchestration.json added with a stale aggregate -> task_count 2 vs 3 caught"
+      ],
+      "recommended_action": "None. Residual, already disclosed by the worker: the phase-26 branch is a no-op on the shipped tree because no phase-26 record exists yet, so its first real exercise is at the phase gate; a wrong convention chosen there fails loudly rather than passing silently."
+    },
+    {
+      "id": "R-26.3-W1",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "scope",
+      "summary": "No pre-existing check was weakened; all 13 prior sections survive, and B1's from-phase-20 evidence rule is strictly stronger than attempt 1's, closing a recorded pre-existing gap.",
+      "detail": "Requested check 1. Section-label comparison: HEAD had 13 end labels; the new script has 15 - the same 13 plus the two new ones. The pairing section, per-agent table agreement, forbidden-token, legacy-frontmatter, stale-path, phase-gate conformance, release agent-process and task-conformance sections are byte-identical. The pre-existing APPLIES_FROM_PHASE self-check is unchanged and still discriminating (removing 'from phase 20' from the contract produces 'FAIL: APPLIES_FROM_PHASE=20 is not stated in docs/agent-contracts.md'). The only pre-existing line removed is the old end label, replaced by the restored section's new one. The from-phase-20 on-disk evidence section is the attempt-1 B1 code unchanged. It is also strictly stronger than what existed before the phase: it iterates every task directory rather than skipping tasks with no worker-report.json (a gap recorded in docs/implementation/21.5/reviewer-report.json), and it requires the base file of every kind on disk plus every on-disk attempt of every listed kind.",
+      "evidence": [
+        "grep -n '^end \"' on git show HEAD:scripts/check-agents.sh -> 13 labels; on scripts/check-agents.sh -> 15 labels (13 preserved + 'plan state lists the reviewer report from every phase' + 'plan state lists the on-disk report evidence' ... with 'contract aggregate enforcement scope agrees with the script' and 'phase aggregates reconcile with the task records' as the two new ones)",
+        "git diff scripts/check-agents.sh removes only: the old end label, the old section comment, and 2 comment lines; no pre-existing logic hunk is deleted",
+        "probe: contract 'from phase 20' removed -> 'FAIL: APPLIES_FROM_PHASE=20 is not stated in docs/agent-contracts.md (Enforcement scope)'",
+        "docs/implementation/21.5/reviewer-report.json records the old script skipped tasks without a worker-report.json; the new B1 loop does not"
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "R-26.3-W2",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "documentation",
+      "summary": "Current-state documentation surfaces checked: no stale claim remains, and the surfaces 26.3 must not touch are correctly untouched.",
+      "detail": "Requested check 5 extended to documentation. Checked: docs/agent-contracts.md (the from-phase-26 bullet now names the all-recorded-invocations basis and the phase-reviewer requirement; the '**all phases**' bullet at line 139 is true of enforcement again; the A5 pointer sentence names the two enforced rules; no status line), docs/plan/README.md (rule-5 paraphrase aligns with the tightened rule and correctly states 'enforces this from phase 20' for the reports-array rule, which is true), and the stale-wording sweep (grep for 'task-level records' and for 'role_mix' over docs/agent-contracts.md, docs/plan/README.md, README.md, AGENTS.md, docs/INDEX.md returns nothing). Deliberately untouched and correctly so: docs/plan/state.json (26.3 done:false, reports:[] - the orchestrator owns the done flag and the reports listing), PLANS.md (26.3 checkbox still unchecked, milestone table generated), docs/status.md, docs/changelog/, docs/limitations/, README.md, docs/architecture/, docs/data-model/ - none of which carry a fact this harness change alters, and none of which mention check-agents.sh, so nothing there is made stale. Scope confirmed by git: only the three permitted tracked files are modified and the only untracked path is docs/implementation/26.3/.",
+      "evidence": [
+        "git diff --numstat -> 6/4 docs/agent-contracts.md, 7/5 docs/plan/README.md, 251/5 scripts/check-agents.sh",
+        "git status --porcelain -> ' M docs/agent-contracts.md', ' M docs/plan/README.md', ' M scripts/check-agents.sh', '?? docs/implementation/26.3/'",
+        "git status --porcelain -- src tests manifest.json Jellyfin.Plugin docs/planning docs/plan/state.json PLANS.md docs/status.md docs/changelog docs/limitations README.md -> empty",
+        "jq '.phases[] | select(.id==\"26\") | .tasks[] | select(.id==\"26.3\")' docs/plan/state.json -> done false, reports []",
+        "grep -rln 'check-agents' docs/limitations/ docs/changelog/ -> no matches",
+        "grep -rn 'from phase 26' docs/agent-contracts.md -> line 151 (the single marker the self-check keys on)"
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "tests_checked": [
+    "bash -n scripts/check-agents.sh -> no output, exit 0.",
+    "Clean-copy baseline (/tmp/26.3/repo with docs/implementation/26.3 set aside): bash scripts/check-agents.sh -> exit 0, 'check-agents: PASS', 15/15 sections ok.",
+    "Clean-copy baseline: bash scripts/check-docs.sh -> exit 0, 'check-docs: PASS', all nine sections ok including 'ok: doc budget checked' and 'ok: agent report contracts conform'.",
+    "Real tree: bash scripts/check-agents.sh -> exit 1, 12 'ok:' lines and exactly 3 FAIL lines, all three the disclosed in-progress 26.3 gate lines; 'ok: plan state lists the on-disk report evidence', 'ok: contract aggregate enforcement scope agrees with the script' and 'ok: phase aggregates reconcile with the task records' all report ok.",
+    "Real tree: bash scripts/check-docs.sh -> exit 1 in section 9 (agent report contracts conform) only, mirroring the same three lines; sections 1-8 ok including 'ok: doc budget checked'.",
+    "TQ-01 probe: de-listed 15.1's reviewer-report.json -> new script FAIL with the byte-identical pre-change line while the from-phase-20 section still reported ok; git show HEAD:scripts/check-agents.sh produced the same line on the same copy.",
+    "TQ-02 probe: AGGREGATE_APPLIES_FROM_PHASE lowered to 20 -> exit 0, phase 20 reconciles on every field including role_mix, phase 21 reconciles.",
+    "TQ-03 probes: phase-26 record with phase-review.json on disk and zero phase-reviewer entries -> exactly 'FAIL: phase 26 has a phase review on disk but records no phase-reviewer invocation'; phase_reviewer_invocations=2 against 1 entry -> the dedicated equality line plus the aggregate mismatch line; conforming record with 1 entry -> PASS; role_mix minus its phase-reviewer key -> mismatch.",
+    "Independent recomputation of the phase-21 aggregate from the fourteen task records: every field matches the 26.1-amended record (see R-26.3-TQ-11).",
+    "Additional in-scope discrimination probes on a fabricated conforming phase-26 record: task_count off by one, +1 token, +2e-6 cost, +5e-7 cost (inside tolerance, passes), missing aggregate, scalar aggregate, non-array subagents, invalid JSON, extra non-phase-reviewer entry in the record's own subagents, 26.3 orchestration.json added with a stale aggregate, zero task records on disk.",
+    "Clearing-condition verification: writing a reviewer-report.json into the copy plus listing all five on-disk 26.3 report paths in state.json reports -> 'check-agents: PASS' and 'check-docs: PASS'; listing only the four base kinds while the two attempt files remain on disk correctly fails, naming both attempt files."
+  ],
+  "research_checked": [
+    "No external research was required or performed: the task is a self-contained bash/jq harness change with no Jellyfin, Sonarr, Radarr or platform surface, and the project's own records (phases 20 and 21, the 26.1 amendment) are the authoritative evidence for the aggregate conventions.",
+    "Verified against in-repo evidence rather than external sources: the phase-20 and phase-21 orchestration records are the project's own aggregation precedent, and both reconcile under the guard's definitions.",
+    "Verified the guard's numeric conventions against the project's recorded float-sum noise claim referenced in the COST_TOLERANCE_USD comment: the 1e-6 absolute tolerance passes a 5e-7 perturbation and fails 2e-6, so it sits above the noise scale and below any realistic mis-add."
+  ],
+  "documentation_checked": [
+    "docs/agent-contracts.md - Enforcement scope bullets (all phases at :139, from phase 20 x4, from phase 26 at :151-155), Where reports go rule 5 (:20-25), the per-agent report-kind table, and the closing pointer sentence (:157-159).",
+    "docs/plan/README.md - the reports-array paraphrase and its 'enforces this from phase 20' statement.",
+    "docs/plan/state.json - phase 26 task 26.3 (done:false, reports:[]); confirmed untouched and that its empty reports array is the correct current state, not a stale claim.",
+    "PLANS.md - task 26.3 checkbox still unchecked and the Phase 26 gate text; untouched, correct for an unaccepted task.",
+    "docs/status.md, docs/changelog/, docs/limitations/, README.md, docs/architecture/, docs/data-model/ - confirmed untouched and none of them mention check-agents.sh or the aggregate rule, so nothing in them is made stale.",
+    "scripts/check-docs.sh doc budget: docs/agent-contracts.md is 220 lines against the 220-line budget at scripts/check-docs.sh:98; the gate reports ok.",
+    "docs/implementation/26.3/ - worker-report.json (attempt 1, preserved), worker-report.attempt-2.json, test-quality-review.json (attempt 1), test-quality-review.attempt-2.json; all consistent with the delivered diff."
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "B1: from APPLIES_FROM_PHASE=20, the state.json reports array lists the base report for every kind on disk plus every on-disk preserved attempt for every listed kind, while the ungated all-phases reviewer-report listing rule is preserved and the two report independently.",
+      "verdict": "MET",
+      "evidence": "Two distinct sections at scripts/check-agents.sh:141-170 (ungated, pre-change logic verbatim) and :172-238 (p >= 20 on-disk evidence). De-listing 15.1 trips only the first; an unlisted 20.1 attempt trips only the second. All 13 pre-existing sections intact."
+    },
+    {
+      "criterion": "B2: from AGGREGATE_APPLIES_FROM_PHASE=26, a phase record must carry a subagents array and an aggregate reconciling with all recorded invocations (task-level plus the phase record's own phase-reviewer entries), with exact tokens/durations, COST_TOLERANCE_USD=1e-6 cost, and a phase-reviewer presence/equality requirement when phase-review*.json exists; phases 20-25 grandfathered.",
+      "verdict": "MET",
+      "evidence": "Phase 20 and 21 both reconcile fully with the constant lowered to 20; the independent phase-21 recomputation matches on every field; a conforming phase-26 record passes; the omission and inequality cases fail; token/duration are exact (+1 fails), cost tolerance is 1e-6 (+5e-7 passes, +2e-6 fails)."
+    },
+    {
+      "criterion": "B3: a self-check tying AGGREGATE_APPLIES_FROM_PHASE=26 to the contract's stated enforcement phase, mirroring the existing APPLIES_FROM_PHASE self-check.",
+      "verdict": "MET",
+      "evidence": "scripts/check-agents.sh:246-250; removing 'from phase 26' from the contract produces the expected FAIL; the pre-existing phase-20 self-check is unchanged and still discriminating. Recorded limitation R-26.3-N3 (bare substring grep) is pre-existing shape, affects both constants equally, and fails in the safe direction."
+    },
+    {
+      "criterion": "TQ-01 rework closure: restore the all-phases reviewer-report listing check as a separate ungated guard with the pre-change message.",
+      "verdict": "MET",
+      "evidence": "Body byte-identical to HEAD modulo comment and end label; probe reproduces the HEAD line exactly."
+    },
+    {
+      "criterion": "TQ-02 rework closure: role_mix recomputed over the union of task-level and phase-record phase-reviewer invocations, summing to subagent_invocations_total and matching the phase-20 precedent; guard comment and contract updated.",
+      "verdict": "MET",
+      "evidence": "Union expression in place; comment states the basis; contract bullet names all recorded invocations; phase 20 reconciles including phase-reviewer: 2 and phase 21 still reconciles."
+    },
+    {
+      "criterion": "TQ-03 rework closure: from phase 26, when phase-review*.json exists require at least one phase-reviewer entry and an equal phase_reviewer_invocations; phases 20-25 grandfathered.",
+      "verdict": "MET",
+      "evidence": "Both conditions reproduced as failures on the previously-undetectable omission; conforming record passes; contract states the requirement. Completeness of the phase-reviewer set remains out of reach and is disclosed (R-26.3-N1)."
+    },
+    {
+      "criterion": "Scope: only scripts/check-agents.sh, docs/agent-contracts.md (and the accepted docs/plan/README.md attempt-1 edit) plus the 26.3 report directory; no product code, tests, artifacts, manifest, docs/implementation/** record, docs/plan/state.json, PLANS.md or docs/planning/**; no commit or tag.",
+      "verdict": "MET",
+      "evidence": "git status --porcelain shows exactly three modified tracked files and one untracked path (docs/implementation/26.3/); targeted status queries over src, tests, manifest.json, Jellyfin.Plugin, docs/planning, state.json, PLANS.md, status.md, changelog, limitations and README all empty; HEAD unchanged at eda9361 with no tag."
+    },
+    {
+      "criterion": "Documentation reconciliation: the contract's Enforcement scope matches what the script enforces; no stale basis wording remains on any current-state surface.",
+      "verdict": "MET",
+      "evidence": "'**all phases**' bullet is again true of enforcement; from-phase-26 bullet matches the guard including the phase-reviewer requirement; grep for 'task-level records' and 'role_mix' over the five current-state surfaces returns nothing; check-docs 'ok: doc budget checked' and 'ok: agent report contracts conform'."
+    },
+    {
+      "criterion": "Validation honesty: the reported probes are genuine, the real-tree failure is only the disclosed in-progress 26.3 transient, and the clearing condition is accurate.",
+      "verdict": "MET",
+      "evidence": "Every claimed probe reproduced independently with byte-identical messages; real tree fails exactly the three disclosed lines and nothing else; I verified the clearing condition end-to-end in the copy (reviewer report + five report listings -> check-agents and check-docs PASS), including that listing only the base kinds while attempt files remain on disk correctly fails by naming both attempt files. known_limitations[0]'s stated clearing condition needed one addition after test-quality-review.attempt-2.json appeared mid-review (that attempt file must also be listed), which is an orchestrator action, not an implementation defect."
+    }
+  ],
+  "worker_evidence_review": {
+    "acceptance_criteria_present": true,
+    "test_sensitivity_present": true,
+    "documentation_reconciliation_present": true,
+    "interpretations_present": true,
+    "consistency_with_diff_and_results": "Consistent. The three rework entries F-26.3-TQ-01/02/03 each carry a closure statement and reproduction evidence that I independently reproduced with the same failure strings. The attempt-2 report's qualified truth about the real tree (cannot PASS while 26.3 has a worker report and no reviewer report or listing) is honest and matches what I measured. known_limitations[2] accurately discloses the TQ-03 completeness limit; known_limitations[3] accurately discloses the imprecise error wording, which is verbatim pre-change behaviour. interpretations[0] discloses the union-basis limitation I confirmed in R-26.3-N2. One small drift: the clearing condition in known_limitations[0] enumerates the reports to list, and docs/implementation/26.3/test-quality-review.attempt-2.json appeared in the directory after that report was written, so the enumeration is now one entry short; this affects only the orchestrator's next step and is not an implementation defect.",
+    "rework_entries_complete": true
+  },
+  "required_changes": [],
+  "rework_log": [],
+  "clearing_condition": "On the real tree, scripts/check-agents.sh currently fails only the three disclosed in-progress 26.3 lines (12 of 15 sections ok). It clears when docs/implementation/26.3/reviewer-report.json exists (this report) and docs/plan/state.json lists task 26.3's reports with the base report for every kind on disk plus every on-disk attempt of every listed kind. As of this review the directory holds worker-report.json, worker-report.attempt-2.json, test-quality-review.json, test-quality-review.attempt-2.json and (now) reviewer-report.json, so the orchestrator must list all five paths; I verified in a copy that doing so yields 'check-agents: PASS' and 'check-docs: PASS', and that listing only the base kinds correctly fails by naming the two attempt files.",
+  "ready_for_next_task": true
+}

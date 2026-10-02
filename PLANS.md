@@ -94,7 +94,7 @@ classes the new guards now cover.
 **Tasks:**
 - [x] 26.1 Amend the phase-21 orchestration record
 - [x] 26.2 Agent-contract rules
-- [ ] 26.3 Guard enforcement
+- [x] 26.3 Guard enforcement
 - [ ] 26.4 Agent prompt corrections
 - [ ] 26.5 Session-usage collection fix
 - [ ] 26.6 Advisory re-review

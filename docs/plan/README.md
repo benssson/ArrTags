@@ -56,11 +56,13 @@ disagreements and `scripts/check-docs.sh` runs it.
 ```
 
 `reports` lists the evidence reports committed for a task, not only the worker
-report. A task with a `worker-report.json` also lists its `reviewer-report.json`
-and every preserved `.attempt-<n>.json` of it, plus any `test-quality-review.json`,
-`security-review.json`, or `live-verification.json` that exists. See
-[`docs/agent-contracts.md`](../agent-contracts.md), which defines the set, and
-`scripts/check-agents.sh`, which enforces it.
+report: the base report for every kind that exists for the task
+(`worker-report.json`, `reviewer-report.json`, `test-quality-review.json`,
+`security-review.json`, `live-verification.json`, or `documentation-review.json`),
+and every preserved `.attempt-<n>.json` on disk for every kind it lists, not only
+`reviewer-report.json`. See [`docs/agent-contracts.md`](../agent-contracts.md)
+**Where reports go** rule 5 and **Enforcement scope**;
+`scripts/check-agents.sh` enforces this from phase 20.
 
 Status vocabulary for **phases**: `PLANNED`, `IN_PROGRESS`, `COMPLETE`,
 `BLOCKED`, `DEFERRED`, `OUT_OF_SCOPE`. Tasks use the boolean `done`. The

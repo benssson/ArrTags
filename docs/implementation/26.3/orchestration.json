@@ -1,0 +1,140 @@
+{
+  "task": "26.3",
+  "title": "Guard enforcement",
+  "phase": 26,
+  "status": "COMPLETE",
+  "commit": null,
+  "conformance": {
+    "required": false,
+    "reason": "Task 26.3 adds machine enforcement (reports-array completeness; phase aggregate consistency; scope self-check) to scripts/check-agents.sh. It depends on no unverified Jellyfin or provider behavior, changes no product behavior, and implements no ADR clause. No pre-dispatch specialist conformance check applies.",
+    "reports": []
+  },
+  "subagents": [
+    {
+      "role": "implementation-worker",
+      "attempt": 1,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 161937,
+        "output_tokens": 29360,
+        "reasoning_tokens": 71025,
+        "cache_read_tokens": 6136832,
+        "cache_write_tokens": 0,
+        "total_tokens": 6399154,
+        "cost_usd": 0.102932046,
+        "duration_seconds": 772,
+        "session_id": "ses_f03d6d81fffeN0R0MJQfDT8ARC"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 0,
+      "outcome": "FAILED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 47019,
+        "output_tokens": 3575,
+        "reasoning_tokens": 4730,
+        "cache_read_tokens": 942208,
+        "cache_write_tokens": 0,
+        "total_tokens": 997532,
+        "cost_usd": 0,
+        "duration_seconds": 230,
+        "session_id": "ses_f03ca978fffe3gIIpL1dVH3GvY"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 1,
+      "outcome": "PASS_WITH_FINDINGS",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 99850,
+        "output_tokens": 19264,
+        "reasoning_tokens": 11550,
+        "cache_read_tokens": 2229801,
+        "cache_write_tokens": 0,
+        "total_tokens": 2360465,
+        "cost_usd": 0,
+        "duration_seconds": 774,
+        "session_id": "ses_f03ca978dffe86mH7mw6UiMHRy"
+      }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 2,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 133589,
+        "output_tokens": 26462,
+        "reasoning_tokens": 57426,
+        "cache_read_tokens": 3970688,
+        "cache_write_tokens": 0,
+        "total_tokens": 4188165,
+        "cost_usd": 0.08228321400000001,
+        "duration_seconds": 742,
+        "session_id": "ses_f03be3b44ffeIHMq4kxxQOb3cj"
+      }
+    },
+    {
+      "role": "implementation-reviewer",
+      "attempt": 1,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "implementation-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 122034,
+        "output_tokens": 24323,
+        "reasoning_tokens": 32340,
+        "cache_read_tokens": 4313199,
+        "cache_write_tokens": 0,
+        "total_tokens": 4491896,
+        "cost_usd": 0,
+        "duration_seconds": 1310,
+        "session_id": "ses_f03b2a343ffen6JUzRM6estfs3"
+      }
+    },
+    {
+      "role": "test-quality-reviewer",
+      "attempt": 2,
+      "outcome": "APPROVED",
+      "execution": {
+        "agent": "test-quality-reviewer",
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "input_tokens": 67763,
+        "output_tokens": 14543,
+        "reasoning_tokens": 6169,
+        "cache_read_tokens": 1350344,
+        "cache_write_tokens": 0,
+        "total_tokens": 1438819,
+        "cost_usd": 0,
+        "duration_seconds": 600,
+        "session_id": "ses_f03b2a341ffemT312cSqnMDgxa"
+      }
+    }
+  ],
+  "rework": [
+    {
+      "finding_id": "F-26.3-TQ-01/F-26.3-TQ-02/F-26.3-TQ-03",
+      "closure": "Attempt 1's test-quality audit (PASS_WITH_FINDINGS) found: TQ-01 the new B1 check had narrowed the pre-existing all-phases reviewer-report listing requirement to phase 20; TQ-02 role_mix was computed over task-record invocations only while subagent_invocations_total includes phase-reviewer entries (inconsistent with the phase-20 worked example); TQ-03 a phase-reviewer invocation omitted from subagents was undetectable. Attempt 2 restored the ungated all-phases check as a separate section, recomputed role_mix over the union of task-record and phase-record phase-reviewer invocations, and added a from-phase-26 requirement that a phase-review*.json implies at least one phase-reviewer entry with an equal phase_reviewer_invocations. Attempt-1 implementation review also aborted with no report (recorded as attempt 0) and was re-run against the reworked tree.",
+      "evidence": "docs/implementation/26.3/worker-report.attempt-2.json; docs/implementation/26.3/test-quality-review.attempt-2.json (APPROVED, TQ-01/02/03 genuinely closed); docs/implementation/26.3/reviewer-report.json (APPROVED, all three resolved)."
+    }
+  ],
+  "notes": [
+    "scripts/check-agents.sh now enforces: an ungated all-phases reviewer-report listing; from phase 20 the on-disk base/attempt evidence completeness; from phase 26 the phase aggregate consistency with a subagents array and a reconciling aggregate (role_mix over the union of task-record and phase-record phase-reviewer invocations; exact token/duration integers; COST_TOLERANCE_USD=1e-6 for cost) plus the phase-reviewer-presence/equality requirement; and the AGGREGATE_APPLIES_FROM_PHASE=26 scope self-check. docs/agent-contracts.md A5 was adjusted to name the two rules and the recomputation basis, and docs/plan/README.md's reports-array paraphrase was aligned.",
+    "Both reviewers independently reproduced the three fix probes and APPROVED. Carried non-blocking notes: the scope self-checks are bare phrase greps (drift fails loud, never silent); the TQ-03 check enforces presence and equality, not completeness of the phase-reviewer set; docs/agent-contracts.md sits exactly at its 220-line budget. The phase-26 aggregate branch is currently exercised only by a fabricated conforming record and will be exercised for the first time at the phase gate when docs/implementation/phase-26/orchestration.json is written.",
+    "The real-tree check-agents.sh transient (worker report present, reviewer report/unlisted evidence) clears with this task's state listing; the reviewers verified the clearing condition end-to-end."
+  ]
+}

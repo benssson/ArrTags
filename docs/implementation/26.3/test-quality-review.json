@@ -1,0 +1,164 @@
+{
+  "subject": "Task 26.3 - Guard enforcement (scripts/check-agents.sh B1 reports-array attempt listing from phase 20, B2 phase aggregate consistency from phase 26, B3 AGGREGATE_APPLIES_FROM_PHASE self-check), audited as a test-quality exercise: do the recorded sensitivity probes genuinely establish that the guards discriminate and are honest?",
+  "reviewer_status": "PASS_WITH_FINDINGS",
+  "audit_method": "Independent reproduction. No code, script, test, or documentation was modified. All mutations were performed on a throwaway copy at /tmp/final-review/test-quality/repo (docs/, scripts/, .opencode/, AGENTS.md, GOALS.md copied from the working tree). The real tree's `git status --short` and `git diff --numstat` were identical at the start and at the end of this audit, and no phase-26 record exists in the real tree (the fabricated one existed only in the /tmp copy). Mutated inputs (docs/plan/state.json, docs/agent-contracts.md, scripts/check-agents.sh, docs/implementation/20.1/*, docs/implementation/26.2/orchestration.json) were restored and verified byte-identical with `cmp` before each baseline re-run.",
+  "findings": [
+    {
+      "id": "F-26.3-TQ-01",
+      "severity": "MEDIUM",
+      "status": "open",
+      "area": "coverage",
+      "description": "B1 replaced an ungated, all-phases state-listing check with one gated at `p >= APPLIES_FROM_PHASE` (20), so the contract's '**all phases**' rule that a task with a worker report lists its reviewer-report.json in state.json is no longer enforced below phase 20. The pre-change script failed a phase-15 task whose reviewer-report.json was de-listed; the new script passes it. The narrowing is a side effect of the replacement, not something the 26.3 delegation asked for, and it is disclosed in neither the worker report's `known_limitations` nor `documentation_reconciliation` (which instead asserts the pairing check is 'unchanged' - true of the separate file-existence section, but silent on this scope narrowing). docs/plan/README.md was honestly updated to say 'enforces this from phase 20', but docs/agent-contracts.md's Enforcement scope still says 'all phases' for this rule, so the contract now overstates what the script enforces and the B3 self-check does not cover this rule.",
+      "evidence": [
+        "docs/agent-contracts.md Enforcement scope: '**all phases** - a task that has a `worker-report.json`, and is not listed in `docs/implementation/review-exemptions.json`, lists its `reviewer-report.json` in `docs/plan/state.json` `reports`.'",
+        "git diff scripts/check-agents.sh: the removed check `if ! jq -e --arg id \"$b\" 'any(.phases[].tasks[]; .id == $id and ((.reports // []) | any(test(\"reviewer-report\"))))' \"$state\"` had no phase gate; the replacement adds `p=${b%%.*}; ... [ \"$p\" -ge \"$APPLIES_FROM_PHASE\" ] || continue`.",
+        "Reproduced on /tmp copy: removed `docs/implementation/15.1/reviewer-report.json` from task 15.1's reports in docs/plan/state.json -> NEW script: 'check-agents: PASS' (exit 0); HEAD script (`git show HEAD:scripts/check-agents.sh`): 'FAIL: task 15.1 has a reviewer report on disk but docs/plan/state.json does not list it in reports', 'check-agents: FAIL' (exit 1). state.json restored byte-identical (cmp).",
+        "Blast radius measured on the real tree: 0 tasks at phase < 20 currently have an unlisted reviewer-report.json on disk (swept all of docs/implementation/*/), so no shipped artifact is currently mis-passing.",
+        "docs/agent-contracts.md line 209 ('`scripts/check-agents.sh` enforces the pairing for every other task') refers to the file-existence pairing section, which is unchanged."
+      ],
+      "recommended_action": "Either retain the all-phases reviewer-report listing check as a separate loop (so the 'all phases' contract bullet stays true), or amend the contract bullet to 'from phase 20' to match enforcement and record the narrowing in the worker report's known_limitations. The current mismatch between the contract's 'all phases' wording and phase-20-gated enforcement should not be left implicit."
+    },
+    {
+      "id": "F-26.3-TQ-02",
+      "severity": "MEDIUM",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "The guard's `role_mix` is computed over task-record invocations only, while `subagent_invocations_total` and the phase_reviewer_* / unsuffixed triples add the phase record's own phase-reviewer entries. The only in-repo record with phase-reviewer entries, phase 20, uses the opposite role_mix convention (it includes `phase-reviewer: 2`). Direction of risk assessed as asked: (a) a WRONG role_mix cannot pass - a role_mix inflated in a phase-26+ record is flagged exactly; (b) a RIGHT-by-precedent record CAN fail - phase 20 is internally consistent on every other field (subagent_invocations_total 13 = 11 + 2, phase_reviewer_invocations 2, phase_reviewer_total_tokens 7814171, total_tokens 90126724 all reconcile) yet fails on role_mix alone. The probes only demonstrate this in the out-of-scope direction (lowering the constant to 20); no probe feeds a phase-20-convention record through the guard in scope, which is the direction that will actually bite when the phase-26 record is written. The risk is a blocking false failure at the phase gate rather than silent false confidence, and the guard's comment block does state the chosen basis, so this is a friction/consistency defect, not a soundness one. It is, to the worker's credit, disclosed in `interpretations`.",
+      "evidence": [
+        "scripts/check-agents.sh: 'role_mix maps each role to its count over all task-record invocations' vs 'subagent_invocations_total = task_level_invocations + phase_reviewer_invocations'.",
+        "docs/implementation/phase-20/orchestration.json: subagents length 13, aggregate.task_level_invocations 11, subagent_invocations_total 13, phase_reviewer_invocations 2, role_mix {implementation-worker:4, implementation-reviewer:4, test-quality-reviewer:3, phase-reviewer:2}, phase_reviewer_total_tokens 7814171, task_level_total_tokens 82312553, total_tokens 90126724. Task records 20.1/20.2/20.3 contain no phase-reviewer entries.",
+        "Reproduced: AGGREGATE_APPLIES_FROM_PHASE=20 -> exactly one mismatch, 'FAIL: phase 20 aggregate does not reconcile with the task records: role_mix: recorded {\"implementation-worker\":4,\"implementation-reviewer\":4,\"test-quality-reviewer\":3,\"phase-reviewer\":2} != recomputed {\"implementation-worker\":4,\"implementation-reviewer\":4,\"test-quality-reviewer\":3}'. Every other phase-20 field reconciles.",
+        "Wrong-record direction is covered: an in-scope record with role_mix {implementation-worker:99, implementation-reviewer:2} -> 'FAIL: ... role_mix: recorded {...} != recomputed {\"implementation-worker\":2,\"implementation-reviewer\":2}'.",
+        "docs/agent-contracts.md defines no field-level basis for role_mix; it says only 'an `aggregate` whose numeric fields equal the sums recomputed from the task-level records'."
+      ],
+      "recommended_action": "State the role_mix basis (and the phase-reviewer basis for subagent_invocations_total) in docs/agent-contracts.md's phase-aggregate bullet, so a record author cannot reasonably adopt the phase-20 convention. Optionally add a probe that feeds a phase-20-convention record through the guard in scope to record the expected rejection."
+    },
+    {
+      "id": "F-26.3-TQ-03",
+      "severity": "LOW",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "Part of B2's recomputation is self-referential: `subagent_invocations_total`, `phase_reviewer_invocations`, the three `phase_reviewer_*` sums, and the unsuffixed `cost_usd`/`total_tokens`/`duration_seconds` are derived from the phase record's OWN `subagents` array, not from the task-level records. The contract says the aggregate's numeric fields equal sums 'recomputed from the task-level records', which overstates what is checked for those five fields. The guard does catch internal inconsistency within that portion, but it cannot detect a phase-reviewer invocation that is absent from `subagents` altogether (no other check cross-references the existence of a phase-review record against the phase aggregate). This residual gap is not in the worker report's known_limitations, though the guard comment does acknowledge the 0 case ('0 when the release review was the gate and no separate phase-reviewer record exists').",
+      "evidence": [
+        "Reproduced R2: phase-reviewer entry present in `subagents` but omitted from subagent_invocations_total -> 'FAIL: phase 26 aggregate does not reconcile with the task records: subagent_invocations_total: recorded 4 != recomputed 5'. Self-consistency within the phase-reviewer portion IS enforced.",
+        "Reproduced R3: phase-reviewer invocation omitted from `subagents` entirely, aggregate recording phase_reviewer_invocations 0 -> 'check-agents: PASS'. Undetectable by design.",
+        "Reproduced R1: phase-reviewer entry added and fully self-consistent -> PASS, confirming the guard accepts arbitrary but internally consistent phase-reviewer accounting.",
+        "docs/agent-contracts.md:152-153 'an `aggregate` whose numeric fields equal the sums recomputed from the task-level records'."
+      ],
+      "recommended_action": "Soften the contract wording for the phase-reviewer-derived fields, or add a note that a missing phase-review invocation is out of the guard's reach (the phase review and gate checks are expected to cover it)."
+    },
+    {
+      "id": "F-26.3-TQ-04",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "coverage",
+      "description": "Real vs fabricated coverage for B2 is honestly stated and I confirmed it: the real tree has no docs/implementation/phase-26/orchestration.json, so the guard's phase-26 branch is a no-op on the shipped tree and its real-tree PASS establishes nothing about phase 26. The worker report says this plainly in known_limitations. Assessment of the fabricated conforming record as a proxy: fair, and not overfit. I built an INDEPENDENT conforming phase-26 record with a deliberately DIFFERENT shape from the worker's (zero phase-reviewer entries, matching the phase-21 precedent, rather than the worker's synthetic phase-reviewer entry) from the on-disk 26.1/26.2 task records; it PASSes, so the guard accepts both shapes. Independent real-record coverage is genuine: the 26.1-amended phase-21 record reconciles exactly on every field. Residual gap: the record that will actually ship for phase 26 is a third shape, will additionally have to cover task 26.3 (whose orchestration.json does not exist yet), and will only be exercised for the first time when the gate runs; a wrong convention chosen then surfaces as a gate failure, not as a silent pass.",
+      "evidence": [
+        "Real tree: `ls docs/implementation/ | grep -c '^phase-26'` -> 0. docs/implementation/26.3/ contains only worker-report.json (no orchestration.json yet).",
+        "Independently recomputed the sums from the real task records rather than trusting the report: jq over 26.1+26.2 -> n=4 invocations, cost 0.116799336, tokens 9009681, duration 2039, roles [implementation-worker, implementation-reviewer, implementation-worker, implementation-reviewer] - identical to the worker's figures.",
+        "Independent conforming record (zero phase-reviewer) -> 'ok: phase aggregates reconcile with the task records' / 'check-agents: PASS'.",
+        "Real-record cross-check reproduced: with AGGREGATE_APPLIES_FROM_PHASE=20 and no fabricated phase-26 record, phase 21 produced NO failure (exact reconciliation of the 26.1-amended aggregate on all fields) and only phase 20 failed, on role_mix alone. Script restored byte-identical (cmp)."
+      ],
+      "recommended_action": "None for test quality. Re-run the guard once the real phase-26 record exists so the conformance is exercised on a real record rather than a fabricated proxy."
+    },
+    {
+      "id": "F-26.3-TQ-05",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism",
+      "description": "Tolerance honesty verified by boundary measurement rather than by the single recorded probe. The cost tolerance is absolute 1e-6 and its boundary was mapped: 5.2e-8 PASS, 9.9e-7 PASS, 1.0e-6 FAIL, 1.1e-6 FAIL, 1e-5 FAIL, 0.01 FAIL. The +5.2e-8 boundary probe is reported honestly (it passes, and the report says so and explains why). Token and duration comparisons are exact: +1 token and +1 duration both FAIL. 1e-6 USD is a defensible choice given the recorded phase-17 P17-F1 float-sum scale of 5.2e-8 and double-precision summation noise of order 1e-13, and it still catches every realistic mis-add. The report's known_limitations is actually MORE conservative than reality: it states a dropped/added invocation slips only 'if its cost and all three numeric fields are zero', but I showed an all-zero phantom invocation is still caught by the exact integer count fields. Also verified the tolerance is applied per-field to all three cost fields and does not weaken the integer fields (task_level_cost_usd +5.2e-8 PASSes, as designed).",
+      "evidence": [
+        "Boundary sweep on the independent conforming record (cost delta -> aggregate FAIL count): 5.2e-8 -> 0, 9.9e-7 -> 0, 1.0e-6 -> 1, 1.1e-6 -> 1, 1e-5 -> 1, 0.01 -> 1.",
+        "'FAIL: ... cost_usd: recorded 0.126799336 != recomputed 0.116799336 (tolerance 0.000001)' for +0.01.",
+        "'FAIL: ... task_level_total_tokens: recorded 9009682 != recomputed 9009681' (+1 token); 'FAIL: ... duration_seconds: recorded 2040 != recomputed 2039' (+1 duration).",
+        "D1 (a real invocation dropped from 26.2, aggregate left stale) -> 8 mismatches including exact token and duration differences.",
+        "D2 (an all-zero phantom invocation added to 26.2, aggregate left stale) -> still caught: 'task_level_invocations: recorded 4 != recomputed 5; subagent_invocations_total: recorded 4 != recomputed 5; review_rounds: recorded 2 != recomputed 3; task_level_invocations_per_task: ...; role_mix: ...'.",
+        "phase_reviewer_cost_usd recorded as 0.001 with zero phase-reviewer entries -> FAIL (the tolerance does not mask a wrong phase-reviewer figure)."
+      ],
+      "recommended_action": "None. The probes and the reported limitation are honest; optionally tighten the wording of the known limitation, which understates existing coverage."
+    },
+    {
+      "id": "F-26.3-TQ-06",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "skips",
+      "description": "B3 reproduced exactly, and the pre-existing APPLIES_FROM_PHASE=20 self-check is provably still alive and independently discriminating. Replacing 'from phase 26' with 'from phase twenty-six' in the copy's contract produced exactly 'FAIL: AGGREGATE_APPLIES_FROM_PHASE=26 is not stated in docs/agent-contracts.md (Enforcement scope)' while the phase-20 self-check still reported ok, confirming the two self-checks are independent and neither shadows the other. Contract restored byte-identical (cmp).",
+      "evidence": [
+        "B3 probe -> 'ok: contract enforcement scope agrees with the script' + 'FAIL: AGGREGATE_APPLIES_FROM_PHASE=26 is not stated in docs/agent-contracts.md (Enforcement scope)' / 'check-agents: FAIL'.",
+        "Independent second probe removing 'from phase 20' -> 'FAIL: APPLIES_FROM_PHASE=20 is not stated in docs/agent-contracts.md (Enforcement scope)' / 'check-agents: FAIL'.",
+        "After restore -> 'check-agents: PASS', cmp clean against the real tree's docs/agent-contracts.md."
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "F-26.3-TQ-07",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "meaningfulness",
+      "description": "No weakened pre-existing coverage other than F-26.3-TQ-01. All 14 sections are present and all report ok on a clean baseline, so no check was dropped or short-circuited; the worker/reviewer pairing (file-existence) section is untouched; and B1 additionally CLOSES a recorded pre-existing blind spot rather than opening one. Positive controls the worker did not run confirm B1 is satisfiable and filename-exact rather than merely fail-on-anything: an attempt file present AND correctly listed PASSes, and an attempt whose number differs from the listed one FAILS. All six report kinds are exercised by the matcher. One benign contract-consistent edge: a stray `<kind>.attempt-<n>.json` whose base kind does not exist and is not listed is not required, which matches contract rule 5's wording ('for each report kind it lists, plus the base report for each kind that exists').",
+      "evidence": [
+        "Clean /tmp baseline (26.3 worker report set aside) -> all 14 sections ok, 'check-agents: PASS', exit 0. Section list matches the script's 14 `end \"...\"` lines.",
+        "Positive control: reviewer-report.attempt-2.json present AND listed in 20.1's reports -> 'ok: plan state lists the on-disk report evidence' / 'check-agents: PASS'.",
+        "Filename-exactness: reviewer-report.attempt-2.json on disk while only reviewer-report.attempt-1.json listed -> 'FAIL: task 20.1 has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/20.1/reviewer-report.attempt-2.json'.",
+        "Base-kind branch: fabricating security-review.json for 20.1 (a kind not already listed) -> 'FAIL: ... docs/implementation/20.1/security-review.json'. Fabricating all six kinds -> the three genuinely new kinds (security-review, live-verification, documentation-review) are flagged; the three already listed are correctly not flagged.",
+        "Both naming forms reproduced: '...reviewer-report.attempt-2.json' alone -> FAIL; adding legacy '...worker-report-attempt-2.json' -> 'FAIL: ... worker-report-attempt-2.json, ... reviewer-report.attempt-2.json' (sorted, comma-separated).",
+        "Coverage improvement, not regression: docs/implementation/21.5/reviewer-report.json records that the OLD script skipped tasks without a worker-report.json ('check-agents.sh:118, :142 both continue when it is absent'); B1 iterates all task directories and requires the base report of every kind on disk, closing that gap from phase 20.",
+        "Stray-attempt edge (contract-consistent): security-review.attempt-2.json with no base and kind unlisted -> 'check-agents: PASS'."
+      ],
+      "recommended_action": "None."
+    },
+    {
+      "id": "F-26.3-TQ-08",
+      "severity": "INFORMATIONAL",
+      "status": "noted",
+      "area": "determinism",
+      "description": "Honesty of the probe record verified. (a) No probe was run against a mutated real tree: the real tree's `git status --short` is byte-identical at the start and end of this audit (M docs/agent-contracts.md, M docs/plan/README.md, M scripts/check-agents.sh, ?? docs/implementation/26.3/) and no phase-26 record was ever created there; the fabricated record existed only in the /tmp copy. (b) `git diff --numstat` matches the worker report exactly (194/10 script, 3/2 contract, 7/5 README), confirming the recorded state is the delivered state. (c) The report states that phase-26 B2 coverage is currently fabricated-only - this is explicit in known_limitations and accurate. (d) The real tree currently FAILS the gates with exactly the two transient lines the report predicted for the post-persistence interim state, which is the expected and disclosed condition pending the orchestrator's 26.3 reviewer report and the state.json listing. (e) Guard determinism: the checks are pure filesystem + jq recomputation with no clock, network, ordering or process-state dependency; `set -uo pipefail` with explicit per-task error accumulation; the reported failure messages were byte-reproducible across my independent runs.",
+      "evidence": [
+        "Real tree `git status --short` identical at audit start and audit end; `git diff --numstat` -> 3/2 docs/agent-contracts.md, 7/5 docs/plan/README.md, 194/10 scripts/check-agents.sh (matches worker-report.json validation[25]).",
+        "Real tree `bash scripts/check-agents.sh` -> 'FAIL: task 26.3 has a worker report but no reviewer report (add an exemption only if covered)' and 'FAIL: task 26.3 has on-disk report evidence not listed in docs/plan/state.json reports: docs/implementation/26.3/worker-report.json' / 'check-agents: FAIL' - exactly the two lines predicted in known_limitations[0].",
+        "Every restore in this audit verified with `cmp` against the real tree before re-establishing the PASS baseline: docs/plan/state.json, docs/agent-contracts.md, scripts/check-agents.sh, docs/implementation/20.1/*, docs/implementation/26.2/orchestration.json all reported byte-identical.",
+        "Reproduced failure strings matched the worker report's recorded strings verbatim for the shared probes (B1 canonical, B1 legacy pair, +1 token, +0.01 cost, phase-20 role_mix, B3 marker removal)."
+      ],
+      "recommended_action": "None."
+    }
+  ],
+  "matrix_observed": {
+    "default": "not run / out of scope - 26.3 changes no file under tests/ or src/, so the .NET default suite is unaffected; documented current figures in docs/release/build-and-release.md remain Failed 0, Passed 1,966, Skipped 66, Total 2,032",
+    "host_guarded": "not run / out of scope for the same reason; documented current figures Failed 0, Passed 1,963, Skipped 69, Total 2,032",
+    "forced_native": "not run / out of scope for the same reason; documented current figures Failed 0, Passed 2,053, Skipped 21, Total 2,074",
+    "check-agents harness suite": "14 sections, 14 ok, 0 failed on a clean baseline (exit 0) - the suite 26.3 actually changes",
+    "check-agents on the real tree": "14 sections, 12 ok, 2 failed (exit 1) - both failures are the disclosed transient 26.3 pairing/state-listing condition, not a guard defect",
+    "B1 sensitivity probes (this audit)": "6 mutations, 6 correctly rejected, 0 spuriously passed; 2 positive controls passed as required; every restore byte-verified",
+    "B2 sensitivity probes (this audit)": "11 mutations (6 aggregate corruptions, 2 drift scenarios, 3 phase-reviewer accounting cases), all rejected or passing exactly as the definition requires; boundary sweep 5e-8/9.9e-7/1e-6/1.1e-6/1e-5/1e-2 mapped; 2 real-record scope runs reproduced"
+  },
+  "substitutes_checked": [
+    "Fabricated phase-26 conforming orchestration record (worker's, and an independently built one of a different shape) - the ONLY thing exercising the guard's phase-26 branch, because no real phase-26 record exists. Gap recorded in F-26.3-TQ-04; honest disclosure confirmed.",
+    "Fabricated task-report attempt files (canonical and legacy forms) on task 20.1 as the B1 failure stimulus - in scope (phase 20), legitimate, and the real tree provides the matching PASS baseline.",
+    "Real phase-21 orchestration record (amended by 26.1) as the independent real-record B2 conformance case - reconciles exactly on every field; this is genuine, non-fabricated coverage and is the strongest evidence that the guard's definitions match the project's own record convention for a zero-phase-reviewer phase.",
+    "Real phase-20 orchestration record as a negative real-record case - fails on role_mix alone; out of scope and immutable, correctly not rewritten; see F-26.3-TQ-02.",
+    "Fabricated 20.1 report-kind files to exercise all six report kinds - substitution is safe because the guard's job is a filename/reports-array set comparison against the real state.json.",
+    "No in-process doubles, mocks, or stub hosts are involved; the guards run the real bash + jq against the real tree layout."
+  ],
+  "skips_checked": [
+    "AGGREGATE_APPLIES_FROM_PHASE=26 grandfathers phases 20-25 by construction, and I confirmed the grandfathering is the constant's effect rather than a skipped check: lowering it to 20 makes the immutable phase-20 record fail, so the check is live and merely scoped.",
+    "No phase-26 record exists, so the phase-26 branch is a no-op on the shipped tree. This is a coverage gap, not a hidden skip: it is explicitly stated in the worker report's known_limitations and in this audit's F-26.3-TQ-04, and the guard is expected to bite for the first time when the real phase-26 record is written.",
+    "APPLIES_FROM_PHASE=20 gates the B1 reports-array rule, which narrows (rather than preserves) the previous all-phases behaviour - recorded as F-26.3-TQ-01 rather than accepted as an honest scope decision.",
+    "No environment-dependent or platform-conditional skip was introduced; the only host-conditional skipping in the repository is the pre-existing .NET host-guarded suite, which 26.3 does not touch."
+  ],
+  "determinism_checked": [
+    "All B1/B2/B3 probes reproduced byte-identically across independent runs on a fresh /tmp copy; failure message wording, field ordering and comma/separator formatting matched the worker report's recorded strings exactly.",
+    "Every mutated input restored and verified with `cmp` before each baseline re-run; the final baseline re-established 'check-agents: PASS'.",
+    "The guards depend only on filesystem layout and `jq` recomputation - no wall-clock, locale-sensitive ordering, network, randomness, or process state; the numeric phase gating and `sort`-free `unique` in jq keep results stable.",
+    "Mid-audit self-inflicted incident: a cleanup loop in my own probe harness deleted two files in the /tmp copy (docs/implementation/20.1/worker-report.json and reviewer-report.json) because fabricated copies used the same paths. Detected immediately, the real tree was confirmed unaffected by `git status`, and the copy was restored from the real tree and verified with `diff -r`. Recorded for completeness; no impact on any finding or on the repository."
+  ],
+  "limitations": [
+    "The .NET default / host-guarded / forced-native matrix was not executed. 26.3 changes no file under src/ or tests/, so those counts are out of scope for this audit and I report the documented figures rather than a fresh run; I did not independently re-verify them.",
+    "The pinned host was not available or used. Nothing in the new guards depends on a host, but I make no claim about host-guarded behavior.",
+    "scripts/check-docs.sh was not re-run to completion. scripts/check-docs.sh section 9 delegates to check-agents.sh (line 126), so the 26.3 findings propagate to that gate by construction, and the worker's recorded check-docs PASS/FAIL was not independently re-verified here.",
+    "The fabricated phase-26 conforming record cannot substitute for the real one. My independent conforming record was built only from the on-disk 26.1/26.2 task records, because 26.3's own orchestration.json does not exist yet; the record that will actually ship will cover three tasks and is therefore a different shape from anything probed.",
+    "B2's phase-reviewer portion is only self-consistent (F-26.3-TQ-03), so no probe - and no amount of further probing of this guard - can establish that a phase-26+ record's phase-reviewer invocations are complete. That requires the phase review, not this guard.",
+    "The role_mix convention conflict (F-26.3-TQ-02) can only be finally settled once a real phase-26 record with phase-reviewer entries exists; phase 21 cannot arbitrate because it has zero such entries.",
+    "Findings F-26.3-TQ-01 and F-26.3-TQ-02 are recorded as open/noted for the orchestrator's disposition. Neither is a BLOCKER: the shipped tree has no live violation of the narrowed rule, and the role_mix inconsistency can only cause a loud gate failure, never a silent pass. F-26.3-TQ-01 should nonetheless be dispositioned, because it is a genuine reduction in pre-existing enforcement that the worker report does not disclose."
+  ],
+  "summary": "The recorded sensitivity probes are genuine and they hold up under independent reproduction. I rebuilt a clean copy at /tmp/final-review/test-quality/repo and reproduced all nine recorded probes with byte-identical failure messages, then added eleven probes the worker did not run. B1 discriminates properly and, importantly, is satisfiable rather than merely fail-on-anything: a correctly listed attempt file PASSes, an attempt with the wrong number FAILS, both the canonical `.attempt-<n>` and legacy `-attempt-<n>` forms are caught, and all six report kinds are exercised. B2 is genuinely discriminating across task_count, per-task invocations, role_mix, review/test/rework counts, tokens, durations and cost; two drift probes the worker did not run show that both a dropped real invocation and even an all-zero phantom invocation are caught by the exact integer fields, which means the report's stated cost-tolerance caveat is more conservative than reality. B3 reproduces exactly, and I confirmed independently that the pre-existing APPLIES_FROM_PHASE=20 self-check is still alive and that the two self-checks do not shadow each other. On honesty: the real tree is unmodified (identical git status and diff numstat at start and end of the audit), every mutation I made was confined to the /tmp copy and restored with `cmp`, the real tree's current two-line failure is exactly the transient state the report predicted, and the report does state plainly that phase-26 B2 coverage is currently fabricated-only. The residual gap is narrow and honest: with no real phase-26 record, that branch is unexercised on the shipped tree - but the 26.1-amended phase-21 record reconciles exactly on every field, giving real non-fabricated evidence that the definitions match the project's own convention, and my independently built conforming record (a deliberately different shape, with zero phase-reviewer entries) also passes, so the guard is not overfit to the worker's construction. Three findings, none blocking. The one that needs an orchestrator disposition is F-26.3-TQ-01 (MEDIUM): B1 replaced an ungated all-phases state-listing check with a phase-20-gated one, so docs/agent-contracts.md's '**all phases**' bullet is no longer what the script enforces - demonstrated concretely (a de-listed phase-15 reviewer report now PASSes where the pre-change script FAILed) - and the narrowing is disclosed in neither the worker report nor the limitations. There are currently zero violations at phase < 20, so nothing shipped is mis-passing today, but state.json is mutable and future de-listing of a historical reviewer report would go undetected. F-26.3-TQ-02 (MEDIUM, already disclosed by the worker) is the role_mix convention conflict with phase 20: it cannot let a wrong record pass, but it can reject a defensible record written by following the phase-20 precedent, and the contract never defines role_mix's basis. F-26.3-TQ-03 (LOW) is that the phase-reviewer portion of B2 is recomputed from the phase record's own subagents array, so an omitted phase-reviewer invocation is undetectable, which the contract's 'recomputed from the task-level records' wording overstates. Recommendation: PASS_WITH_FINDINGS, with F-26.3-TQ-01 dispositioned (either restore the all-phases check or amend the contract bullet and record the narrowing) and F-26.3-TQ-02 closed by stating the role_mix basis in the contract."
+}
