@@ -308,35 +308,37 @@ end "phase gate conformance and orchestration shape checked"
 
 # Phase-level aggregate consistency, from AGGREGATE_APPLIES_FROM_PHASE onward:
 # the phase record must carry a `subagents` array, and its aggregate's numeric
-# fields must equal the values recomputed from the task-level records plus the
-# phase record's own phase-reviewer entries. Phases before 26 predate the rule;
-# their records are immutable history and skipped.
+# fields must equal the values recomputed from the phase's distinct invocations.
+# Phases before 26 predate the rule; their records are immutable history and
+# skipped.
 #
 # Recomputation definitions (the guard and the records must not disagree):
 # * A phase's task records are the docs/implementation/<n>.<k>/orchestration.json
 #   files on disk. task_count is the number of those records;
 #   task_level_invocations_per_task maps each id to that record's `.subagents |
 #   length`; task_level_invocations is their sum.
-# * The phase record's `subagents` array carries the task-record invocations plus
-#   any phase-reviewer entries. subagent_invocations_total =
-#   task_level_invocations + phase_reviewer_invocations (a phase-reviewer entry
-#   recorded inside a task record is already part of the task-level sums and is
-#   not counted twice).
-# * phase_reviewer_invocations is the number of phase-reviewer-role entries in
-#   the phase record's own `subagents` array (0 when the release review was the
-#   gate and no separate phase-reviewer record exists); the phase_reviewer_*
-#   cost/token/duration sums are over those same entries.
-# * role_mix maps each role to its count over all recorded invocations: the
-#   task-record invocations plus the phase record's own phase-reviewer entries,
-#   so it sums to subagent_invocations_total (the phase-20 worked example
-#   includes phase-reviewer: 2).
+# * The phase's distinct invocation set is the union of (a) all task-record
+#   invocations and (b) the phase record's own phase-reviewer entries,
+#   de-duplicated by `(role, session_id, attempt)`; session_id is the
+#   invocation's `execution.session_id`. A phase-reviewer invocation recorded in
+#   both a task record and the phase record counts once.
+# * subagent_invocations_total is the size of that de-duplicated set (the
+#   phase-20 worked example: 11 task invocations + 2 phase-only phase-reviewer
+#   entries = 13).
+# * phase_reviewer_invocations is the number of distinct phase-reviewer-role
+#   invocations in the set (0 when the release review was the gate and no
+#   separate phase-reviewer record exists).
+# * role_mix maps each role to its count over the de-duplicated set, so it sums
+#   to subagent_invocations_total (the phase-20 worked example includes
+#   phase-reviewer: 2).
 # * review_rounds and test_quality_review_rounds count implementation-reviewer
 #   and test-quality-reviewer invocations (attempt-0 FAILED included);
 #   rework_rounds is the sum of the task records' `.rework | length` (never the
 #   phase `tasks`-array figures).
 # * task_level_* cost/token/duration sums are over task-record invocations; the
-#   unsuffixed cost_usd / total_tokens / duration_seconds = task-level +
-#   phase-reviewer.
+#   phase_reviewer_* sums are over the phase-only phase-reviewer entries (those
+#   not already present in a task record); the unsuffixed cost_usd /
+#   total_tokens / duration_seconds = task-level + phase-only.
 # * first_pass_approval_rate and note are prose: not recomputed, not checked.
 # * total_tokens and duration_seconds compare exactly; cost_usd compares within
 #   an absolute COST_TOLERANCE_USD (see its definition above).
@@ -357,33 +359,15 @@ else
         if [ "$(jq -r '.subagents | type' "$o")" != "array" ]; then
             err "phase $p orchestration record lacks a subagents array"
         fi
-        # A phase review on disk must be accounted for in the record's own
-        # invocations: at least one phase-reviewer entry in `subagents`, and a
-        # `phase_reviewer_invocations` equal to the count of those entries. The
-        # scope constant above grandfathers phases before 26; a missing or
-        # non-array `subagents` already fails the shape check.
+        # A phase review on disk must be accounted for in the de-duplicated
+        # invocation set. That check needs the task records, so it runs after
+        # they are loaded; the scope constant above grandfathers phases before
+        # 26, and a missing or non-array `subagents` already fails the shape
+        # check.
         phase_review_files=0
         for f in "$d"/phase-review*.json; do
             [ -f "$f" ] && phase_review_files=1
         done
-        if [ "$phase_review_files" -eq 1 ] && [ "$(jq -r '.subagents | type' "$o")" = "array" ]; then
-            pr_entries=$(jq -r '[.subagents[] | select(.role == "phase-reviewer")] | length' "$o") || pr_entries=""
-            case "$pr_entries" in
-                ''|*[!0-9]*)
-                    err "phase $p phase-reviewer invocations in subagents could not be counted"
-                    ;;
-                *)
-                    if [ "$pr_entries" -eq 0 ]; then
-                        err "phase $p has a phase review on disk but records no phase-reviewer invocation"
-                    fi
-                    recorded_pr=$(jq -r '.aggregate.phase_reviewer_invocations // "missing"' "$o") \
-                        || recorded_pr="unreadable"
-                    if [ "$recorded_pr" != "$pr_entries" ]; then
-                        err "phase $p aggregate phase_reviewer_invocations is $recorded_pr but the record has $pr_entries phase-reviewer invocation(s)"
-                    fi
-                    ;;
-            esac
-        fi
         task_files=()
         for t in docs/implementation/"$p".*/orchestration.json; do
             [ -f "$t" ] || continue
@@ -398,35 +382,69 @@ else
                 ' "${task_files[@]}") \
                 || { err "phase $p task records are unreadable"; continue; }
         fi
+        # A phase review on disk requires at least one distinct phase-reviewer
+        # invocation and an aggregate `phase_reviewer_invocations` equal to the
+        # distinct count; either may come from a task record, the phase record,
+        # or both.
+        if [ "$phase_review_files" -eq 1 ] && [ "$(jq -r '.subagents | type' "$o")" = "array" ]; then
+            pr_distinct=$(printf '%s' "$task_records" | jq -r --slurpfile phase "$o" '
+                    def invkey: [.role, (.execution.session_id // null), (.attempt // null)];
+                    ([.[].subagents[] | select(.role == "phase-reviewer") | invkey])
+                    + ([($phase[0].subagents // [])
+                        | if type == "array" then .[] else empty end
+                        | select(.role == "phase-reviewer")
+                        | invkey])
+                    | unique | length
+                ') || pr_distinct=""
+            case "$pr_distinct" in
+                ''|*[!0-9]*)
+                    err "phase $p distinct phase-reviewer invocations could not be counted"
+                    ;;
+                *)
+                    if [ "$pr_distinct" -eq 0 ]; then
+                        err "phase $p has a phase review on disk but records no phase-reviewer invocation"
+                    fi
+                    recorded_pr=$(jq -r '.aggregate.phase_reviewer_invocations // "missing"' "$o") \
+                        || recorded_pr="unreadable"
+                    if [ "$recorded_pr" != "$pr_distinct" ]; then
+                        err "phase $p aggregate phase_reviewer_invocations is $recorded_pr but the record has $pr_distinct distinct phase-reviewer invocation(s)"
+                    fi
+                    ;;
+            esac
+        fi
         mismatches=$(printf '%s' "$task_records" | jq -r --slurpfile phase "$o" \
                 --argjson tol "$COST_TOLERANCE_USD" '
                 def abs: if . < 0 then -. else . end;
+                def invkey: [.role, (.execution.session_id // null), (.attempt // null)];
                 ($phase[0]) as $o
                 | . as $t
                 | ($o.aggregate // {}) as $a
                 | if ($a | type) != "object" then "aggregate is not an object"
                   else
                     ([$t[].subagents[]]) as $inv
+                    | ([$inv[] | invkey]) as $inv_keys
                     | ([($o.subagents // [])
                         | if type == "array" then .[] else empty end
                         | select(.role == "phase-reviewer")]) as $pr
+                    | ([$pr[] | select((invkey) as $k | any($inv_keys[]; . == $k) | not)]) as $pr_only
+                    | ([$inv[], $pr[]] | unique_by(invkey)) as $uniq
                     | {
                         task_count: ($t | length),
                         task_level_invocations_per_task:
                             ($t | map({key: .id, value: (.subagents | length)}) | from_entries),
                         task_level_invocations: ($inv | length),
-                        subagent_invocations_total: (($inv | length) + ($pr | length)),
-                        phase_reviewer_invocations: ($pr | length),
-                        role_mix: (reduce (($inv + $pr)[]) as $s ({}; .[$s.role // ""] += 1)),
+                        subagent_invocations_total: ($uniq | length),
+                        phase_reviewer_invocations: ([$uniq[] | select(.role == "phase-reviewer")] | length),
+                        role_mix: (reduce $uniq[] as $s ({}; .[$s.role // ""] += 1)),
                         review_rounds: ([$inv[] | select(.role == "implementation-reviewer")] | length),
                         test_quality_review_rounds: ([$inv[] | select(.role == "test-quality-reviewer")] | length),
                         rework_rounds: ([$t[] | .rework | length] | add // 0),
                         task_level_cost_usd: ([$inv[] | .execution.cost_usd // 0] | add // 0),
                         task_level_total_tokens: ([$inv[] | .execution.total_tokens // 0] | add // 0),
                         task_level_duration_seconds: ([$inv[] | .execution.duration_seconds // 0] | add // 0),
-                        phase_reviewer_cost_usd: ([$pr[] | .execution.cost_usd // 0] | add // 0),
-                        phase_reviewer_total_tokens: ([$pr[] | .execution.total_tokens // 0] | add // 0),
-                        phase_reviewer_duration_seconds: ([$pr[] | .execution.duration_seconds // 0] | add // 0)
+                        phase_reviewer_cost_usd: ([$pr_only[] | .execution.cost_usd // 0] | add // 0),
+                        phase_reviewer_total_tokens: ([$pr_only[] | .execution.total_tokens // 0] | add // 0),
+                        phase_reviewer_duration_seconds: ([$pr_only[] | .execution.duration_seconds // 0] | add // 0)
                       } as $e
                     | ($e + {
                         cost_usd: ($e.task_level_cost_usd + $e.phase_reviewer_cost_usd),

@@ -123,6 +123,25 @@
         "duration_seconds": 600,
         "session_id": "ses_f03b2a341ffemT312cSqnMDgxa"
       }
+    },
+    {
+      "role": "implementation-worker",
+      "attempt": 3,
+      "outcome": "COMPLETE",
+      "execution": {
+        "agent": "implementation-worker",
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "variant": "max",
+        "input_tokens": 93179,
+        "output_tokens": 24400,
+        "reasoning_tokens": 40195,
+        "cache_read_tokens": 6625792,
+        "cache_write_tokens": 0,
+        "total_tokens": 6783566,
+        "cost_usd": 0.072611226,
+        "duration_seconds": 5486,
+        "session_id": "ses_f03be3b44ffeIHMq4kxxQOb3cj"
+      }
     }
   ],
   "rework": [
@@ -130,11 +149,16 @@
       "finding_id": "F-26.3-TQ-01/F-26.3-TQ-02/F-26.3-TQ-03",
       "closure": "Attempt 1's test-quality audit (PASS_WITH_FINDINGS) found: TQ-01 the new B1 check had narrowed the pre-existing all-phases reviewer-report listing requirement to phase 20; TQ-02 role_mix was computed over task-record invocations only while subagent_invocations_total includes phase-reviewer entries (inconsistent with the phase-20 worked example); TQ-03 a phase-reviewer invocation omitted from subagents was undetectable. Attempt 2 restored the ungated all-phases check as a separate section, recomputed role_mix over the union of task-record and phase-record phase-reviewer invocations, and added a from-phase-26 requirement that a phase-review*.json implies at least one phase-reviewer entry with an equal phase_reviewer_invocations. Attempt-1 implementation review also aborted with no report (recorded as attempt 0) and was re-run against the reworked tree.",
       "evidence": "docs/implementation/26.3/worker-report.attempt-2.json; docs/implementation/26.3/test-quality-review.attempt-2.json (APPROVED, TQ-01/02/03 genuinely closed); docs/implementation/26.3/reviewer-report.json (APPROVED, all three resolved)."
+    },
+    {
+      "finding_id": "phase-26-review-MEDIUM-aggregate-double-count",
+      "closure": "The phase-26 review found the from-phase-26 aggregate guard double-counts a phase-reviewer invocation recorded inside a task record (26.6 is the first such task record), so the semantically correct phase-26 aggregate failed the guard. Attempt 3 recomputes from the de-duplicated union of task-record invocations and the phase record's own phase-reviewer entries keyed by (role, execution.session_id, attempt): counts and role_mix over the set, task_level_* over task records, phase_reviewer_* over phase-only entries, and the presence/equality check over the distinct phase-reviewer count. The guard comment and the contract A5 bullet state the rule.",
+      "evidence": "docs/implementation/26.3/worker-report.attempt-3.json rework[0]; probes: semantically correct 17/2 aggregate PASS; double-count 18/3 FAIL; task-record-only 16/1 PASS; phases 20 (13/2) and 21 (56/0) still reconcile at constant 20."
     }
   ],
   "notes": [
-    "scripts/check-agents.sh now enforces: an ungated all-phases reviewer-report listing; from phase 20 the on-disk base/attempt evidence completeness; from phase 26 the phase aggregate consistency with a subagents array and a reconciling aggregate (role_mix over the union of task-record and phase-record phase-reviewer invocations; exact token/duration integers; COST_TOLERANCE_USD=1e-6 for cost) plus the phase-reviewer-presence/equality requirement; and the AGGREGATE_APPLIES_FROM_PHASE=26 scope self-check. docs/agent-contracts.md A5 was adjusted to name the two rules and the recomputation basis, and docs/plan/README.md's reports-array paraphrase was aligned.",
-    "Both reviewers independently reproduced the three fix probes and APPROVED. Carried non-blocking notes: the scope self-checks are bare phrase greps (drift fails loud, never silent); the TQ-03 check enforces presence and equality, not completeness of the phase-reviewer set; docs/agent-contracts.md sits exactly at its 220-line budget. The phase-26 aggregate branch is currently exercised only by a fabricated conforming record and will be exercised for the first time at the phase gate when docs/implementation/phase-26/orchestration.json is written.",
-    "The real-tree check-agents.sh transient (worker report present, reviewer report/unlisted evidence) clears with this task's state listing; the reviewers verified the clearing condition end-to-end."
+    "scripts/check-agents.sh now enforces: an ungated all-phases reviewer-report listing; from phase 20 the on-disk base/attempt evidence completeness; from phase 26 the phase aggregate consistency with a subagents array and a reconciling aggregate over the de-duplicated invocation set (counts and role_mix over the set; task-level plus phase-only sums; exact token/duration integers; COST_TOLERANCE_USD=1e-6 for cost) plus the phase-reviewer-presence/equality requirement; and the AGGREGATE_APPLIES_FROM_PHASE=26 scope self-check. docs/agent-contracts.md A5 was adjusted to name the two rules, the recomputation basis, and the de-duplication key, and docs/plan/README.md's reports-array paraphrase was aligned.",
+    "Attempt 3 was a resumed-session invocation on attempt 2's session id; this record carries its own delta so the phase aggregate sums the true totals. All three review rounds (implementation attempt 1, test-quality attempt 1/2) APPROVED the attempt-2 state; the phase review found the attempt-3 defect and its re-review is the phase-26 gate re-run.",
+    "Carried non-blocking notes: the scope self-checks are bare phrase greps (drift fails loud, never silent); docs/agent-contracts.md sits exactly at its 220-line budget. The phase-26 aggregate branch is currently exercised only by fabricated fixtures; the first real exercise is the phase-26 gate record."
   ]
 }

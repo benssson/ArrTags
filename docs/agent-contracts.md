@@ -150,9 +150,9 @@ its own `APPLIES_FROM_PHASE` disagree.
   the base report for each kind that exists. See **Where reports go** rule 5.
 * **from phase 26** — a phase-level orchestration record carries a `subagents`
   array and an `aggregate` whose numeric fields equal the sums recomputed from
-  all recorded invocations (task-level plus the phase record's own), and records
-  a `phase-reviewer` invocation whenever a `phase-review*.json` exists. Phases
-  before 26 predate this rule and are not rewritten.
+  all recorded invocations (task-level plus the phase record's own), de-duplicated
+  by `(role, session_id, attempt)` so a task-record `phase-reviewer` counts once;
+  one is required when a `phase-review*.json` exists. Phases before 26 are exempt.
 
 `scripts/check-agents.sh` enforces the reports-array attempt listing and the
 phase aggregate consistency, and fails if its scope constants disagree with the
